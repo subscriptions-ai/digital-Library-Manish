@@ -4,3 +4,27 @@
 
 ◇ injecting env (7) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
 Server running on http://localhost:3000
+3:51:22 PM [vite] (client) page reload package.json
+3:51:22 PM [vite] (client) page reload server_log.txt
+3:51:26 PM [vite] (client) page reload package.json
+3:51:26 PM [vite] (client) page reload server_log.txt
+3:53:57 PM [vite] (client) page reload server.ts
+3:53:57 PM [vite] (client) page reload server_log.txt
+3:53:58 PM [vite] .env changed, restarting server...
+3:53:58 PM [vite] (client) page reload server_log.txt
+3:53:58 PM [vite] (client) Re-optimizing dependencies because lockfile has changed
+3:53:58 PM [vite] server restarted.
+3:54:22 PM [vite] changed tsconfig file detected: /home/itb04/Desktop/digital-library-manish/digital-Library-Manish/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+4:02:24 PM [vite] .env changed, restarting server...
+4:02:24 PM [vite] (client) Re-optimizing dependencies because lockfile has changed
+4:02:24 PM [vite] server restarted.
+4:02:52 PM [vite] .env changed, restarting server...
+4:02:52 PM [vite] server restarted.
+4:04:58 PM [vite] vite.config.ts changed, restarting server...
+failed to load config from /home/itb04/Desktop/digital-library-manish/digital-Library-Manish/vite.config.ts
+4:04:58 PM [vite] defineConfig is not defined
+4:04:58 PM [vite] server restart failed
+4:05:11 PM [vite] vite.config.ts changed, restarting server...
+4:05:11 PM [vite] server restarted.
+4:05:38 PM [vite] changed tsconfig file detected: /home/itb04/Desktop/digital-library-manish/digital-Library-Manish/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+4:05:56 PM [vite] changed tsconfig file detected: /home/itb04/Desktop/digital-library-manish/digital-Library-Manish/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.

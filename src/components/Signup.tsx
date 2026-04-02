@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Mail, Lock, User, Building, ArrowRight } from "lucide-react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db, handleFirestoreError, OperationType } from "../firebase";
+import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 
 export function Signup() {
@@ -15,6 +13,7 @@ export function Signup() {
     password: ''
   });
   const [loading, setLoading] = useState(false);
+  const { signup } = useAuth();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,22 +24,13 @@ export function Signup() {
 
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
-
-      // Create user profile in Firestore
-      try {
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email,
-          displayName: formData.name,
-          organization: formData.organization,
-          role: 'user',
-          createdAt: serverTimestamp()
-        });
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
-      }
+      await signup({
+        email: formData.email,
+        password: formData.password,
+        displayName: formData.name,
+        organization: formData.organization,
+        role: 'Student'
+      });
 
       toast.success('Account created successfully!');
       navigate('/dashboard');

@@ -1,63 +1,82 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebase';
-import { UserProfile, UserRole } from '../types';
+import { api } from '../lib/api';
+import { UserProfile } from '../types';
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null; // JWT token payload equivalent or user from API
   profile: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
   isSubscriptionManager: boolean;
   isContentManager: boolean;
   isInstitutionAdmin: boolean;
+  login: (data: any) => Promise<void>;
+  signup: (data: any) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      
-      if (currentUser) {
-        // Fetch or create profile
-        const profileRef = doc(db, 'users', currentUser.uid);
-        const profileSnap = await getDoc(profileRef);
-        
-        if (profileSnap.exists()) {
-          setProfile(profileSnap.data() as UserProfile);
-        } else {
-          // Create default profile for new users (Student by default)
-          const newProfile: UserProfile = {
-            uid: currentUser.uid,
-            email: currentUser.email || '',
-            role: 'Student',
-            displayName: currentUser.displayName || '',
-            status: 'Active',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          };
-          await setDoc(profileRef, newProfile);
-          setProfile(newProfile);
+    const initAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await api.auth.me();
+          if (res.user) {
+            setUser(res.user);
+            setProfile(res.user);
+          } else {
+            // Invalid token
+            localStorage.removeItem('token');
+            setUser(null);
+            setProfile(null);
+          }
+        } catch (error) {
+          console.error("Auth init error:", error);
+          localStorage.removeItem('token');
+          setUser(null);
+          setProfile(null);
         }
-      } else {
-        setProfile(null);
       }
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    initAuth();
   }, []);
 
+  const login = async (data: any) => {
+    const res = await api.auth.login(data);
+    if (res.token) {
+      localStorage.setItem('token', res.token);
+      setUser(res.user);
+      setProfile(res.user);
+    }
+  };
+
+  const signup = async (data: any) => {
+    const res = await api.auth.signup(data);
+    if (res.token) {
+      localStorage.setItem('token', res.token);
+      setUser(res.user);
+      setProfile(res.user);
+    }
+  };
+
   const logout = async () => {
-    await auth.signOut();
+    localStorage.removeItem('token');
+    setUser(null);
+    setProfile(null);
+    try {
+      await api.auth.logout();
+    } catch(e) {
+      // Ignore network errors on logout
+    }
   };
 
   const value = {
@@ -68,6 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isSubscriptionManager: profile?.role === 'SubscriptionManager' || profile?.role === 'SuperAdmin',
     isContentManager: profile?.role === 'ContentManager' || profile?.role === 'SuperAdmin',
     isInstitutionAdmin: (profile?.role === 'College' || profile?.role === 'University' || profile?.role === 'Corporate') && !!profile?.institutionId,
+    login,
+    signup,
     logout,
   };
 
