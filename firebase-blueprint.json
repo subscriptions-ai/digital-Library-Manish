@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user role and profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["SuperAdmin", "SubscriptionManager", "ContentManager", "Agency", "Student", "College", "University", "Corporate"] },
+        "displayName": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "subscriptionId": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Inactive"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "status"]
+    },
+    "Institution": {
+      "title": "Institution",
+      "description": "Stores institutional data and sub-user management",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "adminUid": { "type": "string" },
+        "type": { "type": "string", "enum": ["College", "University", "Corporate"] },
+        "maxSubUsers": { "type": "number" },
+        "currentSubUsers": { "type": "number" },
+        "subscriptionId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "adminUid", "type", "maxSubUsers"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Stores subscription plan and usage limits",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "planId": { "type": "string" },
+        "planName": { "type": "string" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Active", "Expired", "Pending"] },
+        "usageLimits": {
+          "type": "object",
+          "properties": {
+            "views": { "type": "number" },
+            "downloads": { "type": "number" }
+          }
+        },
+        "usageStats": {
+          "type": "object",
+          "properties": {
+            "views": { "type": "number" },
+            "downloads": { "type": "number" }
+          }
+        }
+      },
+      "required": ["id", "planId", "status"]
+    },
+    "UsageLog": {
+      "title": "Usage Log",
+      "description": "Tracks user activity for analytics",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "institutionId": { "type": "string" },
+        "contentId": { "type": "string" },
+        "contentTitle": { "type": "string" },
+        "action": { "type": "string", "enum": ["View", "Download"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "contentId", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/institutions/{id}": {
+      "schema": "Institution",
+      "description": "Institutional data"
+    },
+    "/subscriptions/{id}": {
+      "schema": "Subscription",
+      "description": "Subscription records"
+    },
+    "/usage_logs/{id}": {
+      "schema": "UsageLog",
+      "description": "Activity logs for analytics"
+    },
+    "/submissions/{id}": {
+      "schema": "Submission",
+      "description": "Content submissions"
+    }
+  }
+}

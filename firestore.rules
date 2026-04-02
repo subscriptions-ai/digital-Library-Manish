@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('SuperAdmin');
+    }
+
+    function isSubscriptionManager() {
+      return hasRole('SubscriptionManager') || isAdmin();
+    }
+
+    function isContentManager() {
+      return hasRole('ContentManager') || isAdmin();
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isInstitutionAdmin(institutionId) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/institutions/$(institutionId)).data.adminUid == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // User Profiles
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (isOwner(uid) || isSubscriptionManager() || isAdmin());
+      allow create: if isAuthenticated() && isOwner(uid);
+      allow update: if isAuthenticated() && (isOwner(uid) || isSubscriptionManager() || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Institutions
+    match /institutions/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isSubscriptionManager() || isAdmin();
+      allow update: if isSubscriptionManager() || isAdmin() || isInstitutionAdmin(id);
+      allow delete: if isAdmin();
+    }
+
+    // Subscriptions
+    match /subscriptions/{id} {
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) || 
+        isInstitutionAdmin(resource.data.institutionId) || 
+        isSubscriptionManager()
+      );
+      allow create: if isSubscriptionManager() || isAdmin();
+      allow update: if isSubscriptionManager() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Usage Logs
+    match /usage_logs/{id} {
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) || 
+        isInstitutionAdmin(resource.data.institutionId) || 
+        isSubscriptionManager()
+      );
+      allow create: if isAuthenticated();
+      allow update: if false; // Logs should be immutable
+      allow delete: if isAdmin();
+    }
+
+    // Submissions / Content
+    match /submissions/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isContentManager() || isOwner(resource.data.userId);
+      allow delete: if isAdmin();
+    }
+  }
+}
