@@ -25,15 +25,16 @@ async function startServer() {
   app.use(compression());
   app.use(express.json());
 
-  // Razorpay Initialization
-  const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || "",
-    key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-  });
-
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-    console.warn("WARNING: Razorpay keys are missing in environment variables.");
-  }
+  // Razorpay – lazily initialized per-route so missing keys don't crash startup
+  const getRazorpay = () => {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      throw new Error("Razorpay keys are not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.");
+    }
+    return new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+  };
 
   // Nodemailer Initialization
   const transporter = nodemailer.createTransport({
@@ -56,6 +57,7 @@ async function startServer() {
   // Create Razorpay Order
   app.post("/api/payment/order", async (req, res) => {
     try {
+      const razorpay = getRazorpay();
       const { amount, currency = "INR", receipt } = req.body;
       const options = {
         amount: Math.round(amount * 100), // amount in the smallest currency unit
