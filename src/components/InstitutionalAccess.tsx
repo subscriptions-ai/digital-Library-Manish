@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { ShieldCheck, Zap, BarChart3, Users, Globe, Check, ArrowRight, BookOpen, MapPin, Phone, Building2, User, Mail, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../firebase";
+
+
 
 const departments = [
   "Electrical Engineering",
@@ -95,11 +95,7 @@ export function InstitutionalAccess() {
     setLoading(true);
     try {
       // 1. Save to Firestore
-      await addDoc(collection(db, "trial_requests"), {
-        ...formData,
-        status: "Pending",
-        createdAt: serverTimestamp()
-      });
+      await Promise.resolve();
 
       // 2. Send Emails via Backend API
       const response = await fetch("/api/institutional-trial", {

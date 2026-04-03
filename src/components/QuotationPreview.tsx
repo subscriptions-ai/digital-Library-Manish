@@ -8,8 +8,6 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 import { FileText, Download, Mail, Edit3, ChevronLeft, Printer, ShieldCheck, BookOpen } from 'lucide-react';
 import { COMPANY_DETAILS } from '../config';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 
 export function QuotationPreview() {
@@ -197,22 +195,8 @@ export function QuotationPreview() {
       });
 
       if (response.ok) {
-        // Save to Firestore
-        await addDoc(collection(db, 'quotations'), {
-          quotationId: quotationNumber,
-          userId: user?.uid || 'anonymous',
-          userName: formData.name,
-          userEmail: formData.email,
-          organization: formData.organization,
-          items: items.map(i => ({ domain: i.domainName, plan: i.planName, price: i.price })),
-          subtotal: gstBreakdown.basePrice,
-          gstAmount: gstBreakdown.igst || (gstBreakdown.cgst + gstBreakdown.sgst),
-          total: gstBreakdown.totalAmount,
-          state: formData.state,
-          status: 'Sent',
-          createdAt: serverTimestamp(),
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        });
+        // The backend endpoint now handles saving the quotation to PostgreSQL
+
 
         toast.success('Quotation sent to your email!', { id: 'send-email' });
         clearCart();

@@ -10,8 +10,9 @@ import helmet from "helmet";
 import compression from "compression";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "./src/firebase.js"; // Note: Adjusting for relative path from project root if needed, or using alias
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 dotenv.config();
 
@@ -82,34 +83,30 @@ async function startServer() {
     try {
       const { email, password, name, organization } = req.body;
       
-      // Check if user already exists in Firestore
-      const userRef = doc(db, "users", email); // Using email as doc ID for simplicity in lookup
-      const userSnap = await getDoc(userRef);
+      // Check if user already exists in PostgreSQL
+      const existingUser = await prisma.user.findUnique({ where: { email } });
       
-      if (userSnap.exists()) {
+      if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const uid = crypto.randomUUID();
       
-      const userData = {
-        uid,
-        email,
-        password: hashedPassword, // Storing hashed password in Firestore
-        displayName: name,
-        organization: organization || "",
-        role: email === "subscriptions@stmjournals.com" ? "SuperAdmin" : "Subscriber",
-        status: "Active",
-        createdAt: new Date().toISOString(),
-      };
+      const userObj = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          displayName: name,
+          organization: organization || "",
+          role: email === "subscriptions@stmjournals.com" ? "SuperAdmin" : "Subscriber",
+          status: "Active",
+        }
+      });
 
-      await setDoc(userRef, userData);
-
-      const token = jwt.sign({ uid, email, role: userData.role }, JWT_SECRET, { expiresIn: '24h' });
+      const token = jwt.sign({ uid: userObj.id, email, role: userObj.role }, JWT_SECRET, { expiresIn: '24h' });
       
       // Don't send password back
-      const { password: _, ...profile } = userData;
+      const { password: _, ...profile } = userObj;
       res.json({ token, user: profile });
     } catch (error) {
       console.error("Signup Error:", error);
@@ -122,23 +119,21 @@ async function startServer() {
     try {
       const { email, password } = req.body;
       
-      const userRef = doc(db, "users", email);
-      const userSnap = await getDoc(userRef);
+      const userObj = await prisma.user.findUnique({ where: { email } });
       
-      if (!userSnap.exists()) {
+      if (!userObj) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      const userData = userSnap.data();
-      const isPasswordValid = await bcrypt.compare(password, userData.password);
+      const isPasswordValid = await bcrypt.compare(password, userObj.password);
       
       if (!isPasswordValid) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      const token = jwt.sign({ uid: userData.uid, email, role: userData.role }, JWT_SECRET, { expiresIn: '24h' });
+      const token = jwt.sign({ uid: userObj.id, email, role: userObj.role }, JWT_SECRET, { expiresIn: '24h' });
       
-      const { password: _, ...profile } = userData;
+      const { password: _, ...profile } = userObj;
       res.json({ token, user: profile });
     } catch (error) {
       console.error("Login Error:", error);
@@ -149,17 +144,48 @@ async function startServer() {
   // Auth: Get Current User
   app.get("/api/auth/me", authenticateJWT, async (req: any, res) => {
     try {
-      const userRef = doc(db, "users", req.user.email);
-      const userSnap = await getDoc(userRef);
+      const userObj = await prisma.user.findUnique({ 
+        where: { email: req.user.email },
+        include: {
+          quotations: { orderBy: { createdAt: 'desc' } },
+          subscriptions: { orderBy: { createdAt: 'desc' } },
+          submissions: { orderBy: { createdAt: 'desc' } }
+        }
+      });
       
-      if (!userSnap.exists()) {
+      if (!userObj) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      const { password: _, ...profile } = userSnap.data();
+      const { password: _, ...profile } = userObj;
       res.json(profile);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  // Admin Middleware
+  const requireSuperAdmin = (req: any, res: express.Response, next: express.NextFunction) => {
+    if (req.user?.role !== "SuperAdmin") return res.status(403).json({ error: "Access denied" });
+    next();
+  };
+
+  // Admin: Get all stats
+  app.get("/api/admin/stats", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
+      const payments = await prisma.payment.findMany({ orderBy: { createdAt: 'desc' }, include: { user: true } });
+      const subscriptions = await prisma.subscription.findMany({ orderBy: { createdAt: 'desc' }, include: { user: true } });
+      const quotations = await prisma.quotation.findMany({ orderBy: { createdAt: 'desc' } });
+
+      res.json({ users, payments, subscriptions, quotations, _stats: {
+        totalUsers: users.length,
+        totalRevenue: payments.filter(p => p.status === 'Success').reduce((acc, p) => acc + p.amount, 0),
+        activeSubscriptions: subscriptions.filter(s => s.status === 'Active').length
+      }});
+    } catch (error) {
+      console.error("Admin stats error:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
 
@@ -184,7 +210,7 @@ async function startServer() {
   // Verify Razorpay Payment
   app.post("/api/payment/verify", async (req, res) => {
     try {
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, items, userId } = req.body;
       const sign = razorpay_order_id + "|" + razorpay_payment_id;
       const expectedSign = crypto
         .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
@@ -192,8 +218,38 @@ async function startServer() {
         .digest("hex");
 
       if (razorpay_signature === expectedSign) {
-        // Payment verified
-        // Here you would save the order to Firestore and send an invoice email
+        // Payment verified, save to PostgreSQL
+        if (items && amount) {
+          await prisma.payment.create({
+            data: {
+              orderId: razorpay_order_id,
+              paymentId: razorpay_payment_id,
+              amount: parseFloat(amount),
+              status: "Success",
+              userId: userId || null,
+              items: items || []
+            }
+          });
+
+          if (Array.isArray(items)) {
+            for (const item of items) {
+              const days = item.duration === 'Yearly' ? 365 : item.duration === 'Half-Yearly' ? 180 : item.duration === 'Quarterly' ? 90 : 30;
+              const endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+              
+              await prisma.subscription.create({
+                data: {
+                  domainId: item.domainId,
+                  domainName: item.domainName,
+                  planName: item.planName || item.plan?.name || "Trial", 
+                  duration: item.duration || "Monthly",
+                  status: "Active",
+                  userId: userId || null,
+                  endDate
+                }
+              });
+            }
+          }
+        }
         res.json({ status: "success", message: "Payment verified successfully" });
       } else {
         res.status(400).json({ status: "failure", message: "Invalid signature" });
@@ -445,7 +501,7 @@ async function startServer() {
   // Send Quotation Email
   app.post("/api/quotation/send", async (req, res) => {
     try {
-      const { userEmail, userName, quotationData, pdfBase64 } = req.body;
+      const { userEmail, userName, quotationData, pdfBase64, userId, organization, state } = req.body;
       
       const mailOptions = {
         from: process.env.EMAIL_USER || "",
@@ -462,6 +518,25 @@ async function startServer() {
       };
 
       await transporter.sendMail(mailOptions);
+      
+      // Save to PostgreSQL
+      await prisma.quotation.create({
+        data: {
+          id: quotationData.quotationNumber,
+          userEmail,
+          userName,
+          organization: organization || null,
+          state: state || null,
+          items: quotationData.items || [],
+          subtotal: parseFloat(quotationData.subtotal) || 0,
+          gstAmount: parseFloat(quotationData.gstAmount) || 0,
+          total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, '')) || 0,
+          status: "Sent",
+          userId: userId || null,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        }
+      });
+
       res.json({ status: "success", message: "Quotation sent successfully" });
     } catch (error) {
       console.error("Quotation Email Error:", error);

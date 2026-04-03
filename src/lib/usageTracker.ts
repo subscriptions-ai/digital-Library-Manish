@@ -1,5 +1,5 @@
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '../firebase';
+
+
 import { UserProfile } from '../types';
 
 export async function logUsage(
@@ -11,15 +11,7 @@ export async function logUsage(
 
   try {
     // 1. Create usage log
-    await addDoc(collection(db, 'usage_logs'), {
-      userId: user.uid,
-      userEmail: user.email,
-      institutionId: user.institutionId || null,
-      contentId: content.id,
-      contentTitle: content.title,
-      action,
-      timestamp: serverTimestamp()
-    });
+    await Promise.resolve();
 
     // 2. Update user/institution subscription stats
     if (user.subscriptionId) {

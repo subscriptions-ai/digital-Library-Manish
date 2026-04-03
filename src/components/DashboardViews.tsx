@@ -20,8 +20,8 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { UserProfile, Subscription, UsageLog } from '../types';
-import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
-import { db } from '../firebase';
+
+
 import { Link } from 'react-router-dom';
 
 // --- Subscriber View ---

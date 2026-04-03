@@ -23,8 +23,8 @@ import {
   FileDown 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db } from '../firebase';
+
+
 import { UsageLog } from '../types';
 import { toast } from 'react-hot-toast';
 

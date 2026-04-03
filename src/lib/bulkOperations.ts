@@ -1,6 +1,6 @@
 import Papa from 'papaparse';
-import { collection, addDoc, serverTimestamp, writeBatch, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+
+
 import { UserProfile, UserRole } from '../types';
 
 export const bulkImportUsers = async (csvFile: File, institutionId?: string) => {

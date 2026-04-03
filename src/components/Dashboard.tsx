@@ -1,8 +1,6 @@
 import { LayoutDashboard, BookOpen, Users, Settings, BarChart3, Bell, Search, LogOut, ChevronRight, FileText, CreditCard } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { db } from "../firebase";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 
@@ -23,28 +21,16 @@ export function Dashboard() {
       const fetchData = async () => {
         try {
           setUserProfile(profile);
-
-          // Fetch user quotations
-          const qQuotations = query(collection(db, 'quotations'), where('userId', '==', profile.uid));
-          const querySnapshot = await getDocs(qQuotations);
-          setQuotations(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-          // Fetch user subscriptions
-          const qSubs = query(collection(db, 'subscriptions'), where('userId', '==', profile.uid));
-          const subSnapshot = await getDocs(qSubs);
-          setSubscriptions(subSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-          // Fetch user submissions
-          const qSubmissions = query(collection(db, 'submissions'), where('userId', '==', profile.uid));
-          const submissionSnapshot = await getDocs(qSubmissions);
-          setSubmissions(submissionSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
+          setQuotations(profile.quotations || []);
+          setSubscriptions(profile.subscriptions || []);
+          setSubmissions(profile.submissions || []);
         } catch (error) {
-          console.error("Error fetching dashboard data:", error);
+          console.error("Error setting dashboard data:", error);
         } finally {
           setLoading(false);
         }
       };
+      // For immediate effect:
       fetchData();
     } else {
       navigate('/login');

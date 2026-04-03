@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutGrid, FileText, CreditCard, Users, Search, Download, ExternalLink, ChevronRight, Filter, LogOut, Check, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
-import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+// Firebase imports replaced with API calls
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -36,17 +35,16 @@ export function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const usersSnap = await getDocs(collection(db, 'users'));
-      setUsers(usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const response = await fetch('/api/admin/stats', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!response.ok) throw new Error("Failed");
+      const data = await response.json();
 
-      const paymentsSnap = await getDocs(collection(db, 'payments'));
-      setPayments(paymentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-      const quotesSnap = await getDocs(collection(db, 'quotations'));
-      setQuotations(quotesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-      const subsSnap = await getDocs(collection(db, 'submissions'));
-      setSubmissions(subsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setUsers(data.users || []);
+      setPayments(data.payments || []);
+      setQuotations(data.quotations || []);
+      setSubmissions(data.submissions || []);
 
       setLoading(false);
     } catch (error) {
@@ -57,22 +55,13 @@ export function AdminDashboard() {
 
   const handleApproveSubmission = async (submission: any) => {
     try {
-      await updateDoc(doc(db, 'submissions', submission.id), {
-        status: 'Approved',
-        updatedAt: serverTimestamp()
+      await fetch(`/api/admin/submissions/${submission.id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
-
-      await addDoc(collection(db, 'content'), {
-        submissionId: submission.id,
-        title: submission.title,
-        authors: submission.authors,
-        contentType: submission.contentType,
-        subjectArea: submission.subjectArea || 'General',
-        fileUrl: submission.fileUrl,
-        publishingMode: submission.publishingMode,
-        publishedAt: serverTimestamp()
-      });
-
       toast.success('Submission approved and published!');
       fetchData();
     } catch (error) {
@@ -83,9 +72,12 @@ export function AdminDashboard() {
 
   const handleRejectSubmission = async (submissionId: string) => {
     try {
-      await updateDoc(doc(db, 'submissions', submissionId), {
-        status: 'Rejected',
-        updatedAt: serverTimestamp()
+      await fetch(`/api/admin/submissions/${submissionId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
       toast.success('Submission rejected');
       fetchData();
@@ -233,7 +225,7 @@ export function AdminDashboard() {
                     <div className="font-bold text-slate-900">{q.userName || 'Unknown User'}</div>
                     <div className="text-xs text-slate-500">{q.organization || q.state}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{q.createdAt?.toDate ? format(q.createdAt.toDate(), 'dd MMM, yyyy') : 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{q.createdAt ? format(new Date(q.createdAt), 'dd MMM, yyyy') : 'N/A'}</td>
                   <td className="px-6 py-4 font-bold text-slate-900">₹{q.total?.toLocaleString()}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
@@ -258,7 +250,7 @@ export function AdminDashboard() {
                     <div className="font-bold text-slate-900">{p.userName || 'User'}</div>
                     <div className="text-xs text-slate-500">via {p.method}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{p.createdAt?.toDate ? format(p.createdAt.toDate(), 'dd MMM, yyyy') : 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{p.createdAt ? format(new Date(p.createdAt), 'dd MMM, yyyy') : 'N/A'}</td>
                   <td className="px-6 py-4 font-bold text-slate-900">₹{p.amount?.toLocaleString()}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
@@ -279,7 +271,7 @@ export function AdminDashboard() {
                     <div className="font-bold text-slate-900">{u.displayName || u.email}</div>
                     <div className="text-xs text-slate-500">{u.organization || 'Individual'}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{u.createdAt?.toDate ? format(u.createdAt.toDate(), 'dd MMM, yyyy') : 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{u.createdAt ? format(new Date(u.createdAt), 'dd MMM, yyyy') : 'N/A'}</td>
                   <td className="px-6 py-4 font-bold text-slate-900">{u.state || 'N/A'}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
@@ -301,7 +293,7 @@ export function AdminDashboard() {
                     <div className="text-xs text-slate-500">{s.authors} • {s.contentType}</div>
                     <p className="text-xs text-slate-400 mt-1">Operator: {adminProfile?.email}</p>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{s.createdAt?.toDate ? format(s.createdAt.toDate(), 'dd MMM, yyyy') : 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{s.createdAt ? format(new Date(s.createdAt), 'dd MMM, yyyy') : 'N/A'}</td>
                   <td className="px-6 py-4 font-bold text-slate-900">{s.publishingMode}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${

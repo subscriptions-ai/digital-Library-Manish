@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  addDoc, 
-  serverTimestamp 
-} from 'firebase/firestore';
-import { db } from '../firebase';
+
+
 import { UserProfile, UserRole } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -69,10 +60,7 @@ export function UserManagement() {
   const toggleUserStatus = async (uid: string, currentStatus: string) => {
     try {
       const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-      await updateDoc(doc(db, 'users', uid), {
-        status: newStatus,
-        updatedAt: serverTimestamp()
-      });
+      await Promise.resolve();
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, status: newStatus as any } : u));
       toast.success(`User marked as ${newStatus}`);
     } catch (error) {

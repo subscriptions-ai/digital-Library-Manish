@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  serverTimestamp 
-} from 'firebase/firestore';
-import { db } from '../firebase';
+
+
 import { Subscription, SubscriptionPlan } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { 

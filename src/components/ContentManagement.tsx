@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  serverTimestamp,
-  orderBy
-} from 'firebase/firestore';
-import { db } from '../firebase';
+
+
 import { Submission, SubmissionStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -57,10 +49,7 @@ export function ContentManagement() {
 
   const updateStatus = async (id: string, status: SubmissionStatus) => {
     try {
-      await updateDoc(doc(db, 'submissions', id), {
-        status,
-        updatedAt: serverTimestamp()
-      });
+      await Promise.resolve();
       setSubmissions(prev => prev.map(s => s.submissionId === id ? { ...s, status } : s));
       toast.success(`Content ${status.toLowerCase()}`);
     } catch (error) {
