@@ -33,6 +33,7 @@ import { UserManagement } from "./components/UserManagement";
 import { SubscriptionManagement } from "./components/SubscriptionManagement";
 import { ContentManagement } from "./components/ContentManagement";
 import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
+import { FAQ } from "./components/FAQ";
 import { Toaster } from "react-hot-toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -73,6 +74,7 @@ export default function App() {
                       <Route path="/agency-listing" element={<AgencyListing />} />
                       <Route path="/about" element={<AboutUs />} />
                       <Route path="/contact" element={<ContactUs />} />
+                      <Route path="/faq" element={<FAQ />} />
                       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                       <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                       <Route path="/login" element={<Login />} />

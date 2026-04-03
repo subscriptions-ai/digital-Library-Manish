@@ -8,9 +8,10 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 import { CreditCard, FileText, ChevronLeft, ShieldCheck, Building2, User, Mail, MapPin } from 'lucide-react';
 import { COMPANY_DETAILS } from '../config';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { InvoicePreview } from './InvoicePreview';
 import { InvoiceData } from '../lib/invoiceGenerator';
-import { useAuth } from '../contexts/AuthContext';
 
 export function Checkout() {
   const location = useLocation();
@@ -225,6 +226,37 @@ export function Checkout() {
           });
           const verifyData = await verifyRes.json();
           if (verifyData.status === 'success') {
+            // Save to Firestore
+            try {
+              await addDoc(collection(db, 'payments'), {
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
+                userId: auth.currentUser?.uid || 'anonymous',
+                userName: formData.name,
+                userEmail: formData.email,
+                amount: gstBreakdown.totalAmount,
+                status: 'Success',
+                method: 'Razorpay',
+                createdAt: serverTimestamp()
+              });
+
+              // Create subscriptions
+              for (const item of items) {
+                await addDoc(collection(db, 'subscriptions'), {
+                  userId: auth.currentUser?.uid || 'anonymous',
+                  domainId: item.domainId,
+                  domainName: item.domainName,
+                  planName: item.planName,
+                  duration: item.duration,
+                  startDate: serverTimestamp(),
+                  endDate: new Date(Date.now() + (item.duration === 'Yearly' ? 365 : item.duration === 'Half-Yearly' ? 180 : item.duration === 'Quarterly' ? 90 : 30) * 24 * 60 * 60 * 1000),
+                  status: 'Active'
+                });
+              }
+            } catch (err) {
+              handleFirestoreError(err, OperationType.WRITE, 'payments/subscriptions');
+            }
+
             toast.success('Payment successful! Access activated.');
             
             // Prepare Invoice Data

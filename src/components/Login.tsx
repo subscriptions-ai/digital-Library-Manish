@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Mail, Lock, ArrowRight } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
 import { toast } from "react-hot-toast";
 
 export function Login() {
@@ -9,7 +10,6 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +20,7 @@ export function Login() {
 
     setLoading(true);
     try {
-      await login({ email, password });
+      await signInWithEmailAndPassword(auth, email, password);
       toast.success('Logged in successfully!');
       navigate('/dashboard');
     } catch (error: any) {

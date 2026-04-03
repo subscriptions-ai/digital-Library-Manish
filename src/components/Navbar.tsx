@@ -117,6 +117,7 @@ export function Navbar() {
 
               <Link to="/subscriptions" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Subscription Plans</Link>
               <Link to="/agency-listing" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Agency Info</Link>
+              <Link to="/faq" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">FAQ</Link>
               <Link to="/contact" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Contact Us</Link>
             </nav>
 
@@ -153,6 +154,7 @@ export function Navbar() {
                 <Link to="/digital-library" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Library Info</Link>
                 <Link to="/subscriptions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Subscription Plans</Link>
                 <Link to="/agency-listing" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Agency Info</Link>
+                <Link to="/faq" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>FAQ</Link>
                 <Link to="/contact" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Contact Us</Link>
               </div>
             </div>
