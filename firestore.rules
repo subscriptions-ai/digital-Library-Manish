@@ -17,7 +17,8 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return hasRole('SuperAdmin');
+      return hasRole('SuperAdmin') || 
+             (isAuthenticated() && request.auth.token.email == "subscriptions@stmjournals.com" && request.auth.token.email_verified == true);
     }
 
     function isSubscriptionManager() {

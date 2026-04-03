@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isSubscriptionManager: boolean;
+  isSubscriber: boolean;
   isContentManager: boolean;
   isInstitutionAdmin: boolean;
   logout: () => Promise<void>;
@@ -34,11 +35,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (profileSnap.exists()) {
           setProfile(profileSnap.data() as UserProfile);
         } else {
-          // Create default profile for new users (Student by default)
+          // Check if this is the bootstrap admin email
+          const isBootstrapAdmin = currentUser.email === 'subscriptions@stmjournals.com';
+          
+          // Create default profile for new users
           const newProfile: UserProfile = {
             uid: currentUser.uid,
             email: currentUser.email || '',
-            role: 'Student',
+            role: isBootstrapAdmin ? 'SuperAdmin' : 'Subscriber',
             displayName: currentUser.displayName || '',
             status: 'Active',
             createdAt: serverTimestamp(),
@@ -64,9 +68,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     profile,
     loading,
-    isAdmin: profile?.role === 'SuperAdmin',
-    isSubscriptionManager: profile?.role === 'SubscriptionManager' || profile?.role === 'SuperAdmin',
-    isContentManager: profile?.role === 'ContentManager' || profile?.role === 'SuperAdmin',
+    isAdmin: profile?.role === 'Admin' || profile?.role === 'SuperAdmin',
+    isSubscriptionManager: profile?.role === 'SubscriptionManager' || profile?.role === 'Admin' || profile?.role === 'SuperAdmin',
+    isSubscriber: profile?.role === 'Subscriber' || profile?.role === 'Student',
+    isContentManager: profile?.role === 'ContentManager' || profile?.role === 'Admin' || profile?.role === 'SuperAdmin',
     isInstitutionAdmin: (profile?.role === 'College' || profile?.role === 'University' || profile?.role === 'Corporate') && !!profile?.institutionId,
     logout,
   };

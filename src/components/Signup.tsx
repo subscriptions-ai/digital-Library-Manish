@@ -35,7 +35,7 @@ export function Signup() {
           email: user.email,
           displayName: formData.name,
           organization: formData.organization,
-          role: 'user',
+          role: 'Subscriber',
           createdAt: serverTimestamp()
         });
       } catch (err) {

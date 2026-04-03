@@ -27,12 +27,12 @@ interface SidebarItem {
 }
 
 const sidebarItems: SidebarItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'College', 'University', 'Corporate', 'Student', 'Agency'] },
-  { label: 'User Management', icon: Users, path: '/dashboard/users', roles: ['SuperAdmin', 'SubscriptionManager', 'College', 'University', 'Corporate'] },
-  { label: 'Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['SuperAdmin', 'SubscriptionManager'] },
-  { label: 'Content Manager', icon: Library, path: '/dashboard/content', roles: ['SuperAdmin', 'ContentManager'] },
-  { label: 'Analytics', icon: BarChart3, path: '/dashboard/analytics', roles: ['SuperAdmin', 'SubscriptionManager', 'College', 'University', 'Corporate'] },
-  { label: 'Settings', icon: Settings, path: '/dashboard/settings', roles: ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'College', 'University', 'Corporate', 'Student', 'Agency'] },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager', 'ContentManager', 'College', 'University', 'Corporate', 'Student', 'Subscriber', 'Agency'] },
+  { label: 'User Management', icon: Users, path: '/dashboard/users', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager', 'College', 'University', 'Corporate'] },
+  { label: 'Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager'] },
+  { label: 'Content Manager', icon: Library, path: '/dashboard/content', roles: ['Admin', 'SuperAdmin', 'ContentManager'] },
+  { label: 'Analytics', icon: BarChart3, path: '/dashboard/analytics', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager', 'College', 'University', 'Corporate'] },
+  { label: 'Settings', icon: Settings, path: '/dashboard/settings', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager', 'ContentManager', 'College', 'University', 'Corporate', 'Student', 'Subscriber', 'Agency'] },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {

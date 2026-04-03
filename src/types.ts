@@ -1,6 +1,8 @@
 export type UserRole = 
-  | 'SuperAdmin' 
+  | 'Admin' 
   | 'SubscriptionManager' 
+  | 'Subscriber'
+  | 'SuperAdmin' 
   | 'ContentManager' 
   | 'Agency' 
   | 'Student' 

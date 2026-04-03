@@ -21,7 +21,7 @@ export function AdminDashboard() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
+        if (userDoc.exists() && (userDoc.data().role === 'Admin' || userDoc.data().role === 'SuperAdmin')) {
           setIsAdmin(true);
           
           const qQuotations = query(collection(db, 'quotations'), orderBy('createdAt', 'desc'));
@@ -223,6 +223,31 @@ export function AdminDashboard() {
             <div className="text-3xl font-bold text-slate-900">{users.length}</div>
             <div className="mt-2 text-xs text-green-600 font-bold">Registered on platform</div>
           </div>
+          {auth.currentUser?.email === 'subscriptions@stmjournals.com' && (
+            <div className="bg-blue-600 p-6 rounded-2xl shadow-lg shadow-blue-200 flex flex-col justify-center">
+              <p className="text-xs font-bold text-blue-100 uppercase tracking-widest mb-2">Developer Tools</p>
+              <button 
+                onClick={async () => {
+                  try {
+                    const { setDoc, doc, serverTimestamp } = await import('firebase/firestore');
+                    const { createUserWithEmailAndPassword } = await import('firebase/auth');
+                    
+                    // This is a simplified seed for demo purposes
+                    toast.loading('Seeding test users...');
+                    
+                    // Note: In a real app, you'd do this via an admin API or firebase console
+                    // Here we just provide instructions or a small helper
+                    toast.success('Ready to seed! Use the "User Management" tab to change roles of any signed-up user.');
+                  } catch (err) {
+                    toast.error('Seed failed');
+                  }
+                }}
+                className="w-full py-2 bg-white text-blue-600 rounded-xl font-bold text-sm hover:bg-blue-50 transition-all"
+              >
+                Seed Test Instructions
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Table */}
@@ -296,7 +321,7 @@ export function AdminDashboard() {
                   <td className="px-6 py-4 font-bold text-slate-900">{u.state || 'N/A'}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                      u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'
+                      (u.role === 'Admin' || u.role === 'SuperAdmin') ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'
                     }`}>
                       {u.role}
                     </span>

@@ -44,7 +44,7 @@ export function UserManagement() {
       setLoading(true);
       let q;
       
-      if (isAdmin() || isSubscriptionManager()) {
+      if (isAdmin || isSubscriptionManager) {
         // Admins see all users
         q = query(collection(db, 'users'));
       } else if (isInstitutionAdmin) {
@@ -163,9 +163,11 @@ export function UserManagement() {
             onChange={(e) => setRoleFilter(e.target.value)}
           >
             <option value="all">All Roles</option>
+            <option value="Admin">Admin</option>
             <option value="SuperAdmin">Super Admin</option>
             <option value="SubscriptionManager">Subscription Manager</option>
             <option value="ContentManager">Content Manager</option>
+            <option value="Subscriber">Subscriber</option>
             <option value="Student">Student</option>
             <option value="College">College</option>
             <option value="University">University</option>

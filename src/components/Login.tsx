@@ -20,14 +20,41 @@ export function Login() {
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Fetch user profile to determine role for redirection
+      const { getDoc, doc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.data();
+      
       toast.success('Logged in successfully!');
-      navigate('/dashboard');
+      
+      if (userData?.role === 'Admin' || userData?.role === 'SuperAdmin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || 'Failed to login');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error('Please enter your email address first');
+      return;
+    }
+    try {
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      await sendPasswordResetEmail(auth, email);
+      toast.success('Password reset email sent!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send reset email');
     }
   };
 
@@ -64,7 +91,13 @@ export function Login() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="text-sm font-bold text-slate-700">Password</label>
-                <Link to="/forgot-password" title="Forgot Password?" className="text-xs font-bold text-blue-600 hover:text-blue-700">Forgot?</Link>
+                <button 
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                >
+                  Forgot?
+                </button>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
