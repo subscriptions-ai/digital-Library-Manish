@@ -9,13 +9,15 @@ import { format } from 'date-fns';
 import { CreditCard, FileText, ChevronLeft, ShieldCheck, Building2, User, Mail, MapPin } from 'lucide-react';
 import { COMPANY_DETAILS } from '../config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
 import { InvoicePreview } from './InvoicePreview';
 import { InvoiceData } from '../lib/invoiceGenerator';
 
 export function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { items: cartItems, totalBasePrice: cartTotalBasePrice, clearCart } = useCart();
   const { type, selectedState: initialSelectedState, userCategory: initialUserCategory, items: stateItems, formData: stateFormData } = location.state || { type: 'payment', selectedState: COMPANY_STATE, userCategory: 'Academic' };
 
@@ -231,7 +233,7 @@ export function Checkout() {
               await addDoc(collection(db, 'payments'), {
                 paymentId: response.razorpay_payment_id,
                 orderId: response.razorpay_order_id,
-                userId: auth.currentUser?.uid || 'anonymous',
+                userId: user?.uid || 'anonymous',
                 userName: formData.name,
                 userEmail: formData.email,
                 amount: gstBreakdown.totalAmount,
@@ -243,7 +245,7 @@ export function Checkout() {
               // Create subscriptions
               for (const item of items) {
                 await addDoc(collection(db, 'subscriptions'), {
-                  userId: auth.currentUser?.uid || 'anonymous',
+                  userId: user?.uid || 'anonymous',
                   domainId: item.domainId,
                   domainName: item.domainName,
                   planName: item.planName,

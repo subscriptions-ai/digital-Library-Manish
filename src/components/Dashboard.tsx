@@ -1,9 +1,9 @@
 import { LayoutDashboard, BookOpen, Users, Settings, BarChart3, Bell, Search, LogOut, ChevronRight, FileText, CreditCard } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { auth, db } from "../firebase";
-import { signOut, onAuthStateChanged } from "firebase/auth";
+import { db } from "../firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 
 export function Dashboard() {
@@ -14,28 +14,28 @@ export function Dashboard() {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { profile, logout, loading: authLoading } = useAuth();
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
+    if (authLoading) return;
+    
+    if (profile) {
+      const fetchData = async () => {
         try {
-          // Fetch user profile
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            setUserProfile(userDoc.data());
-          }
+          setUserProfile(profile);
 
           // Fetch user quotations
-          const qQuotations = query(collection(db, 'quotations'), where('userId', '==', user.uid));
+          const qQuotations = query(collection(db, 'quotations'), where('userId', '==', profile.uid));
           const querySnapshot = await getDocs(qQuotations);
           setQuotations(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
           // Fetch user subscriptions
-          const qSubs = query(collection(db, 'subscriptions'), where('userId', '==', user.uid));
+          const qSubs = query(collection(db, 'subscriptions'), where('userId', '==', profile.uid));
           const subSnapshot = await getDocs(qSubs);
           setSubscriptions(subSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
           // Fetch user submissions
-          const qSubmissions = query(collection(db, 'submissions'), where('userId', '==', user.uid));
+          const qSubmissions = query(collection(db, 'submissions'), where('userId', '==', profile.uid));
           const submissionSnapshot = await getDocs(qSubmissions);
           setSubmissions(submissionSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
@@ -44,17 +44,16 @@ export function Dashboard() {
         } finally {
           setLoading(false);
         }
-      } else {
-        navigate('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [navigate]);
+      };
+      fetchData();
+    } else {
+      navigate('/login');
+    }
+  }, [profile, authLoading, navigate]);
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      logout();
       toast.success('Signed out successfully');
       navigate('/login');
     } catch (error) {

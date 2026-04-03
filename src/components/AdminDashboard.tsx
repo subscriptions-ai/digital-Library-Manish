@@ -1,78 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutGrid, FileText, CreditCard, Users, Search, Download, ExternalLink, ChevronRight, Filter, LogOut, Check, X, Eye } from 'lucide-react';
 import { format } from 'date-fns';
-import { collection, onSnapshot, query, orderBy, doc, getDoc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
+  const { profile, logout, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'quotations' | 'payments' | 'users' | 'submissions'>('quotations');
   const [quotations, setQuotations] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminProfile, setAdminProfile] = useState<any>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists() && (userDoc.data().role === 'Admin' || userDoc.data().role === 'SuperAdmin')) {
-          setIsAdmin(true);
-          
-          const qQuotations = query(collection(db, 'quotations'), orderBy('createdAt', 'desc'));
-          const qPayments = query(collection(db, 'payments'), orderBy('createdAt', 'desc'));
-          const qUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-          const qSubmissions = query(collection(db, 'submissions'), orderBy('createdAt', 'desc'));
+    if (authLoading) return;
 
-          const unsubQuotations = onSnapshot(qQuotations, (snapshot) => {
-            setQuotations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-          }, (err) => handleFirestoreError(err, OperationType.LIST, 'quotations'));
-
-          const unsubPayments = onSnapshot(qPayments, (snapshot) => {
-            setPayments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-          }, (err) => handleFirestoreError(err, OperationType.LIST, 'payments'));
-
-          const unsubUsers = onSnapshot(qUsers, (snapshot) => {
-            setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-          }, (err) => handleFirestoreError(err, OperationType.LIST, 'users'));
-
-          const unsubSubmissions = onSnapshot(qSubmissions, (snapshot) => {
-            setSubmissions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            setLoading(false);
-          }, (err) => handleFirestoreError(err, OperationType.LIST, 'submissions'));
-
-          return () => {
-            unsubQuotations();
-            unsubPayments();
-            unsubUsers();
-            unsubSubmissions();
-          };
-        } else {
-          toast.error('Unauthorized access');
-          navigate('/dashboard');
-        }
-      } else {
-        navigate('/login');
+    if (profile) {
+      if (profile.role !== 'Admin' && profile.role !== 'SuperAdmin') {
+        toast.error('Unauthorized access');
+        navigate('/dashboard');
+        return;
       }
-    });
+      setAdminProfile(profile);
+      fetchData();
+    } else {
+      navigate('/login');
+    }
+  }, [profile, authLoading, navigate]);
 
-    return () => unsubscribe();
-  }, [navigate]);
+  const fetchData = async () => {
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      setUsers(usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+      const paymentsSnap = await getDocs(collection(db, 'payments'));
+      setPayments(paymentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+      const quotesSnap = await getDocs(collection(db, 'quotations'));
+      setQuotations(quotesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+      const subsSnap = await getDocs(collection(db, 'submissions'));
+      setSubmissions(subsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching admin data:", error);
+      toast.error("Failed to load admin data");
+    }
+  };
 
   const handleApproveSubmission = async (submission: any) => {
     try {
-      // 1. Update submission status
       await updateDoc(doc(db, 'submissions', submission.id), {
         status: 'Approved',
         updatedAt: serverTimestamp()
       });
 
-      // 2. Add to published content
       await addDoc(collection(db, 'content'), {
         submissionId: submission.id,
         title: submission.title,
@@ -85,6 +74,7 @@ export function AdminDashboard() {
       });
 
       toast.success('Submission approved and published!');
+      fetchData();
     } catch (error) {
       console.error('Error approving submission:', error);
       toast.error('Failed to approve submission');
@@ -98,6 +88,7 @@ export function AdminDashboard() {
         updatedAt: serverTimestamp()
       });
       toast.success('Submission rejected');
+      fetchData();
     } catch (error) {
       console.error('Error rejecting submission:', error);
       toast.error('Failed to reject submission');
@@ -106,7 +97,7 @@ export function AdminDashboard() {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await logout();
       toast.success('Signed out successfully');
       navigate('/login');
     } catch (error) {
@@ -114,7 +105,7 @@ export function AdminDashboard() {
     }
   };
 
-  if (loading || !isAdmin) {
+  if (loading || !adminProfile) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -126,7 +117,6 @@ export function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white p-6 flex flex-col">
         <div className="flex items-center gap-2 mb-12">
           <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -177,14 +167,13 @@ export function AdminDashboard() {
           <div className="flex items-center gap-3 px-4">
             <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold">AD</div>
             <div>
-              <div className="text-xs font-bold">Admin User</div>
-              <div className="text-[10px] text-slate-500">Super Admin</div>
+              <div className="text-xs font-bold">{adminProfile.displayName || 'Admin User'}</div>
+              <div className="text-[10px] text-slate-500">{adminProfile.role}</div>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 p-8 overflow-y-auto">
         <header className="flex items-center justify-between mb-12">
           <div>
@@ -206,7 +195,6 @@ export function AdminDashboard() {
           </div>
         </header>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
             <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Total Revenue</div>
@@ -223,34 +211,8 @@ export function AdminDashboard() {
             <div className="text-3xl font-bold text-slate-900">{users.length}</div>
             <div className="mt-2 text-xs text-green-600 font-bold">Registered on platform</div>
           </div>
-          {auth.currentUser?.email === 'subscriptions@stmjournals.com' && (
-            <div className="bg-blue-600 p-6 rounded-2xl shadow-lg shadow-blue-200 flex flex-col justify-center">
-              <p className="text-xs font-bold text-blue-100 uppercase tracking-widest mb-2">Developer Tools</p>
-              <button 
-                onClick={async () => {
-                  try {
-                    const { setDoc, doc, serverTimestamp } = await import('firebase/firestore');
-                    const { createUserWithEmailAndPassword } = await import('firebase/auth');
-                    
-                    // This is a simplified seed for demo purposes
-                    toast.loading('Seeding test users...');
-                    
-                    // Note: In a real app, you'd do this via an admin API or firebase console
-                    // Here we just provide instructions or a small helper
-                    toast.success('Ready to seed! Use the "User Management" tab to change roles of any signed-up user.');
-                  } catch (err) {
-                    toast.error('Seed failed');
-                  }
-                }}
-                className="w-full py-2 bg-white text-blue-600 rounded-xl font-bold text-sm hover:bg-blue-50 transition-all"
-              >
-                Seed Test Instructions
-              </button>
-            </div>
-          )}
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -337,6 +299,7 @@ export function AdminDashboard() {
                   <td className="px-6 py-4">
                     <div className="font-bold text-slate-900">{s.title}</div>
                     <div className="text-xs text-slate-500">{s.authors} • {s.contentType}</div>
+                    <p className="text-xs text-slate-400 mt-1">Operator: {adminProfile?.email}</p>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600">{s.createdAt?.toDate ? format(s.createdAt.toDate(), 'dd MMM, yyyy') : 'N/A'}</td>
                   <td className="px-6 py-4 font-bold text-slate-900">{s.publishingMode}</td>

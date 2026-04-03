@@ -30,7 +30,8 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 type Step = 1 | 2 | 3;
 
@@ -55,6 +56,7 @@ const DURATIONS = ['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
 
 export function QuotationWizard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState<Step>(1);
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -82,6 +84,7 @@ export function QuotationWizard() {
         try {
           const response = await fetch(`https://api.postalpincode.in/pincode/${formData.pincode}`);
           const data = await response.json();
+          const userId = user?.uid || 'anonymous';
           if (data[0].Status === 'Success') {
             const postOffice = data[0].PostOffice[0];
             setFormData(prev => ({

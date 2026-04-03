@@ -9,11 +9,13 @@ import { format } from 'date-fns';
 import { FileText, Download, Mail, Edit3, ChevronLeft, Printer, ShieldCheck, BookOpen } from 'lucide-react';
 import { COMPANY_DETAILS } from '../config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 export function QuotationPreview() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { items: cartItems, totalBasePrice: cartTotalBasePrice, clearCart } = useCart();
   const { formData, items: stateItems } = location.state || { formData: null, items: null };
 
@@ -198,7 +200,7 @@ export function QuotationPreview() {
         // Save to Firestore
         await addDoc(collection(db, 'quotations'), {
           quotationId: quotationNumber,
-          userId: auth.currentUser?.uid || 'anonymous',
+          userId: user?.uid || 'anonymous',
           userName: formData.name,
           userEmail: formData.email,
           organization: formData.organization,

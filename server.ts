@@ -8,6 +8,10 @@ import nodemailer from "nodemailer";
 import crypto from "crypto";
 import helmet from "helmet";
 import compression from "compression";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "./src/firebase.js"; // Note: Adjusting for relative path from project root if needed, or using alias
 
 dotenv.config();
 
@@ -24,6 +28,25 @@ async function startServer() {
   }));
   app.use(compression());
   app.use(express.json());
+
+  const JWT_SECRET = process.env.JWT_SECRET || "your-fallback-secret-for-dev-only";
+
+  // Middleware to authenticate JWT
+  const authenticateJWT = (req: any, res: any, next: any) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+        if (err) {
+          return res.sendStatus(403);
+        }
+        req.user = user;
+        next();
+      });
+    } else {
+      res.sendStatus(401);
+    }
+  };
 
   // Razorpay – lazily initialized per-route so missing keys don't crash startup
   const getRazorpay = () => {
@@ -52,6 +75,92 @@ async function startServer() {
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // Auth: Signup
+  app.post("/api/auth/signup", async (req, res) => {
+    try {
+      const { email, password, name, organization } = req.body;
+      
+      // Check if user already exists in Firestore
+      const userRef = doc(db, "users", email); // Using email as doc ID for simplicity in lookup
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        return res.status(400).json({ error: "User already exists" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const uid = crypto.randomUUID();
+      
+      const userData = {
+        uid,
+        email,
+        password: hashedPassword, // Storing hashed password in Firestore
+        displayName: name,
+        organization: organization || "",
+        role: email === "subscriptions@stmjournals.com" ? "SuperAdmin" : "Subscriber",
+        status: "Active",
+        createdAt: new Date().toISOString(),
+      };
+
+      await setDoc(userRef, userData);
+
+      const token = jwt.sign({ uid, email, role: userData.role }, JWT_SECRET, { expiresIn: '24h' });
+      
+      // Don't send password back
+      const { password: _, ...profile } = userData;
+      res.json({ token, user: profile });
+    } catch (error) {
+      console.error("Signup Error:", error);
+      res.status(500).json({ error: "Failed to create account" });
+    }
+  });
+
+  // Auth: Login
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      const userRef = doc(db, "users", email);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      const userData = userSnap.data();
+      const isPasswordValid = await bcrypt.compare(password, userData.password);
+      
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      const token = jwt.sign({ uid: userData.uid, email, role: userData.role }, JWT_SECRET, { expiresIn: '24h' });
+      
+      const { password: _, ...profile } = userData;
+      res.json({ token, user: profile });
+    } catch (error) {
+      console.error("Login Error:", error);
+      res.status(500).json({ error: "Failed to login" });
+    }
+  });
+
+  // Auth: Get Current User
+  app.get("/api/auth/me", authenticateJWT, async (req: any, res) => {
+    try {
+      const userRef = doc(db, "users", req.user.email);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const { password: _, ...profile } = userSnap.data();
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
   });
 
   // Create Razorpay Order

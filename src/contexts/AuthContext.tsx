@@ -1,11 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebase';
-import { UserProfile, UserRole } from '../types';
+import { UserProfile } from '../types';
+import { authApi } from '../lib/authApi';
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null; // Profile from backend
   profile: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
@@ -13,55 +11,52 @@ interface AuthContextType {
   isSubscriber: boolean;
   isContentManager: boolean;
   isInstitutionAdmin: boolean;
-  logout: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string, organization?: string) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      
-      if (currentUser) {
-        // Fetch or create profile
-        const profileRef = doc(db, 'users', currentUser.uid);
-        const profileSnap = await getDoc(profileRef);
-        
-        if (profileSnap.exists()) {
-          setProfile(profileSnap.data() as UserProfile);
-        } else {
-          // Check if this is the bootstrap admin email
-          const isBootstrapAdmin = currentUser.email === 'subscriptions@stmjournals.com';
-          
-          // Create default profile for new users
-          const newProfile: UserProfile = {
-            uid: currentUser.uid,
-            email: currentUser.email || '',
-            role: isBootstrapAdmin ? 'SuperAdmin' : 'Subscriber',
-            displayName: currentUser.displayName || '',
-            status: 'Active',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          };
-          await setDoc(profileRef, newProfile);
-          setProfile(newProfile);
-        }
-      } else {
-        setProfile(null);
-      }
+  const fetchProfile = async () => {
+    try {
+      const profileData = await authApi.getMe();
+      setUser(profileData);
+      setProfile(profileData as UserProfile);
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+      setUser(null);
+      setProfile(null);
+    } finally {
       setLoading(false);
-    });
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchProfile();
   }, []);
 
-  const logout = async () => {
-    await auth.signOut();
+  const login = async (email: string, password: string) => {
+    const response = await authApi.login(email, password);
+    setUser(response.user);
+    setProfile(response.user as UserProfile);
+  };
+
+  const signup = async (email: string, password: string, name: string, organization?: string) => {
+    const response = await authApi.signup(email, password, name, organization);
+    setUser(response.user);
+    setProfile(response.user as UserProfile);
+  };
+
+  const logout = () => {
+    authApi.logout();
+    setUser(null);
+    setProfile(null);
   };
 
   const value = {
@@ -73,6 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isSubscriber: profile?.role === 'Subscriber' || profile?.role === 'Student',
     isContentManager: profile?.role === 'ContentManager' || profile?.role === 'Admin' || profile?.role === 'SuperAdmin',
     isInstitutionAdmin: (profile?.role === 'College' || profile?.role === 'University' || profile?.role === 'Corporate') && !!profile?.institutionId,
+    login,
+    signup,
     logout,
   };
 
