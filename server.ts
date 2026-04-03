@@ -6,6 +6,8 @@ import dotenv from "dotenv";
 import Razorpay from "razorpay";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
+import helmet from "helmet";
+import compression from "compression";
 
 dotenv.config();
 
@@ -14,24 +16,37 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
+  // Production Middleware
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP if it interferes with Vite/External resources, or configure properly
+  }));
+  app.use(compression());
   app.use(express.json());
 
   // Razorpay Initialization
   const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_placeholder",
-    key_secret: process.env.RAZORPAY_KEY_SECRET || "placeholder_secret",
+    key_id: process.env.RAZORPAY_KEY_ID || "",
+    key_secret: process.env.RAZORPAY_KEY_SECRET || "",
   });
+
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    console.warn("WARNING: Razorpay keys are missing in environment variables.");
+  }
 
   // Nodemailer Initialization
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: process.env.EMAIL_USER || "placeholder@gmail.com",
-      pass: process.env.EMAIL_PASS || "placeholder_pass",
+      user: process.env.EMAIL_USER || "",
+      pass: process.env.EMAIL_PASS || "",
     },
   });
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("WARNING: Email credentials are missing in environment variables.");
+  }
 
   // API Routes
   app.get("/api/health", (req, res) => {
@@ -61,7 +76,7 @@ async function startServer() {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
       const sign = razorpay_order_id + "|" + razorpay_payment_id;
       const expectedSign = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "placeholder_secret")
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
         .update(sign.toString())
         .digest("hex");
 
@@ -98,7 +113,7 @@ async function startServer() {
 
       // 1. Send Admin Notification Email
       const adminMailOptions = {
-        from: process.env.EMAIL_USER || "placeholder@gmail.com",
+        from: process.env.EMAIL_USER || "",
         to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
         subject: `New Institutional Trial Request: ${institutionName}`,
         html: `
@@ -167,7 +182,7 @@ async function startServer() {
 
       // 2. Send User Confirmation Email
       const userMailOptions = {
-        from: process.env.EMAIL_USER || "placeholder@gmail.com",
+        from: process.env.EMAIL_USER || "",
         to: institutionalEmail,
         subject: "Your Institutional Trial Request has been received",
         html: `
@@ -227,7 +242,7 @@ async function startServer() {
 
       // 1. Send Admin Notification Email
       const adminMailOptions = {
-        from: process.env.EMAIL_USER || "placeholder@gmail.com",
+        from: process.env.EMAIL_USER || "",
         to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
         subject: "New Contact Inquiry from Website",
         html: `
@@ -278,7 +293,7 @@ async function startServer() {
 
       // 2. Send User Confirmation Email
       const userMailOptions = {
-        from: process.env.EMAIL_USER || "placeholder@gmail.com",
+        from: process.env.EMAIL_USER || "",
         to: email,
         subject: "Thank you for contacting STM Digital Library",
         html: `
@@ -322,7 +337,7 @@ async function startServer() {
       const { userEmail, userName, quotationData, pdfBase64 } = req.body;
       
       const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: process.env.EMAIL_USER || "",
         to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
         subject: `Quotation for STM Digital Library - ${quotationData.quotationNumber}`,
         text: `Dear ${userName},\n\nPlease find attached the quotation for your requested departments.\n\nQuotation Number: ${quotationData.quotationNumber}\nTotal Amount: ₹${quotationData.totalAmount}\n\nRegards,\nSTM Digital Library Team`,
@@ -349,7 +364,7 @@ async function startServer() {
       const { userEmail, userName, invoiceData, pdfBase64 } = req.body;
       
       const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: process.env.EMAIL_USER || "",
         to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
         subject: `Invoice for STM Digital Library - ${invoiceData.invoiceNumber}`,
         text: `Dear ${userName},\n\nThank you for your subscription. Please find attached the tax invoice for your purchase.\n\nInvoice Number: ${invoiceData.invoiceNumber}\nTotal Amount: ₹${invoiceData.grandTotal}\n\nRegards,\nSTM Digital Library Team`,
@@ -385,8 +400,14 @@ async function startServer() {
     });
   }
 
+  // Error handling middleware
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Unhandled Error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  });
+
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || 'development'})`);
   });
 }
 
