@@ -78,6 +78,137 @@ async function startServer() {
     }
   });
 
+  // Institutional Trial Request
+  app.post("/api/institutional-trial", async (req, res) => {
+    try {
+      const formData = req.body;
+      const { 
+        fullName, 
+        institutionalEmail, 
+        institutionName, 
+        designation, 
+        whatsappNumber,
+        pincode,
+        city,
+        state,
+        country,
+        fullAddress,
+        department
+      } = formData;
+
+      // 1. Send Admin Notification Email
+      const adminMailOptions = {
+        from: process.env.EMAIL_USER || "placeholder@gmail.com",
+        to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
+        subject: `New Institutional Trial Request: ${institutionName}`,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #333;">
+            <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">New Institutional Trial Request</h2>
+            <p>A new request for an institutional trial has been submitted through the website.</p>
+            
+            <h3 style="color: #1e40af; margin-top: 25px;">Personal Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px; background: #f8fafc;">Full Name</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${fullName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Institutional Email</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${institutionalEmail}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Designation</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${designation || "N/A"}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">WhatsApp Number</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${whatsappNumber || "N/A"}</td>
+              </tr>
+            </table>
+
+            <h3 style="color: #1e40af; margin-top: 25px;">Institution & Department</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px; background: #f8fafc;">Institution Name</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${institutionName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Department</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${department}</td>
+              </tr>
+            </table>
+
+            <h3 style="color: #1e40af; margin-top: 25px;">Address Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px; background: #f8fafc;">Pincode</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${pincode}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">City</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${city}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">State</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${state}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Country</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${country}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Full Address</td>
+                <td style="padding: 8px; border: 1px solid #e2e8f0;">${fullAddress || "N/A"}</td>
+              </tr>
+            </table>
+          </div>
+        `
+      };
+
+      // 2. Send User Confirmation Email
+      const userMailOptions = {
+        from: process.env.EMAIL_USER || "placeholder@gmail.com",
+        to: institutionalEmail,
+        subject: "Your Institutional Trial Request has been received",
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
+            <h2 style="color: #2563eb;">Hello ${fullName},</h2>
+            <p>Thank you for requesting an institutional trial for <strong>${institutionName}</strong>.</p>
+            <p>We have received your request for the <strong>${department}</strong> department. Our team is reviewing your details and will get in touch with you shortly to set up the trial access.</p>
+            
+            <div style="background: #f1f5f9; padding: 20px; border-radius: 10px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #1e40af;">What happens next?</h3>
+              <ol>
+                <li>Our institutional access team will verify your details.</li>
+                <li>We will contact you to discuss IP-based authentication or remote access options.</li>
+                <li>Once configured, your entire institution will have seamless access for the trial period.</li>
+              </ol>
+            </div>
+
+            <p>If you have any questions in the meantime, please reply to this email or contact us at subscriptions@stmjournals.com.</p>
+            
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+            <p style="font-size: 12px; color: #64748b;">
+              <strong>STM Digital Library</strong><br />
+              A-118, 2nd Floor, Sector-63, Noida - 201301, U.P., India<br />
+              Email: subscriptions@stmjournals.com | Web: www.stmjournals.com
+            </p>
+          </div>
+        `
+      };
+
+      await Promise.all([
+        transporter.sendMail(adminMailOptions),
+        transporter.sendMail(userMailOptions)
+      ]);
+
+      res.json({ status: "success", message: "Trial request submitted successfully" });
+    } catch (error) {
+      console.error("Institutional Trial Error:", error);
+      res.status(500).json({ error: "Failed to submit trial request" });
+    }
+  });
+
   // Contact Form Submission
   app.post("/api/contact", async (req, res) => {
     try {

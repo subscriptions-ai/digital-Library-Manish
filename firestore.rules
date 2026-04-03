@@ -89,5 +89,13 @@ service cloud.firestore {
       allow update: if isContentManager() || isOwner(resource.data.userId);
       allow delete: if isAdmin();
     }
+
+    // Trial Requests
+    match /trial_requests/{id} {
+      allow read: if isSubscriptionManager() || isAdmin();
+      allow create: if true; // Public form
+      allow update: if isSubscriptionManager() || isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }

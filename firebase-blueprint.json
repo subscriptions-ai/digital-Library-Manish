@@ -78,6 +78,27 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "contentId", "action", "timestamp"]
+    },
+    "TrialRequest": {
+      "title": "Trial Request",
+      "description": "Stores institutional trial requests",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "institutionalEmail": { "type": "string" },
+        "institutionName": { "type": "string" },
+        "designation": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "pincode": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "country": { "type": "string" },
+        "fullAddress": { "type": "string" },
+        "department": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "institutionalEmail", "institutionName", "pincode", "department", "status"]
     }
   },
   "firestore": {
@@ -100,6 +121,10 @@
     "/submissions/{id}": {
       "schema": "Submission",
       "description": "Content submissions"
+    },
+    "/trial_requests/{id}": {
+      "schema": "TrialRequest",
+      "description": "Institutional trial requests"
     }
   }
 }
