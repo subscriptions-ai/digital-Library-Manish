@@ -29,6 +29,8 @@ COPY --from=builder /app/dist ./dist
 
 # Copy the Express server entry point
 COPY server.ts ./
+COPY firebase-applet-config.json ./
+COPY src/firebase.ts ./src/firebase.ts
 
 # Install tsx globally for running TypeScript in production
 RUN npm install -g tsx
