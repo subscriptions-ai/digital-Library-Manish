@@ -27,10 +27,10 @@ RUN npm ci --omit=dev
 # Copy built frontend from Stage 1
 COPY --from=builder /app/dist ./dist
 
-# Copy the Express server entry point
+# Copy the Express server entry point, Prisma schema, and generate client
 COPY server.ts ./
-COPY firebase-applet-config.json ./
-COPY src/firebase.ts ./src/firebase.ts
+COPY prisma/ ./prisma/
+RUN npx prisma generate
 
 # Install tsx globally for running TypeScript in production
 RUN npm install -g tsx
