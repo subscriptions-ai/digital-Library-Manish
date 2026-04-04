@@ -27,8 +27,9 @@ RUN npm ci --omit=dev --legacy-peer-deps
 # Copy built frontend from Stage 1
 COPY --from=builder /app/dist ./dist
 
-# Copy the Express server entry point, Prisma schema, and generate client
+# Copy the Express server entry point, Prisma schema, generate client, and seeders
 COPY server.ts ./
+COPY seed-admin.ts ./
 COPY prisma/ ./prisma/
 RUN npx prisma@6.19.3 generate
 
