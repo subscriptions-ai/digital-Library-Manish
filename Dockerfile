@@ -20,9 +20,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy package files and install PRODUCTION-only dependencies
+# Copy package files and install dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 
 # Copy built frontend from Stage 1
 COPY --from=builder /app/dist ./dist
