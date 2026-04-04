@@ -20,9 +20,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy package files and install dependencies
+# Copy package files and install PRODUCTION-only dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci --omit=dev --legacy-peer-deps
 
 # Copy built frontend from Stage 1
 COPY --from=builder /app/dist ./dist
@@ -30,7 +30,7 @@ COPY --from=builder /app/dist ./dist
 # Copy the Express server entry point, Prisma schema, and generate client
 COPY server.ts ./
 COPY prisma/ ./prisma/
-RUN npx prisma generate
+RUN npx prisma@6.19.3 generate
 
 # Install tsx globally for running TypeScript in production
 RUN npm install -g tsx
