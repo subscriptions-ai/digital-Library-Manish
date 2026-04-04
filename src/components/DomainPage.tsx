@@ -3,7 +3,7 @@ import { DOMAINS, CONTENT_TYPES } from "../constants";
 import { ChevronRight, CheckCircle2, Star, Users, Layout, ShieldCheck, Globe, Zap } from "lucide-react";
 import * as Icons from "lucide-react";
 import { cn } from "../lib/utils";
-import { SubscriptionPlans } from "./SubscriptionPlans";
+import { SubscriptionBuilder } from "./SubscriptionBuilder";
 import { motion } from "motion/react";
 
 export function DomainPage() {
@@ -303,24 +303,29 @@ export function DomainPage() {
         </div>
       </section>
 
-      {/* Subscription Section */}
-      <section id="subscription" className="py-24">
+      {/* Subscription / Package Builder Section */}
+      <section id="subscription" className="py-24 bg-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Subscription Plans for {domain.name}</h2>
+          <div className="text-center mb-12">
+            <div className={cn("inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest mb-4", lightBgClass, textClass)}>
+              <Zap size={14} /> Build Your Package
+            </div>
+            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">
+              Subscribe to {domain.name} Modules
+            </h2>
             <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
-              Choose the plan that best fits your academic or institutional needs. All prices are in Indian Rupees (₹).
+              Pick exactly what you need. Real-time pricing — no hidden fees.
             </p>
           </div>
-          
-          <SubscriptionPlans domainId={domain.id} domainName={domain.name} />
-          
-          <div className="mt-16 p-8 rounded-3xl bg-blue-50 border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-8">
+
+          <SubscriptionBuilder domain={domain.name} themeColor={domain.themeColor} />
+
+          <div className="mt-16 p-8 rounded-3xl bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-8">
             <div>
-              <h3 className="text-xl font-bold text-slate-900">Custom Institutional Quote?</h3>
-              <p className="text-slate-600 mt-2">For large universities and corporate R&D centers, we offer tailored pricing and multi-campus licenses.</p>
+              <h3 className="text-xl font-bold">Need a custom institutional quote?</h3>
+              <p className="text-slate-400 mt-2">For large universities and corporate R&D centers, we offer tailored pricing and multi-campus licenses.</p>
             </div>
-            <Link to="/contact" className="rounded-full bg-slate-900 px-8 py-4 text-sm font-bold text-white hover:bg-slate-800 transition-all whitespace-nowrap">
+            <Link to="/contact" className={cn("rounded-full px-8 py-4 text-sm font-bold text-white shadow-xl hover:opacity-90 transition-all whitespace-nowrap", bgClass)}>
               Contact Sales Team
             </Link>
           </div>

@@ -2,19 +2,16 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  Users, 
   CreditCard, 
   FileText, 
-  BarChart3, 
   Settings, 
   LogOut, 
   ChevronRight,
   Menu,
   X,
   Library,
-  GraduationCap,
-  Building2,
-  Database
+  BookOpen,
+  Receipt
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,12 +24,11 @@ interface SidebarItem {
 }
 
 const sidebarItems: SidebarItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager', 'ContentManager', 'College', 'University', 'Corporate', 'Student', 'Subscriber', 'Agency'] },
-  { label: 'User Management', icon: Users, path: '/dashboard/users', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager', 'College', 'University', 'Corporate'] },
-  { label: 'Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager'] },
-  { label: 'Content Manager', icon: Library, path: '/dashboard/content', roles: ['Admin', 'SuperAdmin', 'ContentManager'] },
-  { label: 'Analytics', icon: BarChart3, path: '/dashboard/analytics', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager', 'College', 'University', 'Corporate'] },
-  { label: 'Settings', icon: Settings, path: '/dashboard/settings', roles: ['Admin', 'SuperAdmin', 'SubscriptionManager', 'ContentManager', 'College', 'University', 'Corporate', 'Student', 'Subscriber', 'Agency'] },
+  { label: 'Overview', icon: LayoutDashboard, path: '/dashboard', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  { label: 'My Content Access', icon: BookOpen, path: '/dashboard/access', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  { label: 'My Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  { label: 'Invoices & Payments', icon: Receipt, path: '/dashboard/invoices', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  { label: 'Profile Settings', icon: Settings, path: '/dashboard/settings', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {

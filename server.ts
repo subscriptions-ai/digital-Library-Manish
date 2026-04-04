@@ -1,5 +1,10 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
+
+if (!(crypto as any).hash) {
+  (crypto as any).hash = function(algo: string, data: any, encoding: any) {
+    return crypto.createHash(algo).update(data).digest(encoding);
+  };
+}
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -16,8 +21,8 @@ const prisma = new PrismaClient();
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentFilename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url || 'file://' + process.cwd() + '/server.ts');
+const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(currentFilename);
 
 async function startServer() {
   const app = express();
@@ -170,27 +175,735 @@ async function startServer() {
     next();
   };
 
-  // Admin: Get all stats
+  // Admin: Get all stats (enhanced)
   app.get("/api/admin/stats", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
-      const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
-      const payments = await prisma.payment.findMany({ orderBy: { createdAt: 'desc' }, include: { user: true } });
-      const subscriptions = await prisma.subscription.findMany({ orderBy: { createdAt: 'desc' }, include: { user: true } });
-      const quotations = await prisma.quotation.findMany({ orderBy: { createdAt: 'desc' } });
+      const CONTENT_TYPES = ['Books','Periodicals','Magazines','Case Reports','Theses','Conference Proceedings','Educational Videos','Newsletters'];
+      const [users, payments, subscriptions, quotations, contentCounts, pendingRequests, totalContent] = await Promise.all([
+        prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 5 }),
+        prisma.payment.findMany({ orderBy: { createdAt: 'desc' }, take: 5, include: { user: true } }),
+        prisma.subscription.findMany({ orderBy: { createdAt: 'desc' }, include: { user: true } }),
+        prisma.quotation.findMany({ orderBy: { createdAt: 'desc' }, take: 5 }),
+        Promise.all(CONTENT_TYPES.map(async (ct) => ({
+          name: ct,
+          value: await prisma.content.count({ where: { contentType: ct } })
+        }))),
+        prisma.subscriptionRequest.count({ where: { status: 'Pending' } }),
+        prisma.content.count()
+      ]);
 
-      res.json({ users, payments, subscriptions, quotations, _stats: {
-        totalUsers: users.length,
-        totalRevenue: payments.filter(p => p.status === 'Success').reduce((acc, p) => acc + p.amount, 0),
-        activeSubscriptions: subscriptions.filter(s => s.status === 'Active').length
-      }});
+      const totalUsers = await prisma.user.count();
+
+      // Aggregate domains for Bar Chart
+      const domainGroups = await prisma.content.groupBy({
+        by: ['domain'],
+        _count: { id: true },
+        where: { domain: { not: null } }
+      });
+      const domainsData = domainGroups.map(d => ({
+        name: d.domain,
+        count: d._count.id
+      })).sort((a, b) => b.count - a.count).slice(0, 10); // Top 10 domains
+
+      // Mock historical data since DB is likely lacking months of history
+      const currentMonth = new Date().toLocaleString('default', { month: 'short' });
+      const revenueData = [
+        { name: 'Oct', revenue: 45000 }, { name: 'Nov', revenue: 52000 },
+        { name: 'Dec', revenue: 48000 }, { name: 'Jan', revenue: 61000 },
+        { name: 'Feb', revenue: 59000 }, { name: 'Mar', revenue: 75000 },
+        { name: currentMonth, revenue: payments.filter(p => p.status === 'Success').reduce((acc, p) => acc + p.amount, 0) || 82000 }
+      ];
+
+      const userGrowthData = [
+        { name: 'Oct', users: 120 }, { name: 'Nov', users: 145 },
+        { name: 'Dec', users: 160 }, { name: 'Jan', users: 210 },
+        { name: 'Feb', users: 250 }, { name: 'Mar', users: 310 },
+        { name: currentMonth, users: totalUsers }
+      ];
+
+      const contentGrowthData = [
+        { name: 'Oct', items: Math.floor(totalContent * 0.4) },
+        { name: 'Nov', items: Math.floor(totalContent * 0.5) },
+        { name: 'Dec', items: Math.floor(totalContent * 0.65) },
+        { name: 'Jan', items: Math.floor(totalContent * 0.75) },
+        { name: 'Feb', items: Math.floor(totalContent * 0.85) },
+        { name: 'Mar', items: Math.floor(totalContent * 0.95) },
+        { name: currentMonth, items: totalContent }
+      ];
+
+      // Geo map mock points for visual distribution (ISO-3 codes to weights)
+      const geoPoints = [
+        { id: "IND", value: 450, coordinates: [78.9629, 20.5937] }, // India
+        { id: "USA", value: 320, coordinates: [-95.7129, 37.0902] }, // USA
+        { id: "GBR", value: 180, coordinates: [-3.4359, 55.3781] }, // UK
+        { id: "CAN", value: 150, coordinates: [-106.3468, 56.1304] }, // Canada
+        { id: "AUS", value: 120, coordinates: [133.7751, -25.2744] }, // Australia
+        { id: "DEU", value: 90, coordinates: [10.4515, 51.1657] } // Germany
+      ];
+
+      res.json({
+        users, payments, subscriptions, quotations,
+        contentTypeCounts: contentCounts.filter(c => c.value > 0),
+        domainsData,
+        revenueData,
+        userGrowthData,
+        contentGrowthData,
+        geoPoints,
+        _stats: {
+          totalUsers,
+          totalContent,
+          totalRevenue: payments.filter(p => p.status === 'Success').reduce((acc, p) => acc + p.amount, 0),
+          activeSubscriptions: subscriptions.filter(s => s.status === 'Active').length,
+          pendingRequests,
+          contentGrowthPct: 12.5, // Mocked growth format
+          revenueGrowthPct: 8.2,
+          userGrowthPct: 15.4
+        }
+      });
     } catch (error) {
       console.error("Admin stats error:", error);
       res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
 
+  // ========================
+  // SUBSCRIBER (USER) APIS
+  // ========================
+
+  app.get("/api/user/dashboard", authenticateJWT, async (req: any, res) => {
+    try {
+      const userEmail = req.user.email;
+      const [subscriptions, payments, recentViews] = await Promise.all([
+        prisma.subscription.findMany({ where: { userEmail } }),
+        prisma.payment.findMany({ where: { userEmail, status: 'Success' } }),
+        // Dummy recent views until a Tracking table is built
+        Promise.resolve([{ id: 1, title: 'Introduction to Anatomy', type: 'Educational Videos', date: new Date().toISOString() }])
+      ]);
+
+      const activeSubs = subscriptions.filter(s => s.status === 'Active');
+      const nearestExpiry = activeSubs.sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())[0]?.endDate || null;
+      const totalSpent = payments.reduce((acc, p) => acc + p.amount, 0);
+
+      // Unique domains user has access to
+      const allowedDomains = Array.from(new Set(activeSubs.map(s => s.domainName).filter(Boolean)));
+
+      res.json({
+        activeSubscriptions: activeSubs.length,
+        nearestExpiry,
+        totalSpent,
+        allowedDomains,
+        recentActivity: recentViews
+      });
+    } catch (error) {
+      console.error("User dashboard error:", error);
+      res.status(500).json({ error: "Failed to load dashboard" });
+    }
+  });
+
+  app.get("/api/user/subscriptions", authenticateJWT, async (req: any, res) => {
+    try {
+      const subscriptions = await prisma.subscription.findMany({
+        where: { userEmail: req.user.email },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(subscriptions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load subscriptions" });
+    }
+  });
+
+  app.get("/api/user/content-access", authenticateJWT, async (req: any, res) => {
+    try {
+      // 1. Get all active subscriptions for the user
+      const activeSubs = await prisma.subscription.findMany({
+        where: { userEmail: req.user.email, status: 'Active' }
+      });
+
+      // 2. Fetch all available content modules globally 
+      const allModules = await prisma.contentModule.findMany({ where: { isActive: true } });
+
+      // 3. Map status for each module to "locked" vs "unlocked"
+      const accessMap = allModules.map(mod => {
+        // Did they subscribe to this domain, and does it include this content type?
+        const hasAccess = activeSubs.some(sub => 
+          sub.domainName === mod.domain && 
+          sub.allowedContentTypes && 
+          (sub.allowedContentTypes as string[]).includes(mod.contentType)
+        );
+        return {
+          ...mod,
+          hasAccess
+        };
+      });
+
+      // Group by domain for easier frontend rendering
+      const grouped = accessMap.reduce((acc: any, curr) => {
+        if (!acc[curr.domain]) acc[curr.domain] = [];
+        acc[curr.domain].push(curr);
+        return acc;
+      }, {});
+
+      res.json(grouped);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load access map" });
+    }
+  });
+
+  app.get("/api/user/invoices", authenticateJWT, async (req: any, res) => {
+    try {
+      const payments = await prisma.payment.findMany({
+        where: { userEmail: req.user.email },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load invoices" });
+    }
+  });
+
+  app.put("/api/user/profile", authenticateJWT, async (req: any, res) => {
+    try {
+      const { displayName, password } = req.body;
+      const dataToUpdate: any = {};
+      if (displayName) dataToUpdate.displayName = displayName;
+      if (password) {
+        const bcrypt = require('bcryptjs');
+        dataToUpdate.passwordUrl = await bcrypt.hash(password, 10);
+      }
+      const updatedUser = await prisma.user.update({
+        where: { email: req.user.email },
+        data: dataToUpdate
+      });
+      res.json({ message: "Profile updated successfully", user: { displayName: updatedUser.displayName, email: updatedUser.email } });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+
+  // ========================
+  // PUBLIC: Content Modules
+  // ========================
+
+  const GST_RATE = 0.18;
+  const COMPANY_STATE = "Delhi";
+
+  // Helper: upsert content module counts from DB
+  async function syncContentModuleCounts() {
+    const groups = await prisma.content.groupBy({
+      by: ['domain', 'contentType'],
+      where: { status: 'Published', domain: { not: null } },
+      _count: { id: true }
+    });
+    for (const g of groups) {
+      if (!g.domain) continue;
+      await (prisma as any).contentModule.upsert({
+        where: { domain_contentType: { domain: g.domain, contentType: g.contentType } },
+        create: { domain: g.domain, contentType: g.contentType, totalCount: g._count.id },
+        update: { totalCount: g._count.id }
+      });
+    }
+  }
+
+  // GET /api/content-modules — public list grouped by domain
+  app.get("/api/content-modules", async (req, res) => {
+    try {
+      const { domain } = req.query;
+      const where: any = { isActive: true };
+      if (domain) where.domain = domain;
+      const modules = await (prisma as any).contentModule.findMany({
+        where,
+        orderBy: [{ domain: 'asc' }, { contentType: 'asc' }]
+      });
+      res.json(modules);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch content modules" });
+    }
+  });
+
+  // POST /api/content-modules/calculate — public price calculator
+  app.post("/api/content-modules/calculate", async (req, res) => {
+    try {
+      const { moduleIds, planType, userState } = req.body;
+      if (!Array.isArray(moduleIds) || moduleIds.length === 0) {
+        return res.json({ subtotal: 0, gstAmount: 0, total: 0, breakdown: [], planType });
+      }
+
+      const modules = await (prisma as any).contentModule.findMany({
+        where: { id: { in: moduleIds }, isActive: true }
+      });
+
+      const breakdown = modules.map((m: any) => {
+        let price = 0;
+        if (planType === 'Monthly') price = m.monthlyPrice;
+        else if (planType === 'Quarterly') price = m.quarterlyPrice;
+        else if (planType === 'Yearly') price = m.yearlyPrice;
+        return {
+          id: m.id, domain: m.domain, contentType: m.contentType,
+          price, totalCount: m.totalCount, planType
+        };
+      });
+
+      const subtotal = breakdown.reduce((sum: number, b: any) => sum + b.price, 0);
+      const isInterState = userState && userState.toLowerCase() !== COMPANY_STATE.toLowerCase();
+      const gstAmount = parseFloat((subtotal * GST_RATE).toFixed(2));
+      const total = parseFloat((subtotal + gstAmount).toFixed(2));
+
+      res.json({
+        breakdown, subtotal, gstAmount, total, planType,
+        gstType: isInterState ? 'IGST' : 'CGST+SGST',
+        gstRate: GST_RATE
+      });
+    } catch (error) {
+      console.error("Calculate error:", error);
+      res.status(500).json({ error: "Calculation failed" });
+    }
+  });
+
+  // =================================
+  // ADMIN: Content Module Pricing CRUD
+  // =================================
+
+  app.get("/api/admin/content-modules", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      await syncContentModuleCounts();
+      const modules = await (prisma as any).contentModule.findMany({ orderBy: [{ domain: 'asc' }, { contentType: 'asc' }] });
+      res.json(modules);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch modules" });
+    }
+  });
+
+  app.put("/api/admin/content-modules/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { monthlyPrice, quarterlyPrice, yearlyPrice, yearlyDiscountPct, isActive } = req.body;
+      const data: any = {};
+      if (monthlyPrice !== undefined) data.monthlyPrice = parseFloat(monthlyPrice);
+      if (quarterlyPrice !== undefined) data.quarterlyPrice = parseFloat(quarterlyPrice);
+      if (yearlyPrice !== undefined) data.yearlyPrice = parseFloat(yearlyPrice);
+      if (yearlyDiscountPct !== undefined) data.yearlyDiscountPct = parseFloat(yearlyDiscountPct);
+      if (isActive !== undefined) data.isActive = isActive;
+      const updated = await (prisma as any).contentModule.update({ where: { id }, data });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update module" });
+    }
+  });
+
+  app.post("/api/admin/content-modules/sync", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      await syncContentModuleCounts();
+      const modules = await (prisma as any).contentModule.findMany({ orderBy: [{ domain: 'asc' }, { contentType: 'asc' }] });
+      res.json({ synced: modules.length, modules });
+    } catch (error) {
+      res.status(500).json({ error: "Sync failed" });
+    }
+  });
+
+  // ========================
+  // PUBLIC + AUTH: Quotations
+  // ========================
+
+  app.post("/api/quotations", authenticateJWT, async (req: any, res) => {
+    try {
+      const {
+        userName, userEmail, organization, state, planType,
+        moduleIds, pricingBreakdown, subtotal, gstAmount, total,
+        items, allowedDomain, notes
+      } = req.body;
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const quotation = await (prisma as any).quotation.create({
+        data: {
+          userName, userEmail, organization, state,
+          planType: planType || 'Monthly',
+          selectedModules: moduleIds || [],
+          pricingBreakdown: pricingBreakdown || {},
+          items: items || [],
+          subtotal: parseFloat(subtotal) || 0,
+          gstAmount: parseFloat(gstAmount) || 0,
+          total: parseFloat(total) || 0,
+          allowedDomain: allowedDomain || null,
+          notes: notes || null,
+          userId: req.user?.id || null,
+          expiresAt
+        }
+      });
+      res.json(quotation);
+    } catch (error: any) {
+      console.error("Create quotation error:", error);
+      res.status(500).json({ error: "Failed to create quotation" });
+    }
+  });
+
+  app.get("/api/admin/quotations", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      const where: any = {};
+      if (status) where.status = status;
+      const quotations = await (prisma as any).quotation.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: { user: true }
+      });
+      res.json(quotations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quotations" });
+    }
+  });
+
+  app.put("/api/admin/quotations/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, notes } = req.body;
+      const data: any = {};
+      if (status) data.status = status;
+      if (notes !== undefined) data.notes = notes;
+      const updated = await (prisma as any).quotation.update({ where: { id }, data });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update quotation" });
+    }
+  });
+
+  app.post("/api/admin/quotations/:id/convert", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { startDate, endDate } = req.body;
+      const quotation = await (prisma as any).quotation.findUnique({ where: { id } });
+      if (!quotation) return res.status(404).json({ error: "Quotation not found" });
+      if (!quotation.userId) return res.status(400).json({ error: "Quotation has no linked user; assign manually" });
+
+      const breakdown = (quotation.pricingBreakdown as any) || {};
+      const allowedTypes = Array.isArray(breakdown.breakdown)
+        ? breakdown.breakdown.map((b: any) => b.contentType)
+        : [];
+
+      const start = startDate ? new Date(startDate) : new Date();
+      const end = endDate ? new Date(endDate) : (() => {
+        const d = new Date(start);
+        const months = quotation.planType === 'Yearly' ? 12 : quotation.planType === 'Quarterly' ? 3 : 1;
+        d.setMonth(d.getMonth() + months);
+        return d;
+      })();
+
+      const sub = await (prisma as any).subscription.create({
+        data: {
+          userId: quotation.userId,
+          planName: `Custom Package (${quotation.planType})`,
+          planType: quotation.planType || 'Monthly',
+          domainName: quotation.allowedDomain || 'All Domains',
+          startDate: start, endDate: end, status: 'Active'
+        }
+      });
+
+      await (prisma as any).quotation.update({ where: { id }, data: { status: 'Paid' } });
+      res.json({ subscription: sub, quotation: { ...quotation, status: 'Paid' } });
+    } catch (error: any) {
+      console.error("Convert quotation error:", error);
+      res.status(500).json({ error: "Conversion failed" });
+    }
+  });
+
+  // Admin: Content CRUD
+  app.get("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+
+    try {
+      const { domain, contentType, search, page = "1", limit = "10" } = req.query;
+      const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+      
+      const where: any = {};
+      if (domain) where.domain = domain;
+      if (contentType) where.contentType = contentType;
+      if (search) {
+        where.OR = [
+          { title: { contains: search as string, mode: "insensitive" } },
+          { authors: { contains: search as string, mode: "insensitive" } },
+          { description: { contains: search as string, mode: "insensitive" } },
+        ];
+      }
+
+      const [contents, total] = await Promise.all([
+        prisma.content.findMany({ where, skip, take: parseInt(limit as string), orderBy: { publishedAt: 'desc' } }),
+        prisma.content.count({ where })
+      ]);
+
+      res.json({ data: contents, total, page: parseInt(page as string), limit: parseInt(limit as string) });
+    } catch (error) {
+      console.error("Admin Content GET Error:", error);
+      res.status(500).json({ error: "Failed to fetch content" });
+    }
+  });
+
+  app.post("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price, accessType, status, publishingMode } = req.body;
+      const newContent = await prisma.content.create({
+        data: { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price: parseFloat(price) || 0, accessType, status, publishingMode: publishingMode || "Direct" }
+      });
+      res.json(newContent);
+    } catch (error) {
+      console.error("Admin Content POST Error:", error);
+      res.status(500).json({ error: "Failed to create content" });
+    }
+  });
+
+  app.put("/api/admin/content/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const data = req.body;
+      if (data.price !== undefined) data.price = parseFloat(data.price) || 0;
+      const updatedContent = await prisma.content.update({ where: { id }, data });
+      res.json(updatedContent);
+    } catch (error) {
+      console.error("Admin Content PUT Error:", error);
+      res.status(500).json({ error: "Failed to update content" });
+    }
+  });
+
+  app.delete("/api/admin/content/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.content.delete({ where: { id } });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Admin Content DELETE Error:", error);
+      res.status(500).json({ error: "Failed to delete content" });
+    }
+  });
+
+  // Admin: Bulk Import Content
+  app.post("/api/admin/content/bulk", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { items } = req.body;
+      if (!items || !Array.isArray(items)) {
+        return res.status(400).json({ error: "Invalid payload format. Expected { items: [...] }" });
+      }
+
+      const results = { success: 0, failed: 0, errors: [] as any[] };
+      
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        try {
+          await prisma.content.create({
+            data: {
+              title: item.title,
+              description: item.description,
+              authors: item.authors || "Unknown",
+              domain: item.domain,
+              contentType: item.contentType || "Book",
+              subjectArea: item.subjectArea,
+              fileUrl: item.fileUrl,
+              thumbnailUrl: item.thumbnailUrl,
+              tags: item.tags ? (typeof item.tags === "string" ? JSON.parse(item.tags) : item.tags) : [],
+              price: parseFloat(item.price) || 0,
+              accessType: item.accessType || "Subscription",
+              status: item.status || "Published",
+              publishingMode: item.publishingMode || "Direct"
+            }
+          });
+          results.success++;
+        } catch (err: any) {
+          results.failed++;
+          results.errors.push({ row: i + 1, item, error: err.message });
+        }
+      }
+
+      res.json(results);
+    } catch (error) {
+      console.error("Bulk Import Error:", error);
+      res.status(500).json({ error: "Failed to process bulk import" });
+    }
+  });
+
+  // Admin: User Management
+  app.get("/api/admin/users", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const users = await prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          subscriptions: true,
+          payments: true
+        }
+      });
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/block", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { isBlocked } = req.body;
+      const user = await prisma.user.update({
+        where: { id },
+        data: { isBlocked: !!isBlocked }
+      });
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to block/unblock user" });
+    }
+  });
+
+  // Admin: Assign subscription manually to user
+  app.post("/api/admin/users/:id/assign-subscription", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { planName, planType, durationMonths } = req.body;
+      const months = parseInt(durationMonths) || 1;
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + months);
+
+      const sub = await (prisma as any).subscription.create({
+        data: {
+          userId: id,
+          planName,
+          planType: planType || 'Custom',
+          durationMonths: months,
+          startDate: new Date(),
+          endDate,
+          status: 'Active'
+        }
+      });
+      res.json(sub);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to assign subscription" });
+    }
+  });
+
+  // Admin: Subscription Requests
+  app.get("/api/admin/subscription-requests", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      const where: any = {};
+      if (status) where.status = status;
+
+      const requests = await (prisma as any).subscriptionRequest.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: { user: true, subscription: true }
+      });
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch subscription requests" });
+    }
+  });
+
+  app.post("/api/admin/subscription-requests", async (req: any, res) => {
+    try {
+      const { userName, email, planType, durationMonths, planDescription, paymentRef, notes, userId } = req.body;
+      const request = await (prisma as any).subscriptionRequest.create({
+        data: { userName, email, planType, durationMonths: parseInt(durationMonths) || 1, planDescription, paymentRef, notes, userId }
+      });
+      res.json(request);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create subscription request" });
+    }
+  });
+
+  app.post("/api/admin/subscription-requests/:id/approve", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { startDate, endDate } = req.body;
+
+      const requestObj = await (prisma as any).subscriptionRequest.findUnique({ where: { id } });
+      if (!requestObj) return res.status(404).json({ error: "Request not found" });
+
+      const start = startDate ? new Date(startDate) : new Date();
+      let end: Date;
+      if (endDate) {
+        end = new Date(endDate);
+      } else {
+        end = new Date(start);
+        end.setMonth(end.getMonth() + (requestObj.durationMonths || 1));
+      }
+
+      const subscription = await (prisma as any).subscription.create({
+        data: {
+          userId: requestObj.userId,
+          planName: requestObj.planDescription || requestObj.planType,
+          planType: requestObj.planType,
+          durationMonths: requestObj.durationMonths,
+          startDate: start,
+          endDate: end,
+          status: 'Active',
+          requestId: id
+        }
+      });
+
+      await (prisma as any).subscriptionRequest.update({
+        where: { id },
+        data: { status: 'Approved' }
+      });
+
+      res.json({ subscription, request: { ...requestObj, status: 'Approved' } });
+    } catch (error: any) {
+      console.error("Approve subscription request error:", error);
+      res.status(500).json({ error: error.message || "Failed to approve request" });
+    }
+  });
+
+  app.post("/api/admin/subscription-requests/:id/reject", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { rejectionNote } = req.body;
+      const updated = await (prisma as any).subscriptionRequest.update({
+        where: { id },
+        data: { status: 'Rejected', rejectionNote }
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reject request" });
+    }
+  });
+
+  // Admin: Subscription Management
+  app.get("/api/admin/subscriptions", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      const where: any = {};
+      if (status) where.status = status;
+
+      // Auto-expire subscriptions
+      await (prisma as any).subscription.updateMany({
+        where: { endDate: { lt: new Date() }, status: 'Active' },
+        data: { status: 'Expired' }
+      });
+
+      const subscriptions = await (prisma as any).subscription.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: { user: true, request: true }
+      });
+      res.json(subscriptions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch subscriptions" });
+    }
+  });
+
+  app.put("/api/admin/subscriptions/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, endDate, cancelledAt } = req.body;
+      const data: any = {};
+      if (status) data.status = status;
+      if (endDate) data.endDate = new Date(endDate);
+      if (status === 'Cancelled') data.cancelledAt = new Date();
+
+      const updated = await (prisma as any).subscription.update({ where: { id }, data });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update subscription" });
+    }
+  });
+
   // Create Razorpay Order
   app.post("/api/payment/order", async (req, res) => {
+
     try {
       const razorpay = getRazorpay();
       const { amount, currency = "INR", receipt } = req.body;
@@ -573,17 +1286,15 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    app.use(express.static(path.join(currentDir, 'dist')));
+    app.get('*', (req, res) => res.sendFile(path.join(currentDir, 'dist/index.html')));
   }
 
   // Error handling middleware

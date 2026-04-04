@@ -16,16 +16,19 @@ model User {
   password     String
   displayName  String?
   organization String?
+  state        String?
   role         String         @default("Subscriber")
   status       String         @default("Active")
+  isBlocked    Boolean        @default(false)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   
-  payments     Payment[]
-  subscriptions Subscription[]
-  quotations   Quotation[]
-  submissions  Submission[]
-  usageLogs    UsageLog[]
+  payments              Payment[]
+  subscriptions         Subscription[]
+  quotations            Quotation[]
+  submissions           Submission[]
+  usageLogs             UsageLog[]
+  subscriptionRequests  SubscriptionRequest[]
 }
 
 model Payment {
@@ -44,41 +47,93 @@ model Payment {
 }
 
 model Subscription {
-  id         String   @id @default(uuid())
-  domainId   String
-  domainName String
-  planName   String
-  duration   String
-  status     String   @default("Active")
+  id             String   @id @default(uuid())
+  domainId       String?
+  domainName     String?
+  planName       String
+  planType       String   @default("Monthly")   // Monthly | Yearly | Custom
+  durationMonths Int      @default(1)
+  duration       String?  // deprecated label field (kept for compat)
+  status         String   @default("Active")   // Active | Expired | Cancelled
   
-  user       User?    @relation(fields: [userId], references: [id])
-  userId     String?
+  user           User?    @relation(fields: [userId], references: [id])
+  userId         String?
   
-  startDate  DateTime @default(now())
-  endDate    DateTime
-  createdAt  DateTime @default(now())
+  request        SubscriptionRequest? @relation(fields: [requestId], references: [id])
+  requestId      String?  @unique
+  
+  startDate      DateTime @default(now())
+  endDate        DateTime
+  cancelledAt    DateTime?
+  createdAt      DateTime @default(now())
+}
+
+model SubscriptionRequest {
+  id             String   @id @default(uuid())
+  userName       String
+  email          String
+  planType       String   @default("Monthly")   // Monthly | Yearly | Custom
+  durationMonths Int      @default(1)
+  planDescription String? // e.g. "All Domains Package"
+  paymentRef     String?  // screenshot URL or payment reference
+  notes          String?
+  status         String   @default("Pending")   // Pending | Approved | Rejected
+  rejectionNote  String?
+  
+  user           User?    @relation(fields: [userId], references: [id])
+  userId         String?
+  
+  subscription   Subscription?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Quotation {
-  id           String   @id
-  userEmail    String
-  userName     String
-  organization String?
-  state        String?
-  items        Json
-  subtotal     Float
-  gstAmount    Float
-  total        Float
-  status       String   @default("Sent")
-  
-  user         User?    @relation(fields: [userId], references: [id])
-  userId       String?
-  
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime
+  id                String   @id @default(uuid())
+  userEmail         String
+  userName          String
+  organization      String?
+  state             String?
+  items             Json
+  subtotal          Float
+  gstAmount         Float
+  total             Float
+  status            String   @default("Pending")  // Pending | Approved | Paid | Cancelled
+
+  // Dynamic pricing fields
+  selectedModules   Json?    @default("[]")       // Array of ContentModule IDs selected
+  pricingBreakdown  Json?    @default("{}")        // { modules: [{id, domain, contentType, price}], planType, subtotal, gst, total }
+  planType          String?  @default("Monthly")   // Monthly | Quarterly | Yearly
+  allowedDomain     String?  // null means all domains
+  notes             String?
+
+  user              User?    @relation(fields: [userId], references: [id])
+  userId            String?
+
+  createdAt         DateTime @default(now())
+  expiresAt         DateTime
+}
+
+model ContentModule {
+  id                String   @id @default(uuid())
+  domain            String
+  contentType       String
+  totalCount        Int      @default(0)
+  monthlyPrice      Float    @default(0)
+  quarterlyPrice    Float    @default(0)
+  yearlyPrice       Float    @default(0)
+  yearlyDiscountPct Float    @default(0)   // e.g. 20 means 20% off yearly
+  isActive          Boolean  @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt @default(now())
+
+  @@unique([domain, contentType])
 }
 
 model Submission {
+
   id              String   @id @default(uuid())
   title           String
   authors         String
@@ -100,16 +155,25 @@ model Submission {
 model Content {
   id              String   @id @default(uuid())
   title           String
+  description     String?
   authors         String
+  domain          String?
   contentType     String
   subjectArea     String?  @default("General")
   fileUrl         String?
-  publishingMode  String
+  thumbnailUrl    String?
+  tags            Json?    @default("[]")
+  price           Float?   @default(0.0)
+  accessType      String   @default("Subscription")
+  status          String   @default("Published")
+  publishingMode  String   @default("Direct")
+  views           Int      @default(0)
   
   submission      Submission? @relation(fields: [submissionId], references: [id])
   submissionId    String?     @unique
   
   publishedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
 }
 
 model AccessRequest {
