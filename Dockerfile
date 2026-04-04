@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copy package files and install ALL dependencies (including devDependencies for build)
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -22,7 +22,7 @@ ENV NODE_ENV=production
 
 # Copy package files and install PRODUCTION-only dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 
 # Copy built frontend from Stage 1
 COPY --from=builder /app/dist ./dist
