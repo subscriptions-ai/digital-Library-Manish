@@ -543,7 +543,43 @@ async function startServer() {
     }
   });
 
-  // PUT /api/admin/users/:id/role — update role
+  // PUT /api/admin/users/:id — full update (name, email, role, organization)
+  app.put("/api/admin/users/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { displayName, email, role, organization } = req.body;
+
+      if (role === 'SuperAdmin' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
+      }
+
+      const existing = await prisma.user.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: "User not found" });
+
+      // Check email uniqueness if changing
+      if (email && email !== existing.email) {
+        const taken = await prisma.user.findUnique({ where: { email } });
+        if (taken) return res.status(409).json({ error: "Email already in use" });
+      }
+
+      const updated = await prisma.user.update({
+        where: { id },
+        data: {
+          ...(displayName ? { displayName } : {}),
+          ...(email ? { email } : {}),
+          ...(role ? { role } : {}),
+          ...(organization !== undefined ? { organization } : {}),
+        }
+      });
+      const { password: _, ...profile } = updated;
+      res.json({ user: profile });
+    } catch (err) {
+      console.error('PUT /api/admin/users/:id error:', err);
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+
   app.put("/api/admin/users/:id/role", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { role } = req.body;
@@ -1660,12 +1696,54 @@ async function startServer() {
       const { isBlocked } = req.body;
       
       const student = await prisma.user.update({
-        where: { id: id }, // Assuming ID logic protects since institution isn't strictly verified if SuperAdmin calls it
+        where: { id },
         data: { isBlocked }
       });
       res.json(student);
     } catch(err) {
       res.status(500).json({ error: "Failed to block student" });
+    }
+  });
+
+  // PUT /api/institution/students/:id — update student name/email
+  app.put("/api/institution/students/:id", authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const { id } = req.params;
+      const { displayName, email } = req.body;
+
+      if (email) {
+        const taken = await prisma.user.findFirst({ where: { email, id: { not: id } } });
+        if (taken) return res.status(409).json({ error: "Email already in use" });
+      }
+
+      const updated = await prisma.user.update({
+        where: { id },
+        data: {
+          ...(displayName ? { displayName } : {}),
+          ...(email ? { email } : {}),
+        }
+      });
+      const { password: _, ...profile } = updated;
+      res.json({ user: profile });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update student" });
+    }
+  });
+
+  // DELETE /api/institution/students/:id — remove student
+  app.delete("/api/institution/students/:id", authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const { id } = req.params;
+      await prisma.user.delete({ where: { id } });
+      res.json({ message: "Student removed" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete student" });
     }
   });
 

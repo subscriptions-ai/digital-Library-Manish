@@ -473,6 +473,35 @@ async function startServer() {
       res.status(500).json({ error: "Failed to create user" });
     }
   });
+  app.put("/api/admin/users/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { displayName, email, role, organization } = req.body;
+      if (role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
+        return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
+      }
+      const existing = await prisma.user.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: "User not found" });
+      if (email && email !== existing.email) {
+        const taken = await prisma.user.findUnique({ where: { email } });
+        if (taken) return res.status(409).json({ error: "Email already in use" });
+      }
+      const updated = await prisma.user.update({
+        where: { id },
+        data: {
+          ...displayName ? { displayName } : {},
+          ...email ? { email } : {},
+          ...role ? { role } : {},
+          ...organization !== void 0 ? { organization } : {}
+        }
+      });
+      const { password: _, ...profile } = updated;
+      res.json({ user: profile });
+    } catch (err) {
+      console.error("PUT /api/admin/users/:id error:", err);
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
   app.put("/api/admin/users/:id/role", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { role } = req.body;
@@ -1476,12 +1505,47 @@ STM Digital Library Team`,
       const { isBlocked } = req.body;
       const student = await prisma.user.update({
         where: { id },
-        // Assuming ID logic protects since institution isn't strictly verified if SuperAdmin calls it
         data: { isBlocked }
       });
       res.json(student);
     } catch (err) {
       res.status(500).json({ error: "Failed to block student" });
+    }
+  });
+  app.put("/api/institution/students/:id", authenticateJWT, async (req, res) => {
+    try {
+      if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const { id } = req.params;
+      const { displayName, email } = req.body;
+      if (email) {
+        const taken = await prisma.user.findFirst({ where: { email, id: { not: id } } });
+        if (taken) return res.status(409).json({ error: "Email already in use" });
+      }
+      const updated = await prisma.user.update({
+        where: { id },
+        data: {
+          ...displayName ? { displayName } : {},
+          ...email ? { email } : {}
+        }
+      });
+      const { password: _, ...profile } = updated;
+      res.json({ user: profile });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update student" });
+    }
+  });
+  app.delete("/api/institution/students/:id", authenticateJWT, async (req, res) => {
+    try {
+      if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const { id } = req.params;
+      await prisma.user.delete({ where: { id } });
+      res.json({ message: "Student removed" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete student" });
     }
   });
   app.post("/api/student/activity", authenticateJWT, async (req, res) => {
