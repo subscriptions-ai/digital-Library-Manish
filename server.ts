@@ -1668,10 +1668,17 @@ async function startServer() {
 
   app.post("/api/institution/students", authenticateJWT, async (req: any, res) => {
     try {
-      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });
-      const targetInstitutionId = req.user.role === 'Institution' ? req.user.uid : req.body.institutionId;
-
+      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
       const { name, email, password } = req.body;
+      if (!name || !email || !password) {
+        return res.status(400).json({ error: "Name, email and password are required" });
+      }
+
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) return res.status(409).json({ error: "A user with this email already exists" });
+
       const hashed = await bcrypt.hash(password, 10);
       const student = await prisma.user.create({
         data: {
@@ -1679,12 +1686,14 @@ async function startServer() {
           password: hashed,
           displayName: name,
           role: 'Student',
-          institutionId: targetInstitutionId
+          status: 'Active',
         }
       });
-      res.json(student);
-    } catch(err) {
-      res.status(500).json({ error: "Failed to create student" });
+      const { password: _, ...safe } = student;
+      res.json(safe);
+    } catch(err: any) {
+      console.error('POST /api/institution/students error:', err?.message);
+      res.status(500).json({ error: "Failed to create student", detail: err?.message });
     }
   });
 
