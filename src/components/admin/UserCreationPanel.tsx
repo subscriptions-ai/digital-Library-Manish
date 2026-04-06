@@ -31,6 +31,7 @@ export function UserCreationPanel() {
     email: '',
     role: 'Subscriber',
     institutionId: '',
+    institutionName: '',        // ← NEW: institution's display name
     customPassword: '',
     sendEmail: true,
   });
@@ -84,6 +85,7 @@ export function UserCreationPanel() {
           name: form.name,
           email: form.email,
           role: form.role,
+          institutionName: form.role === 'Institution' ? form.institutionName : undefined,
           institutionId: form.role === 'Student' ? form.institutionId : undefined,
           customPassword: form.customPassword || undefined,
           sendEmail: form.sendEmail,
@@ -97,7 +99,7 @@ export function UserCreationPanel() {
       setCreatedCredentials(data.credentials);
       toast.success(`User "${form.name}" created successfully!`);
       // Reset form
-      setForm({ name: '', email: '', role: 'Subscriber', institutionId: '', customPassword: '', sendEmail: true });
+      setForm({ name: '', email: '', role: 'Subscriber', institutionId: '', institutionName: '', customPassword: '', sendEmail: true });
       setShowPassword(false);
     } catch (err: any) {
       toast.error(err.message || 'Failed to create user');
@@ -215,6 +217,27 @@ export function UserCreationPanel() {
             })}
           </div>
         </div>
+
+        {/* Conditional: Institution Name for Institution role */}
+        {form.role === 'Institution' && (
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Institution Name <span className="text-red-400">*</span>
+            </label>
+            <div className="relative">
+              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                required
+                type="text"
+                value={form.institutionName}
+                onChange={e => setForm(f => ({ ...f, institutionName: e.target.value }))}
+                placeholder="e.g. Jawaharlal Nehru University"
+                className="w-full pl-9 pr-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all"
+              />
+            </div>
+            <p className="text-xs text-slate-500 mt-1.5">This name will appear as the institution dashboard title and cannot be changed by the institution user.</p>
+          </div>
+        )}
 
         {/* Conditional: Institution selector for Student */}
         {form.role === 'Student' && (

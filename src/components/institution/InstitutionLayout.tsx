@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, FileText, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, FileText, Activity, UserCircle, CreditCard } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -49,11 +49,11 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
       <aside className={`bg-indigo-900 text-white flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
-            <div className="flex items-center gap-2.5 font-extrabold tracking-tight">
+            <div className="flex items-center gap-2.5 font-extrabold tracking-tight min-w-0">
               <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
                 <LayoutDashboard size={18} />
               </div>
-              <span className="text-base truncate">INSTITUTION</span>
+              <span className="text-sm truncate">{profile.organization || 'INSTITUTION'}</span>
             </div>
           )}
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-white/10 rounded-lg text-indigo-200">
@@ -83,19 +83,33 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/institution/analytics')}
           />
+          <NavButton
+            icon={<CreditCard size={18} />}
+            label="Subscriptions"
+            active={location.pathname === '/institution/subscriptions'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/institution/subscriptions')}
+          />
+          <NavButton
+            icon={<UserCircle size={18} />}
+            label="Profile"
+            active={location.pathname === '/institution/profile'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/institution/profile')}
+          />
         </nav>
 
         <div className="pt-4 pb-5 px-3 border-t border-white/10 space-y-0.5">
           <NavButton icon={<LogOut size={18} />} label="Sign Out" active={false} collapsed={!isSidebarOpen}
             onClick={handleSignOut} danger />
-          <div className={`flex items-center gap-3 px-3 py-2 ${!isSidebarOpen && 'justify-center'} mt-2`}>
+                  <div className={`flex items-center gap-3 px-3 py-2 ${!isSidebarOpen && 'justify-center'} mt-2`}>
             <div className="h-8 w-8 rounded-full bg-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
-              {profile.displayName?.substring(0, 2).toUpperCase() || 'IN'}
+              {(profile.organization || profile.displayName || 'IN').substring(0, 2).toUpperCase()}
             </div>
             {isSidebarOpen && (
               <div className="overflow-hidden">
                 <div className="text-xs font-bold truncate">{profile.displayName || 'Institution Head'}</div>
-                <div className="text-[10px] text-indigo-300">{profile.organization || 'University Portal'}</div>
+                <div className="text-[10px] text-indigo-300 truncate">{profile.organization || 'University Portal'}</div>
               </div>
             )}
           </div>
@@ -105,9 +119,11 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-slate-50">
         <header className="bg-white/80 backdrop-blur-md border-b border-white z-10 sticky top-0 h-16 flex items-center px-8 shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           <h1 className="text-lg font-bold text-slate-800">
-            {location.pathname === '/institution' ? 'Institution Dashboard'
+            {location.pathname === '/institution' ? (profile.organization || 'Institution Dashboard')
             : location.pathname.startsWith('/institution/students') ? 'Student Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
+            : location.pathname === '/institution/subscriptions' ? 'Subscription Details'
+            : location.pathname === '/institution/profile' ? 'Institution Profile'
             : 'Dashboard'}
           </h1>
         </header>

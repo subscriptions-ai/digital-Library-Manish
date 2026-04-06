@@ -66,6 +66,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import { InstitutionLayout } from "./components/institution/InstitutionLayout";
 import { InstitutionDashboardHome } from "./components/institution/InstitutionDashboardHome";
 import { InstitutionStudentManager } from "./components/institution/InstitutionStudentManager";
+import { InstitutionProfile } from "./components/institution/InstitutionProfile";
 
 import { ManagerLayout } from "./components/manager/ManagerLayout";
 
@@ -146,6 +147,8 @@ export default function App() {
                 <Route path="/institution" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
                 <Route path="/institution/students" element={<InstitutionLayout><InstitutionStudentManager /></InstitutionLayout>} />
                 <Route path="/institution/analytics" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
+                <Route path="/institution/subscriptions" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
+                <Route path="/institution/profile" element={<InstitutionLayout><InstitutionProfile /></InstitutionLayout>} />
 
                 {/* Subscription Manager Routes */}
                 <Route path="/manager" element={<ManagerLayout><AdminDashboardHome /></ManagerLayout>} />

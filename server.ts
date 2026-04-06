@@ -488,10 +488,13 @@ async function startServer() {
   // POST /api/admin/users/create — create user + send email
   app.post("/api/admin/users/create", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
-      const { name, email, role, institutionId, sendEmail, customPassword } = req.body;
+      const { name, email, role, institutionId, institutionName, sendEmail, customPassword } = req.body;
 
       if (!name || !email || !role) {
         return res.status(400).json({ error: "Name, email and role are required" });
+      }
+      if (role === 'Institution' && !institutionName) {
+        return res.status(400).json({ error: "Institution Name is required for Institution role" });
       }
 
       const existing = await prisma.user.findUnique({ where: { email } });
@@ -509,9 +512,11 @@ async function startServer() {
           role,
           status: 'Active',
           isFirstLogin: true,
-          ...(institutionId ? { institutionId } : {})
+          // Store institution name in the organization column
+          ...(institutionName ? { organization: institutionName } : {}),
         }
       });
+
 
       // Log the creation action
       await prisma.usageLog.create({
@@ -1539,11 +1544,75 @@ async function startServer() {
       // Calculate abstract mock analytics
       const interactions = await prisma.studentActivity.count({ where: { user: { institutionId: targetInstitutionId } } });
       
-      res.json({ studentCount, activeGrants: studentCount, totalInteractions: interactions, avgLearningTime: '1h 15m', recentActivity });
+      res.json({ studentCount, activeGrants: studentCount, totalInteractions: interactions, avgLearningTime: '1h 15m', recentActivity: [] });
     } catch(err) {
       res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
+
+  // GET /api/institution/subscriptions — subscriptions for this institution user
+  app.get("/api/institution/subscriptions", authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const subscriptions = await prisma.subscription.findMany({
+        where: { userId: req.user.uid },
+        orderBy: { startDate: 'desc' }
+      });
+      res.json(subscriptions);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch subscriptions" });
+    }
+  });
+
+  // GET /api/institution/profile — return editable profile fields
+  app.get("/api/institution/profile", authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const user = await prisma.user.findUnique({ where: { id: req.user.uid } });
+      if (!user) return res.status(404).json({ error: "User not found" });
+      res.json({
+        institutionName: user.organization,   // read-only
+        contactName: user.displayName,
+        state: user.state,                    // repurposed as city for now
+        // Extended fields live in user metadata; return empty strings for new installs
+        contactPhone: '',
+        address: '',
+        city: '',
+        website: '',
+        logoUrl: '',
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to load profile" });
+    }
+  });
+
+  // PUT /api/institution/profile — update editable fields (institutionName is NOT writable)
+  app.put("/api/institution/profile", authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const { contactName, city, logoUrl } = req.body;
+      // institutionName (organization) is intentionally EXCLUDED from updates here
+
+      await prisma.user.update({
+        where: { id: req.user.uid },
+        data: {
+          ...(contactName ? { displayName: contactName } : {}),
+          ...(city ? { state: city } : {}),
+        }
+      });
+      res.json({ message: "Profile updated successfully" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+
 
   app.get("/api/institution/students", authenticateJWT, async (req: any, res) => {
     try {
