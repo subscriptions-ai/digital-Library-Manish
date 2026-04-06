@@ -30,6 +30,10 @@ const THEME: Record<string, {
   indigo:  { hero: "from-indigo-950 via-indigo-900 to-indigo-800", badge: "bg-indigo-500/20 text-indigo-200", iconBg: "bg-indigo-500/20 text-indigo-300", btn: "bg-indigo-600 hover:bg-indigo-500", accent: "text-indigo-500",  highlight: "ring-indigo-500 bg-indigo-50" },
   red:     { hero: "from-red-950 via-red-900 to-rose-800",     badge: "bg-red-400/20 text-red-200",      iconBg: "bg-red-500/20 text-red-300",      btn: "bg-red-600 hover:bg-red-500",      accent: "text-red-500",     highlight: "ring-red-500 bg-red-50" },
   slate:   { hero: "from-slate-950 via-slate-900 to-slate-800", badge: "bg-slate-400/20 text-slate-200", iconBg: "bg-slate-500/20 text-slate-300",   btn: "bg-slate-700 hover:bg-slate-600",  accent: "text-slate-600",   highlight: "ring-slate-500 bg-slate-50" },
+  stone:   { hero: "from-stone-950 via-stone-900 to-stone-800", badge: "bg-stone-400/20 text-stone-200", iconBg: "bg-stone-500/20 text-stone-300",   btn: "bg-stone-700 hover:bg-stone-600",  accent: "text-stone-600",   highlight: "ring-stone-500 bg-stone-50" },
+  zinc:    { hero: "from-zinc-950 via-zinc-900 to-zinc-800",   badge: "bg-zinc-400/20 text-zinc-200",    iconBg: "bg-zinc-500/20 text-zinc-300",    btn: "bg-zinc-700 hover:bg-zinc-600",    accent: "text-zinc-600",    highlight: "ring-zinc-500 bg-zinc-50" },
+  gray:    { hero: "from-gray-950 via-gray-900 to-gray-800",   badge: "bg-gray-400/20 text-gray-200",    iconBg: "bg-gray-500/20 text-gray-300",    btn: "bg-gray-700 hover:bg-gray-600",    accent: "text-gray-600",    highlight: "ring-gray-500 bg-gray-50" },
+  neutral: { hero: "from-neutral-950 via-neutral-900 to-neutral-800", badge: "bg-neutral-400/20 text-neutral-200", iconBg: "bg-neutral-500/20 text-neutral-300", btn: "bg-neutral-700 hover:bg-neutral-600", accent: "text-neutral-600", highlight: "ring-neutral-500 bg-neutral-50" },
   emerald: { hero: "from-emerald-950 via-emerald-900 to-emerald-800", badge: "bg-emerald-500/20 text-emerald-200", iconBg: "bg-emerald-500/20 text-emerald-300", btn: "bg-emerald-600 hover:bg-emerald-500", accent: "text-emerald-600", highlight: "ring-emerald-500 bg-emerald-50" },
   orange:  { hero: "from-orange-950 via-orange-900 to-orange-800", badge: "bg-orange-400/20 text-orange-200", iconBg: "bg-orange-500/20 text-orange-300", btn: "bg-orange-600 hover:bg-orange-500", accent: "text-orange-500", highlight: "ring-orange-500 bg-orange-50" },
   pink:    { hero: "from-pink-950 via-pink-900 to-pink-800",   badge: "bg-pink-400/20 text-pink-200",    iconBg: "bg-pink-500/20 text-pink-300",    btn: "bg-pink-600 hover:bg-pink-500",    accent: "text-pink-500",    highlight: "ring-pink-500 bg-pink-50" },
@@ -67,7 +71,7 @@ export function DomainLandingPage() {
   const { domainId } = useParams<{ domainId: string }>();
 
   const domain = DOMAINS.find((d) => d.id === domainId);
-  const theme = THEME[domain?.themeColor || "blue"];
+  const theme = THEME[domain?.themeColor || "blue"] || THEME.blue;
   const DomainIcon = (Icons as any)[domain?.icon || "BookOpen"] || Icons.BookOpen;
 
   // API data
