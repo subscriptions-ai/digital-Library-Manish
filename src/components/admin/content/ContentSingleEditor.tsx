@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Save, ArrowLeft, UploadCloud, Tag } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-const DOMAINS = ['Medical', 'Engineering', 'Pharmacy', 'Nursing', 'Management', 'Arts & Humanities', 'Law', 'Others'];
+import { DOMAINS } from '../../../constants';
 
 interface ContentSingleEditorProps {
   contentType: string;
@@ -19,7 +19,7 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
   const [saving, setSaving] = useState(false);
 
   const EMPTY_FORM = {
-    title: '', description: '', authors: '', domain: DOMAINS[0],
+    title: '', description: '', authors: '', domain: DOMAINS[0]?.name || '',
     subjectArea: '', fileUrl: '', thumbnailUrl: '', tags: '',
     price: '0', accessType: 'Subscription', status: 'Published', publishingMode: 'Direct'
   };
@@ -37,7 +37,7 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
         if (!item) throw new Error('Not found');
         setForm({
           title: item.title || '', description: item.description || '', authors: item.authors || '',
-          domain: item.domain || DOMAINS[0], subjectArea: item.subjectArea || '',
+          domain: item.domain || DOMAINS[0]?.name || '', subjectArea: item.subjectArea || '',
           fileUrl: item.fileUrl || '', thumbnailUrl: item.thumbnailUrl || '',
           tags: Array.isArray(item.tags) ? item.tags.join(', ') : '',
           price: String(item.price || 0), accessType: item.accessType || 'Subscription',
@@ -154,7 +154,7 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Domain <span className="text-red-500">*</span></label>
               <select name="domain" value={form.domain} onChange={handleChange}
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50 focus:bg-white focus:border-blue-500 outline-none">
-                {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+                {DOMAINS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
               </select>
             </div>
             <div>
