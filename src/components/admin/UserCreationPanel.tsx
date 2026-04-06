@@ -89,8 +89,11 @@ export function UserCreationPanel() {
           sendEmail: form.sendEmail,
         })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create user');
+      
+      let data: any = {};
+      try { data = await res.json(); } catch { /* empty body */ }
+      
+      if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
       setCreatedCredentials(data.credentials);
       toast.success(`User "${form.name}" created successfully!`);
       // Reset form
