@@ -1680,6 +1680,14 @@ async function startServer() {
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
 
       const hashed = await bcrypt.hash(password, 10);
+
+      // Carry the institution's name into the student's organization field
+      let institutionName = '';
+      if (req.user.role === 'Institution') {
+        const institutionUser = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { organization: true } });
+        institutionName = institutionUser?.organization || '';
+      }
+
       const student = await prisma.user.create({
         data: {
           email,
@@ -1687,6 +1695,7 @@ async function startServer() {
           displayName: name,
           role: 'Student',
           status: 'Active',
+          ...(institutionName ? { organization: institutionName } : {}),
         }
       });
       const { password: _, ...safe } = student;

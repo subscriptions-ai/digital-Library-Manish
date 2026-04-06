@@ -104,7 +104,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-100">
+          {/* Institution badge for Students */}
+          {profile?.role === 'Student' && profile?.organization && isSidebarOpen && (
+            <div className="mx-4 mb-3 px-4 py-3 bg-indigo-50 rounded-xl border border-indigo-100">
+              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-0.5">Associated Institution</p>
+              <p className="text-sm font-bold text-indigo-700 truncate">{profile.organization}</p>
+            </div>
+          )}
+          <div className="p-4 border-t border-slate-100">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"
@@ -127,7 +134,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm font-bold text-slate-900">{profile?.displayName || profile?.email}</p>
-              <p className="text-xs text-slate-500">{profile?.role}</p>
+              {profile?.role === 'Student' && profile?.organization ? (
+                <p className="text-xs text-indigo-600 font-semibold">{profile.organization}</p>
+              ) : (
+                <p className="text-xs text-slate-500">{profile?.role}</p>
+              )}
             </div>
             <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold">
               {profile?.displayName?.[0] || profile?.email?.[0]}

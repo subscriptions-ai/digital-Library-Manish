@@ -1490,13 +1490,19 @@ STM Digital Library Team`,
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
       const hashed = await import_bcryptjs.default.hash(password, 10);
+      let institutionName = "";
+      if (req.user.role === "Institution") {
+        const institutionUser = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { organization: true } });
+        institutionName = institutionUser?.organization || "";
+      }
       const student = await prisma.user.create({
         data: {
           email,
           password: hashed,
           displayName: name,
           role: "Student",
-          status: "Active"
+          status: "Active",
+          ...institutionName ? { organization: institutionName } : {}
         }
       });
       const { password: _, ...safe } = student;
