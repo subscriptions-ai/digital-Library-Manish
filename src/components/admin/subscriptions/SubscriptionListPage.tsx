@@ -3,14 +3,24 @@ import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
 
+import { DOMAINS } from '../../../constants';
+
 export function SubscriptionListPage() {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'Active' | 'Expired' | 'Cancelled' | ''>('Active');
   const [assignModal, setAssignModal] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [assignForm, setAssignForm] = useState({ userId: '', planName: '', planType: 'Monthly', durationMonths: '1' });
+  const [assignForm, setAssignForm] = useState({ 
+    userId: '', planName: '', planType: 'Monthly', durationMonths: '1',
+    domainName: '', contentTypes: [] as string[]
+  });
   const [saving, setSaving] = useState(false);
+
+  const AVAILABLE_CONTENT_TYPES = [
+    'Books', 'Periodicals', 'Magazines', 'Case Reports', 'Theses', 
+    'Conference Proceedings', 'Educational Videos', 'Newsletters'
+  ];
 
   const fetchSubs = async () => {
     setLoading(true);
@@ -57,7 +67,7 @@ export function SubscriptionListPage() {
       if (!res.ok) throw new Error('Failed');
       toast.success('Subscription assigned!');
       setAssignModal(false);
-      setAssignForm({ userId: '', planName: '', planType: 'Monthly', durationMonths: '1' });
+      setAssignForm({ userId: '', planName: '', planType: 'Monthly', durationMonths: '1', domainName: '', contentTypes: [] });
       fetchSubs();
     } catch { toast.error('Assignment failed'); }
     finally { setSaving(false); }
@@ -181,10 +191,40 @@ export function SubscriptionListPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Plan Name <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Domain Name <span className="text-red-500">*</span></label>
+                <select value={assignForm.domainName} onChange={e => setAssignForm(f => ({ ...f, domainName: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50 focus:border-blue-500 outline-none">
+                  <option value="">— Choose domain —</option>
+                  <option value="All Domains">All Domains Packages</option>
+                  {DOMAINS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Content Types <span className="text-red-500">*</span></label>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {AVAILABLE_CONTENT_TYPES.map(ct => (
+                    <label key={ct} className="flex items-center gap-2 text-sm text-slate-600">
+                      <input 
+                        type="checkbox" 
+                        checked={assignForm.contentTypes.includes(ct)}
+                        onChange={(e) => {
+                          const newTypes = e.target.checked 
+                            ? [...assignForm.contentTypes, ct]
+                            : assignForm.contentTypes.filter(t => t !== ct);
+                          setAssignForm(f => ({ ...f, contentTypes: newTypes }));
+                        }}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      {ct}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Plan Custom Name (optional)</label>
                 <input type="text" value={assignForm.planName} onChange={e => setAssignForm(f => ({ ...f, planName: e.target.value }))}
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50 focus:border-blue-500 outline-none"
-                  placeholder="e.g. Medical Premium" />
+                  placeholder="e.g. Special Architecture Grant" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

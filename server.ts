@@ -1232,7 +1232,7 @@ async function startServer() {
   app.post("/api/admin/users/:id/assign-subscription", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { planName, planType, durationMonths } = req.body;
+      const { planName, planType, durationMonths, domainName, contentTypes } = req.body;
       const months = parseInt(durationMonths) || 1;
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + months);
@@ -1240,9 +1240,11 @@ async function startServer() {
       const sub = await (prisma as any).subscription.create({
         data: {
           userId: id,
-          planName,
+          planName: planName || domainName || 'Custom Plan',
           planType: planType || 'Custom',
           durationMonths: months,
+          domainName: domainName || null,
+          contentTypes: contentTypes ? JSON.stringify(contentTypes) : "[]",
           startDate: new Date(),
           endDate,
           status: 'Active'
