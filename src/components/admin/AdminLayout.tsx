@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, UserPlus
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -148,6 +148,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             onClick={() => navigate('/admin/users')}
           />
 
+          {/* Create User */}
+          <NavButton
+            icon={<UserPlus size={17} />}
+            label="Create User"
+            active={location.pathname === '/admin/users/create'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/users/create')}
+            highlight
+          />
+
           {/* Subscriptions */}
           <div>
             <button
@@ -241,6 +251,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             {CONTENT_MODULES.find(m => location.pathname.startsWith(`/admin/${m.slug}`))?.name
               || (location.pathname === '/admin/subscription-requests' ? 'Subscription Requests'
               : location.pathname === '/admin/subscriptions' ? 'Subscriptions'
+              : location.pathname === '/admin/users/create' ? 'Create User'
               : location.pathname === '/admin/users' ? 'Users'
               : 'Dashboard')}
           </h1>
@@ -253,14 +264,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   );
 }
 
-function NavButton({ icon, label, active, collapsed, onClick, danger = false }: {
-  icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; onClick: () => void; danger?: boolean;
+function NavButton({ icon, label, active, collapsed, onClick, danger = false, highlight = false }: {
+  icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; onClick: () => void; danger?: boolean; highlight?: boolean;
 }) {
   return (
     <button onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
         active ? 'bg-blue-600 text-white'
         : danger ? 'text-red-400 hover:bg-red-500/10'
+        : highlight ? 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300'
         : 'text-slate-400 hover:bg-white/5 hover:text-white'
       } ${collapsed && 'justify-center'}`}
       title={collapsed ? label : undefined}

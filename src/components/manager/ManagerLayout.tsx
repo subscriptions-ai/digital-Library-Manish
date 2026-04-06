@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, FileText, CreditCard, LogOut, ChevronLeft, Menu, Bell } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, LogOut, ChevronLeft, Menu, Bell, UserPlus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -106,6 +106,13 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
             active={location.pathname.startsWith('/manager/quotations')}
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/manager/quotations')}
+          />
+          <NavButton
+            icon={<UserPlus size={18} />}
+            label="Create User"
+            active={location.pathname === '/manager/users/create'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/manager/users/create')}
           />
         </nav>
 

@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { useAuth } from "./contexts/AuthContext";
+import { ForcePasswordChange } from "./components/ForcePasswordChange";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { Home } from "./components/Home";
@@ -35,6 +37,7 @@ import { SubscriptionRequestsPage } from "./components/admin/subscriptions/Subsc
 import { SubscriptionListPage } from "./components/admin/subscriptions/SubscriptionListPage";
 import { ContentPricingModule } from "./components/admin/ContentPricingModule";
 import { QuotationManager } from "./components/admin/QuotationManager";
+import { UserCreationPanel } from "./components/admin/UserCreationPanel";
 
 const CONTENT_MODULES = [
   { slug: 'books',                  contentType: 'Books'                   },
@@ -66,6 +69,16 @@ import { InstitutionStudentManager } from "./components/institution/InstitutionS
 
 import { ManagerLayout } from "./components/manager/ManagerLayout";
 
+function FirstLoginGate({ children }: { children: React.ReactNode }) {
+  const { profile, loading } = useAuth();
+  const [dismissed, setDismissed] = useState(false);
+  if (loading) return null;
+  if (!dismissed && profile?.isFirstLogin) {
+    return <ForcePasswordChange onComplete={() => setDismissed(true)} />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -73,6 +86,7 @@ export default function App() {
         <CartProvider>
           <Router>
             <ScrollToTop />
+            <FirstLoginGate>
             <div className="flex min-h-screen flex-col font-sans text-slate-900 antialiased">
               <Toaster position="top-right" />
               <Routes>
@@ -138,6 +152,10 @@ export default function App() {
                 <Route path="/manager/requests" element={<ManagerLayout><SubscriptionRequestsPage /></ManagerLayout>} />
                 <Route path="/manager/subscriptions" element={<ManagerLayout><SubscriptionListPage /></ManagerLayout>} />
                 <Route path="/manager/quotations" element={<ManagerLayout><QuotationManager /></ManagerLayout>} />
+                <Route path="/manager/users/create" element={<ManagerLayout><UserCreationPanel /></ManagerLayout>} />
+
+                {/* Admin User Management */}
+                <Route path="/admin/users/create" element={<AdminLayout><UserCreationPanel /></AdminLayout>} />
 
                 
                 {/* Main Layout routes */}
@@ -173,6 +191,7 @@ export default function App() {
               } />
             </Routes>
           </div>
+          </FirstLoginGate>
         </Router>
       </CartProvider>
       </AuthProvider>

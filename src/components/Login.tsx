@@ -42,9 +42,15 @@ export function Login() {
   // Effect to navigate after login
   React.useEffect(() => {
     if (profile) {
-      if (profile.role === 'Admin' || profile.role === 'SuperAdmin') {
+      const role = profile.role;
+      if (role === 'SuperAdmin' || role === 'Admin') {
         navigate('/admin');
+      } else if (role === 'SubscriptionManager') {
+        navigate('/manager');
+      } else if (role === 'Institution') {
+        navigate('/institution');
       } else {
+        // Student, Subscriber, Normal User → shared dashboard
         navigate('/dashboard');
       }
     }

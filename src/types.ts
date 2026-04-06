@@ -19,6 +19,7 @@ export interface UserProfile {
   institutionId?: string;
   subscriptionId?: string;
   organization?: string;
+  isFirstLogin?: boolean;
   status: 'Active' | 'Inactive';
   createdAt: any;
   updatedAt: any;

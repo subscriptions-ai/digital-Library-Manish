@@ -20,7 +20,8 @@ model User {
   role         String         @default("Subscriber")
   status       String         @default("Active")
   isBlocked    Boolean        @default(false)
-  
+  isFirstLogin Boolean        @default(false)
+
   institution  Institution?   @relation(fields: [institutionId], references: [id])
   institutionId String?
   

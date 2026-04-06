@@ -362,28 +362,248 @@ async function startServer() {
     }
   });
 
+  // Self-update: name, password, clears isFirstLogin
   app.put("/api/user/profile", authenticateJWT, async (req: any, res) => {
     try {
-      const { displayName, password } = req.body;
+      const { displayName, password, clearFirstLogin } = req.body;
       const dataToUpdate: any = {};
       if (displayName) dataToUpdate.displayName = displayName;
       if (password) {
-        const bcrypt = require('bcryptjs');
-        dataToUpdate.passwordUrl = await bcrypt.hash(password, 10);
+        dataToUpdate.password = await bcrypt.hash(password, 10);
+      }
+      if (clearFirstLogin || password) {
+        dataToUpdate.isFirstLogin = false;
       }
       const updatedUser = await prisma.user.update({
-        where: { email: req.user.email },
+        where: { id: req.user.uid },
         data: dataToUpdate
       });
-      res.json({ message: "Profile updated successfully", user: { displayName: updatedUser.displayName, email: updatedUser.email } });
+      const { password: _, ...profile } = updatedUser;
+      res.json({ message: "Profile updated successfully", user: profile });
     } catch (error) {
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
 
+  // ======================================================
+  // USER MANAGEMENT — SuperAdmin + SubscriptionManager only
+  // ======================================================
 
-  // ========================
-  // PUBLIC: Content Modules
+  const requireAdminOrManager = (req: any, res: any, next: any) => {
+    const role = req.user?.role;
+    if (role !== 'SuperAdmin' && role !== 'SubscriptionManager') {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+    next();
+  };
+
+  // Helper: generate strong random password
+  const generatePassword = (length = 12): string => {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+    return Array.from(crypto.randomBytes(length))
+      .map(b => chars[b % chars.length])
+      .join('');
+  };
+
+  // Helper: send credentials email
+  const sendCredentialsEmail = async (to: string, name: string, password: string) => {
+    const siteUrl = process.env.SITE_URL || 'https://library.stmjournals.com';
+    try {
+      await transporter.sendMail({
+        from: `"STM Digital Library" <${process.env.EMAIL_USER}>`,
+        to,
+        subject: 'Your Digital Library Access Credentials',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f8fafc; border-radius: 12px;">
+            <div style="background: #1e293b; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 22px;">STM Digital Library</h1>
+              <p style="color: #94a3b8; margin: 8px 0 0;">Academic Access Platform</p>
+            </div>
+            <h2 style="color: #1e293b;">Welcome, ${name}!</h2>
+            <p style="color: #475569;">Your Digital Library account has been created. Here are your access credentials:</p>
+            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #64748b; font-weight: bold; width: 140px;">User ID (Email):</td><td style="padding: 8px 0; color: #0f172a; font-weight: bold;">${to}</td></tr>
+                <tr><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Temporary Password:</td><td style="padding: 8px 0; color: #0f172a; font-family: monospace; letter-spacing: 1px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">${password}</td></tr>
+                <tr><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Login URL:</td><td style="padding: 8px 0;"><a href="${siteUrl}/login" style="color: #2563eb;">${siteUrl}/login</a></td></tr>
+              </table>
+            </div>
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 4px; margin: 16px 0;">
+              <p style="margin: 0; color: #92400e; font-size: 14px;"><strong>Important:</strong> You will be prompted to change your password on first login. Please keep these credentials safe.</p>
+            </div>
+            <p style="color: #64748b; font-size: 13px; margin-top: 24px;">If you did not expect this email, please contact <a href="mailto:subscriptions@stmjournals.com" style="color: #2563eb;">subscriptions@stmjournals.com</a>.</p>
+          </div>
+        `
+      });
+    } catch (emailErr) {
+      console.error("Credentials email failed:", emailErr);
+      // Non-blocking: user is still created
+    }
+  };
+
+  // GET /api/admin/users — list users with optional role filter
+  app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { role: filterRole, search } = req.query;
+      const where: any = {};
+      if (filterRole && filterRole !== 'all') where.role = filterRole;
+      if (search) {
+        where.OR = [
+          { email: { contains: search as string, mode: 'insensitive' } },
+          { displayName: { contains: search as string, mode: 'insensitive' } }
+        ];
+      }
+      const users = await prisma.user.findMany({
+        where,
+        include: {
+          subscriptions: { where: { status: 'Active' }, take: 3 },
+          payments: { orderBy: { createdAt: 'desc' }, take: 3 },
+          institution: true
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      // Strip passwords
+      const sanitized = users.map(({ password: _, ...u }) => u);
+      res.json(sanitized);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // POST /api/admin/users/create — create user + send email
+  app.post("/api/admin/users/create", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { name, email, role, institutionId, sendEmail, customPassword } = req.body;
+
+      if (!name || !email || !role) {
+        return res.status(400).json({ error: "Name, email and role are required" });
+      }
+
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) return res.status(409).json({ error: "A user with this email already exists" });
+
+      // Generate or use provided password
+      const plainPassword = customPassword || generatePassword();
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+      const newUser = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          displayName: name,
+          role,
+          status: 'Active',
+          isFirstLogin: true,
+          ...(institutionId ? { institutionId } : {})
+        }
+      });
+
+      // Log the creation action
+      await prisma.usageLog.create({
+        data: {
+          action: 'USER_CREATED',
+          details: `User ${email} created with role ${role} by ${req.user.email}`,
+          userId: req.user.uid
+        }
+      });
+
+      // Email credentials if requested (default: true)
+      if (sendEmail !== false) {
+        await sendCredentialsEmail(email, name, plainPassword);
+      }
+
+      const { password: _, ...profile } = newUser;
+      res.json({
+        user: profile,
+        credentials: { email, password: plainPassword } // returned once for admin to copy
+      });
+    } catch (err) {
+      console.error("Create user error:", err);
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  // PUT /api/admin/users/:id/role — update role
+  app.put("/api/admin/users/:id/role", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { role } = req.body;
+      const { id } = req.params;
+
+      const allowedRoles = ['SuperAdmin', 'SubscriptionManager', 'Institution', 'Student', 'Subscriber'];
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json({ error: "Invalid role value" });
+      }
+
+      // Only SuperAdmin can create another SuperAdmin
+      if (role === 'SuperAdmin' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
+      }
+
+      const prevUser = await prisma.user.findUnique({ where: { id } });
+      if (!prevUser) return res.status(404).json({ error: "User not found" });
+
+      const updated = await prisma.user.update({ where: { id }, data: { role } });
+
+      // Audit log
+      await prisma.usageLog.create({
+        data: {
+          action: 'ROLE_CHANGE',
+          details: `Role changed from ${prevUser.role} → ${role} for user ${prevUser.email} by ${req.user.email}`,
+          userId: req.user.uid
+        }
+      });
+
+      const { password: _, ...profile } = updated;
+      res.json({ user: profile });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update role" });
+    }
+  });
+
+  // POST /api/admin/users/:id/reset-password — generate + email new password
+  app.post("/api/admin/users/:id/reset-password", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const targetUser = await prisma.user.findUnique({ where: { id } });
+      if (!targetUser) return res.status(404).json({ error: "User not found" });
+
+      const newPlain = generatePassword();
+      const hashed = await bcrypt.hash(newPlain, 10);
+
+      await prisma.user.update({
+        where: { id },
+        data: { password: hashed, isFirstLogin: true }
+      });
+
+      await sendCredentialsEmail(targetUser.email, targetUser.displayName || 'User', newPlain);
+
+      await prisma.usageLog.create({
+        data: {
+          action: 'PASSWORD_RESET',
+          details: `Password reset for ${targetUser.email} by ${req.user.email}`,
+          userId: req.user.uid
+        }
+      });
+
+      res.json({ message: "Password reset and emailed successfully", password: newPlain });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+  // DELETE user (SuperAdmin only)
+  app.delete("/api/admin/users/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      if (id === req.user.uid) return res.status(400).json({ error: "Cannot delete your own account" });
+      await prisma.user.delete({ where: { id } });
+      res.json({ message: "User deleted" });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+
   // ========================
 
   const GST_RATE = 0.18;
