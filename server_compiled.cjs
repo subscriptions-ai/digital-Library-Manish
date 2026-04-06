@@ -669,6 +669,64 @@ async function startServer() {
       res.status(500).json({ error: "Sync failed" });
     }
   });
+  app.get("/api/domain-data", async (req, res) => {
+    try {
+      const domain = req.query.domain;
+      if (!domain) return res.status(400).json({ error: "domain query param required" });
+      const contentGroups = await prisma.content.groupBy({
+        by: ["contentType"],
+        where: { domain, status: "Published" },
+        _count: { id: true },
+        orderBy: { contentType: "asc" }
+      });
+      const content_summary = contentGroups.map((g) => ({
+        type: g.contentType,
+        count: g._count.id
+      }));
+      const modules = await prisma.contentModule.findMany({
+        where: { domain, isActive: true },
+        orderBy: { contentType: "asc" }
+      });
+      const pricing_modules = modules.map((m) => ({
+        id: m.id,
+        type: m.contentType,
+        monthlyPrice: m.monthlyPrice,
+        quarterlyPrice: m.quarterlyPrice,
+        yearlyPrice: m.yearlyPrice,
+        yearlyDiscountPct: m.yearlyDiscountPct,
+        totalCount: m.totalCount,
+        visible: m.isActive
+      }));
+      res.json({ domain, content_summary, pricing_modules });
+    } catch (err) {
+      console.error("GET /api/domain-data error:", err);
+      res.status(500).json({ error: "Failed to fetch domain data" });
+    }
+  });
+  app.post("/api/domain-request", async (req, res) => {
+    try {
+      const { userName, email, organization, domain, selectedModules, planType, totalPrice, notes } = req.body;
+      if (!userName || !email || !domain) {
+        return res.status(400).json({ error: "Name, email and domain are required" });
+      }
+      const planDesc = `Domain Access Request: ${domain} | Plan: ${planType || "Monthly"} | Modules: ${Array.isArray(selectedModules) ? selectedModules.join(", ") : "All"} | Est. Total: \u20B9${totalPrice || 0}${organization ? ` | Org: ${organization}` : ""}`;
+      const request = await prisma.subscriptionRequest.create({
+        data: {
+          userName,
+          email,
+          planType: planType || "Monthly",
+          durationMonths: planType === "Yearly" ? 12 : planType === "Quarterly" ? 3 : 1,
+          planDescription: planDesc,
+          notes: notes || null,
+          status: "Pending"
+        }
+      });
+      res.json({ success: true, requestId: request.id, message: "Your request has been received. We will contact you shortly." });
+    } catch (err) {
+      console.error("POST /api/domain-request error:", err);
+      res.status(500).json({ error: "Failed to submit request" });
+    }
+  });
   app.post("/api/quotations", authenticateJWT, async (req, res) => {
     try {
       const {
