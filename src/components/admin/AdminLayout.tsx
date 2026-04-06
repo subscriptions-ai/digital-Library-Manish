@@ -34,9 +34,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   useEffect(() => {
     if (!loading && profile) {
-      if (profile.role !== 'Admin' && profile.role !== 'SuperAdmin') {
+      if (profile.role !== 'SuperAdmin') {
         toast.error('Unauthorized access');
-        navigate('/dashboard');
+        if (profile.role === 'Institution') navigate('/institution');
+        else if (profile.role === 'SubscriptionManager') navigate('/manager');
+        else navigate('/dashboard');
       } else {
         // fetch pending subscription requests count for badge
         fetch('/api/admin/subscription-requests?status=Pending', {

@@ -8,7 +8,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { Home } from "./components/Home";
-import { DomainPage } from "./components/DomainPage";
+
 import { DigitalLibrary } from "./components/DigitalLibrary";
 import { AboutUs } from "./components/AboutUs";
 import { ContactUs } from "./components/ContactUs";
@@ -17,7 +17,6 @@ import { InstitutionalAccess } from "./components/InstitutionalAccess";
 import { Login } from "./components/Login";
 import { Signup } from "./components/Signup";
 import { JournalDetail } from "./components/JournalDetail";
-import { Dashboard } from "./components/Dashboard";
 import { AgencyListing } from "./components/AgencyListing";
 import { PrivacyPolicy } from "./components/PrivacyPolicy";
 import { TermsAndConditions } from "./components/TermsAndConditions";
@@ -60,6 +59,12 @@ import { FAQ } from "./components/FAQ";
 import { Toaster } from "react-hot-toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ScrollToTop } from "./components/ScrollToTop";
+
+import { InstitutionLayout } from "./components/institution/InstitutionLayout";
+import { InstitutionDashboardHome } from "./components/institution/InstitutionDashboardHome";
+import { InstitutionStudentManager } from "./components/institution/InstitutionStudentManager";
+
+import { ManagerLayout } from "./components/manager/ManagerLayout";
 
 export default function App() {
   return (
@@ -123,6 +128,17 @@ export default function App() {
                 {/* Fallback admin route */}
                 <Route path="/admin/*" element={<AdminLayout><AdminDashboardHome /></AdminLayout>} />
 
+                {/* Institution Routes */}
+                <Route path="/institution" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
+                <Route path="/institution/students" element={<InstitutionLayout><InstitutionStudentManager /></InstitutionLayout>} />
+                <Route path="/institution/analytics" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
+
+                {/* Subscription Manager Routes */}
+                <Route path="/manager" element={<ManagerLayout><AdminDashboardHome /></ManagerLayout>} />
+                <Route path="/manager/requests" element={<ManagerLayout><SubscriptionRequestsPage /></ManagerLayout>} />
+                <Route path="/manager/subscriptions" element={<ManagerLayout><SubscriptionListPage /></ManagerLayout>} />
+                <Route path="/manager/quotations" element={<ManagerLayout><QuotationManager /></ManagerLayout>} />
+
                 
                 {/* Main Layout routes */}
               <Route path="*" element={
@@ -132,7 +148,7 @@ export default function App() {
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/digital-library" element={<DigitalLibrary />} />
-                      <Route path="/domain/:domainId" element={<DomainPage />} />
+
                       <Route path="/journals" element={<DigitalLibrary />} />
                       <Route path="/journal/:journalId" element={<JournalDetail />} />
                       <Route path="/subscriptions" element={<SubscriptionPlans isFullPage={true} showTitle={true} />} />

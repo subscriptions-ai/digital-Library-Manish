@@ -1,11 +1,12 @@
 export type UserRole = 
+  | 'SuperAdmin'
+  | 'Institution'
+  | 'Student'
+  | 'SubscriptionManager'
   | 'Admin' 
-  | 'SubscriptionManager' 
   | 'Subscriber'
-  | 'SuperAdmin' 
   | 'ContentManager' 
   | 'Agency' 
-  | 'Student' 
   | 'College' 
   | 'University' 
   | 'Corporate';
@@ -17,6 +18,7 @@ export interface UserProfile {
   displayName?: string;
   institutionId?: string;
   subscriptionId?: string;
+  organization?: string;
   status: 'Active' | 'Inactive';
   createdAt: any;
   updatedAt: any;

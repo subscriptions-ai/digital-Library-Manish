@@ -20,6 +20,10 @@ model User {
   role         String         @default("Subscriber")
   status       String         @default("Active")
   isBlocked    Boolean        @default(false)
+  
+  institution  Institution?   @relation(fields: [institutionId], references: [id])
+  institutionId String?
+  
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   
@@ -29,6 +33,7 @@ model User {
   submissions           Submission[]
   usageLogs             UsageLog[]
   subscriptionRequests  SubscriptionRequest[]
+  activities            StudentActivity[]
 }
 
 model Payment {
@@ -56,8 +61,15 @@ model Subscription {
   duration       String?  // deprecated label field (kept for compat)
   status         String   @default("Active")   // Active | Expired | Cancelled
   
+  domains        Json?    @default("[]")
+  contentTypes   Json?    @default("[]")
+  allowedContentTypes Json? @default("[]") // Adding for legacy compatibility
+  
   user           User?    @relation(fields: [userId], references: [id])
   userId         String?
+  
+  institution    Institution? @relation(fields: [institutionId], references: [id])
+  institutionId  String?
   
   request        SubscriptionRequest? @relation(fields: [requestId], references: [id])
   requestId      String?  @unique
@@ -174,6 +186,8 @@ model Content {
   
   publishedAt     DateTime @default(now())
   updatedAt       DateTime @updatedAt @default(now())
+  
+  studentActivities StudentActivity[]
 }
 
 model AccessRequest {
@@ -198,4 +212,30 @@ model UsageLog {
   userId        String?
   
   createdAt     DateTime @default(now())
+}
+
+model Institution {
+  id              String   @id @default(uuid())
+  name            String
+  subscriptionId  String?  @unique
+  status          String   @default("Active")
+  
+  users           User[]
+  subscriptions   Subscription[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model StudentActivity {
+  id          String   @id @default(uuid())
+  
+  user        User?    @relation(fields: [userId], references: [id])
+  userId      String?
+  
+  content     Content? @relation(fields: [contentId], references: [id])
+  contentId   String?
+  
+  timeSpent   Int      @default(0)
+  accessedAt  DateTime @default(now())
 }

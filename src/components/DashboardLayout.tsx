@@ -27,15 +27,27 @@ const sidebarItems: SidebarItem[] = [
   { label: 'Overview', icon: LayoutDashboard, path: '/dashboard', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Content Access', icon: BookOpen, path: '/dashboard/access', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
-  { label: 'Invoices & Payments', icon: Receipt, path: '/dashboard/invoices', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  { label: 'Invoices & Payments', icon: Receipt, path: '/dashboard/invoices', roles: ['Subscriber', 'College', 'University', 'Corporate'] },
   { label: 'Profile Settings', icon: Settings, path: '/dashboard/settings', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { profile, logout } = useAuth();
+  const { profile, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!loading && profile) {
+      if (profile.role !== 'Student' && profile.role !== 'Subscriber') {
+        if (profile.role === 'SuperAdmin') navigate('/admin');
+        else if (profile.role === 'Institution') navigate('/institution');
+        else if (profile.role === 'SubscriptionManager') navigate('/manager');
+      }
+    } else if (!loading && !profile) {
+      navigate('/login');
+    }
+  }, [profile, loading, navigate]);
 
   const handleLogout = async () => {
     await logout();

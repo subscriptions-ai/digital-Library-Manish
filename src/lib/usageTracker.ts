@@ -1,5 +1,3 @@
-
-
 import { UserProfile } from '../types';
 
 export async function logUsage(
@@ -10,23 +8,21 @@ export async function logUsage(
   if (!user) return;
 
   try {
-    // 1. Create usage log
-    await Promise.resolve();
-
-    // 2. Update user/institution subscription stats
-    if (user.subscriptionId) {
-      const subRef = doc(db, 'subscriptions', user.subscriptionId);
-      const updateData: any = {};
-      
-      if (action === 'View') {
-        updateData['usageStats.views'] = increment(1);
-      } else if (action === 'Download') {
-        updateData['usageStats.downloads'] = increment(1);
-      }
-
-      await updateDoc(subRef, updateData);
+    if (user.role === 'Student' || user.role === 'Subscriber') {
+      await fetch('/api/student/activity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ 
+          contentId: content.id, 
+          timeSpent: action === 'View' ? 120 : 0 // Arbitrary simple weighting 
+        })
+      });
     }
   } catch (error) {
     console.error('Error logging usage:', error);
   }
 }
+

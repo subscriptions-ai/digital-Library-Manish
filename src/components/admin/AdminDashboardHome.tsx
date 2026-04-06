@@ -94,14 +94,14 @@ export function AdminDashboardHome() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
         {/* Geo Map takes 2 columns (40%) */}
-        <motion.div variants={itemVariants} className="lg:col-span-2">
+        <motion.div variants={itemVariants as any} className="lg:col-span-2">
           <Suspense fallback={<div className="bg-slate-50 animate-pulse border border-slate-100 rounded-3xl h-[400px] w-full" />}>
             <UsersGeoMap stats={stats} />
           </Suspense>
         </motion.div>
 
         {/* Recent Activity takes 3 columns (60%) */}
-        <motion.div variants={itemVariants} className="lg:col-span-3">
+        <motion.div variants={itemVariants as any} className="lg:col-span-3">
           <RecentActivityTable stats={stats} />
         </motion.div>
 

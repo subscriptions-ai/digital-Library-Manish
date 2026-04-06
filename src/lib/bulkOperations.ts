@@ -1,59 +1,31 @@
-import Papa from 'papaparse';
-
-
-import { UserProfile, UserRole } from '../types';
-
-export const bulkImportUsers = async (csvFile: File, institutionId?: string) => {
+export async function processCSV(file: File): Promise<any[]> {
   return new Promise((resolve, reject) => {
-    Papa.parse(csvFile, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        try {
-          const batch = writeBatch(db);
-          const users = results.data as any[];
-
-          for (const user of users) {
-            const userRef = doc(collection(db, 'users'));
-            batch.set(userRef, {
-              email: user.email,
-              displayName: user.name,
-              role: (user.role as UserRole) || 'Student',
-              institutionId: institutionId || user.institutionId || null,
-              status: 'Active',
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
-            });
-          }
-
-          await batch.commit();
-          resolve(users.length);
-        } catch (error) {
-          reject(error);
-        }
-      },
-      error: (error) => reject(error)
-    });
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        const rows = text.split('\n').filter(row => row.trim());
+        const data = rows.map(row => {
+          const [name, email, password] = row.split(',').map(s => s.trim());
+          return { name, email, password };
+        });
+        
+        const response = await fetch('/api/institution/students/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ students: data })
+        });
+        
+        if (!response.ok) throw new Error("Bulk import failed");
+        const result = await response.json();
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.readAsText(file);
   });
-};
-
-export const bulkExportToCSV = (data: any[], filename: string) => {
-  const csv = Papa.unparse(data);
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-export const getBulkUserTemplate = () => {
-  const template = [
-    { name: 'John Doe', email: 'john@example.com', role: 'Student' },
-    { name: 'Jane Smith', email: 'jane@university.edu', role: 'Student' }
-  ];
-  bulkExportToCSV(template, 'user_import_template');
-};
+}
