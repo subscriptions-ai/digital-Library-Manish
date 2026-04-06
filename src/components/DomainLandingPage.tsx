@@ -86,11 +86,11 @@ export function DomainLandingPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const fetchDomainData = useCallback(async () => {
-    if (!domainId) return;
+    if (!domain) return;
     setApiLoading(true);
     setApiError(false);
     try {
-      const res = await fetch(`/api/domain-data?domain=${encodeURIComponent(domainId)}`);
+      const res = await fetch(`/api/domain-data?domain=${encodeURIComponent(domain.name)}`);
       const data = await res.json();
       setDomainData(data);
     } catch {
@@ -98,7 +98,7 @@ export function DomainLandingPage() {
     } finally {
       setApiLoading(false);
     }
-  }, [domainId]);
+  }, [domain]);
 
   useEffect(() => { fetchDomainData(); }, [fetchDomainData]);
 
@@ -132,7 +132,7 @@ export function DomainLandingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userName: form.name, email: form.email,
-          organization: form.organization, domain: domainId,
+          organization: form.organization, domain: domain?.name,
           selectedModules: selected.map((m) => m.type),
           planType: plan, totalPrice: total, notes: form.notes,
         }),
