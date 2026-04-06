@@ -289,19 +289,50 @@ async function startServer() {
       res.status(500).json({ error: "Failed to load subscriptions" });
     }
   });
+  const getUserActiveSubscriptions = async (uid, role, institutionId) => {
+    const OR_clauses = [{ userId: uid }];
+    let resolvedInstId = institutionId;
+    if (!resolvedInstId && (role === "Student" || role === "Subscriber")) {
+      const u = await prisma.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+      if (u?.institutionId) resolvedInstId = u.institutionId;
+    }
+    if (resolvedInstId) {
+      OR_clauses.push({ institutionId: resolvedInstId });
+    }
+    return prisma.subscription.findMany({
+      where: {
+        OR: OR_clauses,
+        status: "Active",
+        endDate: { gt: /* @__PURE__ */ new Date() }
+      }
+    });
+  };
+  const checkContentAccess = (content, userRole, activeSubscriptions) => {
+    if (userRole === "SuperAdmin" || userRole === "Admin" || userRole === "ContentManager") return true;
+    return activeSubscriptions.some((sub) => {
+      let domainMatch = false;
+      if (sub.domainName && sub.domainName === content.domain) domainMatch = true;
+      if (sub.domains) {
+        const d = typeof sub.domains === "string" ? JSON.parse(sub.domains) : sub.domains;
+        if (Array.isArray(d) && d.includes(content.domain)) domainMatch = true;
+      }
+      if (!domainMatch) return false;
+      if (sub.contentTypes) {
+        const ct = typeof sub.contentTypes === "string" ? JSON.parse(sub.contentTypes) : sub.contentTypes;
+        if (Array.isArray(ct) && ct.includes(content.contentType)) return true;
+      }
+      return false;
+    });
+  };
   app.get("/api/user/content-access", authenticateJWT, async (req, res) => {
     try {
-      const activeSubscriptions = await prisma.subscription.findMany({
-        where: { userId: req.user.uid, status: "Active" }
-      });
+      const activeSubscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
       const allModules = await prisma.contentModule.findMany({ where: { isActive: true } });
       const accessMap = allModules.map((mod) => {
-        const hasAccess = activeSubscriptions.some(
-          (sub) => sub.domainName === mod.domain && sub.contentTypes && (typeof sub.contentTypes === "string" ? JSON.parse(sub.contentTypes) : sub.contentTypes).includes(mod.contentType)
-        );
+        const mockContent = { domain: mod.domain, contentType: mod.contentType };
         return {
           ...mod,
-          hasAccess
+          hasAccess: checkContentAccess(mockContent, req.user.role, activeSubscriptions)
         };
       });
       const grouped = accessMap.reduce((acc, curr) => {
@@ -312,6 +343,73 @@ async function startServer() {
       res.json(grouped);
     } catch (error) {
       res.status(500).json({ error: "Failed to load access map" });
+    }
+  });
+  app.get("/api/content/list", async (req, res) => {
+    try {
+      const { domain } = req.query;
+      const authHeader = req.headers.authorization;
+      let userDetails = null;
+      if (authHeader) {
+        const token = authHeader.split(" ")[1];
+        try {
+          userDetails = import_jsonwebtoken.default.verify(token, JWT_SECRET);
+        } catch (e) {
+        }
+      }
+      const contents = await prisma.content.findMany({
+        where: domain ? { domain: String(domain) } : {},
+        orderBy: { title: "asc" }
+      });
+      if (!userDetails) {
+        return res.json(contents.map((c) => ({ ...c, locked: true, fileUrl: null })));
+      }
+      const activeSubs = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
+      const protectedContents = contents.map((c) => {
+        const hasAccess = checkContentAccess(c, userDetails.role, activeSubs);
+        if (!hasAccess) {
+          return { ...c, fileUrl: null, locked: true };
+        }
+        return { ...c, locked: false };
+      });
+      res.json(protectedContents);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load content list" });
+    }
+  });
+  app.get("/api/content/:id/view", authenticateJWT, async (req, res) => {
+    try {
+      const contentId = req.params.id;
+      const content = await prisma.content.findUnique({ where: { id: contentId } });
+      if (!content) {
+        return res.status(404).json({ error: "Content not found" });
+      }
+      const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
+      }
+      if (req.user.role === "Student" || req.user.role === "Subscriber") {
+        try {
+          await prisma.studentActivity.create({
+            data: {
+              userId: req.user.uid,
+              contentId: content.id,
+              timeSpent: 0
+              // initial open trigger, timeSpent updated async later
+            }
+          });
+        } catch (e) {
+          console.error("Activity log failed", e);
+        }
+      }
+      return res.json({
+        url: content.fileUrl,
+        title: content.title,
+        contentType: content.contentType
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to view content" });
     }
   });
   app.get("/api/user/invoices", authenticateJWT, async (req, res) => {

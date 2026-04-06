@@ -58,6 +58,8 @@ import { MyContentAccess } from "./components/dashboard/MyContentAccess";
 import { MySubscriptions } from "./components/dashboard/MySubscriptions";
 import { InvoicesPayments } from "./components/dashboard/InvoicesPayments";
 import { ProfileSettings } from "./components/dashboard/ProfileSettings";
+import { MyContentLibrary } from "./components/dashboard/MyContentLibrary";
+import { ProtectedContentViewer } from "./components/dashboard/ProtectedContentViewer";
 import { FAQ } from "./components/FAQ";
 import { DomainLandingPage } from "./components/DomainLandingPage";
 import { Toaster } from "react-hot-toast";
@@ -95,6 +97,8 @@ export default function App() {
                 {/* Subscriber Dashboard routes with DashboardLayout */}
                 <Route path="/dashboard" element={<DashboardLayout><SubscriberOverview /></DashboardLayout>} />
                 <Route path="/dashboard/access" element={<DashboardLayout><MyContentAccess /></DashboardLayout>} />
+                <Route path="/dashboard/library" element={<DashboardLayout><MyContentLibrary /></DashboardLayout>} />
+                <Route path="/dashboard/viewer/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
                 <Route path="/dashboard/subscriptions" element={<DashboardLayout><MySubscriptions /></DashboardLayout>} />
                 <Route path="/dashboard/invoices" element={<DashboardLayout><InvoicesPayments /></DashboardLayout>} />
                 <Route path="/dashboard/settings" element={<DashboardLayout><ProfileSettings /></DashboardLayout>} />

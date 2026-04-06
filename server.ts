@@ -313,27 +313,67 @@ async function startServer() {
     }
   });
 
+  // Helper to fetch valid subscriptions considering Institution inheritance
+  const getUserActiveSubscriptions = async (uid: string, role: string, institutionId?: string | null) => {
+    const OR_clauses: any[] = [{ userId: uid }];
+    
+    let resolvedInstId = institutionId;
+    if (!resolvedInstId && (role === 'Student' || role === 'Subscriber')) {
+      const u = await prisma.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+      if (u?.institutionId) resolvedInstId = u.institutionId;
+    }
+    
+    if (resolvedInstId) {
+      OR_clauses.push({ institutionId: resolvedInstId });
+    }
+    
+    return prisma.subscription.findMany({
+      where: {
+        OR: OR_clauses,
+        status: 'Active',
+        endDate: { gt: new Date() }
+      }
+    });
+  };
+
+  // Helper to check if a specific content object is accessible based on subscriptions
+  const checkContentAccess = (content: any, userRole: string, activeSubscriptions: any[]) => {
+    if (userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'ContentManager') return true;
+    
+    return activeSubscriptions.some(sub => {
+      // match domain
+      let domainMatch = false;
+      if (sub.domainName && sub.domainName === content.domain) domainMatch = true;
+      if (sub.domains) {
+        const d = typeof sub.domains === 'string' ? JSON.parse(sub.domains) : sub.domains;
+        if (Array.isArray(d) && d.includes(content.domain)) domainMatch = true;
+      }
+      if (!domainMatch) return false;
+      
+      // match contentType
+      if (sub.contentTypes) {
+        const ct = typeof sub.contentTypes === 'string' ? JSON.parse(sub.contentTypes) : sub.contentTypes;
+        if (Array.isArray(ct) && ct.includes(content.contentType)) return true;
+      }
+      return false;
+    });
+  };
+
   app.get("/api/user/content-access", authenticateJWT, async (req: any, res) => {
     try {
-      // 1. Get all active subscriptions for the user
-      const activeSubscriptions = await prisma.subscription.findMany({
-        where: { userId: req.user.uid, status: 'Active' }
-      });
+      // 1. Get all active subscriptions for the user (including institution inheritance)
+      const activeSubscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
 
       // 2. Fetch all available content modules globally 
       const allModules = await prisma.contentModule.findMany({ where: { isActive: true } });
 
       // 3. Map status for each module to "locked" vs "unlocked"
       const accessMap = allModules.map(mod => {
-        // Did they subscribe to this domain, and does it include this content type?
-        const hasAccess = activeSubscriptions.some(sub => 
-          sub.domainName === mod.domain && 
-          sub.contentTypes && 
-          (typeof sub.contentTypes === 'string' ? JSON.parse(sub.contentTypes) : sub.contentTypes).includes(mod.contentType)
-        );
+        // Construct a mock content object to reuse the checker
+        const mockContent = { domain: mod.domain, contentType: mod.contentType };
         return {
           ...mod,
-          hasAccess
+          hasAccess: checkContentAccess(mockContent, req.user.role, activeSubscriptions)
         };
       });
 
@@ -347,6 +387,92 @@ async function startServer() {
       res.json(grouped);
     } catch (error) {
       res.status(500).json({ error: "Failed to load access map" });
+    }
+  });
+
+  // GET /api/content/list - Lists all actual content items, with locked flags for regular users
+  app.get("/api/content/list", async (req: any, res) => {
+    try {
+      const { domain } = req.query;
+      
+      // We don't mandate JWT here, but if they have it, we authorize them
+      const authHeader = req.headers.authorization;
+      let userDetails = null;
+      if (authHeader) {
+        const token = authHeader.split(' ')[1];
+        try {
+          userDetails = jwt.verify(token, JWT_SECRET) as any;
+        } catch(e) {}
+      }
+
+      const contents = await prisma.content.findMany({
+        where: domain ? { domain: String(domain) } : {},
+        orderBy: { title: 'asc' }
+      });
+
+      if (!userDetails) {
+        // Unauthenticated users see everything as locked
+        return res.json(contents.map(c => ({ ...c, locked: true, fileUrl: null })));
+      }
+
+      // Fetch subscriptions once for this user
+      const activeSubs = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
+
+      // Map contents and strip URLs for locked items
+      const protectedContents = contents.map(c => {
+        const hasAccess = checkContentAccess(c, userDetails.role, activeSubs);
+        if (!hasAccess) {
+          // Hide sensitive URL and mark locked
+          return { ...c, fileUrl: null, locked: true };
+        }
+        return { ...c, locked: false };
+      });
+
+      res.json(protectedContents);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load content list" });
+    }
+  });
+
+  // GET /api/content/:id/view - Protected endpoint to securely view content and auto-track activity
+  app.get("/api/content/:id/view", authenticateJWT, async (req: any, res) => {
+    try {
+      const contentId = req.params.id;
+      const content = await prisma.content.findUnique({ where: { id: contentId } });
+      
+      if (!content) {
+        return res.status(404).json({ error: "Content not found" });
+      }
+
+      const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
+      }
+
+      // Log activity automatically
+      if (req.user.role === 'Student' || req.user.role === 'Subscriber') {
+        try {
+          await (prisma as any).studentActivity.create({
+            data: {
+              userId: req.user.uid,
+              contentId: content.id,
+              timeSpent: 0 // initial open trigger, timeSpent updated async later
+            }
+          });
+        } catch(e) { console.error("Activity log failed", e); }
+      }
+
+      // Return the secure file URL (or binary in a real PDF streaming setup)
+      return res.json({ 
+        url: content.fileUrl,
+        title: content.title,
+        contentType: content.contentType 
+      });
+      
+    } catch (error) {
+      res.status(500).json({ error: "Failed to view content" });
     }
   });
 

@@ -113,7 +113,10 @@ export function MyContentAccess() {
                       </div>
                       
                       {mod.hasAccess && (
-                        <button className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all hidden sm:flex items-center gap-2 text-xs font-bold font-mono">
+                        <button 
+                          onClick={() => window.location.href = `/dashboard/library?domain=${encodeURIComponent(domain)}&type=${encodeURIComponent(mod.contentType)}`}
+                          className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all hidden sm:flex items-center gap-2 text-xs font-bold font-mono"
+                        >
                           View <ArrowRight size={14} />
                         </button>
                       )}
