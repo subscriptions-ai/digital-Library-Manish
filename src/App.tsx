@@ -59,6 +59,7 @@ import { MySubscriptions } from "./components/dashboard/MySubscriptions";
 import { InvoicesPayments } from "./components/dashboard/InvoicesPayments";
 import { ProfileSettings } from "./components/dashboard/ProfileSettings";
 import { FAQ } from "./components/FAQ";
+import { DomainLandingPage } from "./components/DomainLandingPage";
 import { Toaster } from "react-hot-toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -186,6 +187,7 @@ export default function App() {
                       <Route path="/checkout" element={<Checkout />} />
                       <Route path="/create-quotation" element={<QuotationWizard />} />
                       <Route path="/quotation-preview" element={<QuotationPreview />} />
+                      <Route path="/domain/:domainId" element={<DomainLandingPage />} />
                       <Route path="*" element={<Home />} />
                     </Routes>
                   </main>
