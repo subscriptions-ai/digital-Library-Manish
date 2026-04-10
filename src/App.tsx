@@ -53,7 +53,7 @@ const CONTENT_MODULES = [
 import { CartProvider } from "./contexts/CartContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { DashboardLayout } from "./components/DashboardLayout";
-import { SubscriberOverview } from "./components/dashboard/SubscriberOverview";
+import { LMSDashboard } from "./components/dashboard/LMSDashboard";
 import { MyContentAccess } from "./components/dashboard/MyContentAccess";
 import { MySubscriptions } from "./components/dashboard/MySubscriptions";
 import { InvoicesPayments } from "./components/dashboard/InvoicesPayments";
@@ -95,7 +95,8 @@ export default function App() {
               <Toaster position="top-right" />
               <Routes>
                 {/* Subscriber Dashboard routes with DashboardLayout */}
-                <Route path="/dashboard" element={<DashboardLayout><SubscriberOverview /></DashboardLayout>} />
+                <Route path="/dashboard" element={<DashboardLayout><LMSDashboard /></DashboardLayout>} />
+                <Route path="/dashboard/content/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
                 <Route path="/dashboard/access" element={<DashboardLayout><MyContentAccess /></DashboardLayout>} />
                 <Route path="/dashboard/library" element={<DashboardLayout><MyContentLibrary /></DashboardLayout>} />
                 <Route path="/dashboard/viewer/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
