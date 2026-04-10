@@ -1211,6 +1211,33 @@ async function startServer() {
     }
   });
 
+  // POST /api/admin/content/bulk-action
+  app.post("/api/admin/content/bulk-action", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { action, contentIds } = req.body;
+      if (!action || !Array.isArray(contentIds) || contentIds.length === 0) {
+        return res.status(400).json({ error: "Invalid payload. Expected action and contentIds array." });
+      }
+
+      if (action === 'Delete') {
+        await prisma.content.deleteMany({ where: { id: { in: contentIds } } });
+      } else if (action === 'Publish' || action === 'Draft') {
+        const statusVal = action === 'Publish' ? 'Published' : 'Draft';
+        await prisma.content.updateMany({
+          where: { id: { in: contentIds } },
+          data: { status: statusVal }
+        });
+      } else {
+        return res.status(400).json({ error: "Unknown action" });
+      }
+
+      res.json({ success: true, message: `Successfully applied ${action} to ${contentIds.length} items.` });
+    } catch (err: any) {
+      console.error("Bulk Action Error:", err);
+      res.status(500).json({ error: err.message || "Failed to process bulk action" });
+    }
+  });
+
   // Admin: User Management
   app.get("/api/admin/users", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {

@@ -13,6 +13,7 @@ interface ContentListViewProps {
 export function ContentListView({ contentType }: ContentListViewProps) {
   const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -47,6 +48,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
       const { data, total } = await res.json();
       setItems(data);
       setTotal(total);
+      setSelectedItems([]);
     } catch {
       toast.error('Failed to load content');
     } finally {
@@ -82,6 +84,33 @@ export function ContentListView({ contentType }: ContentListViewProps) {
       fetchItems();
     } catch {
       toast.error('Status update failed');
+    }
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) setSelectedItems(items.map(i => i.id));
+    else setSelectedItems([]);
+  };
+
+  const handleSelectItem = (id: string) => {
+    setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleBulkAction = async (action: 'Publish' | 'Draft' | 'Delete') => {
+    if (!confirm(`Are you sure you want to ${action} ${selectedItems.length} items?`)) return;
+    try {
+      const res = await fetch('/api/admin/content/bulk-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ action, contentIds: selectedItems })
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error);
+      toast.success(result.message);
+      setSelectedItems([]);
+      fetchItems();
+    } catch (err: any) {
+      toast.error(err.message || 'Bulk action failed');
     }
   };
 
@@ -130,11 +159,28 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         </button>
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedItems.length > 0 && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl text-sm font-medium animate-in fade-in slide-in-from-top-2">
+          <span className="font-bold">{selectedItems.length} selected</span>
+          <div className="h-4 w-px bg-blue-200 mx-1 border-hidden" />
+          <button onClick={() => handleBulkAction('Publish')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">Publish</button>
+          <button onClick={() => handleBulkAction('Draft')} className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">Draft</button>
+          <div className="flex-1" />
+          <button onClick={() => handleBulkAction('Delete')} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold font-bold flex items-center gap-1.5 transition-colors">
+            <Trash2 size={13} /> Delete All
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-sm text-left">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="px-5 py-3 w-12 text-center border-r border-slate-100">
+                <input type="checkbox" onChange={handleSelectAll} checked={items.length > 0 && selectedItems.length === items.length} className="rounded text-blue-600 w-4 h-4 cursor-pointer" />
+              </th>
               <th className="px-5 py-3 font-semibold text-slate-600 w-2/5">Title & Author</th>
               <th className="px-5 py-3 font-semibold text-slate-600">Domain</th>
               <th className="px-5 py-3 font-semibold text-slate-600">Access</th>
@@ -145,18 +191,21 @@ export function ContentListView({ contentType }: ContentListViewProps) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
-              <tr><td colSpan={6} className="py-16 text-center text-slate-400">
+              <tr><td colSpan={7} className="py-16 text-center text-slate-400">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                   Loading...
                 </div>
               </td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={6} className="py-16 text-center text-slate-400">
+              <tr><td colSpan={7} className="py-16 text-center text-slate-400">
                 No {contentType} found. Add some using the button above.
               </td></tr>
             ) : items.map(item => (
-              <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+              <tr key={item.id} className={`transition-colors ${selectedItems.includes(item.id) ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}>
+                <td className="px-5 py-3 text-center border-r border-slate-50">
+                  <input type="checkbox" checked={selectedItems.includes(item.id)} onChange={() => handleSelectItem(item.id)} className="rounded text-blue-600 w-4 h-4 cursor-pointer" />
+                </td>
                 <td className="px-5 py-3">
                   <div className="font-semibold text-slate-900 line-clamp-1">{item.title}</div>
                   <div className="text-xs text-slate-500 mt-0.5">{item.authors}</div>
