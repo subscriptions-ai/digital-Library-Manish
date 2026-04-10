@@ -1190,7 +1190,7 @@ async function startServer() {
               subjectArea: item.subjectArea,
               fileUrl: item.fileUrl,
               thumbnailUrl: item.thumbnailUrl,
-              tags: item.tags ? (typeof item.tags === "string" ? JSON.parse(item.tags) : item.tags) : [],
+              tags: item.tags ? (typeof item.tags === "string" ? (item.tags.startsWith('[') ? JSON.parse(item.tags) : item.tags.split(',').map((t: string) => t.trim())) : item.tags) : [],
               price: parseFloat(item.price) || 0,
               accessType: item.accessType || "Subscription",
               status: item.status || "Published",
