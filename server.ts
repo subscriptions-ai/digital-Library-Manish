@@ -276,13 +276,23 @@ async function startServer() {
 
   app.get("/api/user/dashboard", authenticateJWT, async (req: any, res) => {
     try {
-      const [subscriptions, payments] = await Promise.all([
-        prisma.subscription.findMany({ where: { userId: req.user.uid } }),
-        prisma.payment.findMany({ where: { userId: req.user.uid, status: 'Success' } }),
-      ]);
-      const recentViews = [{ id: 1, title: 'Introduction to Anatomy', type: 'Educational Videos', date: new Date().toISOString() }];
+      const subscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      const payments = await prisma.payment.findMany({ where: { userId: req.user.uid, status: 'Success' } });
+      const recentViews = await prisma.studentActivity.findMany({
+        where: { userId: req.user.uid },
+        orderBy: { accessedAt: 'desc' },
+        take: 6,
+        include: { content: true }
+      });
 
-      const activeSubs = subscriptions.filter(s => s.status === 'Active');
+      const mappedRecent = recentViews.map(rv => ({
+        id: rv.contentId,
+        title: rv.content?.title || "Unknown",
+        type: rv.content?.contentType || "Book",
+        date: rv.accessedAt.toISOString()
+      }));
+
+      const activeSubs = subscriptions;
       const nearestExpiry = activeSubs.sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())[0]?.endDate || null;
       const totalSpent = payments.reduce((acc, p) => acc + p.amount, 0);
 
@@ -294,7 +304,7 @@ async function startServer() {
         nearestExpiry,
         totalSpent,
         allowedDomains,
-        recentActivity: recentViews
+        recentActivity: mappedRecent
       });
     } catch (error) {
       console.error("User dashboard error:", error);
@@ -1238,21 +1248,7 @@ async function startServer() {
     }
   });
 
-  // Admin: User Management
-  app.get("/api/admin/users", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
-    try {
-      const users = await prisma.user.findMany({
-        orderBy: { createdAt: 'desc' },
-        include: {
-          subscriptions: true,
-          payments: true
-        }
-      });
-      res.json(users);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch users" });
-    }
-  });
+  // Removed duplicate GET /api/admin/users
 
   app.post("/api/admin/users/:id/block", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
@@ -1269,30 +1265,76 @@ async function startServer() {
   });
 
   // Admin: Assign subscription manually to user
-  app.post("/api/admin/users/:id/assign-subscription", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  // Mass Assign Subscription (Bundles or Custom)
+  app.post("/api/admin/subscriptions/assign", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
-      const { id } = req.params;
-      const { planName, planType, durationMonths, domainName, contentTypes } = req.body;
-      const months = parseInt(durationMonths) || 1;
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + months);
+      const { userIds, bundleId, planType, durationMonths, domains: inputDomains, contentTypes: inputContentTypes } = req.body;
+      
+      let finalDomains: string[] = [];
+      let finalContentTypes: string[] = [];
+      let finalPlanName = "Custom Plan";
+      
+      if (bundleId) {
+        // Fetch bundle specifics
+        const bundle = await prisma.bundle.findUnique({ where: { id: bundleId } });
+        if (!bundle) return res.status(404).json({ error: "Bundle not found" });
+        finalDomains = Array.isArray(bundle.domains) ? bundle.domains as string[] : [];
+        finalContentTypes = Array.isArray(bundle.contentTypes) ? bundle.contentTypes as string[] : [];
+        finalPlanName = bundle.name;
+      } else {
+        // Quick Assign Custom
+        finalDomains = Array.isArray(inputDomains) ? inputDomains : [inputDomains].filter(Boolean);
+        finalContentTypes = Array.isArray(inputContentTypes) ? inputContentTypes : [inputContentTypes].filter(Boolean);
+        if (finalDomains.length === 1) finalPlanName = `${finalDomains[0]} Plan`;
+        else if (finalDomains.length > 1) finalPlanName = "Multi-Domain Plan";
+      }
 
-      const sub = await (prisma as any).subscription.create({
-        data: {
-          userId: id,
-          planName: planName || domainName || 'Custom Plan',
-          planType: planType || 'Custom',
-          durationMonths: months,
-          domainName: domainName || null,
-          contentTypes: contentTypes ? JSON.stringify(contentTypes) : "[]",
-          startDate: new Date(),
-          endDate,
-          status: 'Active'
+      if (!finalDomains.length || !finalContentTypes.length) {
+        return res.status(400).json({ error: "At least one Domain and one Content Type must be provided or derived from a bundle." });
+      }
+
+      let dMonths = parseInt(durationMonths);
+      if (isNaN(dMonths)) dMonths = 1;
+      const startDate = new Date();
+      const endDate = new Date(startDate.getTime());
+      endDate.setMonth(endDate.getMonth() + dMonths);
+
+      const createdSubs: any[] = [];
+      
+      const targets = Array.isArray(userIds) ? userIds : [userIds].filter(Boolean);
+      if (targets.length === 0) return res.status(400).json({ error: "No users selected" });
+
+      for (const userId of targets) {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        const isInst = user?.role === 'Institution';
+        let assignedInstitutionId = null;
+        
+        if (isInst) {
+           const inst = await prisma.institution.findFirst({ where: { subscriptionId: userId } });
+           if (inst) assignedInstitutionId = inst.id;
         }
-      });
-      res.json(sub);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to assign subscription" });
+
+        const sub = await prisma.subscription.create({
+          data: {
+            userId: isInst ? null : userId,
+            institutionId: assignedInstitutionId,
+            planName: finalPlanName,
+            planType: planType || "Custom",
+            durationMonths: dMonths,
+            domains: finalDomains,
+            contentTypes: finalContentTypes,
+            startDate,
+            endDate,
+            status: "Active"
+          }
+        });
+        createdSubs.push(sub);
+      }
+
+      res.json({ success: true, subscriptions: createdSubs });
+    } catch (error: any) {
+      console.error("Assign subscription error:", error);
+      res.status(500).json({ error: error.message || "Failed to assign subscription" });
     }
   });
 

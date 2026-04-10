@@ -240,3 +240,17 @@ model StudentActivity {
   timeSpent   Int      @default(0)
   accessedAt  DateTime @default(now())
 }
+
+model Bundle {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  description     String?
+  domains         Json     @default("[]")
+  contentTypes    Json     @default("[]")
+  price           Float    @default(0.0)
+  durationMonths  Int      @default(1)
+  status          String   @default("Active")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
