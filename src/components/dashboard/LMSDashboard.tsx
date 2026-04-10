@@ -153,6 +153,7 @@ export function LMSDashboard() {
   const [domainFilter, setDomainFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'grouped'>('grouped');
+  const [showLocked, setShowLocked] = useState(false);
 
   // dark mode
   const [dark, setDark] = useState(() => localStorage.getItem('lms-dark') === '1');
@@ -201,8 +202,11 @@ export function LMSDashboard() {
     navigate(`/dashboard/content/${item.id}`);
   };
 
+  // Filter content based on showLocked toggle
+  const displayContent = showLocked ? content : content.filter(c => !c.locked);
+
   // Group content by domain
-  const grouped = content.reduce<Record<string, ContentItem[]>>((acc, c) => {
+  const grouped = displayContent.reduce<Record<string, ContentItem[]>>((acc, c) => {
     const domain = c.domain || 'General';
     if (!acc[domain]) acc[domain] = [];
     acc[domain].push(c);
@@ -344,6 +348,21 @@ export function LMSDashboard() {
               Grid
             </button>
           </div>
+          {/* Toggle Locked */}
+          {lockedCount > 0 && (
+            <button 
+              onClick={() => setShowLocked(!showLocked)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border
+                ${showLocked 
+                  ? 'bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400' 
+                  : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400 hover:border-blue-300'
+                }`}
+            >
+              {showLocked ? <Eye size={14} /> : <Lock size={14} />}
+              {showLocked ? 'Hide Locked' : 'Show All'}
+            </button>
+          )}
+
           {/* Refresh */}
           <button onClick={fetchContent} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors">
             <RefreshCw size={16} className={loadingContent ? 'animate-spin' : ''} />
@@ -392,7 +411,7 @@ export function LMSDashboard() {
           // Flat grid
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <AnimatePresence>
-              {content.map(item => <ContentCard key={item.id} item={item} onOpen={handleOpen} />)}
+              {displayContent.map(item => <ContentCard key={item.id} item={item} onOpen={handleOpen} />)}
             </AnimatePresence>
           </div>
         )}
