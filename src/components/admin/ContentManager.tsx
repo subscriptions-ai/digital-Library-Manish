@@ -3,7 +3,7 @@ import { Search, Filter, Plus, Edit, Trash2, Eye, ExternalLink } from 'lucide-re
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
-const DOMAINS = ['Medical', 'Engineering', 'Pharmacy', 'Nursing', 'Management', 'Arts & Humanities', 'Law', 'Others'];
+import { DOMAINS } from '../../constants';
 const CONTENT_TYPES = ['Books', 'Periodicals', 'Magazines', 'Case Reports', 'Theses', 'Conference Proceedings', 'Educational Videos', 'Newsletters'];
 
 export function ContentManager() {
@@ -102,7 +102,7 @@ export function ContentManager() {
               className="appearance-none bg-white border border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-700 min-w-32"
             >
               <option value="">All Domains</option>
-              {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+              {DOMAINS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
             </select>
             <Filter size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>

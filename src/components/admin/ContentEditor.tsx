@@ -3,8 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Save, ArrowLeft, UploadCloud } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-const DOMAINS = ['Medical', 'Engineering', 'Pharmacy', 'Nursing', 'Management', 'Arts & Humanities', 'Law', 'Others'];
-const CONTENT_TYPES = ['Books', 'Periodicals', 'Magazines', 'Case Reports', 'Theses', 'Conference Proceedings', 'Educational Videos', 'Newsletters'];
+import { DOMAINS, CONTENT_TYPES } from '../../constants';
 
 export function ContentEditor() {
   const { id } = useParams();
@@ -18,8 +17,8 @@ export function ContentEditor() {
     title: '',
     description: '',
     authors: '',
-    domain: DOMAINS[0],
-    contentType: CONTENT_TYPES[0],
+    domain: DOMAINS[0]?.name || '',
+    contentType: CONTENT_TYPES[0]?.name || '',
     subjectArea: 'General',
     fileUrl: '',
     thumbnailUrl: '',
@@ -47,8 +46,8 @@ export function ContentEditor() {
             title: item.title || '',
             description: item.description || '',
             authors: item.authors || '',
-            domain: item.domain || DOMAINS[0],
-            contentType: item.contentType || CONTENT_TYPES[0],
+            domain: item.domain || DOMAINS[0]?.name || '',
+            contentType: item.contentType || CONTENT_TYPES[0]?.name || '',
             subjectArea: item.subjectArea || 'General',
             fileUrl: item.fileUrl || '',
             thumbnailUrl: item.thumbnailUrl || '',
@@ -198,7 +197,7 @@ export function ContentEditor() {
                   name="domain" value={formData.domain} onChange={handleChange}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                 >
-                  {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+                  {DOMAINS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                 </select>
               </div>
               <div>
@@ -207,7 +206,7 @@ export function ContentEditor() {
                   name="contentType" value={formData.contentType} onChange={handleChange}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                 >
-                  {CONTENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {CONTENT_TYPES.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                 </select>
               </div>
               <div>

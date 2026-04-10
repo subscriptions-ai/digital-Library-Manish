@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
-const DOMAINS = ['Medical', 'Engineering', 'Pharmacy', 'Nursing', 'Management', 'Arts & Humanities', 'Law', 'Others'];
+import { DOMAINS } from '../../../constants';
 
 interface ContentListViewProps {
   contentType: string;
@@ -136,7 +136,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
               className="appearance-none pl-3 pr-8 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:border-blue-500"
             >
               <option value="">All Domains</option>
-              {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+              {DOMAINS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
             </select>
             <Filter size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
