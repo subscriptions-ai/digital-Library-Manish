@@ -32,7 +32,8 @@ async function startServer() {
     contentSecurityPolicy: false, // Disable CSP if it interferes with Vite/External resources, or configure properly
   }));
   app.use(compression());
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   const JWT_SECRET = process.env.JWT_SECRET || "your-fallback-secret-for-dev-only";
 
@@ -630,6 +631,18 @@ async function startServer() {
       const plainPassword = customPassword || generatePassword();
       const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
+      // Create new Institution object in DB if role is Institution
+      let newInstId = null;
+      if (role === 'Institution') {
+         const newInst = await (prisma as any).institution.create({
+            data: {
+               name: institutionName,
+               status: 'Active'
+            }
+         });
+         newInstId = newInst.id;
+      }
+
       const newUser = await prisma.user.create({
         data: {
           email,
@@ -638,8 +651,8 @@ async function startServer() {
           role,
           status: 'Active',
           isFirstLogin: true,
-          // Store institution name in the organization column
-          ...(institutionName ? { organization: institutionName } : {}),
+          organization: institutionName || undefined,
+          institutionId: newInstId || institutionId || undefined
         }
       });
 
@@ -1857,9 +1870,18 @@ async function startServer() {
   app.get("/api/institution/students", authenticateJWT, async (req: any, res) => {
     try {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });
-      const targetInstitutionId = req.user.role === 'Institution' ? req.user.uid : req.query.institutionId;
+      
+      let targetInstitutionId = req.query.institutionId;
+      if (req.user.role === 'Institution') {
+         const authUser = await (prisma as any).user.findUnique({ where: { id: req.user.uid } });
+         targetInstitutionId = authUser?.institutionId;
+      }
 
-      const students = await prisma.user.findMany({
+      if (!targetInstitutionId) {
+        return res.json([]);
+      }
+
+      const students = await (prisma as any).user.findMany({
         where: { institutionId: targetInstitutionId, role: 'Student' },
         include: { subscriptions: true, activities: { include: { content: true } } },
         orderBy: { createdAt: 'desc' }
@@ -1885,21 +1907,24 @@ async function startServer() {
 
       const hashed = await bcrypt.hash(password, 10);
 
-      // Carry the institution's name into the student's organization field
+      // Carry the institution's name and properly link relational institutionId
       let institutionName = '';
+      let targetInstitutionId = undefined;
+      
       if (req.user.role === 'Institution') {
-        const institutionUser = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { organization: true } });
+        const institutionUser = await (prisma as any).user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
         institutionName = institutionUser?.organization || '';
+        targetInstitutionId = institutionUser?.institutionId;
       }
 
-      const student = await prisma.user.create({
+      const student = await (prisma as any).user.create({
         data: {
           email,
           password: hashed,
           displayName: name,
           role: 'Student',
-          status: 'Active',
-          ...(institutionName ? { organization: institutionName } : {}),
+          organization: institutionName,
+          institutionId: targetInstitutionId
         }
       });
       const { password: _, ...safe } = student;

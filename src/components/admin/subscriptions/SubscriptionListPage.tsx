@@ -56,7 +56,8 @@ export function SubscriptionListPage() {
   };
 
   const handleAssign = async () => {
-    if (!assignForm.userId || !assignForm.planName) { toast.error('User and Plan Name required'); return; }
+    if (!assignForm.userId) { toast.error('User is required'); return; }
+    if (!assignForm.planName && !assignForm.domainName) { toast.error('Domain Name or Plan Custom Name required'); return; }
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/users/${assignForm.userId}/assign-subscription`, {
@@ -187,7 +188,7 @@ export function SubscriptionListPage() {
                 <select value={assignForm.userId} onChange={e => setAssignForm(f => ({ ...f, userId: e.target.value }))}
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50 focus:border-blue-500 outline-none">
                   <option value="">— Choose user —</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.displayName || u.email}</option>)}
+                  {users.map(u => <option key={u.id} value={u.id}>{u.displayName || 'No Name'} | {u.role} ({u.email})</option>)}
                 </select>
               </div>
               <div>
@@ -229,9 +230,14 @@ export function SubscriptionListPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Plan Type</label>
-                  <select value={assignForm.planType} onChange={e => setAssignForm(f => ({ ...f, planType: e.target.value }))}
+                  <select value={assignForm.planType} onChange={e => {
+                      const val = e.target.value;
+                      const months = val === 'Yearly' ? '12' : val === 'Quarterly' ? '3' : '1';
+                      setAssignForm(f => ({ ...f, planType: val, durationMonths: months }));
+                    }}
                     className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50 focus:border-blue-500 outline-none">
                     <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
                     <option value="Yearly">Yearly</option>
                     <option value="Custom">Custom</option>
                   </select>

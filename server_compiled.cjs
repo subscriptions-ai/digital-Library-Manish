@@ -49,7 +49,8 @@ async function startServer() {
     // Disable CSP if it interferes with Vite/External resources, or configure properly
   }));
   app.use((0, import_compression.default)());
-  app.use(import_express.default.json());
+  app.use(import_express.default.json({ limit: "50mb" }));
+  app.use(import_express.default.urlencoded({ limit: "50mb", extended: true }));
   const JWT_SECRET = process.env.JWT_SECRET || "your-fallback-secret-for-dev-only";
   const authenticateJWT = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -538,6 +539,16 @@ async function startServer() {
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
       const plainPassword = customPassword || generatePassword();
       const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
+      let newInstId = null;
+      if (role === "Institution") {
+        const newInst = await prisma.institution.create({
+          data: {
+            name: institutionName,
+            status: "Active"
+          }
+        });
+        newInstId = newInst.id;
+      }
       const newUser = await prisma.user.create({
         data: {
           email,
@@ -546,8 +557,8 @@ async function startServer() {
           role,
           status: "Active",
           isFirstLogin: true,
-          // Store institution name in the organization column
-          ...institutionName ? { organization: institutionName } : {}
+          organization: institutionName || void 0,
+          institutionId: newInstId || institutionId || void 0
         }
       });
       await prisma.usageLog.create({
@@ -1625,7 +1636,14 @@ STM Digital Library Team`,
   app.get("/api/institution/students", authenticateJWT, async (req, res) => {
     try {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
-      const targetInstitutionId = req.user.role === "Institution" ? req.user.uid : req.query.institutionId;
+      let targetInstitutionId = req.query.institutionId;
+      if (req.user.role === "Institution") {
+        const authUser = await prisma.user.findUnique({ where: { id: req.user.uid } });
+        targetInstitutionId = authUser?.institutionId;
+      }
+      if (!targetInstitutionId) {
+        return res.json([]);
+      }
       const students = await prisma.user.findMany({
         where: { institutionId: targetInstitutionId, role: "Student" },
         include: { subscriptions: true, activities: { include: { content: true } } },
@@ -1649,9 +1667,11 @@ STM Digital Library Team`,
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
       const hashed = await import_bcryptjs.default.hash(password, 10);
       let institutionName = "";
+      let targetInstitutionId = void 0;
       if (req.user.role === "Institution") {
-        const institutionUser = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { organization: true } });
+        const institutionUser = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
         institutionName = institutionUser?.organization || "";
+        targetInstitutionId = institutionUser?.institutionId;
       }
       const student = await prisma.user.create({
         data: {
@@ -1659,8 +1679,8 @@ STM Digital Library Team`,
           password: hashed,
           displayName: name,
           role: "Student",
-          status: "Active",
-          ...institutionName ? { organization: institutionName } : {}
+          organization: institutionName,
+          institutionId: targetInstitutionId
         }
       });
       const { password: _, ...safe } = student;
