@@ -1276,7 +1276,7 @@ async function startServer() {
       
       if (bundleId) {
         // Fetch bundle specifics
-        const bundle = await prisma.bundle.findUnique({ where: { id: bundleId } });
+        const bundle = await (prisma as any).bundle.findUnique({ where: { id: bundleId } });
         if (!bundle) return res.status(404).json({ error: "Bundle not found" });
         finalDomains = Array.isArray(bundle.domains) ? bundle.domains as string[] : [];
         finalContentTypes = Array.isArray(bundle.contentTypes) ? bundle.contentTypes as string[] : [];
@@ -1335,6 +1335,20 @@ async function startServer() {
     } catch (error: any) {
       console.error("Assign subscription error:", error);
       res.status(500).json({ error: error.message || "Failed to assign subscription" });
+    }
+  });
+
+  // GET /api/bundles - List active pre-built subscription packages
+  app.get("/api/bundles", authenticateJWT, async (req: any, res) => {
+    try {
+      const bundles = await (prisma as any).bundle.findMany({
+        where: { status: 'Active' },
+        orderBy: { name: 'asc' }
+      });
+      res.json(bundles);
+    } catch (error) {
+      console.error("Fetch bundles error:", error);
+      res.status(500).json({ error: "Failed to fetch bundles" });
     }
   });
 

@@ -1143,6 +1143,18 @@ async function startServer() {
       res.status(500).json({ error: error.message || "Failed to assign subscription" });
     }
   });
+  app.get("/api/bundles", authenticateJWT, async (req, res) => {
+    try {
+      const bundles = await prisma.bundle.findMany({
+        where: { status: "Active" },
+        orderBy: { name: "asc" }
+      });
+      res.json(bundles);
+    } catch (error) {
+      console.error("Fetch bundles error:", error);
+      res.status(500).json({ error: "Failed to fetch bundles" });
+    }
+  });
   app.get("/api/admin/subscription-requests", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { status } = req.query;
