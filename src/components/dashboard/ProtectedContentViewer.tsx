@@ -18,8 +18,9 @@ import {
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set the worker source — use the bundled worker from pdfjs-dist
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+// Correctly import PDF.js worker as a static url reference using Vite's ?url suffix
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 // ────────────────────────────────────────────────────────
 //  Single rendered page canvas
@@ -36,7 +37,6 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [rendering, setRendering] = useState(true);
-  const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
 
   // Intersection observer — report which page is visible
   useEffect(() => {
@@ -53,19 +53,14 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
     let cancelled = false;
 
     (async () => {
-      if (!canvasRef.current) return;
-
-      // Cancel any existing render task
-      if (renderTaskRef.current) {
-        try { renderTaskRef.current.cancel(); } catch {}
-      }
-
       setRendering(true);
       try {
         const page = await pdfDoc.getPage(pageNum);
         const viewport = page.getViewport({ scale });
-        const canvas = canvasRef.current!;
-        const ctx = canvas.getContext('2d')!;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
         canvas.height = viewport.height;
         canvas.width = viewport.width;
@@ -74,11 +69,11 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
           canvasContext: ctx,
           viewport,
         });
-        renderTaskRef.current = renderTask;
+
         await renderTask.promise;
         if (!cancelled) setRendering(false);
       } catch (err: any) {
-        if (err?.name !== 'RenderingCancelledException' && !cancelled) {
+        if (!cancelled) {
           setRendering(false);
         }
       }
@@ -86,9 +81,8 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
 
     return () => {
       cancelled = true;
-      if (renderTaskRef.current) {
-        try { renderTaskRef.current.cancel(); } catch {}
-      }
+      // Intentionally NOT calling renderTask.cancel() as it frequently hangs 
+      // the pdfjs-dist worker in React 18 Strict Mode during fast remounts.
     };
   }, [pdfDoc, pageNum, scale]);
 
@@ -192,6 +186,7 @@ export function ProtectedContentViewer() {
 
   // ── Load PDF once we have the URL ───────────────────
   useEffect(() => {
+    let isMounted = true;
     if (!content?.url) return;
     const url: string = content.url;
     const urlPath = url.split('?')[0].toLowerCase();
@@ -215,10 +210,12 @@ export function ProtectedContentViewer() {
 
     loadingTask.promise
       .then((doc) => {
+        if (!isMounted) return;
         setPdfDoc(doc);
         setNumPages(doc.numPages);
       })
       .catch((err) => {
+        if (!isMounted) return;
         // Ignore cancellations during strict-mode re-renders
         if (err && (err.name === 'RenderingCancelledException' || err.name === 'PromiseCancelledException' || err.message?.includes('cancelled'))) {
           return;
@@ -226,9 +223,14 @@ export function ProtectedContentViewer() {
         console.error('[viewer] PDF load error:', err);
         setPdfError('PDF failed to load. The file may be unavailable or access is restricted.');
       })
-      .finally(() => setLoadingPdf(false));
+      .finally(() => {
+        if (isMounted) setLoadingPdf(false);
+      });
 
-    return () => { try { loadingTask.destroy(); } catch {} };
+    return () => {
+      isMounted = false;
+      try { loadingTask.destroy(); } catch {}
+    };
   }, [content, id]);
 
 
