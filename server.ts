@@ -404,8 +404,23 @@ async function startServer() {
   // GET /api/content/list - Lists all actual content items, with locked flags for regular users
   app.get("/api/content/list", async (req: any, res) => {
     try {
-      const { domain } = req.query;
+      const { domain, contentType, search, page = "1", limit = "20" } = req.query;
       
+      const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+      const take = parseInt(limit as string);
+
+      // Build prisma WHERE clause
+      const where: any = {};
+      if (domain) where.domain = String(domain);
+      if (contentType) where.contentType = String(contentType);
+      if (search) {
+        where.OR = [
+          { title: { contains: String(search), mode: "insensitive" } },
+          { authors: { contains: String(search), mode: "insensitive" } },
+          { description: { contains: String(search), mode: "insensitive" } }
+        ];
+      }
+
       // We don't mandate JWT here, but if they have it, we authorize them
       const authHeader = req.headers.authorization;
       let userDetails = null;
@@ -416,14 +431,22 @@ async function startServer() {
         } catch(e) {}
       }
 
-      const contents = await prisma.content.findMany({
-        where: domain ? { domain: String(domain) } : {},
-        orderBy: { title: 'asc' }
-      });
+      const [contents, total] = await Promise.all([
+        prisma.content.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { title: 'asc' }
+        }),
+        prisma.content.count({ where })
+      ]);
 
       if (!userDetails) {
         // Unauthenticated users see everything as locked
-        return res.json(contents.map(c => ({ ...c, locked: true, fileUrl: null })));
+        return res.json({
+          data: contents.map(c => ({ ...c, locked: true, fileUrl: null })),
+          total, page: parseInt(page), limit: take
+        });
       }
 
       // Fetch subscriptions once for this user
@@ -439,8 +462,9 @@ async function startServer() {
         return { ...c, locked: false };
       });
 
-      res.json(protectedContents);
+      res.json({ data: protectedContents, total, page: parseInt(page), limit: take });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Failed to load content list" });
     }
   });
@@ -514,6 +538,11 @@ async function startServer() {
         'Accept': 'application/pdf, text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
         'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1'
       };
 
       const proxyReq = protocol.get(content.fileUrl, {
@@ -526,8 +555,14 @@ async function startServer() {
           const finalRedirectUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, content.fileUrl).toString();
           const redirectProtocol = finalRedirectUrl.startsWith('https') ? https.default : http.default;
           
+          // Forward anti-bot cookies (e.g. ak_bmsc from Akamai)
+          const redirHeaders = { ...proxyHeaders };
+          if (proxyRes.headers['set-cookie']) {
+            redirHeaders['Cookie'] = proxyRes.headers['set-cookie'].map((c: string) => c.split(';')[0]).join('; ');
+          }
+
           const redirReq = redirectProtocol.get(finalRedirectUrl, {
-            headers: proxyHeaders
+            headers: redirHeaders
           }, (redirRes) => {
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'inline');

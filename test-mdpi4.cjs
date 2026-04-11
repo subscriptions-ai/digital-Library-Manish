@@ -13,5 +13,4 @@ https.get("https://www.mdpi.com/2227-7390/14/8/1243/pdf", {
   }
 }, (res) => {
   console.log("Status:", res.statusCode);
-  console.log("Headers:", res.headers);
 });

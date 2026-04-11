@@ -219,6 +219,10 @@ export function ProtectedContentViewer() {
         setNumPages(doc.numPages);
       })
       .catch((err) => {
+        // Ignore cancellations during strict-mode re-renders
+        if (err && (err.name === 'RenderingCancelledException' || err.name === 'PromiseCancelledException' || err.message?.includes('cancelled'))) {
+          return;
+        }
         console.error('[viewer] PDF load error:', err);
         setPdfError('PDF failed to load. The file may be unavailable or access is restricted.');
       })

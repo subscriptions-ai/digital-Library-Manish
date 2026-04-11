@@ -357,7 +357,19 @@ async function startServer() {
   });
   app.get("/api/content/list", async (req, res) => {
     try {
-      const { domain } = req.query;
+      const { domain, contentType, search, page = "1", limit = "20" } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const take = parseInt(limit);
+      const where = {};
+      if (domain) where.domain = String(domain);
+      if (contentType) where.contentType = String(contentType);
+      if (search) {
+        where.OR = [
+          { title: { contains: String(search), mode: "insensitive" } },
+          { authors: { contains: String(search), mode: "insensitive" } },
+          { description: { contains: String(search), mode: "insensitive" } }
+        ];
+      }
       const authHeader = req.headers.authorization;
       let userDetails = null;
       if (authHeader) {
@@ -367,12 +379,22 @@ async function startServer() {
         } catch (e) {
         }
       }
-      const contents = await prisma.content.findMany({
-        where: domain ? { domain: String(domain) } : {},
-        orderBy: { title: "asc" }
-      });
+      const [contents, total] = await Promise.all([
+        prisma.content.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { title: "asc" }
+        }),
+        prisma.content.count({ where })
+      ]);
       if (!userDetails) {
-        return res.json(contents.map((c) => ({ ...c, locked: true, fileUrl: null })));
+        return res.json({
+          data: contents.map((c) => ({ ...c, locked: true, fileUrl: null })),
+          total,
+          page: parseInt(page),
+          limit: take
+        });
       }
       const activeSubs = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
       const protectedContents = contents.map((c) => {
@@ -382,8 +404,9 @@ async function startServer() {
         }
         return { ...c, locked: false };
       });
-      res.json(protectedContents);
+      res.json({ data: protectedContents, total, page: parseInt(page), limit: take });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Failed to load content list" });
     }
   });
@@ -442,7 +465,12 @@ async function startServer() {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
         "Accept": "application/pdf, text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
-        "Connection": "keep-alive"
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1"
       };
       const proxyReq = protocol.get(content.fileUrl, {
         headers: proxyHeaders
@@ -451,8 +479,12 @@ async function startServer() {
           const redirectUrl = proxyRes.headers.location;
           const finalRedirectUrl = redirectUrl.startsWith("http") ? redirectUrl : new URL(redirectUrl, content.fileUrl).toString();
           const redirectProtocol = finalRedirectUrl.startsWith("https") ? https.default : http.default;
+          const redirHeaders = { ...proxyHeaders };
+          if (proxyRes.headers["set-cookie"]) {
+            redirHeaders["Cookie"] = proxyRes.headers["set-cookie"].map((c) => c.split(";")[0]).join("; ");
+          }
           const redirReq = redirectProtocol.get(finalRedirectUrl, {
-            headers: proxyHeaders
+            headers: redirHeaders
           }, (redirRes) => {
             res.setHeader("Content-Type", "application/pdf");
             res.setHeader("Content-Disposition", "inline");
