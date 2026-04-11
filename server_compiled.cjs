@@ -422,6 +422,65 @@ async function startServer() {
       res.status(500).json({ error: "Failed to view content" });
     }
   });
+  app.get("/api/content/:id/proxy-pdf", authenticateJWT, async (req, res) => {
+    try {
+      const contentId = req.params.id;
+      const content = await prisma.content.findUnique({ where: { id: contentId } });
+      if (!content || !content.fileUrl) {
+        return res.status(404).json({ error: "Content not found" });
+      }
+      const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied." });
+      }
+      const https = await import("https");
+      const http = await import("http");
+      const upstreamUrl = new URL(content.fileUrl);
+      const protocol = upstreamUrl.protocol === "https:" ? https.default : http.default;
+      const proxyReq = protocol.get(content.fileUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; STMDigitalLibrary/1.0)",
+          "Accept": "application/pdf,*/*"
+        }
+      }, (proxyRes) => {
+        if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode || 0) && proxyRes.headers.location) {
+          const redirectUrl = proxyRes.headers.location;
+          const redirectProtocol = redirectUrl.startsWith("https") ? https.default : http.default;
+          const redirReq = redirectProtocol.get(redirectUrl, {
+            headers: { "User-Agent": "Mozilla/5.0 (compatible; STMDigitalLibrary/1.0)", "Accept": "application/pdf,*/*" }
+          }, (redirRes) => {
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", "inline");
+            res.setHeader("Cache-Control", "private, max-age=3600");
+            res.setHeader("X-Content-Type-Options", "nosniff");
+            redirRes.pipe(res);
+          });
+          redirReq.on("error", () => res.status(502).json({ error: "PDF proxy redirect failed" }));
+          return;
+        }
+        if ((proxyRes.statusCode || 500) >= 400) {
+          return res.status(proxyRes.statusCode || 502).json({ error: `Upstream returned ${proxyRes.statusCode}` });
+        }
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline");
+        res.setHeader("Cache-Control", "private, max-age=3600");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        if (proxyRes.headers["content-length"]) {
+          res.setHeader("Content-Length", proxyRes.headers["content-length"]);
+        }
+        proxyRes.pipe(res);
+      });
+      proxyReq.on("error", (err) => {
+        console.error("[proxy-pdf] Error fetching upstream:", err.message);
+        if (!res.headersSent) res.status(502).json({ error: "Failed to fetch PDF from upstream" });
+      });
+      req.on("close", () => proxyReq.destroy());
+    } catch (error) {
+      console.error("[proxy-pdf] unexpected error:", error);
+      res.status(500).json({ error: "PDF proxy failed" });
+    }
+  });
   app.get("/api/user/invoices", authenticateJWT, async (req, res) => {
     try {
       const payments = await prisma.payment.findMany({

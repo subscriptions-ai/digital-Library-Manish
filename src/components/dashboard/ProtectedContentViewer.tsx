@@ -201,9 +201,14 @@ export function ProtectedContentViewer() {
     setLoadingPdf(true);
     setPdfError(null);
 
+    // Use server-side proxy endpoint to bypass CORS from third-party PDF hosts
+    const proxyUrl = `/api/content/${id}/proxy-pdf`;
+    const token = localStorage.getItem('token') || '';
+
     const loadingTask = pdfjsLib.getDocument({
-      url,
-      // Disable external content fetch to prevent leaking URL
+      url: proxyUrl,
+      httpHeaders: { Authorization: `Bearer ${token}` },
+      withCredentials: false,
       disableRange: false,
       isEvalSupported: false,
     });
@@ -213,11 +218,15 @@ export function ProtectedContentViewer() {
         setPdfDoc(doc);
         setNumPages(doc.numPages);
       })
-      .catch(() => setPdfError('PDF failed to load. The file may be unavailable or the format is not supported.'))
+      .catch((err) => {
+        console.error('[viewer] PDF load error:', err);
+        setPdfError('PDF failed to load. The file may be unavailable or access is restricted.');
+      })
       .finally(() => setLoadingPdf(false));
 
     return () => { try { loadingTask.destroy(); } catch {} };
-  }, [content]);
+  }, [content, id]);
+
 
   // ── Page navigation ───────────────────────────────
   const goToPage = useCallback((n: number) => {

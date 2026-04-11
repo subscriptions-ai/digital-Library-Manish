@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   Search, BookOpen, Play, FileText, BookMarked, Layers, Lock, Clock,
-  ChevronRight, TrendingUp, Star, CheckCircle, Sparkles, Filter,
+  ChevronRight, ChevronLeft, TrendingUp, Star, CheckCircle, Sparkles, Filter,
   RefreshCw, Eye, AlertCircle, GraduationCap, Newspaper
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -155,6 +155,11 @@ export function LMSDashboard() {
   const [viewMode, setViewMode] = useState<'grid' | 'grouped'>('grouped');
   const [showLocked, setShowLocked] = useState(false);
 
+  // pagination
+  const ITEMS_PER_PAGE = 20;
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
   // dark mode
   const [dark, setDark] = useState(() => localStorage.getItem('lms-dark') === '1');
   useEffect(() => {
@@ -166,9 +171,10 @@ export function LMSDashboard() {
 
   // debounce search
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 350);
     return () => clearTimeout(t);
   }, [search]);
+
 
   const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
@@ -184,17 +190,23 @@ export function LMSDashboard() {
   const fetchContent = useCallback(async () => {
     setLoadingContent(true);
     try {
-      const q = new URLSearchParams({ limit: '200' });
+      const q = new URLSearchParams({
+        page: String(page),
+        limit: String(ITEMS_PER_PAGE),
+      });
       if (domainFilter) q.set('domain', domainFilter);
       if (typeFilter) q.set('contentType', typeFilter);
       if (debouncedSearch) q.set('search', debouncedSearch);
       const res = await fetch(`/api/content/list?${q}`, { headers: authHeader() });
       if (!res.ok) throw new Error();
       const json = await res.json();
-      setContent(Array.isArray(json) ? json : json.data || []);
+      const items = Array.isArray(json) ? json : json.data || [];
+      const total = json.total ?? items.length;
+      setContent(items);
+      setTotalItems(total);
     } catch { toast.error('Failed to load content'); }
     finally { setLoadingContent(false); }
-  }, [domainFilter, typeFilter, debouncedSearch]);
+  }, [domainFilter, typeFilter, debouncedSearch, page]);
 
   useEffect(() => { fetchContent(); }, [fetchContent]);
 
@@ -416,6 +428,29 @@ export function LMSDashboard() {
           </div>
         )}
 
+        {/* ── PAGINATION ── */}
+        {totalItems > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-center gap-3 py-4">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm"
+            >
+              <ChevronLeft size={16} /> Prev
+            </button>
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl shadow-sm">
+              Page <strong className="text-blue-600 dark:text-blue-400">{page}</strong> of <strong>{Math.ceil(totalItems / ITEMS_PER_PAGE)}</strong>
+            </span>
+            <button
+              disabled={page >= Math.ceil(totalItems / ITEMS_PER_PAGE)}
+              onClick={() => setPage(p => p + 1)}
+              className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm"
+            >
+              Next <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
+
         {/* ── LOCKED CONTENT NOTICE ── */}
         {lockedCount > 0 && !domainFilter && !typeFilter && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -436,3 +471,4 @@ export function LMSDashboard() {
     </div>
   );
 }
+
