@@ -12,23 +12,38 @@ export function MyContentLibrary() {
 
   const [contents, setContents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Search & Pagination State
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const ITEMS_PER_PAGE = 24; // 3 columns * 8 rows
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
-    fetch(`/api/content/list?domain=${domain}`, {
+    setLoading(true);
+    let url = `/api/content/list?domain=${encodeURIComponent(domain)}&page=${page}&limit=${ITEMS_PER_PAGE}`;
+    if (type) url += `&contentType=${encodeURIComponent(type)}`;
+    if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
+
+    fetch(url, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     })
       .then(res => res.json())
       .then(data => {
-        // The new /api/content/list endpoint returns a paginated structure { data: [...], total, page, limit }
         const items = Array.isArray(data) ? data : (data.data || []);
-        // Filter by type roughly
-        const filtered = type ? items.filter((d: any) => d.contentType === type) : items;
-        setContents(filtered);
+        setContents(items);
+        setTotalItems(data.total ?? items.length);
       })
       .catch(() => toast.error("Failed to load content"))
       .finally(() => setLoading(false));
-  }, [domain, type]);
+  }, [domain, type, page, debouncedSearch]);
 
   const handleOpen = (item: any) => {
     if (item.locked) {
@@ -41,7 +56,8 @@ export function MyContentLibrary() {
 
   if (loading) return <div className="p-12 text-center text-slate-500">Loading library...</div>;
 
-  const filteredContents = contents.filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
+  // Since we use server-side search, simply render 'contents' directly
+  const displayContents = contents;
 
   return (
     <div className="space-y-6 pb-12">
@@ -67,7 +83,7 @@ export function MyContentLibrary() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredContents.map((content, idx) => (
+        {displayContents.map((content, idx) => (
           <motion.div
             key={content.id}
             initial={{ opacity: 0, y: 10 }}
@@ -103,12 +119,35 @@ export function MyContentLibrary() {
           </motion.div>
         ))}
 
-        {filteredContents.length === 0 && (
+        {displayContents.length === 0 && (
           <div className="col-span-full p-12 text-center text-slate-500 bg-white rounded-3xl border border-slate-100">
             No content found matching your criteria.
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalItems > ITEMS_PER_PAGE && (
+        <div className="flex items-center justify-center gap-4 pt-8">
+          <button
+            disabled={page <= 1}
+            onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-600 disabled:opacity-40 hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm"
+          >
+            ← Prev
+          </button>
+          <span className="text-sm font-medium text-slate-600 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm">
+            Page <strong className="text-blue-600">{page}</strong> of <strong>{Math.ceil(totalItems / ITEMS_PER_PAGE)}</strong>
+          </span>
+          <button
+            disabled={page >= Math.ceil(totalItems / ITEMS_PER_PAGE)}
+            onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-600 disabled:opacity-40 hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
