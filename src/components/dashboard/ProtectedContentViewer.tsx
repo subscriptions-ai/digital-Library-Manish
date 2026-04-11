@@ -194,7 +194,8 @@ export function ProtectedContentViewer() {
   useEffect(() => {
     if (!content?.url) return;
     const url: string = content.url;
-    const isPdf = url.toLowerCase().includes('.pdf') || content.contentType?.includes('pdf');
+    const urlPath = url.split('?')[0].toLowerCase();
+    const isPdf = urlPath.endsWith('.pdf') || urlPath.endsWith('/pdf') || urlPath.includes('.pdf') || content.contentType?.toLowerCase().includes('pdf');
     if (!isPdf) return; // video handled separately
 
     setLoadingPdf(true);
@@ -289,7 +290,8 @@ export function ProtectedContentViewer() {
     );
   }
 
-  const isPdf = content?.url?.toLowerCase().includes('.pdf');
+  const urlPath = (content?.url || '').split('?')[0].toLowerCase();
+  const isPdf = urlPath.endsWith('.pdf') || urlPath.endsWith('/pdf') || urlPath.includes('.pdf');
   const isVideo = content?.url?.toLowerCase().match(/\.(mp4|webm|ogg)$/i);
 
   // ────────────────────────────────────────────────────
