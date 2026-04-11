@@ -508,18 +508,26 @@ async function startServer() {
       const upstreamUrl = new URL(content.fileUrl);
       const protocol = upstreamUrl.protocol === 'https:' ? https.default : http.default;
 
+      // Realistic browser headers to bypass Akamai/Cloudflare bot protection
+      const proxyHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'Accept': 'application/pdf, text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive',
+      };
+
       const proxyReq = protocol.get(content.fileUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; STMDigitalLibrary/1.0)',
-          'Accept': 'application/pdf,*/*',
-        },
+        headers: proxyHeaders,
       }, (proxyRes) => {
         // Follow redirects (up to 1 hop)
         if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode || 0) && proxyRes.headers.location) {
           const redirectUrl = proxyRes.headers.location;
-          const redirectProtocol = redirectUrl.startsWith('https') ? https.default : http.default;
-          const redirReq = redirectProtocol.get(redirectUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; STMDigitalLibrary/1.0)', 'Accept': 'application/pdf,*/*' }
+          // handle relative redirect URLs
+          const finalRedirectUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, content.fileUrl).toString();
+          const redirectProtocol = finalRedirectUrl.startsWith('https') ? https.default : http.default;
+          
+          const redirReq = redirectProtocol.get(finalRedirectUrl, {
+            headers: proxyHeaders
           }, (redirRes) => {
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'inline');
@@ -532,6 +540,7 @@ async function startServer() {
         }
 
         if ((proxyRes.statusCode || 500) >= 400) {
+          console.error(`[proxy-pdf] Upstream failed with ${proxyRes.statusCode} for ${content.fileUrl}`);
           return res.status(proxyRes.statusCode || 502).json({ error: `Upstream returned ${proxyRes.statusCode}` });
         }
 
