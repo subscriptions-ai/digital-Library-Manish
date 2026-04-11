@@ -20,8 +20,10 @@ export function MyContentLibrary() {
     })
       .then(res => res.json())
       .then(data => {
+        // The new /api/content/list endpoint returns a paginated structure { data: [...], total, page, limit }
+        const items = Array.isArray(data) ? data : (data.data || []);
         // Filter by type roughly
-        const filtered = type ? data.filter((d: any) => d.contentType === type) : data;
+        const filtered = type ? items.filter((d: any) => d.contentType === type) : items;
         setContents(filtered);
       })
       .catch(() => toast.error("Failed to load content"))
