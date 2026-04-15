@@ -132,9 +132,11 @@ model ContentModule {
   id                String   @id @default(uuid())
   domain            String
   contentType       String
+  userType          String   @default("General")   // General | Student Scholar | College Excellence | University Global | Corporate Innovator
   totalCount        Int      @default(0)
   monthlyPrice      Float    @default(0)
   quarterlyPrice    Float    @default(0)
+  halfYearlyPrice   Float    @default(0)
   yearlyPrice       Float    @default(0)
   yearlyDiscountPct Float    @default(0)   // e.g. 20 means 20% off yearly
   isActive          Boolean  @default(true)
@@ -142,7 +144,7 @@ model ContentModule {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt @default(now())
 
-  @@unique([domain, contentType])
+  @@unique([domain, contentType, userType])
 }
 
 model Submission {

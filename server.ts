@@ -296,8 +296,13 @@ async function startServer() {
       const nearestExpiry = activeSubs.sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())[0]?.endDate || null;
       const totalSpent = payments.reduce((acc, p) => acc + p.amount, 0);
 
-      // Unique domains user has access to
-      const allowedDomains = Array.from(new Set(activeSubs.map(s => s.domainName).filter(Boolean)));
+      // Unique domains user has access to — read from the `domains` JSON array field
+      const allowedDomains: string[] = Array.from(new Set(
+        activeSubs.flatMap(s => {
+          const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
+          return d as string[];
+        }).filter(Boolean)
+      ));
 
       res.json({
         activeSubscriptions: activeSubs.length,
@@ -352,21 +357,23 @@ async function startServer() {
     if (userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'ContentManager') return true;
     
     return activeSubscriptions.some(sub => {
-      // match domain
-      let domainMatch = false;
-      if (sub.domainName && sub.domainName === content.domain) domainMatch = true;
-      if (sub.domains) {
-        const d = typeof sub.domains === 'string' ? JSON.parse(sub.domains) : sub.domains;
-        if (Array.isArray(d) && d.includes(content.domain)) domainMatch = true;
-      }
+      // Parse domains array (stored as JSON array in Prisma)
+      const d: string[] = Array.isArray(sub.domains)
+        ? sub.domains as string[]
+        : (sub.domains ? JSON.parse(sub.domains as string) : []);
+
+      // Also support legacy scalar domainName field
+      const domainMatch = d.includes(content.domain) || (sub.domainName === content.domain);
       if (!domainMatch) return false;
-      
-      // match contentType
-      if (sub.contentTypes) {
-        const ct = typeof sub.contentTypes === 'string' ? JSON.parse(sub.contentTypes) : sub.contentTypes;
-        if (Array.isArray(ct) && ct.includes(content.contentType)) return true;
-      }
-      return false;
+
+      // Parse contentTypes array
+      const ct: string[] = Array.isArray(sub.contentTypes)
+        ? sub.contentTypes as string[]
+        : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
+
+      // If no contentTypes specified, allow all types for this domain
+      if (ct.length === 0) return true;
+      return ct.includes(content.contentType);
     });
   };
 
@@ -930,7 +937,15 @@ async function startServer() {
   const GST_RATE = 0.18;
   const COMPANY_STATE = "Delhi";
 
-  // Helper: upsert content module counts from DB
+  const USER_TYPES = [
+    'General',
+    'Student Scholar',
+    'College Excellence',
+    'University Global',
+    'Corporate Innovator'
+  ];
+
+  // Helper: upsert content module counts from DB (per userType)
   async function syncContentModuleCounts() {
     const groups = await prisma.content.groupBy({
       by: ['domain', 'contentType'],
@@ -939,20 +954,24 @@ async function startServer() {
     });
     for (const g of groups) {
       if (!g.domain) continue;
-      await (prisma as any).contentModule.upsert({
-        where: { domain_contentType: { domain: g.domain, contentType: g.contentType } },
-        create: { domain: g.domain, contentType: g.contentType, totalCount: g._count.id },
-        update: { totalCount: g._count.id }
-      });
+      for (const userType of USER_TYPES) {
+        await (prisma as any).contentModule.upsert({
+          where: { domain_contentType_userType: { domain: g.domain, contentType: g.contentType, userType } },
+          create: { domain: g.domain, contentType: g.contentType, userType, totalCount: g._count.id },
+          update: { totalCount: g._count.id }
+        });
+      }
     }
   }
 
-  // GET /api/content-modules — public list grouped by domain
+  // GET /api/content-modules — public list, optionally filtered by domain and/or userType
   app.get("/api/content-modules", async (req, res) => {
     try {
-      const { domain } = req.query;
+      const { domain, userType } = req.query;
       const where: any = { isActive: true };
       if (domain) where.domain = domain;
+      // Default to 'General' if no userType provided
+      where.userType = userType ? userType : 'General';
       const modules = await (prisma as any).contentModule.findMany({
         where,
         orderBy: [{ domain: 'asc' }, { contentType: 'asc' }]
@@ -966,7 +985,7 @@ async function startServer() {
   // POST /api/content-modules/calculate — public price calculator
   app.post("/api/content-modules/calculate", async (req, res) => {
     try {
-      const { moduleIds, planType, userState } = req.body;
+      const { moduleIds, planType, userState, userType } = req.body;
       if (!Array.isArray(moduleIds) || moduleIds.length === 0) {
         return res.json({ subtotal: 0, gstAmount: 0, total: 0, breakdown: [], planType });
       }
@@ -979,10 +998,12 @@ async function startServer() {
         let price = 0;
         if (planType === 'Monthly') price = m.monthlyPrice;
         else if (planType === 'Quarterly') price = m.quarterlyPrice;
+        else if (planType === 'Half-Yearly') price = m.halfYearlyPrice;
         else if (planType === 'Yearly') price = m.yearlyPrice;
         return {
           id: m.id, domain: m.domain, contentType: m.contentType,
-          price, totalCount: m.totalCount, planType
+          price, totalCount: m.totalCount, planType,
+          userType: m.userType
         };
       });
 
@@ -992,7 +1013,7 @@ async function startServer() {
       const total = parseFloat((subtotal + gstAmount).toFixed(2));
 
       res.json({
-        breakdown, subtotal, gstAmount, total, planType,
+        breakdown, subtotal, gstAmount, total, planType, userType,
         gstType: isInterState ? 'IGST' : 'CGST+SGST',
         gstRate: GST_RATE
       });
@@ -1009,7 +1030,13 @@ async function startServer() {
   app.get("/api/admin/content-modules", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
       await syncContentModuleCounts();
-      const modules = await (prisma as any).contentModule.findMany({ orderBy: [{ domain: 'asc' }, { contentType: 'asc' }] });
+      const { userType } = req.query;
+      const where: any = {};
+      if (userType && userType !== 'all') where.userType = userType;
+      const modules = await (prisma as any).contentModule.findMany({
+        where,
+        orderBy: [{ domain: 'asc' }, { userType: 'asc' }, { contentType: 'asc' }]
+      });
       res.json(modules);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch modules" });
@@ -1019,13 +1046,15 @@ async function startServer() {
   app.put("/api/admin/content-modules/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { monthlyPrice, quarterlyPrice, yearlyPrice, yearlyDiscountPct, isActive } = req.body;
+      const { monthlyPrice, quarterlyPrice, halfYearlyPrice, yearlyPrice, yearlyDiscountPct, isActive, userType } = req.body;
       const data: any = {};
       if (monthlyPrice !== undefined) data.monthlyPrice = parseFloat(monthlyPrice);
       if (quarterlyPrice !== undefined) data.quarterlyPrice = parseFloat(quarterlyPrice);
+      if (halfYearlyPrice !== undefined) data.halfYearlyPrice = parseFloat(halfYearlyPrice);
       if (yearlyPrice !== undefined) data.yearlyPrice = parseFloat(yearlyPrice);
       if (yearlyDiscountPct !== undefined) data.yearlyDiscountPct = parseFloat(yearlyDiscountPct);
       if (isActive !== undefined) data.isActive = isActive;
+      if (userType !== undefined) data.userType = userType;
       const updated = await (prisma as any).contentModule.update({ where: { id }, data });
       res.json(updated);
     } catch (error) {
@@ -1065,23 +1094,30 @@ async function startServer() {
         count: g._count.id
       }));
 
-      // 2. Pricing modules — active modules for this domain
+      // 2. Pricing modules — active modules for this domain, optionally filtered by userType
+      const { userType } = req.query as { userType?: string };
+      const moduleWhere: any = { domain, isActive: true };
+      if (userType) moduleWhere.userType = userType;
+      else moduleWhere.userType = 'General';
+
       const modules = await (prisma as any).contentModule.findMany({
-        where: { domain, isActive: true },
+        where: moduleWhere,
         orderBy: { contentType: 'asc' }
       });
       const pricing_modules = modules.map((m: any) => ({
         id: m.id,
         type: m.contentType,
+        userType: m.userType,
         monthlyPrice: m.monthlyPrice,
         quarterlyPrice: m.quarterlyPrice,
+        halfYearlyPrice: m.halfYearlyPrice,
         yearlyPrice: m.yearlyPrice,
         yearlyDiscountPct: m.yearlyDiscountPct,
         totalCount: m.totalCount,
         visible: m.isActive
       }));
 
-      res.json({ domain, content_summary, pricing_modules });
+      res.json({ domain, content_summary, pricing_modules, userTypes: USER_TYPES });
     } catch (err) {
       console.error("GET /api/domain-data error:", err);
       res.status(500).json({ error: "Failed to fetch domain data" });

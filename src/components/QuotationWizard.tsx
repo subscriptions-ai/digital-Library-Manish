@@ -49,7 +49,12 @@ interface FormData {
   userCategory: string;
 }
 
-const USER_CATEGORIES = ['Student', 'College', 'University', 'Corporate'];
+const USER_CATEGORIES = [
+  { label: 'Student Scholar',     emoji: '🎓', planId: 'student-plan'   },
+  { label: 'College Excellence',  emoji: '🏫', planId: 'college-plan'   },
+  { label: 'University Global',   emoji: '🌐', planId: 'university-plan' },
+  { label: 'Corporate Innovator', emoji: '💼', planId: 'corporate-plan'  },
+];
 const DURATIONS = ['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
 
 export function QuotationWizard() {
@@ -69,7 +74,7 @@ export function QuotationWizard() {
     selectedDepartments: [],
     subscriptionPlanId: SUBSCRIPTION_PLANS[0].id,
     duration: 'Yearly',
-    userCategory: 'Student'
+    userCategory: 'Student Scholar'
   });
 
   const [isPincodeLoading, setIsPincodeLoading] = useState(false);
@@ -587,21 +592,22 @@ export function QuotationWizard() {
                 <div className="space-y-4">
                   <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                     <Users size={16} className="text-blue-600" />
-                    User Category
+                    User Type
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {USER_CATEGORIES.map(cat => (
+                    {USER_CATEGORIES.map(({ label, emoji, planId }) => (
                       <button
-                        key={cat}
-                        onClick={() => setFormData(prev => ({ ...prev, userCategory: cat }))}
+                        key={label}
+                        onClick={() => setFormData(prev => ({ ...prev, userCategory: label, subscriptionPlanId: planId }))}
                         className={cn(
-                          "rounded-xl border-2 py-3 text-sm font-bold transition-all",
-                          formData.userCategory === cat 
-                            ? "border-blue-600 bg-blue-50 text-blue-700" 
+                          "rounded-xl border-2 py-3 px-2 text-xs font-bold transition-all flex flex-col items-center gap-1",
+                          formData.userCategory === label
+                            ? "border-blue-600 bg-blue-50 text-blue-700"
                             : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
                         )}
                       >
-                        {cat}
+                        <span className="text-xl">{emoji}</span>
+                        <span className="leading-tight text-center">{label}</span>
                       </button>
                     ))}
                   </div>

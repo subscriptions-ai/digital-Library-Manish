@@ -14,7 +14,8 @@ import { toast } from "react-hot-toast";
 interface ContentSummaryItem { type: string; count: number; }
 interface PricingModule {
   id: string; type: string;
-  monthlyPrice: number; quarterlyPrice: number; yearlyPrice: number;
+  userType: string;
+  monthlyPrice: number; quarterlyPrice: number; halfYearlyPrice: number; yearlyPrice: number;
   yearlyDiscountPct: number; totalCount: number; visible: boolean;
 }
 interface DomainData {
@@ -55,12 +56,21 @@ const CT_ICONS: Record<string, any> = {
   Newsletters: Icons.Mail, Proceedings: Icons.Users, Videos: Icons.Video,
 };
 
-const PLAN_OPTIONS = ["Monthly", "Quarterly", "Yearly"] as const;
+const PLAN_OPTIONS = ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] as const;
 type PlanType = typeof PLAN_OPTIONS[number];
 
+const USER_TYPE_OPTIONS = [
+  { id: 'General',             label: 'General',              emoji: '👤' },
+  { id: 'Student Scholar',     label: 'Student Scholar',      emoji: '🎓' },
+  { id: 'College Excellence',  label: 'College Excellence',   emoji: '🏫' },
+  { id: 'University Global',   label: 'University Global',    emoji: '🌐' },
+  { id: 'Corporate Innovator', label: 'Corporate Innovator',  emoji: '💼' },
+] as const;
+
 function priceForPlan(m: PricingModule, plan: PlanType) {
-  if (plan === "Yearly") return m.yearlyPrice;
-  if (plan === "Quarterly") return m.quarterlyPrice;
+  if (plan === "Yearly")      return m.yearlyPrice;
+  if (plan === "Half-Yearly") return m.halfYearlyPrice;
+  if (plan === "Quarterly")   return m.quarterlyPrice;
   return m.monthlyPrice;
 }
 
@@ -81,6 +91,7 @@ export function DomainLandingPage() {
 
   // Subscription builder state
   const [plan, setPlan] = useState<PlanType>("Monthly");
+  const [selectedUserType, setSelectedUserType] = useState<string>("General");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Request form state
@@ -94,7 +105,8 @@ export function DomainLandingPage() {
     setApiLoading(true);
     setApiError(false);
     try {
-      const res = await fetch(`/api/domain-data?domain=${encodeURIComponent(domain.name)}`);
+      const params = new URLSearchParams({ domain: domain.name, userType: selectedUserType });
+      const res = await fetch(`/api/domain-data?${params.toString()}`);
       const data = await res.json();
       setDomainData(data);
     } catch {
@@ -102,9 +114,9 @@ export function DomainLandingPage() {
     } finally {
       setApiLoading(false);
     }
-  }, [domain]);
+  }, [domain, selectedUserType]);
 
-  useEffect(() => { fetchDomainData(); }, [fetchDomainData]);
+  useEffect(() => { fetchDomainData(); setSelectedIds(new Set()); }, [fetchDomainData]);
 
   // Price calculation
   const activeModules = domainData?.pricing_modules || [];
@@ -426,9 +438,28 @@ export function DomainLandingPage() {
                 })}
               </div>
 
-              {/* RIGHT: Summary + Plan toggle */}
+              {/* RIGHT: Summary + User Type + Plan toggle */}
               <div className="lg:col-span-1">
                 <div className="sticky top-6 bg-white/8 border border-white/10 rounded-3xl p-6 backdrop-blur-sm space-y-6">
+                  {/* User type */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">I am a</label>
+                    <div className="flex flex-col gap-1.5">
+                      {USER_TYPE_OPTIONS.map((ut) => (
+                        <button key={ut.id}
+                          onClick={() => setSelectedUserType(ut.id)}
+                          className={`py-2 px-3 rounded-xl text-sm font-bold transition-all text-left flex items-center gap-2 ${
+                            selectedUserType === ut.id
+                              ? `${theme.btn} text-white shadow-lg`
+                              : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                          }`}>
+                          <span>{ut.emoji}</span>
+                          <span>{ut.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Plan toggle */}
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Billing Cycle</label>
@@ -439,7 +470,8 @@ export function DomainLandingPage() {
                             plan === p ? `${theme.btn} text-white shadow-lg` : "bg-white/5 text-slate-400 hover:bg-white/10"
                           }`}>
                           <span>{p}</span>
-                          {p === "Yearly" && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">Best Value</span>}
+                          {p === "Half-Yearly" && <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full">Save 10%</span>}
+                          {p === "Yearly"      && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">Best Value</span>}
                         </button>
                       ))}
                     </div>

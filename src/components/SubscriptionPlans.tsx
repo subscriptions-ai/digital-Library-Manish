@@ -13,7 +13,8 @@ export function SubscriptionPlans({
   showTitle = false, 
   isFullPage = false
 }: SubscriptionPlansProps) {
-  const [selectedDuration, setSelectedDuration] = useState<"Monthly" | "Quarterly" | "Yearly">("Yearly");
+  const [selectedDuration, setSelectedDuration] = useState<"Monthly" | "Quarterly" | "Half-Yearly" | "Yearly">("Yearly");
+  const [selectedUserType, setSelectedUserType] = useState<string>("General");
   const { addToCart } = useCart();
   
   const [modules, setModules] = useState<any[]>([]);
@@ -22,7 +23,8 @@ export function SubscriptionPlans({
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/content-modules');
+        const params = `?userType=${encodeURIComponent(selectedUserType)}`;
+        const res = await fetch(`/api/content-modules${params}`);
         const data = await res.json();
         setModules(data);
       } catch (err) {
@@ -31,14 +33,14 @@ export function SubscriptionPlans({
         setLoading(false);
       }
     })();
-  }, []);
+  }, [selectedUserType]);
 
   const handleAddToCart = (mod: any) => {
     let price = mod.monthlyPrice;
     if (selectedDuration === "Quarterly") price = mod.quarterlyPrice;
+    if (selectedDuration === "Half-Yearly") price = mod.halfYearlyPrice;
     if (selectedDuration === "Yearly") price = mod.yearlyPrice;
 
-    // Notice we use the `domain` string as the domainId inside the cart
     addToCart({
       domainId: mod.domain,
       domainName: mod.domain,
@@ -46,7 +48,7 @@ export function SubscriptionPlans({
       planName: `${mod.domain} - ${mod.contentType}`,
       price,
       duration: selectedDuration,
-      category: "Individual"
+      category: selectedUserType
     });
     toast.success(`Added ${mod.contentType} (${mod.domain}) to cart!`);
   };
@@ -65,15 +67,42 @@ export function SubscriptionPlans({
         </div>
       )}
 
+      {/* User Type Selector */}
+      <div className="mb-8 flex flex-col items-center gap-3">
+        <p className="text-sm font-semibold text-slate-600 uppercase tracking-widest">I am a</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {([
+            { id: 'General', label: 'General' },
+            { id: 'Student Scholar', label: '🎓 Student Scholar' },
+            { id: 'College Excellence', label: '🏫 College Excellence' },
+            { id: 'University Global', label: '🌐 University Global' },
+            { id: 'Corporate Innovator', label: '💼 Corporate Innovator' },
+          ] as const).map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => { setSelectedUserType(id); setLoading(true); }}
+              className={cn(
+                "rounded-full px-5 py-1.5 text-sm font-bold border transition-all",
+                selectedUserType === id
+                  ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-blue-400"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Duration Toggle */}
       <div className="mb-12 flex items-center justify-center gap-2">
         <div className="inline-flex rounded-full bg-slate-100 p-1">
-          {(["Monthly", "Quarterly", "Yearly"] as const).map((duration) => (
+          {(["Monthly", "Quarterly", "Half-Yearly", "Yearly"] as const).map((duration) => (
             <button
               key={duration}
               onClick={() => setSelectedDuration(duration)}
               className={cn(
-                "rounded-full px-6 py-2 text-sm font-bold transition-all",
+                "rounded-full px-5 py-2 text-sm font-bold transition-all",
                 selectedDuration === duration ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-900"
               )}
             >
@@ -102,6 +131,7 @@ export function SubscriptionPlans({
                 {modules.filter(m => m.domain === domain).map((mod) => {
                   let price = mod.monthlyPrice;
                   if (selectedDuration === "Quarterly") price = mod.quarterlyPrice;
+                  if (selectedDuration === "Half-Yearly") price = mod.halfYearlyPrice;
                   if (selectedDuration === "Yearly") price = mod.yearlyPrice;
                   
                   return (

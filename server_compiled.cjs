@@ -275,7 +275,12 @@ async function startServer() {
       const activeSubs = subscriptions;
       const nearestExpiry = activeSubs.sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())[0]?.endDate || null;
       const totalSpent = payments.reduce((acc, p) => acc + p.amount, 0);
-      const allowedDomains = Array.from(new Set(activeSubs.map((s) => s.domainName).filter(Boolean)));
+      const allowedDomains = Array.from(new Set(
+        activeSubs.flatMap((s) => {
+          const d = Array.isArray(s.domains) ? s.domains : s.domains ? JSON.parse(s.domains) : [];
+          return d;
+        }).filter(Boolean)
+      ));
       res.json({
         activeSubscriptions: activeSubs.length,
         nearestExpiry,
@@ -320,18 +325,12 @@ async function startServer() {
   const checkContentAccess = (content, userRole, activeSubscriptions) => {
     if (userRole === "SuperAdmin" || userRole === "Admin" || userRole === "ContentManager") return true;
     return activeSubscriptions.some((sub) => {
-      let domainMatch = false;
-      if (sub.domainName && sub.domainName === content.domain) domainMatch = true;
-      if (sub.domains) {
-        const d = typeof sub.domains === "string" ? JSON.parse(sub.domains) : sub.domains;
-        if (Array.isArray(d) && d.includes(content.domain)) domainMatch = true;
-      }
+      const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
+      const domainMatch = d.includes(content.domain) || sub.domainName === content.domain;
       if (!domainMatch) return false;
-      if (sub.contentTypes) {
-        const ct = typeof sub.contentTypes === "string" ? JSON.parse(sub.contentTypes) : sub.contentTypes;
-        if (Array.isArray(ct) && ct.includes(content.contentType)) return true;
-      }
-      return false;
+      const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : sub.contentTypes ? JSON.parse(sub.contentTypes) : [];
+      if (ct.length === 0) return true;
+      return ct.includes(content.contentType);
     });
   };
   app.get("/api/user/content-access", authenticateJWT, async (req, res) => {
