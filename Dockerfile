@@ -45,4 +45,4 @@ ENV CACHE_BUSTER="2026-04-15T12-33-00"
 EXPOSE 3000
 
 # Run DB schema sync then start the server
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && tsx server.ts"]
+CMD ["sh", "-c", "npx prisma@6.19.3 db push --accept-data-loss && tsx server.ts"]
