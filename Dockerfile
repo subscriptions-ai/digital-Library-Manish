@@ -39,10 +39,10 @@ RUN npx prisma@6.19.3 generate
 RUN npm install -g tsx
 
 # Cache buster to bypass BuildKit mount locks on Coolify
-ENV CACHE_BUSTER="2026-04-10T11-25-00"
+ENV CACHE_BUSTER="2026-04-15T12-33-00"
 
 # Expose the port (default 3000, overridable via PORT env var)
 EXPOSE 3000
 
-# Start the server
-CMD ["tsx", "server.ts"]
+# Run DB schema sync then start the server
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && tsx server.ts"]
