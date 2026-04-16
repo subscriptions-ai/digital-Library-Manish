@@ -8,8 +8,18 @@ import { useCart } from "../contexts/CartContext";
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDepartmentsOpen, setIsDepartmentsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { items } = useCart();
   const navigate = useNavigate();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    navigate(`/search?q=${encodeURIComponent(q)}`);
+    setSearchQuery("");
+    setIsMenuOpen(false);
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md shadow-sm">
@@ -28,18 +38,20 @@ export function Navbar() {
         </div>
 
         {/* Search Bar - TOP CENTER */}
-        <div className="hidden md:flex flex-1 max-w-xl mx-8">
+        <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl mx-8">
           <div className="relative w-full group">
             <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
               <Search size={18} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
             </div>
-            <input 
-              type="text" 
-              placeholder="Search journals, books, topics..." 
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search journals, books, topics..."
               className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400"
             />
           </div>
-        </div>
+        </form>
 
         {/* Desktop Navigation & CTAs */}
         <div className="hidden lg:flex flex-col items-end gap-2">
@@ -136,14 +148,16 @@ export function Navbar() {
       {isMenuOpen && (
         <div className="lg:hidden border-t border-slate-100 bg-white px-4 py-8 space-y-6 max-h-[90vh] overflow-y-auto animate-in slide-in-from-top duration-300">
           {/* Mobile Search */}
-          <div className="relative group">
+          <form onSubmit={handleSearch} className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search journals, books..." 
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search journals, books..."
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
             />
-          </div>
+          </form>
 
           <div className="flex flex-col gap-6">
             <div className="space-y-4">

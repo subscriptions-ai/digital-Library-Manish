@@ -62,6 +62,7 @@ import { MyContentLibrary } from "./components/dashboard/MyContentLibrary";
 import { ProtectedContentViewer } from "./components/dashboard/ProtectedContentViewer";
 import { FAQ } from "./components/FAQ";
 import { DomainLandingPage } from "./components/DomainLandingPage";
+import { SearchResults } from "./components/SearchResults";
 import { Toaster } from "react-hot-toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -193,6 +194,7 @@ export default function App() {
                       <Route path="/create-quotation" element={<QuotationWizard />} />
                       <Route path="/quotation-preview" element={<QuotationPreview />} />
                       <Route path="/domain/:domainId" element={<DomainLandingPage />} />
+                      <Route path="/search" element={<SearchResults />} />
                       <Route path="*" element={<Home />} />
                     </Routes>
                   </main>

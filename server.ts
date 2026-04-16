@@ -1073,6 +1073,54 @@ async function startServer() {
   });
 
   // ========================
+  // PUBLIC: Global Search
+  // ========================
+
+  // GET /api/search?q=keyword&domain=X&contentType=Y&page=1&limit=20
+  app.get("/api/search", async (req, res) => {
+    try {
+      const { q, domain, contentType, page = "1", limit = "20" } = req.query as Record<string, string>;
+      if (!q || q.trim().length < 2) {
+        return res.json({ data: [], total: 0, query: q || "" });
+      }
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const where: any = {
+        status: "Published",
+        OR: [
+          { title:       { contains: q, mode: "insensitive" } },
+          { authors:     { contains: q, mode: "insensitive" } },
+          { description: { contains: q, mode: "insensitive" } },
+          { domain:      { contains: q, mode: "insensitive" } },
+          { contentType: { contains: q, mode: "insensitive" } },
+          { subjectArea: { contains: q, mode: "insensitive" } },
+        ],
+      };
+      if (domain)      where.domain      = domain;
+      if (contentType) where.contentType = contentType;
+
+      const [data, total] = await Promise.all([
+        prisma.content.findMany({
+          where,
+          skip,
+          take: parseInt(limit),
+          orderBy: { publishedAt: "desc" },
+          select: {
+            id: true, title: true, authors: true, domain: true,
+            contentType: true, description: true, subjectArea: true,
+            thumbnailUrl: true, accessType: true, price: true,
+            publishedAt: true,
+          },
+        }),
+        prisma.content.count({ where }),
+      ]);
+      res.json({ data, total, query: q, page: parseInt(page), limit: parseInt(limit) });
+    } catch (err) {
+      console.error("GET /api/search error:", err);
+      res.status(500).json({ error: "Search failed" });
+    }
+  });
+
+  // ========================
   // PUBLIC: Domain Data API
   // ========================
 
