@@ -1,205 +1,219 @@
-import { useState, useEffect } from "react";
-import { Check, ShoppingCart, Loader2 } from "lucide-react";
-import { cn } from "../lib/utils";
+import { useState } from "react";
+import { Check, ShoppingCart, Phone } from "lucide-react";
+import { SUBSCRIPTION_PLANS } from "../constants";
 import { useCart } from "../contexts/CartContext";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+type Duration = "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly";
 
 interface SubscriptionPlansProps {
   showTitle?: boolean;
   isFullPage?: boolean;
 }
 
-export function SubscriptionPlans({ 
-  showTitle = false, 
-  isFullPage = false
+// ─── FAQ data (from reference image) ─────────────────────────────────────────
+const FAQS = [
+  {
+    q: "Can I cancel my subscription anytime?",
+    a: "Yes, you can cancel your individual subscription at any time. Your access will continue until the end of the current billing period.",
+  },
+  {
+    q: "How does institutional access work?",
+    a: "Institutional access is typically based on IP ranges. Once configured, anyone within your network can access the library without individual logins.",
+  },
+  {
+    q: "Do you offer student discounts?",
+    a: "Yes, we offer specialized pricing for verified students. Please contact our support team with your student ID for more information.",
+  },
+  {
+    q: "Can I download articles for offline reading?",
+    a: "Most of our subscription plans include PDF download capabilities for offline use and personal archiving.",
+  },
+];
+
+// ─── Plan badge ────────────────────────────────────────────────────────────────
+const PLAN_BADGE: Record<string, string | null> = {
+  "Student Scholar":    "BEST FOR\nINDIVIDUALS",
+  "College Excellence": null,
+  "University Global":  null,
+  "Corporate Innovator": null,
+};
+
+// ─── Helper ────────────────────────────────────────────────────────────────────
+function getPrice(plan: typeof SUBSCRIPTION_PLANS[0], duration: Duration) {
+  return plan.pricing.find((p) => p.duration === duration)?.price ?? 0;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+export function SubscriptionPlans({
+  showTitle = false,
+  isFullPage = false,
 }: SubscriptionPlansProps) {
-  const [selectedDuration, setSelectedDuration] = useState<"Monthly" | "Quarterly" | "Half-Yearly" | "Yearly">("Yearly");
-  const [selectedUserType, setSelectedUserType] = useState<string>("General");
+  const [duration, setDuration] = useState<Duration>("Yearly");
   const { addToCart } = useCart();
-  
-  const [modules, setModules] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const params = `?userType=${encodeURIComponent(selectedUserType)}`;
-        const res = await fetch(`/api/content-modules${params}`);
-        const data = await res.json();
-        setModules(data);
-      } catch (err) {
-        console.error("Failed to load modules", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [selectedUserType]);
-
-  const handleAddToCart = (mod: any) => {
-    let price = mod.monthlyPrice;
-    if (selectedDuration === "Quarterly") price = mod.quarterlyPrice;
-    if (selectedDuration === "Half-Yearly") price = mod.halfYearlyPrice;
-    if (selectedDuration === "Yearly") price = mod.yearlyPrice;
-
+  const handleAddToCart = (plan: typeof SUBSCRIPTION_PLANS[0]) => {
+    const price = getPrice(plan, duration);
     addToCart({
-      domainId: mod.domain,
-      domainName: mod.domain,
-      planId: mod.id,
-      planName: `${mod.domain} - ${mod.contentType}`,
+      domainId: plan.id,
+      domainName: plan.name,
+      planId: plan.id,
+      planName: plan.name,
       price,
-      duration: selectedDuration,
-      category: selectedUserType
+      duration,
+      category: plan.userType,
     });
-    toast.success(`Added ${mod.contentType} (${mod.domain}) to cart!`);
+    toast.success(`${plan.name} added to cart!`);
   };
 
-  // Group modules by domain
-  const domains = Array.from(new Set(modules.map(m => m.domain)));
-
-  const content = (
+  // ── Plan cards section ────────────────────────────────────────────────────
+  const plansSection = (
     <div className="w-full">
+      {/* Page heading */}
       {showTitle && (
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl">Configure Your <span className="text-blue-600">Access</span></h1>
-          <p className="mt-6 text-xl text-slate-600 max-w-2xl mx-auto">
-            Build your tailored subscription by selecting the exact domains and content types you need.
+        <div className="text-center mb-10">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900">
+            Subscription Plans
+          </h1>
+          <p className="mt-3 text-slate-500 max-w-xl mx-auto">
+            Choose the plan that best fits your academic or institutional needs.
+            All prices are in Indian Rupees (₹).
           </p>
         </div>
       )}
 
-      {/* User Type Selector */}
-      <div className="mb-8 flex flex-col items-center gap-3">
-        <p className="text-sm font-semibold text-slate-600 uppercase tracking-widest">I am a</p>
-        <div className="flex flex-wrap justify-center gap-2">
-          {([
-            { id: 'General', label: 'General' },
-            { id: 'Student Scholar', label: '🎓 Student Scholar' },
-            { id: 'College Excellence', label: '🏫 College Excellence' },
-            { id: 'University Global', label: '🌐 University Global' },
-            { id: 'Corporate Innovator', label: '💼 Corporate Innovator' },
-          ] as const).map(({ id, label }) => (
+      {/* Duration toggle */}
+      <div className="flex justify-center mb-10">
+        <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 gap-1">
+          {(["Monthly", "Quarterly", "Half-Yearly", "Yearly"] as Duration[]).map((d) => (
             <button
-              key={id}
-              onClick={() => { setSelectedUserType(id); setLoading(true); }}
-              className={cn(
-                "rounded-full px-5 py-1.5 text-sm font-bold border transition-all",
-                selectedUserType === id
-                  ? "bg-blue-600 text-white border-blue-600 shadow-md"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-blue-400"
-              )}
+              key={d}
+              onClick={() => setDuration(d)}
+              className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
+                duration === d
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
             >
-              {label}
+              {d}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Duration Toggle */}
-      <div className="mb-12 flex items-center justify-center gap-2">
-        <div className="inline-flex rounded-full bg-slate-100 p-1">
-          {(["Monthly", "Quarterly", "Half-Yearly", "Yearly"] as const).map((duration) => (
-            <button
-              key={duration}
-              onClick={() => setSelectedDuration(duration)}
-              className={cn(
-                "rounded-full px-5 py-2 text-sm font-bold transition-all",
-                selectedDuration === duration ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              {duration}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Plan cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {SUBSCRIPTION_PLANS.map((plan, i) => {
+          const price = getPrice(plan, duration);
+          const badge = PLAN_BADGE[plan.name];
+          const isFirst = i === 0;
 
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="flex items-center gap-2 text-slate-500">
-            <Loader2 className="animate-spin" size={20} /> Loading pricing modules...
-          </div>
-        </div>
-      ) : domains.length === 0 ? (
-        <div className="text-center py-12 text-slate-500 border border-slate-200 border-dashed rounded-3xl">
-          No pricing modules available at the moment. Please check back later.
-        </div>
-      ) : (
-        <div className="space-y-16">
-          {domains.map((domain) => (
-            <div key={domain}>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6 px-2 border-b border-slate-200 pb-2">{domain} Packages</h2>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {modules.filter(m => m.domain === domain).map((mod) => {
-                  let price = mod.monthlyPrice;
-                  if (selectedDuration === "Quarterly") price = mod.quarterlyPrice;
-                  if (selectedDuration === "Half-Yearly") price = mod.halfYearlyPrice;
-                  if (selectedDuration === "Yearly") price = mod.yearlyPrice;
-                  
-                  return (
-                    <div key={mod.id} className="flex flex-col rounded-3xl border border-slate-200 bg-white p-6 transition-all hover:shadow-xl hover:border-blue-200">
-                      <div className="mb-6">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 tracking-wider uppercase mb-3">
-                          {mod.contentType}
-                        </span>
-                        <div className="mt-4 flex flex-col">
-                          <span className="text-3xl font-bold tracking-tight text-slate-900">
-                            ₹{price.toLocaleString('en-IN')}
-                          </span>
-                          <span className="text-xs font-medium text-slate-500 mt-1">/{selectedDuration.toLowerCase()}</span>
-                        </div>
-                      </div>
-                      <ul className="mb-8 space-y-3 flex-1">
-                        <li className="flex items-start gap-2 text-sm text-slate-600">
-                          <Check size={16} className="text-emerald-500 shrink-0" />
-                          <span>Unlimited access to all {mod.contentType} in {domain}</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm text-slate-600">
-                          <Check size={16} className="text-emerald-500 shrink-0" />
-                          <span>Over {mod.totalCount.toLocaleString('en-IN')}+ items available</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm text-slate-600">
-                          <Check size={16} className="text-emerald-500 shrink-0" />
-                          <span>PDF Downloads</span>
-                        </li>
-                      </ul>
-                      <button 
-                        onClick={() => handleAddToCart(mod)}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700 shadow-lg shadow-blue-500/20"
-                      >
-                        <ShoppingCart size={16} />
-                        Add to Cart
-                      </button>
-                    </div>
-                  );
-                })}
+          return (
+            <div
+              key={plan.id}
+              className="relative flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-lg transition-all"
+            >
+              {/* Floating badge */}
+              {badge && (
+                <div className="absolute -top-4 left-6">
+                  <span className="inline-block rounded-full bg-indigo-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow whitespace-pre-line text-center leading-tight">
+                    {badge}
+                  </span>
+                </div>
+              )}
+
+              <div className="mt-2">
+                <h3 className="text-lg font-extrabold text-slate-900">{plan.name}</h3>
+                <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">{plan.description}</p>
               </div>
+
+              {/* Price */}
+              <div className="mt-5 flex items-baseline gap-0.5">
+                <span className="text-base text-slate-700 font-medium">₹</span>
+                <span className="text-3xl font-extrabold text-slate-900">
+                  {price.toLocaleString("en-IN")}
+                </span>
+                <span className="ml-1 text-xs text-slate-400">/{duration.toLowerCase()}</span>
+              </div>
+
+              {/* Features */}
+              <ul className="mt-5 space-y-2 flex-1">
+                {plan.features.map((f, fi) => (
+                  <li key={fi} className="flex items-center gap-2 text-sm text-slate-600">
+                    <Check size={14} className="text-indigo-500 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA */}
+              <button
+                onClick={() => handleAddToCart(plan)}
+                className={`mt-6 w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all ${
+                  isFirst
+                    ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                    : "bg-slate-900 hover:bg-slate-800 text-white"
+                }`}
+              >
+                <ShoppingCart size={15} />
+                Add to Cart
+              </button>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 
+  // ── Full-page layout ──────────────────────────────────────────────────────
   if (isFullPage) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <section className="bg-white border-b border-slate-200 py-24">
+      <div className="min-h-screen bg-white">
+        {/* Plans section */}
+        <section className="py-16 bg-white border-b border-slate-100">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            {content}
+            {plansSection}
           </div>
         </section>
-        
-        <section className="py-20">
+
+        {/* Custom quote dark banner */}
+        <section className="py-14 bg-white">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-            <div className="rounded-3xl bg-slate-900 p-8 md:p-12 text-white text-center">
-              <h2 className="text-2xl font-bold md:text-3xl">Need a custom plan for your organization?</h2>
-              <p className="mt-4 text-slate-400 max-w-2xl mx-auto">
-                We offer tailored solutions for government agencies, corporate R&D centers, and specialized research institutes. Get massive volume discounts for institution-wide access.
+            <div className="rounded-2xl bg-slate-900 px-8 py-14 text-center">
+              <h2 className="text-2xl font-bold text-white sm:text-3xl">
+                Need a custom plan for your organization?
+              </h2>
+              <p className="mt-3 text-slate-400 max-w-xl mx-auto text-sm">
+                We offer tailored solutions for government agencies, corporate R&D centers, and specialized
+                research institutes.
               </p>
-              <div className="mt-8">
-                <button className="rounded-full bg-blue-600 px-8 py-4 text-sm font-bold text-white hover:bg-blue-500 transition-all">
-                  Contact Sales for Custom Quote
-                </button>
-              </div>
+              <button
+                onClick={() => navigate("/contact")}
+                className="mt-8 inline-flex items-center gap-2 rounded-full bg-indigo-600 hover:bg-indigo-700 px-8 py-4 text-sm font-bold text-white transition-all"
+              >
+                <Phone size={15} />
+                Contact Sales for Custom Quote
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ section */}
+        <section className="py-16 bg-white">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-extrabold text-slate-900 text-center mb-12">
+              Frequently Asked Questions
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-14 gap-y-10">
+              {FAQS.map((faq, i) => (
+                <div key={i}>
+                  <h3 className="text-base font-bold text-slate-900">{faq.q}</h3>
+                  <p className="mt-2 text-sm text-indigo-600 leading-relaxed">{faq.a}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -207,5 +221,6 @@ export function SubscriptionPlans({
     );
   }
 
-  return content;
+  // ── Embedded (not full page) ──────────────────────────────────────────────
+  return plansSection;
 }
