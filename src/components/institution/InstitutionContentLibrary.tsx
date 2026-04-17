@@ -89,7 +89,7 @@ export function InstitutionContentLibrary() {
 
   const handleOpen = (item: any) => {
     if (item.locked) {
-      toast.error('This content is outside your institution's subscription scope.');
+      toast.error("This content is outside your institution's subscription scope.");
       return;
     }
     if (item.contentType === 'Educational Videos') {
