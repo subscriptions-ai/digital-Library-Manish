@@ -10,6 +10,7 @@ import { ForcePasswordChange } from "./components/ForcePasswordChange";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { Home } from "./components/Home";
+import { NotFound } from "./components/NotFound";
 
 import { DigitalLibrary } from "./components/DigitalLibrary";
 import { AboutUs } from "./components/AboutUs";
@@ -199,7 +200,7 @@ export default function App() {
                       <Route path="/quotation-preview" element={<QuotationPreview />} />
                       <Route path="/domain/:domainId" element={<DomainLandingPage />} />
                       <Route path="/search" element={<SearchResults />} />
-                      <Route path="*" element={<Home />} />
+                      <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>
                   <Footer />
