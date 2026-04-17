@@ -344,8 +344,19 @@ async function startServer() {
 
   app.get("/api/user/subscriptions", authenticateJWT, async (req: any, res) => {
     try {
+      const OR_clauses: any[] = [{ userId: req.user.uid }];
+      
+      // Use institutionId from JWT (set at login time on user record)
+      if (req.user.institutionId) {
+        OR_clauses.push({ institutionId: req.user.institutionId });
+      } else if (req.user.role === 'Institution' || req.user.role === 'Student' || req.user.role === 'Subscriber') {
+        // Fallback: load from DB if not in token
+        const u = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        if (u?.institutionId) OR_clauses.push({ institutionId: u.institutionId });
+      }
+
       const subscriptions = await prisma.subscription.findMany({
-        where: { userId: req.user.uid },
+        where: { OR: OR_clauses },
         orderBy: { startDate: 'desc' }
       });
       res.json(subscriptions);
@@ -359,7 +370,8 @@ async function startServer() {
     const OR_clauses: any[] = [{ userId: uid }];
     
     let resolvedInstId = institutionId;
-    if (!resolvedInstId && (role === 'Student' || role === 'Subscriber')) {
+    if (!resolvedInstId) {
+      // Always look up from DB — JWT may not have institutionId for older tokens
       const u = await prisma.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
       if (u?.institutionId) resolvedInstId = u.institutionId;
     }
@@ -1623,8 +1635,12 @@ async function startServer() {
         let assignedInstitutionId = null;
         
         if (isInst) {
-           const inst = await prisma.institution.findFirst({ where: { subscriptionId: userId } });
-           if (inst) assignedInstitutionId = inst.id;
+           if (user.institutionId) {
+             assignedInstitutionId = user.institutionId;
+           } else {
+             const inst = await prisma.institution.findFirst({ where: { subscriptionId: userId } });
+             if (inst) assignedInstitutionId = inst.id;
+           }
         }
 
         const sub = await prisma.subscription.create({
@@ -1767,7 +1783,7 @@ async function startServer() {
       const subscriptions = await (prisma as any).subscription.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        include: { user: true, request: true }
+        include: { user: true, request: true, institution: { include: { users: true } } }
       });
       res.json(subscriptions);
     } catch (error) {
@@ -2205,8 +2221,22 @@ async function startServer() {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
         return res.status(403).json({ error: "Unauthorized" });
       }
+
+      const OR_clauses: any[] = [{ userId: req.user.uid }];
+      
+      // institutionId is stored on the User record and embedded in JWT at login
+      let instId = req.user.institutionId;
+      if (!instId) {
+        // Fallback: load from DB for older tokens
+        const u = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        instId = u?.institutionId;
+      }
+      if (instId) {
+        OR_clauses.push({ institutionId: instId });
+      }
+
       const subscriptions = await prisma.subscription.findMany({
-        where: { userId: req.user.uid },
+        where: { OR: OR_clauses },
         orderBy: { startDate: 'desc' }
       });
       res.json(subscriptions);
