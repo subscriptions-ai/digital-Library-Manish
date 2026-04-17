@@ -391,7 +391,21 @@ async function startServer() {
 
   // Helper to check if a specific content object is accessible based on subscriptions
   const checkContentAccess = (content: any, userRole: string, activeSubscriptions: any[]) => {
+    // Admins, content managers, and institution librarians see everything they cover
     if (userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'ContentManager') return true;
+    
+    // Institution role: allow access if institution has ANY active subscription
+    // (the subscription itself filters via domains/contentTypes)
+    if (userRole === 'Institution') {
+      return activeSubscriptions.some(sub => {
+        const d: string[] = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains) : []);
+        if (d.length === 0) return true; // wildcard
+        if (!d.includes(content.domain)) return false;
+        const ct: string[] = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes) : []);
+        if (ct.length === 0) return true;
+        return ct.includes(content.contentType);
+      });
+    }
     
     return activeSubscriptions.some(sub => {
       // Parse domains array (stored as JSON array in Prisma)

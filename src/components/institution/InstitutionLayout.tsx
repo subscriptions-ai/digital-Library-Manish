@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, FileText, Activity, UserCircle, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, Activity, UserCircle, CreditCard, BookOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -84,6 +84,13 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             onClick={() => navigate('/institution/analytics')}
           />
           <NavButton
+            icon={<BookOpen size={18} />}
+            label="Content Library"
+            active={location.pathname === '/institution/library'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/institution/library')}
+          />
+          <NavButton
             icon={<CreditCard size={18} />}
             label="Subscriptions"
             active={location.pathname === '/institution/subscriptions'}
@@ -122,6 +129,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             {location.pathname === '/institution' ? (profile.organization || 'Institution Dashboard')
             : location.pathname.startsWith('/institution/students') ? 'Student Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
+            : location.pathname === '/institution/library' ? 'Content Library'
             : location.pathname === '/institution/subscriptions' ? 'Subscription Details'
             : location.pathname === '/institution/profile' ? 'Institution Profile'
             : 'Dashboard'}

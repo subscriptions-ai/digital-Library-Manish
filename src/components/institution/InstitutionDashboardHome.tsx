@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, BookOpen, Activity, Clock, CreditCard, Calendar, CheckCircle, AlertTriangle, Package } from 'lucide-react';
+import { Users, BookOpen, Activity, Clock, CreditCard, Calendar, CheckCircle, AlertTriangle, Package, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 export function InstitutionDashboardHome() {
   const { profile } = useAuth();
@@ -103,6 +104,19 @@ export function InstitutionDashboardHome() {
           </motion.div>
         ))}
       </div>
+
+      {/* Content Library Quick Access */}
+      <Link to="/institution/library"
+        className="flex items-center gap-5 p-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300/50 transition-all hover:-translate-y-0.5 group">
+        <div className="h-12 w-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+          <BookOpen size={24} />
+        </div>
+        <div className="flex-1">
+          <div className="font-bold text-base">Browse Content Library</div>
+          <div className="text-indigo-100 text-sm">Read journals, books, periodicals and more included in your subscription.</div>
+        </div>
+        <ChevronRight size={22} className="text-indigo-200 group-hover:translate-x-1 transition-transform shrink-0" />
+      </Link>
 
       {/* Subscription Details */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
