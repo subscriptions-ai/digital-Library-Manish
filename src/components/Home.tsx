@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { DOMAINS, SUBSCRIPTION_PLANS, CONTENT_TYPES } from "../constants";
 import { ArrowRight, BookOpen, ShieldCheck, Zap, Globe, Users, BarChart3, CheckCircle2, PlayCircle, FileText, GraduationCap, Newspaper, Mail, Book } from "lucide-react";
@@ -17,6 +18,22 @@ const contentTypeIconMap: Record<string, any> = {
 };
 
 export function Home() {
+  const [stats, setStats] = useState([
+    { label: "Books", value: "..." },
+    { label: "Periodicals", value: "..." },
+    { label: "Theses", value: "..." },
+    { label: "Educational Videos", value: "..." }
+  ]);
+
+  useEffect(() => {
+    fetch("/api/public/counts")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setStats(data);
+      })
+      .catch(err => console.error("Failed to fetch public counts:", err));
+  }, []);
+
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
@@ -64,20 +81,19 @@ export function Home() {
               className="hidden lg:block relative"
             >
               <div className="aspect-[4/3] rounded-3xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 p-4 ring-1 ring-white/10">
-                <div className="h-full w-full rounded-2xl bg-slate-800/50 backdrop-blur-xl border border-white/10 overflow-hidden relative">
+                <div className="h-full w-full rounded-2xl bg-slate-800/50 backdrop-blur-xl border border-white/10 overflow-hidden relative group">
                   <img 
-                    src="https://picsum.photos/seed/library/800/600" 
-                    alt="Digital Library Interface" 
-                    className="w-full h-full object-cover opacity-40"
-                    referrerPolicy="no-referrer"
+                    src="/platform_tour.webp" 
+                    alt="Platform Tour Animation" 
+                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center p-8">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-center p-8 bg-slate-900/60 backdrop-blur-sm rounded-xl opacity-100 group-hover:opacity-0 transition-opacity duration-500">
                       <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white mb-4 shadow-xl shadow-blue-600/40">
                         <PlayCircle size={32} />
                       </div>
-                      <h3 className="text-xl font-bold">Watch Platform Tour</h3>
-                      <p className="text-sm text-slate-400 mt-2">See how STM Digital Library works</p>
+                      <h3 className="text-xl font-bold">Platform Tour</h3>
+                      <p className="text-sm text-slate-200 mt-2">Preview STM Digital Library</p>
                     </div>
                   </div>
                 </div>
@@ -172,12 +188,7 @@ export function Home() {
       <section className="border-y border-slate-200 bg-white py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-            {[
-              { label: "Journals", value: "500+" },
-              { label: "Articles", value: "100k+" },
-              { label: "Institutions", value: "1,200+" },
-              { label: "Authors", value: "25k+" }
-            ].map((stat, i) => (
+            {stats.map((stat, i) => (
               <div key={i} className="text-center">
                 <div className="text-4xl font-bold text-slate-900">{stat.value}</div>
                 <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-2">{stat.label}</div>

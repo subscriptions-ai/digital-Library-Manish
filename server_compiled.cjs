@@ -89,6 +89,25 @@ async function startServer() {
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
+  app.get("/api/public/counts", async (req, res) => {
+    try {
+      const [books, periodicals, theses, videos] = await Promise.all([
+        prisma.content.count({ where: { contentType: "Books" } }),
+        prisma.content.count({ where: { contentType: "Periodicals" } }),
+        prisma.content.count({ where: { contentType: "Theses" } }),
+        prisma.content.count({ where: { contentType: "Educational Videos" } })
+      ]);
+      res.json([
+        { label: "Books", value: `${books}+` },
+        { label: "Periodicals", value: `${periodicals}+` },
+        { label: "Theses", value: `${theses}+` },
+        { label: "Educational Videos", value: `${videos}+` }
+      ]);
+    } catch (error) {
+      console.error("Public counts error:", error);
+      res.status(500).json({ error: "Failed to fetch counts" });
+    }
+  });
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, name, organization } = req.body;
@@ -778,6 +797,13 @@ async function startServer() {
   });
   const GST_RATE = 0.18;
   const COMPANY_STATE = "Delhi";
+  const USER_TYPES = [
+    "General",
+    "Student Scholar",
+    "College Excellence",
+    "University Global",
+    "Corporate Innovator"
+  ];
   async function syncContentModuleCounts() {
     const groups = await prisma.content.groupBy({
       by: ["domain", "contentType"],
@@ -786,18 +812,21 @@ async function startServer() {
     });
     for (const g of groups) {
       if (!g.domain) continue;
-      await prisma.contentModule.upsert({
-        where: { domain_contentType: { domain: g.domain, contentType: g.contentType } },
-        create: { domain: g.domain, contentType: g.contentType, totalCount: g._count.id },
-        update: { totalCount: g._count.id }
-      });
+      for (const userType of USER_TYPES) {
+        await prisma.contentModule.upsert({
+          where: { domain_contentType_userType: { domain: g.domain, contentType: g.contentType, userType } },
+          create: { domain: g.domain, contentType: g.contentType, userType, totalCount: g._count.id },
+          update: { totalCount: g._count.id }
+        });
+      }
     }
   }
   app.get("/api/content-modules", async (req, res) => {
     try {
-      const { domain } = req.query;
+      const { domain, userType } = req.query;
       const where = { isActive: true };
       if (domain) where.domain = domain;
+      where.userType = userType ? userType : "General";
       const modules = await prisma.contentModule.findMany({
         where,
         orderBy: [{ domain: "asc" }, { contentType: "asc" }]
@@ -809,7 +838,7 @@ async function startServer() {
   });
   app.post("/api/content-modules/calculate", async (req, res) => {
     try {
-      const { moduleIds, planType, userState } = req.body;
+      const { moduleIds, planType, userState, userType } = req.body;
       if (!Array.isArray(moduleIds) || moduleIds.length === 0) {
         return res.json({ subtotal: 0, gstAmount: 0, total: 0, breakdown: [], planType });
       }
@@ -820,6 +849,7 @@ async function startServer() {
         let price = 0;
         if (planType === "Monthly") price = m.monthlyPrice;
         else if (planType === "Quarterly") price = m.quarterlyPrice;
+        else if (planType === "Half-Yearly") price = m.halfYearlyPrice;
         else if (planType === "Yearly") price = m.yearlyPrice;
         return {
           id: m.id,
@@ -827,7 +857,8 @@ async function startServer() {
           contentType: m.contentType,
           price,
           totalCount: m.totalCount,
-          planType
+          planType,
+          userType: m.userType
         };
       });
       const subtotal = breakdown.reduce((sum, b) => sum + b.price, 0);
@@ -840,6 +871,7 @@ async function startServer() {
         gstAmount,
         total,
         planType,
+        userType,
         gstType: isInterState ? "IGST" : "CGST+SGST",
         gstRate: GST_RATE
       });
@@ -851,7 +883,13 @@ async function startServer() {
   app.get("/api/admin/content-modules", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       await syncContentModuleCounts();
-      const modules = await prisma.contentModule.findMany({ orderBy: [{ domain: "asc" }, { contentType: "asc" }] });
+      const { userType } = req.query;
+      const where = {};
+      if (userType && userType !== "all") where.userType = userType;
+      const modules = await prisma.contentModule.findMany({
+        where,
+        orderBy: [{ domain: "asc" }, { userType: "asc" }, { contentType: "asc" }]
+      });
       res.json(modules);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch modules" });
@@ -860,13 +898,15 @@ async function startServer() {
   app.put("/api/admin/content-modules/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const { monthlyPrice, quarterlyPrice, yearlyPrice, yearlyDiscountPct, isActive } = req.body;
+      const { monthlyPrice, quarterlyPrice, halfYearlyPrice, yearlyPrice, yearlyDiscountPct, isActive, userType } = req.body;
       const data = {};
       if (monthlyPrice !== void 0) data.monthlyPrice = parseFloat(monthlyPrice);
       if (quarterlyPrice !== void 0) data.quarterlyPrice = parseFloat(quarterlyPrice);
+      if (halfYearlyPrice !== void 0) data.halfYearlyPrice = parseFloat(halfYearlyPrice);
       if (yearlyPrice !== void 0) data.yearlyPrice = parseFloat(yearlyPrice);
       if (yearlyDiscountPct !== void 0) data.yearlyDiscountPct = parseFloat(yearlyDiscountPct);
       if (isActive !== void 0) data.isActive = isActive;
+      if (userType !== void 0) data.userType = userType;
       const updated = await prisma.contentModule.update({ where: { id }, data });
       res.json(updated);
     } catch (error) {
@@ -880,6 +920,123 @@ async function startServer() {
       res.json({ synced: modules.length, modules });
     } catch (error) {
       res.status(500).json({ error: "Sync failed" });
+    }
+  });
+  app.get("/api/videos/grouped", authenticateJWT, async (req, res) => {
+    try {
+      const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      const videos = await prisma.content.findMany({
+        where: {
+          contentType: "Educational Videos",
+          status: { in: ["Published", "published"] }
+        }
+      });
+      const accessibleVideos = videos.filter((v) => checkContentAccess(v, req.user.role, activeSubs));
+      const grouped = accessibleVideos.reduce((acc, video) => {
+        const d = video.domain || "Other";
+        if (!acc[d]) acc[d] = [];
+        acc[d].push(video);
+        return acc;
+      }, {});
+      res.json(grouped);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch grouped videos" });
+    }
+  });
+  app.get("/api/videos/:id/details", authenticateJWT, async (req, res) => {
+    try {
+      const videoId = req.params.id;
+      const content = await prisma.content.findUnique({ where: { id: videoId } });
+      if (!content || content.contentType !== "Educational Videos") {
+        return res.status(404).json({ error: "Video not found" });
+      }
+      const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      if (!checkContentAccess(content, req.user.role, activeSubs)) {
+        return res.status(403).json({ error: "Access denied." });
+      }
+      if (["Student", "Subscriber"].includes(req.user.role)) {
+        try {
+          await prisma.studentActivity.create({
+            data: { userId: req.user.uid, contentId: content.id, timeSpent: 0 }
+          });
+        } catch (e) {
+        }
+      }
+      let related = [];
+      if (content.domain) {
+        const allRelated = await prisma.content.findMany({
+          where: {
+            contentType: "Educational Videos",
+            domain: content.domain,
+            status: { in: ["Published", "published"] },
+            id: { not: content.id }
+          },
+          take: 20
+        });
+        related = allRelated.filter((v) => checkContentAccess(v, req.user.role, activeSubs)).slice(0, 10);
+      }
+      res.json({
+        video: {
+          id: content.id,
+          title: content.title,
+          description: content.description,
+          domain: content.domain,
+          fileUrl: content.fileUrl
+        },
+        related
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch video details" });
+    }
+  });
+  app.get("/api/search", async (req, res) => {
+    try {
+      const { q, domain, contentType, page = "1", limit = "20" } = req.query;
+      if (!q || q.trim().length < 2) {
+        return res.json({ data: [], total: 0, query: q || "" });
+      }
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const where = {
+        status: "Published",
+        OR: [
+          { title: { contains: q, mode: "insensitive" } },
+          { authors: { contains: q, mode: "insensitive" } },
+          { description: { contains: q, mode: "insensitive" } },
+          { domain: { contains: q, mode: "insensitive" } },
+          { contentType: { contains: q, mode: "insensitive" } },
+          { subjectArea: { contains: q, mode: "insensitive" } }
+        ]
+      };
+      if (domain) where.domain = domain;
+      if (contentType) where.contentType = contentType;
+      const [data, total] = await Promise.all([
+        prisma.content.findMany({
+          where,
+          skip,
+          take: parseInt(limit),
+          orderBy: { publishedAt: "desc" },
+          select: {
+            id: true,
+            title: true,
+            authors: true,
+            domain: true,
+            contentType: true,
+            description: true,
+            subjectArea: true,
+            thumbnailUrl: true,
+            accessType: true,
+            price: true,
+            publishedAt: true
+          }
+        }),
+        prisma.content.count({ where })
+      ]);
+      res.json({ data, total, query: q, page: parseInt(page), limit: parseInt(limit) });
+    } catch (err) {
+      console.error("GET /api/search error:", err);
+      res.status(500).json({ error: "Search failed" });
     }
   });
   app.get("/api/domain-data", async (req, res) => {
@@ -896,21 +1053,27 @@ async function startServer() {
         type: g.contentType,
         count: g._count.id
       }));
+      const { userType } = req.query;
+      const moduleWhere = { domain, isActive: true };
+      if (userType) moduleWhere.userType = userType;
+      else moduleWhere.userType = "General";
       const modules = await prisma.contentModule.findMany({
-        where: { domain, isActive: true },
+        where: moduleWhere,
         orderBy: { contentType: "asc" }
       });
       const pricing_modules = modules.map((m) => ({
         id: m.id,
         type: m.contentType,
+        userType: m.userType,
         monthlyPrice: m.monthlyPrice,
         quarterlyPrice: m.quarterlyPrice,
+        halfYearlyPrice: m.halfYearlyPrice,
         yearlyPrice: m.yearlyPrice,
         yearlyDiscountPct: m.yearlyDiscountPct,
         totalCount: m.totalCount,
         visible: m.isActive
       }));
-      res.json({ domain, content_summary, pricing_modules });
+      res.json({ domain, content_summary, pricing_modules, userTypes: USER_TYPES });
     } catch (err) {
       console.error("GET /api/domain-data error:", err);
       res.status(500).json({ error: "Failed to fetch domain data" });
@@ -1932,6 +2095,7 @@ STM Digital Library Team`,
   });
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || "development"})`);
+    console.log("CRITICAL: Server is running with dynamic counts endpoint registered.");
   });
 }
 startServer();

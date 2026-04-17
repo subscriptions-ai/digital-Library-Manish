@@ -211,7 +211,11 @@ export function LMSDashboard() {
   useEffect(() => { fetchContent(); }, [fetchContent]);
 
   const handleOpen = (item: ContentItem) => {
-    navigate(`/dashboard/content/${item.id}`);
+    if (item.contentType === 'Educational Videos' || item.contentType === 'Videos') {
+      navigate(`/dashboard/videos/player/${item.id}`);
+    } else {
+      navigate(`/dashboard/content/${item.id}`);
+    }
   };
 
   // Filter content based on showLocked toggle

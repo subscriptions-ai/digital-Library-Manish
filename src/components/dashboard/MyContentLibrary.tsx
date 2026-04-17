@@ -49,6 +49,8 @@ export function MyContentLibrary() {
     if (item.locked) {
       toast.error('This content is locked. Please upgrade your subscription.');
       navigate(`/domain/${domain.toLowerCase().replace(/\s+/g, '-')}`);
+    } else if (item.contentType === 'Educational Videos') {
+      navigate(`/dashboard/videos/player/${item.id}`);
     } else {
       navigate(`/dashboard/viewer/${item.id}`);
     }

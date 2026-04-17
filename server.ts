@@ -36,6 +36,9 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   const JWT_SECRET = process.env.JWT_SECRET || "your-fallback-secret-for-dev-only";
+  if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+    throw new Error("CRITICAL SECURITY ERROR: JWT_SECRET must be set in production environment variables.");
+  }
 
   // Middleware to authenticate JWT
   const authenticateJWT = (req: any, res: any, next: any) => {
@@ -81,6 +84,28 @@ async function startServer() {
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // Public Stats for Home Page
+  app.get("/api/public/counts", async (req, res) => {
+    try {
+      const [books, periodicals, theses, videos] = await Promise.all([
+        prisma.content.count({ where: { contentType: "Books" } }),
+        prisma.content.count({ where: { contentType: "Periodicals" } }),
+        prisma.content.count({ where: { contentType: "Theses" } }),
+        prisma.content.count({ where: { contentType: "Educational Videos" } })
+      ]);
+
+      res.json([
+        { label: "Books", value: `${books}+` },
+        { label: "Periodicals", value: `${periodicals}+` },
+        { label: "Theses", value: `${theses}+` },
+        { label: "Educational Videos", value: `${videos}+` }
+      ]);
+    } catch (error) {
+      console.error("Public counts error:", error);
+      res.status(500).json({ error: "Failed to fetch counts" });
+    }
   });
 
   // Auth: Signup
@@ -1069,6 +1094,94 @@ async function startServer() {
       res.json({ synced: modules.length, modules });
     } catch (error) {
       res.status(500).json({ error: "Sync failed" });
+    }
+  });
+
+  // ========================
+  // VIDEO DISPLAY SYSTEM
+  // ========================
+
+  app.get("/api/videos/grouped", authenticateJWT, async (req: any, res) => {
+    try {
+      const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      
+      const videos = await prisma.content.findMany({
+        where: { 
+          contentType: "Educational Videos", 
+          status: { in: ["Published", "published"] } 
+        }
+      });
+
+      // Filter by access (reusing existing checkContentAccess logic)
+      const accessibleVideos = videos.filter(v => checkContentAccess(v as any, req.user.role, activeSubs));
+
+      // Group by domain
+      const grouped = accessibleVideos.reduce((acc: any, video: any) => {
+        const d = video.domain || "Other";
+        if (!acc[d]) acc[d] = [];
+        acc[d].push(video);
+        return acc;
+      }, {});
+
+      res.json(grouped);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch grouped videos" });
+    }
+  });
+
+  app.get("/api/videos/:id/details", authenticateJWT, async (req: any, res) => {
+    try {
+      const videoId = req.params.id;
+      const content = await prisma.content.findUnique({ where: { id: videoId } });
+      
+      if (!content || content.contentType !== "Educational Videos") {
+        return res.status(404).json({ error: "Video not found" });
+      }
+
+      const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      if (!checkContentAccess(content, req.user.role, activeSubs)) {
+        return res.status(403).json({ error: "Access denied." });
+      }
+
+      // Log activity
+      if (['Student', 'Subscriber'].includes(req.user.role)) {
+        try {
+          await (prisma as any).studentActivity.create({
+            data: { userId: req.user.uid, contentId: content.id, timeSpent: 0 }
+          });
+        } catch(e) { /* ignore */ }
+      }
+
+      // Find related videos (same domain, max 10, accessible)
+      let related = [];
+      if (content.domain) {
+        const allRelated = await prisma.content.findMany({
+          where: { 
+            contentType: "Educational Videos", 
+            domain: content.domain, 
+            status: { in: ["Published", "published"] },
+            id: { not: content.id }
+          },
+          take: 20
+        });
+        related = allRelated.filter(v => checkContentAccess(v as any, req.user.role, activeSubs)).slice(0, 10);
+      }
+
+      res.json({
+        video: {
+          id: content.id,
+          title: content.title,
+          description: content.description,
+          domain: content.domain,
+          fileUrl: content.fileUrl
+        },
+        related
+      });
+      
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch video details" });
     }
   });
 
@@ -2317,7 +2430,7 @@ async function startServer() {
     res.status(500).json({ error: "Internal server error" });
   });
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || 'development'})`);
   });
 }
