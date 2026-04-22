@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -224,6 +224,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/admin/quotations')}
           />
+
+          {/* System Validator */}
+          <NavButton
+            icon={<ShieldCheck size={17} />}
+            label="System Validator"
+            active={location.pathname === '/admin/validator'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/validator')}
+          />
         </nav>
 
         {/* Footer */}
@@ -253,6 +262,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/subscriptions' ? 'Subscriptions'
               : location.pathname === '/admin/users/create' ? 'Create User'
               : location.pathname === '/admin/users' ? 'Users'
+              : location.pathname === '/admin/validator' ? 'System Validator'
               : 'Dashboard')}
           </h1>
         </header>

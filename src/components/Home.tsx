@@ -309,41 +309,50 @@ export function Home() {
           </div>
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {SUBSCRIPTION_PLANS.map((plan) => (
-              <div key={plan.id} className={cn(
-                "relative flex flex-col rounded-3xl border p-8 transition-all hover:shadow-xl",
-                plan.userType === "Student" ? "border-blue-200 bg-white" : "border-slate-200 bg-white"
-              )}>
-                {plan.userType === "Student" && (
-                  <span className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
-                    Best for Individuals
-                  </span>
-                )}
-                <div className="mb-8">
-                  <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
-                  <p className="mt-2 text-xs text-slate-500 leading-relaxed">{plan.description}</p>
-                  <div className="mt-6 flex items-baseline gap-1">
-                    <span className="text-sm font-bold text-slate-900">Starting at</span>
-                    <span className="text-3xl font-bold tracking-tight text-slate-900">₹{plan.pricing[0].price}</span>
-                    <span className="text-sm font-medium text-slate-500">/{plan.pricing[0].duration.toLowerCase()}</span>
-                  </div>
-                </div>
-                <ul className="mb-8 space-y-4 flex-1">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm text-slate-600">
-                      <ShieldCheck size={16} className="text-blue-500" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Link to="/subscriptions" className={cn(
-                  "w-full rounded-xl py-3 text-sm font-bold transition-all text-center",
-                  plan.userType === "Student" ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-slate-900 text-white hover:bg-slate-800"
+            {SUBSCRIPTION_PLANS.map((plan, i) => {
+              const badge = {
+                "Student Scholar":    "BEST FOR INDIVIDUALS",
+                "College Excellence": "BEST FOR COLLEGES",
+                "University Global":  "BEST FOR UNIVERSITIES",
+                "Corporate Innovator": "BEST FOR CORPORATES",
+              }[plan.name];
+
+              return (
+                <div key={plan.id} className={cn(
+                  "relative flex flex-col rounded-3xl border p-8 transition-all hover:shadow-xl",
+                  i === 0 ? "border-blue-200 bg-white" : "border-slate-200 bg-white"
                 )}>
-                  View All Plans
-                </Link>
-              </div>
-            ))}
+                  {badge && (
+                    <span className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-white whitespace-nowrap">
+                      {badge}
+                    </span>
+                  )}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">{plan.description}</p>
+                    <div className="mt-6 flex items-baseline gap-1">
+                      <span className="text-sm font-bold text-slate-900">Starting at</span>
+                      <span className="text-3xl font-bold tracking-tight text-slate-900">₹{plan.pricing[0].price.toLocaleString("en-IN")}</span>
+                      <span className="text-sm font-medium text-slate-500">/{plan.pricing[0].duration.toLowerCase()}</span>
+                    </div>
+                  </div>
+                  <ul className="mb-8 space-y-4 flex-1">
+                    {plan.features.map((feature, fi) => (
+                      <li key={fi} className="flex items-center gap-3 text-sm text-slate-600">
+                        <ShieldCheck size={16} className="text-blue-500" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link to="/subscriptions" className={cn(
+                    "w-full rounded-xl py-3 text-sm font-bold transition-all text-center",
+                    i === 0 ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-slate-900 text-white hover:bg-slate-800"
+                  )}>
+                    View All Plans
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -194,6 +194,7 @@ export function LMSDashboard() {
         page: String(page),
         limit: String(ITEMS_PER_PAGE),
       });
+      if (!showLocked) q.set('onlyUnlocked', 'true');
       if (domainFilter) q.set('domain', domainFilter);
       if (typeFilter) q.set('contentType', typeFilter);
       if (debouncedSearch) q.set('search', debouncedSearch);
@@ -206,7 +207,7 @@ export function LMSDashboard() {
       setTotalItems(total);
     } catch { toast.error('Failed to load content'); }
     finally { setLoadingContent(false); }
-  }, [domainFilter, typeFilter, debouncedSearch, page]);
+  }, [domainFilter, typeFilter, debouncedSearch, page, showLocked]);
 
   useEffect(() => { fetchContent(); }, [fetchContent]);
 
@@ -312,14 +313,19 @@ export function LMSDashboard() {
               <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 text-xs font-bold rounded-full">Recently Viewed</span>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-              {dashData.recentActivity.slice(0, 6).map((a, i) => (
+            {dashData.recentActivity.slice(0, 6).map((a, i) => (
                 <motion.div key={a.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                   className="min-w-[240px] flex-shrink-0 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-700 transition-all cursor-pointer group"
-                  onClick={() => navigate('/dashboard/access')}>
+                  onClick={() => navigate(`/dashboard/viewer/${a.id}?page=${a.lastPage || 1}`)}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-br ${gradients[i % gradients.length]} mb-3 shadow-sm`}>
                     <BookOpen size={18} />
                   </div>
                   <div className="font-semibold text-sm text-slate-800 dark:text-white line-clamp-2 mb-1">{a.title}</div>
+                  {a.lastPage > 1 && (
+                    <div className="text-[10px] text-blue-500 dark:text-blue-400 font-semibold mb-2">
+                      📖 Page {a.lastPage}
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mt-3">
                     <span className="text-[10px] text-slate-400 dark:text-slate-500">{new Date(a.date).toLocaleDateString()}</span>
                     <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:gap-2 transition-all">Continue <ChevronRight size={10} /></span>

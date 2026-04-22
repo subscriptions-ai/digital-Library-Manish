@@ -399,7 +399,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: "Student Scholar",
     userType: "Student",
     description: "Affordable access for individual students to boost their academic performance.",
-    features: ["Personalized Dashboard", "Access to 10 Journals", "PDF Downloads", "Mobile App Access"],
+    features: [
+      "Personalized Dashboard",
+      "Access to 10 Journals",
+      "PDF Downloads",
+      "Mobile App Access"
+    ],
     pricing: [
       { duration: "Monthly", price: 499 },
       { duration: "Quarterly", price: 1299 },
@@ -412,7 +417,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: "College Excellence",
     userType: "College",
     description: "Comprehensive access for small to medium academic institutions.",
-    features: ["IP-Based Access", "Up to 500 Users", "Usage Analytics", "Librarian Dashboard"],
+    features: [
+      "IP-Based Access",
+      "Up to 500 Users",
+      "Usage Analytics",
+      "Librarian Dashboard"
+    ],
     pricing: [
       { duration: "Monthly", price: 15000 },
       { duration: "Quarterly", price: 40000 },
@@ -425,7 +435,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: "University Global",
     userType: "University",
     description: "Unlimited access for large universities with multi-campus support.",
-    features: ["Unlimited Users", "Remote Access (Shibboleth)", "Advanced Analytics", "Dedicated Support"],
+    features: [
+      "Unlimited Users",
+      "Remote Access (Shibboleth)",
+      "Advanced Analytics",
+      "Dedicated Support"
+    ],
     pricing: [
       { duration: "Monthly", price: 45000 },
       { duration: "Quarterly", price: 120000 },
@@ -438,7 +453,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: "Corporate Innovator",
     userType: "Corporate",
     description: "Tailored research access for R&D centers and corporate libraries.",
-    features: ["Industry-Specific Content", "R&D Analytics", "Multi-User License", "API Integration"],
+    features: [
+      "Industry-Specific Content",
+      "R&D Analytics",
+      "Multi-User License",
+      "API Integration"
+    ],
     pricing: [
       { duration: "Monthly", price: 25000 },
       { duration: "Quarterly", price: 65000 },

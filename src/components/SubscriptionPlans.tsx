@@ -35,10 +35,10 @@ const FAQS = [
 
 // ─── Plan badge ────────────────────────────────────────────────────────────────
 const PLAN_BADGE: Record<string, string | null> = {
-  "Student Scholar":    "BEST FOR\nINDIVIDUALS",
-  "College Excellence": null,
-  "University Global":  null,
-  "Corporate Innovator": null,
+  "Student Scholar":    "BEST FOR INDIVIDUALS",
+  "College Excellence": "BEST FOR COLLEGES",
+  "University Global":  "BEST FOR UNIVERSITIES",
+  "Corporate Innovator": "BEST FOR CORPORATES",
 };
 
 // ─── Helper ────────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ export function SubscriptionPlans({
               {/* Floating badge */}
               {badge && (
                 <div className="absolute -top-4 left-6">
-                  <span className="inline-block rounded-full bg-indigo-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow whitespace-pre-line text-center leading-tight">
+                  <span className="inline-block rounded-full bg-indigo-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow whitespace-nowrap text-center leading-tight">
                     {badge}
                   </span>
                 </div>

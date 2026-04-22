@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeft,
@@ -125,6 +125,7 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
 export function ProtectedContentViewer() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Content meta
   const [content, setContent] = useState<any>(null);
@@ -143,8 +144,34 @@ export function ProtectedContentViewer() {
   const [darkMode, setDarkMode] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
 
+  // Reading progress
+  const [savedPage, setSavedPage] = useState(1);
+  const [resumeToastShown, setResumeToastShown] = useState(false);
+  const saveProgressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewerWrapperRef = useRef<HTMLDivElement>(null);
+
+  // ── Auto-save reading progress (debounced 3s) ────────────────────────────
+  const saveProgress = useCallback((page: number) => {
+    if (!id) return;
+    if (saveProgressTimer.current) clearTimeout(saveProgressTimer.current);
+    saveProgressTimer.current = setTimeout(() => {
+      fetch('/api/user/reading-progress', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ contentId: id, lastPage: page, timeSpent: 30 })
+      }).catch(() => {}); // fire-and-forget
+    }, 3000);
+  }, [id]);
+
+  // Save on page change
+  useEffect(() => {
+    if (currentPage > 1 || numPages > 0) saveProgress(currentPage);
+  }, [currentPage, saveProgress, numPages]);
 
   // ── Security: block right-click, Ctrl+S, Ctrl+P ─────
   useEffect(() => {
@@ -213,10 +240,27 @@ export function ProtectedContentViewer() {
         if (!isMounted) return;
         setPdfDoc(doc);
         setNumPages(doc.numPages);
+
+        // ── Resume from saved page ───────────────────
+        // Priority: ?page= URL param > API-saved progress
+        const urlPage = parseInt(searchParams.get('page') || '0');
+        const targetPage = urlPage > 1 ? urlPage : (savedPage > 1 ? savedPage : 1);
+
+        if (targetPage > 1 && targetPage <= doc.numPages) {
+          // Wait for the page canvases to mount, then scroll
+          setTimeout(() => {
+            const el = document.getElementById(`pdf-page-${targetPage}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setCurrentPage(targetPage);
+          }, 600);
+          if (!resumeToastShown) {
+            toast(`📖 Resuming from page ${targetPage}`, { icon: '🔖' });
+            setResumeToastShown(true);
+          }
+        }
       })
       .catch((err) => {
         if (!isMounted) return;
-        // Ignore cancellations during strict-mode re-renders
         if (err && (err.name === 'RenderingCancelledException' || err.name === 'PromiseCancelledException' || err.message?.includes('cancelled'))) {
           return;
         }
@@ -231,7 +275,21 @@ export function ProtectedContentViewer() {
       isMounted = false;
       try { loadingTask.destroy(); } catch {}
     };
-  }, [content, id]);
+  }, [content, id, savedPage]);
+
+  // ── Fetch saved progress on mount ─────────────────────────────────────────
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/user/reading-progress/${id}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    }).then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.lastPage > 1) setSavedPage(data.lastPage); })
+      .catch(() => {});
+  }, [id]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => () => { if (saveProgressTimer.current) clearTimeout(saveProgressTimer.current); }, []);
+
 
 
   // ── Page navigation ───────────────────────────────

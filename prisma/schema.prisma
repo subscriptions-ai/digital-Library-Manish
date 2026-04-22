@@ -183,7 +183,14 @@ model Content {
   status          String   @default("Published")
   publishingMode  String   @default("Direct")
   views           Int      @default(0)
-  
+
+  // ── Viewer-Based Validation ─────────────────────────────
+  validationStatus  String?   @default("Not Validated") // "Not Validated" | "VALID_VIEWABLE" | "FLAGGED_CONTENT"
+  viewerStatus      String?                              // "Rendered OK" | "Load Failed" | "Timeout" | "No File" | "Not PDF/Video"
+  isViewable        Boolean?  @default(false)
+  flaggedReason     String?
+  lastValidatedAt   DateTime?
+
   submission      Submission? @relation(fields: [submissionId], references: [id])
   submissionId    String?     @unique
   
@@ -240,7 +247,10 @@ model StudentActivity {
   contentId   String?
   
   timeSpent   Int      @default(0)
-  accessedAt  DateTime @default(now())
+  lastPage    Int      @default(1)
+  accessedAt  DateTime @default(now()) @updatedAt
+
+  @@unique([userId, contentId])
 }
 
 model Bundle {
@@ -255,4 +265,21 @@ model Bundle {
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model ValidationReport {
+  id                 String   @id @default(uuid())
+  type               String   // "Manual" | "Automatic"
+  validationType     String   @default("Metadata")  // "Metadata" | "ViewerBased" | "Full"
+  status             String   @default("Draft") // "Draft" | "Reviewing" | "Resolved"
+  totalItemsScanned  Int      @default(0)
+  issuesFound        Int      @default(0)
+  validCount         Int      @default(0)   // Items confirmed VALID_VIEWABLE
+  flaggedCount       Int      @default(0)   // Items confirmed FLAGGED_CONTENT
+  issues             Json     // Array of issue details { contentId, title, issueType, description }
+  draftedContentIds  Json     @default("[]") // Persisted list of content IDs moved to Draft
+  timeline           Json     @default("[]") // Audit trail: [{ action, by, at, count, note }]
+
+  startedAt          DateTime @default(now())
+  completedAt        DateTime?
 }

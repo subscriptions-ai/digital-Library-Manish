@@ -67,7 +67,7 @@ export function InstitutionContentLibrary() {
   // Fetch content based on filters
   const fetchContent = useCallback(() => {
     setLoading(true);
-    let url = `/api/content/list?page=${page}&limit=${PER_PAGE}`;
+    let url = `/api/content/list?onlyUnlocked=true&page=${page}&limit=${PER_PAGE}`;
     if (filterDomain) url += `&domain=${encodeURIComponent(filterDomain)}`;
     if (filterType)   url += `&contentType=${encodeURIComponent(filterType)}`;
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
@@ -93,9 +93,9 @@ export function InstitutionContentLibrary() {
       return;
     }
     if (item.contentType === 'Educational Videos') {
-      navigate(`/dashboard/videos/player/${item.id}`);
+      navigate(`/institution/videos/player/${item.id}`);
     } else {
-      navigate(`/dashboard/viewer/${item.id}`);
+      navigate(`/institution/viewer/${item.id}`);
     }
   };
 

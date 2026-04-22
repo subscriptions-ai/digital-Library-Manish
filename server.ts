@@ -15,6 +15,7 @@ import helmet from "helmet";
 import compression from "compression";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -314,6 +315,8 @@ async function startServer() {
         id: rv.contentId,
         title: rv.content?.title || "Unknown",
         type: rv.content?.contentType || "Book",
+        domain: rv.content?.domain || "",
+        lastPage: rv.lastPage || 1,
         date: rv.accessedAt.toISOString()
       }));
 
@@ -339,6 +342,36 @@ async function startServer() {
     } catch (error) {
       console.error("User dashboard error:", error);
       res.status(500).json({ error: "Failed to load dashboard" });
+    }
+  });
+
+  // ── PATCH /api/user/reading-progress — save current page ────────────────────
+  app.patch("/api/user/reading-progress", authenticateJWT, async (req: any, res) => {
+    try {
+      const { contentId, lastPage, timeSpent } = req.body;
+      if (!contentId || !lastPage) return res.status(400).json({ error: "contentId and lastPage are required" });
+
+      await prisma.studentActivity.upsert({
+        where: { userId_contentId: { userId: req.user.uid, contentId } },
+        create: { userId: req.user.uid, contentId, lastPage: Number(lastPage), timeSpent: Number(timeSpent) || 0 },
+        update: { lastPage: Number(lastPage), timeSpent: { increment: Number(timeSpent) || 0 } }
+      });
+      res.json({ success: true, lastPage: Number(lastPage) });
+    } catch (error) {
+      console.error("Reading progress save error:", error);
+      res.status(500).json({ error: "Failed to save reading progress" });
+    }
+  });
+
+  // ── GET /api/user/reading-progress/:contentId — get last page ────────────────
+  app.get("/api/user/reading-progress/:contentId", authenticateJWT, async (req: any, res) => {
+    try {
+      const activity = await prisma.studentActivity.findUnique({
+        where: { userId_contentId: { userId: req.user.uid, contentId: req.params.contentId } }
+      });
+      res.json({ lastPage: activity?.lastPage || 1, accessedAt: activity?.accessedAt || null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reading progress" });
     }
   });
 
@@ -400,7 +433,13 @@ async function startServer() {
       return activeSubscriptions.some(sub => {
         const d: string[] = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains) : []);
         if (d.length === 0) return true; // wildcard
-        if (!d.includes(content.domain)) return false;
+        const safeContentDomain = content.domain ? content.domain.toLowerCase() : "";
+        const domainMatch = d.some(subDomain => {
+          if (!subDomain) return false;
+          const safeSub = subDomain.toLowerCase();
+          return safeSub.includes(safeContentDomain) || safeContentDomain.includes(safeSub);
+        });
+        if (!domainMatch) return false;
         const ct: string[] = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes) : []);
         if (ct.length === 0) return true;
         return ct.includes(content.contentType);
@@ -413,8 +452,19 @@ async function startServer() {
         ? sub.domains as string[]
         : (sub.domains ? JSON.parse(sub.domains as string) : []);
 
-      // Also support legacy scalar domainName field
-      const domainMatch = d.includes(content.domain) || (sub.domainName === content.domain);
+      // Support legacy scalar domainName field and do FUZZY matching
+      // e.g., if subscription is "Medical Sciences" and content domain is "Medical", it should unlock.
+      const safeContentDomain = content.domain ? content.domain.toLowerCase() : "";
+      
+      const domainMatch = d.some(subDomain => {
+        if (!subDomain) return false;
+        const safeSub = subDomain.toLowerCase();
+        return safeSub.includes(safeContentDomain) || safeContentDomain.includes(safeSub);
+      }) || (sub.domainName && (
+        sub.domainName.toLowerCase().includes(safeContentDomain) || 
+        safeContentDomain.includes(sub.domainName.toLowerCase())
+      ));
+
       if (!domainMatch) return false;
 
       // Parse contentTypes array
@@ -436,8 +486,19 @@ async function startServer() {
       // 2. Fetch all available content modules globally 
       const allModules = await prisma.contentModule.findMany({ where: { isActive: true } });
 
-      // 3. Map status for each module to "locked" vs "unlocked"
-      const accessMap = allModules.map(mod => {
+      // 3. Deduplicate modules based on domain + contentType (ignore different pricing userTypes)
+      const uniqueModulesMap = new Map();
+      allModules.forEach(mod => {
+        const key = `${mod.domain}_${mod.contentType}`;
+        // Keep the one with the highest totalCount if they vary, or just the first one
+        if (!uniqueModulesMap.has(key) || mod.totalCount > uniqueModulesMap.get(key).totalCount) {
+          uniqueModulesMap.set(key, mod);
+        }
+      });
+      const uniqueModules = Array.from(uniqueModulesMap.values());
+
+      // 4. Map status for each module to "locked" vs "unlocked"
+      const accessMap = uniqueModules.map(mod => {
         // Construct a mock content object to reuse the checker
         const mockContent = { domain: mod.domain, contentType: mod.contentType };
         return {
@@ -462,7 +523,7 @@ async function startServer() {
   // GET /api/content/list - Lists all actual content items, with locked flags for regular users
   app.get("/api/content/list", async (req: any, res) => {
     try {
-      const { domain, contentType, search, page = "1", limit = "20" } = req.query;
+      const { domain, contentType, search, page = "1", limit = "20", onlyUnlocked } = req.query;
       
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
       const take = parseInt(limit as string);
@@ -479,35 +540,37 @@ async function startServer() {
         ];
       }
 
-      // We don't mandate JWT here, but if they have it, we authorize them
       const authHeader = req.headers.authorization;
-      let userDetails = null;
+      let userDetails: any = null;
       if (authHeader) {
         const token = authHeader.split(' ')[1];
-        try {
-          userDetails = jwt.verify(token, JWT_SECRET) as any;
-        } catch(e) {}
+        try { userDetails = jwt.verify(token, JWT_SECRET); } catch(e) { console.log("JWT Error:", e); }
+      }
+
+
+      if (onlyUnlocked === "true" && userDetails) {
+        // For onlyUnlocked, we must fetch all matching query, filter in memory due to complex fuzzy access rules, then paginate.
+        const allContents = await prisma.content.findMany({ where, orderBy: { title: 'asc' } });
+        const activeSubs = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
+        
+        const unlockedContents = allContents.filter(c => checkContentAccess(c, userDetails.role, activeSubs)).map(c => ({ ...c, locked: false }));
+        const paginated = unlockedContents.slice(skip, skip + take);
+        
+        return res.json({ data: paginated, total: unlockedContents.length, page: parseInt(page as string), limit: take });
       }
 
       const [contents, total] = await Promise.all([
-        prisma.content.findMany({
-          where,
-          skip,
-          take,
-          orderBy: { title: 'asc' }
-        }),
+        prisma.content.findMany({ where, skip, take, orderBy: { title: 'asc' } }),
         prisma.content.count({ where })
       ]);
 
       if (!userDetails) {
-        // Unauthenticated users see everything as locked
         return res.json({
           data: contents.map(c => ({ ...c, locked: true, fileUrl: null })),
-          total, page: parseInt(page), limit: take
+          total, page: parseInt(page as string), limit: take
         });
       }
 
-      // Fetch subscriptions once for this user
       const activeSubs = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
 
       // Map contents and strip URLs for locked items
@@ -544,15 +607,13 @@ async function startServer() {
         return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
       }
 
-      // Log activity automatically
+      // Log activity automatically (upsert to avoid duplicates, preserves lastPage)
       if (req.user.role === 'Student' || req.user.role === 'Subscriber') {
         try {
-          await (prisma as any).studentActivity.create({
-            data: {
-              userId: req.user.uid,
-              contentId: content.id,
-              timeSpent: 0 // initial open trigger, timeSpent updated async later
-            }
+          await prisma.studentActivity.upsert({
+            where: { userId_contentId: { userId: req.user.uid, contentId: content.id } },
+            create: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 },
+            update: { timeSpent: { increment: 0 } } // just update accessedAt via @updatedAt
           });
         } catch(e) { console.error("Activity log failed", e); }
       }
@@ -577,11 +638,14 @@ async function startServer() {
       if (!content || !content.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
-      // Access check
-      const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Access denied." });
+      // Admins bypass subscription checks — they can preview any content for validation
+      const isAdmin = req.user.role === 'SuperAdmin' || req.user.role === 'Admin';
+      if (!isAdmin) {
+        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+        const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
+        if (!hasAccess) {
+          return res.status(403).json({ error: "Access denied." });
+        }
       }
 
       // Fetch the PDF from the upstream URL
@@ -2435,23 +2499,685 @@ async function startServer() {
   });
 
   // ==========================================
-  // STUDENT ROUTE EXTENSIONS
+  // SYSTEM VALIDATOR (Data Hygiene)
   // ==========================================
-  app.post("/api/student/activity", authenticateJWT, async (req: any, res) => {
+  
+  let currentValidationProgress: {
+    isRunning: boolean;
+    totalItems: number;
+    scannedItems: number;
+    issuesFound: number;
+    currentTask: string;
+    startedAt?: number;
+  } = {
+    isRunning: false,
+    totalItems: 0,
+    scannedItems: 0,
+    issuesFound: 0,
+    currentTask: "Idle"
+  };
+
+  const checkLink = async (url: string | null) => {
+    if (!url || !url.startsWith("http")) return true; // Ignore null or relative
     try {
-      if (req.user.role !== 'Student' && req.user.role !== 'Subscriber') return res.status(403).json({ error: "Unauthorized" });
-      const { contentId, timeSpent } = req.body;
+      new URL(url); // Ensure valid format
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" };
+      const res = await fetch(url, { method: "HEAD", headers, signal: controller.signal as any }).catch(() => null);
+      clearTimeout(timeoutId);
       
-      const activity = await (prisma as any).studentActivity.create({
+      // Accept ok or any redirect (which means it's resolvable)
+      if (res && res.status < 400) return true;
+      
+      // If HEAD fails (e.g. 403/405/bot-block), try GET minimally
+      const controller2 = new AbortController();
+      const timeoutId2 = setTimeout(() => controller2.abort(), 6000);
+      const resGet = await fetch(url, { method: "GET", headers, signal: controller2.signal as any }).catch(() => null);
+      clearTimeout(timeoutId2);
+      return resGet ? resGet.status < 400 : false;
+    } catch {
+      return false; // Connection forcibly closed, timed out, or unparseable
+    }
+  };
+
+  // ── Concurrent link-check helper (batch of LINK_BATCH_SIZE) ───────────────
+  const LINK_BATCH_SIZE = 10;
+
+  const checkLinksBatch = async (
+    items: Array<{ id: string; title: string; contentType: string; url: string; urlLabel: string }>
+  ): Promise<any[]> => {
+    const results: any[] = [];
+    for (let i = 0; i < items.length; i += LINK_BATCH_SIZE) {
+      const batch = items.slice(i, i + LINK_BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (item) => {
+          const isOk = await checkLink(item.url);
+          if (!isOk) {
+            return {
+              contentId: item.id,
+              title: item.title,
+              contentType: item.contentType,
+              issueType: "BrokenLink",
+              description: `${item.urlLabel} is unreachable or forbidden: ${item.url}`
+            };
+          }
+          return null;
+        })
+      );
+      results.push(...batchResults.filter(Boolean));
+    }
+    return results;
+  };
+
+  const FILE_REQUIRED_TYPES = new Set(["Book", "Journal", "Conference Paper", "Video", "Periodical", "Report"]);
+
+  const runValidationEngine = async (type: "Manual" | "Automatic") => {
+    if (currentValidationProgress.isRunning) return;
+
+    try {
+      const contents = await prisma.content.findMany({
+        where: { status: { not: "Draft" } },  // Skip already-drafted content — no point re-flagging it
+        select: { id: true, title: true, description: true, authors: true, fileUrl: true, thumbnailUrl: true, domain: true, contentType: true }
+      });
+
+      currentValidationProgress = {
+        isRunning: true,
+        totalItems: contents.length,
+        scannedItems: 0,
+        issuesFound: 0,
+        currentTask: "Initializing Engine...",
+        startedAt: Date.now()
+      };
+
+      const report = await prisma.validationReport.create({
+        data: { type, status: "Reviewing", issues: [] }
+      });
+
+      const issues: any[] = [];
+      const titleDomainMap = new Map<string, string>();
+      const urlMap = new Map<string, string>();
+      const urlsToCheck: Array<{ id: string; title: string; contentType: string; url: string; urlLabel: string }> = [];
+
+      // ── PASS 1: Fast synchronous checks ──────────────────────────────────────
+      currentValidationProgress.currentTask = "Pass 1/2: Checking metadata & duplicates...";
+      const dummyRegex = /^(test|test title)$|\b(dummy|lorem ipsum|placeholder)\b/i;
+
+      for (const c of contents) {
+        currentValidationProgress.scannedItems++;
+        await new Promise(resolve => setImmediate(resolve));
+
+        // Dummy / placeholder data
+        if (dummyRegex.test(c.title) || (c.description && dummyRegex.test(c.description))) {
+          issues.push({ contentId: c.id, title: c.title, contentType: c.contentType, issueType: "DummyData", description: "Contains suspicious dummy/placeholder text in title or description." });
+        }
+
+        // Missing required metadata
+        const needsFile = FILE_REQUIRED_TYPES.has(c.contentType);
+        if (needsFile && (!c.fileUrl || c.fileUrl.trim().length === 0)) {
+          issues.push({ contentId: c.id, title: c.title, contentType: c.contentType, issueType: "MissingMetadata", description: `A "${c.contentType}" is expected to have a file URL but none is set.` });
+        }
+        if (!c.authors || c.authors.trim().length === 0 || c.authors.toLowerCase() === 'unknown') {
+          issues.push({ contentId: c.id, title: c.title, contentType: c.contentType, issueType: "MissingMetadata", description: "Author field is empty or set to 'Unknown'." });
+        }
+
+        // Duplicate title within domain
+        const compositeKey = `${c.title.toLowerCase().trim()}-${(c.domain || '').toLowerCase()}`;
+        if (titleDomainMap.has(compositeKey)) {
+          issues.push({ contentId: c.id, title: c.title, contentType: c.contentType, issueType: "DuplicateTitle", description: "Title matches another entry within the same domain." });
+        } else {
+          titleDomainMap.set(compositeKey, c.id);
+        }
+
+        // Duplicate file URL
+        if (c.fileUrl && c.fileUrl.trim().length > 0) {
+          if (urlMap.has(c.fileUrl)) {
+            issues.push({ contentId: c.id, title: c.title, contentType: c.contentType, issueType: "DuplicateFile", description: "File URL matches another active entry — possible duplicate upload." });
+          } else {
+            urlMap.set(c.fileUrl, c.id);
+          }
+        }
+
+        // Collect HTTP URLs for batch link checking
+        if (c.fileUrl && c.fileUrl.startsWith('http')) {
+          urlsToCheck.push({ id: c.id, title: c.title, contentType: c.contentType, url: c.fileUrl, urlLabel: "File URL" });
+        }
+        if (c.thumbnailUrl && c.thumbnailUrl.startsWith('http')) {
+          urlsToCheck.push({ id: c.id, title: c.title, contentType: c.contentType, url: c.thumbnailUrl, urlLabel: "Thumbnail URL" });
+        }
+
+        currentValidationProgress.issuesFound = issues.length;
+      }
+
+      // ── PASS 2: Concurrent link validation ───────────────────────────────────
+      if (urlsToCheck.length > 0) {
+        currentValidationProgress.currentTask = `Pass 2/2: Checking ${urlsToCheck.length} URLs (${LINK_BATCH_SIZE} at a time)...`;
+        const linkIssues = await checkLinksBatch(urlsToCheck);
+        issues.push(...linkIssues);
+        currentValidationProgress.issuesFound = issues.length;
+      }
+
+      currentValidationProgress.currentTask = "Saving report...";
+
+      await prisma.validationReport.update({
+        where: { id: report.id },
         data: {
-          userId: req.user.uid,
-          contentId,
-          timeSpent: parseInt(timeSpent) || 0
+          status: "Draft",
+          totalItemsScanned: contents.length,
+          issuesFound: issues.length,
+          issues,
+          completedAt: new Date()
         }
       });
-      res.json(activity);
-    } catch(err) {
-      res.status(500).json({ error: "Failed to log activity" });
+    } catch (e) {
+      console.error("Validation engine crashed: ", e);
+    } finally {
+      currentValidationProgress.isRunning = false;
+      currentValidationProgress.currentTask = "Idle";
+      currentValidationProgress.startedAt = undefined;
+    }
+  };
+
+  // Cron schedule: Run on the 1st of every month at midnight
+  cron.schedule("0 0 1 * *", () => {
+    console.log("Running scheduled System Validation...");
+    runValidationEngine("Automatic").catch(err => console.error("Validation error:", err));
+  });
+
+  // Endpoints
+  app.get("/api/admin/validator/progress", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    res.json(currentValidationProgress);
+  });
+
+  // POST /api/admin/validator/draft-content
+  app.post("/api/admin/validator/draft-content", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { contentIds, reportId } = req.body;
+      if (!contentIds || !Array.isArray(contentIds)) return res.status(400).json({ error: "Invalid contentIds array" });
+
+      // 1. Bulk-update content status to Draft
+      await prisma.content.updateMany({
+        where: { id: { in: contentIds } },
+        data: { status: "Draft" }
+      });
+
+      // 2. Persist drafted IDs + audit event on the report
+      if (reportId) {
+        const report = await prisma.validationReport.findUnique({ where: { id: reportId } });
+        if (report) {
+          const existingDrafted: string[] = Array.isArray(report.draftedContentIds) ? (report.draftedContentIds as string[]) : [];
+          const merged = [...new Set([...existingDrafted, ...contentIds])];
+          const tl: any[] = Array.isArray(report.timeline) ? (report.timeline as any[]) : [];
+          const actor = (req.user as any)?.email || (req.user as any)?.name || 'Admin';
+          tl.push({
+            action: 'drafted',
+            by: actor,
+            at: new Date().toISOString(),
+            count: contentIds.length,
+            note: `${contentIds.length} item(s) moved to Draft status.`
+          });
+          await prisma.validationReport.update({
+            where: { id: reportId },
+            data: { draftedContentIds: merged, timeline: tl }
+          });
+        }
+      }
+
+      res.json({ message: "Content items successfully drafted.", draftedCount: contentIds.length });
+    } catch (error) {
+      console.error("Draft Error:", error);
+      res.status(500).json({ error: "Failed to draft content" });
+    }
+  });
+
+  // GET /api/admin/validator/reports
+  app.get("/api/admin/validator/reports", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const reports = await prisma.validationReport.findMany({ orderBy: { startedAt: "desc" } });
+      res.json(reports);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch validation reports" });
+    }
+  });
+
+  // POST /api/admin/validator/run
+  app.post("/api/admin/validator/run", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    if (currentValidationProgress.isRunning) return res.status(400).json({ error: "Validation is already running." });
+    
+    try {
+      res.json({ message: "Validation triggered successfully. It will run in the background." });
+      // Run async
+      runValidationEngine("Manual").catch(err => console.error("Manual validation error:", err));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to run validator" });
+    }
+  });
+
+  // PUT /api/admin/validator/reports/:id
+  app.put("/api/admin/validator/reports/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const report = await prisma.validationReport.findUnique({ where: { id } });
+      if (!report) return res.status(404).json({ error: "Report not found" });
+
+      const tl: any[] = Array.isArray(report.timeline) ? (report.timeline as any[]) : [];
+      const actor = (req.user as any)?.email || (req.user as any)?.name || 'Admin';
+      tl.push({
+        action: 'status_changed',
+        by: actor,
+        at: new Date().toISOString(),
+        note: `Status changed to "${status}".`
+      });
+
+      const updated = await prisma.validationReport.update({
+        where: { id },
+        data: { status, timeline: tl }
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update report status" });
+    }
+  });
+
+  // DELETE /api/admin/validator/reports/:id
+  app.delete("/api/admin/validator/reports/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.validationReport.delete({ where: { id } });
+      res.json({ message: "Report deleted successfully." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete report" });
+    }
+  });
+
+  // ==========================================
+  // VIEWER-BASED VALIDATION ENGINE
+  // ==========================================
+
+  let currentViewerValidationProgress: {
+    isRunning: boolean;
+    totalItems: number;
+    scannedItems: number;
+    validCount: number;
+    flaggedCount: number;
+    currentTask: string;
+    startedAt?: number;
+  } = {
+    isRunning: false,
+    totalItems: 0,
+    scannedItems: 0,
+    validCount: 0,
+    flaggedCount: 0,
+    currentTask: "Idle",
+  };
+
+  // ── Per-file viewability check ─────────────────────────────────────────────
+  const validateFileViewability = async (
+    url: string,
+    contentType: string
+  ): Promise<{ isViewable: boolean; viewerStatus: string; flaggedReason?: string }> => {
+    if (!url || url.trim().length === 0) {
+      return { isViewable: false, viewerStatus: "No File", flaggedReason: "No file URL is set for this content item." };
+    }
+
+    const lowerUrl = url.split("?")[0].toLowerCase();
+    const isVideo = /\.(mp4|webm|ogg|avi|mov)$/i.test(lowerUrl);
+    const isPdf =
+      lowerUrl.endsWith(".pdf") ||
+      lowerUrl.includes(".pdf") ||
+      contentType.toLowerCase().includes("pdf") ||
+      contentType.toLowerCase().includes("book") ||
+      contentType.toLowerCase().includes("journal") ||
+      contentType.toLowerCase().includes("report") ||
+      contentType.toLowerCase().includes("periodical");
+
+    try {
+      // ── Step 1: HEAD check (fast status verification) ───────────────────────
+      const headCtrl = new AbortController();
+      const headTid = setTimeout(() => headCtrl.abort(), 6000);
+      const headRes = await fetch(url, {
+        method: "HEAD",
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; STMLibraryValidator/2.0)" },
+        signal: headCtrl.signal as any,
+      }).catch(() => null);
+      clearTimeout(headTid);
+
+      if (!headRes) {
+        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "File URL did not respond within 6 seconds (HEAD)." };
+      }
+      if (headRes.status >= 400) {
+        return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `Server returned HTTP ${headRes.status} for file URL.` };
+      }
+
+      // ── Step 2: Video — HEAD OK is sufficient ───────────────────────────────
+      if (isVideo) {
+        return { isViewable: true, viewerStatus: "Rendered OK" };
+      }
+
+      // ── Step 3: PDF — Fetch first 8 bytes and verify %PDF magic bytes ───────
+      if (isPdf) {
+        const getCtrl = new AbortController();
+        const getTid = setTimeout(() => getCtrl.abort(), 10000);
+        const getRes = await fetch(url, {
+          method: "GET",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; STMLibraryValidator/2.0)",
+            Range: "bytes=0-7",
+          },
+          signal: getCtrl.signal as any,
+        }).catch(() => null);
+        clearTimeout(getTid);
+
+        if (!getRes) {
+          return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "Failed to fetch file bytes within 10 seconds." };
+        }
+        if (getRes.status >= 400) {
+          return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `GET request returned HTTP ${getRes.status}.` };
+        }
+
+        const buf = await getRes.arrayBuffer();
+        const bytes = new Uint8Array(buf.slice(0, 5));
+        const magic = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
+
+        if (magic.startsWith("%PDF")) {
+          return { isViewable: true, viewerStatus: "Rendered OK" };
+        }
+
+        // Some servers ignore Range header and return the full file — check content-type header
+        const ct = getRes.headers.get("content-type") || "";
+        if (ct.includes("pdf")) {
+          return { isViewable: true, viewerStatus: "Rendered OK" };
+        }
+
+        return {
+          isViewable: false,
+          viewerStatus: "Load Failed",
+          flaggedReason: `File does not appear to be a valid PDF (magic bytes: "${magic.substring(0, 4)}"). Expected "%PDF".`,
+        };
+      }
+
+      // ── Step 4: Unknown type — treat HEAD 2xx as OK ─────────────────────────
+      return { isViewable: true, viewerStatus: "Rendered OK" };
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "File URL connection timed out." };
+      }
+      return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `Network error: ${err?.message || "Unknown"}` };
+    }
+  };
+
+  // ── Main viewer validation runner ──────────────────────────────────────────
+  const VIEWER_BATCH_SIZE = 8;
+
+  const runViewerValidationEngine = async (type: "Manual" | "Automatic") => {
+    if (currentViewerValidationProgress.isRunning) return;
+
+    try {
+      const contents = await prisma.content.findMany({
+        where: { status: { not: "Draft" } },
+        select: { id: true, title: true, contentType: true, fileUrl: true },
+      });
+
+      currentViewerValidationProgress = {
+        isRunning: true,
+        totalItems: contents.length,
+        scannedItems: 0,
+        validCount: 0,
+        flaggedCount: 0,
+        currentTask: "Initializing Viewer Engine...",
+        startedAt: Date.now(),
+      };
+
+      // Create report entry
+      const report = await prisma.validationReport.create({
+        data: {
+          type,
+          validationType: "ViewerBased",
+          status: "Reviewing",
+          issues: [],
+        },
+      });
+
+      const issues: any[] = [];
+      let validCount = 0;
+      let flaggedCount = 0;
+
+      // Process in batches to avoid overloading the server
+      for (let i = 0; i < contents.length; i += VIEWER_BATCH_SIZE) {
+        const batch = contents.slice(i, i + VIEWER_BATCH_SIZE);
+
+        currentViewerValidationProgress.currentTask = `Validating items ${i + 1}–${Math.min(i + VIEWER_BATCH_SIZE, contents.length)} of ${contents.length}…`;
+
+        await Promise.all(
+          batch.map(async (c) => {
+            const result = await validateFileViewability(c.fileUrl || "", c.contentType);
+
+            // Persist per-content validation status
+            await prisma.content.update({
+              where: { id: c.id },
+              data: {
+                validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
+                viewerStatus: result.viewerStatus,
+                isViewable: result.isViewable,
+                flaggedReason: result.flaggedReason ?? null,
+                lastValidatedAt: new Date(),
+              },
+            });
+
+            if (!result.isViewable) {
+              issues.push({
+                contentId: c.id,
+                title: c.title,
+                contentType: c.contentType,
+                issueType: "ViewerValidationFailed",
+                description: result.flaggedReason || "File could not be verified by viewer.",
+                viewerStatus: result.viewerStatus,
+              });
+              flaggedCount++;
+            } else {
+              validCount++;
+            }
+
+            currentViewerValidationProgress.scannedItems++;
+            currentViewerValidationProgress.validCount = validCount;
+            currentViewerValidationProgress.flaggedCount = flaggedCount;
+          })
+        );
+
+        // Yield event loop between batches
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      currentViewerValidationProgress.currentTask = "Saving report…";
+
+      await prisma.validationReport.update({
+        where: { id: report.id },
+        data: {
+          status: "Draft",
+          totalItemsScanned: contents.length,
+          issuesFound: issues.length,
+          validCount,
+          flaggedCount,
+          issues,
+          completedAt: new Date(),
+        },
+      });
+    } catch (e) {
+      console.error("Viewer validation engine crashed:", e);
+    } finally {
+      currentViewerValidationProgress.isRunning = false;
+      currentViewerValidationProgress.currentTask = "Idle";
+      currentViewerValidationProgress.startedAt = undefined;
+    }
+  };
+
+  // ── POST /api/admin/validator/run-viewer ────────────────────────────────────
+  app.post("/api/admin/validator/run-viewer", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    if (currentViewerValidationProgress.isRunning) {
+      return res.status(400).json({ error: "Viewer validation is already running." });
+    }
+    res.json({ message: "Viewer validation triggered. Running in background." });
+    runViewerValidationEngine("Manual").catch((e) => console.error("Viewer validation error:", e));
+  });
+
+  // ── GET /api/admin/validator/viewer-progress ───────────────────────────────
+  app.get("/api/admin/validator/viewer-progress", authenticateJWT, requireSuperAdmin, async (_req, res) => {
+    res.json(currentViewerValidationProgress);
+  });
+
+  // ── GET /api/admin/validator/content-status ────────────────────────────────
+  // Returns all content with their viewer validation status (paginated, filterable)
+  app.get("/api/admin/validator/content-status", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { status, page = "1", limit = "50", search } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const where: any = {};
+      if (status && status !== "All") where.validationStatus = status;
+      if (search) {
+        where.OR = [
+          { title: { contains: search as string, mode: "insensitive" } },
+          { contentType: { contains: search as string, mode: "insensitive" } },
+        ];
+      }
+
+      const [items, total] = await Promise.all([
+        prisma.content.findMany({
+          where,
+          select: {
+            id: true,
+            title: true,
+            contentType: true,
+            domain: true,
+            fileUrl: true,
+            validationStatus: true,
+            viewerStatus: true,
+            isViewable: true,
+            flaggedReason: true,
+            lastValidatedAt: true,
+            status: true,
+          },
+          orderBy: { lastValidatedAt: "desc" },
+          skip,
+          take: parseInt(limit),
+        }),
+        prisma.content.count({ where }),
+      ]);
+
+      // Summary counts
+      const [notValidated, validViewable, flaggedContent] = await Promise.all([
+        prisma.content.count({ where: { validationStatus: "Not Validated", status: { not: "Draft" } } }),
+        prisma.content.count({ where: { validationStatus: "VALID_VIEWABLE" } }),
+        prisma.content.count({ where: { validationStatus: "FLAGGED_CONTENT" } }),
+      ]);
+
+      res.json({ items, total, page: parseInt(page), limit: parseInt(limit), summary: { notValidated, validViewable, flaggedContent } });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch content validation status" });
+    }
+  });
+
+  // ── PATCH /api/admin/validator/content/:id/mark-valid ──────────────────────
+  app.patch("/api/admin/validator/content/:id/mark-valid", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.content.update({
+        where: { id },
+        data: {
+          validationStatus: "VALID_VIEWABLE",
+          viewerStatus: "Manually Verified",
+          isViewable: true,
+          flaggedReason: null,
+          lastValidatedAt: new Date(),
+        },
+      });
+      res.json({ message: "Content marked as VALID_VIEWABLE by admin." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark content as valid" });
+    }
+  });
+
+  // ── PATCH /api/admin/validator/content/:id/move-draft ─────────────────────
+  app.patch("/api/admin/validator/content/:id/move-draft", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.content.update({
+        where: { id },
+        data: { status: "Draft" },
+      });
+      res.json({ message: "Content moved to Draft." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to move content to draft" });
+    }
+  });
+
+  // ── POST /api/admin/validator/auto-cleanup ─────────────────────────────────
+  // Bulk-drafts all FLAGGED_CONTENT items that are currently Published
+  app.post("/api/admin/validator/auto-cleanup", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const result = await prisma.content.updateMany({
+        where: { validationStatus: "FLAGGED_CONTENT", status: { not: "Draft" } },
+        data: { status: "Draft" },
+      });
+
+      // Log on the latest viewer-based report (if any)
+      const latestReport = await prisma.validationReport.findFirst({
+        where: { validationType: "ViewerBased" },
+        orderBy: { startedAt: "desc" },
+      });
+      if (latestReport) {
+        const tl: any[] = Array.isArray(latestReport.timeline) ? (latestReport.timeline as any[]) : [];
+        const actor = (req.user as any)?.email || "Admin";
+        tl.push({
+          action: "auto_cleanup",
+          by: actor,
+          at: new Date().toISOString(),
+          count: result.count,
+          note: `Auto-cleanup: ${result.count} flagged item(s) moved to Draft.`,
+        });
+        await prisma.validationReport.update({ where: { id: latestReport.id }, data: { timeline: tl } });
+      }
+
+      res.json({ message: `Auto-cleanup complete. ${result.count} item(s) moved to Draft.`, count: result.count });
+    } catch (error) {
+      res.status(500).json({ error: "Auto-cleanup failed" });
+    }
+  });
+
+  // ── POST /api/admin/validator/re-validate ──────────────────────────────────
+  // Re-validate a specific list of content IDs
+  app.post("/api/admin/validator/re-validate", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { contentIds } = req.body;
+      if (!Array.isArray(contentIds) || contentIds.length === 0) {
+        return res.status(400).json({ error: "contentIds array is required." });
+      }
+
+      const contents = await prisma.content.findMany({
+        where: { id: { in: contentIds } },
+        select: { id: true, title: true, contentType: true, fileUrl: true },
+      });
+
+      const results: any[] = [];
+      for (const c of contents) {
+        const result = await validateFileViewability(c.fileUrl || "", c.contentType);
+        await prisma.content.update({
+          where: { id: c.id },
+          data: {
+            validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
+            viewerStatus: result.viewerStatus,
+            isViewable: result.isViewable,
+            flaggedReason: result.flaggedReason ?? null,
+            lastValidatedAt: new Date(),
+          },
+        });
+        results.push({ id: c.id, title: c.title, ...result });
+      }
+
+      res.json({ message: `Re-validated ${results.length} item(s).`, results });
+    } catch (error) {
+      res.status(500).json({ error: "Re-validation failed" });
     }
   });
 
