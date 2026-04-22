@@ -210,6 +210,21 @@ export function ProtectedContentViewer() {
       .catch((err) => setMetaError(err.message))
       .finally(() => setLoadingMeta(false));
   }, [id]);
+  
+  // ── Fetch saved reading progress ──────────────────────
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/user/reading-progress/${id}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.lastPage > 1) {
+          setSavedPage(data.lastPage);
+        }
+      })
+      .catch((err) => console.error('Failed to load progress:', err));
+  }, [id]);
 
   // ── Load PDF once we have the URL ───────────────────
   useEffect(() => {
@@ -247,16 +262,18 @@ export function ProtectedContentViewer() {
         const targetPage = urlPage > 1 ? urlPage : (savedPage > 1 ? savedPage : 1);
 
         if (targetPage > 1 && targetPage <= doc.numPages) {
-          // Wait for the page canvases to mount, then scroll
+          // Auto-scroll to the target page after a short delay to allow rendering
           setTimeout(() => {
-            const el = document.getElementById(`pdf-page-${targetPage}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setCurrentPage(targetPage);
-          }, 600);
-          if (!resumeToastShown) {
-            toast(`📖 Resuming from page ${targetPage}`, { icon: '🔖' });
-            setResumeToastShown(true);
-          }
+            const pageEl = document.getElementById(`pdf-page-${targetPage}`);
+            if (pageEl && scrollAreaRef.current) {
+              pageEl.scrollIntoView({ behavior: 'smooth' });
+              setCurrentPage(targetPage);
+              if (!resumeToastShown) {
+                toast.success(`Resumed from page ${targetPage}`, { icon: '📖' });
+                setResumeToastShown(true);
+              }
+            }
+          }, 1000);
         }
       })
       .catch((err) => {

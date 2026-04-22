@@ -304,31 +304,67 @@ export function LMSDashboard() {
           ))}
         </div>
 
-        {/* ── CONTINUE LEARNING ── */}
+        {/* ── CONTINUE LEARNING (Netflix Style) ── */}
         {dashData?.recentActivity && dashData.recentActivity.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-1 h-6 rounded-full bg-blue-600" />
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">Continue Learning</h2>
-              <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 text-xs font-bold rounded-full">Recently Viewed</span>
+          <div className="relative">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-600 to-blue-400 shadow-sm shadow-blue-500/20" />
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Continue Reading</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Pick up right where you left off</p>
+                </div>
+              </div>
+              <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                View History <ChevronRight size={14} />
+              </button>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-            {dashData.recentActivity.slice(0, 6).map((a, i) => (
-                <motion.div key={a.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                  className="min-w-[240px] flex-shrink-0 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-700 transition-all cursor-pointer group"
-                  onClick={() => navigate(`/dashboard/viewer/${a.id}?page=${a.lastPage || 1}`)}>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-br ${gradients[i % gradients.length]} mb-3 shadow-sm`}>
-                    <BookOpen size={18} />
-                  </div>
-                  <div className="font-semibold text-sm text-slate-800 dark:text-white line-clamp-2 mb-1">{a.title}</div>
-                  {a.lastPage > 1 && (
-                    <div className="text-[10px] text-blue-500 dark:text-blue-400 font-semibold mb-2">
-                      📖 Page {a.lastPage}
+
+            <div className="flex gap-5 overflow-x-auto pb-6 px-1 -mx-1 scrollbar-hide snap-x snap-mandatory">
+              {dashData.recentActivity.slice(0, 6).map((a, i) => (
+                <motion.div
+                  key={a.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="min-w-[280px] w-[280px] snap-start group relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-300 dark:hover:border-blue-600 transition-all cursor-pointer"
+                  onClick={() => navigate(`/dashboard/viewer/${a.id}?page=${a.lastPage || 1}`)}
+                >
+                  {/* Thumbnail / Domain Header */}
+                  <div className={`h-24 bg-gradient-to-br ${domainGradient(a.domain || '')} relative flex items-center justify-center`}>
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
+                    <BookOpen size={32} className="text-white/30 group-hover:scale-110 transition-transform duration-500" />
+                    
+                    {/* Badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[9px] font-black text-white uppercase tracking-widest border border-white/10">
+                        {a.type || 'Book'}
+                      </span>
                     </div>
-                  )}
-                  <div className="flex items-center justify-between mt-3">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">{new Date(a.date).toLocaleDateString()}</span>
-                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:gap-2 transition-all">Continue <ChevronRight size={10} /></span>
+
+                    {/* Progress Bar (Mock for now, lastPage / 100 as fallback) */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, (a.lastPage / 50) * 100)}%` }}
+                        className="h-full bg-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4">
+                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 line-clamp-1 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {a.title}
+                    </h3>
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Current Progress</span>
+                        <span className="text-xs font-black text-blue-600 dark:text-blue-400">Page {a.lastPage}</span>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                        <Play size={14} className="fill-current" />
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               ))}
