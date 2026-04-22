@@ -664,7 +664,7 @@ async function startServer() {
       const https = await import('https');
       const http = await import('http');
       const upstreamUrl = new URL(content.fileUrl);
-      const protocol = upstreamUrl.protocol === 'https:' ? https.default : http.default;
+      const protocol = upstreamUrl.protocol === 'https:' ? https : http;
 
       // Realistic browser headers to bypass Akamai/Cloudflare bot protection
       const proxyHeaders = {
@@ -687,7 +687,7 @@ async function startServer() {
           const redirectUrl = proxyRes.headers.location;
           // handle relative redirect URLs
           const finalRedirectUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, content.fileUrl).toString();
-          const redirectProtocol = finalRedirectUrl.startsWith('https') ? https.default : http.default;
+          const redirectProtocol = finalRedirectUrl.startsWith('https') ? https : http;
           
           // Forward anti-bot cookies (e.g. ak_bmsc from Akamai)
           const redirHeaders = { ...proxyHeaders };
@@ -788,7 +788,7 @@ async function startServer() {
   const generatePassword = (length = 12): string => {
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
     return Array.from(crypto.randomBytes(length))
-      .map(b => chars[b % chars.length])
+      .map((b: any) => chars[b % chars.length])
       .join('');
   };
 
@@ -1261,7 +1261,7 @@ async function startServer() {
       }
 
       // Find related videos (same domain, max 10, accessible)
-      let related = [];
+      let related: any[] = [];
       if (content.domain) {
         const allRelated = await prisma.content.findMany({
           where: { 
@@ -2723,7 +2723,7 @@ async function startServer() {
         const report = await prisma.validationReport.findUnique({ where: { id: reportId } });
         if (report) {
           const existingDrafted: string[] = Array.isArray(report.draftedContentIds) ? (report.draftedContentIds as string[]) : [];
-          const merged = [...new Set([...existingDrafted, ...contentIds])];
+          const merged = Array.from(new Set([...existingDrafted, ...contentIds]));
           const tl: any[] = Array.isArray(report.timeline) ? (report.timeline as any[]) : [];
           const actor = (req.user as any)?.email || (req.user as any)?.name || 'Admin';
           tl.push({
