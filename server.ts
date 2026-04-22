@@ -1234,13 +1234,15 @@ async function startServer() {
         return res.status(403).json({ error: "Access denied." });
       }
 
-      // Log activity
+      // Log activity (upsert to avoid P2002 when same video is accessed again)
       if (['Student', 'Subscriber'].includes(req.user.role)) {
         try {
-          await (prisma as any).studentActivity.create({
-            data: { userId: req.user.uid, contentId: content.id, timeSpent: 0 }
+          await prisma.studentActivity.upsert({
+            where: { userId_contentId: { userId: req.user.uid, contentId: content.id } },
+            create: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 },
+            update: { accessedAt: new Date() }
           });
-        } catch(e) { /* ignore */ }
+        } catch(e) { console.error('Activity log failed (video):', e); }
       }
 
       // Find related videos (same domain, max 10, accessible)
