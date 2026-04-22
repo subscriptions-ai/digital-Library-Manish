@@ -250,7 +250,7 @@ model StudentActivity {
   lastPage    Int      @default(1)
   accessedAt  DateTime @default(now()) @updatedAt
 
-  @@unique([userId, contentId])
+  @@index([userId, contentId])
 }
 
 model Bundle {

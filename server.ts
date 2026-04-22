@@ -351,12 +351,21 @@ async function startServer() {
       const { contentId, lastPage, timeSpent } = req.body;
       if (!contentId || !lastPage) return res.status(400).json({ error: "contentId and lastPage are required" });
 
-      await prisma.studentActivity.upsert({
-        where: { userId_contentId: { userId: req.user.uid, contentId } },
-        create: { userId: req.user.uid, contentId, lastPage: Number(lastPage), timeSpent: Number(timeSpent) || 0 },
-        update: { lastPage: Number(lastPage), timeSpent: { increment: Number(timeSpent) || 0 } }
+      const existing = await prisma.studentActivity.findFirst({
+        where: { userId: req.user.uid, contentId }
       });
-      res.json({ success: true, lastPage: Number(lastPage) });
+      if (existing) {
+        await prisma.studentActivity.update({
+          where: { id: existing.id },
+          data: { lastPage: Number(lastPage), timeSpent: { increment: Number(timeSpent) || 0 } }
+        });
+        res.json({ success: true, lastPage: Number(lastPage) });
+      } else {
+        await prisma.studentActivity.create({
+          data: { userId: req.user.uid, contentId, lastPage: Number(lastPage), timeSpent: Number(timeSpent) || 0 }
+        });
+        res.json({ success: true, lastPage: Number(lastPage) });
+      }
     } catch (error) {
       console.error("Reading progress save error:", error);
       res.status(500).json({ error: "Failed to save reading progress" });
@@ -607,15 +616,18 @@ async function startServer() {
         return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
       }
 
-      // Log activity automatically (upsert to avoid duplicates, preserves lastPage)
+      // Log activity (safe findFirst+update/create — avoids duplicate-row race conditions)
       if (req.user.role === 'Student' || req.user.role === 'Subscriber') {
         try {
-          await prisma.studentActivity.upsert({
-            where: { userId_contentId: { userId: req.user.uid, contentId: content.id } },
-            create: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 },
-            update: { timeSpent: { increment: 0 } } // just update accessedAt via @updatedAt
+          const existing = await prisma.studentActivity.findFirst({
+            where: { userId: req.user.uid, contentId: content.id }
           });
-        } catch(e) { console.error("Activity log failed", e); }
+          if (existing) {
+            await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: new Date() } });
+          } else {
+            await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
+          }
+        } catch(e) { console.error('Activity log failed', e); }
       }
 
       // Return the secure file URL (or binary in a real PDF streaming setup)
@@ -1234,14 +1246,17 @@ async function startServer() {
         return res.status(403).json({ error: "Access denied." });
       }
 
-      // Log activity (upsert to avoid P2002 when same video is accessed again)
+      // Log activity (safe findFirst+update/create — avoids duplicate-row race conditions)
       if (['Student', 'Subscriber'].includes(req.user.role)) {
         try {
-          await prisma.studentActivity.upsert({
-            where: { userId_contentId: { userId: req.user.uid, contentId: content.id } },
-            create: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 },
-            update: { accessedAt: new Date() }
+          const existing = await prisma.studentActivity.findFirst({
+            where: { userId: req.user.uid, contentId: content.id }
           });
+          if (existing) {
+            await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: new Date() } });
+          } else {
+            await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
+          }
         } catch(e) { console.error('Activity log failed (video):', e); }
       }
 
