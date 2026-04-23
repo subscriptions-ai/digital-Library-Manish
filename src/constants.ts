@@ -399,17 +399,29 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: "Student Scholar",
     userType: "Student",
     description: "Affordable access for individual students to boost their academic performance.",
-    features: [
-      "Personalized Dashboard",
-      "Access to 10 Journals",
-      "PDF Downloads",
-      "Mobile App Access"
-    ],
     pricing: [
-      { duration: "Monthly", price: 499 },
-      { duration: "Quarterly", price: 1299 },
-      { duration: "Half-Yearly", price: 2299 },
-      { duration: "Yearly", price: 3999 }
+      { 
+        duration: "Monthly", 
+        price: 590, 
+        features: ["1 User", "Any 1 Content Categories", "Personalized Dashboard", "Chat Support", "User ID-based access"] 
+      },
+      { 
+        duration: "Quarterly", 
+        price: 1590, 
+        features: ["1 User", "Any 2 Content Categories", "Personalized Dashboard", "Chat Support", "User ID-based access"] 
+      },
+      { 
+        duration: "Half-Yearly", 
+        price: 2990, 
+        features: ["1 User", "Any 4 Content Categories", "Personalized Dashboard", "Email Support", "Chat Support", "User ID-based access"] 
+      },
+      { 
+        duration: "Yearly", 
+        price: 4990, 
+        saveText: "SAVE ₹2,090 ANNUALLY",
+        badge: "BEST VALUE - SAVE 30%",
+        features: ["1 User", "All Content Categories", "Personalized Dashboard", "Email Support", "Chat Support", "Personalized AI Assistant", "User ID-based access"] 
+      }
     ]
   },
   {
@@ -417,35 +429,59 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: "College Excellence",
     userType: "College",
     description: "Comprehensive access for small to medium academic institutions.",
-    features: [
-      "IP-Based Access",
-      "Up to 500 Users",
-      "Usage Analytics",
-      "Librarian Dashboard"
-    ],
     pricing: [
-      { duration: "Monthly", price: 15000 },
-      { duration: "Quarterly", price: 40000 },
-      { duration: "Half-Yearly", price: 75000 },
-      { duration: "Yearly", price: 135000 }
+      { 
+        duration: "Monthly", 
+        price: 2490, 
+        features: ["1 User", "Any 3 Content Categories", "Personalized Dashboard", "Chat Support", "User ID-based access"] 
+      },
+      { 
+        duration: "Quarterly", 
+        price: 6990, 
+        features: ["Up to 10 Users", "Any 6 Content Categories", "Personalized Dashboard", "Email Support", "Static IP Based Access", "Usage Analytics"] 
+      },
+      { 
+        duration: "Half-Yearly", 
+        price: 12990, 
+        features: ["Up to 20 Users", "Any 8 Content Categories", "Personalized Dashboard", "Email Support", "Chat Support", "Static IP Based Access", "Usage Analytics", "Librarian Dashboard", "Student & Faculty Management Dashboard"] 
+      },
+      { 
+        duration: "Yearly", 
+        price: 24990, 
+        saveText: "SAVE ₹4,890 ANNUALLY",
+        badge: "BEST VALUE - SAVE 16%",
+        features: ["Up to 100 Users", "All Content Categories", "Personalized Dashboard", "Email Support", "Chat Support", "Personalized AI Assistant", "Static IP Based Access", "Usage Analytics", "Librarian Dashboard", "Student & Faculty Management Dashboard", "Dedicated Support"] 
+      }
     ]
   },
   {
     id: "university-plan",
     name: "University Global",
     userType: "University",
-    description: "Unlimited access for large universities with multi-campus support.",
-    features: [
-      "Unlimited Users",
-      "Remote Access (Shibboleth)",
-      "Advanced Analytics",
-      "Dedicated Support"
-    ],
+    description: "Unlimited access for large universities with single institution focus.",
     pricing: [
-      { duration: "Monthly", price: 45000 },
-      { duration: "Quarterly", price: 120000 },
-      { duration: "Half-Yearly", price: 220000 },
-      { duration: "Yearly", price: 400000 }
+      { 
+        duration: "Monthly", 
+        price: 2990, 
+        features: ["Up to 2 Users", "Any 3 Content Categories", "Personalized Dashboard", "Chat Support", "User ID-based access"] 
+      },
+      { 
+        duration: "Quarterly", 
+        price: 8990, 
+        features: ["Up to 15 Users", "Any 6 Content Categories", "Personalized Dashboard", "Email Support", "Static IP Based Access", "Usage Analytics"] 
+      },
+      { 
+        duration: "Half-Yearly", 
+        price: 15990, 
+        features: ["Up to 30 Users", "Any 8 Content Categories", "Personalized Dashboard", "Email Support", "Chat Support", "Static IP Based Access", "Usage Analytics", "Librarian Dashboard", "Student & Faculty Management Dashboard"] 
+      },
+      { 
+        duration: "Yearly", 
+        price: 29990, 
+        saveText: "SAVE ₹5,890 ANNUALLY",
+        badge: "BEST VALUE - SAVE 16%",
+        features: ["Up to 200 Users", "All Content Categories", "Personalized Dashboard", "Email Support", "Chat Support", "Personalized AI Assistant", "Static IP Based Access", "Usage Analytics", "Librarian Dashboard", "Student & Faculty Management Dashboard", "Dedicated Support"] 
+      }
     ]
   },
   {
@@ -453,17 +489,29 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: "Corporate Innovator",
     userType: "Corporate",
     description: "Tailored research access for R&D centers and corporate libraries.",
-    features: [
-      "Industry-Specific Content",
-      "R&D Analytics",
-      "Multi-User License",
-      "API Integration"
-    ],
     pricing: [
-      { duration: "Monthly", price: 25000 },
-      { duration: "Quarterly", price: 65000 },
-      { duration: "Half-Yearly", price: 120000 },
-      { duration: "Yearly", price: 220000 }
+      { 
+        duration: "Monthly", 
+        price: 3990, 
+        features: ["Up to 2 Users", "Any 3 Content Categories", "Personalized Dashboard", "Email Support", "User ID-based access"] 
+      },
+      { 
+        duration: "Quarterly", 
+        price: 11990, 
+        features: ["Up to 15 Users", "Any 6 Content Categories", "Personalized Dashboard", "Email Support", "Static IP Based Access", "Usage Analytics"] 
+      },
+      { 
+        duration: "Half-Yearly", 
+        price: 21990, 
+        features: ["Up to 30 Users", "Any 8 Content Categories", "Personalized Dashboard", "Email Support", "Chat Support", "Static IP Based Access", "Usage Analytics", "Librarian Dashboard", "Student & Faculty Management Dashboard"] 
+      },
+      { 
+        duration: "Yearly", 
+        price: 39990, 
+        saveText: "SAVE ₹7,890 ANNUALLY",
+        badge: "BEST VALUE - SAVE 16%",
+        features: ["Up to 200 Users", "All Content Categories", "Personalized Dashboard", "Email Support", "Chat Support", "Personalized AI Assistant", "Static IP Based Access", "Usage Analytics", "Librarian Dashboard", "Student & Faculty Management Dashboard", "Dedicated Support"] 
+      }
     ]
   }
 ];

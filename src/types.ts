@@ -108,6 +108,9 @@ export type Journal = {
 export type PricingTier = {
   duration: 'Monthly' | 'Quarterly' | 'Half-Yearly' | 'Yearly';
   price: number;
+  features: string[];
+  saveText?: string;
+  badge?: string;
 };
 
 export type SubscriptionPlan = {
@@ -115,7 +118,6 @@ export type SubscriptionPlan = {
   name: string;
   userType: 'Student' | 'College' | 'University' | 'Corporate';
   description: string;
-  features: string[];
   pricing: PricingTier[];
 };
 

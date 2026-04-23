@@ -190,7 +190,7 @@ export function DomainLandingPage() {
     userType: sp.userType,
     name: sp.name,
     description: sp.description,
-    features: sp.features,
+    features: sp.pricing[0].features,
     monthlyPrice: sp.pricing.find(p => p.duration === "Monthly")?.price || 0,
     quarterlyPrice: sp.pricing.find(p => p.duration === "Quarterly")?.price || 0,
     halfYearlyPrice: sp.pricing.find(p => p.duration === "Half-Yearly")?.price || 0,
@@ -535,8 +535,14 @@ export function DomainLandingPage() {
                   const isFirst = i === 0;
                   const planName = m.name || m.type;
                   const planDesc = m.description || "";
-                  const planFeatures: string[] = m.features || [];
-                  const badge = PLAN_BADGE[planName];
+                  
+                  const sp = SUBSCRIPTION_PLANS.find(p => p.id === m.id);
+                  const tier = sp?.pricing.find(p => p.duration === plan);
+                  const planFeatures: string[] = tier?.features || m.features || [];
+                  const saveText = tier?.saveText;
+                  
+                  const rawBadge = tier?.badge || PLAN_BADGE[planName];
+                  const isBestValue = rawBadge && rawBadge.includes("BEST VALUE");
 
                   return (
                     <motion.div
@@ -544,42 +550,65 @@ export function DomainLandingPage() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.35, delay: i * 0.07 }}
-                      className="relative flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-lg transition-all"
+                      className={`relative flex flex-col rounded-3xl border bg-white p-6 transition-all ${
+                        isBestValue ? "border-blue-500 shadow-md ring-1 ring-blue-500" : "border-slate-200 shadow-sm hover:shadow-lg"
+                      }`}
                     >
-                      {/* Badge above card */}
-                      {badge && (
-                        <div className="absolute -top-4 left-6">
-                          <span className="inline-block rounded-full bg-indigo-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow">
-                            {badge}
+                      {/* Floating badge for BEST VALUE */}
+                      {isBestValue && (
+                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-[160px] text-center">
+                          <span className="inline-block w-full rounded-full bg-blue-600 px-4 py-1.5 text-[10px] font-bold text-white shadow-sm leading-[1.2]">
+                            {rawBadge.split(" - ")[0]}<br/>
+                            {rawBadge.split(" - ")[1] ? `- ${rawBadge.split(" - ")[1]}` : ""}
                           </span>
                         </div>
                       )}
 
-                      <div className="mt-2">
-                        <h3 className="text-base font-extrabold text-slate-900">{planName}</h3>
+                      {/* INDIVIDUAL badge */}
+                      {planName === "Student Scholar" && (
+                        <div className="absolute top-6 right-6">
+                          <span className="inline-block rounded-full bg-blue-50 text-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
+                            INDIVIDUAL
+                          </span>
+                        </div>
+                      )}
+
+                      <div className={`${isBestValue ? "mt-4" : "mt-2"}`}>
+                        <h3 className="text-lg font-bold text-slate-900 pr-16">{planName}</h3>
                         {planDesc && (
-                          <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">{planDesc}</p>
+                          <p className="mt-2 text-[11px] text-slate-500 leading-relaxed pr-2">{planDesc}</p>
                         )}
                       </div>
 
                       {/* Price */}
-                      <div className="mt-5 flex items-baseline gap-1">
-                        <span className="text-sm text-slate-700">₹</span>
-                        <span className="text-3xl font-extrabold text-slate-900">
-                          {price > 0 ? price.toLocaleString("en-IN") : "—"}
-                        </span>
-                        {price > 0 && (
-                          <span className="text-xs text-slate-400">/{plan.toLowerCase()}</span>
+                      <div className="mt-5">
+                        <div className="flex items-baseline gap-0.5">
+                          <span className="text-sm text-slate-700 font-medium">₹</span>
+                          <span className="text-3xl font-extrabold text-slate-900">
+                            {price > 0 ? price.toLocaleString("en-IN") : "—"}
+                          </span>
+                          {price > 0 && (
+                            <span className="ml-1 text-[11px] text-slate-400">/{plan.toLowerCase()}</span>
+                          )}
+                        </div>
+                        {saveText ? (
+                          <p className="mt-1 text-[10px] font-bold text-green-600 uppercase tracking-wide">
+                            {saveText}
+                          </p>
+                        ) : (
+                          <div className="h-4"></div>
                         )}
                       </div>
 
                       {/* Features */}
                       {planFeatures.length > 0 && (
-                        <ul className="mt-5 space-y-2 flex-1">
+                        <ul className="mt-6 space-y-3 flex-1">
                           {planFeatures.map((f, fi) => (
-                            <li key={fi} className="flex items-start gap-2 text-xs text-slate-600">
-                              <Check size={13} className="text-indigo-500 mt-0.5 shrink-0" />
-                              {f}
+                            <li key={fi} className="flex items-start gap-2 text-[12px] text-slate-600">
+                              <div className="mt-0.5 rounded-full bg-blue-50 p-0.5">
+                                <Check size={12} className="text-blue-500 shrink-0" strokeWidth={3} />
+                              </div>
+                              <span className="leading-tight">{f}</span>
                             </li>
                           ))}
                         </ul>
@@ -588,14 +617,14 @@ export function DomainLandingPage() {
                       {/* CTA */}
                       <button
                         onClick={() => { setFormOpen(true); }}
-                        className={`mt-6 w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all ${
-                          isFirst
-                            ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                        className={`mt-8 w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all ${
+                          isBestValue
+                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md"
                             : "bg-slate-900 hover:bg-slate-800 text-white"
                         }`}
                       >
                         <ShoppingCart size={15} />
-                        Add to Cart
+                        Get Started
                       </button>
                     </motion.div>
                   );

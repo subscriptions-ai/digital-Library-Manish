@@ -32,7 +32,7 @@ interface DashboardData {
   role?: string;
   allowedDomains?: string[];
   activeSubscriptions?: number;
-  recentActivity?: { id: string; title: string; type: string; date: string }[];
+  recentActivity?: { id: string; title: string; type: string; date: string; lastPage: number; domain: string }[];
 }
 
 // ─── Content type icon helper ─────────────────────────────────────────────────

@@ -33,17 +33,9 @@ const FAQS = [
   },
 ];
 
-// ─── Plan badge ────────────────────────────────────────────────────────────────
-const PLAN_BADGE: Record<string, string | null> = {
-  "Student Scholar":    "BEST FOR INDIVIDUALS",
-  "College Excellence": "BEST FOR COLLEGES",
-  "University Global":  "BEST FOR UNIVERSITIES",
-  "Corporate Innovator": "BEST FOR CORPORATES",
-};
-
 // ─── Helper ────────────────────────────────────────────────────────────────────
-function getPrice(plan: typeof SUBSCRIPTION_PLANS[0], duration: Duration) {
-  return plan.pricing.find((p) => p.duration === duration)?.price ?? 0;
+function getPricingTier(plan: typeof SUBSCRIPTION_PLANS[0], duration: Duration) {
+  return plan.pricing.find((p) => p.duration === duration);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -56,13 +48,14 @@ export function SubscriptionPlans({
   const navigate = useNavigate();
 
   const handleAddToCart = (plan: typeof SUBSCRIPTION_PLANS[0]) => {
-    const price = getPrice(plan, duration);
+    const tier = getPricingTier(plan, duration);
+    if (!tier) return;
     addToCart({
       domainId: plan.id,
       domainName: plan.name,
       planId: plan.id,
       planName: plan.name,
-      price,
+      price: tier.price,
       duration,
       category: plan.userType,
     });
@@ -94,7 +87,7 @@ export function SubscriptionPlans({
               onClick={() => setDuration(d)}
               className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
                 duration === d
-                  ? "bg-slate-900 text-white shadow-sm"
+                  ? "bg-white text-slate-900 shadow-sm border border-slate-200"
                   : "text-slate-500 hover:text-slate-700"
               }`}
             >
@@ -107,44 +100,69 @@ export function SubscriptionPlans({
       {/* Plan cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {SUBSCRIPTION_PLANS.map((plan, i) => {
-          const price = getPrice(plan, duration);
-          const badge = PLAN_BADGE[plan.name];
-          const isFirst = i === 0;
+          const tier = getPricingTier(plan, duration);
+          if (!tier) return null;
+          const { price, features, badge, saveText } = tier;
+          
+          const isBestValue = badge && badge.includes("BEST VALUE");
 
           return (
             <div
               key={plan.id}
-              className="relative flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-lg transition-all"
+              className={`relative flex flex-col rounded-3xl border bg-white p-6 transition-all ${
+                isBestValue ? "border-blue-500 shadow-md ring-1 ring-blue-500" : "border-slate-200 shadow-sm hover:shadow-lg"
+              }`}
             >
-              {/* Floating badge */}
-              {badge && (
-                <div className="absolute -top-4 left-6">
-                  <span className="inline-block rounded-full bg-indigo-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow whitespace-nowrap text-center leading-tight">
-                    {badge}
+              {/* Floating badge for BEST VALUE */}
+              {isBestValue && (
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-[160px] text-center">
+                  <span className="inline-block w-full rounded-full bg-blue-600 px-4 py-1.5 text-[10px] font-bold text-white shadow-sm leading-[1.2]">
+                    {badge.split(" - ")[0]}<br/>
+                    {badge.split(" - ")[1] ? `- ${badge.split(" - ")[1]}` : ""}
                   </span>
                 </div>
               )}
 
-              <div className="mt-2">
-                <h3 className="text-lg font-extrabold text-slate-900">{plan.name}</h3>
-                <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">{plan.description}</p>
+              {/* INDIVIDUAL badge */}
+              {plan.name === "Student Scholar" && (
+                <div className="absolute top-6 right-6">
+                  <span className="inline-block rounded-full bg-blue-50 text-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
+                    INDIVIDUAL
+                  </span>
+                </div>
+              )}
+
+              <div className={`${isBestValue ? "mt-4" : "mt-2"}`}>
+                <h3 className="text-lg font-bold text-slate-900 pr-16">{plan.name}</h3>
+                <p className="mt-2 text-[11px] text-slate-500 leading-relaxed pr-2">{plan.description}</p>
               </div>
 
               {/* Price */}
-              <div className="mt-5 flex items-baseline gap-0.5">
-                <span className="text-base text-slate-700 font-medium">₹</span>
-                <span className="text-3xl font-extrabold text-slate-900">
-                  {price.toLocaleString("en-IN")}
-                </span>
-                <span className="ml-1 text-xs text-slate-400">/{duration.toLowerCase()}</span>
+              <div className="mt-5">
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-sm text-slate-700 font-medium">₹</span>
+                  <span className="text-3xl font-extrabold text-slate-900">
+                    {price.toLocaleString("en-IN")}
+                  </span>
+                  <span className="ml-1 text-[11px] text-slate-400">/{duration.toLowerCase()}</span>
+                </div>
+                {saveText ? (
+                  <p className="mt-1 text-[10px] font-bold text-green-600 uppercase tracking-wide">
+                    {saveText}
+                  </p>
+                ) : (
+                  <div className="h-4"></div>
+                )}
               </div>
 
               {/* Features */}
-              <ul className="mt-5 space-y-2 flex-1">
-                {plan.features.map((f, fi) => (
-                  <li key={fi} className="flex items-center gap-2 text-sm text-slate-600">
-                    <Check size={14} className="text-indigo-500 shrink-0" />
-                    {f}
+              <ul className="mt-6 space-y-3 flex-1">
+                {features.map((f, fi) => (
+                  <li key={fi} className="flex items-start gap-2 text-[12px] text-slate-600">
+                    <div className="mt-0.5 rounded-full bg-blue-50 p-0.5">
+                      <Check size={12} className="text-blue-500 shrink-0" strokeWidth={3} />
+                    </div>
+                    <span className="leading-tight">{f}</span>
                   </li>
                 ))}
               </ul>
@@ -152,14 +170,14 @@ export function SubscriptionPlans({
               {/* CTA */}
               <button
                 onClick={() => handleAddToCart(plan)}
-                className={`mt-6 w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all ${
-                  isFirst
-                    ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                className={`mt-8 w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all ${
+                  isBestValue
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md"
                     : "bg-slate-900 hover:bg-slate-800 text-white"
                 }`}
               >
                 <ShoppingCart size={15} />
-                Add to Cart
+                Get Started
               </button>
             </div>
           );

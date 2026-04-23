@@ -337,7 +337,7 @@ export function Home() {
                     </div>
                   </div>
                   <ul className="mb-8 space-y-4 flex-1">
-                    {plan.features.map((feature, fi) => (
+                    {plan.pricing[0].features.slice(0, 4).map((feature, fi) => (
                       <li key={fi} className="flex items-center gap-3 text-sm text-slate-600">
                         <ShieldCheck size={16} className="text-blue-500" />
                         {feature}
