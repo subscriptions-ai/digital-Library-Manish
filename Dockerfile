@@ -19,7 +19,7 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Global Cache Buster to guarantee new layer mapping on broken Coolify machines
-ENV CACHE_BUSTER="2026-04-17T10-48-00-ROOT"
+ENV CACHE_BUSTER="2026-04-23T11-30-00-ROOT"
 ENV NODE_ENV=production
 
 # Copy package files and install PRODUCTION-only dependencies
@@ -36,7 +36,7 @@ COPY prisma/ ./prisma/
 RUN npx prisma@6.19.3 generate
 
 # Cache buster to bypass BuildKit mount locks on Coolify
-ENV CACHE_BUSTER="2026-04-17T10-48-00"
+ENV CACHE_BUSTER="2026-04-23T11-30-00"
 
 # Expose the port (default 3000, overridable via PORT env var)
 EXPOSE 3000
