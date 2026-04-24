@@ -72,15 +72,24 @@ async function startServer() {
 
   // Amazon SESv2 Initialization
   const ses = new sesv2.SESv2Client({
-    region: process.env.AWS_REGION || "ap-south-1",
+    region: (process.env.AWS_REGION || "ap-south-1").trim(),
     credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+      accessKeyId: (process.env.AWS_ACCESS_KEY_ID || "").trim(),
+      secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY || "").trim(),
     },
   });
 
   const transporter = nodemailer.createTransport({
     SES: { sesClient: ses, SendEmailCommand: sesv2.SendEmailCommand },
+  });
+
+  // Verify transporter on startup
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error("❌ Email Transporter Verification Failed:", error);
+    } else {
+      console.log("✅ Email Transporter is ready (SES v2)");
+    }
   });
 
   if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
@@ -800,9 +809,10 @@ async function startServer() {
   // Helper: send credentials email
   const sendCredentialsEmail = async (to: string, name: string, password: string) => {
     const siteUrl = process.env.SITE_URL || 'https://library.stmjournals.com';
+    const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
     try {
       await transporter.sendMail({
-        from: `"STM Digital Library" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+        from: `"STM Digital Library" <${emailFrom}>`,
         to,
         subject: 'Your Digital Library Access Credentials',
         html: `
@@ -827,8 +837,10 @@ async function startServer() {
           </div>
         `
       });
-    } catch (emailErr) {
-      console.error("Credentials email failed:", emailErr);
+    } catch (emailErr: any) {
+      console.error("Credentials email failed for:", to);
+      console.error("Error details:", emailErr.message || emailErr);
+      if (emailErr.stack) console.error(emailErr.stack);
       // Non-blocking: user is still created
     }
   };
@@ -1997,9 +2009,9 @@ async function startServer() {
         department
       } = formData;
 
-      // 1. Send Admin Notification Email
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
         subject: `New Institutional Trial Request: ${institutionName}`,
         html: `
@@ -2068,7 +2080,7 @@ async function startServer() {
 
       // 2. Send User Confirmation Email
       const userMailOptions = {
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: institutionalEmail,
         subject: "Your Institutional Trial Request has been received",
         html: `
@@ -2126,9 +2138,9 @@ async function startServer() {
         message 
       } = formData;
 
-      // 1. Send Admin Notification Email
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
         subject: "New Contact Inquiry from Website",
         html: `
@@ -2179,7 +2191,7 @@ async function startServer() {
 
       // 2. Send User Confirmation Email
       const userMailOptions = {
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: email,
         subject: "Thank you for contacting STM Digital Library",
         html: `
@@ -2222,8 +2234,9 @@ async function startServer() {
     try {
       const { userEmail, userName, quotationData, pdfBase64, userId, organization, state } = req.body;
       
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
         subject: `Quotation for STM Digital Library - ${quotationData.quotationNumber}`,
         text: `Dear ${userName},\n\nPlease find attached the quotation for your requested departments.\n\nQuotation Number: ${quotationData.quotationNumber}\nTotal Amount: ₹${quotationData.totalAmount}\n\nRegards,\nSTM Digital Library Team`,
@@ -2268,8 +2281,9 @@ async function startServer() {
     try {
       const { userEmail, userName, invoiceData, pdfBase64 } = req.body;
       
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
         subject: `Invoice for STM Digital Library - ${invoiceData.invoiceNumber}`,
         text: `Dear ${userName},\n\nThank you for your subscription. Please find attached the tax invoice for your purchase.\n\nInvoice Number: ${invoiceData.invoiceNumber}\nTotal Amount: ₹${invoiceData.grandTotal}\n\nRegards,\nSTM Digital Library Team`,
