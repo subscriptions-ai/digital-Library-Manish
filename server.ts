@@ -10,6 +10,7 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import Razorpay from "razorpay";
 import nodemailer from "nodemailer";
+import * as sesv2 from "@aws-sdk/client-sesv2";
 import crypto from "crypto";
 import helmet from "helmet";
 import compression from "compression";
@@ -69,17 +70,21 @@ async function startServer() {
     });
   };
 
-  // Nodemailer Initialization
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER || "",
-      pass: process.env.EMAIL_PASS || "",
+  // Amazon SESv2 Initialization
+  const ses = new sesv2.SESv2Client({
+    region: process.env.AWS_REGION || "ap-south-1",
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
     },
   });
 
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn("WARNING: Email credentials are missing in environment variables.");
+  const transporter = nodemailer.createTransport({
+    SES: { sesClient: ses, SendEmailCommand: sesv2.SendEmailCommand },
+  });
+
+  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+    console.warn("WARNING: AWS credentials for SES are missing in environment variables.");
   }
 
   // API Routes
@@ -797,7 +802,7 @@ async function startServer() {
     const siteUrl = process.env.SITE_URL || 'https://library.stmjournals.com';
     try {
       await transporter.sendMail({
-        from: `"STM Digital Library" <${process.env.EMAIL_USER}>`,
+        from: `"STM Digital Library" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
         to,
         subject: 'Your Digital Library Access Credentials',
         html: `
@@ -1994,7 +1999,7 @@ async function startServer() {
 
       // 1. Send Admin Notification Email
       const adminMailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
         to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
         subject: `New Institutional Trial Request: ${institutionName}`,
         html: `
@@ -2063,7 +2068,7 @@ async function startServer() {
 
       // 2. Send User Confirmation Email
       const userMailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
         to: institutionalEmail,
         subject: "Your Institutional Trial Request has been received",
         html: `
@@ -2123,7 +2128,7 @@ async function startServer() {
 
       // 1. Send Admin Notification Email
       const adminMailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
         to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
         subject: "New Contact Inquiry from Website",
         html: `
@@ -2174,7 +2179,7 @@ async function startServer() {
 
       // 2. Send User Confirmation Email
       const userMailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
         to: email,
         subject: "Thank you for contacting STM Digital Library",
         html: `
@@ -2218,7 +2223,7 @@ async function startServer() {
       const { userEmail, userName, quotationData, pdfBase64, userId, organization, state } = req.body;
       
       const mailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
         to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
         subject: `Quotation for STM Digital Library - ${quotationData.quotationNumber}`,
         text: `Dear ${userName},\n\nPlease find attached the quotation for your requested departments.\n\nQuotation Number: ${quotationData.quotationNumber}\nTotal Amount: ₹${quotationData.totalAmount}\n\nRegards,\nSTM Digital Library Team`,
@@ -2264,7 +2269,7 @@ async function startServer() {
       const { userEmail, userName, invoiceData, pdfBase64 } = req.body;
       
       const mailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
         to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
         subject: `Invoice for STM Digital Library - ${invoiceData.invoiceNumber}`,
         text: `Dear ${userName},\n\nThank you for your subscription. Please find attached the tax invoice for your purchase.\n\nInvoice Number: ${invoiceData.invoiceNumber}\nTotal Amount: ₹${invoiceData.grandTotal}\n\nRegards,\nSTM Digital Library Team`,
