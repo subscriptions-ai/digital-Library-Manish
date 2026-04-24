@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npx -y tsx@4.7.1 server.ts",
     "build": "npx prisma generate && vite build && npm run build:server",
-    "build:server": "esbuild server.ts --format=cjs --platform=node --bundle --external:@prisma/client --external:bcryptjs --external:jsonwebtoken --external:express --external:helmet --external:compression --external:nodemailer --external:razorpay --external:multer --external:@aws-sdk/client-s3 --external:@aws-sdk/s3-request-presigner --external:@aws-sdk/client-ses --external:dotenv --external:vite --external:sharp --external:fsevents --external:node-cron --outfile=server_compiled.cjs",
+    "build:server": "esbuild server.ts --format=cjs --platform=node --bundle --external:@prisma/client --external:bcryptjs --external:jsonwebtoken --external:express --external:helmet --external:compression --external:nodemailer --external:razorpay --external:multer --external:@aws-sdk/client-s3 --external:@aws-sdk/s3-request-presigner --external:@aws-sdk/client-ses --external:@aws-sdk/client-sesv2 --external:dotenv --external:vite --external:sharp --external:fsevents --external:node-cron --outfile=server_compiled.cjs",
     "start": "npx prisma@6.19.3 db push --accept-data-loss && NODE_ENV=production node server_compiled.cjs",
     "start:dev": "NODE_ENV=production tsx server.ts",
     "preview": "vite preview",
