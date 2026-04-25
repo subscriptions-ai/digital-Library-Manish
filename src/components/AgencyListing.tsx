@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { IndianRupee, RefreshCw, Library, Headphones, Activity, Handshake, Check, Send } from "lucide-react";
 import { AGENCY_BENEFITS } from "../constants";
 import React, { useState } from "react";
+import toast from "react-hot-toast";
 import { cn } from "../lib/utils";
 
 const iconMap: Record<string, any> = {
@@ -24,10 +25,41 @@ export function AgencyListing() {
     message: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Agency Inquiry:", formData);
-    alert("Thank you for your interest! Our partnership team will contact you shortly.");
+    setLoading(true);
+    toast.loading("Submitting your inquiry...", { id: "agency-inquiry" });
+    try {
+      const response = await fetch("/api/agency-inquiry", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit inquiry");
+      }
+
+      toast.success("Thank you for your interest! Our partnership team will contact you shortly.", { id: "agency-inquiry" });
+      setFormData({
+        agencyName: "",
+        contactPerson: "",
+        email: "",
+        phone: "",
+        region: "",
+        experience: "",
+        message: "",
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("An error occurred. Please try again later.", { id: "agency-inquiry" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -193,10 +225,17 @@ export function AgencyListing() {
                 </div>
                 <button 
                   type="submit"
-                  className="w-full rounded-xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                  disabled={loading}
+                  className="w-full rounded-xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <Send size={18} />
-                  Submit Partnership Inquiry
+                  {loading ? (
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <>
+                      <Send size={18} />
+                      Submit Partnership Inquiry
+                    </>
+                  )}
                 </button>
               </form>
             </div>

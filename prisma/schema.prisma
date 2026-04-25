@@ -283,3 +283,20 @@ model ValidationReport {
   startedAt          DateTime @default(now())
   completedAt        DateTime?
 }
+
+model AgencyInquiry {
+  id             String   @id @default(uuid())
+  agencyName     String
+  contactPerson  String
+  email          String
+  phone          String
+  region         String
+  experience     String
+  message        String?
+  status         String   @default("Pending") // Pending | Accepted | Rejected
+  discount       Int?     // 30 or 40
+  validUntil     DateTime? // Expiration date for the partnership
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

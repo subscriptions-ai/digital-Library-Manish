@@ -27,7 +27,7 @@ import { calculateGST, COMPANY_STATE, INDIAN_STATES } from '../lib/gstUtils';
 import { cn } from '../lib/utils';
 import { toast } from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -164,7 +164,7 @@ export function QuotationWizard() {
   const isInterState = formData.state !== COMPANY_STATE;
   const gstBreakdown = calculateGST(totalBasePrice, isInterState);
 
-  const generatePDF = () => {
+  const createPdfDocument = () => {
     const doc = new jsPDF();
     const quotationNumber = `QTN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const pdfDate = format(new Date(), 'dd-MMM-yyyy');
@@ -253,7 +253,7 @@ export function QuotationWizard() {
       ];
     });
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 95,
       head: [['Sr.No', 'Particulars', 'HSN/SAC', 'Qty', 'Unit Price', 'Amount', 'Discount', 'Taxable Value', 'GST Rate (%)', 'Net Amount']],
       body: tableData,
@@ -290,7 +290,7 @@ export function QuotationWizard() {
       gstBreakdown.totalGst.toFixed(2)
     ]];
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: currentY,
       head: [['Sr.No', 'HSN/SAC', 'Taxable Value', 'SGST Rate (%)', 'SGST Amt', 'CGST Rate (%)', 'CGST Amt', 'IGST Rate (%)', 'IGST Amt', 'Total Tax Amt']],
       body: gstData,
@@ -321,18 +321,70 @@ export function QuotationWizard() {
     doc.text(`For, ${COMPANY_DETAILS.name}`, 190, currentY + 20, { align: 'right' });
     doc.text('Authorised Signatory', 190, currentY + 35, { align: 'right' });
 
-    doc.save(`Quotation_${quotationNumber}.pdf`);
-    toast.success('Quotation downloaded!');
+    return { doc, quotationNumber };
+  };
+
+  const generatePDF = () => {
+    try {
+      const { doc, quotationNumber } = createPdfDocument();
+      doc.save(`Quotation_${quotationNumber}.pdf`);
+      toast.success('Quotation downloaded!');
+    } catch (error) {
+      console.error("PDF Generation failed:", error);
+      toast.error('Failed to generate PDF. Please try again.');
+    }
   };
 
   const handleSendEmail = async () => {
     toast.loading('Sending quotation...', { id: 'send-email' });
     try {
-      // Mocking email send logic
-      setTimeout(() => {
-        toast.success('Quotation sent to your email!', { id: 'send-email' });
-      }, 1500);
+      const { doc, quotationNumber } = createPdfDocument();
+      // Generate base64
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      
+      const checkoutItems = formData.selectedDepartments.map(deptId => {
+        const dept = DOMAINS.find(d => d.id === deptId);
+        return {
+          id: `${deptId}-${formData.subscriptionPlanId}`,
+          domainId: deptId,
+          domainName: dept?.name || '',
+          planId: formData.subscriptionPlanId,
+          planName: selectedPlan?.name || '',
+          duration: formData.duration,
+          price: basePricePerDept
+        };
+      });
+
+      const response = await fetch('/api/quotation/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
+        },
+        body: JSON.stringify({
+          userEmail: formData.email,
+          userName: formData.fullName,
+          organization: formData.organization,
+          state: formData.state,
+          userId: user?.uid,
+          quotationData: {
+            quotationNumber,
+            totalAmount: gstBreakdown.totalAmount,
+            subtotal: gstBreakdown.basePrice,
+            gstAmount: gstBreakdown.totalGst,
+            items: checkoutItems
+          },
+          pdfBase64
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send email');
+      }
+
+      toast.success('Quotation sent to your email!', { id: 'send-email' });
     } catch (error) {
+      console.error("Email send failed:", error);
       toast.error('Failed to send email', { id: 'send-email' });
     }
   };

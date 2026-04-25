@@ -3217,6 +3217,102 @@ async function startServer() {
     }
   });
 
+  // ── Agency Partnership API ───────────────────────────────────────────────
+  app.post("/api/agency-inquiry", async (req, res) => {
+    try {
+      const { agencyName, contactPerson, email, phone, region, experience, message } = req.body;
+      const inquiry = await prisma.agencyInquiry.create({
+        data: { agencyName, contactPerson, email, phone, region, experience, message }
+      });
+      res.json({ success: true, inquiry });
+    } catch (error) {
+      console.error("Failed to create agency inquiry:", error);
+      res.status(500).json({ error: "Failed to submit inquiry" });
+    }
+  });
+
+  app.get("/api/agency-inquiry", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const inquiries = await prisma.agencyInquiry.findMany({
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(inquiries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch inquiries" });
+    }
+  });
+
+  app.post("/api/agency-inquiry/accept", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { id, discount, emailContent, validUntil, subject, html, attachment } = req.body;
+      
+      const inquiry = await prisma.agencyInquiry.findUnique({ where: { id } });
+      if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
+
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      
+      const mailOptions: any = {
+        from: emailFrom,
+        to: inquiry.email,
+        subject: subject || "Welcome to the STM Digital Library Agency Partnership Program",
+        html: html || `<div style="font-family: Arial, sans-serif; white-space: pre-wrap;">${emailContent}</div>`
+      };
+
+      if (attachment && attachment.content) {
+        mailOptions.attachments = [
+          {
+            filename: attachment.filename || "Partnership_Agreement.pdf",
+            content: Buffer.from(attachment.content, 'base64'),
+            contentType: "application/pdf"
+          }
+        ];
+      }
+
+      await transporter.sendMail(mailOptions);
+
+      const updated = await prisma.agencyInquiry.update({
+        where: { id },
+        data: { 
+          status: "Accepted", 
+          discount, 
+          validUntil: validUntil ? new Date(validUntil) : null 
+        }
+      });
+
+      res.json({ success: true, inquiry: updated });
+    } catch (error) {
+      console.error("Failed to accept agency inquiry:", error);
+      res.status(500).json({ error: "Failed to process acceptance" });
+    }
+  });
+
+  app.post("/api/agency-inquiry/reject", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { id, subject, html } = req.body;
+      
+      const inquiry = await prisma.agencyInquiry.findUnique({ where: { id } });
+      if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
+
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      
+      await transporter.sendMail({
+        from: emailFrom,
+        to: inquiry.email,
+        subject: subject || "Update on Your STM Digital Library Partnership Application",
+        html: html || "<p>Thank you for your interest, but we cannot proceed with your application at this time.</p>"
+      });
+
+      const updated = await prisma.agencyInquiry.update({
+        where: { id },
+        data: { status: "Rejected" }
+      });
+      res.json({ success: true, inquiry: updated });
+    } catch (error) {
+      console.error("Failed to reject agency inquiry:", error);
+      res.status(500).json({ error: "Failed to process rejection" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import('vite');

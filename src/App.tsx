@@ -40,6 +40,7 @@ import { ContentPricingModule } from "./components/admin/ContentPricingModule";
 import { QuotationManager } from "./components/admin/QuotationManager";
 import { UserCreationPanel } from "./components/admin/UserCreationPanel";
 import { ValidatorDashboard } from "./components/admin/ValidatorDashboard";
+import { AgencyInquiriesPage } from "./components/admin/AgencyInquiriesPage";
 
 const CONTENT_MODULES = [
   { slug: 'books',                  contentType: 'Books'                   },
@@ -119,6 +120,7 @@ export default function App() {
                 <Route path="/admin/subscription-requests" element={<AdminLayout><SubscriptionRequestsPage /></AdminLayout>} />
                 <Route path="/admin/pricing" element={<AdminLayout><ContentPricingModule /></AdminLayout>} />
                 <Route path="/admin/quotations" element={<AdminLayout><QuotationManager /></AdminLayout>} />
+                <Route path="/admin/agency-inquiries" element={<AdminLayout><AgencyInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/validator" element={<AdminLayout><ValidatorDashboard /></AdminLayout>} />
 
                 {/* Per Content Type Module Routes (8 modules × 3 pages each) */}
