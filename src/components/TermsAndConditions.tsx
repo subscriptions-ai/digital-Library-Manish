@@ -15,81 +15,111 @@ export const TermsAndConditions: React.FC = () => {
         </div>
 
         <div className="p-8 prose prose-slate max-w-none">
-          <p className="text-lg text-slate-600 leading-relaxed mb-8">
-            Welcome to <strong>Journals Library</strong>, a subscription-based academic digital library operated by <strong>{COMPANY_DETAILS.name}</strong>. By accessing or using our platform, you agree to comply with and be bound by the following Terms and Conditions.
-          </p>
+          <section className="mb-10">
+            <div className="flex items-center gap-2 mb-4 text-slate-900">
+              <FileText className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold m-0">1. Introduction</h2>
+            </div>
+            <p>This platform (“Platform”) is operated by <strong>Consortium e-Learning Network Pvt. Ltd.</strong> By accessing or using our services, you agree to comply with these Terms.</p>
+          </section>
 
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-4 text-slate-900">
-              <UserCheck className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold m-0">1. Platform Nature & User Obligations</h2>
+              <Scale className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold m-0">2. Nature of Service</h2>
             </div>
-            <p>Our platform provides access to academic journals, research papers, and digital content. As a user, you agree to:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Provide accurate and complete information during registration.</li>
-              <li>Maintain the confidentiality of your account credentials.</li>
-              <li>Use the platform only for lawful, academic, and research purposes.</li>
-              <li><strong>Prohibited Content:</strong> You must not upload, share, or transmit any content that is illegal, offensive, anti-national, defamatory, or harmful to others.</li>
-              <li><strong>No Misuse:</strong> You shall not attempt to gain unauthorized access to our systems, scrape data, or interfere with the platform's functionality.</li>
+            <p>The Platform provides:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-2">
+              <li>Access to proprietary content owned by the Company (Books, Periodicals, Theses, Conference Proceedings, Educational Videos, etc.)</li>
+              <li>Aggregated access to selected open-access academic content from third-party sources</li>
             </ul>
+            <p className="mt-4">The Platform offers value-added services including search, indexing, categorization, and discovery tools.</p>
           </section>
 
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-4 text-slate-900">
               <ShieldAlert className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold m-0">2. Content Rights & Licensing</h2>
+              <h2 className="text-xl font-bold m-0">3. Content Ownership</h2>
             </div>
-            <p>By submitting or publishing content on our platform, you grant <strong>{COMPANY_DETAILS.name}</strong> a non-exclusive, worldwide, royalty-free, and sub-licensable license to:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Publish, reproduce, and distribute the content across our digital network.</li>
-              <li>Monetize the content through subscriptions, open access fees, or other commercial models.</li>
-              <li>Modify the format of the content for technical optimization and accessibility.</li>
-              <li><strong>Commercial Control:</strong> The platform retains full control over the commercial rights and distribution strategies of the content hosted on its servers.</li>
+            <p>All proprietary content published by the Company, including content sourced from the various divisions and sister concern companies of Consortium eLearning Network Pvt. Ltd., remains the intellectual property of the Company.</p>
+            <p className="mt-2">Content sourced from the various divisions and sister concern companies of Consortium eLearning Network Pvt. Ltd. is regarded as our own content for the purposes of this Platform.</p>
+            <p className="mt-2">Third-party content available on the Platform remains the property of its respective authors/publishers, and the Platform does not claim ownership of any content beyond the content expressly identified above as owned by the Company.</p>
+          </section>
+
+          <section className="mb-10">
+            <div className="flex items-center gap-2 mb-4 text-slate-900">
+              <UserCheck className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold m-0">4. Use of Open Access Content</h2>
+            </div>
+            <ul className="list-disc pl-6 space-y-2 mt-2">
+              <li>Open access content is used in accordance with applicable licenses (e.g., Creative Commons).</li>
+              <li>Proper attribution is provided wherever required.</li>
+              <li>The Platform does not sell third-party content directly, but charges for access, curation, and platform services.</li>
+            </ul>
+          </section>
+
+          <section className="mb-10">
+            <div className="flex items-center gap-2 mb-4 text-slate-900">
+              <UserCheck className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold m-0">5. User Responsibilities</h2>
+            </div>
+            <p>Users agree to:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-2">
+              <li>Access and use the Platform and its content only in accordance with these Terms, applicable law, and any subscription or license restrictions;</li>
+              <li>Not to copy, reproduce, download, distribute, transmit, publish, display, sell, sublicense, or commercially exploit any content, in whole or in part, without prior written authorization from the Platform or the relevant rights holder, as applicable;</li>
+              <li>Not to share login credentials, circumvent access controls, scrape, harvest, or otherwise misuse the Platform or its content;</li>
+              <li>Not to modify, reverse engineer, decompile, or create derivative works from the Platform or its content except where expressly permitted by law;</li>
+              <li>Not to use the Platform in any manner that is unlawful, fraudulent, abusive, or harmful to the Platform, its users, or third-party rights.</li>
             </ul>
           </section>
 
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-4 text-slate-900">
               <CreditCard className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold m-0">3. Payment & Subscription</h2>
+              <h2 className="text-xl font-bold m-0">6. Subscription & Payments</h2>
             </div>
-            <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Subscription Validity:</strong> Access to premium content is granted based on the selected subscription plan and validity period.</li>
-              <li><strong>Pricing:</strong> All prices are subject to change at the sole discretion of the platform. Applicable GST (currently 18%) will be added to all transactions.</li>
-              <li><strong>Refund Policy:</strong> All subscription payments are final. <strong>No refunds</strong> will be provided once access has been granted, except in cases of technical failure on our end that prevents access for an extended period (subject to verification).</li>
+            <ul className="list-disc pl-6 space-y-2 mt-2">
+              <li>Access to certain features is subscription-based.</li>
+              <li>Pricing may vary based on the subscription plan selected, the duration of access, and the level of features included in each subscription.</li>
+              <li><strong>Refund policy:</strong> Refunds may be requested within 7 days of purchase only if the subscription has not been substantially used and no downloadable content has been accessed. Any approved refund will be limited to 50% of the amount paid and will be processed to the original payment method within 7–10 business days. No refunds will be issued after the refund window expires, except where required by law.</li>
             </ul>
           </section>
 
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-4 text-slate-900">
               <Scale className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold m-0">4. Limitation of Liability</h2>
+              <h2 className="text-xl font-bold m-0">7. Intellectual Property Rights</h2>
             </div>
-            <p><strong>Journals Library</strong> acts as an intermediary platform for academic content. We are not responsible for the accuracy, reliability, or legality of third-party content hosted on our site. Our liability is limited to the maximum extent permitted by law, and we shall not be liable for any indirect, incidental, or consequential damages.</p>
+            <p>Any unauthorized use, reproduction, distribution, modification, or commercial exploitation of the content available on the Platform may result in appropriate legal action under applicable laws. In the event of any dispute, claim, or legal proceeding arising out of or in connection with the use of the Platform or its content, the jurisdiction shall be exclusively limited to the competent courts in <strong>Delhi, India</strong>.</p>
           </section>
 
           <section className="mb-10">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">5. Termination</h2>
-            <p>We reserve the right to suspend or terminate your account and remove any content at any time, without prior notice, if we believe you have violated these terms or engaged in activities harmful to the platform or other users.</p>
+            <div className="flex items-center gap-2 mb-4 text-slate-900">
+              <ShieldAlert className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold m-0">8. Content Removal (Takedown Policy)</h2>
+            </div>
+            <p>If any content violates copyright:</p>
+            <p className="mt-2">Contact: <strong>info@celnet.in</strong></p>
+            <p className="mt-2">Upon receiving a verified request, we will promptly remove the data/content in question.</p>
+          </section>
+
+          <section className="mb-10">
+            <div className="flex items-center gap-2 mb-4 text-slate-900">
+              <Scale className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold m-0">9. Limitation of Liability</h2>
+            </div>
+            <p className="mb-4">The Platform is provided “as is” and “as available,” without any warranties, representations, or guarantees of any kind, whether express or implied, regarding the completeness, accuracy, reliability, timeliness, legality, or suitability of any third-party content made available through the Platform.</p>
+            <p className="mb-4">While we make reasonable efforts to curate and present content responsibly, we do not warrant that third-party materials will be error-free, up to date, uninterrupted, or free from omissions, and users acknowledge that any reliance on such content is at their own risk.</p>
+            <p>We are not responsible for any content hosted on third-party websites that may be anti-national, pornographic, offensive, inappropriate, or otherwise objectionable, and access to such third-party content is solely at the user’s discretion and risk.</p>
           </section>
 
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-4 text-slate-900">
               <MapPin className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold m-0">6. Jurisdiction</h2>
+              <h2 className="text-xl font-bold m-0">10. Governing Law</h2>
             </div>
-            <p>These Terms and Conditions are governed by the laws of India. Any disputes arising out of or in connection with these terms shall be subject to the exclusive jurisdiction of the courts in <strong>Noida, Uttar Pradesh, India</strong>.</p>
-          </section>
-
-          <section className="mb-10">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">7. Contact Information</h2>
-            <p>For any legal inquiries or clarifications regarding these terms, please reach out to us at:</p>
-            <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-              <p className="font-bold">{COMPANY_DETAILS.name}</p>
-              <p>{COMPANY_DETAILS.address}</p>
-              <p>Email: {COMPANY_DETAILS.email}</p>
-              <p>Tel: {COMPANY_DETAILS.tel.join(" / ")}</p>
-            </div>
+            <p className="mb-4">These Terms shall be governed by and construed in accordance with the laws of India. The Platform is owned and operated by <strong>Consortium eLearning Network Pvt. Ltd.</strong>, having its registered office in New Delhi.</p>
+            <p className="mb-4">Any disputes, claims, or legal proceedings arising out of or in connection with the use of the Platform shall be subject to the exclusive jurisdiction of the competent courts located in <strong>Delhi, India</strong>. Users expressly agree that any such dispute shall be resolved exclusively before the competent courts in Delhi and waive any objection to such jurisdiction.</p>
           </section>
         </div>
       </div>

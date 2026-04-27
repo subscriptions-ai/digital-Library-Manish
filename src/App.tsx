@@ -23,6 +23,8 @@ import { JournalDetail } from "./components/JournalDetail";
 import { AgencyListing } from "./components/AgencyListing";
 import { PrivacyPolicy } from "./components/PrivacyPolicy";
 import { TermsAndConditions } from "./components/TermsAndConditions";
+import { LegalDisclaimer } from "./components/LegalDisclaimer";
+import { ContentSources } from "./components/ContentSources";
 import { Cart } from "./components/Cart";
 import { Checkout } from "./components/Checkout";
 import { QuotationPreview } from "./components/QuotationPreview";
@@ -200,6 +202,8 @@ export default function App() {
                       <Route path="/faq" element={<FAQ />} />
                       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                       <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                      <Route path="/legal-disclaimer" element={<LegalDisclaimer />} />
+                      <Route path="/content-sources" element={<ContentSources />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
                       <Route path="/cart" element={<Cart />} />
