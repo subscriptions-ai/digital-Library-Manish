@@ -76,7 +76,12 @@ export function SubscriptionListPage() {
   // Load Bundles
   useEffect(() => {
     if (assignModal && bundles.length === 0) {
-      fetch('/api/bundles').then(r => r.json()).then(setBundles).catch(() => {});
+      fetch('/api/bundles', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setBundles(Array.isArray(data) ? data : []))
+      .catch(() => {});
     }
   }, [assignModal, bundles.length]);
 

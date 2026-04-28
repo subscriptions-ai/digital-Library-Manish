@@ -7,7 +7,7 @@ import { RecentActivityTable } from './dashboard/RecentActivityTable';
 
 // Lazy load heavy charting libraries to optimize performance
 const DashboardCharts = lazy(() => import('./dashboard/DashboardCharts').then(m => ({ default: m.DashboardCharts })));
-const UsersGeoMap = lazy(() => import('./dashboard/UsersGeoMap'));
+const IndiaStateHeatmap = lazy(() => import('./dashboard/IndiaStateHeatmap'));
 
 export function AdminDashboardHome() {
   const [stats, setStats] = useState<any>(null);
@@ -90,22 +90,17 @@ export function AdminDashboardHome() {
         <DashboardCharts stats={stats} />
       </Suspense>
 
-      {/* Bottom Grid Layout - Map & Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        
-        {/* Geo Map takes 2 columns (40%) */}
-        <motion.div variants={itemVariants as any} className="lg:col-span-2">
-          <Suspense fallback={<div className="bg-slate-50 animate-pulse border border-slate-100 rounded-3xl h-[400px] w-full" />}>
-            <UsersGeoMap stats={stats} />
-          </Suspense>
-        </motion.div>
+      {/* India State Distribution Map - full width */}
+      <motion.div variants={itemVariants as any}>
+        <Suspense fallback={<div className="bg-slate-50 animate-pulse border border-slate-100 rounded-3xl h-[420px] w-full" />}>
+          <IndiaStateHeatmap />
+        </Suspense>
+      </motion.div>
 
-        {/* Recent Activity takes 3 columns (60%) */}
-        <motion.div variants={itemVariants as any} className="lg:col-span-3">
-          <RecentActivityTable stats={stats} />
-        </motion.div>
-
-      </div>
+      {/* Recent Activity - full width below map */}
+      <motion.div variants={itemVariants as any}>
+        <RecentActivityTable stats={stats} />
+      </motion.div>
     </motion.div>
   );
 }

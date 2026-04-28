@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -31,6 +31,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [contentExpanded, setContentExpanded] = useState(true);
   const [subsExpanded, setSubsExpanded] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [newInquiriesCount, setNewInquiriesCount] = useState(0);
 
   useEffect(() => {
     if (!loading && profile) {
@@ -45,6 +46,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         }).then(r => r.json()).then(data => {
           if (Array.isArray(data)) setPendingCount(data.length);
+        }).catch(() => {});
+        fetch('/api/admin/contact-inquiries?status=New', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        }).then(r => r.json()).then(data => {
+          if (Array.isArray(data)) setNewInquiriesCount(data.length);
         }).catch(() => {});
       }
     } else if (!loading && !profile) {
@@ -242,6 +248,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/admin/agency-inquiries')}
           />
+
+          {/* Contact Inquiries */}
+          <NavButton
+            icon={<MessageSquare size={17} />}
+            label="Contact Inquiries"
+            active={location.pathname === '/admin/contact-inquiries'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/contact-inquiries')}
+            badge={newInquiriesCount > 0 ? newInquiriesCount : undefined}
+          />
         </nav>
 
         {/* Footer */}
@@ -273,6 +289,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/users' ? 'Users'
               : location.pathname === '/admin/validator' ? 'System Validator'
               : location.pathname === '/admin/agency-inquiries' ? 'Agency Inquiries'
+              : location.pathname === '/admin/contact-inquiries' ? 'Contact Inquiries'
               : 'Dashboard')}
           </h1>
         </header>
@@ -284,8 +301,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   );
 }
 
-function NavButton({ icon, label, active, collapsed, onClick, danger = false, highlight = false }: {
-  icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; onClick: () => void; danger?: boolean; highlight?: boolean;
+function NavButton({ icon, label, active, collapsed, onClick, danger = false, highlight = false, badge }: {
+  icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; onClick: () => void; danger?: boolean; highlight?: boolean; badge?: number;
 }) {
   return (
     <button onClick={onClick}
@@ -297,8 +314,20 @@ function NavButton({ icon, label, active, collapsed, onClick, danger = false, hi
       } ${collapsed && 'justify-center'}`}
       title={collapsed ? label : undefined}
     >
-      <div className="shrink-0">{icon}</div>
-      {!collapsed && <span>{label}</span>}
+      <div className="shrink-0 relative">
+        {icon}
+        {collapsed && badge && badge > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-[9px] text-white w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+            {badge > 9 ? '9+' : badge}
+          </span>
+        )}
+      </div>
+      {!collapsed && <span className="flex-1 text-left">{label}</span>}
+      {!collapsed && badge && badge > 0 && (
+        <span className="bg-red-500 text-[10px] text-white rounded-full px-1.5 py-0.5 font-bold min-w-[18px] text-center">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
     </button>
   );
 }

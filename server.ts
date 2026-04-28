@@ -219,8 +219,16 @@ async function startServer() {
     next();
   };
 
+  const requireAdminOrManager = (req: any, res: any, next: any) => {
+    const role = req.user?.role;
+    if (role !== 'SuperAdmin' && role !== 'SubscriptionManager') {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+    next();
+  };
+
   // Admin: Get all stats (enhanced)
-  app.get("/api/admin/stats", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.get("/api/admin/stats", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const CONTENT_TYPES = ['Books','Periodicals','Magazines','Case Reports','Theses','Conference Proceedings','Educational Videos','Newsletters'];
       const [users, payments, subscriptions, quotations, contentCounts, pendingRequests, totalContent] = await Promise.all([
@@ -292,14 +300,14 @@ async function startServer() {
         revenueData,
         userGrowthData,
         contentGrowthData,
-        geoPoints,
+        geoPoints: [],
         _stats: {
           totalUsers,
           totalContent,
           totalRevenue: payments.filter(p => p.status === 'Success').reduce((acc, p) => acc + p.amount, 0),
           activeSubscriptions: subscriptions.filter(s => s.status === 'Active').length,
           pendingRequests,
-          contentGrowthPct: 12.5, // Mocked growth format
+          contentGrowthPct: 12.5,
           revenueGrowthPct: 8.2,
           userGrowthPct: 15.4
         }
@@ -309,6 +317,48 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
+
+  // India State-wise distribution — all sources + platform totals
+  app.get("/api/admin/india-state-stats", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const [usersByState, quotationsByState, contactsByState, totalUsers, totalSubscriptions, totalRevenue] = await Promise.all([
+        prisma.user.groupBy({ by: ['state'], _count: { id: true }, where: { state: { not: null, notIn: ['', 'null'] } } }),
+        (prisma as any).quotation.groupBy({ by: ['state'], _count: { id: true }, where: { state: { not: null, notIn: ['', 'null'] } } }),
+        (prisma as any).contactInquiry.groupBy({ by: ['state'], _count: { id: true }, where: { state: { not: null, notIn: ['', 'null'] } } }),
+        prisma.user.count({ where: { role: { not: 'SuperAdmin' } } }),
+        prisma.subscription.count({ where: { status: 'Active' } }),
+        prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'Success' } }),
+      ]);
+
+      const stateMap: Record<string, { users: number; quotations: number; contacts: number; total: number }> = {};
+      const add = (state: string | null, field: 'users' | 'quotations' | 'contacts', count: number) => {
+        if (!state || state === 'null') return;
+        const s = state.trim(); if (!s) return;
+        if (!stateMap[s]) stateMap[s] = { users: 0, quotations: 0, contacts: 0, total: 0 };
+        stateMap[s][field] += count; stateMap[s].total += count;
+      };
+      for (const u of usersByState)      add(u.state, 'users',      u._count.id);
+      for (const q of quotationsByState) add(q.state, 'quotations', q._count.id);
+      for (const c of contactsByState)   add(c.state, 'contacts',   c._count.id);
+
+      res.json({
+        stateMap,
+        meta: {
+          stateUsers:        usersByState.reduce((s: number, u: any) => s + u._count.id, 0),
+          stateQuotations:   quotationsByState.reduce((s: number, q: any) => s + q._count.id, 0),
+          stateContacts:     contactsByState.reduce((s: number, c: any) => s + c._count.id, 0),
+          activeStates:      Object.keys(stateMap).length,
+          totalUsers,
+          totalSubscriptions,
+          totalRevenue:      (totalRevenue as any)._sum?.amount || 0,
+        }
+      });
+    } catch (error) {
+      console.error("India state stats error:", error);
+      res.status(500).json({ error: 'Failed to fetch state stats' });
+    }
+  });
+
 
   // ========================
   // SUBSCRIBER (USER) APIS
@@ -790,13 +840,7 @@ async function startServer() {
   // USER MANAGEMENT — SuperAdmin + SubscriptionManager only
   // ======================================================
 
-  const requireAdminOrManager = (req: any, res: any, next: any) => {
-    const role = req.user?.role;
-    if (role !== 'SuperAdmin' && role !== 'SubscriptionManager') {
-      return res.status(403).json({ error: "Insufficient permissions" });
-    }
-    next();
-  };
+  
 
   // Helper: generate strong random password
   const generatePassword = (length = 12): string => {
@@ -1478,7 +1522,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/admin/quotations", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.get("/api/admin/quotations", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { status } = req.query;
       const where: any = {};
@@ -1494,7 +1538,7 @@ async function startServer() {
     }
   });
 
-  app.put("/api/admin/quotations/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.put("/api/admin/quotations/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status, notes } = req.body;
@@ -1508,7 +1552,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/admin/quotations/:id/convert", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.post("/api/admin/quotations/:id/convert", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
@@ -1703,7 +1747,7 @@ async function startServer() {
 
   // Admin: Assign subscription manually to user
   // Mass Assign Subscription (Bundles or Custom)
-  app.post("/api/admin/subscriptions/assign", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.post("/api/admin/subscriptions/assign", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { userIds, bundleId, planType, durationMonths, domains: inputDomains, contentTypes: inputContentTypes } = req.body;
       
@@ -1794,7 +1838,7 @@ async function startServer() {
   });
 
   // Admin: Subscription Requests
-  app.get("/api/admin/subscription-requests", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.get("/api/admin/subscription-requests", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { status } = req.query;
       const where: any = {};
@@ -1823,7 +1867,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/admin/subscription-requests/:id/approve", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.post("/api/admin/subscription-requests/:id/approve", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
@@ -1865,7 +1909,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/admin/subscription-requests/:id/reject", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.post("/api/admin/subscription-requests/:id/reject", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { rejectionNote } = req.body;
@@ -1880,7 +1924,7 @@ async function startServer() {
   });
 
   // Admin: Subscription Management
-  app.get("/api/admin/subscriptions", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.get("/api/admin/subscriptions", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { status } = req.query;
       const where: any = {};
@@ -1903,7 +1947,7 @@ async function startServer() {
     }
   });
 
-  app.put("/api/admin/subscriptions/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.put("/api/admin/subscriptions/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status, endDate, cancelledAt } = req.body;
@@ -2122,7 +2166,7 @@ async function startServer() {
     }
   });
 
-  // Contact Form Submission
+  // Contact Form Submission — also persists to DB for admin management
   app.post("/api/contact", async (req, res) => {
     try {
       const formData = req.body;
@@ -2137,6 +2181,27 @@ async function startServer() {
         organization, 
         message 
       } = formData;
+
+      // Persist to DB for admin management
+      try {
+        await (prisma as any).contactInquiry.create({
+          data: {
+            fullName,
+            email,
+            mobile: mobile || null,
+            whatsapp: whatsapp || null,
+            designation: designation || null,
+            departments: Array.isArray(departments) ? departments : (departments ? [departments] : []),
+            state: state || null,
+            organization: organization || null,
+            message,
+            status: 'New',
+          }
+        });
+      } catch (dbErr) {
+        console.error('Failed to save contact inquiry to DB:', dbErr);
+        // Non-blocking — still send email
+      }
 
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
@@ -2170,7 +2235,7 @@ async function startServer() {
               </tr>
               <tr>
                 <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Departments</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${departments.join(", ")}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${Array.isArray(departments) ? departments.join(", ") : departments}</td>
               </tr>
               <tr style="background: #f8fafc;">
                 <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">State</td>
@@ -2202,7 +2267,7 @@ async function startServer() {
               <h3 style="margin-top: 0;">Summary of your details:</h3>
               <ul style="list-style: none; padding: 0;">
                 <li><strong>Organization:</strong> ${organization}</li>
-                <li><strong>Departments:</strong> ${departments.join(", ")}</li>
+                <li><strong>Departments:</strong> ${Array.isArray(departments) ? departments.join(", ") : departments}</li>
                 <li><strong>Message:</strong> ${message}</li>
               </ul>
             </div>
@@ -2226,6 +2291,108 @@ async function startServer() {
     } catch (error) {
       console.error("Contact Form Error:", error);
       res.status(500).json({ error: "Failed to submit inquiry" });
+    }
+  });
+
+  // ── Admin: Contact Inquiries CRUD ───────────────────────────────────────────
+  app.get("/api/admin/contact-inquiries", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { status, search } = req.query;
+      const where: any = {};
+      if (status && status !== 'All') where.status = status as string;
+      if (search) {
+        where.OR = [
+          { fullName:     { contains: search as string, mode: 'insensitive' } },
+          { email:        { contains: search as string, mode: 'insensitive' } },
+          { organization: { contains: search as string, mode: 'insensitive' } },
+          { message:      { contains: search as string, mode: 'insensitive' } },
+        ];
+      }
+      const inquiries = await (prisma as any).contactInquiry.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+      });
+      res.json(inquiries);
+    } catch (error) {
+      console.error('GET contact-inquiries error:', error);
+      res.status(500).json({ error: 'Failed to fetch contact inquiries' });
+    }
+  });
+
+  app.get("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const inquiry = await (prisma as any).contactInquiry.findUnique({ where: { id: req.params.id } });
+      if (!inquiry) return res.status(404).json({ error: 'Not found' });
+      // Auto-mark as Read when admin opens it
+      if (inquiry.status === 'New') {
+        await (prisma as any).contactInquiry.update({ where: { id: req.params.id }, data: { status: 'Read' } });
+        inquiry.status = 'Read';
+      }
+      res.json(inquiry);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch inquiry' });
+    }
+  });
+
+  app.put("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { status, adminNotes } = req.body;
+      const data: any = {};
+      if (status) data.status = status;
+      if (adminNotes !== undefined) data.adminNotes = adminNotes;
+      const updated = await (prisma as any).contactInquiry.update({ where: { id: req.params.id }, data });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update inquiry' });
+    }
+  });
+
+  app.post("/api/admin/contact-inquiries/:id/reply", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { replyText, subject } = req.body;
+      const inquiry = await (prisma as any).contactInquiry.findUnique({ where: { id: req.params.id } });
+      if (!inquiry) return res.status(404).json({ error: 'Inquiry not found' });
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || '').trim();
+      await transporter.sendMail({
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: inquiry.email,
+        subject: subject || `Re: Your Contact Inquiry – STM Digital Library`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; color: #1e293b;">
+            <div style="background: #1e293b; padding: 28px 32px; border-radius: 12px 12px 0 0;">
+              <h1 style="color: #fff; margin: 0; font-size: 20px;">STM Digital Library</h1>
+              <p style="color: #94a3b8; margin: 4px 0 0; font-size: 13px;">Response to your enquiry</p>
+            </div>
+            <div style="background: #fff; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; padding: 32px;">
+              <p style="margin: 0 0 16px; font-size: 15px;">Dear <strong>${inquiry.fullName}</strong>,</p>
+              <p style="margin: 0 0 24px; color: #475569; font-size: 14px; line-height: 1.7;">${(replyText as string).replace(/\n/g, '<br/>')}</p>
+              <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px;">
+                <p style="margin: 0; font-size: 13px; color: #64748b;">
+                  For further assistance, please reply to this email or call us at <strong>+91-120-4781200</strong>.<br/>
+                  <strong>STM Digital Library</strong> | subscriptions@stmjournals.com
+                </p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+      const updated = await (prisma as any).contactInquiry.update({
+        where: { id: req.params.id },
+        data: { status: 'Replied', replyText, repliedAt: new Date() }
+      });
+      res.json({ success: true, inquiry: updated });
+    } catch (error) {
+      console.error('Reply contact inquiry error:', error);
+      res.status(500).json({ error: 'Failed to send reply' });
+    }
+  });
+
+  app.delete("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      await (prisma as any).contactInquiry.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete inquiry' });
     }
   });
 

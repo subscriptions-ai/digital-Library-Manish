@@ -5,18 +5,32 @@ import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink } from 'lucide-r
 
 const STATUS_COLORS: Record<string, string> = {
   Pending:   'bg-amber-100 text-amber-700 border-amber-200',
+  Sent:      'bg-amber-100 text-amber-700 border-amber-200',
   Approved:  'bg-blue-100 text-blue-700 border-blue-200',
   Paid:      'bg-emerald-100 text-emerald-700 border-emerald-200',
   Cancelled: 'bg-slate-100 text-slate-500 border-slate-200',
 };
 
+const STATUS_ICONS: Record<string, any> = {
+  Pending:   <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />,
+  Sent:      <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />,
+  Approved:  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />,
+  Paid:      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />,
+  Cancelled: <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />,
+};
+
+
 export function QuotationManager() {
   const [quotations, setQuotations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selected, setSelected] = useState<any | null>(null);
   const [converting, setConverting] = useState(false);
   const [convertForm, setConvertForm] = useState({ startDate: '', endDate: '' });
+
 
   const fetchData = async () => {
     setLoading(true);
@@ -25,7 +39,8 @@ export function QuotationManager() {
       const res = await fetch(`/api/admin/quotations${q}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-      setQuotations(await res.json());
+      const data = await res.json();
+      setQuotations(Array.isArray(data) ? data : []);
     } catch { toast.error('Failed to load quotations'); }
     finally { setLoading(false); }
   };
@@ -65,6 +80,58 @@ export function QuotationManager() {
   const formatPrice = (n: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(n);
 
+  const filteredQuotations = quotations
+    .filter(q => {
+      const matchesStatus = !statusFilter || q.status === statusFilter || (statusFilter === 'Pending' && q.status === 'Sent');
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm || 
+        q.userName?.toLowerCase()?.includes(searchLower) || 
+        q.userEmail?.toLowerCase()?.includes(searchLower) ||
+        q.organization?.toLowerCase()?.includes(searchLower) ||
+        q.id?.toLowerCase()?.includes(searchLower);
+      return matchesStatus && matchesSearch;
+    })
+    .sort((a, b) => {
+      const valA = a[sortBy];
+      const valB = b[sortBy];
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+  const stats = {
+    total: quotations.length,
+    pending: quotations.filter(q => q.status === 'Pending' || q.status === 'Sent').length,
+    approved: quotations.filter(q => q.status === 'Approved').length,
+    revenue: quotations.filter(q => q.status === 'Paid').reduce((acc, q) => acc + q.total, 0)
+  };
+
+  const exportToCSV = () => {
+    const headers = ['ID', 'User', 'Email', 'Organization', 'Plan', 'Domain', 'Amount', 'Date', 'Status'];
+    const rows = filteredQuotations.map(q => [
+      q.id,
+      q.userName,
+      q.userEmail,
+      q.organization || '',
+      q.planType || 'Monthly',
+      q.allowedDomain || 'All Domains',
+      q.total,
+      q.createdAt ? format(new Date(q.createdAt), 'yyyy-MM-dd') : '',
+      q.status
+    ]);
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `quotations_export_${format(new Date(), 'yyyyMMdd')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -74,26 +141,72 @@ export function QuotationManager() {
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit">
-        {(['', 'Pending', 'Approved', 'Paid', 'Cancelled'] as const).map(f => (
-          <button key={f} onClick={() => setStatusFilter(f)}
-            className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-all ${statusFilter === f ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-800'}`}>
-            {f || 'All'}
-          </button>
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Quotes', value: stats.total, icon: <Eye size={18} className="text-blue-600" />, bg: 'bg-blue-50' },
+          { label: 'Pending/Sent', value: stats.pending, icon: <div className="w-2 h-2 rounded-full bg-amber-500" />, bg: 'bg-amber-50' },
+          { label: 'Approved', value: stats.approved, icon: <CheckCircle size={18} className="text-indigo-600" />, bg: 'bg-indigo-50' },
+          { label: 'Total Revenue', value: formatPrice(stats.revenue), icon: <div className="text-emerald-600 font-bold">₹</div>, bg: 'bg-emerald-50' },
+        ].map((s, i) => (
+          <div key={i} className={`p-4 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center gap-4`}>
+            <div className={`p-3 rounded-xl ${s.bg}`}>{s.icon}</div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{s.label}</p>
+              <p className="text-xl font-bold text-slate-900">{s.value}</p>
+            </div>
+          </div>
         ))}
       </div>
+
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Filter tabs */}
+        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
+          {(['', 'Pending', 'Approved', 'Paid', 'Cancelled'] as const).map(f => (
+            <button key={f} onClick={() => setStatusFilter(f)}
+              className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${statusFilter === f ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'}`}>
+              {f || 'All'}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Eye size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Search quotes..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+            />
+          </div>
+          <button 
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
+          >
+            <ExternalLink size={14} /> Export
+          </button>
+        </div>
+      </div>
+
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-sm text-left">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="px-5 py-3 font-semibold text-slate-600">User</th>
+              <th className="px-5 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => { setSortBy('userName'); setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); }}>
+                <div className="flex items-center gap-2">User {sortBy === 'userName' && (sortOrder === 'asc' ? '↑' : '↓')}</div>
+              </th>
               <th className="px-5 py-3 font-semibold text-slate-600">Plan</th>
               <th className="px-5 py-3 font-semibold text-slate-600">Domain</th>
-              <th className="px-5 py-3 font-semibold text-slate-600">Amount</th>
-              <th className="px-5 py-3 font-semibold text-slate-600">Date</th>
+              <th className="px-5 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => { setSortBy('total'); setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); }}>
+                <div className="flex items-center gap-2">Amount {sortBy === 'total' && (sortOrder === 'asc' ? '↑' : '↓')}</div>
+              </th>
+              <th className="px-5 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => { setSortBy('createdAt'); setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); }}>
+                <div className="flex items-center gap-2">Date {sortBy === 'createdAt' && (sortOrder === 'asc' ? '↑' : '↓')}</div>
+              </th>
               <th className="px-5 py-3 font-semibold text-slate-600">Status</th>
               <th className="px-5 py-3 font-semibold text-slate-600 text-right">Actions</th>
             </tr>
@@ -103,47 +216,52 @@ export function QuotationManager() {
               <tr><td colSpan={7} className="py-12 text-center">
                 <div className="flex justify-center"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
               </td></tr>
-            ) : quotations.length === 0 ? (
+            ) : filteredQuotations.length === 0 ? (
               <tr><td colSpan={7} className="py-12 text-center text-slate-400">No quotations found.</td></tr>
-            ) : quotations.map(q => (
-              <tr key={q.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-5 py-3">
-                  <div className="font-semibold text-slate-900">{q.userName}</div>
-                  <div className="text-xs text-slate-500">{q.userEmail}</div>
-                  {q.organization && <div className="text-xs text-slate-400 mt-0.5">{q.organization}</div>}
+            ) : filteredQuotations.map(q => (
+              <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
+                <td className="px-5 py-4">
+                  <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{q.userName}</div>
+                  <div className="text-[11px] text-slate-500 font-medium">{q.userEmail}</div>
+                  {q.organization && <div className="text-[10px] text-slate-400 mt-0.5">{q.organization}</div>}
                 </td>
-                <td className="px-5 py-3">
-                  <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-indigo-50 text-indigo-700">
+                <td className="px-5 py-4">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
                     {q.planType || 'Monthly'}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-slate-600 text-xs">{q.allowedDomain || 'All Domains'}</td>
-                <td className="px-5 py-3">
-                  <div className="font-bold text-slate-900">{formatPrice(q.total)}</div>
-                  <div className="text-xs text-slate-400">incl. GST</div>
+                <td className="px-5 py-4">
+                  <div className="text-slate-600 text-[11px] font-medium leading-tight max-w-[150px] truncate">{q.allowedDomain || 'All Domains'}</div>
                 </td>
-                <td className="px-5 py-3 text-slate-500 text-xs">{q.createdAt ? format(new Date(q.createdAt), 'dd MMM yyyy') : '—'}</td>
-                <td className="px-5 py-3">
-                  <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wide ${STATUS_COLORS[q.status] || ''}`}>
+                <td className="px-5 py-4">
+                  <div className="font-bold text-slate-900">{formatPrice(q.total)}</div>
+                  <div className="text-[10px] text-slate-400 font-medium">incl. GST</div>
+                </td>
+                <td className="px-5 py-4 text-slate-500 text-[11px] font-medium">
+                  {q.createdAt ? format(new Date(q.createdAt), 'dd MMM yyyy') : '—'}
+                </td>
+                <td className="px-5 py-4">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide shadow-sm ${STATUS_COLORS[q.status] || ''}`}>
+                    {STATUS_ICONS[q.status]}
                     {q.status}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1.5">
+                <td className="px-5 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
-                      <Eye size={13} /> View
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Details">
+                      <Eye size={16} />
                     </button>
-                    {q.status === 'Pending' && (
+                    {(q.status === 'Pending' || q.status === 'Sent') && (
                       <button onClick={() => updateStatus(q.id, 'Approved')}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-lg">
-                        <CheckCircle size={13} /> Approve
+                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Approve">
+                        <CheckCircle size={16} />
                       </button>
                     )}
                     {q.status === 'Approved' && (
                       <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg">
-                        <ArrowRight size={13} /> Convert
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Convert to Subscription">
+                        <ArrowRight size={16} />
                       </button>
                     )}
                   </div>
@@ -250,23 +368,24 @@ export function QuotationManager() {
 
               {/* Status Actions */}
               <div className="flex justify-end gap-3">
-                {selected.status === 'Pending' && (
+                {(selected.status === 'Pending' || selected.status === 'Sent') && (
                   <>
                     <button onClick={() => updateStatus(selected.id, 'Cancelled')}
                       className="px-4 py-2 text-sm font-bold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl">Cancel</button>
                     <button onClick={() => updateStatus(selected.id, 'Approved')}
-                      className="px-5 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center gap-2">
+                      className="px-5 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-200 transition-all active:scale-95">
                       <CheckCircle size={14} /> Approve Quotation
                     </button>
                   </>
                 )}
                 {selected.status === 'Approved' && (
                   <button onClick={() => updateStatus(selected.id, 'Paid')}
-                    className="px-5 py-2 text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center gap-2">
+                    className="px-5 py-2 text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center gap-2 shadow-lg shadow-slate-200 transition-all active:scale-95">
                     Mark as Paid
                   </button>
                 )}
               </div>
+
             </div>
           </div>
         </div>

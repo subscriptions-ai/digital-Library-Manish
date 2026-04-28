@@ -27,6 +27,7 @@ var import_path = __toESM(require("path"), 1);
 var import_dotenv = __toESM(require("dotenv"), 1);
 var import_razorpay = __toESM(require("razorpay"), 1);
 var import_nodemailer = __toESM(require("nodemailer"), 1);
+var sesv2 = __toESM(require("@aws-sdk/client-sesv2"), 1);
 var import_crypto = __toESM(require("crypto"), 1);
 var import_helmet = __toESM(require("helmet"), 1);
 var import_compression = __toESM(require("compression"), 1);
@@ -80,15 +81,25 @@ async function startServer() {
       key_secret: process.env.RAZORPAY_KEY_SECRET
     });
   };
-  const transporter = import_nodemailer.default.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER || "",
-      pass: process.env.EMAIL_PASS || ""
+  const ses = new sesv2.SESv2Client({
+    region: (process.env.AWS_REGION || "ap-south-1").trim(),
+    credentials: {
+      accessKeyId: (process.env.AWS_ACCESS_KEY_ID || "").trim(),
+      secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY || "").trim()
     }
   });
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn("WARNING: Email credentials are missing in environment variables.");
+  const transporter = import_nodemailer.default.createTransport({
+    SES: { sesClient: ses, SendEmailCommand: sesv2.SendEmailCommand }
+  });
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error("\u274C Email Transporter Verification Failed:", error);
+    } else {
+      console.log("\u2705 Email Transporter is ready (SES v2)");
+    }
+  });
+  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+    console.warn("WARNING: AWS credentials for SES are missing in environment variables.");
   }
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
@@ -184,7 +195,14 @@ async function startServer() {
     if (req.user?.role !== "SuperAdmin") return res.status(403).json({ error: "Access denied" });
     next();
   };
-  app.get("/api/admin/stats", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  const requireAdminOrManager = (req, res, next) => {
+    const role = req.user?.role;
+    if (role !== "SuperAdmin" && role !== "SubscriptionManager") {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+    next();
+  };
+  app.get("/api/admin/stats", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const CONTENT_TYPES = ["Books", "Periodicals", "Magazines", "Case Reports", "Theses", "Conference Proceedings", "Educational Videos", "Newsletters"];
       const [users, payments, subscriptions, quotations, contentCounts, pendingRequests, totalContent] = await Promise.all([
@@ -261,7 +279,7 @@ async function startServer() {
         revenueData,
         userGrowthData,
         contentGrowthData,
-        geoPoints,
+        geoPoints: [],
         _stats: {
           totalUsers,
           totalContent,
@@ -269,7 +287,6 @@ async function startServer() {
           activeSubscriptions: subscriptions.filter((s) => s.status === "Active").length,
           pendingRequests,
           contentGrowthPct: 12.5,
-          // Mocked growth format
           revenueGrowthPct: 8.2,
           userGrowthPct: 15.4
         }
@@ -277,6 +294,45 @@ async function startServer() {
     } catch (error) {
       console.error("Admin stats error:", error);
       res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+  app.get("/api/admin/india-state-stats", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const [usersByState, quotationsByState, contactsByState, totalUsers, totalSubscriptions, totalRevenue] = await Promise.all([
+        prisma.user.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma.quotation.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma.contactInquiry.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma.user.count({ where: { role: { not: "SuperAdmin" } } }),
+        prisma.subscription.count({ where: { status: "Active" } }),
+        prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "Success" } })
+      ]);
+      const stateMap = {};
+      const add = (state, field, count) => {
+        if (!state || state === "null") return;
+        const s = state.trim();
+        if (!s) return;
+        if (!stateMap[s]) stateMap[s] = { users: 0, quotations: 0, contacts: 0, total: 0 };
+        stateMap[s][field] += count;
+        stateMap[s].total += count;
+      };
+      for (const u of usersByState) add(u.state, "users", u._count.id);
+      for (const q of quotationsByState) add(q.state, "quotations", q._count.id);
+      for (const c of contactsByState) add(c.state, "contacts", c._count.id);
+      res.json({
+        stateMap,
+        meta: {
+          stateUsers: usersByState.reduce((s, u) => s + u._count.id, 0),
+          stateQuotations: quotationsByState.reduce((s, q) => s + q._count.id, 0),
+          stateContacts: contactsByState.reduce((s, c) => s + c._count.id, 0),
+          activeStates: Object.keys(stateMap).length,
+          totalUsers,
+          totalSubscriptions,
+          totalRevenue: totalRevenue._sum?.amount || 0
+        }
+      });
+    } catch (error) {
+      console.error("India state stats error:", error);
+      res.status(500).json({ error: "Failed to fetch state stats" });
     }
   });
   app.get("/api/user/dashboard", authenticateJWT, async (req, res) => {
@@ -322,12 +378,21 @@ async function startServer() {
     try {
       const { contentId, lastPage, timeSpent } = req.body;
       if (!contentId || !lastPage) return res.status(400).json({ error: "contentId and lastPage are required" });
-      await prisma.studentActivity.upsert({
-        where: { userId_contentId: { userId: req.user.uid, contentId } },
-        create: { userId: req.user.uid, contentId, lastPage: Number(lastPage), timeSpent: Number(timeSpent) || 0 },
-        update: { lastPage: Number(lastPage), timeSpent: { increment: Number(timeSpent) || 0 } }
+      const existing = await prisma.studentActivity.findFirst({
+        where: { userId: req.user.uid, contentId }
       });
-      res.json({ success: true, lastPage: Number(lastPage) });
+      if (existing) {
+        await prisma.studentActivity.update({
+          where: { id: existing.id },
+          data: { lastPage: Number(lastPage), timeSpent: { increment: Number(timeSpent) || 0 } }
+        });
+        res.json({ success: true, lastPage: Number(lastPage) });
+      } else {
+        await prisma.studentActivity.create({
+          data: { userId: req.user.uid, contentId, lastPage: Number(lastPage), timeSpent: Number(timeSpent) || 0 }
+        });
+        res.json({ success: true, lastPage: Number(lastPage) });
+      }
     } catch (error) {
       console.error("Reading progress save error:", error);
       res.status(500).json({ error: "Failed to save reading progress" });
@@ -512,12 +577,14 @@ async function startServer() {
       }
       if (req.user.role === "Student" || req.user.role === "Subscriber") {
         try {
-          await prisma.studentActivity.upsert({
-            where: { userId_contentId: { userId: req.user.uid, contentId: content.id } },
-            create: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 },
-            update: { timeSpent: { increment: 0 } }
-            // just update accessedAt via @updatedAt
+          const existing = await prisma.studentActivity.findFirst({
+            where: { userId: req.user.uid, contentId: content.id }
           });
+          if (existing) {
+            await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
+          } else {
+            await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
+          }
         } catch (e) {
           console.error("Activity log failed", e);
         }
@@ -549,7 +616,7 @@ async function startServer() {
       const https = await import("https");
       const http = await import("http");
       const upstreamUrl = new URL(content.fileUrl);
-      const protocol = upstreamUrl.protocol === "https:" ? https.default : http.default;
+      const protocol = upstreamUrl.protocol === "https:" ? https : http;
       const proxyHeaders = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
         "Accept": "application/pdf, text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -567,7 +634,7 @@ async function startServer() {
         if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode || 0) && proxyRes.headers.location) {
           const redirectUrl = proxyRes.headers.location;
           const finalRedirectUrl = redirectUrl.startsWith("http") ? redirectUrl : new URL(redirectUrl, content.fileUrl).toString();
-          const redirectProtocol = finalRedirectUrl.startsWith("https") ? https.default : http.default;
+          const redirectProtocol = finalRedirectUrl.startsWith("https") ? https : http;
           const redirHeaders = { ...proxyHeaders };
           if (proxyRes.headers["set-cookie"]) {
             redirHeaders["Cookie"] = proxyRes.headers["set-cookie"].map((c) => c.split(";")[0]).join("; ");
@@ -639,22 +706,16 @@ async function startServer() {
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
-  const requireAdminOrManager = (req, res, next) => {
-    const role = req.user?.role;
-    if (role !== "SuperAdmin" && role !== "SubscriptionManager") {
-      return res.status(403).json({ error: "Insufficient permissions" });
-    }
-    next();
-  };
   const generatePassword = (length = 12) => {
     const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
     return Array.from(import_crypto.default.randomBytes(length)).map((b) => chars[b % chars.length]).join("");
   };
   const sendCredentialsEmail = async (to, name, password) => {
     const siteUrl = process.env.SITE_URL || "https://library.stmjournals.com";
+    const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
     try {
       await transporter.sendMail({
-        from: `"STM Digital Library" <${process.env.EMAIL_USER}>`,
+        from: `"STM Digital Library" <${emailFrom}>`,
         to,
         subject: "Your Digital Library Access Credentials",
         html: `
@@ -680,7 +741,9 @@ async function startServer() {
         `
       });
     } catch (emailErr) {
-      console.error("Credentials email failed:", emailErr);
+      console.error("Credentials email failed for:", to);
+      console.error("Error details:", emailErr.message || emailErr);
+      if (emailErr.stack) console.error(emailErr.stack);
     }
   };
   app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req, res) => {
@@ -1028,11 +1091,14 @@ async function startServer() {
       }
       if (["Student", "Subscriber"].includes(req.user.role)) {
         try {
-          await prisma.studentActivity.upsert({
-            where: { userId_contentId: { userId: req.user.uid, contentId: content.id } },
-            create: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 },
-            update: { accessedAt: /* @__PURE__ */ new Date() }
+          const existing = await prisma.studentActivity.findFirst({
+            where: { userId: req.user.uid, contentId: content.id }
           });
+          if (existing) {
+            await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
+          } else {
+            await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
+          }
         } catch (e) {
           console.error("Activity log failed (video):", e);
         }
@@ -1221,7 +1287,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to create quotation" });
     }
   });
-  app.get("/api/admin/quotations", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  app.get("/api/admin/quotations", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { status } = req.query;
       const where = {};
@@ -1236,7 +1302,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch quotations" });
     }
   });
-  app.put("/api/admin/quotations/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  app.put("/api/admin/quotations/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
       const { status, notes } = req.body;
@@ -1249,7 +1315,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to update quotation" });
     }
   });
-  app.post("/api/admin/quotations/:id/convert", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  app.post("/api/admin/quotations/:id/convert", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
@@ -1416,7 +1482,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to block/unblock user" });
     }
   });
-  app.post("/api/admin/subscriptions/assign", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  app.post("/api/admin/subscriptions/assign", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { userIds, bundleId, planType, durationMonths, domains: inputDomains, contentTypes: inputContentTypes } = req.body;
       let finalDomains = [];
@@ -1491,7 +1557,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch bundles" });
     }
   });
-  app.get("/api/admin/subscription-requests", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  app.get("/api/admin/subscription-requests", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { status } = req.query;
       const where = {};
@@ -1517,7 +1583,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to create subscription request" });
     }
   });
-  app.post("/api/admin/subscription-requests/:id/approve", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  app.post("/api/admin/subscription-requests/:id/approve", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
@@ -1553,7 +1619,7 @@ async function startServer() {
       res.status(500).json({ error: error.message || "Failed to approve request" });
     }
   });
-  app.post("/api/admin/subscription-requests/:id/reject", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  app.post("/api/admin/subscription-requests/:id/reject", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
       const { rejectionNote } = req.body;
@@ -1566,7 +1632,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to reject request" });
     }
   });
-  app.get("/api/admin/subscriptions", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  app.get("/api/admin/subscriptions", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { status } = req.query;
       const where = {};
@@ -1585,7 +1651,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch subscriptions" });
     }
   });
-  app.put("/api/admin/subscriptions/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  app.put("/api/admin/subscriptions/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
       const { status, endDate, cancelledAt } = req.body;
@@ -1676,8 +1742,9 @@ async function startServer() {
         fullAddress,
         department
       } = formData;
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
         subject: `New Institutional Trial Request: ${institutionName}`,
         html: `
@@ -1744,7 +1811,7 @@ async function startServer() {
         `
       };
       const userMailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: institutionalEmail,
         subject: "Your Institutional Trial Request has been received",
         html: `
@@ -1797,8 +1864,27 @@ async function startServer() {
         organization,
         message
       } = formData;
+      try {
+        await prisma.contactInquiry.create({
+          data: {
+            fullName,
+            email,
+            mobile: mobile || null,
+            whatsapp: whatsapp || null,
+            designation: designation || null,
+            departments: Array.isArray(departments) ? departments : departments ? [departments] : [],
+            state: state || null,
+            organization: organization || null,
+            message,
+            status: "New"
+          }
+        });
+      } catch (dbErr) {
+        console.error("Failed to save contact inquiry to DB:", dbErr);
+      }
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
         subject: "New Contact Inquiry from Website",
         html: `
@@ -1828,7 +1914,7 @@ async function startServer() {
               </tr>
               <tr>
                 <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Departments</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${departments.join(", ")}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${Array.isArray(departments) ? departments.join(", ") : departments}</td>
               </tr>
               <tr style="background: #f8fafc;">
                 <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">State</td>
@@ -1847,7 +1933,7 @@ async function startServer() {
         `
       };
       const userMailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: email,
         subject: "Thank you for contacting STM Digital Library",
         html: `
@@ -1858,7 +1944,7 @@ async function startServer() {
               <h3 style="margin-top: 0;">Summary of your details:</h3>
               <ul style="list-style: none; padding: 0;">
                 <li><strong>Organization:</strong> ${organization}</li>
-                <li><strong>Departments:</strong> ${departments.join(", ")}</li>
+                <li><strong>Departments:</strong> ${Array.isArray(departments) ? departments.join(", ") : departments}</li>
                 <li><strong>Message:</strong> ${message}</li>
               </ul>
             </div>
@@ -1882,11 +1968,107 @@ async function startServer() {
       res.status(500).json({ error: "Failed to submit inquiry" });
     }
   });
+  app.get("/api/admin/contact-inquiries", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { status, search } = req.query;
+      const where = {};
+      if (status && status !== "All") where.status = status;
+      if (search) {
+        where.OR = [
+          { fullName: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+          { organization: { contains: search, mode: "insensitive" } },
+          { message: { contains: search, mode: "insensitive" } }
+        ];
+      }
+      const inquiries = await prisma.contactInquiry.findMany({
+        where,
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(inquiries);
+    } catch (error) {
+      console.error("GET contact-inquiries error:", error);
+      res.status(500).json({ error: "Failed to fetch contact inquiries" });
+    }
+  });
+  app.get("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const inquiry = await prisma.contactInquiry.findUnique({ where: { id: req.params.id } });
+      if (!inquiry) return res.status(404).json({ error: "Not found" });
+      if (inquiry.status === "New") {
+        await prisma.contactInquiry.update({ where: { id: req.params.id }, data: { status: "Read" } });
+        inquiry.status = "Read";
+      }
+      res.json(inquiry);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch inquiry" });
+    }
+  });
+  app.put("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { status, adminNotes } = req.body;
+      const data = {};
+      if (status) data.status = status;
+      if (adminNotes !== void 0) data.adminNotes = adminNotes;
+      const updated = await prisma.contactInquiry.update({ where: { id: req.params.id }, data });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update inquiry" });
+    }
+  });
+  app.post("/api/admin/contact-inquiries/:id/reply", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { replyText, subject } = req.body;
+      const inquiry = await prisma.contactInquiry.findUnique({ where: { id: req.params.id } });
+      if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      await transporter.sendMail({
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: inquiry.email,
+        subject: subject || `Re: Your Contact Inquiry \u2013 STM Digital Library`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; color: #1e293b;">
+            <div style="background: #1e293b; padding: 28px 32px; border-radius: 12px 12px 0 0;">
+              <h1 style="color: #fff; margin: 0; font-size: 20px;">STM Digital Library</h1>
+              <p style="color: #94a3b8; margin: 4px 0 0; font-size: 13px;">Response to your enquiry</p>
+            </div>
+            <div style="background: #fff; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; padding: 32px;">
+              <p style="margin: 0 0 16px; font-size: 15px;">Dear <strong>${inquiry.fullName}</strong>,</p>
+              <p style="margin: 0 0 24px; color: #475569; font-size: 14px; line-height: 1.7;">${replyText.replace(/\n/g, "<br/>")}</p>
+              <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px;">
+                <p style="margin: 0; font-size: 13px; color: #64748b;">
+                  For further assistance, please reply to this email or call us at <strong>+91-120-4781200</strong>.<br/>
+                  <strong>STM Digital Library</strong> | subscriptions@stmjournals.com
+                </p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+      const updated = await prisma.contactInquiry.update({
+        where: { id: req.params.id },
+        data: { status: "Replied", replyText, repliedAt: /* @__PURE__ */ new Date() }
+      });
+      res.json({ success: true, inquiry: updated });
+    } catch (error) {
+      console.error("Reply contact inquiry error:", error);
+      res.status(500).json({ error: "Failed to send reply" });
+    }
+  });
+  app.delete("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      await prisma.contactInquiry.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete inquiry" });
+    }
+  });
   app.post("/api/quotation/send", async (req, res) => {
     try {
       const { userEmail, userName, quotationData, pdfBase64, userId, organization, state } = req.body;
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
         subject: `Quotation for STM Digital Library - ${quotationData.quotationNumber}`,
         text: `Dear ${userName},
@@ -1932,8 +2114,9 @@ STM Digital Library Team`,
   app.post("/api/invoice/send", async (req, res) => {
     try {
       const { userEmail, userName, invoiceData, pdfBase64 } = req.body;
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
-        from: process.env.EMAIL_USER || "",
+        from: emailFrom,
         to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
         subject: `Invoice for STM Digital Library - ${invoiceData.invoiceNumber}`,
         text: `Dear ${userName},
@@ -2303,7 +2486,7 @@ STM Digital Library Team`,
         const report = await prisma.validationReport.findUnique({ where: { id: reportId } });
         if (report) {
           const existingDrafted = Array.isArray(report.draftedContentIds) ? report.draftedContentIds : [];
-          const merged = [.../* @__PURE__ */ new Set([...existingDrafted, ...contentIds])];
+          const merged = Array.from(/* @__PURE__ */ new Set([...existingDrafted, ...contentIds]));
           const tl = Array.isArray(report.timeline) ? report.timeline : [];
           const actor = req.user?.email || req.user?.name || "Admin";
           tl.push({
@@ -2673,6 +2856,86 @@ STM Digital Library Team`,
       res.json({ message: `Re-validated ${results.length} item(s).`, results });
     } catch (error) {
       res.status(500).json({ error: "Re-validation failed" });
+    }
+  });
+  app.post("/api/agency-inquiry", async (req, res) => {
+    try {
+      const { agencyName, contactPerson, email, phone, region, experience, message } = req.body;
+      const inquiry = await prisma.agencyInquiry.create({
+        data: { agencyName, contactPerson, email, phone, region, experience, message }
+      });
+      res.json({ success: true, inquiry });
+    } catch (error) {
+      console.error("Failed to create agency inquiry:", error);
+      res.status(500).json({ error: "Failed to submit inquiry" });
+    }
+  });
+  app.get("/api/agency-inquiry", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const inquiries = await prisma.agencyInquiry.findMany({
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(inquiries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch inquiries" });
+    }
+  });
+  app.post("/api/agency-inquiry/accept", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { id, discount, emailContent, validUntil, subject, html, attachment } = req.body;
+      const inquiry = await prisma.agencyInquiry.findUnique({ where: { id } });
+      if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const mailOptions = {
+        from: emailFrom,
+        to: inquiry.email,
+        subject: subject || "Welcome to the STM Digital Library Agency Partnership Program",
+        html: html || `<div style="font-family: Arial, sans-serif; white-space: pre-wrap;">${emailContent}</div>`
+      };
+      if (attachment && attachment.content) {
+        mailOptions.attachments = [
+          {
+            filename: attachment.filename || "Partnership_Agreement.pdf",
+            content: Buffer.from(attachment.content, "base64"),
+            contentType: "application/pdf"
+          }
+        ];
+      }
+      await transporter.sendMail(mailOptions);
+      const updated = await prisma.agencyInquiry.update({
+        where: { id },
+        data: {
+          status: "Accepted",
+          discount,
+          validUntil: validUntil ? new Date(validUntil) : null
+        }
+      });
+      res.json({ success: true, inquiry: updated });
+    } catch (error) {
+      console.error("Failed to accept agency inquiry:", error);
+      res.status(500).json({ error: "Failed to process acceptance" });
+    }
+  });
+  app.post("/api/agency-inquiry/reject", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { id, subject, html } = req.body;
+      const inquiry = await prisma.agencyInquiry.findUnique({ where: { id } });
+      if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      await transporter.sendMail({
+        from: emailFrom,
+        to: inquiry.email,
+        subject: subject || "Update on Your STM Digital Library Partnership Application",
+        html: html || "<p>Thank you for your interest, but we cannot proceed with your application at this time.</p>"
+      });
+      const updated = await prisma.agencyInquiry.update({
+        where: { id },
+        data: { status: "Rejected" }
+      });
+      res.json({ success: true, inquiry: updated });
+    } catch (error) {
+      console.error("Failed to reject agency inquiry:", error);
+      res.status(500).json({ error: "Failed to process rejection" });
     }
   });
   if (process.env.NODE_ENV !== "production") {
