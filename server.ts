@@ -906,6 +906,15 @@ async function startServer() {
         include: {
           subscriptions: { where: { status: 'Active' }, take: 3 },
           payments: { orderBy: { createdAt: 'desc' }, take: 3 },
+          institution: {
+            include: {
+              subscriptions: {
+                where: { status: 'Active' },
+                orderBy: { createdAt: 'desc' },
+                take: 5
+              }
+            }
+          }
         },
         orderBy: { createdAt: 'desc' }
       });

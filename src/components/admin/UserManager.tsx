@@ -294,7 +294,28 @@ export function UserManager() {
                             <h4 className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3 flex items-center gap-2">
                               <Calendar size={13} /> Active Subscriptions
                             </h4>
-                            {user.subscriptions?.length > 0 ? (
+                            {(user.role === 'Student' || user.role === 'Institution') && user.institution ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Building2 size={13} className="text-indigo-500" />
+                                  <span className="text-xs font-semibold text-indigo-600">{user.role === 'Institution' ? user.institution.name : `Via: ${user.institution.name}`}</span>
+                                </div>
+                                {user.institution.subscriptions?.length > 0 ? (
+                                  <ul className="space-y-2">
+                                    {user.institution.subscriptions.map((sub: any) => (
+                                      <li key={sub.id} className="bg-white p-3 rounded-xl border border-indigo-100 text-sm flex justify-between">
+                                        <div>
+                                          <div className="font-bold text-slate-800">{sub.planName || sub.domainName}</div>
+                                          <div className="text-xs text-slate-500">Domains: {Array.isArray(sub.domains) ? sub.domains.join(', ') : sub.domainName || '—'}</div>
+                                          <div className="text-xs text-slate-400">Expires: {sub.endDate ? new Date(sub.endDate).toLocaleDateString('en-IN') : '—'}</div>
+                                        </div>
+                                        <span className="text-[10px] font-bold px-2 rounded-full self-center bg-emerald-100 text-emerald-700">{sub.status}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : <p className="text-sm text-slate-400 italic">No active subscriptions for this institution.</p>}
+                              </div>
+                            ) : user.subscriptions?.length > 0 ? (
                               <ul className="space-y-2">
                                 {user.subscriptions.map((sub: any) => (
                                   <li key={sub.id} className="bg-white p-3 rounded-xl border border-slate-200 text-sm flex justify-between">

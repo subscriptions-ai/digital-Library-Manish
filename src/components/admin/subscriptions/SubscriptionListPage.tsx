@@ -230,10 +230,10 @@ export function SubscriptionListPage() {
                 </td>
                 <td className="px-5 py-3 text-right">
                   <div className="flex justify-end gap-2">
-                    {sub.user?.institutionProfile && (
+                    {(sub.user?.institutionProfile || sub.institutionId) && (
                       <button onClick={() => setExpandedSub(expandedSub === sub.id ? null : sub.id)}
                         className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-                        {expandedSub === sub.id ? 'Hide Details' : 'View Profile'}
+                        {expandedSub === sub.id ? 'Hide Details' : 'View Details'}
                       </button>
                     )}
                     {sub.status === 'Active' && (
@@ -245,37 +245,73 @@ export function SubscriptionListPage() {
                   </div>
                 </td>
               </tr>
-              {expandedSub === sub.id && sub.user?.institutionProfile && (
+              {expandedSub === sub.id && (sub.user?.institutionProfile || sub.institutionId) && (
                 <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <td colSpan={5} className="px-5 py-4">
-                    <div className="flex gap-2 items-center mb-3">
-                      <Building2 size={14} className="text-indigo-600" />
-                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Institution Marketing Profile</h4>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">Courses Offered</div>
-                        <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.coursesOffered || '—'}</div>
-                      </div>
-                      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">Total Courses</div>
-                        <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.totalCourses || '—'}</div>
-                      </div>
-                      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">Student Body Size</div>
-                        <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.studentBodySize || '—'}</div>
-                      </div>
-                      {(sub.user.institutionProfile.city || sub.user.institutionProfile.contactPhone) && (
-                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase">Contact & Location</div>
-                          <div className="text-xs font-semibold text-slate-800 mt-0.5">
-                            {sub.user.institutionProfile.city && <span>{sub.user.institutionProfile.city}</span>}
-                            {sub.user.institutionProfile.city && sub.user.institutionProfile.contactPhone && <span> • </span>}
-                            {sub.user.institutionProfile.contactPhone && <span>{sub.user.institutionProfile.contactPhone}</span>}
-                          </div>
+                  <td colSpan={5} className="px-5 py-4 space-y-5">
+
+                    {/* Institution Marketing Profile */}
+                    {sub.user?.institutionProfile && (
+                      <div>
+                        <div className="flex gap-2 items-center mb-3">
+                          <Building2 size={14} className="text-indigo-600" />
+                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Institution Marketing Profile</h4>
                         </div>
-                      )}
-                    </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">Courses Offered</div>
+                            <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.coursesOffered || '—'}</div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">Total Courses</div>
+                            <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.totalCourses || '—'}</div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">Student Body Size</div>
+                            <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.studentBodySize || '—'}</div>
+                          </div>
+                          {(sub.user.institutionProfile.city || sub.user.institutionProfile.contactPhone) && (
+                            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase">Contact & Location</div>
+                              <div className="text-xs font-semibold text-slate-800 mt-0.5">
+                                {sub.user.institutionProfile.city && <span>{sub.user.institutionProfile.city}</span>}
+                                {sub.user.institutionProfile.city && sub.user.institutionProfile.contactPhone && <span> • </span>}
+                                {sub.user.institutionProfile.contactPhone && <span>{sub.user.institutionProfile.contactPhone}</span>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Enrolled Students under Institution */}
+                    {sub.institution?.users && (
+                      <div>
+                        <div className="flex gap-2 items-center mb-3">
+                          <User size={14} className="text-emerald-600" />
+                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">
+                            Enrolled Students ({sub.institution.users.filter((u: any) => u.role === 'Student').length})
+                          </h4>
+                        </div>
+                        {sub.institution.users.filter((u: any) => u.role === 'Student').length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                            {sub.institution.users.filter((u: any) => u.role === 'Student').map((student: any) => (
+                              <div key={student.id} className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-2 shadow-sm">
+                                <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs flex-shrink-0">
+                                  {(student.displayName || student.email)[0].toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-semibold text-slate-800 truncate">{student.displayName || 'Student'}</div>
+                                  <div className="text-[10px] text-slate-400 truncate">{student.email}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic">No students enrolled yet.</p>
+                        )}
+                      </div>
+                    )}
+
                   </td>
                 </tr>
               )}
