@@ -80,6 +80,8 @@ import { InstitutionDashboardHome } from "./components/institution/InstitutionDa
 import { InstitutionStudentManager } from "./components/institution/InstitutionStudentManager";
 import { InstitutionProfile } from "./components/institution/InstitutionProfile";
 import { InstitutionContentLibrary } from "./components/institution/InstitutionContentLibrary";
+import { InstitutionAnalytics } from "./components/institution/InstitutionAnalytics";
+import { InstitutionSubscriptions } from "./components/institution/InstitutionSubscriptions";
 
 import { ManagerLayout } from "./components/manager/ManagerLayout";
 
@@ -167,11 +169,11 @@ export default function App() {
                 {/* Institution Routes */}
                 <Route path="/institution" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
                 <Route path="/institution/students" element={<InstitutionLayout><InstitutionStudentManager /></InstitutionLayout>} />
-                <Route path="/institution/analytics" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
+                <Route path="/institution/analytics" element={<InstitutionLayout><InstitutionAnalytics /></InstitutionLayout>} />
                 <Route path="/institution/library" element={<InstitutionLayout><InstitutionContentLibrary /></InstitutionLayout>} />
                 <Route path="/institution/viewer/:id" element={<InstitutionLayout><ProtectedContentViewer /></InstitutionLayout>} />
                 <Route path="/institution/videos/player/:id" element={<InstitutionLayout><LmsVideoPlayer /></InstitutionLayout>} />
-                <Route path="/institution/subscriptions" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
+                <Route path="/institution/subscriptions" element={<InstitutionLayout><InstitutionSubscriptions /></InstitutionLayout>} />
                 <Route path="/institution/profile" element={<InstitutionLayout><InstitutionProfile /></InstitutionLayout>} />
 
                 {/* Subscription Manager Routes */}

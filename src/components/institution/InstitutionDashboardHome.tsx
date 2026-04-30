@@ -60,6 +60,12 @@ export function InstitutionDashboardHome() {
     return daysLeft <= 30 && daysLeft > 0;
   });
 
+  const nearestSub = activeSubs.length > 0 
+    ? activeSubs.reduce((prev, curr) => new Date(prev.endDate) < new Date(curr.endDate) ? prev : curr) 
+    : null;
+  const maxDaysLeft = nearestSub ? Math.max(0, Math.ceil((new Date(nearestSub.endDate).getTime() - Date.now()) / 86400000)) : 0;
+  const isExpired = nearestSub && maxDaysLeft === 0;
+
   const statCards = [
     {
       label: "Enrolled Students",
@@ -140,6 +146,43 @@ export function InstitutionDashboardHome() {
           </div>
           <div className="text-xs font-bold text-amber-700 shrink-0 hidden sm:block">
             Action Required
+          </div>
+        </motion.div>
+      )}
+
+      {/* Subscription Countdown Clock */}
+      {nearestSub && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-900 rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-indigo-900/20 relative overflow-hidden"
+        >
+          {/* Decorative background circle */}
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+              <Clock className="text-indigo-300" size={18} />
+              <span className="text-indigo-200 font-bold uppercase tracking-wider text-xs">Subscription Countdown</span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1">
+              {isExpired ? 'Your subscription has expired.' : 'Your active plan is running.'}
+            </h2>
+            <p className="text-indigo-200 text-sm max-w-lg">
+              {isExpired 
+                ? 'Please renew your plan to regain full access to the digital library and journals.'
+                : `Your nearest active plan (${nearestSub.planName || nearestSub.domainName || 'Subscription'}) will expire on ${new Date(nearestSub.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.`}
+            </p>
+          </div>
+
+          <div className="relative z-10 flex items-center justify-center gap-4">
+            <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 min-w-[120px] shadow-inner">
+              <span className={`text-4xl md:text-5xl font-black ${maxDaysLeft <= 10 ? 'text-rose-400' : 'text-white'}`}>
+                {maxDaysLeft}
+              </span>
+              <span className="text-indigo-200 text-xs font-bold uppercase tracking-widest mt-1">Days Left</span>
+            </div>
           </div>
         </motion.div>
       )}

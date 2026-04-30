@@ -8,6 +8,7 @@ export function SubscriptionListPage() {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'Active' | 'Expired' | 'Cancelled' | ''>('Active');
+  const [expandedSub, setExpandedSub] = useState<string | null>(null);
   
   // Assignment Modal States
   const [assignModal, setAssignModal] = useState(false);
@@ -198,7 +199,8 @@ export function SubscriptionListPage() {
             ) : subscriptions.length === 0 ? (
               <tr><td colSpan={5} className="py-12 text-center text-slate-400">No subscriptions found.</td></tr>
             ) : subscriptions.map(sub => (
-              <tr key={sub.id} className="hover:bg-slate-50 transition-colors">
+              <React.Fragment key={sub.id}>
+              <tr className="hover:bg-slate-50 transition-colors">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2">
                     {sub.institutionId ? <Building2 size={15} className="text-blue-500" /> : <User size={15} className="text-slate-400" />}
@@ -227,14 +229,57 @@ export function SubscriptionListPage() {
                   </span>
                 </td>
                 <td className="px-5 py-3 text-right">
-                  {sub.status === 'Active' && (
-                    <button onClick={() => handleStatusChange(sub.id, 'Cancelled')}
-                      className="px-3 py-1 text-xs font-bold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
-                      Cancel
-                    </button>
-                  )}
+                  <div className="flex justify-end gap-2">
+                    {sub.user?.institutionProfile && (
+                      <button onClick={() => setExpandedSub(expandedSub === sub.id ? null : sub.id)}
+                        className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                        {expandedSub === sub.id ? 'Hide Details' : 'View Profile'}
+                      </button>
+                    )}
+                    {sub.status === 'Active' && (
+                      <button onClick={() => handleStatusChange(sub.id, 'Cancelled')}
+                        className="px-3 py-1 text-xs font-bold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
+              {expandedSub === sub.id && sub.user?.institutionProfile && (
+                <tr className="bg-slate-50/50 border-b border-slate-100">
+                  <td colSpan={5} className="px-5 py-4">
+                    <div className="flex gap-2 items-center mb-3">
+                      <Building2 size={14} className="text-indigo-600" />
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Institution Marketing Profile</h4>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">Courses Offered</div>
+                        <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.coursesOffered || '—'}</div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">Total Courses</div>
+                        <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.totalCourses || '—'}</div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">Student Body Size</div>
+                        <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.studentBodySize || '—'}</div>
+                      </div>
+                      {(sub.user.institutionProfile.city || sub.user.institutionProfile.contactPhone) && (
+                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase">Contact & Location</div>
+                          <div className="text-xs font-semibold text-slate-800 mt-0.5">
+                            {sub.user.institutionProfile.city && <span>{sub.user.institutionProfile.city}</span>}
+                            {sub.user.institutionProfile.city && sub.user.institutionProfile.contactPhone && <span> • </span>}
+                            {sub.user.institutionProfile.contactPhone && <span>{sub.user.institutionProfile.contactPhone}</span>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
             ))}
           </tbody>
         </table>

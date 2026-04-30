@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Building2, Phone, MapPin, Globe, Mail, Camera, Lock, Save, Loader2, AlertCircle, User } from 'lucide-react';
+import { Building2, Phone, MapPin, Globe, Mail, Camera, Lock, Save, Loader2, AlertCircle, User, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
@@ -12,6 +12,9 @@ interface InstitutionProfileData {
   city: string;
   website: string;
   logoUrl: string;
+  coursesOffered: string;
+  totalCourses: string | number;
+  studentBodySize: string;
 }
 
 export function InstitutionProfile() {
@@ -24,6 +27,9 @@ export function InstitutionProfile() {
     city: '',
     website: '',
     logoUrl: '',
+    coursesOffered: '',
+    totalCourses: '',
+    studentBodySize: '',
   });
   const [saving, setSaving] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -49,6 +55,23 @@ export function InstitutionProfile() {
     reader.onload = ev => setLogoPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
   };
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/institution/profile', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (res.ok) {
+          const profileData = await res.json();
+          setData(prev => ({ ...prev, ...profileData }));
+        }
+      } catch (err) {
+        console.error('Failed to load full profile data', err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +109,9 @@ export function InstitutionProfile() {
           city: data.city,
           website: data.website,
           logoUrl,
+          coursesOffered: data.coursesOffered,
+          totalCourses: data.totalCourses,
+          studentBodySize: data.studentBodySize,
         })
       });
       let result: any = {};
@@ -228,6 +254,56 @@ export function InstitutionProfile() {
               placeholder="Building / Block, Street, State — PIN Code"
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all resize-none"
             />
+          </div>
+
+          <div className="pt-4 border-t border-slate-100">
+            <h2 className="text-base font-bold text-slate-800 mb-6">Institution Details (For Marketing & Suggestions)</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Courses Offered (Comma separated)</label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    type="text" value={data.coursesOffered}
+                    onChange={e => setData(d => ({ ...d, coursesOffered: e.target.value }))}
+                    placeholder="e.g. Engineering, Nursing, Architecture, MBA"
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">This helps us suggest relevant domains and subscriptions.</p>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Number of Courses</label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    type="number" value={data.totalCourses}
+                    onChange={e => setData(d => ({ ...d, totalCourses: e.target.value }))}
+                    placeholder="e.g. 15"
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Student Body Size</label>
+                <div className="relative">
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <select
+                    value={data.studentBodySize}
+                    onChange={e => setData(d => ({ ...d, studentBodySize: e.target.value }))}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all appearance-none"
+                  >
+                    <option value="">Select Size...</option>
+                    <option value="1-500">1 - 500</option>
+                    <option value="501-2000">501 - 2,000</option>
+                    <option value="2001-5000">2,001 - 5,000</option>
+                    <option value="5000+">5,000+</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
 
           <button

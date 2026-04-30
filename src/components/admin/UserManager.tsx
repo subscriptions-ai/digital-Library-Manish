@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, ShieldAlert, ShieldCheck, Mail, Calendar, CreditCard,
   ChevronDown, Pencil, Trash2, RefreshCw, X, Save, Loader2,
-  UserPlus, Filter
+  UserPlus, Filter, Building2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -327,6 +327,45 @@ export function UserManager() {
                             ) : <p className="text-sm text-slate-400 italic">No payment history.</p>}
                           </div>
                         </div>
+
+                        {/* Institution Specific Details */}
+                        {user.role === 'Institution' && user.institutionProfile && (
+                          <div className="mt-6 pt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="col-span-1 sm:col-span-3">
+                              <h4 className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <Building2 size={13} /> Institution Marketing Details
+                              </h4>
+                            </div>
+                            <div className="bg-white p-3 rounded-xl border border-slate-200">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase">Courses Offered</div>
+                              <div className="text-sm font-medium text-slate-800 mt-1">{user.institutionProfile.coursesOffered || '—'}</div>
+                            </div>
+                            <div className="bg-white p-3 rounded-xl border border-slate-200">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase">Total Courses</div>
+                              <div className="text-sm font-medium text-slate-800 mt-1">{user.institutionProfile.totalCourses || '—'}</div>
+                            </div>
+                            <div className="bg-white p-3 rounded-xl border border-slate-200">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase">Student Body Size</div>
+                              <div className="text-sm font-medium text-slate-800 mt-1">{user.institutionProfile.studentBodySize || '—'}</div>
+                            </div>
+                            {(user.institutionProfile.city || user.institutionProfile.contactPhone) && (
+                              <div className="col-span-1 sm:col-span-3 bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap gap-6">
+                                {user.institutionProfile.city && (
+                                  <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase">City</div>
+                                    <div className="text-sm font-medium text-slate-800 mt-1">{user.institutionProfile.city}</div>
+                                  </div>
+                                )}
+                                {user.institutionProfile.contactPhone && (
+                                  <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase">Contact Phone</div>
+                                    <div className="text-sm font-medium text-slate-800 mt-1">{user.institutionProfile.contactPhone}</div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )}

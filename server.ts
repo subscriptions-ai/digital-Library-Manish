@@ -439,8 +439,8 @@ async function startServer() {
   // ── GET /api/user/reading-progress/:contentId — get last page ────────────────
   app.get("/api/user/reading-progress/:contentId", authenticateJWT, async (req: any, res) => {
     try {
-      const activity = await prisma.studentActivity.findUnique({
-        where: { userId_contentId: { userId: req.user.uid, contentId: req.params.contentId } }
+      const activity = await prisma.studentActivity.findFirst({
+        where: { userId: req.user.uid, contentId: req.params.contentId }
       });
       res.json({ lastPage: activity?.lastPage || 1, accessedAt: activity?.accessedAt || null });
     } catch (error) {
@@ -852,7 +852,7 @@ async function startServer() {
 
   // Helper: send credentials email
   const sendCredentialsEmail = async (to: string, name: string, password: string) => {
-    const siteUrl = process.env.SITE_URL || 'https://library.stmjournals.com';
+    const siteUrl = process.env.SITE_URL || 'https://journalslibrary.com';
     const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
     try {
       await transporter.sendMail({
@@ -877,7 +877,7 @@ async function startServer() {
             <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 4px; margin: 16px 0;">
               <p style="margin: 0; color: #92400e; font-size: 14px;"><strong>Important:</strong> You will be prompted to change your password on first login. Please keep these credentials safe.</p>
             </div>
-            <p style="color: #64748b; font-size: 13px; margin-top: 24px;">If you did not expect this email, please contact <a href="mailto:subscriptions@stmjournals.com" style="color: #2563eb;">subscriptions@stmjournals.com</a>.</p>
+            <p style="color: #64748b; font-size: 13px; margin-top: 24px;">If you did not expect this email, please contact <a href="mailto:info@celnet.in" style="color: #2563eb;">info@celnet.in</a>.</p>
           </div>
         `
       });
@@ -2142,13 +2142,13 @@ async function startServer() {
               </ol>
             </div>
 
-            <p>If you have any questions in the meantime, please reply to this email or contact us at subscriptions@stmjournals.com.</p>
+            <p>If you have any questions in the meantime, please reply to this email or contact us at info@celnet.in.</p>
             
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
             <p style="font-size: 12px; color: #64748b;">
               <strong>STM Digital Library</strong><br />
               A-118, 2nd Floor, Sector-63, Noida - 201301, U.P., India<br />
-              Email: subscriptions@stmjournals.com | Web: www.stmjournals.com
+              Email: info@celnet.in | Web: www.stmjournals.com
             </p>
           </div>
         `
@@ -2276,7 +2276,7 @@ async function startServer() {
             <p style="font-size: 12px; color: #64748b;">
               <strong>STM Digital Library</strong><br />
               A-118, 2nd Floor, Sector-63, Noida - 201301, U.P., India<br />
-              Email: info@stmjournals.com | Web: www.stmjournals.com
+              Email: info@celnet.in | Web: www.stmjournals.com
             </p>
           </div>
         `
@@ -2369,7 +2369,7 @@ async function startServer() {
               <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px;">
                 <p style="margin: 0; font-size: 13px; color: #64748b;">
                   For further assistance, please reply to this email or call us at <strong>+91-120-4781200</strong>.<br/>
-                  <strong>STM Digital Library</strong> | subscriptions@stmjournals.com
+                  <strong>STM Digital Library</strong> | info@celnet.in
                 </p>
               </div>
             </div>
@@ -2477,7 +2477,11 @@ async function startServer() {
   app.get("/api/institution/stats", authenticateJWT, async (req: any, res) => {
     try {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });
-      const targetInstitutionId = req.user.role === 'Institution' ? req.user.uid : req.query.institutionId;
+      let targetInstitutionId = req.query.institutionId;
+      if (req.user.role === 'Institution') {
+         const authUser = await (prisma as any).user.findUnique({ where: { id: req.user.uid } });
+         targetInstitutionId = authUser?.institutionId;
+      }
       
       const studentCount = await prisma.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
       const recentActivity = await prisma.studentActivity.findMany({ 
@@ -2489,10 +2493,99 @@ async function startServer() {
       
       // Calculate abstract mock analytics
       const interactions = await prisma.studentActivity.count({ where: { user: { institutionId: targetInstitutionId } } });
+      const totalTimeObj = await prisma.studentActivity.aggregate({
+        _sum: { timeSpent: true },
+        where: { user: { institutionId: targetInstitutionId } }
+      });
+      const totalMins = totalTimeObj._sum.timeSpent || 0;
+      let avgLearningTimeStr = '0h 0m';
+      if (studentCount > 0 && totalMins > 0) {
+        const avg = Math.floor(totalMins / studentCount);
+        avgLearningTimeStr = `${Math.floor(avg / 60)}h ${avg % 60}m`;
+      }
       
-      res.json({ studentCount, activeGrants: studentCount, totalInteractions: interactions, avgLearningTime: '1h 15m', recentActivity: [] });
+      res.json({ studentCount, activeGrants: studentCount, totalInteractions: interactions, avgLearningTime: avgLearningTimeStr, recentActivity });
     } catch(err) {
       res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // GET /api/institution/analytics
+  app.get("/api/institution/analytics", authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });
+      let targetInstitutionId = req.query.institutionId;
+      if (req.user.role === 'Institution') {
+         const authUser = await (prisma as any).user.findUnique({ where: { id: req.user.uid } });
+         targetInstitutionId = authUser?.institutionId;
+      }
+
+      const students = await prisma.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
+      const activities = await prisma.studentActivity.findMany({
+        where: { user: { institutionId: targetInstitutionId } },
+        include: { user: true, content: true }
+      });
+
+      // Star Reader
+      const userActivityMap = new Map();
+      activities.forEach(a => {
+        const current = userActivityMap.get(a.userId) || { count: 0, timeSpent: 0, user: a.user };
+        current.count += 1;
+        current.timeSpent += a.timeSpent || 0;
+        userActivityMap.set(a.userId, current);
+      });
+      let starReader = null;
+      let maxInteractions = 0;
+      userActivityMap.forEach(val => {
+        if (val.count > maxInteractions) {
+          maxInteractions = val.count;
+          starReader = {
+            name: val.user?.displayName || val.user?.email || 'Unknown',
+            interactions: val.count,
+            timeSpent: val.timeSpent
+          };
+        }
+      });
+
+      // Daily reading stats mock
+      const today = new Date();
+      const readingTimeline = Array.from({length: 7}).map((_, i) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() - (6 - i));
+        return {
+          date: d.toLocaleDateString('en-US', { weekday: 'short' }),
+          students: Math.floor(Math.random() * (students.length > 0 ? students.length : 10)) + 1,
+          interactions: Math.floor(Math.random() * 50) + 5
+        };
+      });
+
+      // Most read content
+      const contentMap = new Map();
+      activities.forEach(a => {
+        if (!a.contentId) return;
+        const current = contentMap.get(a.contentId) || { count: 0, content: a.content };
+        current.count += 1;
+        contentMap.set(a.contentId, current);
+      });
+      const topContent = Array.from(contentMap.values())
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+        .map(c => ({
+          title: c.content?.title || 'Unknown',
+          type: c.content?.contentType || 'Book',
+          reads: c.count
+        }));
+
+      res.json({
+        totalStudents: students.length,
+        starReader,
+        readingTimeline,
+        topContent,
+        totalInteractions: activities.length
+      });
+    } catch(err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
 
@@ -2534,16 +2627,20 @@ async function startServer() {
       }
       const user = await prisma.user.findUnique({ where: { id: req.user.uid } });
       if (!user) return res.status(404).json({ error: "User not found" });
+      const prof = (user as any).institutionProfile || {};
       res.json({
         institutionName: user.organization,   // read-only
         contactName: user.displayName,
         state: user.state,                    // repurposed as city for now
-        // Extended fields live in user metadata; return empty strings for new installs
-        contactPhone: '',
-        address: '',
-        city: '',
-        website: '',
-        logoUrl: '',
+        // Extended fields live in user metadata
+        contactPhone: prof.contactPhone || '',
+        address: prof.address || '',
+        city: user.state || prof.city || '',
+        website: prof.website || '',
+        logoUrl: prof.logoUrl || '',
+        coursesOffered: prof.coursesOffered || '',
+        totalCourses: prof.totalCourses || '',
+        studentBodySize: prof.studentBodySize || '',
       });
     } catch (err) {
       res.status(500).json({ error: "Failed to load profile" });
@@ -2556,7 +2653,7 @@ async function startServer() {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const { contactName, city, logoUrl } = req.body;
+      const { contactName, city, contactPhone, address, website, logoUrl, coursesOffered, totalCourses, studentBodySize } = req.body;
       // institutionName (organization) is intentionally EXCLUDED from updates here
 
       await prisma.user.update({
@@ -2564,6 +2661,9 @@ async function startServer() {
         data: {
           ...(contactName ? { displayName: contactName } : {}),
           ...(city ? { state: city } : {}),
+          institutionProfile: {
+            contactPhone, address, city, website, logoUrl, coursesOffered, totalCourses, studentBodySize
+          } as any
         }
       });
       res.json({ message: "Profile updated successfully" });

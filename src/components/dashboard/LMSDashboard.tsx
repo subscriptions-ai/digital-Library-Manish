@@ -232,7 +232,11 @@ export function LMSDashboard() {
 
   const unlockedCount = content.filter(c => !c.locked).length;
   const lockedCount = content.filter(c => c.locked).length;
-  const expiryStr = dashData?.nearestExpiry ? new Date(dashData.nearestExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+  
+  const expiryDate = dashData?.nearestExpiry ? new Date(dashData.nearestExpiry) : null;
+  const expiryStr = expiryDate ? expiryDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+  const maxDaysLeft = expiryDate ? Math.max(0, Math.ceil((expiryDate.getTime() - Date.now()) / 86400000)) : 0;
+  const isExpired = expiryDate && maxDaysLeft === 0;
 
   const CONTENT_TYPES = ['Books', 'Periodicals', 'Theses', 'Videos', 'Case Reports'];
   const domains = Object.keys(grouped);
@@ -286,6 +290,43 @@ export function LMSDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+
+        {/* ── SUBSCRIPTION COUNTDOWN WIDGET ── */}
+        {expiryDate && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-900 dark:from-slate-800 dark:via-blue-900/40 dark:to-slate-800 rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-blue-900/20 relative overflow-hidden"
+          >
+            {/* Decorative background circle */}
+            <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="relative z-10 flex-1 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                <Clock className="text-blue-300" size={18} />
+                <span className="text-blue-200 font-bold uppercase tracking-wider text-xs">Subscription Countdown</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1">
+                {isExpired ? 'Your access has expired.' : 'Your digital library access is active.'}
+              </h2>
+              <p className="text-blue-200 text-sm max-w-lg">
+                {isExpired 
+                  ? 'Please renew your plan to regain full access to premium journals and content.'
+                  : `Your current access plan will expire on ${new Date(expiryDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.`}
+              </p>
+            </div>
+
+            <div className="relative z-10 flex items-center justify-center gap-4">
+              <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 min-w-[120px] shadow-inner">
+                <span className={`text-4xl md:text-5xl font-black ${maxDaysLeft <= 10 ? 'text-rose-400' : 'text-white'}`}>
+                  {maxDaysLeft}
+                </span>
+                <span className="text-blue-200 text-xs font-bold uppercase tracking-widest mt-1">Days Left</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── STATS ROW ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
