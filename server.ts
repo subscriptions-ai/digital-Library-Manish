@@ -143,7 +143,7 @@ async function startServer() {
           password: hashedPassword,
           displayName: name,
           organization: organization || "",
-          role: email === "subscriptions@stmjournals.com" ? "SuperAdmin" : "Subscriber",
+          role: email === "info@celnet.in" ? "SuperAdmin" : "Subscriber",
           status: "Active",
         }
       });
@@ -2065,7 +2065,7 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
         subject: `New Institutional Trial Request: ${institutionName}`,
         html: `
           <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -2157,7 +2157,7 @@ async function startServer() {
             <p style="font-size: 12px; color: #64748b;">
               <strong>STM Digital Library</strong><br />
               A-118, 2nd Floor, Sector-63, Noida - 201301, U.P., India<br />
-              Email: info@celnet.in | Web: www.stmjournals.com
+              Email: info@celnet.in | Web: journalslibrary.com
             </p>
           </div>
         `
@@ -2215,7 +2215,7 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
         subject: "New Contact Inquiry from Website",
         html: `
           <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -2285,7 +2285,7 @@ async function startServer() {
             <p style="font-size: 12px; color: #64748b;">
               <strong>STM Digital Library</strong><br />
               A-118, 2nd Floor, Sector-63, Noida - 201301, U.P., India<br />
-              Email: info@celnet.in | Web: www.stmjournals.com
+              Email: info@celnet.in | Web: journalslibrary.com
             </p>
           </div>
         `
@@ -2413,7 +2413,7 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
         from: emailFrom,
-        to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
+        to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
         subject: `Quotation for STM Digital Library - ${quotationData.quotationNumber}`,
         text: `Dear ${userName},\n\nPlease find attached the quotation for your requested departments.\n\nQuotation Number: ${quotationData.quotationNumber}\nTotal Amount: ₹${quotationData.totalAmount}\n\nRegards,\nSTM Digital Library Team`,
         attachments: [
@@ -2460,7 +2460,7 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
         from: emailFrom,
-        to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
+        to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
         subject: `Invoice for STM Digital Library - ${invoiceData.invoiceNumber}`,
         text: `Dear ${userName},\n\nThank you for your subscription. Please find attached the tax invoice for your purchase.\n\nInvoice Number: ${invoiceData.invoiceNumber}\nTotal Amount: ₹${invoiceData.grandTotal}\n\nRegards,\nSTM Digital Library Team`,
         attachments: [

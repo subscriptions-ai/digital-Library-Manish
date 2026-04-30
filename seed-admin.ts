@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function seedAdmin() {
-  const email = "subscriptions@stmjournals.com";
+  const email = "info@celnet.in";
   const password = "adminpassword123";
   const hashedPassword = await bcrypt.hash(password, 10);
 

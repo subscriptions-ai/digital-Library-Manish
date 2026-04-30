@@ -4,7 +4,7 @@ export const COMPANY_DETAILS = {
   tel: ["0120-4781200", "0120-4781206"],
   mobile: "+91-9810078958",
   whatsapp: "+91-9810078958",
-  email: "subscriptions@stmjournals.com",
+  email: "info@celnet.in",
   website: "https://journalslibrary.com/",
   gstin: "09XXXXXXXXXXXXZ", // Placeholder GSTIN
   bank: {

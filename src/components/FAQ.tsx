@@ -279,7 +279,7 @@ export function FAQ() {
               Contact Support
             </a>
             <a
-              href="mailto:support@stmjournals.com"
+              href="mailto:info@celnet.in"
               className="rounded-full bg-blue-700 px-8 py-3 text-sm font-bold text-white hover:bg-blue-800 transition-all"
             >
               Email Us
