@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Check, ShoppingCart, Phone, Info, AlertCircle } from "lucide-react";
-import { SUBSCRIPTION_PLANS } from "../constants";
+import { Check, ShoppingCart, Phone, Info, AlertCircle, ArrowRight } from "lucide-react";
+import * as Icons from "lucide-react";
+import { SUBSCRIPTION_PLANS, CONTENT_TYPES } from "../constants";
 import { useCart } from "../contexts/CartContext";
 import { toast } from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Duration = "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly";
@@ -15,25 +15,6 @@ interface SubscriptionPlansProps {
   onPlanClick?: (plan: typeof SUBSCRIPTION_PLANS[0], duration: Duration) => void;
 }
 
-// ─── FAQ data (from reference image) ─────────────────────────────────────────
-const FAQS = [
-  {
-    q: "Can I cancel my subscription anytime?",
-    a: "Yes, you can cancel your individual subscription at any time. Your access will continue until the end of the current billing period.",
-  },
-  {
-    q: "How does institutional access work?",
-    a: "Institutional access is typically based on IP ranges. Once configured, anyone within your network can access the library without individual logins.",
-  },
-  {
-    q: "Do you offer student discounts?",
-    a: "Yes, we offer specialized pricing for verified students. Please contact our support team with your student ID for more information.",
-  },
-  {
-    q: "Can I download articles for offline reading?",
-    a: "Most of our subscription plans include PDF download capabilities for offline use and personal archiving.",
-  },
-];
 
 // ─── Helper ────────────────────────────────────────────────────────────────────
 function getPricingTier(plan: typeof SUBSCRIPTION_PLANS[0], duration: Duration) {
@@ -263,50 +244,87 @@ export function SubscriptionPlans({
   // ── Full-page layout ──────────────────────────────────────────────────────
   if (isFullPage) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-slate-50/50">
         {/* Plans section */}
-        <section className="py-16 bg-white border-b border-slate-100">
+        <section className="py-16 border-b border-slate-100">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             {plansSection}
           </div>
         </section>
 
-        {/* Custom quote dark banner */}
-        <section className="py-14 bg-white">
-          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-            <div className="rounded-2xl bg-slate-900 px-8 py-14 text-center">
-              <h2 className="text-2xl font-bold text-white sm:text-3xl">
-                Need a custom plan for your organization?
-              </h2>
-              <p className="mt-3 text-slate-400 max-w-xl mx-auto text-sm">
-                We offer tailored solutions for government agencies, corporate R&D centers, and specialized
-                research institutes.
+        {/* What Will You Get Section */}
+        <section className="py-24 bg-white">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">What Will You Get in This Digital Library?</h2>
+              <p className="mt-4 text-sm text-slate-500 max-w-2xl mx-auto leading-relaxed">
+                Our Digital Library is designed to meet all your academic, learning, and research needs by providing access to a wide range of valuable resources.
               </p>
-              <button
-                onClick={() => navigate("/contact")}
-                className="mt-8 inline-flex items-center gap-2 rounded-full bg-indigo-600 hover:bg-indigo-700 px-8 py-4 text-sm font-bold text-white transition-all"
-              >
-                <Phone size={15} />
-                Contact Sales for Custom Quote
-              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {CONTENT_TYPES.map((type) => {
+                const Icon = (Icons as any)[type.icon] || Icons.Book;
+                return (
+                  <div key={type.id} className="rounded-[30px] bg-white p-8 border border-slate-100 hover:shadow-xl transition-all group flex flex-col items-center text-center">
+                    <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 transition-colors">
+                      <Icon size={24} />
+                    </div>
+                    <h3 className="text-[13px] font-bold text-slate-900">{type.name}</h3>
+                    <p className="mt-3 text-[11px] text-slate-500 leading-relaxed line-clamp-3">{type.description}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
 
-        {/* FAQ section */}
-        <section className="py-16 bg-white">
+        {/* Everything in One Place Banner */}
+        <section className="pt-16 pb-8 bg-white">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-extrabold text-slate-900 text-center mb-12">
-              Frequently Asked Questions
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-14 gap-y-10">
-              {FAQS.map((faq, i) => (
-                <div key={i}>
-                  <h3 className="text-base font-bold text-slate-900">{faq.q}</h3>
-                  <p className="mt-2 text-sm text-indigo-600 leading-relaxed">{faq.a}</p>
-                </div>
-              ))}
+            <div className="rounded-[40px] bg-slate-900 px-8 py-16 text-center flex flex-col items-center shadow-2xl">
+              <span className="inline-flex items-center rounded-full bg-blue-500/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-blue-400 ring-1 ring-inset ring-blue-500/20 mb-8">
+                # Premium Knowledge Hub
+              </span>
+              <h2 className="text-3xl font-bold text-white sm:text-4xl">
+                Everything in One Place
+              </h2>
+              <p className="mt-6 text-slate-400 max-w-xl mx-auto text-[15px] italic leading-relaxed">
+                "A complete digital knowledge hub for learning, teaching, research, and institutional growth."
+              </p>
+              <div className="mt-10 flex flex-wrap justify-center gap-4">
+                <button onClick={() => navigate("/contact")} className="rounded-full bg-blue-600 px-8 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center gap-2 shadow-xl shadow-blue-600/20">
+                  Request Institutional Trial <ArrowRight size={16} />
+                </button>
+                <button onClick={() => navigate("/contact")} className="rounded-full bg-white px-8 py-3.5 text-sm font-bold text-slate-900 hover:bg-slate-50 transition-all">
+                  Contact Us
+                </button>
+              </div>
             </div>
+          </div>
+        </section>
+
+        {/* Custom quote light banner */}
+        <section className="py-8 bg-white pb-24">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+            <div className="rounded-[40px] bg-white border border-slate-100 shadow-xl px-8 py-16 text-center">
+              <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+                Need a custom plan for your organization?
+              </h2>
+              <p className="mt-4 text-slate-500 max-w-xl mx-auto text-sm leading-relaxed">
+                We offer tailored solutions for government agencies, corporate R&D centers, and specialized research institutes.
+              </p>
+              <button
+                onClick={() => navigate("/contact")}
+                className="mt-8 inline-flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 px-8 py-3.5 text-sm font-bold text-white transition-all shadow-xl shadow-blue-600/20"
+              >
+                Contact Sales for Custom Quote
+              </button>
+            </div>
+            
+            <p className="mt-10 text-sm text-slate-500">
+              Have more questions about our plans? <Link to="/faq" className="font-bold text-blue-600 hover:underline">Visit our FAQ page</Link>
+            </p>
           </div>
         </section>
       </div>
