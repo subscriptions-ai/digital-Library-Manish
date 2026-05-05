@@ -3195,6 +3195,16 @@ async function startServer() {
       return { isViewable: false, viewerStatus: "No File", flaggedReason: "No file URL is set for this content item." };
     }
 
+    // Validate URL structure — malformed URLs crash new URL() and would kill the engine
+    try {
+      const parsed = new URL(url);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        return { isViewable: false, viewerStatus: "No File", flaggedReason: `Invalid URL protocol: ${parsed.protocol}` };
+      }
+    } catch {
+      return { isViewable: false, viewerStatus: "No File", flaggedReason: `Malformed URL — cannot parse: "${url.slice(0, 80)}"` };
+    }
+
     const lowerUrl = url.split("?")[0].toLowerCase();
     const isVideo = /\.(mp4|webm|ogg|avi|mov)$/i.test(lowerUrl);
     const isPdf =
@@ -3325,37 +3335,64 @@ async function startServer() {
 
         await Promise.all(
           batch.map(async (c) => {
-            const result = await validateFileViewability(c.fileUrl || "", c.contentType);
+            try {
+              const result = await validateFileViewability(c.fileUrl || "", c.contentType);
 
-            // Persist per-content validation status
-            await prisma.content.update({
-              where: { id: c.id },
-              data: {
-                validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
-                viewerStatus: result.viewerStatus,
-                isViewable: result.isViewable,
-                flaggedReason: result.flaggedReason ?? null,
-                lastValidatedAt: new Date(),
-              },
-            });
+              // Persist per-content validation status
+              await prisma.content.update({
+                where: { id: c.id },
+                data: {
+                  validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
+                  viewerStatus: result.viewerStatus,
+                  isViewable: result.isViewable,
+                  flaggedReason: result.flaggedReason ?? null,
+                  lastValidatedAt: new Date(),
+                },
+              });
 
-            if (!result.isViewable) {
+              if (!result.isViewable) {
+                issues.push({
+                  contentId: c.id,
+                  title: c.title,
+                  contentType: c.contentType,
+                  issueType: "ViewerValidationFailed",
+                  description: result.flaggedReason || "File could not be verified by viewer.",
+                  viewerStatus: result.viewerStatus,
+                });
+                flaggedCount++;
+              } else {
+                validCount++;
+              }
+            } catch (itemErr: any) {
+              // One bad item should NOT crash the whole scan — log and mark flagged
+              console.error(`[viewer-validator] Item ${c.id} ("${c.title}") threw an error:`, itemErr?.message || itemErr);
               issues.push({
                 contentId: c.id,
                 title: c.title,
                 contentType: c.contentType,
                 issueType: "ViewerValidationFailed",
-                description: result.flaggedReason || "File could not be verified by viewer.",
-                viewerStatus: result.viewerStatus,
+                description: `Validation threw an unexpected error: ${itemErr?.message || "Unknown error"}`,
+                viewerStatus: "Load Failed",
               });
               flaggedCount++;
-            } else {
-              validCount++;
+              // Still update the DB so this item shows as flagged
+              try {
+                await prisma.content.update({
+                  where: { id: c.id },
+                  data: {
+                    validationStatus: "FLAGGED_CONTENT",
+                    viewerStatus: "Load Failed",
+                    isViewable: false,
+                    flaggedReason: `Validation error: ${itemErr?.message || "Unknown"}`,
+                    lastValidatedAt: new Date(),
+                  },
+                });
+              } catch {}
+            } finally {
+              currentViewerValidationProgress.scannedItems++;
+              currentViewerValidationProgress.validCount = validCount;
+              currentViewerValidationProgress.flaggedCount = flaggedCount;
             }
-
-            currentViewerValidationProgress.scannedItems++;
-            currentViewerValidationProgress.validCount = validCount;
-            currentViewerValidationProgress.flaggedCount = flaggedCount;
           })
         );
 
