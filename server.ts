@@ -104,19 +104,23 @@ async function startServer() {
   // Public Stats for Home Page
   app.get("/api/public/counts", async (req, res) => {
     try {
-      const [books, periodicals, theses, videos] = await Promise.all([
+      const [books, periodicals, theses, videos, totalContent] = await Promise.all([
         prisma.content.count({ where: { contentType: "Books" } }),
         prisma.content.count({ where: { contentType: "Periodicals" } }),
         prisma.content.count({ where: { contentType: "Theses" } }),
-        prisma.content.count({ where: { contentType: "Educational Videos" } })
+        prisma.content.count({ where: { contentType: "Educational Videos" } }),
+        prisma.content.count()
       ]);
 
-      res.json([
-        { label: "Books", value: `${books}+` },
-        { label: "Periodicals", value: `${periodicals}+` },
-        { label: "Theses", value: `${theses}+` },
-        { label: "Educational Videos", value: `${videos}+` }
-      ]);
+      res.json({
+        categories: [
+          { label: "Books", value: `${books}+` },
+          { label: "Periodicals", value: `${periodicals}+` },
+          { label: "Theses", value: `${theses}+` },
+          { label: "Educational Videos", value: `${videos}+` }
+        ],
+        totalContent
+      });
     } catch (error) {
       console.error("Public counts error:", error);
       res.status(500).json({ error: "Failed to fetch counts" });

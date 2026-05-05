@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { ShieldCheck, Zap, BarChart3, Users, Globe, Check, ArrowRight, BookOpen, MapPin, Phone, Building2, User, Mail, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { jsPDF } from "jspdf";
 import { COMPANY_DETAILS } from "../config";
 
 
@@ -45,6 +44,25 @@ export function InstitutionalAccess() {
 
   const [loading, setLoading] = useState(false);
   const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [totalContentCount, setTotalContentCount] = useState<number | null>(null);
+
+  // Fetch dynamic content count from the backend
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const response = await fetch('/api/public/counts');
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.totalContent) {
+            setTotalContentCount(data.totalContent);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch public counts:", error);
+      }
+    };
+    fetchCounts();
+  }, []);
 
   // Pincode auto-fetch logic
   useEffect(() => {
@@ -133,253 +151,14 @@ export function InstitutionalAccess() {
   };
 
   const handleDownloadBrochure = () => {
-    toast.loading('Generating detailed brochure...', { id: 'brochure' });
-    try {
-      const doc = new jsPDF();
-      
-      // ---------- PAGE 1: COVER ----------
-      doc.setFillColor(15, 23, 42); // Slate-900 (Dark background)
-      doc.rect(0, 0, 210, 297, 'F');
-      
-      // Accents
-      doc.setFillColor(37, 99, 235); // Blue-600
-      doc.rect(0, 0, 210, 15, 'F');
-      doc.rect(0, 282, 210, 15, 'F');
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(36);
-      doc.setFont("helvetica", "bold");
-      doc.text("STM DIGITAL LIBRARY", 105, 120, { align: "center" });
-      
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "normal");
-      doc.text("Institutional Access & Enterprise Solutions", 105, 140, { align: "center" });
-      
-      doc.setFontSize(12);
-      doc.setTextColor(147, 197, 253); // Blue-300
-      doc.text("Empowering the Next Generation of Researchers & Innovators", 105, 155, { align: "center" });
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.text(`Trusted by 1,200+ universities and research hubs worldwide.`, 105, 250, { align: "center" });
-      
-      // ---------- PAGE 2: MASSIVE SCALE & CONTENT ----------
-      doc.addPage();
-      doc.setFillColor(248, 250, 252); // Slate-50
-      doc.rect(0, 0, 210, 297, 'F');
-      
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(28);
-      doc.setFont("helvetica", "bold");
-      doc.text("Unprecedented Scale & Depth", 20, 40);
-      
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(71, 85, 105);
-      doc.text("Provide your students and faculty with the world's most comprehensive collection of academic resources.", 20, 50, { maxWidth: 170 });
-      
-      // Stat Boxes
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.5);
-      
-      const drawStatBox = (x: number, y: number, value: string, label: string) => {
-        doc.rect(x, y, 80, 40, 'FD');
-        doc.setTextColor(37, 99, 235); // Blue-600
-        doc.setFontSize(24);
-        doc.setFont("helvetica", "bold");
-        doc.text(value, x + 40, y + 20, { align: "center" });
-        doc.setTextColor(100, 116, 139);
-        doc.setFontSize(10);
-        doc.text(label, x + 40, y + 30, { align: "center" });
-      };
-      
-      drawStatBox(20, 70, "15 Million+", "Full-Text Articles & Journals");
-      drawStatBox(110, 70, "2.5 Million+", "E-Books & Monographs");
-      drawStatBox(20, 120, "500,000+", "Educational Video Modules");
-      drawStatBox(110, 120, "100,000+", "Theses & Dissertations");
-      
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.text("Covering 18+ Premium Domains:", 20, 190);
-      
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(71, 85, 105);
-      let col = 20;
-      let row = 205;
-      departments.forEach((dept, i) => {
-        doc.text(`• ${dept}`, col, row);
-        row += 8;
-        if (i === 8) {
-          col = 110;
-          row = 205;
-        }
-      });
-      
-      // ---------- PAGE 3: LIBRARIAN DASHBOARD ----------
-      doc.addPage();
-      doc.setFillColor(255, 255, 255);
-      doc.rect(0, 0, 210, 297, 'F');
-      
-      doc.setTextColor(37, 99, 235);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("ADMINISTRATION", 20, 30);
-      
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(28);
-      doc.text("The Ultimate Librarian Dashboard", 20, 42);
-      
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(71, 85, 105);
-      const libDesc = "Managing thousands of students has never been easier. Our unified Librarian Dashboard offers complete visibility and granular control over your institution's digital library ecosystem.";
-      doc.text(libDesc, 20, 55, { maxWidth: 170 });
-      
-      // Feature list
-      let ly = 80;
-      const libFeatures = [
-        { title: "One-Click Student Management", desc: "Easily bulk import, suspend, or activate student accounts. Group users by department, cohort, or access tier seamlessly." },
-        { title: "Real-Time Usage Analytics", desc: "Track exact consumption. See which departments read the most, popular journals, and peak access times through beautiful visual charts." },
-        { title: "Subscription Controls", desc: "Manage domain access, view upcoming renewals, and dynamically allocate resources based on departmental needs." },
-        { title: "COUNTER-Compliant Reports", desc: "Export standardized usage reports instantly for compliance and budget planning." }
-      ];
-      
-      libFeatures.forEach(f => {
-        doc.setFillColor(241, 245, 249);
-        doc.rect(20, ly - 8, 170, 30, 'F');
-        doc.setTextColor(15, 23, 42);
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(f.title, 25, ly);
-        doc.setTextColor(71, 85, 105);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(f.desc, 25, ly + 8, { maxWidth: 160 });
-        ly += 40;
-      });
-
-      // ---------- PAGE 4: STUDENT DASHBOARD ----------
-      doc.addPage();
-      doc.setFillColor(248, 250, 252);
-      doc.rect(0, 0, 210, 297, 'F');
-      
-      doc.setTextColor(37, 99, 235);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("LEARNING EXPERIENCE", 20, 30);
-      
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(28);
-      doc.text("Next-Gen Student Dashboard", 20, 42);
-      
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(71, 85, 105);
-      const stuDesc = "We don't just provide files; we provide an experience. Students get their own personalized, interactive learning environment that tracks and enhances their academic journey.";
-      doc.text(stuDesc, 20, 55, { maxWidth: 170 });
-      
-      let sy = 80;
-      const stuFeatures = [
-        { title: "Smart Reading History", desc: "Never lose your place. The system remembers the exact page of every book, journal, or thesis a student was reading." },
-        { title: "Time & Engagement Tracking", desc: "Students can see their own stats: hours spent reading, videos watched, and overall engagement metrics." },
-        { title: "AI-Powered Recommendations", desc: "Based on their department and reading history, students get tailored suggestions for related high-impact journals." },
-        { title: "Secure In-Browser Viewer", desc: "High-performance PDF and video streaming without needing to download massive files." }
-      ];
-      
-      stuFeatures.forEach(f => {
-        doc.setFillColor(255, 255, 255);
-        doc.setDrawColor(226, 232, 240);
-        doc.rect(20, sy - 8, 170, 30, 'FD');
-        doc.setTextColor(15, 23, 42);
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(f.title, 25, sy);
-        doc.setTextColor(71, 85, 105);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(f.desc, 25, sy + 8, { maxWidth: 160 });
-        sy += 40;
-      });
-
-      // ---------- PAGE 5: UNIQUE VALUE PROPOSITION ----------
-      doc.addPage();
-      doc.setFillColor(15, 23, 42);
-      doc.rect(0, 0, 210, 297, 'F');
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(28);
-      doc.setFont("helvetica", "bold");
-      doc.text("Why We Stand Alone", 20, 40);
-      
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(147, 197, 253);
-      doc.text("The features nobody else in the market is offering right now.", 20, 50);
-      
-      doc.setDrawColor(51, 65, 85);
-      doc.line(20, 60, 190, 60);
-      
-      let uy = 80;
-      const uniques = [
-        { title: "Multi-Modal Content Ecosystem", desc: "We are the only platform seamlessly blending academic journals, textbooks, and interactive educational videos in a single unified search and viewing experience." },
-        { title: "Live Progression Sync", desc: "Read on your laptop in the library, seamlessly resume on your phone on the bus. Real-time page-level sync across all devices." },
-        { title: "Frictionless IP-Authentication + OTP", desc: "Campus IP authentication backed by instant OTP for remote access, entirely eliminating the need for complex Shibboleth or proxy configurations." },
-        { title: "Anti-Piracy & Content Security", desc: "State-of-the-art secure streaming that prevents unauthorized bulk downloads while providing a butter-smooth reading experience." }
-      ];
-      
-      uniques.forEach(u => {
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text(`★ ${u.title}`, 20, uy);
-        
-        doc.setTextColor(148, 163, 184);
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.text(u.desc, 30, uy + 8, { maxWidth: 150 });
-        uy += 35;
-      });
-      
-      // ---------- PAGE 6: CONTACT ----------
-      doc.addPage();
-      doc.setFillColor(255, 255, 255);
-      doc.rect(0, 0, 210, 297, 'F');
-      
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(28);
-      doc.setFont("helvetica", "bold");
-      doc.text("Ready to Upgrade Your Institution?", 20, 50, { maxWidth: 170 });
-      
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(71, 85, 105);
-      doc.text("Contact our enterprise team today for a tailored quote and a live demonstration of the platform capabilities.", 20, 75, { maxWidth: 170 });
-      
-      doc.setFillColor(241, 245, 249);
-      doc.rect(20, 100, 170, 80, 'F');
-      
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text("STM Journals & Digital Library", 30, 115);
-      
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Organization: ${COMPANY_DETAILS.name}`, 30, 130);
-      doc.text(`Address: ${COMPANY_DETAILS.address}`, 30, 140);
-      doc.text(`Email: ${COMPANY_DETAILS.email}`, 30, 150);
-      doc.text(`Helpline: ${COMPANY_DETAILS.tel[0]} | ${COMPANY_DETAILS.mobile}`, 30, 160);
-      doc.text(`Website: ${COMPANY_DETAILS.website}`, 30, 170);
-      
-      doc.save('STM_Digital_Library_Institutional_Brochure.pdf');
-      toast.success('Brochure downloaded successfully!', { id: 'brochure' });
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to generate brochure', { id: 'brochure' });
-    }
+    const link = document.createElement('a');
+    link.href = '/STM_Digital_Library_Brochure.pdf';
+    link.download = 'STM_Digital_Library_Brochure.pdf';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Brochure download started!', { id: 'brochure' });
   };
 
   return (
@@ -413,20 +192,20 @@ export function InstitutionalAccess() {
                       <Users className="text-white" size={24} />
                     </div>
                     <div>
-                      <div className="text-sm font-bold">University of Oxford</div>
-                      <div className="text-xs text-blue-200">Active Institutional Partner</div>
+                      <div className="text-sm font-bold">STM Digital Library</div>
+                      <div className="text-xs text-blue-200">Global Academic Resource</div>
                     </div>
                   </div>
                   <div className="h-4 w-full rounded bg-white/10" />
                   <div className="h-4 w-3/4 rounded bg-white/10" />
                   <div className="grid grid-cols-2 gap-4 mt-8">
                     <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
-                      <div className="text-2xl font-bold">12k+</div>
-                      <div className="text-[10px] uppercase tracking-widest opacity-60">Monthly Downloads</div>
+                      <div className="text-2xl font-bold">{totalContentCount ? `${totalContentCount.toLocaleString()}+` : "..."}</div>
+                      <div className="text-[10px] uppercase tracking-widest opacity-60">Articles & Journals</div>
                     </div>
                     <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
-                      <div className="text-2xl font-bold">850</div>
-                      <div className="text-[10px] uppercase tracking-widest opacity-60">Active Researchers</div>
+                      <div className="text-2xl font-bold">{departments.length}+</div>
+                      <div className="text-[10px] uppercase tracking-widest opacity-60">Academic Domains</div>
                     </div>
                   </div>
                 </div>
