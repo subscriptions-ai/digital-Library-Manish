@@ -162,9 +162,36 @@ export function InstitutionContentLibrary() {
 
       {/* Content Grid / List */}
       {loading ? (
-        <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+        <div className={`grid gap-5 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="animate-pulse bg-slate-100 rounded-2xl h-44" />
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05, duration: 0.3 }}
+              className={`relative p-5 rounded-2xl bg-white border border-slate-100 overflow-hidden shadow-sm ${viewMode === 'grid' ? 'h-[200px] flex flex-col' : 'flex items-center gap-4 py-3.5 h-[68px]'}`}
+            >
+              {viewMode === 'grid' ? (
+                <>
+                  <div className="h-10 w-10 rounded-xl bg-slate-100 mb-4 animate-pulse" />
+                  <div className="h-4 w-3/4 rounded bg-slate-100 mb-2 animate-pulse" />
+                  <div className="h-4 w-1/2 rounded bg-slate-100 mb-6 animate-pulse" />
+                  <div className="flex justify-between items-center mt-auto">
+                    <div className="h-4 w-16 rounded-full bg-slate-100 animate-pulse" />
+                    <div className="h-5 w-20 rounded-full bg-slate-100 animate-pulse" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="h-9 w-9 rounded-xl bg-slate-100 shrink-0 animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-1/3 rounded bg-slate-100 animate-pulse" />
+                    <div className="h-2.5 w-1/4 rounded bg-slate-100 animate-pulse" />
+                  </div>
+                  <div className="h-4 w-16 rounded-full bg-slate-100 shrink-0 animate-pulse" />
+                </>
+              )}
+            </motion.div>
           ))}
         </div>
       ) : contents.length === 0 ? (

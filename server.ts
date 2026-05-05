@@ -626,14 +626,66 @@ async function startServer() {
 
 
       if (onlyUnlocked === "true" && userDetails) {
-        // For onlyUnlocked, we must fetch all matching query, filter in memory due to complex fuzzy access rules, then paginate.
-        const allContents = await prisma.content.findMany({ where, orderBy: { title: 'asc' } });
-        const activeSubs = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
+        if (userDetails.role !== 'SuperAdmin' && userDetails.role !== 'Admin' && userDetails.role !== 'ContentManager') {
+          const activeSubs = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
+          
+          if (activeSubs.length === 0) {
+            return res.json({ data: [], total: 0, page: parseInt(page as string), limit: take });
+          }
+
+          const subOrConditions: any[] = [];
+          
+          for (const sub of activeSubs) {
+            const d = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains as string) : []);
+            const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
+            
+            const condition: any = {};
+            const domainOr: any[] = [];
+            
+            if (d.length > 0) {
+              d.forEach((domainStr: string) => {
+                if (domainStr) domainOr.push({ domain: { contains: domainStr, mode: 'insensitive' } });
+              });
+            }
+            if (sub.domainName) {
+               domainOr.push({ domain: { contains: sub.domainName, mode: 'insensitive' } });
+            }
+            
+            if (domainOr.length > 0) {
+              condition.OR = domainOr;
+            }
+            
+            if (ct.length > 0) {
+              condition.contentType = { in: ct };
+            }
+            
+            if (Object.keys(condition).length === 0) {
+              subOrConditions.push({}); 
+            } else {
+              subOrConditions.push(condition);
+            }
+          }
+          
+          if (subOrConditions.length > 0) {
+            const hasWildcard = subOrConditions.some(c => Object.keys(c).length === 0);
+            if (!hasWildcard) {
+               where.AND = where.AND || [];
+               where.AND.push({ OR: subOrConditions });
+            }
+          }
+        }
         
-        const unlockedContents = allContents.filter(c => checkContentAccess(c, userDetails.role, activeSubs)).map(c => ({ ...c, locked: false }));
-        const paginated = unlockedContents.slice(skip, skip + take);
-        
-        return res.json({ data: paginated, total: unlockedContents.length, page: parseInt(page as string), limit: take });
+        const [contents, total] = await Promise.all([
+          prisma.content.findMany({ where, skip, take, orderBy: { title: 'asc' } }),
+          prisma.content.count({ where })
+        ]);
+
+        return res.json({ 
+          data: contents.map(c => ({ ...c, locked: false })), 
+          total, 
+          page: parseInt(page as string), 
+          limit: take 
+        });
       }
 
       const [contents, total] = await Promise.all([

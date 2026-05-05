@@ -84,7 +84,19 @@ export function MyContentLibrary() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-48 rounded-3xl bg-slate-200 dark:bg-slate-700 animate-pulse" />
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05, duration: 0.3 }}
+              className="relative p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm h-[216px]"
+            >
+              <div className="h-12 w-12 rounded-2xl bg-slate-100 dark:bg-slate-700 mb-4 animate-pulse" />
+              <div className="h-5 w-3/4 rounded bg-slate-100 dark:bg-slate-700 mb-2 animate-pulse" />
+              <div className="h-3 w-1/2 rounded bg-slate-100 dark:bg-slate-700 mb-4 animate-pulse" />
+              <div className="h-5 w-16 rounded-lg bg-slate-100 dark:bg-slate-700 mb-4 animate-pulse" />
+              <div className="h-8 w-24 rounded-xl bg-slate-100 dark:bg-slate-700 animate-pulse" />
+            </motion.div>
           ))}
         </div>
       ) : (
