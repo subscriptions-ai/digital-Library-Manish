@@ -105,11 +105,11 @@ async function startServer() {
   app.get("/api/public/counts", async (req, res) => {
     try {
       const [books, periodicals, theses, videos, totalContent] = await Promise.all([
-        prisma.content.count({ where: { contentType: "Books" } }),
-        prisma.content.count({ where: { contentType: "Periodicals" } }),
-        prisma.content.count({ where: { contentType: "Theses" } }),
-        prisma.content.count({ where: { contentType: "Educational Videos" } }),
-        prisma.content.count()
+        prisma.content.count({ where: { contentType: "Books", status: { not: "Draft" } } }),
+        prisma.content.count({ where: { contentType: "Periodicals", status: { not: "Draft" } } }),
+        prisma.content.count({ where: { contentType: "Theses", status: { not: "Draft" } } }),
+        prisma.content.count({ where: { contentType: "Educational Videos", status: { not: "Draft" } } }),
+        prisma.content.count({ where: { status: { not: "Draft" } } })
       ]);
 
       res.json({
@@ -606,7 +606,7 @@ async function startServer() {
       const take = parseInt(limit as string);
 
       // Build prisma WHERE clause
-      const where: any = {};
+      const where: any = { status: { not: "Draft" } };
       if (domain) where.domain = String(domain);
       if (contentType) where.contentType = String(contentType);
       if (search) {
@@ -723,7 +723,11 @@ async function startServer() {
   app.get("/api/content/:id/view", authenticateJWT, async (req: any, res) => {
     try {
       const contentId = req.params.id;
-      const content = await prisma.content.findUnique({ where: { id: contentId } });
+      // Draft content is hidden from all non-admin users
+      const isAdminRole = ['SuperAdmin', 'Admin', 'ContentManager'].includes(req.user.role);
+      const content = isAdminRole
+        ? await prisma.content.findUnique({ where: { id: contentId } })
+        : await prisma.content.findFirst({ where: { id: contentId, status: { not: "Draft" } } });
       
       if (!content) {
         return res.status(404).json({ error: "Content not found" });
@@ -766,7 +770,9 @@ async function startServer() {
   app.get("/api/content/:id/proxy-pdf", authenticateJWT, async (req: any, res) => {
     try {
       const contentId = req.params.id;
-      const content = await prisma.content.findUnique({ where: { id: contentId } });
+      const content = await prisma.content.findFirst({ 
+        where: { id: contentId, status: { not: "Draft" } } 
+      });
       if (!content || !content.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
