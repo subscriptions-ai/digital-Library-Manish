@@ -32,7 +32,7 @@ export const DOMAINS: Domain[] = [
     contentTypes: DEFAULT_CONTENT_TYPES,
     whySubscribe: "Subscribing to our Electrical Engineering library provides you with peer-reviewed research that is shaping the future of power grids, semiconductor technology, and signal processing. Stay ahead in a rapidly evolving field with access to the latest breakthroughs and industry standards.",
     whoShouldSubscribe: ["Undergraduate & Postgraduate Students", "Power Systems Researchers", "Electronics Design Engineers", "Academic Libraries", "Energy Sector Corporates"],
-    features: ["Full-text Journal Access", "Downloadable E-Books", "High-Quality Video Tutorials", "Conference Paper Repository", "Monthly Research Newsletters"],
+    features: ["Full-text Journal Access", "Reference E-Books", "High-Quality Video Tutorials", "Conference Paper Repository", "Monthly Research Newsletters"],
     icon: "Zap",
     themeColor: "blue"
   },

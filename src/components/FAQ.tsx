@@ -42,11 +42,11 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "What are the subscription plans?",
-        answer: "We offer various plans including Single Journal access, Domain-specific bundles, and Full Library access. Plans are typically available for 1-year or 3-year durations."
+        answer: "We offer tailored plans including Student Scholar, College Excellence, University Global, and Corporate Innovator. Plans are available in Monthly, Quarterly, Half-Yearly, and Yearly durations."
       },
       {
         question: "Is there a refund policy?",
-        answer: "Refunds are processed on a case-by-case basis. Generally, if you haven't accessed any content within 7 days of purchase, a full refund can be requested. Please refer to our Terms & Conditions for detailed information."
+        answer: "Refunds may be requested within 7 days of purchase if the subscription has not been substantially used. Any approved refund is limited to 50% of the amount paid. Please refer to our Terms & Conditions for detailed information."
       }
     ]
   },
@@ -61,11 +61,11 @@ const FAQ_DATA: FAQCategory[] = [
       },
       {
         question: "Can I download content?",
-        answer: "Yes, most of our content is available for download in PDF format for offline reading, depending on your subscription level and the publisher's permissions."
+        answer: "No, content is not available for download. All journals, books, and resources must be read directly online through your browser on the platform."
       },
       {
         question: "Is access limited by subscription?",
-        answer: "Yes, your access is limited to the specific journals or domains you have subscribed to. However, you can always upgrade your plan to include more content."
+        answer: "Yes, each subscription plan is valid for one department only, and access is limited to the content categories available under your selected plan."
       }
     ]
   },
