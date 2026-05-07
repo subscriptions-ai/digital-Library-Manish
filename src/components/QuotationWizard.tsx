@@ -477,9 +477,9 @@ export function QuotationWizard() {
       const qtn = `QTN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       pdf.save(`Quotation_${qtn}.pdf`);
       toast.success('Quotation downloaded!', { id: toastId });
-    } catch (error) {
+    } catch (error: any) {
       console.error('PDF Generation failed:', error);
-      toast.error('Failed to generate PDF. Please try again.', { id: toastId });
+      toast.error(`PDF Error: ${error?.message || 'Unknown error'}`, { id: toastId, duration: 5000 });
     }
   };
 
