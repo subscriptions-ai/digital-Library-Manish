@@ -453,23 +453,27 @@ export function QuotationWizard() {
       const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
       });
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const { jsPDF: JSPDF } = await import('jspdf');
-      const pdf = new JSPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
+      
       const ratio = canvas.height / canvas.width;
       const imgW = pageW;
       const imgH = pageW * ratio;
+      
       let posY = 0;
       while (posY < imgH) {
         if (posY > 0) pdf.addPage();
         pdf.addImage(imgData, 'JPEG', 0, -posY, imgW, imgH);
         posY += pageH;
       }
+      
       const qtn = `QTN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       pdf.save(`Quotation_${qtn}.pdf`);
       toast.success('Quotation downloaded!', { id: toastId });
