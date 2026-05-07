@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -28,6 +28,7 @@ import { cn } from '../lib/utils';
 import { toast } from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -439,14 +440,42 @@ export function QuotationWizard() {
     return { doc, quotationNumber };
   };
 
-  const generatePDF = () => {
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const generatePDF = async () => {
+    const el = previewRef.current;
+    if (!el) {
+      toast.error('Preview not ready. Please try again.');
+      return;
+    }
+    const toastId = toast.loading('Generating PDF...');
     try {
-      const { doc, quotationNumber } = createPdfDocument();
-      doc.save(`Quotation_${quotationNumber}.pdf`);
-      toast.success('Quotation downloaded!');
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const { jsPDF: JSPDF } = await import('jspdf');
+      const pdf = new JSPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const ratio = canvas.height / canvas.width;
+      const imgW = pageW;
+      const imgH = pageW * ratio;
+      let posY = 0;
+      while (posY < imgH) {
+        if (posY > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, -posY, imgW, imgH);
+        posY += pageH;
+      }
+      const qtn = `QTN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      pdf.save(`Quotation_${qtn}.pdf`);
+      toast.success('Quotation downloaded!', { id: toastId });
     } catch (error) {
-      console.error("PDF Generation failed:", error);
-      toast.error('Failed to generate PDF. Please try again.');
+      console.error('PDF Generation failed:', error);
+      toast.error('Failed to generate PDF. Please try again.', { id: toastId });
     }
   };
 
@@ -923,7 +952,7 @@ export function QuotationWizard() {
               className="space-y-6"
             >
               {/* ── PROFORMA INVOICE card ── */}
-              <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+              <div ref={previewRef} className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
 
                 {/* Header */}
                 <div className="p-8 border-b border-slate-100">
@@ -1165,8 +1194,8 @@ export function QuotationWizard() {
                         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">For Publisher</p>
                         <p className="text-sm font-bold text-slate-800 mt-1">Consortium eLearning Network Pvt. Ltd.</p>
                       </div>
-                      <div className="w-44 h-20 border border-dashed border-slate-300 rounded-xl flex items-center justify-center">
-                        <span className="text-[10px] text-slate-300 font-medium">Seal &amp; Signature</span>
+                      <div className="w-44 h-24 flex items-center justify-center">
+                        <img src="/assets/signature.png" alt="Authorized Signature" className="max-h-full max-w-full object-contain" />
                       </div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">Authorized Signatory</p>
                     </div>
