@@ -28,7 +28,6 @@ import { cn } from '../lib/utils';
 import { toast } from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -450,20 +449,20 @@ export function QuotationWizard() {
     }
     const toastId = toast.loading('Generating PDF...');
     try {
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
+      const { toJpeg } = await import('html-to-image');
+      const imgData = await toJpeg(el, {
+        quality: 0.95,
+        pixelRatio: 2,
         backgroundColor: '#ffffff',
-        logging: false,
       });
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
       
-      const ratio = canvas.height / canvas.width;
+      // Calculate image dimensions to fit A4 width
+      const imgProps = pdf.getImageProperties(imgData);
+      const ratio = imgProps.height / imgProps.width;
       const imgW = pageW;
       const imgH = pageW * ratio;
       
