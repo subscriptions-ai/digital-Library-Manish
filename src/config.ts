@@ -8,8 +8,8 @@ export const COMPANY_DETAILS = {
   website: "https://journalslibrary.com/",
   gstin: "09AACCC6494M1Z1",
   bank: {
-    accountNumber: "03942000001077",
-    accountName: "Dhruv Infosystems Private Limited",
+    accountNumber: "03942000001153",
+    accountName: "Consortium eLearning Network Pvt. Ltd.",
     bankName: "HDFC Bank",
     branch: "Sector-62, Noida, U.P., India",
     ifscCode: "HDFC0002649",

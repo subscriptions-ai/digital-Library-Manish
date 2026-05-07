@@ -35,6 +35,7 @@ type Step = 1 | 2 | 3;
 
 interface FormData {
   fullName: string;
+  designation: string;
   mobile: string;
   email: string;
   organization: string;
@@ -42,6 +43,7 @@ interface FormData {
   pincode: string;
   city: string;
   state: string;
+  country: string;
   gstNumber: string;
   selectedDepartments: string[];
   subscriptionPlanId: string;
@@ -63,6 +65,7 @@ export function QuotationWizard() {
   const [step, setStep] = useState<Step>(1);
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
+    designation: '',
     mobile: '',
     email: '',
     organization: '',
@@ -70,6 +73,7 @@ export function QuotationWizard() {
     pincode: '',
     city: '',
     state: '',
+    country: 'India',
     gstNumber: '',
     selectedDepartments: [],
     subscriptionPlanId: SUBSCRIPTION_PLANS[0].id,
@@ -124,8 +128,8 @@ export function QuotationWizard() {
   };
 
   const validateStep1 = () => {
-    const { fullName, mobile, email, address, pincode, city, state } = formData;
-    if (!fullName || !mobile || !email || !address || !pincode || !city || !state) {
+    const { fullName, mobile, email, organization, address, pincode, city, state } = formData;
+    if (!organization || !fullName || !mobile || !email || !address || !pincode || !city || !state) {
       toast.error('Please fill all required fields');
       return false;
     }
@@ -475,12 +479,29 @@ export function QuotationWizard() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Row 1: Organization Name – full width */}
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Organization Name *</label>
+                  <div className="relative">
+                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      name="organization"
+                      value={formData.organization}
+                      onChange={handleInputChange}
+                      placeholder="University / College / Company"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Full Name | Designation */}
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700">Full Name *</label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="fullName"
                       value={formData.fullName}
                       onChange={handleInputChange}
@@ -491,11 +512,27 @@ export function QuotationWizard() {
                 </div>
 
                 <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Designation</label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      name="designation"
+                      value={formData.designation}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Librarian, HOD, Director"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: Mobile Number | Email ID */}
+                <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700">Mobile Number *</label>
                   <div className="relative">
                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                      type="tel" 
+                    <input
+                      type="tel"
                       name="mobile"
                       value={formData.mobile}
                       onChange={handleInputChange}
@@ -509,8 +546,8 @@ export function QuotationWizard() {
                   <label className="text-sm font-bold text-slate-700">Email ID *</label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
@@ -520,39 +557,26 @@ export function QuotationWizard() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Organization Name</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                      type="text" 
-                      name="organization"
-                      value={formData.organization}
-                      onChange={handleInputChange}
-                      placeholder="University / College / Company"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
-
+                {/* Row 4: Full Address – full width */}
                 <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Billing Address *</label>
-                  <textarea 
+                  <label className="text-sm font-bold text-slate-700">Full Address *</label>
+                  <textarea
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
-                    placeholder="Complete billing address"
+                    placeholder="Street, Building, Area details"
                     rows={3}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all resize-none"
                   />
                 </div>
 
+                {/* Row 5: Pincode | City */}
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700">Pincode *</label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="pincode"
                       value={formData.pincode}
                       onChange={handleInputChange}
@@ -570,8 +594,8 @@ export function QuotationWizard() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700">City *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
@@ -580,9 +604,10 @@ export function QuotationWizard() {
                   />
                 </div>
 
+                {/* Row 6: State | Country */}
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700">State *</label>
-                  <select 
+                  <select
                     name="state"
                     value={formData.state}
                     onChange={handleInputChange}
@@ -596,15 +621,28 @@ export function QuotationWizard() {
                 </div>
 
                 <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Country *</label>
+                  <input
+                    type="text"
+                    name="country"
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    placeholder="Country"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* Row 7: GST Number – full width */}
+                <div className="md:col-span-2 space-y-2">
                   <label className="text-sm font-bold text-slate-700">GST Number (Optional)</label>
                   <div className="relative">
                     <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="gstNumber"
                       value={formData.gstNumber}
                       onChange={handleInputChange}
-                      placeholder="Enter GSTIN if applicable"
+                      placeholder="ENTER GSTIN IF APPLICABLE"
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all uppercase"
                     />
                   </div>
@@ -771,116 +809,164 @@ export function QuotationWizard() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="space-y-8"
+              className="space-y-6"
             >
-              {/* Quotation Preview Card */}
+              {/* ── PROFORMA INVOICE card ── */}
               <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
-                {/* Header Section */}
+
+                {/* Header */}
                 <div className="p-8 border-b border-slate-100">
-                  <div className="flex justify-between items-start mb-8">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Quotation</div>
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Subjected to Delhi Jurisdiction</div>
-                  </div>
-                  
-                  <div className="text-center mb-8">
-                    <div className="flex justify-center items-center gap-3 mb-2">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
-                        <BookOpen size={24} />
-                      </div>
-                      <h1 className="text-2xl font-bold tracking-tight text-slate-900">{COMPANY_DETAILS.name}</h1>
-                    </div>
-                    <p className="text-xs text-slate-500">{COMPANY_DETAILS.address} - 201301</p>
+                  <div className="flex justify-between items-center mb-7">
+                    <span className="text-[10px] font-extrabold tracking-widest uppercase border border-blue-300 text-blue-600 rounded-full px-3 py-1">Proforma Invoice</span>
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-slate-400">Subject to Delhi Jurisdiction</span>
                   </div>
 
-                  {/* Info Grid Box */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="p-4 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50">
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Quotation Number</p>
-                          <p className="text-sm font-bold text-slate-900">QTN-{new Date().getFullYear()}-XXXX</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Quotation Date</p>
-                          <p className="text-sm font-bold text-slate-900">{format(new Date(), 'dd MMM yyyy')}</p>
-                        </div>
-                      </div>
+                  {/* Branding */}
+                  <div className="flex flex-col items-center text-center gap-3 mb-7">
+                    <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-xl">
+                      <BookOpen size={30} className="text-white" />
                     </div>
-                    
-                    <div className="p-4 border-b md:border-b-0 md:border-r border-slate-200">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Bank Details (NEFT/RTGS)</p>
-                      <div className="space-y-1 text-[11px] text-slate-600">
-                        <p><span className="font-bold">Bank:</span> {COMPANY_DETAILS.bank.bankName}</p>
-                        <p><span className="font-bold">A/C:</span> {COMPANY_DETAILS.bank.accountNumber}</p>
-                        <p><span className="font-bold">IFSC:</span> {COMPANY_DETAILS.bank.ifscCode}</p>
-                        <p><span className="font-bold">Holder:</span> {COMPANY_DETAILS.bank.accountName}</p>
+                    <div>
+                      <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">{COMPANY_DETAILS.name}</h1>
+                      <p className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">Division of Consortium eLearning Network Pvt. Ltd.</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 bg-green-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wide">
+                      <CheckCircle2 size={11} /> 21 Years of Trusted Excellence in Education &amp; Academic Publishing
+                    </span>
+                    <p className="text-xs text-slate-400">{COMPANY_DETAILS.address} - 201301</p>
+                  </div>
+
+                  {/* 3-col info grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 border border-slate-200 rounded-2xl overflow-hidden text-[11px]">
+
+                    {/* Left: Quotation meta */}
+                    <div className="p-5 space-y-4 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/40">
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Quotation Number</p>
+                        <p className="font-black text-blue-600">QTN-{new Date().getFullYear()}-XXXX</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Issue Date</p>
+                        <p className="font-bold text-slate-800">{format(new Date(), 'dd MMM yyyy')}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Valid Till</p>
+                        <p className="font-bold text-green-600">{format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'dd MMM yyyy')}</p>
                       </div>
                     </div>
 
-                    <div className="p-4 bg-slate-50/50">
-                      <div className="space-y-2 text-[11px]">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400 font-bold uppercase">GSTIN:</span>
-                          <span className="font-bold text-slate-900">09AACCC6494M1Z1</span>
+                    {/* Middle: Bank details */}
+                    <div className="p-5 border-b md:border-b-0 md:border-r border-slate-200">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-3">Bank Details (NEFT/RTGS)</p>
+                      <div className="space-y-2 text-slate-700">
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-500">Bank:</span>
+                          <span className="font-bold text-right">{COMPANY_DETAILS.bank.bankName}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400 font-bold uppercase">PAN No:</span>
-                          <span className="font-bold text-slate-900">AACCC6494M</span>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-500">Account:</span>
+                          <span className="font-bold text-right">{COMPANY_DETAILS.bank.accountNumber}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400 font-bold uppercase">CIN No:</span>
-                          <span className="font-bold text-slate-900">U80302DL2005PTC138759</span>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-500">IFSC:</span>
+                          <span className="font-bold text-right">{COMPANY_DETAILS.bank.ifscCode}</span>
                         </div>
                       </div>
+                      <div className="mt-3 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                        <p className="text-[9px] text-slate-400 mb-0.5">Holder:</p>
+                        <p className="font-bold text-slate-800 text-xs">{COMPANY_DETAILS.bank.accountName}</p>
+                      </div>
                     </div>
+
+                    {/* Right: Legal identifiers */}
+                    <div className="p-5 bg-slate-50/40 space-y-3">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Legal Identifiers</p>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">GSTIN</p>
+                        <p className="font-bold text-slate-800">09AACCC6494M1Z1</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Pan Number</p>
+                        <p className="font-bold text-slate-800">AACCC6494M</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">CIN Number</p>
+                        <p className="font-bold text-slate-800">U80302DL2005PTC138759</p>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
 
-                <div className="p-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                {/* Body */}
+                <div className="p-8 space-y-8">
+
+                  {/* Receiver + Subscription summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Billed To / Details of Receiver:</h3>
-                      <div className="space-y-1">
-                        <p className="text-lg font-bold text-slate-900">{formData.fullName}</p>
-                        <p className="text-sm text-slate-600">{formData.organization || 'Individual'}</p>
-                        <p className="text-sm text-slate-500 mt-2">{formData.address}</p>
-                        <p className="text-sm text-slate-500">{formData.city}, {formData.state} - {formData.pincode}</p>
-                        {formData.gstNumber && (
-                          <p className="text-xs font-bold text-blue-600 mt-2 uppercase">GSTIN: {formData.gstNumber}</p>
-                        )}
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-blue-500 mb-3 flex items-center gap-1.5">
+                        <User size={10} /> Receiver Details (Billed To)
+                      </p>
+                      <div className="space-y-0.5">
+                        <p className="text-xl font-black text-slate-900">{formData.fullName}</p>
+                        {formData.designation && <p className="text-sm font-bold text-blue-600">{formData.designation}</p>}
+                        {formData.organization && <p className="text-sm text-slate-700">{formData.organization}</p>}
+                        <div className="pt-2 space-y-0.5 text-xs text-slate-500">
+                          {formData.city && <p>{formData.city}</p>}
+                          <p>{[formData.address, formData.state, formData.pincode && `- ${formData.pincode}`, formData.country].filter(Boolean).join(', ')}</p>
+                          {formData.gstNumber && <p className="font-bold text-blue-600 uppercase mt-1">GSTIN: {formData.gstNumber}</p>}
+                        </div>
                       </div>
                     </div>
-                    <div className="md:text-right">
-                      <div className="inline-block p-4 rounded-2xl bg-slate-50 border border-slate-100 text-left">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Subscription Validity</p>
-                        <p className="text-sm font-bold text-slate-900">30 Days from Issue</p>
-                        <p className="text-[10px] font-bold text-blue-600 uppercase mt-2">{formData.userCategory} Category</p>
+
+                    <div className="bg-blue-700 rounded-2xl p-5 text-white">
+                      <div className="flex justify-end mb-4">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-blue-300 flex items-center gap-1.5">
+                          <Calendar size={9} /> Subscription Summary
+                        </span>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-blue-300">Category</p>
+                          <p className="text-base font-bold">{formData.userCategory}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-blue-300">Duration Plan</p>
+                          <p className="text-3xl font-black">{formData.duration}</p>
+                        </div>
+                        <div className="flex items-center gap-2 pt-3 border-t border-blue-600">
+                          <Users size={14} className="text-blue-300" />
+                          <span className="text-sm font-bold">{formData.selectedDepartments.length} Department(s)</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-100 overflow-hidden mb-8">
-                    <table className="w-full text-left">
-                      <thead className="bg-slate-50">
+                  {/* Department table */}
+                  <div className="rounded-2xl overflow-hidden border border-slate-200">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-900 text-white">
                         <tr>
-                          <th className="px-6 py-3 text-[10px] font-bold uppercase text-slate-500">Sr.No</th>
-                          <th className="px-6 py-3 text-[10px] font-bold uppercase text-slate-500">Particulars</th>
-                          <th className="px-6 py-3 text-[10px] font-bold uppercase text-slate-500 text-right">Taxable Value</th>
-                          <th className="px-6 py-3 text-[10px] font-bold uppercase text-slate-500 text-right">Net Amount</th>
+                          <th className="px-5 py-3 font-bold uppercase tracking-widest">SR.NO</th>
+                          <th className="px-5 py-3 font-bold uppercase tracking-widest">Department</th>
+                          <th className="px-5 py-3 font-bold uppercase tracking-widest">Duration</th>
+                          <th className="px-5 py-3 font-bold uppercase tracking-widest text-right">Base Price</th>
+                          <th className="px-5 py-3 font-bold uppercase tracking-widest text-right">GST (18%)</th>
+                          <th className="px-5 py-3 font-bold uppercase tracking-widest text-right">Total</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {formData.selectedDepartments.map((deptId, index) => {
+                      <tbody className="divide-y divide-slate-100">
+                        {formData.selectedDepartments.map((deptId, idx) => {
                           const dept = DOMAINS.find(d => d.id === deptId);
+                          const gst = basePricePerDept * 0.18;
                           return (
-                            <tr key={deptId}>
-                              <td className="px-6 py-4 text-xs text-slate-500">{index + 1}</td>
-                              <td className="px-6 py-4">
-                                <p className="text-sm font-bold text-slate-700">{dept?.name}</p>
-                                <p className="text-[10px] text-slate-400">{selectedPlan?.name} - {formData.duration}</p>
-                              </td>
-                              <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">₹{basePricePerDept.toLocaleString()}</td>
-                              <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">₹{(basePricePerDept * 1.18).toLocaleString()}</td>
+                            <tr key={deptId} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-5 py-3 text-blue-500 font-bold">{String(idx + 1).padStart(2, '0')}</td>
+                              <td className="px-5 py-3 font-black text-slate-800 uppercase">{dept?.name}</td>
+                              <td className="px-5 py-3 text-slate-500">{formData.duration}</td>
+                              <td className="px-5 py-3 font-bold text-slate-800 text-right">₹{basePricePerDept.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td className="px-5 py-3 font-bold text-slate-500 text-right">₹{gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td className="px-5 py-3 font-black text-blue-600 text-right">₹{(basePricePerDept + gst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             </tr>
                           );
                         })}
@@ -888,36 +974,37 @@ export function QuotationWizard() {
                     </table>
                   </div>
 
+                  {/* GST Breakdown + Grand Total */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">GST Breakdown</h3>
-                      <div className="rounded-xl border border-slate-100 overflow-hidden">
-                        <table className="w-full text-[10px]">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-3">GST Breakdown</p>
+                      <div className="rounded-xl overflow-hidden border border-slate-200">
+                        <table className="w-full text-xs">
                           <thead className="bg-slate-50">
                             <tr>
-                              <th className="px-3 py-2 text-left">Type</th>
-                              <th className="px-3 py-2 text-center">Rate</th>
-                              <th className="px-3 py-2 text-right">Amount</th>
+                              <th className="px-4 py-2 text-left font-bold text-slate-500">Type</th>
+                              <th className="px-4 py-2 text-center font-bold text-slate-500">Rate</th>
+                              <th className="px-4 py-2 text-right font-bold text-slate-500">Amount</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-50">
+                          <tbody className="divide-y divide-slate-100">
                             {isInterState ? (
                               <tr>
-                                <td className="px-3 py-2">IGST</td>
-                                <td className="px-3 py-2 text-center">18%</td>
-                                <td className="px-3 py-2 text-right">₹{gstBreakdown.igst.toLocaleString()}</td>
+                                <td className="px-4 py-2">IGST</td>
+                                <td className="px-4 py-2 text-center">18%</td>
+                                <td className="px-4 py-2 text-right font-bold">₹{gstBreakdown.igst.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
                               </tr>
                             ) : (
                               <>
                                 <tr>
-                                  <td className="px-3 py-2">CGST</td>
-                                  <td className="px-3 py-2 text-center">9%</td>
-                                  <td className="px-3 py-2 text-right">₹{gstBreakdown.cgst.toLocaleString()}</td>
+                                  <td className="px-4 py-2">CGST</td>
+                                  <td className="px-4 py-2 text-center">9%</td>
+                                  <td className="px-4 py-2 text-right font-bold">₹{gstBreakdown.cgst.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-3 py-2">SGST</td>
-                                  <td className="px-3 py-2 text-center">9%</td>
-                                  <td className="px-3 py-2 text-right">₹{gstBreakdown.sgst.toLocaleString()}</td>
+                                  <td className="px-4 py-2">SGST</td>
+                                  <td className="px-4 py-2 text-center">9%</td>
+                                  <td className="px-4 py-2 text-right font-bold">₹{gstBreakdown.sgst.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
                                 </tr>
                               </>
                             )}
@@ -925,71 +1012,70 @@ export function QuotationWizard() {
                         </table>
                       </div>
                     </div>
-
-                    <div className="flex flex-col items-end gap-2 pt-4">
-                      <div className="flex justify-between w-full text-sm">
-                        <span className="text-slate-500">Total Taxable Value</span>
-                        <span className="font-bold text-slate-900">₹{gstBreakdown.basePrice.toLocaleString()}</span>
+                    <div className="flex flex-col justify-center gap-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Subtotal (Base Price Total)</span>
+                        <span className="font-bold text-slate-900">₹{gstBreakdown.basePrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
-                      <div className="flex justify-between w-full text-sm">
-                        <span className="text-slate-500">Total Tax Amount</span>
-                        <span className="font-bold text-slate-900">₹{gstBreakdown.totalGst.toLocaleString()}</span>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Total GST (18%)</span>
+                        <span className="font-bold text-slate-900">₹{gstBreakdown.totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
-                      <div className="h-px bg-slate-200 w-full my-2" />
-                      <div className="flex justify-between w-full items-center">
-                        <span className="text-lg font-bold text-slate-900">Total (INR)</span>
-                        <span className="text-2xl font-black text-blue-600">₹{gstBreakdown.totalAmount.toLocaleString()}</span>
+                      <div className="h-px bg-slate-200 my-1" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-base font-black text-slate-900">GRAND TOTAL</span>
+                        <span className="text-2xl font-black text-blue-600">₹{gstBreakdown.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-12 pt-8 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Terms & Conditions:</h3>
-                      <ul className="space-y-1 text-[10px] text-slate-500 list-decimal pl-4">
-                        <li>Subscription will be activated post-payment confirmation.</li>
-                        <li>All disputes are subject to Delhi jurisdiction only.</li>
-                        <li>18% GST applicable as per Government of India rules.</li>
-                        <li>Quotation is valid for 30 days.</li>
+                  {/* Terms & Signature */}
+                  <div className="pt-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
+                        <ShieldCheck size={10} /> Terms &amp; Conditions
+                      </p>
+                      <ul className="space-y-2">
+                        {[
+                          'Subscription will be activated post-payment confirmation.',
+                          '18% GST applicable as per Government of India rules.',
+                          'Quotation is valid for 30 days from the date of issue.',
+                          <span key="jd">All disputes are subject to <strong>Delhi Jurisdiction</strong> only.</span>
+                        ].map((t, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-slate-500">
+                            <CheckCircle2 size={13} className="text-blue-400 mt-0.5 shrink-0" />
+                            <span>{t}</span>
+                          </li>
+                        ))}
                       </ul>
                     </div>
-                    <div className="md:text-right flex flex-col justify-end">
-                      <p className="text-[10px] font-bold text-slate-900 mb-8">For, {COMPANY_DETAILS.name}</p>
-                      <p className="text-[10px] font-bold text-slate-400">Authorised Signatory</p>
+                    <div className="flex flex-col items-end justify-between gap-4">
+                      <div className="text-right">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">For Publisher</p>
+                        <p className="text-sm font-bold text-slate-800 mt-1">Consortium eLearning Network Pvt. Ltd.</p>
+                      </div>
+                      <div className="w-44 h-20 border border-dashed border-slate-300 rounded-xl flex items-center justify-center">
+                        <span className="text-[10px] text-slate-300 font-medium">Seal &amp; Signature</span>
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">Authorized Signatory</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <button 
-                  onClick={prevStep}
-                  className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
-                >
-                  <ChevronLeft size={18} />
-                  Edit
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-3 justify-center">
+                <button onClick={prevStep} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
+                  <ChevronLeft size={16} /> Edit
                 </button>
-                <button 
-                  onClick={generatePDF}
-                  className="flex items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-sm font-bold text-white hover:bg-slate-800 transition-all"
-                >
-                  <Download size={18} />
-                  Download
+                <button onClick={generatePDF} className="flex items-center gap-2 rounded-2xl bg-slate-900 px-7 py-3.5 text-sm font-bold text-white hover:bg-slate-800 transition-all">
+                  <Download size={16} /> Download
                 </button>
-                <button 
-                  onClick={handleSendEmail}
-                  className="flex items-center justify-center gap-2 rounded-2xl bg-blue-100 py-4 text-sm font-bold text-blue-700 hover:bg-blue-200 transition-all"
-                >
-                  <Send size={18} />
-                  Send Email
+                <button onClick={handleSendEmail} className="flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-7 py-3.5 text-sm font-bold text-blue-700 hover:bg-blue-100 transition-all">
+                  <Send size={16} /> Send Email
                 </button>
-                <button 
-                  onClick={handlePayment}
-                  className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-xl shadow-blue-200"
-                >
-                  <CreditCard size={18} />
-                  Pay Now
+                <button onClick={handlePayment} className="flex items-center gap-2 rounded-2xl bg-blue-600 px-7 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                  <CreditCard size={16} /> Pay Now
                 </button>
               </div>
 
