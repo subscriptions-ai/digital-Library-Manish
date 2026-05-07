@@ -169,161 +169,272 @@ export function QuotationWizard() {
   const gstBreakdown = calculateGST(totalBasePrice, isInterState);
 
   const createPdfDocument = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const quotationNumber = `QTN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const pdfDate = format(new Date(), 'dd-MMM-yyyy');
-    const pdfValidity = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'dd-MMM-yyyy');
+    const pdfDate = format(new Date(), 'dd MMM yyyy');
+    const validTill = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'dd MMM yyyy');
+    const pageW = 210;
+    const margin = 14;
+    const contentW = pageW - margin * 2;
 
-    // Top Header
-    doc.setFontSize(8);
-    doc.setTextColor(0);
+    // outer border
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.4);
+    doc.rect(margin - 2, 8, contentW + 4, 276);
+
+    // TOP BADGES
+    doc.setFontSize(6.5);
     doc.setFont('helvetica', 'bold');
-    doc.text('QUOTATION', 20, 10);
-    doc.text('SUBJECTED TO DELHI JURISDICTION.', 190, 10, { align: 'right' });
-
-    // Company Logo & Name
-    doc.setFontSize(20);
-    doc.text(COMPANY_DETAILS.name, 105, 25, { align: 'center' });
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${COMPANY_DETAILS.address} - 201301`, 105, 30, { align: 'center' });
-
-    // Info Box
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.1);
-    doc.rect(20, 35, 170, 25); // Main box
-    doc.line(65, 35, 65, 60); // Vertical line 1
-    doc.line(135, 35, 135, 60); // Vertical line 2
-
-    // Quotation Info (Left)
-    doc.setFontSize(7);
+    doc.setTextColor(37, 99, 235);
+    doc.setDrawColor(147, 197, 253);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, 13, 33, 5, 1.5, 1.5, 'S');
+    doc.text('PROFORMA INVOICE', margin + 16.5, 16.5, { align: 'center' });
+    doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'bold');
-    doc.text('QUOTATION NUMBER :', 22, 40);
-    doc.setFont('helvetica', 'normal');
-    doc.text(quotationNumber, 22, 44);
-    doc.setFont('helvetica', 'bold');
-    doc.text('QUOTATION DATE :', 22, 52);
-    doc.setFont('helvetica', 'normal');
-    doc.text(pdfDate, 22, 56);
+    doc.text('SUBJECT TO DELHI JURISDICTION', pageW - margin, 16.5, { align: 'right' });
 
-    // Bank Details (Middle)
+    // Blue icon box
+    doc.setFillColor(37, 99, 235);
+    doc.roundedRect(pageW / 2 - 6, 21, 12, 12, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('BANK DETAILS:', 67, 40);
+    doc.text('STM', pageW / 2, 28.5, { align: 'center' });
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(COMPANY_DETAILS.name.toUpperCase(), pageW / 2, 39, { align: 'center' });
+
+    doc.setTextColor(37, 99, 235);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DIVISION OF CONSORTIUM ELEARNING NETWORK PVT. LTD.', pageW / 2, 44, { align: 'center' });
+
+    // Green badge
+    doc.setFillColor(22, 163, 74);
+    doc.roundedRect(pageW / 2 - 52, 47, 104, 6, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
     doc.setFontSize(6);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Bank Name : ${COMPANY_DETAILS.bank.bankName}`, 67, 44);
-    doc.text(`A/C. Number : ${COMPANY_DETAILS.bank.accountNumber}`, 67, 47);
-    doc.text(`IFSC Code : ${COMPANY_DETAILS.bank.ifscCode}`, 67, 50);
-    doc.text('Swift Code : HDFCINBBXXX', 67, 53);
-    doc.text(`A/C. Holder : ${COMPANY_DETAILS.bank.accountName}`, 67, 56);
-
-    // Company Reg Info (Right)
-    doc.setFontSize(7);
-    doc.text('GSTIN :', 137, 40);
-    doc.text('09AACCC6494M1Z1', 155, 40);
-    doc.text('PAN No. :', 137, 44);
-    doc.text('AACCC6494M', 155, 44);
-    doc.text('CIN No. :', 137, 48);
-    doc.text('U80302DL2005PTC138759', 155, 48);
-    doc.text('LEGAL NAME:', 137, 52);
-    doc.text(COMPANY_DETAILS.name, 137, 56, { maxWidth: 30 });
-
-    // Billed To
-    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text('Billed To / Details of Receiver:', 20, 70);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Name : ${formData.fullName}`, 25, 76);
-    doc.text(`Address : ${formData.address}`, 25, 81, { maxWidth: 100 });
-    doc.text(`City/State/Country : ${formData.city}, ${formData.state} - ${formData.pincode}, India`, 25, 91);
-    if (formData.gstNumber) {
-      doc.text(`GSTIN : ${formData.gstNumber.toUpperCase()}`, 140, 91);
-    }
+    doc.text('21 YEARS OF TRUSTED EXCELLENCE IN EDUCATION & ACADEMIC PUBLISHING', pageW / 2, 51, { align: 'center' });
 
-    // Items Table
-    const tableData = formData.selectedDepartments.map((deptId, index) => {
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${COMPANY_DETAILS.address} - 201301`, pageW / 2, 57, { align: 'center' });
+
+    // 3-COL INFO GRID
+    const gridY = 61;
+    const gridH = 30;
+    const colW = contentW / 3;
+    const col1X = margin;
+    const col2X = margin + colW;
+    const col3X = margin + colW * 2;
+
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.3);
+    doc.rect(col1X, gridY, contentW, gridH);
+    doc.line(col2X, gridY, col2X, gridY + gridH);
+    doc.line(col3X, gridY, col3X, gridY + gridH);
+
+    // Col 1
+    doc.setFontSize(5.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 163, 184);
+    doc.text('QUOTATION NUMBER', col1X + 3, gridY + 5);
+    doc.setFontSize(7); doc.setTextColor(37, 99, 235);
+    doc.text(quotationNumber, col1X + 3, gridY + 9);
+    doc.setFontSize(5.5); doc.setTextColor(148, 163, 184);
+    doc.text('ISSUE DATE', col1X + 3, gridY + 15);
+    doc.setFontSize(7); doc.setTextColor(30, 41, 59);
+    doc.text(pdfDate, col1X + 3, gridY + 19);
+    doc.setFontSize(5.5); doc.setTextColor(148, 163, 184);
+    doc.text('VALID TILL', col1X + 3, gridY + 25);
+    doc.setFontSize(7); doc.setTextColor(22, 163, 74);
+    doc.text(validTill, col1X + 3, gridY + 29);
+
+    // Col 2
+    doc.setFontSize(5.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 163, 184);
+    doc.text('BANK DETAILS (NEFT/RTGS)', col2X + 3, gridY + 5);
+    const bankRows = [['Bank:', COMPANY_DETAILS.bank.bankName], ['Account:', COMPANY_DETAILS.bank.accountNumber], ['IFSC:', COMPANY_DETAILS.bank.ifscCode]];
+    bankRows.forEach(([label, value], i) => {
+      const ry = gridY + 9 + i * 5;
+      doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(100, 116, 139);
+      doc.text(label, col2X + 3, ry);
+      doc.setTextColor(30, 41, 59);
+      doc.text(value, col2X + 17, ry);
+    });
+    doc.setDrawColor(220, 220, 230);
+    doc.rect(col2X + 3, gridY + 23, colW - 6, 6);
+    doc.setFontSize(5); doc.setTextColor(148, 163, 184);
+    doc.text('Holder:', col2X + 4, gridY + 26);
+    doc.setFontSize(5.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 41, 59);
+    doc.text(COMPANY_DETAILS.bank.accountName, col2X + 4, gridY + 29, { maxWidth: colW - 8 });
+
+    // Col 3
+    doc.setFontSize(5.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 163, 184);
+    doc.text('LEGAL IDENTIFIERS', col3X + 3, gridY + 5);
+    [['GSTIN', '09AACCC6494M1Z1'], ['PAN NUMBER', 'AACCC6494M'], ['CIN NUMBER', 'U80302DL2005PTC138759']].forEach(([lbl, val], i) => {
+      const ry = gridY + 9 + i * 7;
+      doc.setFontSize(5); doc.setTextColor(148, 163, 184); doc.text(lbl, col3X + 3, ry);
+      doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 41, 59); doc.text(val, col3X + 3, ry + 3.5);
+    });
+
+    // RECEIVER + SUBSCRIPTION SUMMARY
+    const secY = gridY + gridH + 6;
+    doc.setFontSize(5.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(37, 99, 235);
+    doc.text('RECEIVER DETAILS (BILLED TO)', margin, secY + 4);
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 23, 42);
+    doc.text(formData.fullName, margin, secY + 11);
+    let rcvY = secY + 15;
+    if (formData.designation) {
+      doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(37, 99, 235);
+      doc.text(formData.designation, margin, rcvY); rcvY += 4;
+    }
+    if (formData.organization) {
+      doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(71, 85, 105);
+      doc.text(formData.organization, margin, rcvY); rcvY += 4;
+    }
+    if (formData.city) { doc.text(formData.city, margin, rcvY); rcvY += 4; }
+    const addrParts = [formData.address, formData.state, formData.pincode && `- ${formData.pincode}`, formData.country].filter(Boolean).join(', ');
+    doc.setFontSize(6.5); doc.setTextColor(100, 116, 139);
+    doc.text(addrParts, margin, rcvY, { maxWidth: 80 });
+
+    // Dark blue subscription box
+    const boxX = pageW / 2 + 2;
+    const boxW = contentW / 2 - 2;
+    const boxH = 38;
+    doc.setFillColor(29, 78, 216);
+    doc.roundedRect(boxX, secY, boxW, boxH, 3, 3, 'F');
+    doc.setFontSize(5.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(147, 197, 253);
+    doc.text('SUBSCRIPTION SUMMARY', boxX + boxW - 3, secY + 5, { align: 'right' });
+    doc.text('CATEGORY', boxX + 4, secY + 12);
+    doc.setFontSize(9); doc.setTextColor(255, 255, 255);
+    doc.text(formData.userCategory, boxX + 4, secY + 17);
+    doc.setFontSize(5.5); doc.setTextColor(147, 197, 253);
+    doc.text('DURATION PLAN', boxX + 4, secY + 23);
+    doc.setFontSize(13); doc.setTextColor(255, 255, 255);
+    doc.text(formData.duration, boxX + 4, secY + 30);
+    doc.setDrawColor(59, 130, 246); doc.setLineWidth(0.3);
+    doc.line(boxX + 3, secY + 33, boxX + boxW - 3, secY + 33);
+    doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(147, 197, 253);
+    doc.text(`${formData.selectedDepartments.length} Department(s)`, boxX + 4, secY + 37);
+
+    // DEPARTMENT TABLE
+    const tableStartY = secY + boxH + 6;
+    const deptRows = formData.selectedDepartments.map((deptId, idx) => {
       const dept = DOMAINS.find(d => d.id === deptId);
+      const gst = basePricePerDept * 0.18;
       return [
-        index + 1,
-        `${dept?.name} (${selectedPlan?.name} - ${formData.duration})`,
-        '9901', // HSN Placeholder
-        '1',
-        basePricePerDept.toFixed(2),
-        basePricePerDept.toFixed(2),
-        '0.00',
-        basePricePerDept.toFixed(2),
-        '18.00',
-        (basePricePerDept * 1.18).toFixed(2)
+        String(idx + 1).padStart(2, '0'),
+        (dept?.name || '').toUpperCase(),
+        formData.duration,
+        `Rs.${basePricePerDept.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        `Rs.${gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        `Rs.${(basePricePerDept + gst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
       ];
     });
 
     autoTable(doc, {
-      startY: 95,
-      head: [['Sr.No', 'Particulars', 'HSN/SAC', 'Qty', 'Unit Price', 'Amount', 'Discount', 'Taxable Value', 'GST Rate (%)', 'Net Amount']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [240, 240, 240], textColor: 0, fontSize: 6, fontStyle: 'bold' },
-      styles: { fontSize: 6, cellPadding: 1 },
+      startY: tableStartY,
+      head: [['SR.NO', 'DEPARTMENT', 'DURATION', 'BASE PRICE', 'GST (18%)', 'TOTAL']],
+      body: deptRows,
+      theme: 'plain',
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold', cellPadding: { top: 3, bottom: 3, left: 3, right: 3 } },
+      bodyStyles: { fontSize: 7, cellPadding: { top: 3, bottom: 3, left: 3, right: 3 }, textColor: [30, 41, 59] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: {
-        0: { cellWidth: 8 },
-        1: { cellWidth: 60 },
-        2: { cellWidth: 15 },
-        3: { cellWidth: 8, halign: 'center' },
-        4: { cellWidth: 15, halign: 'right' },
-        5: { cellWidth: 15, halign: 'right' },
-        6: { cellWidth: 12, halign: 'right' },
-        7: { cellWidth: 15, halign: 'right' },
-        8: { cellWidth: 10, halign: 'center' },
-        9: { cellWidth: 15, halign: 'right' },
-      }
+        0: { cellWidth: 14, textColor: [37, 99, 235], fontStyle: 'bold' },
+        1: { cellWidth: 55, fontStyle: 'bold' },
+        2: { cellWidth: 25, textColor: [100, 116, 139] },
+        3: { cellWidth: 28, halign: 'right', fontStyle: 'bold' },
+        4: { cellWidth: 28, halign: 'right', textColor: [100, 116, 139] },
+        5: { cellWidth: 28, halign: 'right', fontStyle: 'bold', textColor: [37, 99, 235] },
+      },
+      margin: { left: margin, right: margin },
     });
 
-    let currentY = (doc as any).lastAutoTable.finalY + 5;
+    let curY = (doc as any).lastAutoTable.finalY + 7;
 
-    // GST Breakdown Table
-    const gstData = [[
-      '1',
-      '9901',
-      gstBreakdown.basePrice.toFixed(2),
-      isInterState ? '0.00' : '9.00',
-      isInterState ? '0.00' : gstBreakdown.sgst.toFixed(2),
-      isInterState ? '0.00' : '9.00',
-      isInterState ? '0.00' : gstBreakdown.cgst.toFixed(2),
-      isInterState ? '18.00' : '0.00',
-      isInterState ? gstBreakdown.igst.toFixed(2) : '0.00',
-      gstBreakdown.totalGst.toFixed(2)
-    ]];
+    // GST BREAKDOWN
+    const halfW = contentW / 2 - 3;
+    doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 163, 184);
+    doc.text('GST BREAKDOWN', margin, curY);
+    const gstRows = isInterState
+      ? [['IGST', '18%', `Rs.${gstBreakdown.igst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`]]
+      : [['CGST', '9%', `Rs.${gstBreakdown.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`],
+         ['SGST', '9%', `Rs.${gstBreakdown.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`]];
 
     autoTable(doc, {
-      startY: currentY,
-      head: [['Sr.No', 'HSN/SAC', 'Taxable Value', 'SGST Rate (%)', 'SGST Amt', 'CGST Rate (%)', 'CGST Amt', 'IGST Rate (%)', 'IGST Amt', 'Total Tax Amt']],
-      body: gstData,
+      startY: curY + 3,
+      head: [['Type', 'Rate', 'Amount']],
+      body: gstRows,
       theme: 'grid',
-      headStyles: { fillColor: [240, 240, 240], textColor: 0, fontSize: 6, fontStyle: 'bold' },
-      styles: { fontSize: 6, cellPadding: 1 },
+      tableWidth: halfW,
+      headStyles: { fillColor: [248, 250, 252], textColor: [100, 116, 139], fontSize: 6.5, fontStyle: 'bold', cellPadding: 2 },
+      bodyStyles: { fontSize: 7, cellPadding: 2, textColor: [30, 41, 59] },
+      columnStyles: { 0: { cellWidth: 20 }, 1: { cellWidth: 20, halign: 'center' }, 2: { halign: 'right', fontStyle: 'bold' } },
+      margin: { left: margin, right: pageW - margin - halfW },
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 10;
+    const gstBottom = (doc as any).lastAutoTable.finalY;
 
-    // Summary
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Total (INR) = ${gstBreakdown.totalAmount.toLocaleString()}`, 190, currentY, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Total Tax Amount (INR) = ${gstBreakdown.totalGst.toLocaleString()}`, 190, currentY + 5, { align: 'right' });
+    // Totals (right)
+    const totX = margin + halfW + 6;
+    const totW = halfW - 3;
+    let totY = curY + 6;
+    [['Subtotal (Base Price Total)', `Rs.${gstBreakdown.basePrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`],
+     ['Total GST (18%)', `Rs.${gstBreakdown.totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`]].forEach(([lbl, val]) => {
+      doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 116, 139);
+      doc.text(lbl, totX, totY);
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 41, 59);
+      doc.text(val, totX + totW, totY, { align: 'right' });
+      totY += 5;
+    });
+    doc.setDrawColor(220, 220, 230); doc.setLineWidth(0.3);
+    doc.line(totX, totY, totX + totW, totY);
+    totY += 4;
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 41, 59);
+    doc.text('GRAND TOTAL', totX, totY);
+    doc.setFontSize(11); doc.setTextColor(37, 99, 235);
+    doc.text(`Rs.${gstBreakdown.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totX + totW, totY, { align: 'right' });
 
-    // Terms & Conditions
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Terms & Conditions:', 20, currentY + 15);
-    doc.setFont('helvetica', 'normal');
-    doc.text('1. Subscription will be activated post-payment confirmation.', 20, currentY + 20);
-    doc.text('2. All disputes are subject to Delhi jurisdiction only.', 20, currentY + 24);
-    doc.text('3. Quotation is valid for 30 days.', 20, currentY + 28);
+    curY = Math.max(gstBottom, totY) + 8;
 
-    doc.setFont('helvetica', 'bold');
-    doc.text(`For, ${COMPANY_DETAILS.name}`, 190, currentY + 20, { align: 'right' });
-    doc.text('Authorised Signatory', 190, currentY + 35, { align: 'right' });
+    // TERMS & SIGNATURE
+    doc.setDrawColor(220, 220, 230); doc.setLineWidth(0.2);
+    doc.line(margin, curY, pageW - margin, curY);
+    curY += 5;
+
+    doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 163, 184);
+    doc.text('TERMS & CONDITIONS', margin, curY);
+    curY += 4;
+    const terms = [
+      'Subscription will be activated post-payment confirmation.',
+      '18% GST applicable as per Government of India rules.',
+      'Quotation is valid for 30 days from the date of issue.',
+      'All disputes are subject to Delhi Jurisdiction only.',
+    ];
+    const sigBaseY = curY;
+    terms.forEach(t => {
+      doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 116, 139);
+      doc.text(`•  ${t}`, margin, curY); curY += 4;
+    });
+
+    // Signature right
+    let sigY = sigBaseY;
+    doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 163, 184);
+    doc.text('FOR PUBLISHER', pageW - margin, sigY, { align: 'right' }); sigY += 4;
+    doc.setFontSize(7); doc.setTextColor(30, 41, 59);
+    doc.text('Consortium eLearning Network Pvt. Ltd.', pageW - margin, sigY, { align: 'right' }); sigY += 4;
+    const sealW = 40;
+    doc.setLineDashPattern([1, 1], 0);
+    doc.rect(pageW - margin - sealW, sigY, sealW, 14);
+    doc.setLineDashPattern([], 0);
+    doc.setFontSize(5.5); doc.setTextColor(180, 180, 190);
+    doc.text('Seal & Signature', pageW - margin - sealW / 2, sigY + 8, { align: 'center' }); sigY += 17;
+    doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(71, 85, 105);
+    doc.text('AUTHORIZED SIGNATORY', pageW - margin, sigY, { align: 'right' });
 
     return { doc, quotationNumber };
   };
