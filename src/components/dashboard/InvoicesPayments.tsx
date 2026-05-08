@@ -257,10 +257,41 @@ export function InvoicesPayments() {
                       {selectedQuotation.sentEmailHtml ? (
                         <div dangerouslySetInnerHTML={{ __html: selectedQuotation.sentEmailHtml }} />
                       ) : (
-                        <div className="flex flex-col items-center justify-center h-full min-h-[500px] text-slate-400">
-                          <FileText size={64} className="opacity-20 mb-4" />
-                          <p className="font-medium">No email preview available.</p>
-                          <p className="text-xs mt-1 opacity-70">This was generated before email tracking was enabled.</p>
+                        <div className="p-8 bg-white text-slate-800">
+                          <div className="text-center mb-8 pb-8 border-b border-slate-100">
+                            <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">STM DIGITAL LIBRARY</h1>
+                            <p className="text-slate-500 font-medium text-sm">Legacy Quotation Preview</p>
+                          </div>
+                          <div className="mb-8">
+                            <p className="text-sm text-slate-500 mb-1">Dear <strong className="text-slate-800">Subscriber</strong>,</p>
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                              This is a reconstructed preview of your quotation generated on <strong className="text-slate-800">{new Date(selectedQuotation.createdAt).toLocaleDateString()}</strong>.
+                            </p>
+                          </div>
+                          
+                          <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-8">
+                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-200/60">
+                              <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Plan Details</span>
+                              <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-md uppercase tracking-wide">{selectedQuotation.planType || 'Standard'}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-slate-600">Subtotal</span>
+                              <span className="font-semibold text-slate-900">₹{selectedQuotation.subtotal?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center mb-4">
+                              <span className="text-slate-600">GST (18%)</span>
+                              <span className="font-semibold text-slate-900">₹{selectedQuotation.gstAmount?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                              <span className="font-bold text-slate-900">Total Payable</span>
+                              <span className="text-xl font-black text-blue-600">₹{selectedQuotation.total?.toLocaleString()}</span>
+                            </div>
+                          </div>
+
+                          <div className="text-center text-xs text-slate-400 mt-12 pt-6 border-t border-slate-100">
+                            <p>This is a system-generated preview. The exact email formatting for this legacy record was not retained.</p>
+                          </div>
                         </div>
                       )}
                     </div>

@@ -423,14 +423,42 @@ export function QuotationManager() {
                     {selected.sentEmailHtml ? (
                       <div dangerouslySetInnerHTML={{ __html: selected.sentEmailHtml }} />
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-slate-400 space-y-3">
-                        <FileText size={48} className="opacity-20" />
-                        <p className="font-medium text-sm">No email HTML captured for this legacy quotation.</p>
-                        <div className="w-64 text-center text-xs opacity-60">
-                          Quotations generated before the latest update do not have HTML tracking.
+                      <div className="p-8 bg-white text-slate-800">
+                        <div className="text-center mb-8 pb-8 border-b border-slate-100">
+                          <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">STM DIGITAL LIBRARY</h1>
+                          <p className="text-slate-500 font-medium text-sm">Legacy Quotation Preview</p>
+                        </div>
+                        <div className="mb-8">
+                          <p className="text-sm text-slate-500 mb-1">Dear <strong className="text-slate-800">{selected.userName}</strong>,</p>
+                          <p className="text-sm text-slate-600 leading-relaxed">
+                            This is a reconstructed preview of your quotation generated on <strong className="text-slate-800">{selected.createdAt ? format(new Date(selected.createdAt), 'dd MMM yyyy') : 'an unknown date'}</strong>.
+                          </p>
+                        </div>
+                        
+                        <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-8">
+                          <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-200/60">
+                            <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Plan Details</span>
+                            <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-md uppercase tracking-wide">{selected.planType || 'Standard'}</span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-slate-600">Subtotal</span>
+                            <span className="font-semibold text-slate-900">{formatPrice(selected.subtotal)}</span>
+                          </div>
+                          <div className="flex justify-between items-center mb-4">
+                            <span className="text-slate-600">GST (18%)</span>
+                            <span className="font-semibold text-slate-900">{formatPrice(selected.gstAmount)}</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                            <span className="font-bold text-slate-900">Total Payable</span>
+                            <span className="text-xl font-black text-blue-600">{formatPrice(selected.total)}</span>
+                          </div>
+                        </div>
+
+                        <div className="text-center text-xs text-slate-400 mt-12 pt-6 border-t border-slate-100">
+                          <p>This is a system-generated preview. The exact email formatting for this legacy record was not retained.</p>
                         </div>
                       </div>
-                    )}
                   </div>
                 </div>
               </div>
