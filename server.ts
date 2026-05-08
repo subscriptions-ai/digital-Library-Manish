@@ -2741,31 +2741,32 @@ async function startServer() {
         ]
       };
       await transporter.sendMail(mailOptions);
-      
-      // Save to PostgreSQL
-      try {
-        await prisma.quotation.create({
-          data: {
-            id: quotationNumber,
-            userEmail,
-            userName,
-            organization: organization || null,
-            state: state || null,
-            items: quotationData.items || [],
-            subtotal: parseFloat(quotationData.subtotal) || 0,
-            gstAmount: parseFloat(quotationData.gstAmount) || 0,
-            total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, '')) || 0,
-            status: "Sent",
-            userId: userId || null,
-            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          }
-        });
-      } catch (dbErr: any) {
-        // Non-blocking: email was already sent
-        console.warn("Quotation DB save failed (non-blocking):", dbErr?.message);
-      }
 
+      // Respond immediately after email is sent — DB save is non-blocking
       res.json({ status: "success", message: "Quotation sent successfully" });
+
+      // Save to PostgreSQL (fire-and-forget, never blocks the response)
+      prisma.quotation.upsert({
+        where: { id: quotationNumber },
+        update: { status: "Sent" },
+        create: {
+          id: quotationNumber,
+          userEmail,
+          userName,
+          organization: organization || null,
+          state: state || null,
+          items: quotationData.items || [],
+          subtotal: parseFloat(quotationData.subtotal) || 0,
+          gstAmount: parseFloat(quotationData.gstAmount) || 0,
+          total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, '')) || 0,
+          status: "Sent",
+          userId: userId || null,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        }
+      }).catch((dbErr: any) => {
+        console.warn("Quotation DB save failed (non-blocking):", dbErr?.message);
+      });
+
     } catch (error) {
       console.error("Quotation Email Error:", error);
       res.status(500).json({ error: "Failed to send quotation email" });

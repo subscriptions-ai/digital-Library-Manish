@@ -536,13 +536,16 @@ export function QuotationWizard() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send email');
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to send email');
       }
 
       toast.success('Quotation sent to your email!', { id: 'send-email' });
-    } catch (error) {
+      // Reset QTN so next send gets a fresh sequential number
+      setQuotationNumber('');
+    } catch (error: any) {
       console.error("Email send failed:", error);
-      toast.error('Failed to send email', { id: 'send-email' });
+      toast.error(error?.message || 'Failed to send email', { id: 'send-email' });
     }
   };
 
