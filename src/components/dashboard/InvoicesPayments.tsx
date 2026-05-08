@@ -184,19 +184,88 @@ export function InvoicesPayments() {
       </div>
 
       {selectedQuotation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-              <h2 className="font-bold">Quotation {selectedQuotation.id} Email Template</h2>
-              <button onClick={() => setSelectedQuotation(null)} className="text-slate-400 hover:text-white px-3 py-1">Close</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-7xl h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
+              <h2 className="font-bold flex items-center gap-2">
+                <FileText size={18} className="text-blue-400" />
+                Quotation Details <span className="text-slate-400 font-normal">#{selectedQuotation.id}</span>
+              </h2>
+              <button onClick={() => setSelectedQuotation(null)} className="text-slate-400 hover:text-white px-3 py-1 bg-slate-800 rounded-lg transition-colors">Close</button>
             </div>
-            <div className="flex-1 bg-slate-50 p-6 overflow-auto">
-              <div className="bg-white border border-slate-200 shadow-sm mx-auto max-w-2xl p-8 min-h-full">
-                {selectedQuotation.sentEmailHtml ? (
-                  <div dangerouslySetInnerHTML={{ __html: selectedQuotation.sentEmailHtml }} />
-                ) : (
-                  <div className="text-center text-slate-500 mt-20 font-medium">Email template not captured for this quotation.</div>
-                )}
+            
+            <div className="flex-1 overflow-hidden">
+              <div className="grid grid-cols-1 lg:grid-cols-5 h-full">
+                
+                {/* Left side: Info */}
+                <div className="lg:col-span-2 bg-white p-6 overflow-y-auto border-r border-slate-200">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Quotation Summary</h3>
+                  
+                  <div className="space-y-6">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <p className="text-xs text-slate-500 mb-1">Status</p>
+                      <span className={`inline-flex px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-md ${
+                        selectedQuotation.status === 'Approved' ? 'bg-blue-100 text-blue-700' :
+                        selectedQuotation.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' :
+                        selectedQuotation.status === 'Cancelled' ? 'bg-slate-100 text-slate-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {selectedQuotation.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">Plan</p>
+                        <p className="font-bold text-slate-900">{selectedQuotation.planType || 'Monthly'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">Date</p>
+                        <p className="font-bold text-slate-900">{new Date(selectedQuotation.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                      <p className="text-xs text-slate-500 mb-2">Pricing Breakdown</p>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-slate-600">Subtotal</span>
+                        <span className="font-semibold text-slate-900">₹{selectedQuotation.subtotal?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm mb-3">
+                        <span className="text-slate-600">GST (18%)</span>
+                        <span className="font-semibold text-slate-900">₹{selectedQuotation.gstAmount?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-base pt-2 border-t border-slate-200">
+                        <span className="font-bold text-slate-900">Total</span>
+                        <span className="font-black text-blue-600">₹{selectedQuotation.total?.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 text-blue-800 p-4 rounded-xl border border-blue-100">
+                      <p className="text-sm font-medium">To proceed with this quotation, please contact your account manager or click upgrade in your dashboard.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right side: Email Preview */}
+                <div className="lg:col-span-3 bg-slate-100 flex flex-col h-full">
+                  <div className="bg-slate-200 p-3 text-slate-600 flex justify-between items-center shrink-0 border-b border-slate-300">
+                    <span className="text-xs font-bold uppercase tracking-wide">Sent Email Copy</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                    <div className="bg-white shadow-lg mx-auto max-w-2xl min-h-full border border-slate-200 rounded-sm">
+                      {selectedQuotation.sentEmailHtml ? (
+                        <div dangerouslySetInnerHTML={{ __html: selectedQuotation.sentEmailHtml }} />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[500px] text-slate-400">
+                          <FileText size={64} className="opacity-20 mb-4" />
+                          <p className="font-medium">No email preview available.</p>
+                          <p className="text-xs mt-1 opacity-70">This was generated before email tracking was enabled.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
