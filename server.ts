@@ -2497,6 +2497,17 @@ async function startServer() {
         ? quotationData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
         : (quotationData.totalAmount || '0');
 
+      // Try to read logo for inline CID attachment
+      let logoAttachment: any = null;
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const logoPath = path.resolve('./public/assets/stm-logo.png');
+        if (fs.existsSync(logoPath)) {
+          logoAttachment = { filename: 'stm-logo.png', path: logoPath, cid: 'stm-logo' };
+        }
+      } catch { /* logo is optional */ }
+
       // Build departments list from items
       const items: any[] = quotationData.items || [];
       const departmentNames: string[] = items.map((it: any) => it.domainName).filter(Boolean);
@@ -2522,10 +2533,11 @@ async function startServer() {
 
         <!-- ═══════════ HEADER ═══════════ -->
         <tr>
-          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:40px 48px;text-align:center;">
-            <div style="display:inline-block;background:#2563eb;border-radius:12px;padding:10px 22px;margin-bottom:16px;">
-              <span style="color:#ffffff;font-size:18px;font-weight:900;letter-spacing:3px;">STM</span>
-            </div>
+          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
+            ${logoAttachment
+              ? `<img src="cid:stm-logo" alt="STM Digital Library" width="90" height="90" style="width:90px;height:90px;object-fit:contain;margin-bottom:14px;display:block;margin-left:auto;margin-right:auto;" />`
+              : `<div style="display:inline-block;background:#2563eb;border-radius:12px;padding:10px 22px;margin-bottom:16px;"><span style="color:#ffffff;font-size:18px;font-weight:900;letter-spacing:3px;">STM</span></div>`
+            }
             <h1 style="color:#ffffff;margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:1px;line-height:1.2;">STM DIGITAL LIBRARY</h1>
             <p style="color:#93c5fd;margin:0 0 16px;font-size:13px;font-weight:500;letter-spacing:0.5px;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
             <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;letter-spacing:1px;">
@@ -2727,12 +2739,15 @@ async function startServer() {
 </body>
 </html>`;
 
+      const inlineAttachments = logoAttachment ? [logoAttachment] : [];
+
       const mailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
         to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
         subject: `Quotation ${quotationNumber} — STM Digital Library`,
         html: htmlBody,
         attachments: [
+          ...inlineAttachments,
           {
             filename: `Quotation_${quotationNumber}.pdf`,
             content: pdfBase64,
