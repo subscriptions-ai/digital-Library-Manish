@@ -306,12 +306,12 @@ export function InvoicesPayments() {
                                           <td style={{color:"#ffffff", fontSize:"13px", fontWeight:600, textAlign:"right", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)"}}>{selectedQuotation.planType || "—"}</td>
                                         </tr>
                                       </tbody></table>
-                                      {selectedQuotation.pricingBreakdown?.breakdown?.length > 0 && (
+                                      {((selectedQuotation.items?.length > 0) || (selectedQuotation.pricingBreakdown?.breakdown?.length > 0)) && (
                                         <>
                                           <p style={{color:"#93c5fd", fontSize:"12px", margin:"14px 0 6px"}}>Selected Department(s)</p>
                                           <ul style={{margin:"0 0 14px", paddingLeft:"4px", listStyle:"none"}}>
-                                            {selectedQuotation.pricingBreakdown.breakdown.map((b: any, i: number) => (
-                                              <li key={i} style={{padding:"4px 0", color:"#e2e8f0", fontSize:"14px"}}>✅ &nbsp;{b.domain || b.contentType}</li>
+                                            {(selectedQuotation.items?.length > 0 ? selectedQuotation.items : selectedQuotation.pricingBreakdown?.breakdown || []).map((b: any, i: number) => (
+                                              <li key={i} style={{padding:"4px 0", color:"#e2e8f0", fontSize:"14px"}}>✅ &nbsp;{b.domainName || b.domain || b.contentType}</li>
                                             ))}
                                           </ul>
                                         </>

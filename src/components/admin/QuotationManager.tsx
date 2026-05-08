@@ -319,7 +319,7 @@ export function QuotationManager() {
                     <div>
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-wide mb-1">Package</p>
                       <p className="font-bold text-slate-900">{selected.planType || 'Monthly'} Plan</p>
-                      <p className="text-sm text-slate-600">{selected.allowedDomain || 'All Domains'}</p>
+                      <p className="text-sm text-slate-600">{getDomainList(selected)}</p>
                       {selected.notes && <p className="text-xs text-slate-500 mt-1 italic">{selected.notes}</p>}
                     </div>
                   </div>
@@ -483,12 +483,12 @@ export function QuotationManager() {
                                         <td style={{color:"#ffffff", fontSize:"13px", fontWeight:600, textAlign:"right", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)"}}>{selected.planType || "—"}</td>
                                       </tr>
                                     </tbody></table>
-                                    {selected.pricingBreakdown?.breakdown?.length > 0 && (
+                                    {((selected.items?.length > 0) || (selected.pricingBreakdown?.breakdown?.length > 0)) && (
                                       <>
                                         <p style={{color:"#93c5fd", fontSize:"12px", margin:"14px 0 6px"}}>Selected Department(s)</p>
                                         <ul style={{margin:"0 0 14px", paddingLeft:"4px", listStyle:"none"}}>
-                                          {selected.pricingBreakdown.breakdown.map((b: any, i: number) => (
-                                            <li key={i} style={{padding:"4px 0", color:"#e2e8f0", fontSize:"14px"}}>✅ &nbsp;{b.domain || b.contentType}</li>
+                                          {(selected.items?.length > 0 ? selected.items : selected.pricingBreakdown?.breakdown || []).map((b: any, i: number) => (
+                                            <li key={i} style={{padding:"4px 0", color:"#e2e8f0", fontSize:"14px"}}>✅ &nbsp;{b.domainName || b.domain || b.contentType}</li>
                                           ))}
                                         </ul>
                                       </>
