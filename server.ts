@@ -2489,101 +2489,243 @@ async function startServer() {
   // Send Quotation Email
   app.post("/api/quotation/send", async (req, res) => {
     try {
-      const { userEmail, userName, quotationData, pdfBase64, userId, organization, state } = req.body;
+      const { userEmail, userName, quotationData, pdfBase64, userId, organization, state, duration, quotationDate } = req.body;
       
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const quotationNumber = quotationData.quotationNumber;
       const totalAmount = typeof quotationData.totalAmount === 'number'
         ? quotationData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
-        : quotationData.totalAmount;
+        : (quotationData.totalAmount || '0');
 
-      const htmlBody = `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8" /></head>
-        <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
-          <div style="max-width:640px;margin:32px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-            <!-- Header -->
-            <div style="background:#0f172a;padding:32px 40px;text-align:center;">
-              <div style="display:inline-block;background:#2563eb;border-radius:10px;padding:10px 18px;margin-bottom:12px;">
-                <span style="color:#fff;font-size:15px;font-weight:900;letter-spacing:2px;">STM</span>
-              </div>
-              <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:900;letter-spacing:1px;">STM DIGITAL LIBRARY</h1>
-              <p style="color:#94a3b8;margin:6px 0 0;font-size:12px;">Division of Consortium eLearning Network Pvt. Ltd.</p>
-              <span style="display:inline-block;background:#16a34a;color:#fff;font-size:10px;font-weight:700;border-radius:20px;padding:5px 16px;margin-top:10px;letter-spacing:1px;">
-                21 YEARS OF TRUSTED EXCELLENCE IN EDUCATION &amp; ACADEMIC PUBLISHING
-              </span>
+      // Build departments list from items
+      const items: any[] = quotationData.items || [];
+      const departmentNames: string[] = items.map((it: any) => it.domainName).filter(Boolean);
+      const departmentsHtml = departmentNames.length
+        ? departmentNames.map(d => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">✅ &nbsp;${d}</li>`).join('')
+        : '<li style="color:#94a3b8;font-size:14px;">—</li>';
+
+      const issuedDate = quotationDate || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const subscriptionDuration = duration || (items[0]?.duration) || '—';
+
+      const htmlBody = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quotation — STM Digital Library</title>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;font-family:'Segoe UI',Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f7;padding:32px 0;">
+    <tr><td align="center">
+      <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);max-width:620px;">
+
+        <!-- ═══════════ HEADER ═══════════ -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:40px 48px;text-align:center;">
+            <div style="display:inline-block;background:#2563eb;border-radius:12px;padding:10px 22px;margin-bottom:16px;">
+              <span style="color:#ffffff;font-size:18px;font-weight:900;letter-spacing:3px;">STM</span>
             </div>
+            <h1 style="color:#ffffff;margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:1px;line-height:1.2;">STM DIGITAL LIBRARY</h1>
+            <p style="color:#93c5fd;margin:0 0 16px;font-size:13px;font-weight:500;letter-spacing:0.5px;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;letter-spacing:1px;">
+              🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
+            </span>
+          </td>
+        </tr>
 
-            <!-- Content -->
-            <div style="padding:36px 40px;">
-              <p style="font-size:15px;color:#1e293b;margin:0 0 8px;">Dear <strong>${userName}</strong>,</p>
-              <p style="font-size:14px;color:#475569;line-height:1.7;margin:0 0 28px;">
-                Thank you for your interest in <strong>STM Digital Library</strong>. Please find your quotation attached to this email as a PDF.
-                Below is a summary of your quotation details:
-              </p>
+        <!-- ═══════════ GREETING ═══════════ -->
+        <tr>
+          <td style="padding:36px 48px 0;">
+            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${userName},</p>
+            <p style="font-size:14px;color:#475569;line-height:1.75;margin:0 0 20px;">
+              Greetings from <strong>STM Digital Library</strong>!<br/>
+              Thank you for your interest in our digital library subscription services.<br/>
+              Please find attached the quotation for the selected department(s) and subscription duration.
+            </p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 28px;"/>
+          </td>
+        </tr>
 
-              <!-- Summary Box -->
-              <div style="background:#1d4ed8;border-radius:12px;padding:24px 28px;margin-bottom:28px;">
-                <p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;margin:0 0 16px;text-transform:uppercase;">Quotation Summary</p>
-                <table style="width:100%;border-collapse:collapse;">
-                  <tr>
-                    <td style="color:#93c5fd;font-size:12px;padding:4px 0;">Quotation Number</td>
-                    <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:4px 0;">${quotationNumber}</td>
-                  </tr>
-                  <tr>
-                    <td style="color:#93c5fd;font-size:12px;padding:4px 0;">Organization</td>
-                    <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:4px 0;">${organization || '—'}</td>
-                  </tr>
-                  <tr>
-                    <td colspan="2" style="border-top:1px solid rgba(255,255,255,0.2);padding:8px 0 0;"></td>
-                  </tr>
-                  <tr>
-                    <td style="color:#bfdbfe;font-size:12px;padding:4px 0;">Grand Total (incl. GST)</td>
-                    <td style="color:#ffffff;font-size:18px;font-weight:900;text-align:right;padding:4px 0;">₹${totalAmount}</td>
-                  </tr>
-                </table>
-              </div>
+        <!-- ═══════════ QUOTATION DETAILS ═══════════ -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1d4ed8,#1e40af);border-radius:14px;overflow:hidden;">
+              <tr>
+                <td style="padding:20px 28px 10px;">
+                  <p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 18px;">📄 &nbsp;Quotation Details</p>
 
-              <!-- Terms -->
-              <div style="background:#f8fafc;border-radius:10px;padding:20px 24px;margin-bottom:28px;border:1px solid #e2e8f0;">
-                <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;">Terms &amp; Conditions</p>
-                <ul style="margin:0;padding-left:16px;color:#475569;font-size:13px;line-height:1.8;">
-                  <li>Subscription will be activated post-payment confirmation.</li>
-                  <li>18% GST applicable as per Government of India rules.</li>
-                  <li>Quotation is valid for <strong>30 days</strong> from the date of issue.</li>
-                  <li>All disputes are subject to <strong>Delhi Jurisdiction</strong> only.</li>
-                </ul>
-              </div>
+                  <!-- Row -->
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);width:55%;">Quotation Number</td>
+                      <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${quotationNumber}</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Quotation Date</td>
+                      <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${issuedDate}</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Validity</td>
+                      <td style="color:#86efac;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">30 Days from Issue</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Duration</td>
+                      <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${subscriptionDuration}</td>
+                    </tr>
+                  </table>
 
-              <p style="font-size:14px;color:#475569;line-height:1.7;margin:0 0 24px;">
-                To proceed with the subscription, please transfer the quoted amount to our bank account (details in the attached PDF) and share the payment confirmation at 
-                <a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:700;">info@celnet.in</a>.
-              </p>
+                  <!-- Departments -->
+                  <p style="color:#93c5fd;font-size:12px;margin:14px 0 6px;">Selected Department(s)</p>
+                  <ul style="margin:0 0 14px;padding-left:4px;list-style:none;">
+                    ${departmentsHtml}
+                  </ul>
 
-              <!-- Signature Block -->
-              <div style="border-top:1px solid #e2e8f0;padding-top:24px;text-align:right;">
-                <p style="color:#94a3b8;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 4px;">For Publisher</p>
-                <p style="color:#1e293b;font-size:14px;font-weight:700;margin:0 0 16px;">STM Digital Library</p>
-                <p style="color:#475569;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0;">Authorized Signatory</p>
-              </div>
-            </div>
+                  <!-- Grand Total -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.25);padding-top:14px;margin-top:4px;">
+                    <tr>
+                      <td style="color:#bfdbfe;font-size:13px;font-weight:600;padding-top:14px;">Total Amount (Including 18% GST)</td>
+                      <td style="text-align:right;padding-top:14px;">
+                        <span style="color:#ffffff;font-size:22px;font-weight:900;">₹${totalAmount}</span>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
-            <!-- Footer -->
-            <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
-              <p style="color:#94a3b8;font-size:11px;margin:0 0 4px;">
-                <strong style="color:#64748b;">STM Digital Library</strong> | Consortium eLearning Network Pvt. Ltd.
-              </p>
-              <p style="color:#94a3b8;font-size:11px;margin:0;">
-                A-118, 1st Floor, Sector-63, Noida - 201301 | 
-                <a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;">info@celnet.in</a> | 
-                GSTIN: 09AACCC6494M1Z1
-              </p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
+        <!-- ═══════════ ABOUT STM ═══════════ -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:14px;border:1px solid #bae6fd;">
+              <tr>
+                <td style="padding:22px 28px;">
+                  <p style="color:#0369a1;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">📚 &nbsp;About STM Digital Library</p>
+                  <p style="color:#475569;font-size:13px;margin:0 0 12px;line-height:1.7;">STM Digital Library is a curated academic platform providing access to:</p>
+                  <table cellpadding="0" cellspacing="0">
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Academic Journals</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Conference Proceedings</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Educational Videos</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;E-books &amp; Reference Materials</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Theses &amp; Research Content</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Legally sourced open-access academic resources</td></tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ═══════════ PAYMENT INFO ═══════════ -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fefce8;border-radius:14px;border:1px solid #fde68a;">
+              <tr>
+                <td style="padding:22px 28px;">
+                  <p style="color:#92400e;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">💳 &nbsp;Payment Information</p>
+                  <p style="color:#78350f;font-size:13px;font-weight:600;margin:0 0 12px;">Payments must be made only to:</p>
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;width:45%;">Account Name</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">Consortium eLearning Network Pvt. Ltd.</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Account Number</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">03942000001153</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Bank Name</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">HDFC Bank</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Branch</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:600;padding:5px 0;border-bottom:1px solid #fde68a;">Sector-62, Noida, U.P., India</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;">IFSC Code</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;">HDFC0002649</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ═══════════ CONTACT INFO ═══════════ -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:14px;border:1px solid #bbf7d0;">
+              <tr>
+                <td style="padding:22px 28px;">
+                  <p style="color:#15803d;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">📞 &nbsp;Contact Information</p>
+                  <p style="color:#166534;font-size:13px;font-weight:500;margin:0 0 10px;">For any assistance regarding subscription, quotation, or payment:</p>
+                  <table cellpadding="0" cellspacing="4">
+                    <tr>
+                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
+                        📧 &nbsp;<a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:600;">info@celnet.in</a>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
+                        📞 &nbsp;<a href="tel:+919810078958" style="color:#1e293b;text-decoration:none;font-weight:600;">+91-9810078958</a>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
+                        🌐 &nbsp;<a href="https://journalslibrary.com/" style="color:#2563eb;text-decoration:none;font-weight:600;">journalslibrary.com</a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ═══════════ SIGNATURE ═══════════ -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #e2e8f0;padding-top:24px;">
+              <tr>
+                <td style="padding-top:20px;">
+                  <p style="color:#475569;font-size:14px;margin:0 0 4px;">Warm regards,</p>
+                  <p style="color:#1e293b;font-size:15px;font-weight:700;margin:0 0 2px;">STM Digital Library Team</p>
+                  <p style="color:#64748b;font-size:12px;margin:0;">Consortium eLearning Network Pvt. Ltd.</p>
+                  <p style="color:#64748b;font-size:12px;margin:4px 0 0;">A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India</p>
+                </td>
+                <td style="text-align:right;vertical-align:bottom;padding-top:20px;">
+                  <p style="color:#94a3b8;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 4px;">For Publisher</p>
+                  <p style="color:#1e293b;font-size:13px;font-weight:700;margin:0 0 4px;">STM Digital Library</p>
+                  <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0;">Authorized Signatory</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ═══════════ FOOTER ═══════════ -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:28px 48px;text-align:center;">
+            <p style="color:#f8fafc;font-size:13px;font-weight:700;margin:0 0 6px;letter-spacing:0.5px;">
+              🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
+            </p>
+            <p style="color:#64748b;font-size:11px;margin:0 0 4px;">
+              © ${new Date().getFullYear()} Consortium eLearning Network Pvt. Ltd. All rights reserved.
+            </p>
+            <p style="color:#475569;font-size:11px;margin:0;">
+              GSTIN: 09AACCC6494M1Z1 &nbsp;|&nbsp; PAN: AACCC6494M &nbsp;|&nbsp; CIN: U80302DL2005PTC138759
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 
       const mailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
@@ -2598,7 +2740,6 @@ async function startServer() {
           }
         ]
       };
-
       await transporter.sendMail(mailOptions);
       
       // Save to PostgreSQL

@@ -522,6 +522,8 @@ export function QuotationWizard() {
           organization: formData.organization,
           state: formData.state,
           userId: user?.uid,
+          duration: formData.duration,
+          quotationDate: format(new Date(), 'dd MMM yyyy'),
           quotationData: {
             quotationNumber: qtn,
             totalAmount: gstBreakdown.totalAmount,
