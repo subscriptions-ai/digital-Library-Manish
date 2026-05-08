@@ -194,8 +194,8 @@ export function InvoicesPayments() {
               <button onClick={() => setSelectedQuotation(null)} className="text-slate-400 hover:text-white px-3 py-1 bg-slate-800 rounded-lg transition-colors">Close</button>
             </div>
             
-            <div className="flex-1 overflow-hidden">
-              <div className="grid grid-cols-1 lg:grid-cols-5 h-full">
+            <div className="flex-1 overflow-hidden min-h-0">
+              <div className="grid grid-cols-1 lg:grid-cols-5 h-full min-h-0">
                 
                 {/* Left side: Info */}
                 <div className="lg:col-span-2 bg-white p-6 overflow-y-auto border-r border-slate-200">
@@ -248,7 +248,7 @@ export function InvoicesPayments() {
                 </div>
 
                 {/* Right side: Email Preview */}
-                <div className="lg:col-span-3 bg-slate-100 flex flex-col h-full">
+                <div className="lg:col-span-3 bg-slate-100 flex flex-col h-full min-h-0">
                   <div className="bg-slate-200 p-3 text-slate-600 flex justify-between items-center shrink-0 border-b border-slate-300">
                     <span className="text-xs font-bold uppercase tracking-wide">Sent Email Copy</span>
                   </div>

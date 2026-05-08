@@ -301,7 +301,7 @@ export function QuotationManager() {
             </div>
 
             {/* Split Layout Container */}
-            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-5">
+            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-5 min-h-0">
               
               {/* Left Column: Details & Actions */}
               <div className="lg:col-span-2 overflow-y-auto p-6 border-r border-slate-200 flex flex-col gap-5">
@@ -421,7 +421,7 @@ export function QuotationManager() {
               </div>
 
               {/* Right Column: Email Preview */}
-              <div className="lg:col-span-3 flex flex-col bg-slate-100 h-full">
+              <div className="lg:col-span-3 flex flex-col bg-slate-100 h-full min-h-0">
                 <div className="bg-slate-800 p-3 px-5 text-white flex justify-between items-center shrink-0">
                   <div className="flex items-center gap-2">
                     <Mail size={16} className="text-slate-300" />
