@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
-import { format } from 'date-fns';
 import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink, Mail, FileText } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
