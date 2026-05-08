@@ -19,6 +19,17 @@ const STATUS_ICONS: Record<string, any> = {
   Cancelled: <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />,
 };
 
+const getDomainList = (q: any) => {
+  if (Array.isArray(q.items) && q.items.length > 0) {
+    const domains = q.items.map((i: any) => i.domainName || i.domain || i.contentType).filter(Boolean);
+    if (domains.length > 0) return domains.join(', ');
+  }
+  if (q.pricingBreakdown?.breakdown && Array.isArray(q.pricingBreakdown.breakdown) && q.pricingBreakdown.breakdown.length > 0) {
+    const domains = q.pricingBreakdown.breakdown.map((i: any) => i.domainName || i.domain || i.contentType).filter(Boolean);
+    if (domains.length > 0) return domains.join(', ');
+  }
+  return q.allowedDomain || 'All Domains';
+};
 
 export function QuotationManager() {
   const [quotations, setQuotations] = useState<any[]>([]);
@@ -115,7 +126,7 @@ export function QuotationManager() {
       q.userEmail,
       q.organization || '',
       q.planType || 'Monthly',
-      q.allowedDomain || 'All Domains',
+      getDomainList(q),
       q.total,
       q.createdAt ? format(new Date(q.createdAt), 'yyyy-MM-dd') : '',
       q.status
@@ -232,7 +243,7 @@ export function QuotationManager() {
                   </span>
                 </td>
                 <td className="px-5 py-4">
-                  <div className="text-slate-600 text-[11px] font-medium leading-tight max-w-[150px] truncate">{q.allowedDomain || 'All Domains'}</div>
+                  <div className="text-slate-600 text-[11px] font-medium leading-tight max-w-[150px] truncate" title={getDomainList(q)}>{getDomainList(q)}</div>
                 </td>
                 <td className="px-5 py-4">
                   <div className="font-bold text-slate-900">{formatPrice(q.total)}</div>
