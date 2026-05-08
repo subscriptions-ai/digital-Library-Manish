@@ -63,6 +63,7 @@ export function QuotationWizard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>(1);
+  const [quotationNumber, setQuotationNumber] = useState<string>('');
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     designation: '',
@@ -152,9 +153,25 @@ export function QuotationWizard() {
     return true;
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
     if (step === 1 && validateStep1()) setStep(2);
-    else if (step === 2 && validateStep2()) setStep(3);
+    else if (step === 2 && validateStep2()) {
+      // Fetch sequential quotation number when entering preview step
+      if (!quotationNumber) {
+        try {
+          const res = await fetch('/api/quotation/next-number');
+          const data = await res.json();
+          if (data.quotationNumber) setQuotationNumber(data.quotationNumber);
+        } catch {
+          // Fallback to a temp number if server is unreachable
+          const now = new Date();
+          const yr = now.getFullYear();
+          const mo = String(now.getMonth() + 1).padStart(2, '0');
+          setQuotationNumber(`QTN-${yr}-${mo}-01`);
+        }
+      }
+      setStep(3);
+    }
   };
 
   const prevStep = () => {
@@ -168,9 +185,12 @@ export function QuotationWizard() {
   const isInterState = formData.state !== COMPANY_STATE;
   const gstBreakdown = calculateGST(totalBasePrice, isInterState);
 
-  const createPdfDocument = () => {
+  const createPdfDocument = async () => {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const quotationNumber = `QTN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const qtnNum = quotationNumber || (() => {
+      const now = new Date();
+      return `QTN-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    })();
     const pdfDate = format(new Date(), 'dd MMM yyyy');
     const validTill = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'dd MMM yyyy');
     const pageW = 210;
@@ -189,7 +209,7 @@ export function QuotationWizard() {
     doc.setDrawColor(147, 197, 253);
     doc.setLineWidth(0.3);
     doc.roundedRect(margin, 13, 33, 5, 1.5, 1.5, 'S');
-    doc.text('PROFORMA INVOICE', margin + 16.5, 16.5, { align: 'center' });
+    doc.text('QUOTATION', margin + 16.5, 16.5, { align: 'center' });
     doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'bold');
     doc.text('SUBJECT TO DELHI JURISDICTION', pageW - margin, 16.5, { align: 'right' });
@@ -243,7 +263,7 @@ export function QuotationWizard() {
     doc.setFontSize(5.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 163, 184);
     doc.text('QUOTATION NUMBER', col1X + 3, gridY + 5);
     doc.setFontSize(7); doc.setTextColor(37, 99, 235);
-    doc.text(quotationNumber, col1X + 3, gridY + 9);
+    doc.text(qtnNum, col1X + 3, gridY + 9);
     doc.setFontSize(5.5); doc.setTextColor(148, 163, 184);
     doc.text('ISSUE DATE', col1X + 3, gridY + 15);
     doc.setFontSize(7); doc.setTextColor(30, 41, 59);
@@ -426,55 +446,43 @@ export function QuotationWizard() {
     doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 163, 184);
     doc.text('FOR PUBLISHER', pageW - margin, sigY, { align: 'right' }); sigY += 4;
     doc.setFontSize(7); doc.setTextColor(30, 41, 59);
-    doc.text('Consortium eLearning Network Pvt. Ltd.', pageW - margin, sigY, { align: 'right' }); sigY += 4;
+    doc.text('STM Digital Library', pageW - margin, sigY, { align: 'right' }); sigY += 4;
     const sealW = 40;
-    doc.setLineDashPattern([1, 1], 0);
-    doc.rect(pageW - margin - sealW, sigY, sealW, 14);
-    doc.setLineDashPattern([], 0);
-    doc.setFontSize(5.5); doc.setTextColor(180, 180, 190);
-    doc.text('Seal & Signature', pageW - margin - sealW / 2, sigY + 8, { align: 'center' }); sigY += 17;
+    // Try to embed signature image
+    try {
+      const sigResp = await fetch('/assets/signature.png');
+      if (sigResp.ok) {
+        const blob = await sigResp.blob();
+        const b64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(blob);
+        });
+        doc.addImage(`data:image/png;base64,${b64}`, 'PNG', pageW - margin - sealW, sigY, sealW, 14);
+      } else {
+        throw new Error('sig not found');
+      }
+    } catch {
+      doc.setLineDashPattern([1, 1], 0);
+      doc.rect(pageW - margin - sealW, sigY, sealW, 14);
+      doc.setLineDashPattern([], 0);
+      doc.setFontSize(5.5); doc.setTextColor(180, 180, 190);
+      doc.text('Seal & Signature', pageW - margin - sealW / 2, sigY + 8, { align: 'center' });
+    }
+    sigY += 17;
     doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(71, 85, 105);
     doc.text('AUTHORIZED SIGNATORY', pageW - margin, sigY, { align: 'right' });
 
-    return { doc, quotationNumber };
+    return { doc, quotationNumber: qtnNum };
   };
 
   const previewRef = useRef<HTMLDivElement>(null);
 
   const generatePDF = async () => {
-    const el = previewRef.current;
-    if (!el) {
-      toast.error('Preview not ready. Please try again.');
-      return;
-    }
     const toastId = toast.loading('Generating PDF...');
     try {
-      const { toJpeg } = await import('html-to-image');
-      const imgData = await toJpeg(el, {
-        quality: 0.95,
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-      });
-      
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      
-      // Calculate image dimensions to fit A4 width
-      const imgProps = pdf.getImageProperties(imgData);
-      const ratio = imgProps.height / imgProps.width;
-      const imgW = pageW;
-      const imgH = pageW * ratio;
-      
-      let posY = 0;
-      while (posY < imgH) {
-        if (posY > 0) pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, -posY, imgW, imgH);
-        posY += pageH;
-      }
-      
-      const qtn = `QTN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      pdf.save(`Quotation_${qtn}.pdf`);
+      const { doc, quotationNumber: qtn } = await createPdfDocument();
+      doc.save(`Quotation_${qtn}.pdf`);
       toast.success('Quotation downloaded!', { id: toastId });
     } catch (error: any) {
       console.error('PDF Generation failed:', error);
@@ -485,7 +493,7 @@ export function QuotationWizard() {
   const handleSendEmail = async () => {
     toast.loading('Sending quotation...', { id: 'send-email' });
     try {
-      const { doc, quotationNumber } = createPdfDocument();
+      const { doc, quotationNumber: qtn } = await createPdfDocument();
       // Generate base64
       const pdfBase64 = doc.output('datauristring').split(',')[1];
       
@@ -515,7 +523,7 @@ export function QuotationWizard() {
           state: formData.state,
           userId: user?.uid,
           quotationData: {
-            quotationNumber,
+            quotationNumber: qtn,
             totalAmount: gstBreakdown.totalAmount,
             subtotal: gstBreakdown.basePrice,
             gstAmount: gstBreakdown.totalGst,
@@ -960,7 +968,7 @@ export function QuotationWizard() {
                 {/* Header */}
                 <div className="p-8 border-b border-slate-100">
                   <div className="flex justify-between items-center mb-7">
-                    <span className="text-[10px] font-extrabold tracking-widest uppercase border border-blue-300 text-blue-600 rounded-full px-3 py-1">Proforma Invoice</span>
+                    <span className="text-[10px] font-extrabold tracking-widest uppercase border border-blue-300 text-blue-600 rounded-full px-3 py-1">Quotation</span>
                     <span className="text-[10px] font-bold tracking-widest uppercase text-slate-400">Subject to Delhi Jurisdiction</span>
                   </div>
 
@@ -986,7 +994,7 @@ export function QuotationWizard() {
                     <div className="p-5 space-y-4 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/40">
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Quotation Number</p>
-                        <p className="font-black text-blue-600">QTN-{new Date().getFullYear()}-XXXX</p>
+                        <p className="font-black text-blue-600">{quotationNumber || 'Generating...'}</p>
                       </div>
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Issue Date</p>
@@ -1195,7 +1203,7 @@ export function QuotationWizard() {
                     <div className="flex flex-col items-end justify-between gap-4">
                       <div className="text-right">
                         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">For Publisher</p>
-                        <p className="text-sm font-bold text-slate-800 mt-1">Consortium eLearning Network Pvt. Ltd.</p>
+                        <p className="text-sm font-bold text-slate-800 mt-1">STM Digital Library</p>
                       </div>
                       <div className="w-44 h-24 flex items-center justify-center">
                         <img src="/assets/signature.png" alt="Authorized Signature" className="max-h-full max-w-full object-contain" />

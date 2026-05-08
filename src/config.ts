@@ -1,5 +1,5 @@
 export const COMPANY_DETAILS = {
-  name: "Consortium eLearning Network Pvt. Ltd.",
+  name: "STM Digital Library",
   address: "A-118, 1st Floor, Sector 63, Noida, Uttar Pradesh, India - 201301",
   tel: ["0120-4781200", "0120-4781206"],
   mobile: "+91-9810078958",

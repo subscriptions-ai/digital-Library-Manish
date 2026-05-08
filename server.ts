@@ -1556,6 +1556,25 @@ async function startServer() {
   });
 
   // ========================
+  // Generate next sequential quotation number
+  app.get("/api/quotation/next-number", async (_req, res) => {
+    try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const prefix = `QTN-${year}-${month}-`;
+      // Count existing quotations with this month prefix
+      const count = await (prisma as any).quotation.count({
+        where: { id: { startsWith: prefix } }
+      });
+      const seq = String(count + 1).padStart(2, '0');
+      res.json({ quotationNumber: `${prefix}${seq}` });
+    } catch (error) {
+      console.error("Next quotation number error:", error);
+      res.status(500).json({ error: "Failed to generate quotation number" });
+    }
+  });
+
   // PUBLIC + AUTH: Quotations
   // ========================
 
@@ -2473,14 +2492,107 @@ async function startServer() {
       const { userEmail, userName, quotationData, pdfBase64, userId, organization, state } = req.body;
       
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const quotationNumber = quotationData.quotationNumber;
+      const totalAmount = typeof quotationData.totalAmount === 'number'
+        ? quotationData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
+        : quotationData.totalAmount;
+
+      const htmlBody = `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8" /></head>
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+          <div style="max-width:640px;margin:32px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+            <!-- Header -->
+            <div style="background:#0f172a;padding:32px 40px;text-align:center;">
+              <div style="display:inline-block;background:#2563eb;border-radius:10px;padding:10px 18px;margin-bottom:12px;">
+                <span style="color:#fff;font-size:15px;font-weight:900;letter-spacing:2px;">STM</span>
+              </div>
+              <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:900;letter-spacing:1px;">STM DIGITAL LIBRARY</h1>
+              <p style="color:#94a3b8;margin:6px 0 0;font-size:12px;">Division of Consortium eLearning Network Pvt. Ltd.</p>
+              <span style="display:inline-block;background:#16a34a;color:#fff;font-size:10px;font-weight:700;border-radius:20px;padding:5px 16px;margin-top:10px;letter-spacing:1px;">
+                21 YEARS OF TRUSTED EXCELLENCE IN EDUCATION &amp; ACADEMIC PUBLISHING
+              </span>
+            </div>
+
+            <!-- Content -->
+            <div style="padding:36px 40px;">
+              <p style="font-size:15px;color:#1e293b;margin:0 0 8px;">Dear <strong>${userName}</strong>,</p>
+              <p style="font-size:14px;color:#475569;line-height:1.7;margin:0 0 28px;">
+                Thank you for your interest in <strong>STM Digital Library</strong>. Please find your quotation attached to this email as a PDF.
+                Below is a summary of your quotation details:
+              </p>
+
+              <!-- Summary Box -->
+              <div style="background:#1d4ed8;border-radius:12px;padding:24px 28px;margin-bottom:28px;">
+                <p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;margin:0 0 16px;text-transform:uppercase;">Quotation Summary</p>
+                <table style="width:100%;border-collapse:collapse;">
+                  <tr>
+                    <td style="color:#93c5fd;font-size:12px;padding:4px 0;">Quotation Number</td>
+                    <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:4px 0;">${quotationNumber}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#93c5fd;font-size:12px;padding:4px 0;">Organization</td>
+                    <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:4px 0;">${organization || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="border-top:1px solid rgba(255,255,255,0.2);padding:8px 0 0;"></td>
+                  </tr>
+                  <tr>
+                    <td style="color:#bfdbfe;font-size:12px;padding:4px 0;">Grand Total (incl. GST)</td>
+                    <td style="color:#ffffff;font-size:18px;font-weight:900;text-align:right;padding:4px 0;">₹${totalAmount}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Terms -->
+              <div style="background:#f8fafc;border-radius:10px;padding:20px 24px;margin-bottom:28px;border:1px solid #e2e8f0;">
+                <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 12px;">Terms &amp; Conditions</p>
+                <ul style="margin:0;padding-left:16px;color:#475569;font-size:13px;line-height:1.8;">
+                  <li>Subscription will be activated post-payment confirmation.</li>
+                  <li>18% GST applicable as per Government of India rules.</li>
+                  <li>Quotation is valid for <strong>30 days</strong> from the date of issue.</li>
+                  <li>All disputes are subject to <strong>Delhi Jurisdiction</strong> only.</li>
+                </ul>
+              </div>
+
+              <p style="font-size:14px;color:#475569;line-height:1.7;margin:0 0 24px;">
+                To proceed with the subscription, please transfer the quoted amount to our bank account (details in the attached PDF) and share the payment confirmation at 
+                <a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:700;">info@celnet.in</a>.
+              </p>
+
+              <!-- Signature Block -->
+              <div style="border-top:1px solid #e2e8f0;padding-top:24px;text-align:right;">
+                <p style="color:#94a3b8;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 4px;">For Publisher</p>
+                <p style="color:#1e293b;font-size:14px;font-weight:700;margin:0 0 16px;">STM Digital Library</p>
+                <p style="color:#475569;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0;">Authorized Signatory</p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+              <p style="color:#94a3b8;font-size:11px;margin:0 0 4px;">
+                <strong style="color:#64748b;">STM Digital Library</strong> | Consortium eLearning Network Pvt. Ltd.
+              </p>
+              <p style="color:#94a3b8;font-size:11px;margin:0;">
+                A-118, 1st Floor, Sector-63, Noida - 201301 | 
+                <a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;">info@celnet.in</a> | 
+                GSTIN: 09AACCC6494M1Z1
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
       const mailOptions = {
-        from: emailFrom,
+        from: `"STM Digital Library" <${emailFrom}>`,
         to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
-        subject: `Quotation for STM Digital Library - ${quotationData.quotationNumber}`,
-        text: `Dear ${userName},\n\nPlease find attached the quotation for your requested departments.\n\nQuotation Number: ${quotationData.quotationNumber}\nTotal Amount: ₹${quotationData.totalAmount}\n\nRegards,\nSTM Digital Library Team`,
+        subject: `Quotation ${quotationNumber} — STM Digital Library`,
+        html: htmlBody,
         attachments: [
           {
-            filename: `Quotation_${quotationData.quotationNumber}.pdf`,
+            filename: `Quotation_${quotationNumber}.pdf`,
             content: pdfBase64,
             encoding: 'base64'
           }
@@ -2490,22 +2602,27 @@ async function startServer() {
       await transporter.sendMail(mailOptions);
       
       // Save to PostgreSQL
-      await prisma.quotation.create({
-        data: {
-          id: quotationData.quotationNumber,
-          userEmail,
-          userName,
-          organization: organization || null,
-          state: state || null,
-          items: quotationData.items || [],
-          subtotal: parseFloat(quotationData.subtotal) || 0,
-          gstAmount: parseFloat(quotationData.gstAmount) || 0,
-          total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, '')) || 0,
-          status: "Sent",
-          userId: userId || null,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        }
-      });
+      try {
+        await prisma.quotation.create({
+          data: {
+            id: quotationNumber,
+            userEmail,
+            userName,
+            organization: organization || null,
+            state: state || null,
+            items: quotationData.items || [],
+            subtotal: parseFloat(quotationData.subtotal) || 0,
+            gstAmount: parseFloat(quotationData.gstAmount) || 0,
+            total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, '')) || 0,
+            status: "Sent",
+            userId: userId || null,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          }
+        });
+      } catch (dbErr: any) {
+        // Non-blocking: email was already sent
+        console.warn("Quotation DB save failed (non-blocking):", dbErr?.message);
+      }
 
       res.json({ status: "success", message: "Quotation sent successfully" });
     } catch (error) {
