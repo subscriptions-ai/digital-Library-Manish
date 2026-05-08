@@ -8,3 +8,5 @@ coverage/
 !.env.example
 
 /generated/prisma
+Digital Library (1).pdf
+test_content.ts
