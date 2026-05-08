@@ -459,6 +459,7 @@ export function QuotationManager() {
                           <p>This is a system-generated preview. The exact email formatting for this legacy record was not retained.</p>
                         </div>
                       </div>
+                    )}
                   </div>
                 </div>
               </div>
