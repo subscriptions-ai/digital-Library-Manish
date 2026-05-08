@@ -6,6 +6,7 @@ if (!(crypto as any).hash) {
   };
 }
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import Razorpay from "razorpay";
@@ -2497,16 +2498,9 @@ async function startServer() {
         ? quotationData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
         : (quotationData.totalAmount || '0');
 
-      // Try to read logo for inline CID attachment
-      let logoAttachment: any = null;
-      try {
-        const fs = await import('fs');
-        const path = await import('path');
-        const logoPath = path.resolve('./public/assets/stm-logo.png');
-        if (fs.existsSync(logoPath)) {
-          logoAttachment = { filename: 'stm-logo.png', path: logoPath, cid: 'stm-logo' };
-        }
-      } catch { /* logo is optional */ }
+      // Read logo for CID inline attachment
+      const logoPath = path.join(process.cwd(), 'public', 'assets', 'stm-logo.png');
+      const logoExists = fs.existsSync(logoPath);
 
       // Build departments list from items
       const items: any[] = quotationData.items || [];
@@ -2534,8 +2528,8 @@ async function startServer() {
         <!-- ═══════════ HEADER ═══════════ -->
         <tr>
           <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
-            ${logoAttachment
-              ? `<img src="cid:stm-logo" alt="STM Digital Library" width="90" height="90" style="width:90px;height:90px;object-fit:contain;margin-bottom:14px;display:block;margin-left:auto;margin-right:auto;" />`
+            ${logoExists
+              ? `<img src="cid:stm-logo" alt="STM Digital Library" width="110" height="110" style="display:block;margin:0 auto 16px;border-radius:12px;" />`
               : `<div style="display:inline-block;background:#2563eb;border-radius:12px;padding:10px 22px;margin-bottom:16px;"><span style="color:#ffffff;font-size:18px;font-weight:900;letter-spacing:3px;">STM</span></div>`
             }
             <h1 style="color:#ffffff;margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:1px;line-height:1.2;">STM DIGITAL LIBRARY</h1>
@@ -2739,21 +2733,27 @@ async function startServer() {
 </body>
 </html>`;
 
-      const inlineAttachments = logoAttachment ? [logoAttachment] : [];
+      const inlineAttachments: any[] = [
+        {
+          filename: `Quotation_${quotationNumber}.pdf`,
+          content: pdfBase64,
+          encoding: 'base64'
+        }
+      ];
+      if (logoExists) {
+        inlineAttachments.push({
+          filename: 'stm-logo.png',
+          path: logoPath,
+          cid: 'stm-logo'  // Referenced as cid:stm-logo in the HTML
+        });
+      }
 
       const mailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
         to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
         subject: `Quotation ${quotationNumber} — STM Digital Library`,
         html: htmlBody,
-        attachments: [
-          ...inlineAttachments,
-          {
-            filename: `Quotation_${quotationNumber}.pdf`,
-            content: pdfBase64,
-            encoding: 'base64'
-          }
-        ]
+        attachments: inlineAttachments
       };
       await transporter.sendMail(mailOptions);
 

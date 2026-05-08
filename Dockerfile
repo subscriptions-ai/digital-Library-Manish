@@ -33,15 +33,16 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server_compiled.cjs ./
 COPY seed-admin.ts ./
 COPY prisma/ ./prisma/
+COPY public/ ./public/
 RUN npx prisma@6.19.3 generate
 
 # Cache buster to bypass BuildKit mount locks on Coolify
-ENV CACHE_BUSTER="2026-05-08T10-56-00-REBUILD"
+ENV CACHE_BUSTER="2026-05-08T14-02-00-LOGO"
 
 # Expose the port (default 3000, overridable via PORT env var)
 EXPOSE 3000
 
-LABEL deployment.id="2026-05-08T10-56-00-REBUILD"
+LABEL deployment.id="2026-05-08T14-02-00-LOGO"
 
 # Run DB schema sync then start the server using the compiled CJS file
 CMD ["npm", "start"]
