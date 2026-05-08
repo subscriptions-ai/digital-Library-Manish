@@ -20,6 +20,8 @@ export interface UserProfile {
   subscriptionId?: string;
   organization?: string;
   isFirstLogin?: boolean;
+  isDemoAccount?: boolean;
+  demoExpiresAt?: any;
   status: 'Active' | 'Inactive';
   createdAt: any;
   updatedAt: any;

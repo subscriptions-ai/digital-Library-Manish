@@ -251,6 +251,13 @@ export function LMSDashboard() {
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900 transition-colors duration-300`}>
+      {/* ── DEMO ACCOUNT BANNER ── */}
+      {profile?.isDemoAccount && (
+        <div className="bg-orange-500 text-white px-4 py-2 text-center text-sm font-bold shadow-md relative z-40">
+          ⚠️ This is a Demo Account. It is valid for 30 days and will expire on {profile.demoExpiresAt ? new Date(profile.demoExpiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its expiry date'}.
+        </div>
+      )}
+
       {/* ── TOP HEADER ── */}
       <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-30 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">

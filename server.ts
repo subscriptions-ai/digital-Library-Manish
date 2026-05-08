@@ -175,6 +175,14 @@ async function startServer() {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
+      if (userObj.isBlocked) {
+        return res.status(403).json({ error: "Your account has been blocked. Please contact support." });
+      }
+
+      if (userObj.isDemoAccount && userObj.demoExpiresAt && new Date() > userObj.demoExpiresAt) {
+        return res.status(403).json({ error: "Your demo account has expired. Please upgrade to continue." });
+      }
+
       const isPasswordValid = await bcrypt.compare(password, userObj.password);
       
       if (!isPasswordValid) {
@@ -1008,7 +1016,7 @@ async function startServer() {
   // POST /api/admin/users/create — create user + send email
   app.post("/api/admin/users/create", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
-      const { name, email, role, institutionId, institutionName, sendEmail, customPassword } = req.body;
+      const { name, email, role, institutionId, institutionName, sendEmail, customPassword, isDemoAccount } = req.body;
 
       if (!name || !email || !role) {
         return res.status(400).json({ error: "Name, email and role are required" });
@@ -1045,7 +1053,9 @@ async function startServer() {
           status: 'Active',
           isFirstLogin: true,
           organization: institutionName || undefined,
-          institutionId: newInstId || institutionId || undefined
+          institutionId: newInstId || institutionId || undefined,
+          isDemoAccount: Boolean(isDemoAccount),
+          demoExpiresAt: isDemoAccount ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null
         }
       });
 

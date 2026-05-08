@@ -3,8 +3,10 @@ import { motion } from 'framer-motion';
 import { CreditCard, Library, Clock, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function SubscriberOverview() {
+  const { profile } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +39,20 @@ export function SubscriberOverview() {
 
   return (
     <div className="space-y-8 pb-12">
+      {profile?.isDemoAccount && (
+        <div className="bg-orange-500 text-white p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-orange-500/20">
+          <div>
+            <h2 className="font-bold text-lg">⚠️ Demo Account</h2>
+            <p className="text-sm text-orange-100 mt-1">
+              This demo account is valid for 30 days and will expire on {profile.demoExpiresAt ? new Date(profile.demoExpiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its expiry date'}.
+            </p>
+          </div>
+          <Link to="/pricing" className="bg-white text-orange-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-orange-50 transition-colors">
+            Upgrade Now
+          </Link>
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome back!</h1>
         <p className="text-sm text-slate-500 mt-1">Here's an overview of your active subscriptions and content access.</p>

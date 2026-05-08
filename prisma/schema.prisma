@@ -21,6 +21,9 @@ model User {
   status       String         @default("Active")
   isBlocked    Boolean        @default(false)
   isFirstLogin Boolean        @default(false)
+  
+  isDemoAccount Boolean       @default(false)
+  demoExpiresAt DateTime?
 
   institution  Institution?   @relation(fields: [institutionId], references: [id])
   institutionId String?

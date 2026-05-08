@@ -34,6 +34,7 @@ export function UserCreationPanel() {
     institutionName: '',        // ← NEW: institution's display name
     customPassword: '',
     sendEmail: true,
+    isDemoAccount: false,
   });
   const [institutions, setInstitutions] = useState<any[]>([]);
   const [showPassword, setShowPassword] = useState(false);
@@ -89,6 +90,7 @@ export function UserCreationPanel() {
           institutionId: form.role === 'Student' ? form.institutionId : undefined,
           customPassword: form.customPassword || undefined,
           sendEmail: form.sendEmail,
+          isDemoAccount: form.isDemoAccount,
         })
       });
       
@@ -99,7 +101,7 @@ export function UserCreationPanel() {
       setCreatedCredentials(data.credentials);
       toast.success(`User "${form.name}" created successfully!`);
       // Reset form
-      setForm({ name: '', email: '', role: 'Subscriber', institutionId: '', institutionName: '', customPassword: '', sendEmail: true });
+      setForm({ name: '', email: '', role: 'Subscriber', institutionId: '', institutionName: '', customPassword: '', sendEmail: true, isDemoAccount: false });
       setShowPassword(false);
     } catch (err: any) {
       toast.error(err.message || 'Failed to create user');
@@ -287,6 +289,24 @@ export function UserCreationPanel() {
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
+        </div>
+
+        {/* Demo Account Toggle */}
+        <div className="flex items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-200">
+          <div>
+            <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span className="bg-orange-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Demo</span>
+              Create as 30-Day Demo Account
+            </div>
+            <p className="text-xs text-orange-600 mt-0.5">Account will be marked as demo and automatically expire after 30 days</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setForm(f => ({ ...f, isDemoAccount: !f.isDemoAccount }))}
+            className={`relative w-11 h-6 rounded-full transition-colors ${form.isDemoAccount ? 'bg-orange-600' : 'bg-orange-300'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isDemoAccount ? 'translate-x-5' : ''}`} />
+          </button>
         </div>
 
         {/* Email Toggle */}
