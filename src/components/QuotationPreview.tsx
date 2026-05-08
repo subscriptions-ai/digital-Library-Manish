@@ -180,9 +180,13 @@ export function QuotationPreview() {
       pdfDoc.text(`Total: ₹${gstBreakdown.totalAmount.toLocaleString()}`, 10, 30);
       const pdfBase64 = pdfDoc.output('datauristring').split(',')[1];
 
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/quotation/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           userEmail: formData.email,
           userName: formData.name,

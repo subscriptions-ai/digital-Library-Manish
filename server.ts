@@ -872,6 +872,18 @@ async function startServer() {
 
 
 
+  app.get("/api/user/quotations", authenticateJWT, async (req: any, res) => {
+    try {
+      const quotations = await (prisma as any).quotation.findMany({
+        where: { userEmail: req.user.email },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(quotations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quotations" });
+    }
+  });
+
   app.get("/api/user/invoices", authenticateJWT, async (req: any, res) => {
     try {
       const payments = await prisma.payment.findMany({
@@ -2770,10 +2782,27 @@ async function startServer() {
       // Respond immediately after email is sent — DB save is non-blocking
       res.json({ status: "success", message: "Quotation sent successfully" });
 
+      // Parse optional token to find creator
+      let creatorEmail = req.body.createdBy || 'System / Guest';
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.split(" ")[1];
+        try {
+          const jwt = require("jsonwebtoken");
+          const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
+          const decoded = jwt.verify(token, JWT_SECRET);
+          if (decoded && decoded.email) creatorEmail = decoded.email;
+        } catch(e) {}
+      }
+
       // Save to PostgreSQL (fire-and-forget, never blocks the response)
       prisma.quotation.upsert({
         where: { id: quotationNumber },
-        update: { status: "Sent" },
+        update: { 
+          status: "Sent",
+          sentEmailHtml: htmlBody,
+          createdBy: creatorEmail
+        },
         create: {
           id: quotationNumber,
           userEmail,
@@ -2786,7 +2815,9 @@ async function startServer() {
           total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, '')) || 0,
           status: "Sent",
           userId: userId || null,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          sentEmailHtml: htmlBody,
+          createdBy: creatorEmail
         }
       }).catch((dbErr: any) => {
         console.warn("Quotation DB save failed (non-blocking):", dbErr?.message);
