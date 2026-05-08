@@ -2807,6 +2807,7 @@ async function startServer() {
         update: { 
           status: "Sent",
           sentEmailHtml: htmlForDb,
+          planType: subscriptionDuration,
           createdBy: creatorEmail
         },
         create: {
@@ -2820,6 +2821,7 @@ async function startServer() {
           gstAmount: parseFloat(quotationData.gstAmount) || 0,
           total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, '')) || 0,
           status: "Sent",
+          planType: subscriptionDuration,
           userId: userId || null,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           sentEmailHtml: htmlForDb,
