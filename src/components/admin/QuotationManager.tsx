@@ -423,41 +423,138 @@ export function QuotationManager() {
                     {selected.sentEmailHtml ? (
                       <div dangerouslySetInnerHTML={{ __html: selected.sentEmailHtml }} />
                     ) : (
-                      <div className="p-8 bg-white text-slate-800">
-                        <div className="text-center mb-8 pb-8 border-b border-slate-100">
-                          <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-2">STM DIGITAL LIBRARY</h1>
-                          <p className="text-slate-500 font-medium text-sm">Legacy Quotation Preview</p>
-                        </div>
-                        <div className="mb-8">
-                          <p className="text-sm text-slate-500 mb-1">Dear <strong className="text-slate-800">{selected.userName}</strong>,</p>
-                          <p className="text-sm text-slate-600 leading-relaxed">
-                            This is a reconstructed preview of your quotation generated on <strong className="text-slate-800">{selected.createdAt ? format(new Date(selected.createdAt), 'dd MMM yyyy') : 'an unknown date'}</strong>.
-                          </p>
-                        </div>
-                        
-                        <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-8">
-                          <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-200/60">
-                            <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Plan Details</span>
-                            <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-md uppercase tracking-wide">{selected.planType || 'Standard'}</span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-slate-600">Subtotal</span>
-                            <span className="font-semibold text-slate-900">{formatPrice(selected.subtotal)}</span>
-                          </div>
-                          <div className="flex justify-between items-center mb-4">
-                            <span className="text-slate-600">GST (18%)</span>
-                            <span className="font-semibold text-slate-900">{formatPrice(selected.gstAmount)}</span>
-                          </div>
-                          <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-                            <span className="font-bold text-slate-900">Total Payable</span>
-                            <span className="text-xl font-black text-blue-600">{formatPrice(selected.total)}</span>
-                          </div>
-                        </div>
-
-                        <div className="text-center text-xs text-slate-400 mt-12 pt-6 border-t border-slate-100">
-                          <p>This is a system-generated preview. The exact email formatting for this legacy record was not retained.</p>
-                        </div>
+                      <div style={{margin:0, padding:0, backgroundColor:"#eef2f7", fontFamily:"'Segoe UI',Arial,sans-serif"}}>
+                        <table width="100%" cellPadding={0} cellSpacing={0} style={{backgroundColor:"#eef2f7", padding:"32px 0"}}>
+                          <tbody><tr><td align="center">
+                          <table width="620" cellPadding={0} cellSpacing={0} style={{background:"#ffffff", borderRadius:"16px", overflow:"hidden", boxShadow:"0 8px 40px rgba(0,0,0,0.10)", maxWidth:"620px"}}>
+                            <tbody>
+                            <tr>
+                              <td style={{background:"linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%)", padding:"32px 48px 28px", textAlign:"center"}}>
+                                <img src="/assets/stm-logo.png" alt="STM Digital Library" width="90" height="90" style={{display:"block", margin:"0 auto 16px", borderRadius:"12px"}} onError={(e:any)=>e.target.style.display="none"} />
+                                <h1 style={{color:"#ffffff", margin:"0 0 6px", fontSize:"26px", fontWeight:900, letterSpacing:"1px"}}>STM DIGITAL LIBRARY</h1>
+                                <p style={{color:"#93c5fd", margin:"0 0 16px", fontSize:"13px", fontWeight:500}}>A Division of Consortium eLearning Network Pvt. Ltd.</p>
+                                <span style={{display:"inline-block", background:"#15803d", color:"#ffffff", fontSize:"11px", fontWeight:700, borderRadius:"30px", padding:"6px 20px", letterSpacing:"1px"}}>
+                                  🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
+                                </span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{padding:"36px 48px 0"}}>
+                                <p style={{fontSize:"16px", color:"#1e293b", margin:"0 0 6px", fontWeight:600}}>Dear {selected.userName},</p>
+                                <p style={{fontSize:"14px", color:"#475569", lineHeight:"1.75", margin:"0 0 20px"}}>
+                                  Greetings from <strong>STM Digital Library</strong>!<br/>
+                                  Thank you for your interest in our digital library subscription services.<br/>
+                                  Please find below the quotation for the selected department(s) and subscription duration.
+                                </p>
+                                <hr style={{border:"none", borderTop:"1px solid #e2e8f0", margin:"0 0 28px"}} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{padding:"0 48px 28px"}}>
+                                <table width="100%" cellPadding={0} cellSpacing={0} style={{background:"linear-gradient(135deg,#1d4ed8,#1e40af)", borderRadius:"14px", overflow:"hidden"}}>
+                                  <tbody><tr><td style={{padding:"20px 28px"}}>
+                                    <p style={{color:"#bfdbfe", fontSize:"10px", fontWeight:700, letterSpacing:"2.5px", textTransform:"uppercase", margin:"0 0 18px"}}>📄 &nbsp;Quotation Details</p>
+                                    <table width="100%" cellPadding={0} cellSpacing={0}><tbody>
+                                      <tr>
+                                        <td style={{color:"#93c5fd", fontSize:"12px", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)", width:"55%"}}>Quotation Number</td>
+                                        <td style={{color:"#ffffff", fontSize:"13px", fontWeight:700, textAlign:"right", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)"}}>{selected.id}</td>
+                                      </tr>
+                                      <tr>
+                                        <td style={{color:"#93c5fd", fontSize:"12px", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)"}}>Quotation Date</td>
+                                        <td style={{color:"#ffffff", fontSize:"13px", fontWeight:600, textAlign:"right", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)"}}>{selected.createdAt ? format(new Date(selected.createdAt), "dd MMM yyyy") : "—"}</td>
+                                      </tr>
+                                      <tr>
+                                        <td style={{color:"#93c5fd", fontSize:"12px", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)"}}>Subscription Validity</td>
+                                        <td style={{color:"#86efac", fontSize:"13px", fontWeight:600, textAlign:"right", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)"}}>30 Days from Issue</td>
+                                      </tr>
+                                      <tr>
+                                        <td style={{color:"#93c5fd", fontSize:"12px", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)"}}>Subscription Duration</td>
+                                        <td style={{color:"#ffffff", fontSize:"13px", fontWeight:600, textAlign:"right", padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.1)"}}>{selected.planType || "—"}</td>
+                                      </tr>
+                                    </tbody></table>
+                                    {selected.pricingBreakdown?.breakdown?.length > 0 && (
+                                      <>
+                                        <p style={{color:"#93c5fd", fontSize:"12px", margin:"14px 0 6px"}}>Selected Department(s)</p>
+                                        <ul style={{margin:"0 0 14px", paddingLeft:"4px", listStyle:"none"}}>
+                                          {selected.pricingBreakdown.breakdown.map((b: any, i: number) => (
+                                            <li key={i} style={{padding:"4px 0", color:"#e2e8f0", fontSize:"14px"}}>✅ &nbsp;{b.domain || b.contentType}</li>
+                                          ))}
+                                        </ul>
+                                      </>
+                                    )}
+                                    <table width="100%" cellPadding={0} cellSpacing={0} style={{borderTop:"1px solid rgba(255,255,255,0.25)", paddingTop:"14px", marginTop:"4px"}}><tbody>
+                                      <tr>
+                                        <td style={{color:"#bfdbfe", fontSize:"13px", fontWeight:600, paddingTop:"14px"}}>Total Amount (Including 18% GST)</td>
+                                        <td style={{textAlign:"right", paddingTop:"14px"}}>
+                                          <span style={{color:"#ffffff", fontSize:"22px", fontWeight:900}}>₹{selected.total?.toLocaleString("en-IN", {minimumFractionDigits:2})}</span>
+                                        </td>
+                                      </tr>
+                                    </tbody></table>
+                                  </td></tr></tbody>
+                                </table>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{padding:"0 48px 28px"}}>
+                                <table width="100%" cellPadding={0} cellSpacing={0} style={{background:"#fefce8", borderRadius:"14px", border:"1px solid #fde68a"}}>
+                                  <tbody><tr><td style={{padding:"22px 28px"}}>
+                                    <p style={{color:"#92400e", fontSize:"11px", fontWeight:700, letterSpacing:"2px", textTransform:"uppercase", margin:"0 0 14px"}}>💳 &nbsp;Payment Information</p>
+                                    <p style={{color:"#78350f", fontSize:"13px", fontWeight:600, margin:"0 0 12px"}}>Payments must be made only to:</p>
+                                    <table width="100%" cellPadding={0} cellSpacing={0}><tbody>
+                                      {([["Account Name","Consortium eLearning Network Pvt. Ltd."],["Account Number","03942000001153"],["Bank Name","HDFC Bank"],["Branch","Sector-62, Noida, U.P., India"],["IFSC Code","HDFC0002649"]] as [string,string][]).map(([label,val])=>(
+                                        <tr key={label}>
+                                          <td style={{color:"#92400e", fontSize:"12px", padding:"5px 0", borderBottom:"1px solid #fde68a", width:"45%"}}>{label}</td>
+                                          <td style={{color:"#1e293b", fontSize:"13px", fontWeight:700, padding:"5px 0", borderBottom:"1px solid #fde68a"}}>{val}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody></table>
+                                  </td></tr></tbody>
+                                </table>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{padding:"0 48px 28px"}}>
+                                <table width="100%" cellPadding={0} cellSpacing={0} style={{background:"#f0fdf4", borderRadius:"14px", border:"1px solid #bbf7d0"}}>
+                                  <tbody><tr><td style={{padding:"22px 28px"}}>
+                                    <p style={{color:"#15803d", fontSize:"11px", fontWeight:700, letterSpacing:"2px", textTransform:"uppercase", margin:"0 0 14px"}}>📞 &nbsp;Contact Information</p>
+                                    <p style={{color:"#166534", fontSize:"13px", fontWeight:500, margin:"0 0 10px"}}>For any assistance regarding subscription, quotation, or payment:</p>
+                                    <p style={{fontSize:"13px", color:"#1e293b", margin:"4px 0"}}>📧 &nbsp;<a href="mailto:info@celnet.in" style={{color:"#2563eb", textDecoration:"none", fontWeight:600}}>info@celnet.in</a></p>
+                                    <p style={{fontSize:"13px", color:"#1e293b", margin:"4px 0"}}>📞 &nbsp;+91-9810078958</p>
+                                    <p style={{fontSize:"13px", color:"#1e293b", margin:"4px 0"}}>🌐 &nbsp;<a href="https://journalslibrary.com/" style={{color:"#2563eb", textDecoration:"none", fontWeight:600}}>journalslibrary.com</a></p>
+                                  </td></tr></tbody>
+                                </table>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{padding:"0 48px 28px"}}>
+                                <table width="100%" cellPadding={0} cellSpacing={0} style={{borderTop:"2px solid #e2e8f0", paddingTop:"24px"}}><tbody>
+                                  <tr>
+                                    <td style={{paddingTop:"20px"}}>
+                                      <p style={{color:"#475569", fontSize:"14px", margin:"0 0 4px"}}>Warm regards,</p>
+                                      <p style={{color:"#1e293b", fontSize:"15px", fontWeight:700, margin:"0 0 2px"}}>STM Digital Library Team</p>
+                                      <p style={{color:"#64748b", fontSize:"12px", margin:"0"}}>Consortium eLearning Network Pvt. Ltd.</p>
+                                      <p style={{color:"#64748b", fontSize:"12px", margin:"4px 0 0"}}>A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India</p>
+                                    </td>
+                                    <td style={{textAlign:"right", verticalAlign:"bottom", paddingTop:"20px"}}>
+                                      <p style={{color:"#94a3b8", fontSize:"10px", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", margin:"0 0 4px"}}>For Publisher</p>
+                                      <p style={{color:"#1e293b", fontSize:"13px", fontWeight:700, margin:"0 0 4px"}}>STM Digital Library</p>
+                                      <p style={{color:"#64748b", fontSize:"11px", fontWeight:700, letterSpacing:"1px", textTransform:"uppercase", margin:"0"}}>Authorized Signatory</p>
+                                    </td>
+                                  </tr>
+                                </tbody></table>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{background:"linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%)", padding:"28px 48px", textAlign:"center"}}>
+                                <p style={{color:"#f8fafc", fontSize:"13px", fontWeight:700, margin:"0 0 6px", letterSpacing:"0.5px"}}>🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
+                                <p style={{color:"#64748b", fontSize:"11px", margin:"0 0 4px"}}>© {new Date().getFullYear()} Consortium eLearning Network Pvt. Ltd. All rights reserved.</p>
+                                <p style={{color:"#475569", fontSize:"11px", margin:"0"}}>GSTIN: 09AACCC6494M1Z1 &nbsp;|&nbsp; PAN: AACCC6494M &nbsp;|&nbsp; CIN: U80302DL2005PTC138759</p>
+                              </td>
+                            </tr>
+                            </tbody>
+                          </table>
+                          </td></tr></tbody>
+                        </table>
                       </div>
                     )}
                   </div>

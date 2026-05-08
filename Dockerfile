@@ -37,7 +37,7 @@ COPY public/ ./public/
 RUN npx prisma@6.19.3 generate
 
 # Cache buster to bypass BuildKit mount locks on Coolify
-ENV CACHE_BUSTER="2026-05-08T16-15-00-REDEPLOY"
+ENV CACHE_BUSTER="2026-05-08T16-45-00-REDEPLOY"
 
 # Expose the port (default 3000, overridable via PORT env var)
 EXPOSE 3000

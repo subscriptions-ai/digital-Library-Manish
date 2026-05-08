@@ -2796,11 +2796,17 @@ async function startServer() {
       }
 
       // Save to PostgreSQL (fire-and-forget, never blocks the response)
+      // Replace cid:stm-logo with a public URL so it renders in browser previews
+      const PUBLIC_BASE = process.env.APP_URL || 'https://journals.stmjournals.com';
+      const htmlForDb = htmlBody.replace(
+        /src="cid:stm-logo"/g,
+        `src="${PUBLIC_BASE}/assets/stm-logo.png"`
+      );
       prisma.quotation.upsert({
         where: { id: quotationNumber },
         update: { 
           status: "Sent",
-          sentEmailHtml: htmlBody,
+          sentEmailHtml: htmlForDb,
           createdBy: creatorEmail
         },
         create: {
@@ -2816,7 +2822,7 @@ async function startServer() {
           status: "Sent",
           userId: userId || null,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          sentEmailHtml: htmlBody,
+          sentEmailHtml: htmlForDb,
           createdBy: creatorEmail
         }
       }).catch((dbErr: any) => {
