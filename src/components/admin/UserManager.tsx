@@ -231,7 +231,14 @@ export function UserManager() {
                           {(user.displayName || user.email || '?').charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-bold text-slate-900 text-sm">{user.displayName || 'Unnamed'}</div>
+                          <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                            {user.displayName || 'Unnamed'}
+                            {user.isDemoAccount && (
+                              <span className="bg-orange-100 text-orange-700 text-[9px] px-2 py-0.5 rounded-full uppercase tracking-widest border border-orange-200">
+                                Demo
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-slate-500 flex items-center gap-1"><Mail size={11} />{user.email}</div>
                           {user.organization && <div className="text-xs text-slate-400 mt-0.5">{user.organization}</div>}
                         </div>

@@ -140,8 +140,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </h2>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{profile?.displayName || profile?.email}</p>
+            <div className="text-right flex flex-col items-end">
+              <div className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                {profile?.isDemoAccount && (
+                  <span className="bg-orange-100 text-orange-700 border border-orange-200 text-[9px] px-1.5 py-0.5 rounded-md uppercase tracking-wider font-extrabold shadow-sm">
+                    Demo
+                  </span>
+                )}
+                <span>{profile?.displayName || profile?.email}</span>
+              </div>
               {profile?.role === 'Student' && profile?.organization ? (
                 <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{profile.organization}</p>
               ) : (
