@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { FileText, Download, Mail, Edit3, ChevronLeft, Printer, ShieldCheck, BookOpen } from 'lucide-react';
 import { COMPANY_DETAILS } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import { STM_LOGO_BASE64 } from '../logoBase64';
 
 export function QuotationPreview() {
   const location = useLocation();
@@ -43,6 +44,9 @@ export function QuotationPreview() {
     const doc = new jsPDF();
     const pdfDate = format(new Date(), 'dd-MM-yyyy');
     const pdfValidity = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'dd-MM-yyyy');
+
+    // Add Logo
+    doc.addImage(STM_LOGO_BASE64, 'PNG', 20, 10, 20, 20);
 
     // Company Header
     doc.setFontSize(18);
@@ -238,9 +242,7 @@ export function QuotationPreview() {
           <div className="bg-slate-900 p-12 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white">
-                  <BookOpen size={28} />
-                </div>
+                <img src="/logo.png" alt="STM Digital Library Logo" className="h-16 w-16 object-contain" />
                 <h1 className="text-2xl font-bold tracking-tight">{COMPANY_DETAILS.name}</h1>
               </div>
               <div className="text-slate-400 text-xs space-y-1">

@@ -30,6 +30,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
+import { STM_LOGO_BASE64 } from '../logoBase64';
 
 type Step = 1 | 2 | 3;
 
@@ -214,13 +215,8 @@ export function QuotationWizard() {
     doc.setFont('helvetica', 'bold');
     doc.text('SUBJECT TO DELHI JURISDICTION', pageW - margin, 16.5, { align: 'right' });
 
-    // Blue icon box
-    doc.setFillColor(37, 99, 235);
-    doc.roundedRect(pageW / 2 - 6, 21, 12, 12, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('STM', pageW / 2, 28.5, { align: 'center' });
+    // Logo
+    doc.addImage(STM_LOGO_BASE64, 'PNG', pageW / 2 - 8, 18, 16, 16);
 
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(14);
