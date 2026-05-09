@@ -73,13 +73,14 @@ const CoreRing = ({ radius, speed, color, rotationX, rotationY, domain }: any) =
 
       {/* Interactive Data Node with Massive Invisible Hitbox */}
       <group position={[radius, 0, 0]}>
+        {/* Enormous invisible hitbox makes it impossible to miss */}
         <mesh 
           onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
           onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
           onClick={(e) => { e.stopPropagation(); setActive(!active); }}
           visible={false}
         >
-          <sphereGeometry args={[0.8, 8, 8]} />
+          <sphereGeometry args={[1.5, 8, 8]} />
           <meshBasicMaterial />
         </mesh>
 
@@ -99,7 +100,13 @@ const CoreRing = ({ radius, speed, color, rotationX, rotationY, domain }: any) =
               hovered || active ? 'scale-100 opacity-100 translate-y-0' : 'scale-90 opacity-0 translate-y-4'
             }`}
           >
-             <div className={`backdrop-blur-md border p-4 rounded-xl transition-all duration-300 ${active ? 'bg-slate-900/90 shadow-[0_0_40px_rgba(59,130,246,0.5)] border-white/40' : 'bg-slate-900/70 shadow-[0_0_20px_rgba(59,130,246,0.2)] border-white/10'}`}>
+             {/* Make the actual label panel highly interactive and clickable */}
+             <div 
+               onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
+               onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
+               onClick={(e) => { e.stopPropagation(); setActive(!active); }}
+               className={`pointer-events-auto cursor-pointer backdrop-blur-md border p-4 rounded-xl transition-all duration-300 ${active ? 'bg-slate-900/90 shadow-[0_0_40px_rgba(59,130,246,0.5)] border-white/40' : 'bg-slate-900/70 shadow-[0_0_20px_rgba(59,130,246,0.2)] border-white/10 hover:border-white/30'}`}
+             >
                <div className="text-[10px] uppercase tracking-widest text-blue-400 font-bold mb-1 flex items-center gap-2">
                  <div className={`w-2 h-2 rounded-full animate-pulse`} style={{ backgroundColor: color }}></div>
                  {domain?.name || "Domain"}
@@ -209,10 +216,10 @@ const KnowledgeCore = () => {
       </mesh>
 
       {/* Orbiting Information Rings */}
-      <CoreRing radius={3.5} speed={0.005} color="#3b82f6" rotationX={Math.PI / 3} rotationY={0} domain={DOMAINS[0]} />
-      <CoreRing radius={4.5} speed={-0.004} color="#8b5cf6" rotationX={-Math.PI / 4} rotationY={Math.PI / 6} domain={DOMAINS[1]} />
-      <CoreRing radius={5.5} speed={0.003} color="#10b981" rotationX={Math.PI / 6} rotationY={-Math.PI / 3} domain={DOMAINS[2]} />
-      <CoreRing radius={6.5} speed={-0.002} color="#06b6d4" rotationX={Math.PI / 2} rotationY={Math.PI / 4} domain={DOMAINS[3]} />
+      <CoreRing radius={3.5} speed={0.0025} color="#3b82f6" rotationX={Math.PI / 3} rotationY={0} domain={DOMAINS[0]} />
+      <CoreRing radius={4.5} speed={-0.002} color="#8b5cf6" rotationX={-Math.PI / 4} rotationY={Math.PI / 6} domain={DOMAINS[1]} />
+      <CoreRing radius={5.5} speed={0.0015} color="#10b981" rotationX={Math.PI / 6} rotationY={-Math.PI / 3} domain={DOMAINS[2]} />
+      <CoreRing radius={6.5} speed={-0.001} color="#06b6d4" rotationX={Math.PI / 2} rotationY={Math.PI / 4} domain={DOMAINS[3]} />
     </Float>
   );
 };
