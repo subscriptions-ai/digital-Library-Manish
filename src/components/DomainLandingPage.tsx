@@ -86,15 +86,14 @@ const STAT_ITEMS = [
   { icon: Globe,  stat: "Global",label: "RESEARCH NETWORK" },
 ];
 
-// ─── Why Subscribe features ───────────────────────────────────────────────────
 const WHY_FEATURES = [
   { icon: Zap,      title: "Real-time Updates",  desc: "Get instant access to newly published research, journals, and conference papers as they are released." },
-  { icon: Download, title: "Offline Access",      desc: "Download textbooks, theses, and reports for offline reading and research anytime, anywhere." },
+  { icon: BookOpen, title: "Unlimited Reading",      desc: "Read textbooks, theses, and reports online anytime, anywhere across multiple devices." },
   { icon: Search,   title: "Advanced Search",    desc: "Powerful AI-driven search to find specific topics, authors, or citations within thousands of documents." },
 ];
 
 const SUBSCRIPTION_BENEFITS = [
-  "Unlimited downloads of all content types",
+  "Unlimited online reading of all content types",
   "Personalized research dashboard",
   "Citation management tools",
   "Early access to upcoming publications",
