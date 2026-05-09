@@ -18,6 +18,20 @@ const contentTypeIconMap: Record<string, any> = {
 };
 
 export function Home() {
+  const [mousePosition, setMousePosition] = useState({ x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0 });
+  const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setMousePosition({ x, y });
+    setCenterOffset({ 
+      x: x - rect.width / 2, 
+      y: y - rect.height / 2 
+    });
+  };
+
   const statsData = [
     { label: "Proprietary Journals", value: "250+" },
     { label: "Resources", value: "Curated" },
@@ -28,11 +42,68 @@ export function Home() {
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-[#0a0f1c] pt-32 pb-24 text-white">
-        {/* Subtle Grid Background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+      <section 
+        className="relative overflow-hidden bg-[#0a0f1c] pt-32 pb-24 text-white"
+        onMouseMove={handleMouseMove}
+      >
+        {/* Cursor Responsive Glowing Orbs - Vortex Core */}
+        <motion.div
+          className="pointer-events-none absolute left-0 top-0 w-[30rem] h-[30rem] rounded-full bg-blue-500/20 blur-[120px] z-0 mix-blend-screen"
+          animate={{ 
+            x: mousePosition.x - 240, 
+            y: mousePosition.y - 240,
+            scale: 1 + Math.abs(centerOffset.x * 0.001)
+          }}
+          transition={{ type: "tween", ease: "easeOut", duration: 0.2 }}
+        />
+        <motion.div
+          className="pointer-events-none absolute left-0 top-0 w-[40rem] h-[40rem] rounded-full bg-indigo-600/15 blur-[150px] z-0 mix-blend-screen"
+          animate={{ 
+            x: mousePosition.x - 320, 
+            y: mousePosition.y - 320,
+            scale: 1 + Math.abs(centerOffset.y * 0.001)
+          }}
+          transition={{ type: "tween", ease: "easeOut", duration: 0.8 }}
+        />
+
+        {/* Vortex Grid Layers */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          {/* Deep layer - Slow Clockwise Twist */}
+          <motion.div 
+            className="absolute inset-[-50%] w-[200%] h-[200%] bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:60px_60px] origin-center"
+            animate={{ 
+              x: centerOffset.x * -0.02, 
+              y: centerOffset.y * -0.02,
+              rotate: centerOffset.x * 0.02
+            }}
+            transition={{ type: "tween", ease: "easeOut", duration: 1.2 }}
+          />
+
+          {/* Mid layer - Fast Counter-Clockwise Twist */}
+          <motion.div 
+            className="absolute inset-[-50%] w-[200%] h-[200%] bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:50px_50px] origin-center"
+            animate={{ 
+              x: centerOffset.x * -0.04, 
+              y: centerOffset.y * -0.04,
+              rotate: centerOffset.x * -0.04
+            }}
+            transition={{ type: "tween", ease: "easeOut", duration: 0.8 }}
+          />
+
+          {/* Foreground layer - Fast Clockwise Twist with Zoom */}
+          <motion.div 
+            className="absolute inset-[-50%] w-[200%] h-[200%] bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:40px_40px] origin-center"
+            animate={{ 
+              x: centerOffset.x * -0.08, 
+              y: centerOffset.y * -0.08,
+              rotate: centerOffset.x * 0.06,
+              scale: 1 + Math.abs(centerOffset.y * 0.0005)
+            }}
+            transition={{ type: "tween", ease: "easeOut", duration: 0.4 }}
+          />
+        </div>
         
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
