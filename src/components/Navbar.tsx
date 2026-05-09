@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Menu, X, BookOpen, ChevronDown, LayoutGrid, ShoppingCart, FileText } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "../lib/utils";
 import { DOMAINS } from "../constants";
 import { useCart } from "../contexts/CartContext";
@@ -9,8 +9,18 @@ export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDepartmentsOpen, setIsDepartmentsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [domainCounts, setDomainCounts] = useState<Record<string, number> | null>(null);
   const { items } = useCart();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch('/api/public/domain-counts')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) setDomainCounts(data);
+      })
+      .catch(console.error);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +110,7 @@ export function Navbar() {
                 {/* Mega Menu */}
                 {isDepartmentsOpen && (
                   <div 
-                    className="absolute left-0 top-full mt-0 w-[800px] rounded-b-2xl border border-slate-200 bg-white p-8 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200 z-[60]"
+                    className="absolute left-0 top-full mt-0 w-[800px] rounded-b-2xl border border-slate-200 bg-white p-8 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200 z-[60] max-h-[80vh] overflow-y-auto"
                     onMouseLeave={() => setIsDepartmentsOpen(false)}
                   >
                     <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
@@ -110,18 +120,31 @@ export function Navbar() {
                       </div>
                       <Link to="/digital-library" className="text-sm font-bold text-blue-600 hover:underline">View All</Link>
                     </div>
-                    <div className="grid grid-cols-3 gap-x-12 gap-y-3">
-                      {DOMAINS.map((domain) => (
-                        <Link 
-                          key={domain.id} 
-                          to={`/domain/${domain.id}`}
-                          className="group flex items-center gap-3 rounded-xl p-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all"
-                          onClick={() => setIsDepartmentsOpen(false)}
-                        >
-                          <div className="h-2 w-2 rounded-full bg-slate-200 group-hover:bg-blue-600 transition-colors" />
-                          <span className="font-medium">{domain.name}</span>
-                        </Link>
-                      ))}
+                    <div className="grid grid-cols-3 gap-x-8 gap-y-3">
+                      {DOMAINS.map((domain) => {
+                        const count = domainCounts ? (domainCounts[domain.name] || 0) : null;
+                        return (
+                          <Link 
+                            key={domain.id} 
+                            to={`/domain/${domain.id}`}
+                            className="group flex items-start gap-3 rounded-xl p-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all"
+                            onClick={() => setIsDepartmentsOpen(false)}
+                          >
+                            <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-200 group-hover:bg-blue-600 transition-colors" />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{domain.name}</span>
+                              <span className="text-[11px] font-semibold text-slate-400 group-hover:text-blue-500/80 transition-colors mt-0.5">
+                                {count === null 
+                                  ? "Loading..." 
+                                  : count > 0 
+                                    ? `${count.toLocaleString("en-IN")}+ Contents` 
+                                    : "0 Contents"
+                                }
+                              </span>
+                            </div>
+                          </Link>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

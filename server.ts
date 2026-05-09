@@ -128,6 +128,25 @@ async function startServer() {
     }
   });
 
+  // Public Domain Counts for Navbar
+  app.get("/api/public/domain-counts", async (req, res) => {
+    try {
+      const groups = await prisma.content.groupBy({
+        by: ['domain'],
+        where: { status: { not: 'Draft' }, domain: { not: null } },
+        _count: { id: true }
+      });
+      const countsMap = groups.reduce((acc: any, g: any) => {
+        if (g.domain) acc[g.domain] = g._count.id;
+        return acc;
+      }, {});
+      res.json(countsMap);
+    } catch (error) {
+      console.error("Domain counts error:", error);
+      res.status(500).json({ error: "Failed to fetch domain counts" });
+    }
+  });
+
   // Auth: Signup
   app.post("/api/auth/signup", async (req, res) => {
     try {
