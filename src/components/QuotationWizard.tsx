@@ -975,8 +975,8 @@ export function QuotationWizard() {
 
                   {/* Branding */}
                   <div className="flex flex-col items-center text-center gap-3 mb-7">
-                    <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-xl">
-                      <BookOpen size={30} className="text-white" />
+                    <div className="w-20 h-20 flex items-center justify-center">
+                      <img src="/logo.png" alt="STM Digital Library Logo" className="w-full h-full object-contain drop-shadow-md" />
                     </div>
                     <div>
                       <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">{COMPANY_DETAILS.name}</h1>
