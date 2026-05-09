@@ -36,7 +36,10 @@ export function Footer() {
             <Link to="/" className="flex flex-col gap-2">
               <div className="flex items-center gap-3 mb-2">
                 <img src="/logo.png" alt="STM Digital Library Logo" className="h-16 w-16 object-contain drop-shadow-md" />
-                <span className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">STM <br /> Digital Library</span>
+                <div className="flex flex-col justify-center text-left">
+                  <span className="text-3xl font-black tracking-tight text-white drop-shadow-sm leading-none mb-1">STM</span>
+                  <span className="text-[0.8rem] font-bold uppercase tracking-[0.2em] text-blue-500 leading-none">Digital Library</span>
+                </div>
               </div>
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">BY CONSORTIUM ELEARNING NETWORK PVT. LTD.</span>
             </Link>
