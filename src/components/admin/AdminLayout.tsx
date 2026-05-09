@@ -85,14 +85,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <aside className={`bg-slate-900 text-white flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         {/* Logo + Toggle */}
         <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
-          {isSidebarOpen && (
-            <div className="flex items-center gap-2.5 font-extrabold tracking-tight">
-              <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
-                <LayoutGrid size={18} />
-              </div>
-              <span className="text-base">STM ADMIN</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2.5 font-extrabold tracking-tight">
+            <img src="/logo.png" alt="STM Logo" className="h-8 w-8 object-contain" />
+            {isSidebarOpen && <span className="text-base">STM ADMIN</span>}
+          </div>
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400">
             {isSidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
           </button>

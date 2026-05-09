@@ -5,6 +5,7 @@ import { DOMAINS, SUBSCRIPTION_PLANS, CONTENT_TYPES } from "../constants";
 import { ArrowRight, BookOpen, ShieldCheck, Zap, Globe, Users, BarChart3, CheckCircle2, PlayCircle, FileText, GraduationCap, Newspaper, Mail, Book, Search } from "lucide-react";
 import * as Icons from "lucide-react";
 import { cn } from "../lib/utils";
+import { KnowledgeCore3D } from "./KnowledgeCore3D";
 
 const contentTypeIconMap: Record<string, any> = {
   Book,
@@ -43,9 +44,14 @@ export function Home() {
     <div className="flex flex-col">
       {/* Hero Section */}
       <section 
-        className="relative overflow-hidden bg-[#0a0f1c] pt-32 pb-24 text-white"
+        className="relative overflow-hidden bg-[#0a0f1c] min-h-[calc(100vh-80px)] flex items-center py-12 lg:py-0 text-white"
         onMouseMove={handleMouseMove}
       >
+        {/* Full Screen 3D Background */}
+        <div className="absolute inset-0 z-0">
+          <KnowledgeCore3D />
+        </div>
+
         {/* Cursor Responsive Glowing Orbs - Vortex Core */}
         <motion.div
           className="pointer-events-none absolute left-0 top-0 w-[30rem] h-[30rem] rounded-full bg-blue-500/20 blur-[120px] z-0 mix-blend-screen"
@@ -67,7 +73,7 @@ export function Home() {
         />
 
         {/* Vortex Grid Layers */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 mix-blend-screen opacity-50">
           {/* Deep layer - Slow Clockwise Twist */}
           <motion.div 
             className="absolute inset-[-50%] w-[200%] h-[200%] bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:60px_60px] origin-center"
@@ -89,84 +95,70 @@ export function Home() {
             }}
             transition={{ type: "tween", ease: "easeOut", duration: 0.8 }}
           />
-
-          {/* Foreground layer - Fast Clockwise Twist with Zoom */}
-          <motion.div 
-            className="absolute inset-[-50%] w-[200%] h-[200%] bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:40px_40px] origin-center"
-            animate={{ 
-              x: centerOffset.x * -0.08, 
-              y: centerOffset.y * -0.08,
-              rotate: centerOffset.x * 0.06,
-              scale: 1 + Math.abs(centerOffset.y * 0.0005)
-            }}
-            transition={{ type: "tween", ease: "easeOut", duration: 0.4 }}
-          />
         </div>
         
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="lg:col-span-5"
-            >
-              <div className="inline-block rounded-full border border-blue-500/20 bg-blue-900/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">
-                India's Premier Academic Hub
-              </div>
-              <h1 className="mt-8 text-5xl font-bold tracking-tight sm:text-6xl leading-[1.15]">
-                Empowering<br/>
-                <span className="text-blue-500">Academic<br/>Excellence</span><br/>
-                Through Digital<br/>
-                Innovation.
-              </h1>
-              <p className="mt-8 text-sm leading-relaxed text-slate-400 max-w-[400px]">
-                A curated academic platform combining proprietary publications and legally sourced open-access research. Designed for students, researchers, and world-class institutions.
-              </p>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full pointer-events-none">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            {/* Text Content */}
+            <div className="lg:col-span-6 text-left relative z-10 pointer-events-auto">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-4 backdrop-blur-sm"
+              >
+                <Icons.Sparkles className="w-4 h-4" />
+                <span>India's Premier Academic Hub</span>
+              </motion.div>
               
-              <div className="mt-8 rounded-xl border border-white/10 bg-white/5 p-4 max-w-[400px]">
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight leading-[1.15]"
+              >
+                Empowering <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Academic Excellence</span><br/>
+                Through Digital Innovation.
+              </motion.h1>
+              
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="mt-6 text-lg leading-relaxed text-slate-300 max-w-[480px] drop-shadow-md"
+              >
+                A curated academic platform combining proprietary publications and legally sourced open-access research. Designed for students, researchers, and world-class institutions.
+              </motion.p>
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="mt-8 flex flex-col sm:flex-row gap-4"
+              >
+                <Link to="/journals" className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2">
+                  <Search className="w-5 h-5" />
+                  Explore Library
+                </Link>
+                <Link to="/contact" className="px-8 py-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition-all border border-slate-700 flex items-center justify-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Institutional Access
+                </Link>
+              </motion.div>
+
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
+                className="mt-6 rounded-xl border border-white/10 bg-slate-900/40 backdrop-blur-sm p-4 max-w-[480px]"
+              >
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 leading-relaxed">
                   Content includes proprietary publications and legally sourced open-access materials from trusted repositories.
                 </p>
-              </div>
-
-              <div className="mt-10 flex flex-wrap gap-4">
-                <Link to="/signup" className="rounded-full bg-blue-600 px-8 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20">
-                  Start Your Subscription
-                </Link>
-                <Link to="/create-quotation" className="rounded-full border border-white/20 bg-transparent px-8 py-3.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2">
-                  <FileText size={16} />
-                  Create Quotation
-                </Link>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
             
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="hidden lg:block lg:col-span-7 relative"
-            >
-              <div className="relative rounded-3xl bg-slate-800/30 p-2 border border-white/5 shadow-2xl overflow-hidden group">
-                <div className="relative h-full w-full rounded-[20px] overflow-hidden border border-white/10 bg-slate-900">
-                  <img 
-                    src="/platform_tour.webp" 
-                    alt="Platform Tour Animation" 
-                    className="w-full h-auto object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f1c]/80 via-transparent to-transparent pointer-events-none"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center p-8 flex flex-col items-center">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white mb-4 shadow-xl shadow-blue-600/40 transform group-hover:scale-110 transition-transform cursor-pointer ring-4 ring-blue-600/20">
-                        <PlayCircle size={24} className="ml-1" />
-                      </div>
-                      <h3 className="text-base font-bold text-white tracking-wide">Watch Platform Tour</h3>
-                      <p className="text-[11px] text-slate-300 mt-1.5 opacity-80">See how STM Digital Library works</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
           </div>
         </div>
       </section>

@@ -18,6 +18,8 @@
     "@aws-sdk/client-sesv2": "^3.967.0",
     "@google/genai": "^1.29.0",
     "@prisma/client": "^6.19.3",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
     "@tailwindcss/vite": "^4.1.14",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.11",
@@ -52,7 +54,8 @@
     "react-simple-maps": "^3.0.0",
     "react-tooltip": "^5.30.0",
     "recharts": "^3.8.1",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

@@ -39,11 +39,12 @@ export function Signup() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-20">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <Link to="/" className="inline-flex items-center gap-2 mb-8">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
-              <BookOpen size={24} />
+          <Link to="/" className="inline-flex items-center gap-3 mb-8">
+            <img src="/logo.png" alt="STM Digital Library Logo" className="h-12 w-12 object-contain" />
+            <div className="flex flex-col text-left leading-none">
+              <span className="text-xl font-bold tracking-tight text-slate-900">STM Library</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">Digital Access</span>
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">STM Library</span>
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">Create Your Account</h1>
           <p className="mt-2 text-sm text-slate-500">Join thousands of researchers worldwide</p>

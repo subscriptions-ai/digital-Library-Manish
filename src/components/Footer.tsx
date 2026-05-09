@@ -33,14 +33,12 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-4 md:grid-cols-2">
           {/* Company Info */}
           <div className="space-y-8">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-900/50">
-                <BookOpen size={28} />
-              </div>
-              <div className="flex flex-col leading-tight">
+            <Link to="/" className="flex flex-col gap-2">
+              <div className="flex items-center gap-3 mb-2">
+                <img src="/logo.png" alt="STM Digital Library Logo" className="h-16 w-16 object-contain drop-shadow-md" />
                 <span className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">STM Digital Library</span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">BY CONSORTIUM ELEARNING NETWORK PVT. LTD.</span>
               </div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">BY CONSORTIUM ELEARNING NETWORK PVT. LTD.</span>
             </Link>
             <p className="text-sm leading-relaxed text-slate-400 max-w-xs">
               A premier subscription-based digital library providing high-quality academic journals and research papers to institutions and researchers worldwide.
