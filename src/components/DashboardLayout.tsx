@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface SidebarItem {
   label: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   path: string;
   roles: string[];
 }

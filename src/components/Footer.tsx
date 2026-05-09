@@ -10,7 +10,7 @@ export function Footer() {
         {/* Glowing Orbs */}
         <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-blue-600/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '6s' }} />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40rem] h-[40rem] bg-indigo-600/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '8s' }} />
-        
+
         {/* Floating Doodles / Icons */}
         <div className="absolute top-10 left-[10%] text-blue-500/10 animate-[bounce_6s_infinite]">
           <BookOpen size={120} />
@@ -36,7 +36,7 @@ export function Footer() {
             <Link to="/" className="flex flex-col gap-2">
               <div className="flex items-center gap-3 mb-2">
                 <img src="/logo.png" alt="STM Digital Library Logo" className="h-16 w-16 object-contain drop-shadow-md" />
-                <span className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">STM Digital Library</span>
+                <span className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">STM <br /> Digital Library</span>
               </div>
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">BY CONSORTIUM ELEARNING NETWORK PVT. LTD.</span>
             </Link>
@@ -118,17 +118,17 @@ export function Footer() {
               {/* VISA */}
               <div className="bg-white rounded px-2 py-1 flex items-center justify-center h-7 shadow">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 26" className="h-4 w-auto">
-                  <path fill="#1A1F71" d="M30.6 1.7L19.3 24.3h-7.5L6.2 7.2C5.9 6 5.5 5.5 4.6 5c-1.5-.8-4-1.5-6.1-2L-1.3 1.7h12c1.6 0 3 1.1 3.3 2.8l3.1 16.4L24.4 1.7h6.2zm24.6 15.2c0-6-8.3-6.3-8.2-9 0-.8.8-1.7 2.5-1.9 2.1-.2 4.3.3 5.5.9l1-4.7C54.7 1.6 52.9 1 50.2 1c-5.8 0-9.9 3.1-9.9 7.5 0 3.3 2.9 5.1 5.1 6.2 2.3 1.1 3.1 1.8 3 2.8 0 1.5-1.8 2.2-3.5 2.2-2.9 0-4.6-.8-6-1.5l-1.1 4.9c1.3.6 3.8 1.2 6.3 1.2 6 .1 9.9-2.9 9.9-7.4zm14.9 7.4H76L70.8 1.7h-5.3c-1.3 0-2.3.7-2.8 1.8L54.1 24.3h6.2l1.2-3.4h7.6l.9 3.4zm-6.7-8l3.1-8.6 1.8 8.6h-4.9zM38.1 1.7L32.8 24.3h-5.9L32.2 1.7h5.9z"/>
+                  <path fill="#1A1F71" d="M30.6 1.7L19.3 24.3h-7.5L6.2 7.2C5.9 6 5.5 5.5 4.6 5c-1.5-.8-4-1.5-6.1-2L-1.3 1.7h12c1.6 0 3 1.1 3.3 2.8l3.1 16.4L24.4 1.7h6.2zm24.6 15.2c0-6-8.3-6.3-8.2-9 0-.8.8-1.7 2.5-1.9 2.1-.2 4.3.3 5.5.9l1-4.7C54.7 1.6 52.9 1 50.2 1c-5.8 0-9.9 3.1-9.9 7.5 0 3.3 2.9 5.1 5.1 6.2 2.3 1.1 3.1 1.8 3 2.8 0 1.5-1.8 2.2-3.5 2.2-2.9 0-4.6-.8-6-1.5l-1.1 4.9c1.3.6 3.8 1.2 6.3 1.2 6 .1 9.9-2.9 9.9-7.4zm14.9 7.4H76L70.8 1.7h-5.3c-1.3 0-2.3.7-2.8 1.8L54.1 24.3h6.2l1.2-3.4h7.6l.9 3.4zm-6.7-8l3.1-8.6 1.8 8.6h-4.9zM38.1 1.7L32.8 24.3h-5.9L32.2 1.7h5.9z" />
                 </svg>
               </div>
 
               {/* MASTERCARD */}
               <div className="bg-white rounded px-2 py-1 flex items-center justify-center h-7 shadow">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 38 24" className="h-4 w-auto">
-                  <rect width="38" height="24" rx="3" fill="white"/>
-                  <circle cx="15" cy="12" r="7" fill="#EB001B"/>
-                  <circle cx="23" cy="12" r="7" fill="#F79E1B"/>
-                  <path d="M19 6.8a7 7 0 0 1 0 10.4A7 7 0 0 1 19 6.8z" fill="#FF5F00"/>
+                  <rect width="38" height="24" rx="3" fill="white" />
+                  <circle cx="15" cy="12" r="7" fill="#EB001B" />
+                  <circle cx="23" cy="12" r="7" fill="#F79E1B" />
+                  <path d="M19 6.8a7 7 0 0 1 0 10.4A7 7 0 0 1 19 6.8z" fill="#FF5F00" />
                 </svg>
               </div>
 
