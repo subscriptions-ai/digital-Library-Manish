@@ -469,6 +469,142 @@ export function QuotationWizard() {
     doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(71, 85, 105);
     doc.text('AUTHORIZED SIGNATORY', pageW - margin, sigY, { align: 'right' });
 
+    // ============================================================
+    // PAGE 2: FULL TERMS & CONDITIONS + PRIVACY POLICY
+    // ============================================================
+    doc.addPage();
+
+    // Page 2 outer border
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.4);
+    doc.rect(margin - 2, 8, contentW + 4, 276);
+
+    // Page 2 Header
+    doc.addImage(STM_LOGO_BASE64, 'PNG', pageW / 2 - 6, 12, 12, 12);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(COMPANY_DETAILS.name.toUpperCase(), pageW / 2, 28, { align: 'center' });
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(37, 99, 235);
+    doc.text('DIVISION OF CONSORTIUM ELEARNING NETWORK PVT. LTD.', pageW / 2, 32, { align: 'center' });
+
+    // Divider
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.3);
+    doc.line(margin, 36, pageW - margin, 36);
+
+    // Section Title
+    doc.setFillColor(15, 23, 42);
+    doc.rect(margin, 39, contentW, 7, 'F');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('TERMS & CONDITIONS', pageW / 2, 44, { align: 'center' });
+
+    const fullTerms = [
+      {
+        title: '1. Applicability:',
+        text: 'These terms and conditions shall apply to all offers, proposals and agreements made between Consortium eLearning Network Pvt. Ltd. (herein referred as CELNET) and any third party or its agent ("the Client") relating to the products and/or services of CELNET ("the Products and/or Services"), whether such products and services are provided within or outside the country, unless otherwise agreed in writing and signed by an authorized signatory of CELNET. Failing this, they will supersede any other terms and conditions, including those contained in any of the Client\'s documentation.',
+      },
+      {
+        title: '2. Offer and acceptance; Description:',
+        text: 'Each order for the Products and Services by the Client from CELNET shall be deemed to be an offer by the Client to purchase the Products and Services subject to this T&C. No order placed by the Client shall be deemed to be accepted by CELNET until CELNET issues a written order confirmation to the Client or (if earlier) CELNET delivers the Products or Services to the Client. Client represents and warrants that it has the legal right to use any information, data or other materials with which the Products or Services are used.',
+      },
+      {
+        title: '3. Execution and modification of the order:',
+        text: 'Any modification to the agreed product or service description, budget or schedule, as set out in the order acknowledgement, may result in an adjustment to the final price and/or to the delivery schedule by CELNET. No modification shall take effect unless it has been acknowledged in writing by CELNET. CELNET shall not be liable for any delay or failure to perform its obligations under this T&C to the extent that such delay or failure results from a modification requested by the Client.',
+      },
+      {
+        title: '4. Rates and prices:',
+        text: 'Unless otherwise agreed by CELNET in writing the prices/rates for the Products shall be those set out in CELNET\'s current pricelists. All such prices/rates shall be exclusive of any handling, packing, loading, freight, transport and insurance charges. All quotations are exclusive of GST. CELNET reserves the right to revise prices at any time. The prices mentioned in this quotation are valid for 30 days from the date of issue.',
+      },
+      {
+        title: '5. Payment:',
+        text: 'Unless otherwise agreed in writing, payments shall be effected within thirty (30) days of the invoice date in the currency invoiced. The Client shall make all payments due under the T&C without any deduction whether by way of set-off, counterclaim, discount, abatement or otherwise. Subscription services will only be activated upon receipt of full payment. CELNET reserves the right to suspend access to services in case of delayed or incomplete payment.',
+      },
+      {
+        title: '6. Distribution:',
+        text: 'The Client shall not engage in piracy, reproduction, or plagiarism of the Products or any other products of CELNET or its affiliates, nor shall it directly or indirectly facilitate any other party to engage in those activities. The Products and Services are licensed only for the Client\'s own internal use. The Client shall not resell, sublicense, or otherwise transfer the Products or Services to any third party without the prior written consent of CELNET.',
+      },
+      {
+        title: '7. Intellectual property:',
+        text: 'Copyright and other intellectual property rights to all CELNET proposals, publications and other Products and/or Services shall remain with CELNET unless agreed otherwise in writing. The rights granted by CELNET are restricted to use solely by the Client and may not be assigned, transferred or sub-licensed. All trademarks, service marks, trade names, logos and other designations of CELNET and its affiliates are the property of CELNET or its affiliates.',
+      },
+      {
+        title: '8. Liability and claims:',
+        text: 'TO THE MAXIMUM EXTENT PERMITTED BY RELEVANT LAWS, CELNET shall not be liable for any indirect, incidental, punitive or consequential losses which may arise by reason of any breach of this T&C or any implied warranty, condition or other term. CELNET\'s total liability in connection with any single claim shall not exceed the amount paid by the Client for the relevant Products or Services in the twelve (12) months preceding the event giving rise to liability.',
+      },
+      {
+        title: '9. Force majeure:',
+        text: 'If by reason of labor dispute, strikes, inability to obtain labor or materials, fire, flood, natural disaster, pandemic, government regulations, restrictions, or any other cause beyond the reasonable control of either party, such party is unable to perform its obligations under this T&C, then performance of such obligation shall be excused for the duration of the force majeure event. The affected party shall promptly notify the other party in writing of such event.',
+      },
+      {
+        title: '10. Audit:',
+        text: 'If Client is an agent, Client shall allow Publisher\'s authorized representative at any reasonable time to have access to Client\'s premises for the purpose of inspecting Client\'s activities, books and records relating to the Products and Services. Client shall maintain accurate records of all uses of the Products and Services and shall provide copies of such records to CELNET upon request. Such audit rights shall survive the termination of this T&C.',
+      },
+      {
+        title: '11. Compliance with laws:',
+        text: 'Client shall at all times during the term strictly comply with all applicable laws, ordinances, codes, regulations, standards and judicial and administrative orders relevant to its duties, obligations and performance under this T&C including, without limitation, all applicable data protection laws. Client shall not use the Products or Services for any unlawful purpose or in any way that violates any applicable law or regulation.',
+      },
+      {
+        title: '12. Cancellations & Returns:',
+        text: 'Without prejudice to any rights the Client may have under statute as a consumer, if the Client cancels an order, a cancellation fee may be charged. All cancellations must be made in writing. Due to the digital nature of the subscription services, no refunds will be issued once a subscription has been activated and access has been granted. Cancellation requests made within 24 hours of order placement may be considered at CELNET\'s discretion.',
+      },
+      {
+        title: '13. General:',
+        text: 'The formation, existence, construction, performance, validity and all aspects of the T&C shall be governed by the law of India. The parties agree to submit to the exclusive jurisdiction of the courts in Delhi, India. Any dispute arising out of or in connection with this T&C shall be resolved through arbitration in New Delhi in accordance with the Arbitration and Conciliation Act, 1996. The language of arbitration shall be English.',
+      },
+    ];
+
+    const p2Col1X = margin;
+    const p2Col2X = margin + contentW / 2 + 2;
+    const p2ColWidth = contentW / 2 - 4;
+    let p2LeftY = 50;
+    let p2RightY = 50;
+
+    fullTerms.forEach((term, idx) => {
+      const isLeft = idx < 7;
+      const xPos = isLeft ? p2Col1X : p2Col2X;
+      let currentY = isLeft ? p2LeftY : p2RightY;
+
+      // Title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(term.title, xPos, currentY);
+      currentY += 4;
+
+      // Body
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.8);
+      doc.setTextColor(71, 85, 105);
+      const lines = doc.splitTextToSize(term.text, p2ColWidth);
+      doc.text(lines, xPos, currentY);
+      currentY += lines.length * 3.2 + 5;
+
+      if (isLeft) p2LeftY = currentY;
+      else p2RightY = currentY;
+    });
+
+    // Vertical divider between columns
+    const colDividerTop = 50;
+    const colDividerBottom = Math.max(p2LeftY, p2RightY);
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.2);
+    doc.line(pageW / 2, colDividerTop, pageW / 2, colDividerBottom);
+
+    // Page 2 Footer
+    const p2FooterY = 284;
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.2);
+    doc.line(margin, p2FooterY - 4, pageW - margin, p2FooterY - 4);
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(`${COMPANY_DETAILS.name} | ${COMPANY_DETAILS.address} | Email: ${COMPANY_DETAILS.email}`, pageW / 2, p2FooterY, { align: 'center' });
+
     return { doc, quotationNumber: qtnNum };
   };
 

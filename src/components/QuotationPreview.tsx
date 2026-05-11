@@ -11,6 +11,219 @@ import { COMPANY_DETAILS } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { STM_LOGO_BASE64 } from '../logoBase64';
 
+const createQuotationPDF = (formData: any, items: any[], gstBreakdown: any, isInterState: boolean, quotationNumber: string, date: string, validity: string) => {
+  const doc = new jsPDF();
+  const pdfDate = format(new Date(), 'dd-MM-yyyy');
+  const pdfValidity = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'dd-MM-yyyy');
+
+  // Add Logo
+  doc.addImage(STM_LOGO_BASE64, 'PNG', 20, 10, 20, 20);
+
+  // Company Header
+  doc.setFontSize(18);
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.text(COMPANY_DETAILS.name, 105, 20, { align: 'center' });
+  
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100);
+  doc.text(COMPANY_DETAILS.address, 105, 26, { align: 'center' });
+  doc.text('CIN No.: U80302DL2005PTC138759 | IEC Code: AACCC6494M | PAN No.: AACCC6494M', 105, 31, { align: 'center' });
+  doc.text('GSTIN: 09AACCC6494M1Z1', 105, 36, { align: 'center' });
+  
+  doc.setDrawColor(226, 232, 240);
+  doc.line(20, 42, 190, 42);
+
+  // Quotation Info
+  doc.setFontSize(14);
+  doc.setTextColor(37, 99, 235);
+  doc.setFont('helvetica', 'bold');
+  doc.text('QUOTATION', 20, 52);
+  
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Quotation No: ${quotationNumber}`, 20, 62);
+  doc.text(`Date: ${pdfDate}`, 20, 67);
+  doc.text(`Validity: ${pdfValidity} (30 Days)`, 20, 72);
+
+  // Bill To
+  doc.setFont('helvetica', 'bold');
+  doc.text('BILL TO:', 130, 52);
+  doc.setFont('helvetica', 'normal');
+  doc.text(formData.name, 130, 58);
+  doc.text(formData.organization || 'Individual', 130, 63);
+  doc.text(formData.address, 130, 68, { maxWidth: 60 });
+  doc.text(`${formData.state} - ${formData.pincode}`, 130, 78);
+  if (formData.gstNumber) doc.text(`GSTIN: ${formData.gstNumber.toUpperCase()}`, 130, 83);
+
+  // Table
+  const tableData = items.map((item, index) => [
+    index + 1,
+    `${item.domainName}\n(${item.planName} - ${item.duration})`,
+    '1',
+    `₹${item.price.toLocaleString()}`,
+    `₹${item.price.toLocaleString()}`
+  ]);
+
+  (doc as any).autoTable({
+    startY: 95,
+    head: [['#', 'Description', 'Qty', 'Rate', 'Amount']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 8, cellPadding: 3 },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 100 },
+      2: { cellWidth: 15, halign: 'center' },
+      3: { cellWidth: 25, halign: 'right' },
+      4: { cellWidth: 25, halign: 'right' },
+    }
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+
+  // Totals
+  doc.setFontSize(9);
+  doc.text('Subtotal:', 140, finalY);
+  doc.text(`₹${gstBreakdown.basePrice.toLocaleString()}`, 185, finalY, { align: 'right' });
+
+  if (isInterState) {
+    doc.text('IGST (18%):', 140, finalY + 5);
+    doc.text(`₹${gstBreakdown.igst.toLocaleString()}`, 185, finalY + 5, { align: 'right' });
+  } else {
+    doc.text('CGST (9%):', 140, finalY + 5);
+    doc.text(`₹${gstBreakdown.cgst.toLocaleString()}`, 185, finalY + 5, { align: 'right' });
+    doc.text('SGST (9%):', 140, finalY + 10);
+    doc.text(`₹${gstBreakdown.sgst.toLocaleString()}`, 185, finalY + 10, { align: 'right' });
+  }
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total Payable:', 140, finalY + 20);
+  doc.text(`₹${gstBreakdown.totalAmount.toLocaleString()}`, 185, finalY + 20, { align: 'right' });
+
+  // Bank Details
+  const bankY = finalY + 35;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Bank Details (For NEFT / RTGS):', 20, bankY);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Account Number: ${COMPANY_DETAILS.bank.accountNumber}`, 20, bankY + 6);
+  doc.text(`Account Name: ${COMPANY_DETAILS.bank.accountName}`, 20, bankY + 11);
+  doc.text(`Bank Name: ${COMPANY_DETAILS.bank.bankName}`, 20, bankY + 16);
+  doc.text(`Branch: ${COMPANY_DETAILS.bank.branch}`, 20, bankY + 21);
+  doc.text(`IFSC Code: ${COMPANY_DETAILS.bank.ifscCode}`, 20, bankY + 26);
+
+  // Terms & Conditions (Summary on Page 1)
+  const termsY = bankY + 40;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Terms & Conditions:', 20, termsY);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('1. Subscription will be activated post-payment confirmation.', 20, termsY + 6);
+  doc.text('2. All disputes are subject to Delhi jurisdiction only.', 20, termsY + 11);
+
+  // Footer
+  const footerY = 280;
+  doc.setFontSize(8);
+  doc.setTextColor(100);
+  doc.text(`For any queries: Landline: ${COMPANY_DETAILS.tel[1]} | Mobile: ${COMPANY_DETAILS.mobile} | Email: ${COMPANY_DETAILS.email}`, 105, footerY, { align: 'center' });
+
+  // --- PAGE 2: Terms and Conditions ---
+  doc.addPage();
+  
+  const termsData = [
+    {
+      title: "1. Applicability:",
+      text: "These terms and conditions shall apply to all offers, proposals and agreements made between Consortium eLearning Network Pvt. Ltd. (herein referred as CELNET) and any third party or its agent (\"the Client\") relating to the products and/or services of CELNET (\"the Products and/or Services\"). They supersede any previous supply terms and conditions."
+    },
+    {
+      title: "2. Offer and acceptance; Description:",
+      text: "Each order for the Products and Services by the Client from CELNET shall be deemed to be an offer by the Client to purchase the Products and Services subject to this T&C. No order placed by the Client shall be deemed accepted until a written acknowledgement of order is issued by CELNET."
+    },
+    {
+      title: "3. Execution and modification of the order:",
+      text: "Any modifications to the agreed product or service description, budget or schedule, as set out in the order acknowledgement, may result in an adjustment to the final price and/or delivery schedule at CELNET's discretion."
+    },
+    {
+      title: "4. Rates and prices:",
+      text: "Unless otherwise agreed by CELNET in writing the prices/rates for the Products shall be those set out in CELNET's current pricelists. All such prices/rates shall be exclusive of any handling, packing, loading, freight, transport and insurance charges."
+    },
+    {
+      title: "5. Payment:",
+      text: "Unless otherwise agreed in writing, payments shall be effected within thirty (30) days of the invoice date in the currency invoiced in advance or if agreed. Time for payment shall be of the essence. CELNET may set and vary credit limits for any Client account."
+    },
+    {
+      title: "6. Distribution:",
+      text: "The Client shall not engage in piracy, reproduction, or plagiarism of the Products or any other products of CELNET or its affiliates, nor shall it directly or indirectly facilitate any other party to engage in those activities."
+    },
+    {
+      title: "7. Intellectual property:",
+      text: "Copyright and other intellectual property rights to all CELNET proposals, publications and other Products and or Services shall remain with CELNET unless agreed otherwise in writing. The rights granted by CELNET are restricted to use solely by the Client and may not be assigned."
+    },
+    {
+      title: "8. Liability and claims:",
+      text: "TO THE MAXIMUM EXTENT PERMITTED BY RELEVANT LAWS (1) CELNET shall not be liable for any of the following losses which may arise by reason of any breach of this T&C or any implied warranty, condition or other term, any representation or any duty of any kind imposed on CELNET."
+    },
+    {
+      title: "9. Force majeure:",
+      text: "If by reason of labor dispute, strikes, inability to obtain labor or materials, fire or other action of the elements, accidents, power or telecommunications failure, customs delays, governmental restrictions or appropriation or other causes beyond the control of a party, such party is unable to perform."
+    },
+    {
+      title: "10. Audit:",
+      text: "If Client is an agent, Client shall allow Publisher's authorized representative at any reasonable time to have access to Client's premises for the purpose of inspecting Client's facilities, books and records."
+    },
+    {
+      title: "11. Compliance with laws:",
+      text: "Client shall at all times during the term strictly comply with all applicable laws, ordinances, codes, regulations, standards and judicial and administrative orders relevant to its duties, obligations and performance under this T&C."
+    },
+    {
+      title: "12. Cancellations & Returns:",
+      text: "Without prejudice to any rights the Client may have under statute as a consumer, if the Client cancels an order either fully or partially, a cancellation fee may be charged. All cancellations must be made in writing. This fee will be calculated to cover any external or internal costs which have been incurred."
+    },
+    {
+      title: "13. General:",
+      text: "The formation, existence, construction, performance, validity and all aspects of the T&C shall be governed by the law of the corporate domicile of the CELNET company which is providing the Products or Services. The parties agree to submit to the exclusive jurisdiction of the courts of that same corporate domicile."
+    }
+  ];
+
+  let leftY = 20;
+  let rightY = 20;
+
+  doc.setTextColor(15, 23, 42);
+
+  termsData.forEach((term, index) => {
+    const isLeftCol = index < 6;
+    let currentY = isLeftCol ? leftY : rightY;
+    const xPos = isLeftCol ? 15 : 110;
+    const colWidth = 85;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text(term.title, xPos, currentY);
+    currentY += 4;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    const splitText = doc.splitTextToSize(term.text, colWidth);
+    doc.text(splitText, xPos, currentY);
+    
+    currentY += (splitText.length * 3) + 6;
+    
+    if (isLeftCol) {
+      leftY = currentY;
+    } else {
+      rightY = currentY;
+    }
+  });
+
+  return doc;
+};
 export function QuotationPreview() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -41,147 +254,17 @@ export function QuotationPreview() {
   const validity = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'MMMM dd, yyyy');
 
   const generatePDF = () => {
-    const doc = new jsPDF();
-    const pdfDate = format(new Date(), 'dd-MM-yyyy');
-    const pdfValidity = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'dd-MM-yyyy');
-
-    // Add Logo
-    doc.addImage(STM_LOGO_BASE64, 'PNG', 20, 10, 20, 20);
-
-    // Company Header
-    doc.setFontSize(18);
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.text(COMPANY_DETAILS.name, 105, 20, { align: 'center' });
-    
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100);
-    doc.text(COMPANY_DETAILS.address, 105, 26, { align: 'center' });
-    doc.text('CIN No.: U80302DL2005PTC138759 | IEC Code: AACCC6494M | PAN No.: AACCC6494M', 105, 31, { align: 'center' });
-    doc.text('GSTIN: 09AACCC6494M1Z1', 105, 36, { align: 'center' });
-    
-    doc.setDrawColor(226, 232, 240);
-    doc.line(20, 42, 190, 42);
-
-    // Quotation Info
-    doc.setFontSize(14);
-    doc.setTextColor(37, 99, 235);
-    doc.setFont('helvetica', 'bold');
-    doc.text('QUOTATION', 20, 52);
-    
-    doc.setFontSize(9);
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Quotation No: ${quotationNumber}`, 20, 62);
-    doc.text(`Date: ${pdfDate}`, 20, 67);
-    doc.text(`Validity: ${pdfValidity} (30 Days)`, 20, 72);
-
-    // Bill To
-    doc.setFont('helvetica', 'bold');
-    doc.text('BILL TO:', 130, 52);
-    doc.setFont('helvetica', 'normal');
-    doc.text(formData.name, 130, 58);
-    doc.text(formData.organization || 'Individual', 130, 63);
-    doc.text(formData.address, 130, 68, { maxWidth: 60 });
-    doc.text(`${formData.state} - ${formData.pincode}`, 130, 78);
-    if (formData.gstNumber) doc.text(`GSTIN: ${formData.gstNumber.toUpperCase()}`, 130, 83);
-
-    // Table
-    const tableData = items.map((item, index) => [
-      index + 1,
-      `${item.domainName}\n(${item.planName} - ${item.duration})`,
-      '1',
-      `₹${item.price.toLocaleString()}`,
-      `₹${item.price.toLocaleString()}`
-    ]);
-
-    (doc as any).autoTable({
-      startY: 95,
-      head: [['#', 'Description', 'Qty', 'Rate', 'Amount']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 8, cellPadding: 3 },
-      columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 100 },
-        2: { cellWidth: 15, halign: 'center' },
-        3: { cellWidth: 25, halign: 'right' },
-        4: { cellWidth: 25, halign: 'right' },
-      }
-    });
-
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-
-    // Totals
-    doc.setFontSize(9);
-    doc.text('Subtotal:', 140, finalY);
-    doc.text(`₹${gstBreakdown.basePrice.toLocaleString()}`, 185, finalY, { align: 'right' });
-
-    if (isInterState) {
-      doc.text('IGST (18%):', 140, finalY + 5);
-      doc.text(`₹${gstBreakdown.igst.toLocaleString()}`, 185, finalY + 5, { align: 'right' });
-    } else {
-      doc.text('CGST (9%):', 140, finalY + 5);
-      doc.text(`₹${gstBreakdown.cgst.toLocaleString()}`, 185, finalY + 5, { align: 'right' });
-      doc.text('SGST (9%):', 140, finalY + 10);
-      doc.text(`₹${gstBreakdown.sgst.toLocaleString()}`, 185, finalY + 10, { align: 'right' });
-    }
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Total Payable:', 140, finalY + 20);
-    doc.text(`₹${gstBreakdown.totalAmount.toLocaleString()}`, 185, finalY + 20, { align: 'right' });
-
-    // Bank Details
-    const bankY = finalY + 35;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Bank Details (For NEFT / RTGS):', 20, bankY);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Account Number: ${COMPANY_DETAILS.bank.accountNumber}`, 20, bankY + 6);
-    doc.text(`Account Name: ${COMPANY_DETAILS.bank.accountName}`, 20, bankY + 11);
-    doc.text(`Bank Name: ${COMPANY_DETAILS.bank.bankName}`, 20, bankY + 16);
-    doc.text(`Branch: ${COMPANY_DETAILS.bank.branch}`, 20, bankY + 21);
-    doc.text(`IFSC Code: ${COMPANY_DETAILS.bank.ifscCode}`, 20, bankY + 26);
-
-    // Terms & Conditions
-    const termsY = bankY + 40;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Terms & Conditions:', 20, termsY);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text('1. Subscription will be activated post-payment confirmation.', 20, termsY + 6);
-    doc.text('2. All disputes are subject to Delhi jurisdiction only.', 20, termsY + 11);
-
-    // Footer
-    const footerY = 280;
-    doc.setFontSize(8);
-    doc.setTextColor(100);
-    doc.text(`For any queries: Landline: ${COMPANY_DETAILS.tel[1]} | Mobile: ${COMPANY_DETAILS.mobile} | Email: ${COMPANY_DETAILS.email}`, 105, footerY, { align: 'center' });
-
+    const doc = createQuotationPDF(formData, items, gstBreakdown, isInterState, quotationNumber, date, validity);
     doc.save(`Quotation_${quotationNumber}.pdf`);
     toast.success('Quotation downloaded successfully!');
   };
 
   const handleSendEmail = async () => {
-    const doc = new jsPDF();
-    // ... (same PDF generation logic for email attachment)
-    // For simplicity, I'll just use the same logic but get base64
-    // (In a real app, I'd refactor this into a utility)
-    
     toast.loading('Sending quotation to email...', { id: 'send-email' });
     
     try {
-      // Re-generate PDF for base64
-      const pdfDoc = new jsPDF();
-      // (Minimal version for base64)
-      pdfDoc.text('STM DIGITAL LIBRARY QUOTATION', 10, 10);
-      pdfDoc.text(`Quotation No: ${quotationNumber}`, 10, 20);
-      pdfDoc.text(`Total: ₹${gstBreakdown.totalAmount.toLocaleString()}`, 10, 30);
+      // Generate fully-featured PDF including terms and conditions page
+      const pdfDoc = createQuotationPDF(formData, items, gstBreakdown, isInterState, quotationNumber, date, validity);
       const pdfBase64 = pdfDoc.output('datauristring').split(',')[1];
 
       const token = localStorage.getItem('token');
