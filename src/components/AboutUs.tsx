@@ -1,4 +1,4 @@
-import { ShieldCheck, Users, Target, Award, Globe, Zap } from "lucide-react";
+import { ShieldCheck, Globe, Zap, GraduationCap, Microscope, Library, FileText, Database } from "lucide-react";
 
 export function AboutUs() {
   return (
@@ -52,13 +52,38 @@ export function AboutUs() {
             </div>
             
             <div className="relative">
-              <div className="aspect-square rounded-3xl bg-slate-100 overflow-hidden shadow-2xl">
-                <img 
-                  src="https://picsum.photos/seed/academic/800/800" 
-                  alt="Academic Research" 
-                  className="h-full w-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+              <div className="aspect-square rounded-3xl bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden shadow-2xl relative flex items-center justify-center border border-slate-800">
+                {/* Background decorative elements */}
+                <div className="absolute inset-0 opacity-30">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.3),transparent_60%)]" />
+                  {/* Grid pattern */}
+                  <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+                </div>
+
+                {/* Floating Icons */}
+                <div className="absolute top-16 left-16 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 animate-[bounce_4s_infinite]">
+                  <Library className="text-blue-300" size={32} />
+                </div>
+                <div className="absolute bottom-24 left-20 p-3 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 animate-[pulse_3s_infinite]">
+                  <Database className="text-sky-300" size={28} />
+                </div>
+                <div className="absolute top-24 right-20 p-3 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 animate-[pulse_4s_infinite]">
+                  <Microscope className="text-indigo-300" size={30} />
+                </div>
+                <div className="absolute bottom-20 right-16 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 animate-[bounce_5s_infinite]">
+                  <FileText className="text-blue-200" size={32} />
+                </div>
+                
+                {/* Central Focus */}
+                <div className="relative z-10 flex items-center justify-center">
+                  <div className="bg-white px-8 py-6 rounded-3xl shadow-[0_0_60px_rgba(255,255,255,0.2)] border border-white/50 flex items-center gap-3">
+                    <img src="/logo.png" alt="STM Digital Library Logo" className="h-12 w-12 object-contain drop-shadow-md" />
+                    <div className="flex flex-col text-left">
+                      <span className="text-xl font-bold tracking-tight text-slate-900">STM</span>
+                      <span className="text-[0.65rem] font-bold uppercase tracking-widest text-blue-600">Digital Library</span>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="absolute -bottom-6 -right-6 rounded-2xl bg-blue-600 p-8 text-white shadow-xl">
                 <div className="text-4xl font-bold">Trusted</div>

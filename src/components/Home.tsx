@@ -27,9 +27,9 @@ export function Home() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     setMousePosition({ x, y });
-    setCenterOffset({ 
-      x: x - rect.width / 2, 
-      y: y - rect.height / 2 
+    setCenterOffset({
+      x: x - rect.width / 2,
+      y: y - rect.height / 2
     });
   };
 
@@ -43,7 +43,7 @@ export function Home() {
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section 
+      <section
         className="relative overflow-hidden bg-[#0a0f1c] min-h-[calc(100vh-80px)] flex items-center py-12 lg:py-0 text-white"
         onMouseMove={handleMouseMove}
       >
@@ -55,8 +55,8 @@ export function Home() {
         {/* Cursor Responsive Glowing Orbs - Vortex Core */}
         <motion.div
           className="pointer-events-none absolute left-0 top-0 w-[30rem] h-[30rem] rounded-full bg-blue-500/20 blur-[120px] z-0 mix-blend-screen"
-          animate={{ 
-            x: mousePosition.x - 240, 
+          animate={{
+            x: mousePosition.x - 240,
             y: mousePosition.y - 240,
             scale: 1 + Math.abs(centerOffset.x * 0.001)
           }}
@@ -64,8 +64,8 @@ export function Home() {
         />
         <motion.div
           className="pointer-events-none absolute left-0 top-0 w-[40rem] h-[40rem] rounded-full bg-indigo-600/15 blur-[150px] z-0 mix-blend-screen"
-          animate={{ 
-            x: mousePosition.x - 320, 
+          animate={{
+            x: mousePosition.x - 320,
             y: mousePosition.y - 320,
             scale: 1 + Math.abs(centerOffset.y * 0.001)
           }}
@@ -75,10 +75,10 @@ export function Home() {
         {/* Vortex Grid Layers */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 mix-blend-screen opacity-50">
           {/* Deep layer - Slow Clockwise Twist */}
-          <motion.div 
+          <motion.div
             className="absolute inset-[-50%] w-[200%] h-[200%] bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:60px_60px] origin-center"
-            animate={{ 
-              x: centerOffset.x * -0.02, 
+            animate={{
+              x: centerOffset.x * -0.02,
               y: centerOffset.y * -0.02,
               rotate: centerOffset.x * 0.02
             }}
@@ -86,23 +86,23 @@ export function Home() {
           />
 
           {/* Mid layer - Fast Counter-Clockwise Twist */}
-          <motion.div 
+          <motion.div
             className="absolute inset-[-50%] w-[200%] h-[200%] bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:50px_50px] origin-center"
-            animate={{ 
-              x: centerOffset.x * -0.04, 
+            animate={{
+              x: centerOffset.x * -0.04,
               y: centerOffset.y * -0.04,
               rotate: centerOffset.x * -0.04
             }}
             transition={{ type: "tween", ease: "easeOut", duration: 0.8 }}
           />
         </div>
-        
+
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full pointer-events-none">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
+
             {/* Text Content */}
             <div className="lg:col-span-6 text-left relative z-10 pointer-events-auto">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
@@ -111,18 +111,18 @@ export function Home() {
                 <Icons.Sparkles className="w-4 h-4" />
                 <span>India's Premier Academic Hub</span>
               </motion.div>
-              
-              <motion.h1 
+
+              <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
                 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight leading-[1.15]"
               >
-                Empowering <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Academic Excellence</span><br/>
+                Empowering <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Academic Excellence</span><br />
                 Through Digital Innovation.
               </motion.h1>
-              
-              <motion.p 
+
+              <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
@@ -130,8 +130,8 @@ export function Home() {
               >
                 A curated academic platform combining proprietary publications and legally sourced open-access research. Designed for students, researchers, and world-class institutions.
               </motion.p>
-              
-              <motion.div 
+
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
@@ -147,7 +147,7 @@ export function Home() {
                 </Link>
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.5 }}
@@ -158,7 +158,7 @@ export function Home() {
                 </p>
               </motion.div>
             </div>
-            
+
           </div>
         </div>
       </section>
@@ -224,7 +224,7 @@ export function Home() {
         <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-5 pointer-events-none">
           <ShieldCheck size={400} className="text-white" />
         </div>
-        
+
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-4xl font-extrabold text-white">Content Transparency</h2>
@@ -232,7 +232,7 @@ export function Home() {
               We maintain high standards of transparency regarding our content sources and collection methods.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Proprietary Content */}
             <div className="rounded-[40px] bg-slate-800/50 p-10 border border-white/5 backdrop-blur-sm">
@@ -245,7 +245,7 @@ export function Home() {
                   <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">STM Digital Library</p>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 {[
                   { title: "STM Journals", desc: "Our own published peer-reviewed journals." },
@@ -270,7 +270,7 @@ export function Home() {
                 ))}
               </div>
             </div>
-            
+
             {/* Open Access Content */}
             <div className="rounded-[40px] bg-white p-10 shadow-2xl">
               <div className="flex items-center gap-4 mb-8">
@@ -282,11 +282,11 @@ export function Home() {
                   <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Legally Aggregated Content</p>
                 </div>
               </div>
-              
+
               <p className="text-[13px] text-slate-500 leading-relaxed mb-8">
                 We aggregate research papers and academic content from reputable open-access repositories, ensuring they are legally sourced and properly indexed for your convenience.
               </p>
-              
+
               <div className="grid grid-cols-2 gap-4 mb-8">
                 {[
                   "Academic Repositories",
@@ -302,7 +302,7 @@ export function Home() {
                   </div>
                 ))}
               </div>
-              
+
               <div className="rounded-2xl bg-emerald-50/50 p-5 border border-emerald-100">
                 <p className="text-[10px] font-bold text-emerald-700 leading-normal uppercase tracking-wider text-center">
                   Subscription fees cover software services, indexing, platform maintenance, and integrated academic tools—not the ownership of open-access materials.
@@ -322,7 +322,7 @@ export function Home() {
               Our platform hosts a vast array of content types to support every stage of your academic and professional journey.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {CONTENT_TYPES.map((type) => {
               const Icon = contentTypeIconMap[type.icon] || Icons.Book;
@@ -368,13 +368,13 @@ export function Home() {
               View all 25+ departments <ArrowRight size={14} />
             </Link>
           </div>
- 
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {DOMAINS.slice(0, 8).map((domain) => {
               const Icon = (Icons as any)[domain.icon] || Icons.Book;
               return (
-                <Link 
-                  key={domain.id} 
+                <Link
+                  key={domain.id}
                   to={`/domain/${domain.id}`}
                   className="group relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-8 transition-all hover:shadow-2xl hover:-translate-y-1"
                 >
@@ -399,7 +399,7 @@ export function Home() {
               <p className="mt-6 text-lg text-slate-300">
                 We provide a comprehensive ecosystem for academic excellence, ensuring your students and faculty have the best resources at their fingertips.
               </p>
-              
+
               <div className="mt-12 space-y-6">
                 {[
                   { icon: ShieldCheck, title: "Quality Benchmarks", desc: "Standardized review processes for our proprietary collections." },
@@ -419,7 +419,7 @@ export function Home() {
                 ))}
               </div>
             </div>
-            
+
             <div className="relative">
               <div className="aspect-square rounded-3xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 p-8 ring-1 ring-white/10">
                 <div className="h-full w-full rounded-2xl bg-slate-800/50 backdrop-blur-xl border border-white/10 p-8">
@@ -453,20 +453,25 @@ export function Home() {
 
 
       {/* CTA Section */}
-      <section className="bg-blue-600 py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">Ready to advance your research?</h2>
-          <p className="mt-6 text-sm text-blue-100 max-w-2xl mx-auto opacity-90">
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 py-24 border-t border-white/5">
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <div className="absolute top-0 left-[-10%] w-[40rem] h-[40rem] bg-blue-600/20 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '5s' }}></div>
+          <div className="absolute bottom-0 right-[-10%] w-[40rem] h-[40rem] bg-indigo-500/20 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '7s' }}></div>
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+        </div>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl drop-shadow-md">Ready to advance your research?</h2>
+          <p className="mt-6 text-base text-blue-200 max-w-2xl mx-auto opacity-90">
             Join thousands of researchers and students who trust STM Digital Library for their academic needs.
           </p>
           <div className="mt-12 flex flex-wrap justify-center gap-4">
-            <Link to="/subscriptions" className="rounded-full bg-white px-10 py-4 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all shadow-xl">
+            <Link to="/subscriptions" className="rounded-full bg-white px-10 py-4 text-sm font-bold text-slate-900 hover:bg-slate-100 transition-all shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:scale-105 hover:shadow-[0_0_60px_rgba(59,130,246,0.5)]">
               View Subscription Plans
             </Link>
-            <Link to="/signup" className="rounded-full border-2 border-white/30 bg-transparent px-10 py-4 text-sm font-bold text-white hover:bg-white/10 transition-all">
+            <Link to="/signup" className="rounded-full border border-white/20 bg-white/5 backdrop-blur-md px-10 py-4 text-sm font-bold text-white hover:bg-white/10 transition-all hover:scale-105">
               Create Free Account
             </Link>
-            <Link to="/create-quotation" className="rounded-full border-2 border-white/20 bg-transparent px-10 py-4 text-sm font-bold text-white/70 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2">
+            <Link to="/create-quotation" className="rounded-full border border-white/10 bg-transparent px-10 py-4 text-sm font-bold text-white/70 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 hover:scale-105">
               <FileText size={18} />
               Create Quotation
             </Link>

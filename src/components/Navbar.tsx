@@ -36,11 +36,11 @@ export function Navbar() {
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo Section */}
         <div className="flex items-center shrink-0">
-            <Link to="/" className="flex items-center gap-3">
-              <img src="/logo.png" alt="STM Digital Library Logo" className="h-12 w-12 object-contain drop-shadow-md" />
-              <div className="flex flex-col">
-                <span className="text-xl font-bold tracking-tight text-slate-900">STM</span>
-                <span className="text-[0.65rem] font-bold uppercase tracking-widest text-blue-600">Digital Library</span>
+            <Link to="/" className="bg-white px-6 py-2.5 rounded-[1.5rem] shadow-sm border border-slate-200 flex items-center gap-3 hover:shadow-md transition-shadow">
+              <img src="/logo.png" alt="STM Digital Library Logo" className="h-11 w-11 object-contain drop-shadow-md" />
+              <div className="flex flex-col text-left justify-center">
+                <span className="text-xl font-bold tracking-tight text-slate-900 leading-none mb-1">STM</span>
+                <span className="text-[0.65rem] font-bold uppercase tracking-widest text-blue-600 leading-none">Digital Library</span>
               </div>
             </Link>
         </div>
