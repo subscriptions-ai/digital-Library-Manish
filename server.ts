@@ -80,22 +80,57 @@ async function startServer() {
     },
   });
 
-  const transporter = nodemailer.createTransport({
-    SES: { sesClient: ses, SendEmailCommand: sesv2.SendEmailCommand },
-  });
+  // Choose transporter: SES for production, Ethereal for local dev/testing
+  const isDevMode = !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || process.env.NODE_ENV === 'development';
 
-  // Verify transporter on startup
-  transporter.verify((error, success) => {
-    if (error) {
-      console.error("❌ Email Transporter Verification Failed:", error);
-    } else {
-      console.log("✅ Email Transporter is ready (SES v2)");
-    }
-  });
+  let transporter: any;
+  let etherealUser = '';
+  let etherealPass = '';
 
-  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-    console.warn("WARNING: AWS credentials for SES are missing in environment variables.");
+  if (isDevMode) {
+    // Create a free Ethereal test account on startup — no signup needed
+    const testAccount = await nodemailer.createTestAccount();
+    etherealUser = testAccount.user;
+    etherealPass = testAccount.pass;
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: { user: etherealUser, pass: etherealPass },
+    });
+    console.log('\n🧪 ===== LOCAL DEV MODE: Using Ethereal Email =====');
+    console.log(`   📧 Ethereal Inbox: https://ethereal.email/messages`);
+    console.log(`   👤 User: ${etherealUser}`);
+    console.log(`   🔑 Pass: ${etherealPass}`);
+    console.log('   ℹ️  Every email sent will print a preview URL in this console.');
+    console.log('=================================================\n');
+  } else {
+    transporter = nodemailer.createTransport({
+      SES: { sesClient: ses, SendEmailCommand: sesv2.SendEmailCommand },
+    });
+    // Verify transporter on startup
+    transporter.verify((error: any) => {
+      if (error) {
+        console.error("❌ Email Transporter Verification Failed:", error);
+      } else {
+        console.log("✅ Email Transporter is ready (SES v2)");
+      }
+    });
   }
+
+  // Wrapper: sends email and in dev prints the Ethereal preview URL
+  const sendMail = async (mailOptions: any) => {
+    const info = await transporter.sendMail(mailOptions);
+    if (isDevMode) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      console.log('\n📨 ===== EMAIL SENT (DEV PREVIEW) =====');
+      console.log(`   To: ${mailOptions.to}`);
+      console.log(`   Subject: ${mailOptions.subject}`);
+      console.log(`   🔗 Preview URL: ${previewUrl}`);
+      console.log('=======================================\n');
+    }
+    return info;
+  };
 
   // API Routes
   app.get("/api/health", (req, res) => {
@@ -965,160 +1000,180 @@ async function startServer() {
     }
   ) => {
     const siteUrl = process.env.SITE_URL || 'https://journalslibrary.com';
-    const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-    try {
-      await transporter.sendMail({
-        from: `"STM Digital Library" <${emailFrom}>`,
-        to,
-        subject: 'Your STM Digital Library Access Credentials',
+    const emailFrom = (process.env.EMAIL_FROM || process.e        subject: 'Your STM Digital Library Access Credentials',
         html: `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>STM Digital Library – Access Credentials</title></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;">
-  <tr><td align="center">
-    <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Your STM Digital Library Access Credentials</title>
+</head>
+<body style="margin:0;padding:0;background-color:#EEF2F7;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF2F7;padding:30px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.10);">
 
-      <!-- HEADER -->
-      <tr>
-        <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);padding:36px 40px;text-align:center;">
-          <div style="display:inline-block;background:rgba(255,255,255,0.1);border-radius:50%;padding:12px;margin-bottom:12px;">
-            <img src="https://journalslibrary.com/logo.png" alt="STM Logo" width="52" height="52" style="display:block;border-radius:50%;" onerror="this.style.display='none'"/>
-          </div>
-          <h1 style="color:#ffffff;margin:8px 0 4px;font-size:24px;font-weight:700;letter-spacing:0.5px;">STM Digital Library</h1>
-          <p style="color:#93c5fd;margin:0;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;">Division of Consortium eLearning Network Pvt. Ltd.</p>
-          <div style="margin-top:16px;background:#16a34a;border-radius:20px;display:inline-block;padding:5px 20px;">
-            <span style="color:#ffffff;font-size:11px;font-weight:700;letter-spacing:1px;">21 YEARS OF TRUSTED EXCELLENCE IN EDUCATION &amp; ACADEMIC PUBLISHING</span>
-          </div>
-        </td>
-      </tr>
+        <!-- TOP ACCENT BAR -->
+        <tr><td style="background:linear-gradient(90deg,#1A3A6B 0%,#2563EB 100%);height:6px;font-size:0;">&nbsp;</td></tr>
 
-      <!-- GREETING -->
-      <tr>
-        <td style="padding:36px 40px 0;">
-          <p style="color:#94a3b8;font-size:13px;margin:0 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Greetings from STM Digital Library</p>
-          <h2 style="color:#0f172a;font-size:22px;margin:0 0 16px;font-weight:700;">Dear ${name},</h2>
-          <p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 8px;">We are pleased to inform you that your subscription access has been <strong style="color:#16a34a;">successfully activated</strong>.</p>
-          <p style="color:#475569;font-size:15px;line-height:1.7;margin:0;">You can now log in to the STM Digital Library platform using the credentials provided below.</p>
-        </td>
-      </tr>
+        <!-- HEADER -->
+        <tr>
+          <td style="padding:32px 40px 24px;text-align:center;border-bottom:1px solid #E8EDF4;">
+            <img src="https://journalslibrary.com/logo.png" alt="STM Logo" width="60" height="60" style="display:inline-block;margin-bottom:14px;" onerror="this.style.display='none'"/>
+            <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:#1A3A6B;letter-spacing:-0.3px;">STM Digital Library</h1>
+            <p style="margin:0;font-size:12px;color:#6B7A99;font-weight:400;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+          </td>
+        </tr>
 
-      <!-- LOGIN CREDENTIALS BOX -->
-      <tr>
-        <td style="padding:24px 40px;">
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
-            <div style="background:#1e3a8a;padding:12px 20px;">
-              <p style="color:#93c5fd;margin:0;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">🔐 Login Credentials</p>
-            </div>
-            <div style="padding:20px;">
+        <!-- GREETING -->
+        <tr>
+          <td style="padding:28px 40px 0;">
+            <p style="margin:0 0 6px;font-size:13px;color:#2563EB;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">Greetings from STM Digital Library</p>
+            <p style="margin:0 0 14px;font-size:20px;font-weight:700;color:#1A3A6B;">Dear ${name},</p>
+            <p style="margin:0 0 10px;font-size:14px;color:#4A5568;line-height:1.7;">
+              We are pleased to inform you that your subscription access has been <span style="color:#16A34A;font-weight:700;">successfully activated</span>.
+            </p>
+            <p style="margin:0;font-size:14px;color:#4A5568;line-height:1.7;">
+              You can now log in to the STM Digital Library platform using the credentials provided below.
+            </p>
+          </td>
+        </tr>
+
+        <!-- CREDENTIALS CARD -->
+        <tr>
+          <td style="padding:24px 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F0F5FF;border:1px solid #C7D9F8;border-radius:10px;overflow:hidden;">
+              <!-- Card Title -->
+              <tr>
+                <td colspan="2" style="background:#1A3A6B;padding:12px 20px;">
+                  <p style="margin:0;font-size:12px;font-weight:700;color:#FFFFFF;letter-spacing:1px;text-transform:uppercase;">&#128272; Login Credentials</p>
+                </td>
+              </tr>
               <!-- Login URL -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
-                <tr>
-                  <td style="width:36px;vertical-align:middle;">
-                    <div style="background:#dbeafe;border-radius:8px;width:32px;height:32px;text-align:center;line-height:32px;font-size:16px;">🌐</div>
-                  </td>
-                  <td style="padding-left:12px;vertical-align:middle;">
-                    <p style="margin:0;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Login URL</p>
-                    <a href="${siteUrl}/login" style="color:#2563eb;font-size:14px;font-weight:700;text-decoration:none;">${siteUrl}/login</a>
-                  </td>
-                </tr>
-              </table>
-              <div style="height:1px;background:#e2e8f0;margin-bottom:16px;"></div>
+              <tr>
+                <td style="padding:14px 20px 0;vertical-align:top;width:42%;">
+                  <p style="margin:0;font-size:11px;color:#6B7A99;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">&#127760; Login URL</p>
+                </td>
+                <td style="padding:14px 20px 0;vertical-align:top;">
+                  <a href="${siteUrl}/login" style="color:#2563EB;font-size:13px;font-weight:700;text-decoration:none;">${siteUrl}/login</a>
+                </td>
+              </tr>
+              <!-- Divider -->
+              <tr><td colspan="2" style="padding:10px 20px 0;"><div style="height:1px;background:#D1DFF8;"></div></td></tr>
               <!-- Username -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
-                <tr>
-                  <td style="width:36px;vertical-align:middle;">
-                    <div style="background:#dbeafe;border-radius:8px;width:32px;height:32px;text-align:center;line-height:32px;font-size:16px;">👤</div>
-                  </td>
-                  <td style="padding-left:12px;vertical-align:middle;">
-                    <p style="margin:0;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Username</p>
-                    <p style="margin:2px 0 0;color:#0f172a;font-size:14px;font-weight:700;">${to}</p>
-                  </td>
-                </tr>
-              </table>
-              <div style="height:1px;background:#e2e8f0;margin-bottom:16px;"></div>
-              <!-- Temporary Password -->
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="width:36px;vertical-align:middle;">
-                    <div style="background:#dbeafe;border-radius:8px;width:32px;height:32px;text-align:center;line-height:32px;font-size:16px;">🔑</div>
-                  </td>
-                  <td style="padding-left:12px;vertical-align:middle;">
-                    <p style="margin:0;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Temporary Password</p>
-                    <span style="display:inline-block;margin-top:4px;background:#0f172a;color:#60a5fa;font-family:monospace;font-size:16px;font-weight:700;letter-spacing:2px;padding:6px 14px;border-radius:6px;">${password}</span>
-                  </td>
-                </tr>
-              </table>
-            </div>
-          </div>
-        </td>
-      </tr>
-
-      <!-- SECURITY NOTICE -->
-      <tr>
-        <td style="padding:0 40px 24px;">
-          <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:8px;padding:16px 20px;">
-            <p style="margin:0 0 8px;color:#92400e;font-size:13px;font-weight:700;">⚠️ Important Security Instructions</p>
-            <ul style="margin:0;padding:0 0 0 20px;color:#78350f;font-size:13px;line-height:1.8;">
-              <li>This is a <strong>temporary password</strong></li>
-              <li>You will be prompted to <strong>change your password</strong> after first login</li>
-              <li>Please keep your login credentials <strong>confidential</strong></li>
-              <li>Do not share access outside your institution/organization</li>
-            </ul>
-          </div>
-        </td>
-      </tr>
-
-      ${extra && (extra.institution || extra.department || extra.planName || extra.validity) ? `
-      <!-- SUBSCRIPTION DETAILS -->
-      <tr>
-        <td style="padding:0 40px 24px;">
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
-            <div style="background:#0f172a;padding:12px 20px;">
-              <p style="color:#93c5fd;margin:0;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">📚 Subscription Details</p>
-            </div>
-            <table width="100%" cellpadding="0" cellspacing="0" style="padding:0;">
-              ${extra.institution ? `<tr><td style="padding:12px 20px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;width:55%;">Institution / Organization</td><td style="padding:12px 20px;border-bottom:1px solid #f1f5f9;color:#0f172a;font-size:13px;font-weight:700;">${extra.institution}</td></tr>` : ''}
-              ${extra.department ? `<tr><td style="padding:12px 20px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Department Access</td><td style="padding:12px 20px;border-bottom:1px solid #f1f5f9;color:#0f172a;font-size:13px;font-weight:700;">${extra.department}</td></tr>` : ''}
-              ${extra.planName ? `<tr><td style="padding:12px 20px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Subscription Plan</td><td style="padding:12px 20px;border-bottom:1px solid #f1f5f9;color:#0f172a;font-size:13px;font-weight:700;">${extra.planName}</td></tr>` : ''}
-              ${extra.validity ? `<tr><td style="padding:12px 20px;color:#64748b;font-size:13px;">Validity</td><td style="padding:12px 20px;color:#16a34a;font-size:13px;font-weight:700;">${extra.validity}</td></tr>` : ''}
-            </table>
-          </div>
-        </td>
-      </tr>` : ''}
-
-      <!-- SUPPORT -->
-      <tr>
-        <td style="padding:0 40px 32px;">
-          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;">
-            <p style="margin:0 0 12px;color:#1e40af;font-size:13px;font-weight:700;">🛠️ Need Assistance?</p>
-            <p style="margin:0 0 10px;color:#3b82f6;font-size:13px;">If you face any issues related to login, access, or subscription, please contact us:</p>
-            <table cellpadding="0" cellspacing="0">
               <tr>
-                <td style="padding:4px 0;">
-                  <span style="color:#1e40af;font-size:13px;font-weight:600;">📧</span>
-                  <a href="mailto:info@celnet.in" style="color:#2563eb;font-size:13px;font-weight:700;text-decoration:none;margin-left:8px;">info@celnet.in</a>
+                <td style="padding:12px 20px 0;vertical-align:top;">
+                  <p style="margin:0;font-size:11px;color:#6B7A99;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">&#128100; Username</p>
+                </td>
+                <td style="padding:12px 20px 0;vertical-align:top;">
+                  <p style="margin:0;font-size:13px;font-weight:700;color:#1A3A6B;">${to}</p>
                 </td>
               </tr>
+              <!-- Divider -->
+              <tr><td colspan="2" style="padding:10px 20px 0;"><div style="height:1px;background:#D1DFF8;"></div></td></tr>
+              <!-- Password -->
               <tr>
-                <td style="padding:4px 0;">
-                  <span style="color:#1e40af;font-size:13px;font-weight:600;">📞</span>
-                  <a href="tel:+919810078958" style="color:#2563eb;font-size:13px;font-weight:700;text-decoration:none;margin-left:8px;">+91-9810078958</a>
+                <td style="padding:12px 20px 18px;vertical-align:middle;">
+                  <p style="margin:0;font-size:11px;color:#6B7A99;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">&#128273; Temporary Password</p>
+                </td>
+                <td style="padding:12px 20px 18px;vertical-align:middle;">
+                  <span style="display:inline-block;background:#1A3A6B;color:#60C2F8;font-family:'Courier New',monospace;font-size:15px;font-weight:700;letter-spacing:2px;padding:7px 16px;border-radius:6px;">${password}</span>
                 </td>
               </tr>
             </table>
-          </div>
-        </td>
-      </tr>
+          </td>
+        </tr>
 
-      <!-- FOOTER -->
-      <tr>
-        <td style="background:#0f172a;padding:24px 40px;text-align:center;">
-          <p style="color:#fbbf24;font-size:12px;font-weight:700;letter-spacing:1px;margin:0 0 8px;text-transform:uppercase;">🏆 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
-          <p style="color:#94a3b8;font-size:13px;margin:0 0 4px;">Regards,<br/><strong style="color:#e2e8f0;">STM Digital Library Team</strong></p>
-          <p style="color:#64748b;font-size:11px;margin:8px 0 0;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
-          <div style="margin-top:16px;height:1px;background:#1e293b;"></div>
-          <p style="color:#475569;font-size:10px;margin:12px 0 0;">© ${new Date().getFullYear()} STM Digital Library. All rights reserved. | <a href="${siteUrl}/privacy-policy" style="color:#60a5fa;text-decoration:none;">Privacy Policy</a> | <a href="${siteUrl}/terms-and-conditions" style="color:#60a5fa;text-decoration:none;">Terms &amp; Conditions</a></p>
+        <!-- SECURITY NOTICE -->
+        <tr>
+          <td style="padding:0 40px 22px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFBEB;border:1px solid #FCD34D;border-left:4px solid #F59E0B;border-radius:8px;">
+              <tr>
+                <td style="padding:14px 18px;">
+                  <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#92400E;">&#9888;&#65039; Important Security Instructions</p>
+                  <p style="margin:0 0 4px;font-size:12px;color:#78350F;line-height:1.7;">For security purposes:</p>
+                  <table role="presentation" cellpadding="0" cellspacing="0">
+                    <tr><td style="padding:2px 0;font-size:12px;color:#78350F;">&#8226;&nbsp; This is a <strong>temporary password</strong></td></tr>
+                    <tr><td style="padding:2px 0;font-size:12px;color:#78350F;">&#8226;&nbsp; You will be prompted to <strong>change your password</strong> after first login</td></tr>
+                    <tr><td style="padding:2px 0;font-size:12px;color:#78350F;">&#8226;&nbsp; Please keep your login credentials <strong>confidential</strong></td></tr>
+                    <tr><td style="padding:2px 0;font-size:12px;color:#78350F;">&#8226;&nbsp; Do not share access outside your institution/organization</td></tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        ${extra && (extra.institution || extra.department || extra.planName || extra.validity) ? `
+        <!-- SUBSCRIPTION DETAILS -->
+        <tr>
+          <td style="padding:0 40px 22px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
+              <tr>
+                <td colspan="2" style="background:#1A3A6B;padding:12px 20px;">
+                  <p style="margin:0;font-size:12px;font-weight:700;color:#FFFFFF;letter-spacing:1px;text-transform:uppercase;">&#128218; Subscription Details</p>
+                </td>
+              </tr>
+              ${extra.institution ? `<tr style="border-bottom:1px solid #EEF2F7;">
+                <td style="padding:11px 20px;font-size:12px;color:#6B7A99;font-weight:600;width:48%;">Institution / Organization</td>
+                <td style="padding:11px 20px;font-size:13px;color:#1A3A6B;font-weight:700;">${extra.institution}</td>
+              </tr>` : ''}
+              ${extra.department ? `<tr style="border-bottom:1px solid #EEF2F7;">
+                <td style="padding:11px 20px;font-size:12px;color:#6B7A99;font-weight:600;">Department Access</td>
+                <td style="padding:11px 20px;font-size:13px;color:#1A3A6B;font-weight:700;">${extra.department}</td>
+              </tr>` : ''}
+              ${extra.planName ? `<tr style="border-bottom:1px solid #EEF2F7;">
+                <td style="padding:11px 20px;font-size:12px;color:#6B7A99;font-weight:600;">Subscription Plan</td>
+                <td style="padding:11px 20px;font-size:13px;color:#1A3A6B;font-weight:700;">${extra.planName}</td>
+              </tr>` : ''}
+              ${extra.validity ? `<tr>
+                <td style="padding:11px 20px;font-size:12px;color:#6B7A99;font-weight:600;">Validity</td>
+                <td style="padding:11px 20px;font-size:13px;color:#16A34A;font-weight:700;">${extra.validity}</td>
+              </tr>` : ''}
+            </table>
+          </td>
+        </tr>` : ''}
+
+        <!-- SUPPORT -->
+        <tr>
+          <td style="padding:0 40px 28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1E40AF;">&#128295; Need Assistance?</p>
+                  <p style="margin:0 0 10px;font-size:12px;color:#3B5FBF;line-height:1.6;">If you face any issues related to login, access, or subscription, please contact us:</p>
+                  <p style="margin:0 0 4px;font-size:13px;color:#1E40AF;">&#128231;&nbsp;<a href="mailto:info@celnet.in" style="color:#2563EB;font-weight:700;text-decoration:none;">info@celnet.in</a></p>
+                  <p style="margin:0;font-size:13px;color:#1E40AF;">&#128222;&nbsp;<a href="tel:+919810078958" style="color:#2563EB;font-weight:700;text-decoration:none;">+91-9810078958</a></p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="background:#1A3A6B;padding:24px 40px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#FCD34D;letter-spacing:0.5px;text-transform:uppercase;">&#127942; 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
+            <p style="margin:0 0 4px;font-size:13px;color:#CBD5E1;">Regards,</p>
+            <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#FFFFFF;">STM Digital Library Team</p>
+            <p style="margin:0 0 16px;font-size:12px;color:#94A3B8;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <div style="height:1px;background:#2D5299;margin-bottom:14px;"></div>
+            <p style="margin:0;font-size:11px;color:#64748B;">
+              &copy; ${new Date().getFullYear()} STM Digital Library. All rights reserved.&nbsp;|&nbsp;
+              <a href="${siteUrl}/privacy-policy" style="color:#93C5FD;text-decoration:none;">Privacy Policy</a>&nbsp;|&nbsp;
+              <a href="${siteUrl}/terms-and-conditions" style="color:#93C5FD;text-decoration:none;">Terms &amp; Conditions</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- BOTTOM ACCENT BAR -->
+        <tr><td style="background:linear-gradient(90deg,#2563EB 0%,#1A3A6B 100%);height:4px;font-size:0;">&nbsp;</td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`onditions" style="color:#60a5fa;text-decoration:none;">Terms &amp; Conditions</a></p>
         </td>
       </tr>
 
@@ -2630,7 +2685,7 @@ async function startServer() {
       const inquiry = await (prisma as any).contactInquiry.findUnique({ where: { id: req.params.id } });
       if (!inquiry) return res.status(404).json({ error: 'Inquiry not found' });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || '').trim();
-      await transporter.sendMail({
+      await sendMail({
         from: `"STM Digital Library" <${emailFrom}>`,
         to: inquiry.email,
         subject: subject || `Re: Your Contact Inquiry – STM Digital Library`,
@@ -2941,7 +2996,7 @@ async function startServer() {
         html: htmlBody,
         attachments: inlineAttachments
       };
-      await transporter.sendMail(mailOptions);
+      await sendMail(mailOptions);
 
       // Respond immediately after email is sent — DB save is non-blocking
       res.json({ status: "success", message: "Quotation sent successfully" });
@@ -3021,7 +3076,7 @@ async function startServer() {
         ]
       };
 
-      await transporter.sendMail(mailOptions);
+      await sendMail(mailOptions);
       res.json({ status: "success", message: "Invoice sent successfully" });
     } catch (error) {
       console.error("Invoice Email Error:", error);
@@ -4130,7 +4185,7 @@ async function startServer() {
         ];
       }
 
-      await transporter.sendMail(mailOptions);
+      await sendMail(mailOptions);
 
       const updated = await prisma.agencyInquiry.update({
         where: { id },
@@ -4157,7 +4212,7 @@ async function startServer() {
 
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       
-      await transporter.sendMail({
+      await sendMail({
         from: emailFrom,
         to: inquiry.email,
         subject: subject || "Update on Your STM Digital Library Partnership Application",
