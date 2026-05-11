@@ -1000,7 +1000,12 @@ async function startServer() {
     }
   ) => {
     const siteUrl = process.env.SITE_URL || 'https://journalslibrary.com';
-    const emailFrom = (process.env.EMAIL_FROM || process.e        subject: 'Your STM Digital Library Access Credentials',
+    const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+    try {
+      await sendMail({
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to,
+        subject: 'Your STM Digital Library Access Credentials',
         html: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1172,14 +1177,6 @@ async function startServer() {
       </table>
     </td></tr>
   </table>
-</body>
-</html>`onditions" style="color:#60a5fa;text-decoration:none;">Terms &amp; Conditions</a></p>
-        </td>
-      </tr>
-
-    </table>
-  </td></tr>
-</table>
 </body>
 </html>`
       });
