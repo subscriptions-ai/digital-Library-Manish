@@ -83,6 +83,10 @@ export function QuotationWizard() {
     userCategory: 'Student Scholar'
   });
 
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ id: string, discount: number, code: string } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+
   const [isPincodeLoading, setIsPincodeLoading] = useState(false);
 
   // Auto-fill city/state based on pincode
@@ -179,12 +183,43 @@ export function QuotationWizard() {
     if (step > 1) setStep((step - 1) as Step);
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    setCouponLoading(true);
+    try {
+      const selectedPlan = SUBSCRIPTION_PLANS.find(p => p.id === formData.subscriptionPlanId);
+      const basePricePerDept = selectedPlan?.pricing.find(pr => pr.duration === formData.duration)?.price || 0;
+      const totalBasePrice = basePricePerDept * formData.selectedDepartments.length;
+
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode, orderAmount: totalBasePrice })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Invalid coupon');
+      setAppliedCoupon({ id: data.couponId, discount: data.discount, code: couponCode.toUpperCase() });
+      toast.success('Coupon applied successfully!');
+    } catch (e: any) {
+      toast.error(e.message);
+      setAppliedCoupon(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+  };
+
   // Pricing Logic
   const selectedPlan = SUBSCRIPTION_PLANS.find(p => p.id === formData.subscriptionPlanId);
   const basePricePerDept = selectedPlan?.pricing.find(pr => pr.duration === formData.duration)?.price || 0;
   const totalBasePrice = basePricePerDept * formData.selectedDepartments.length;
+  const discountedBasePrice = Math.max(0, totalBasePrice - (appliedCoupon?.discount || 0));
   const isInterState = formData.state !== COMPANY_STATE;
-  const gstBreakdown = calculateGST(totalBasePrice, isInterState);
+  const gstBreakdown = calculateGST(discountedBasePrice, isInterState);
 
   const createPdfDocument = async () => {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -399,8 +434,15 @@ export function QuotationWizard() {
     const totX = margin + halfW + 6;
     const totW = halfW - 3;
     let totY = curY + 6;
-    [['Subtotal (Base Price Total)', `Rs.${gstBreakdown.basePrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`],
-     ['Total GST (18%)', `Rs.${gstBreakdown.totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`]].forEach(([lbl, val]) => {
+    const pdfTotals = [
+      ['Subtotal (Base Price Total)', `Rs.${totalBasePrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`]
+    ];
+    if (appliedCoupon) {
+      pdfTotals.push([`Discount (${appliedCoupon.code})`, `-Rs.${appliedCoupon.discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`]);
+    }
+    pdfTotals.push(['Total GST (18%)', `Rs.${gstBreakdown.totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`]);
+    
+    pdfTotals.forEach(([lbl, val]) => {
       doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 116, 139);
       doc.text(lbl, totX, totY);
       doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 41, 59);
@@ -661,6 +703,8 @@ export function QuotationWizard() {
             totalAmount: gstBreakdown.totalAmount,
             subtotal: gstBreakdown.basePrice,
             gstAmount: gstBreakdown.totalGst,
+            discountAmount: appliedCoupon?.discount || 0,
+            couponCode: appliedCoupon?.code || null,
             items: checkoutItems
           },
           pdfBase64
@@ -711,7 +755,9 @@ export function QuotationWizard() {
           address: formData.address,
           pincode: formData.pincode,
           state: formData.state,
-          userCategory: formData.userCategory
+          userCategory: formData.userCategory,
+          couponCode: appliedCoupon?.code || null,
+          discountAmount: appliedCoupon?.discount || 0
         },
         items: checkoutItems
       } 
@@ -1309,6 +1355,36 @@ export function QuotationWizard() {
                         <span className="text-slate-500">Total GST (18%)</span>
                         <span className="font-bold text-slate-900">₹{gstBreakdown.totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
+
+                      {/* Coupon Code Section */}
+                      {!appliedCoupon ? (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <input 
+                            type="text" 
+                            placeholder="Have a coupon code?" 
+                            className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm uppercase focus:border-blue-500 focus:outline-none"
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value)}
+                          />
+                          <button 
+                            type="button"
+                            onClick={handleApplyCoupon}
+                            disabled={couponLoading || !couponCode}
+                            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                          >
+                            {couponLoading ? '...' : 'Apply'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-2 rounded-md bg-green-50 px-3 py-2 flex items-center justify-between border border-green-200">
+                          <div>
+                            <span className="text-xs font-bold text-green-700 uppercase">{appliedCoupon.code}</span>
+                            <span className="ml-2 text-sm font-bold text-green-700">-₹{appliedCoupon.discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <button type="button" onClick={removeCoupon} className="text-xs text-green-700 hover:underline">Remove</button>
+                        </div>
+                      )}
+
                       <div className="h-px bg-slate-200 my-1" />
                       <div className="flex justify-between items-center">
                         <span className="text-base font-black text-slate-900">GRAND TOTAL</span>

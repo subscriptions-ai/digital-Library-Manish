@@ -24,6 +24,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // server.ts
 var import_express = __toESM(require("express"), 1);
 var import_path = __toESM(require("path"), 1);
+var import_fs = __toESM(require("fs"), 1);
 var import_dotenv = __toESM(require("dotenv"), 1);
 var import_razorpay = __toESM(require("razorpay"), 1);
 var import_nodemailer = __toESM(require("nodemailer"), 1);
@@ -88,39 +89,102 @@ async function startServer() {
       secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY || "").trim()
     }
   });
-  const transporter = import_nodemailer.default.createTransport({
-    SES: { sesClient: ses, SendEmailCommand: sesv2.SendEmailCommand }
-  });
-  transporter.verify((error, success) => {
-    if (error) {
-      console.error("\u274C Email Transporter Verification Failed:", error);
-    } else {
-      console.log("\u2705 Email Transporter is ready (SES v2)");
-    }
-  });
-  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-    console.warn("WARNING: AWS credentials for SES are missing in environment variables.");
+  const isDevMode = !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || process.env.NODE_ENV === "development";
+  let transporter;
+  let etherealUser = "";
+  let etherealPass = "";
+  if (isDevMode) {
+    const testAccount = await import_nodemailer.default.createTestAccount();
+    etherealUser = testAccount.user;
+    etherealPass = testAccount.pass;
+    transporter = import_nodemailer.default.createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: { user: etherealUser, pass: etherealPass }
+    });
+    console.log("\n\u{1F9EA} ===== LOCAL DEV MODE: Using Ethereal Email =====");
+    console.log(`   \u{1F4E7} Ethereal Inbox: https://ethereal.email/messages`);
+    console.log(`   \u{1F464} User: ${etherealUser}`);
+    console.log(`   \u{1F511} Pass: ${etherealPass}`);
+    console.log("   \u2139\uFE0F  Every email sent will print a preview URL in this console.");
+    console.log("=================================================\n");
+  } else {
+    transporter = import_nodemailer.default.createTransport({
+      SES: { sesClient: ses, SendEmailCommand: sesv2.SendEmailCommand }
+    });
+    transporter.verify((error) => {
+      if (error) {
+        console.error("\u274C Email Transporter Verification Failed:", error);
+      } else {
+        console.log("\u2705 Email Transporter is ready (SES v2)");
+      }
+    });
   }
+  const _logoPath = import_path.default.join(process.cwd(), "public", "assets", "stm-logo-email.png");
+  const _logoCidAttachment = import_fs.default.existsSync(_logoPath) ? {
+    filename: "stm-logo-email.png",
+    path: _logoPath,
+    cid: "stm-logo-email"
+  } : null;
+  const sendMail = async (mailOptions) => {
+    const opts = { ...mailOptions };
+    if (_logoCidAttachment && opts.html && typeof opts.html === "string" && opts.html.includes("cid:stm-logo-email")) {
+      opts.attachments = [...opts.attachments || [], _logoCidAttachment];
+    }
+    const info = await transporter.sendMail(opts);
+    if (isDevMode) {
+      const previewUrl = import_nodemailer.default.getTestMessageUrl(info);
+      console.log("\n\u{1F4E8} ===== EMAIL SENT (DEV PREVIEW) =====");
+      console.log(`   To: ${opts.to}`);
+      console.log(`   Subject: ${opts.subject}`);
+      console.log(`   \u{1F517} Preview URL: ${previewUrl}`);
+      console.log("=======================================\n");
+    }
+    return info;
+  };
+  const buildEmail = (bodyRows) => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head><body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);"><tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/><h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2><p style="margin:0;font-size:12px;color:#64748b;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` + bodyRows + `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;"><p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">\u{1F3C6} 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p><p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p><p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p><p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;"><p style="margin:0;font-size:11px;color:#64748b;">\xA9 2026 STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr><tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr></table></td></tr></table></body></html>`;
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
   app.get("/api/public/counts", async (req, res) => {
     try {
-      const [books, periodicals, theses, videos] = await Promise.all([
-        prisma.content.count({ where: { contentType: "Books" } }),
-        prisma.content.count({ where: { contentType: "Periodicals" } }),
-        prisma.content.count({ where: { contentType: "Theses" } }),
-        prisma.content.count({ where: { contentType: "Educational Videos" } })
+      const [books, periodicals, theses, videos, totalContent] = await Promise.all([
+        prisma.content.count({ where: { contentType: "Books", status: { not: "Draft" } } }),
+        prisma.content.count({ where: { contentType: "Periodicals", status: { not: "Draft" } } }),
+        prisma.content.count({ where: { contentType: "Theses", status: { not: "Draft" } } }),
+        prisma.content.count({ where: { contentType: "Educational Videos", status: { not: "Draft" } } }),
+        prisma.content.count({ where: { status: { not: "Draft" } } })
       ]);
-      res.json([
-        { label: "Books", value: `${books}+` },
-        { label: "Periodicals", value: `${periodicals}+` },
-        { label: "Theses", value: `${theses}+` },
-        { label: "Educational Videos", value: `${videos}+` }
-      ]);
+      res.json({
+        categories: [
+          { label: "Books", value: `${books}+` },
+          { label: "Periodicals", value: `${periodicals}+` },
+          { label: "Theses", value: `${theses}+` },
+          { label: "Educational Videos", value: `${videos}+` }
+        ],
+        totalContent
+      });
     } catch (error) {
       console.error("Public counts error:", error);
       res.status(500).json({ error: "Failed to fetch counts" });
+    }
+  });
+  app.get("/api/public/domain-counts", async (req, res) => {
+    try {
+      const groups = await prisma.content.groupBy({
+        by: ["domain"],
+        where: { status: { not: "Draft" }, domain: { not: null } },
+        _count: { id: true }
+      });
+      const countsMap = groups.reduce((acc, g) => {
+        if (g.domain) acc[g.domain] = g._count.id;
+        return acc;
+      }, {});
+      res.json(countsMap);
+    } catch (error) {
+      console.error("Domain counts error:", error);
+      res.status(500).json({ error: "Failed to fetch domain counts" });
     }
   });
   app.post("/api/auth/signup", async (req, res) => {
@@ -137,11 +201,30 @@ async function startServer() {
           password: hashedPassword,
           displayName: name,
           organization: organization || "",
-          role: email === "subscriptions@stmjournals.com" ? "SuperAdmin" : "Subscriber",
+          role: email === "info@celnet.in" ? "SuperAdmin" : "Subscriber",
           status: "Active"
         }
       });
       const token = import_jsonwebtoken.default.sign({ uid: userObj.id, email, role: userObj.role }, JWT_SECRET, { expiresIn: "24h" });
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const adminMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        subject: `\u{1F195} New User Registration \u2014 ${name}`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F195} New Subscriber Alert</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new user has just registered on the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:20px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">User Details</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${name}</td></tr><tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;">${organization || "Not provided"}</td></tr></table><div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;"><p style="margin:0;font-size:13px;color:#1e3a6e;">\u26A1 <strong>Action:</strong> Review the new subscriber and assign a plan if needed.</p></div></td></tr>`
+        )
+      };
+      const userMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: email,
+        subject: `\u{1F389} Welcome to STM Digital Library, ${name}!`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome aboard, ${name}! \u{1F393}</h3><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Your account is ready. You now have access to STM Digital Library \u2014 your gateway to peer-reviewed journals, e-books, conference proceedings &amp; more.</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td style="text-align:center;padding:14px 8px;background:#f0f9ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">\u{1F4DA}</div><p style="margin:0;font-size:11px;font-weight:700;color:#0369a1;">50,000+<br/>Journals</p></td><td width="4"></td><td style="text-align:center;padding:14px 8px;background:#f0fdf4;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">\u{1F3A5}</div><p style="margin:0;font-size:11px;font-weight:700;color:#15803d;">Educational<br/>Videos</p></td><td width="4"></td><td style="text-align:center;padding:14px 8px;background:#fdf4ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">\u{1F4D6}</div><p style="margin:0;font-size:11px;font-weight:700;color:#7e22ce;">E-Books &amp;<br/>Theses</p></td></tr></table><div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;"><p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F680} Getting Started</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Log in at <strong>journalslibrary.com</strong></p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Browse domains &amp; subscribe to your field</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Access full-text content instantly</p></div><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
+        )
+      };
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
       const { password: _, ...profile } = userObj;
       res.json({ token, user: profile });
     } catch (error) {
@@ -155,6 +238,12 @@ async function startServer() {
       const userObj = await prisma.user.findUnique({ where: { email } });
       if (!userObj) {
         return res.status(401).json({ error: "Invalid credentials" });
+      }
+      if (userObj.isBlocked) {
+        return res.status(403).json({ error: "Your account has been blocked. Please contact support." });
+      }
+      if (userObj.isDemoAccount && userObj.demoExpiresAt && /* @__PURE__ */ new Date() > userObj.demoExpiresAt) {
+        return res.status(403).json({ error: "Your demo account has expired. Please upgrade to continue." });
       }
       const isPasswordValid = await import_bcryptjs.default.compare(password, userObj.password);
       if (!isPasswordValid) {
@@ -400,8 +489,8 @@ async function startServer() {
   });
   app.get("/api/user/reading-progress/:contentId", authenticateJWT, async (req, res) => {
     try {
-      const activity = await prisma.studentActivity.findUnique({
-        where: { userId_contentId: { userId: req.user.uid, contentId: req.params.contentId } }
+      const activity = await prisma.studentActivity.findFirst({
+        where: { userId: req.user.uid, contentId: req.params.contentId }
       });
       res.json({ lastPage: activity?.lastPage || 1, accessedAt: activity?.accessedAt || null });
     } catch (error) {
@@ -510,7 +599,7 @@ async function startServer() {
       const { domain, contentType, search, page = "1", limit = "20", onlyUnlocked } = req.query;
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const take = parseInt(limit);
-      const where = {};
+      const where = { status: { not: "Draft" } };
       if (domain) where.domain = String(domain);
       if (contentType) where.contentType = String(contentType);
       if (search) {
@@ -531,11 +620,55 @@ async function startServer() {
         }
       }
       if (onlyUnlocked === "true" && userDetails) {
-        const allContents = await prisma.content.findMany({ where, orderBy: { title: "asc" } });
-        const activeSubs2 = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
-        const unlockedContents = allContents.filter((c) => checkContentAccess(c, userDetails.role, activeSubs2)).map((c) => ({ ...c, locked: false }));
-        const paginated = unlockedContents.slice(skip, skip + take);
-        return res.json({ data: paginated, total: unlockedContents.length, page: parseInt(page), limit: take });
+        if (userDetails.role !== "SuperAdmin" && userDetails.role !== "Admin" && userDetails.role !== "ContentManager") {
+          const activeSubs2 = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
+          if (activeSubs2.length === 0) {
+            return res.json({ data: [], total: 0, page: parseInt(page), limit: take });
+          }
+          const subOrConditions = [];
+          for (const sub of activeSubs2) {
+            const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
+            const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : sub.contentTypes ? JSON.parse(sub.contentTypes) : [];
+            const condition = {};
+            const domainOr = [];
+            if (d.length > 0) {
+              d.forEach((domainStr) => {
+                if (domainStr) domainOr.push({ domain: { contains: domainStr, mode: "insensitive" } });
+              });
+            }
+            if (sub.domainName) {
+              domainOr.push({ domain: { contains: sub.domainName, mode: "insensitive" } });
+            }
+            if (domainOr.length > 0) {
+              condition.OR = domainOr;
+            }
+            if (ct.length > 0) {
+              condition.contentType = { in: ct };
+            }
+            if (Object.keys(condition).length === 0) {
+              subOrConditions.push({});
+            } else {
+              subOrConditions.push(condition);
+            }
+          }
+          if (subOrConditions.length > 0) {
+            const hasWildcard = subOrConditions.some((c) => Object.keys(c).length === 0);
+            if (!hasWildcard) {
+              where.AND = where.AND || [];
+              where.AND.push({ OR: subOrConditions });
+            }
+          }
+        }
+        const [contents2, total2] = await Promise.all([
+          prisma.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
+          prisma.content.count({ where })
+        ]);
+        return res.json({
+          data: contents2.map((c) => ({ ...c, locked: false })),
+          total: total2,
+          page: parseInt(page),
+          limit: take
+        });
       }
       const [contents, total] = await Promise.all([
         prisma.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
@@ -566,7 +699,8 @@ async function startServer() {
   app.get("/api/content/:id/view", authenticateJWT, async (req, res) => {
     try {
       const contentId = req.params.id;
-      const content = await prisma.content.findUnique({ where: { id: contentId } });
+      const isAdminRole = ["SuperAdmin", "Admin", "ContentManager"].includes(req.user.role);
+      const content = isAdminRole ? await prisma.content.findUnique({ where: { id: contentId } }) : await prisma.content.findFirst({ where: { id: contentId, status: { not: "Draft" } } });
       if (!content) {
         return res.status(404).json({ error: "Content not found" });
       }
@@ -601,7 +735,9 @@ async function startServer() {
   app.get("/api/content/:id/proxy-pdf", authenticateJWT, async (req, res) => {
     try {
       const contentId = req.params.id;
-      const content = await prisma.content.findUnique({ where: { id: contentId } });
+      const content = await prisma.content.findFirst({
+        where: { id: contentId, status: { not: "Draft" } }
+      });
       if (!content || !content.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
@@ -674,6 +810,17 @@ async function startServer() {
       res.status(500).json({ error: "PDF proxy failed" });
     }
   });
+  app.get("/api/user/quotations", authenticateJWT, async (req, res) => {
+    try {
+      const quotations = await prisma.quotation.findMany({
+        where: { userEmail: req.user.email },
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(quotations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quotations" });
+    }
+  });
   app.get("/api/user/invoices", authenticateJWT, async (req, res) => {
     try {
       const payments = await prisma.payment.findMany({
@@ -710,35 +857,187 @@ async function startServer() {
     const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
     return Array.from(import_crypto.default.randomBytes(length)).map((b) => chars[b % chars.length]).join("");
   };
-  const sendCredentialsEmail = async (to, name, password) => {
-    const siteUrl = process.env.SITE_URL || "https://library.stmjournals.com";
+  const sendCredentialsEmail = async (to, name, password, extra) => {
+    const siteUrl = process.env.SITE_URL || "https://journalslibrary.com";
     const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
     try {
-      await transporter.sendMail({
+      await sendMail({
         from: `"STM Digital Library" <${emailFrom}>`,
         to,
-        subject: "Your Digital Library Access Credentials",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f8fafc; border-radius: 12px;">
-            <div style="background: #1e293b; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 22px;">STM Digital Library</h1>
-              <p style="color: #94a3b8; margin: 8px 0 0;">Academic Access Platform</p>
-            </div>
-            <h2 style="color: #1e293b;">Welcome, ${name}!</h2>
-            <p style="color: #475569;">Your Digital Library account has been created. Here are your access credentials:</p>
-            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 8px 0; color: #64748b; font-weight: bold; width: 140px;">User ID (Email):</td><td style="padding: 8px 0; color: #0f172a; font-weight: bold;">${to}</td></tr>
-                <tr><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Temporary Password:</td><td style="padding: 8px 0; color: #0f172a; font-family: monospace; letter-spacing: 1px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">${password}</td></tr>
-                <tr><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Login URL:</td><td style="padding: 8px 0;"><a href="${siteUrl}/login" style="color: #2563eb;">${siteUrl}/login</a></td></tr>
-              </table>
-            </div>
-            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 4px; margin: 16px 0;">
-              <p style="margin: 0; color: #92400e; font-size: 14px;"><strong>Important:</strong> You will be prompted to change your password on first login. Please keep these credentials safe.</p>
-            </div>
-            <p style="color: #64748b; font-size: 13px; margin-top: 24px;">If you did not expect this email, please contact <a href="mailto:subscriptions@stmjournals.com" style="color: #2563eb;">subscriptions@stmjournals.com</a>.</p>
-          </div>
-        `
+        subject: "Your STM Digital Library Access Credentials",
+        html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Your STM Digital Library Access Credentials</title>
+</head>
+<body style="margin:0;padding:0;background-color:#EEF2F7;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF2F7;padding:30px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.10);">
+
+        <!-- TOP ACCENT BAR -->
+        <tr><td style="background:linear-gradient(90deg,#1A3A6B 0%,#2563EB 100%);height:6px;font-size:0;">&nbsp;</td></tr>
+
+        <!-- HEADER -->
+        <tr>
+          <td style="padding:32px 40px 24px;text-align:center;border-bottom:1px solid #E8EDF4;">
+            <img src="https://journalslibrary.com/logo.png" alt="STM Logo" width="60" height="60" style="display:inline-block;margin-bottom:14px;" onerror="this.style.display='none'"/>
+            <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:#1A3A6B;letter-spacing:-0.3px;">STM Digital Library</h1>
+            <p style="margin:0;font-size:12px;color:#6B7A99;font-weight:400;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+          </td>
+        </tr>
+
+        <!-- GREETING -->
+        <tr>
+          <td style="padding:28px 40px 0;">
+            <p style="margin:0 0 6px;font-size:13px;color:#2563EB;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">Greetings from STM Digital Library</p>
+            <p style="margin:0 0 14px;font-size:20px;font-weight:700;color:#1A3A6B;">Dear ${name},</p>
+            <p style="margin:0 0 10px;font-size:14px;color:#4A5568;line-height:1.7;">
+              We are pleased to inform you that your subscription access has been <span style="color:#16A34A;font-weight:700;">successfully activated</span>.
+            </p>
+            <p style="margin:0;font-size:14px;color:#4A5568;line-height:1.7;">
+              You can now log in to the STM Digital Library platform using the credentials provided below.
+            </p>
+          </td>
+        </tr>
+
+        <!-- CREDENTIALS CARD -->
+        <tr>
+          <td style="padding:24px 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F0F5FF;border:1px solid #C7D9F8;border-radius:10px;overflow:hidden;">
+              <!-- Card Title -->
+              <tr>
+                <td colspan="2" style="background:#1A3A6B;padding:12px 20px;">
+                  <p style="margin:0;font-size:12px;font-weight:700;color:#FFFFFF;letter-spacing:1px;text-transform:uppercase;">&#128272; Login Credentials</p>
+                </td>
+              </tr>
+              <!-- Login URL -->
+              <tr>
+                <td style="padding:14px 20px 0;vertical-align:top;width:42%;">
+                  <p style="margin:0;font-size:11px;color:#6B7A99;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">&#127760; Login URL</p>
+                </td>
+                <td style="padding:14px 20px 0;vertical-align:top;">
+                  <a href="${siteUrl}/login" style="color:#2563EB;font-size:13px;font-weight:700;text-decoration:none;">${siteUrl}/login</a>
+                </td>
+              </tr>
+              <!-- Divider -->
+              <tr><td colspan="2" style="padding:10px 20px 0;"><div style="height:1px;background:#D1DFF8;"></div></td></tr>
+              <!-- Username -->
+              <tr>
+                <td style="padding:12px 20px 0;vertical-align:top;">
+                  <p style="margin:0;font-size:11px;color:#6B7A99;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">&#128100; Username</p>
+                </td>
+                <td style="padding:12px 20px 0;vertical-align:top;">
+                  <p style="margin:0;font-size:13px;font-weight:700;color:#1A3A6B;">${to}</p>
+                </td>
+              </tr>
+              <!-- Divider -->
+              <tr><td colspan="2" style="padding:10px 20px 0;"><div style="height:1px;background:#D1DFF8;"></div></td></tr>
+              <!-- Password -->
+              <tr>
+                <td style="padding:12px 20px 18px;vertical-align:middle;">
+                  <p style="margin:0;font-size:11px;color:#6B7A99;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">&#128273; Temporary Password</p>
+                </td>
+                <td style="padding:12px 20px 18px;vertical-align:middle;">
+                  <span style="display:inline-block;background:#1A3A6B;color:#60C2F8;font-family:'Courier New',monospace;font-size:15px;font-weight:700;letter-spacing:2px;padding:7px 16px;border-radius:6px;">${password}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- SECURITY NOTICE -->
+        <tr>
+          <td style="padding:0 40px 22px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFBEB;border:1px solid #FCD34D;border-left:4px solid #F59E0B;border-radius:8px;">
+              <tr>
+                <td style="padding:14px 18px;">
+                  <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#92400E;">&#9888;&#65039; Important Security Instructions</p>
+                  <p style="margin:0 0 4px;font-size:12px;color:#78350F;line-height:1.7;">For security purposes:</p>
+                  <table role="presentation" cellpadding="0" cellspacing="0">
+                    <tr><td style="padding:2px 0;font-size:12px;color:#78350F;">&#8226;&nbsp; This is a <strong>temporary password</strong></td></tr>
+                    <tr><td style="padding:2px 0;font-size:12px;color:#78350F;">&#8226;&nbsp; You will be prompted to <strong>change your password</strong> after first login</td></tr>
+                    <tr><td style="padding:2px 0;font-size:12px;color:#78350F;">&#8226;&nbsp; Please keep your login credentials <strong>confidential</strong></td></tr>
+                    <tr><td style="padding:2px 0;font-size:12px;color:#78350F;">&#8226;&nbsp; Do not share access outside your institution/organization</td></tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        ${extra && (extra.institution || extra.department || extra.planName || extra.validity) ? `
+        <!-- SUBSCRIPTION DETAILS -->
+        <tr>
+          <td style="padding:0 40px 22px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">
+              <tr>
+                <td colspan="2" style="background:#1A3A6B;padding:12px 20px;">
+                  <p style="margin:0;font-size:12px;font-weight:700;color:#FFFFFF;letter-spacing:1px;text-transform:uppercase;">&#128218; Subscription Details</p>
+                </td>
+              </tr>
+              ${extra.institution ? `<tr style="border-bottom:1px solid #EEF2F7;">
+                <td style="padding:11px 20px;font-size:12px;color:#6B7A99;font-weight:600;width:48%;">Institution / Organization</td>
+                <td style="padding:11px 20px;font-size:13px;color:#1A3A6B;font-weight:700;">${extra.institution}</td>
+              </tr>` : ""}
+              ${extra.department ? `<tr style="border-bottom:1px solid #EEF2F7;">
+                <td style="padding:11px 20px;font-size:12px;color:#6B7A99;font-weight:600;">Department Access</td>
+                <td style="padding:11px 20px;font-size:13px;color:#1A3A6B;font-weight:700;">${extra.department}</td>
+              </tr>` : ""}
+              ${extra.planName ? `<tr style="border-bottom:1px solid #EEF2F7;">
+                <td style="padding:11px 20px;font-size:12px;color:#6B7A99;font-weight:600;">Subscription Plan</td>
+                <td style="padding:11px 20px;font-size:13px;color:#1A3A6B;font-weight:700;">${extra.planName}</td>
+              </tr>` : ""}
+              ${extra.validity ? `<tr>
+                <td style="padding:11px 20px;font-size:12px;color:#6B7A99;font-weight:600;">Validity</td>
+                <td style="padding:11px 20px;font-size:13px;color:#16A34A;font-weight:700;">${extra.validity}</td>
+              </tr>` : ""}
+            </table>
+          </td>
+        </tr>` : ""}
+
+        <!-- SUPPORT -->
+        <tr>
+          <td style="padding:0 40px 28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1E40AF;">&#128295; Need Assistance?</p>
+                  <p style="margin:0 0 10px;font-size:12px;color:#3B5FBF;line-height:1.6;">If you face any issues related to login, access, or subscription, please contact us:</p>
+                  <p style="margin:0 0 4px;font-size:13px;color:#1E40AF;">&#128231;&nbsp;<a href="mailto:info@celnet.in" style="color:#2563EB;font-weight:700;text-decoration:none;">info@celnet.in</a></p>
+                  <p style="margin:0;font-size:13px;color:#1E40AF;">&#128222;&nbsp;<a href="tel:+919810078958" style="color:#2563EB;font-weight:700;text-decoration:none;">+91-9810078958</a></p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="background:#1A3A6B;padding:24px 40px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#FCD34D;letter-spacing:0.5px;text-transform:uppercase;">&#127942; 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
+            <p style="margin:0 0 4px;font-size:13px;color:#CBD5E1;">Regards,</p>
+            <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#FFFFFF;">STM Digital Library Team</p>
+            <p style="margin:0 0 16px;font-size:12px;color:#94A3B8;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <div style="height:1px;background:#2D5299;margin-bottom:14px;"></div>
+            <p style="margin:0;font-size:11px;color:#64748B;">
+              &copy; ${(/* @__PURE__ */ new Date()).getFullYear()} STM Digital Library. All rights reserved.&nbsp;|&nbsp;
+              <a href="${siteUrl}/privacy-policy" style="color:#93C5FD;text-decoration:none;">Privacy Policy</a>&nbsp;|&nbsp;
+              <a href="${siteUrl}/terms-and-conditions" style="color:#93C5FD;text-decoration:none;">Terms &amp; Conditions</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- BOTTOM ACCENT BAR -->
+        <tr><td style="background:linear-gradient(90deg,#2563EB 0%,#1A3A6B 100%);height:4px;font-size:0;">&nbsp;</td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
       });
     } catch (emailErr) {
       console.error("Credentials email failed for:", to);
@@ -761,7 +1060,16 @@ async function startServer() {
         where,
         include: {
           subscriptions: { where: { status: "Active" }, take: 3 },
-          payments: { orderBy: { createdAt: "desc" }, take: 3 }
+          payments: { orderBy: { createdAt: "desc" }, take: 3 },
+          institution: {
+            include: {
+              subscriptions: {
+                where: { status: "Active" },
+                orderBy: { createdAt: "desc" },
+                take: 5
+              }
+            }
+          }
         },
         orderBy: { createdAt: "desc" }
       });
@@ -785,7 +1093,7 @@ async function startServer() {
   });
   app.post("/api/admin/users/create", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const { name, email, role, institutionId, institutionName, sendEmail, customPassword } = req.body;
+      const { name, email, role, institutionId, institutionName, sendEmail, customPassword, isDemoAccount } = req.body;
       if (!name || !email || !role) {
         return res.status(400).json({ error: "Name, email and role are required" });
       }
@@ -815,7 +1123,9 @@ async function startServer() {
           status: "Active",
           isFirstLogin: true,
           organization: institutionName || void 0,
-          institutionId: newInstId || institutionId || void 0
+          institutionId: newInstId || institutionId || void 0,
+          isDemoAccount: Boolean(isDemoAccount),
+          demoExpiresAt: isDemoAccount ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3) : null
         }
       });
       await prisma.usageLog.create({
@@ -1237,10 +1547,46 @@ async function startServer() {
           status: "Pending"
         }
       });
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const durationMonths = planType === "Yearly" ? 12 : planType === "Quarterly" ? 3 : 1;
+      const adminMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        subject: `\u{1F525} New Domain Access Lead: ${domain} \u2014 ${userName}`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F525} New Domain Access Lead</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new access request has been submitted for the <strong>${domain}</strong> collection.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4E6} Request Details</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Domain:</span> <strong style="color:#fff;">${domain}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Notes:</span> <span style="color:#e2e8f0;">${notes || "\u2014"}</span></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:18px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Contact Info</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:35%;border-bottom:1px solid #f1f5f9;">Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${userName}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${organization || "N/A"}</td></tr></table><div style="background:#fefce8;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:12px 16px;"><p style="margin:0;font-size:13px;color:#92400e;">\u{1F3C3} <strong>Hot Lead!</strong> Follow up within 24 hours.</p></div></td></tr>`
+        )
+      };
+      const userMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: email,
+        subject: `\u2705 Your Request for ${domain} Access \u2014 Received!`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u2705 Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${userName}</strong>, we have received your request for the <strong>${domain}</strong> collection. Our team will contact you shortly to finalize the setup.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4CB} Your Request Summary</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Domain:</span> <strong style="color:#fff;">${domain}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Organization:</span> <span style="color:#e2e8f0;">${organization || "\u2014"}</span></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Notes:</span> <span style="color:#e2e8f0;">${notes || "\u2014"}</span></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} What Happens Next?</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our team reviews your request within 24 hrs</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We confirm subscription &amp; payment details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Full-text access is activated instantly</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
+        )
+      };
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
       res.json({ success: true, requestId: request.id, message: "Your request has been received. We will contact you shortly." });
     } catch (err) {
       console.error("POST /api/domain-request error:", err);
       res.status(500).json({ error: "Failed to submit request" });
+    }
+  });
+  app.get("/api/quotation/next-number", async (_req, res) => {
+    try {
+      const now = /* @__PURE__ */ new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const prefix = `QTN-${year}-${month}-`;
+      const count = await prisma.quotation.count({
+        where: { id: { startsWith: prefix } }
+      });
+      const seq = String(count + 1).padStart(2, "0");
+      res.json({ quotationNumber: `${prefix}${seq}` });
+    } catch (error) {
+      console.error("Next quotation number error:", error);
+      res.status(500).json({ error: "Failed to generate quotation number" });
     }
   });
   app.post("/api/quotations", authenticateJWT, async (req, res) => {
@@ -1745,105 +2091,22 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
         subject: `New Institutional Trial Request: ${institutionName}`,
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">New Institutional Trial Request</h2>
-            <p>A new request for an institutional trial has been submitted through the website.</p>
-            
-            <h3 style="color: #1e40af; margin-top: 25px;">Personal Details</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px; background: #f8fafc;">Full Name</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${fullName}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Institutional Email</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${institutionalEmail}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Designation</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${designation || "N/A"}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">WhatsApp Number</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${whatsappNumber || "N/A"}</td>
-              </tr>
-            </table>
-
-            <h3 style="color: #1e40af; margin-top: 25px;">Institution & Department</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px; background: #f8fafc;">Institution Name</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${institutionName}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Department</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${department}</td>
-              </tr>
-            </table>
-
-            <h3 style="color: #1e40af; margin-top: 25px;">Address Details</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px; background: #f8fafc;">Pincode</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${pincode}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">City</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${city}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">State</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${state}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Country</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${country}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Full Address</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${fullAddress || "N/A"}</td>
-              </tr>
-            </table>
-          </div>
-        `
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F3DB}\uFE0F New Institutional Trial Request</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">An institution has requested a trial access through the website.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Personal Details</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${institutionalEmail}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || "N/A"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">WhatsApp</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${whatsappNumber || "N/A"}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Institution</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${institutionName}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Department</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${department}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">City / State</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${city}, ${state}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Country</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${country}</td></tr></table></td></tr>`
+        )
       };
       const userMailOptions = {
         from: emailFrom,
         to: institutionalEmail,
         subject: "Your Institutional Trial Request has been received",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-            <h2 style="color: #2563eb;">Hello ${fullName},</h2>
-            <p>Thank you for requesting an institutional trial for <strong>${institutionName}</strong>.</p>
-            <p>We have received your request for the <strong>${department}</strong> department. Our team is reviewing your details and will get in touch with you shortly to set up the trial access.</p>
-            
-            <div style="background: #f1f5f9; padding: 20px; border-radius: 10px; margin: 20px 0;">
-              <h3 style="margin-top: 0; color: #1e40af;">What happens next?</h3>
-              <ol>
-                <li>Our institutional access team will verify your details.</li>
-                <li>We will contact you to discuss IP-based authentication or remote access options.</li>
-                <li>Once configured, your entire institution will have seamless access for the trial period.</li>
-              </ol>
-            </div>
-
-            <p>If you have any questions in the meantime, please reply to this email or contact us at subscriptions@stmjournals.com.</p>
-            
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-            <p style="font-size: 12px; color: #64748b;">
-              <strong>STM Digital Library</strong><br />
-              A-118, 2nd Floor, Sector-63, Noida - 201301, U.P., India<br />
-              Email: subscriptions@stmjournals.com | Web: www.stmjournals.com
-            </p>
-          </div>
-        `
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F3DB}\uFE0F Trial Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for requesting an institutional trial for <strong>${institutionName}</strong> \u2014 <strong>${department}</strong>. Our team is reviewing your request and will get in touch shortly to set up the access.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} What Happens Next?</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our institutional access team verifies your details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We discuss IP-based or remote access setup</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Your institution gets seamless trial access</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
+        )
       };
-      await Promise.all([
-        transporter.sendMail(adminMailOptions),
-        transporter.sendMail(userMailOptions)
-      ]);
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
       res.json({ status: "success", message: "Trial request submitted successfully" });
     } catch (error) {
       console.error("Institutional Trial Error:", error);
@@ -1885,83 +2148,24 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "subscriptions@stmjournals.com",
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
         subject: "New Contact Inquiry from Website",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #2563eb;">New Contact Inquiry</h2>
-            <p>You have received a new inquiry from the website contact form.</p>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px;">Full Name</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${fullName}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Email Address</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${email}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Mobile Number</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${mobile}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">WhatsApp Number</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${whatsapp}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Designation</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${designation}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Departments</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${Array.isArray(departments) ? departments.join(", ") : departments}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">State</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${state}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Organization</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${organization}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Message</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${message}</td>
-              </tr>
-            </table>
-          </div>
-        `
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F4E9} New Contact Inquiry</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new inquiry was submitted via the website contact form.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Inquiry Details</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:35%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Mobile</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${mobile || "N/A"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organization</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${organization || "N/A"}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || "N/A"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">State</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${state || "N/A"}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Departments</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${Array.isArray(departments) ? departments.join(", ") : departments || "N/A"}</td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd;"><tr><td style="padding:16px 20px;"><p style="color:#0369a1;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">\u{1F4AC} Message</p><p style="font-size:13px;color:#1e293b;line-height:1.6;margin:0;">${message}</p></td></tr></table></td></tr>`
+        )
       };
       const userMailOptions = {
         from: emailFrom,
         to: email,
         subject: "Thank you for contacting STM Digital Library",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-            <h2 style="color: #2563eb;">Hello ${fullName},</h2>
-            <p>Thank you for reaching out to us. We have received your inquiry and our team will get back to you shortly.</p>
-            <div style="background: #f1f5f9; padding: 20px; border-radius: 10px; margin: 20px 0;">
-              <h3 style="margin-top: 0;">Summary of your details:</h3>
-              <ul style="list-style: none; padding: 0;">
-                <li><strong>Organization:</strong> ${organization}</li>
-                <li><strong>Departments:</strong> ${Array.isArray(departments) ? departments.join(", ") : departments}</li>
-                <li><strong>Message:</strong> ${message}</li>
-              </ul>
-            </div>
-            <p>If you have any urgent queries, feel free to call us at +91-120-4781200.</p>
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-            <p style="font-size: 12px; color: #64748b;">
-              <strong>STM Digital Library</strong><br />
-              A-118, 2nd Floor, Sector-63, Noida - 201301, U.P., India<br />
-              Email: info@stmjournals.com | Web: www.stmjournals.com
-            </p>
-          </div>
-        `
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u2705 We've Got Your Message!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for contacting <strong>STM Digital Library</strong>. We have received your inquiry and our team will get back to you within <strong>1\u20132 business days</strong>.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd;margin-bottom:16px;"><tr><td style="padding:16px 20px;"><p style="color:#0369a1;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">\u{1F4AC} Your Message</p><p style="font-size:13px;color:#1e293b;line-height:1.6;margin:0;">${message}</p></td></tr></table>` + (departments && (Array.isArray(departments) ? departments.length > 0 : true) ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;margin-bottom:16px;"><tr><td style="padding:16px 20px;"><p style="color:#7e22ce;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F4DA} Selected Departments</p>` + (Array.isArray(departments) ? departments : [departments]).map(
+            (d) => `<span style="display:inline-block;background:#ede9fe;color:#6d28d9;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;margin:3px 4px 3px 0;">${d}</span>`
+          ).join("") + `</td></tr></table>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F4DE} Reach Us Directly</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F4E7} <a href="mailto:info@celnet.in" style="color:#93c5fd;">info@celnet.in</a></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F4DE} +91-120-4781200</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F310} <a href="https://journalslibrary.com" style="color:#93c5fd;">journalslibrary.com</a></p></td></tr></table></td></tr>`
+        )
       };
-      await Promise.all([
-        transporter.sendMail(adminMailOptions),
-        transporter.sendMail(userMailOptions)
-      ]);
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
       res.json({ status: "success", message: "Inquiry submitted successfully" });
     } catch (error) {
       console.error("Contact Form Error:", error);
@@ -2022,7 +2226,7 @@ async function startServer() {
       const inquiry = await prisma.contactInquiry.findUnique({ where: { id: req.params.id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      await transporter.sendMail({
+      await sendMail({
         from: `"STM Digital Library" <${emailFrom}>`,
         to: inquiry.email,
         subject: subject || `Re: Your Contact Inquiry \u2013 STM Digital Library`,
@@ -2038,7 +2242,7 @@ async function startServer() {
               <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px;">
                 <p style="margin: 0; font-size: 13px; color: #64748b;">
                   For further assistance, please reply to this email or call us at <strong>+91-120-4781200</strong>.<br/>
-                  <strong>STM Digital Library</strong> | subscriptions@stmjournals.com
+                  <strong>STM Digital Library</strong> | info@celnet.in
                 </p>
               </div>
             </div>
@@ -2065,33 +2269,295 @@ async function startServer() {
   });
   app.post("/api/quotation/send", async (req, res) => {
     try {
-      const { userEmail, userName, quotationData, pdfBase64, userId, organization, state } = req.body;
+      const { userEmail, userName, quotationData, pdfBase64, userId, organization, state, duration, quotationDate } = req.body;
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const quotationNumber = quotationData.quotationNumber;
+      const totalAmount = typeof quotationData.totalAmount === "number" ? quotationData.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 }) : quotationData.totalAmount || "0";
+      const logoPath = import_path.default.join(process.cwd(), "public", "assets", "stm-logo.png");
+      const logoExists = import_fs.default.existsSync(logoPath);
+      const items = quotationData.items || [];
+      const departmentNames = items.map((it) => it.domainName).filter(Boolean);
+      const departmentsHtml = departmentNames.length ? departmentNames.map((d) => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">\u2705 &nbsp;${d}</li>`).join("") : '<li style="color:#94a3b8;font-size:14px;">\u2014</li>';
+      const issuedDate = quotationDate || (/* @__PURE__ */ new Date()).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const subscriptionDuration = duration || items[0]?.duration || "\u2014";
+      const htmlBody = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quotation \u2014 STM Digital Library</title>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;font-family:'Segoe UI',Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f7;padding:32px 0;">
+    <tr><td align="center">
+      <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);max-width:620px;">
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 HEADER \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
+            ${logoExists ? `<img src="cid:stm-logo" alt="STM Digital Library" width="110" height="110" style="display:block;margin:0 auto 16px;border-radius:12px;" />` : `<div style="display:inline-block;background:#2563eb;border-radius:12px;padding:10px 22px;margin-bottom:16px;"><span style="color:#ffffff;font-size:18px;font-weight:900;letter-spacing:3px;">STM</span></div>`}
+            <h1 style="color:#ffffff;margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:1px;line-height:1.2;">STM DIGITAL LIBRARY</h1>
+            <p style="color:#93c5fd;margin:0 0 16px;font-size:13px;font-weight:500;letter-spacing:0.5px;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;letter-spacing:1px;">
+              \u{1F3C6} &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
+            </span>
+          </td>
+        </tr>
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 GREETING \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        <tr>
+          <td style="padding:36px 48px 0;">
+            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${userName},</p>
+            <p style="font-size:14px;color:#475569;line-height:1.75;margin:0 0 20px;">
+              Greetings from <strong>STM Digital Library</strong>!<br/>
+              Thank you for your interest in our digital library subscription services.<br/>
+              Please find attached the quotation for the selected department(s) and subscription duration.
+            </p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 28px;"/>
+          </td>
+        </tr>
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 QUOTATION DETAILS \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1d4ed8,#1e40af);border-radius:14px;overflow:hidden;">
+              <tr>
+                <td style="padding:20px 28px 10px;">
+                  <p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 18px;">\u{1F4C4} &nbsp;Quotation Details</p>
+
+                  <!-- Row -->
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);width:55%;">Quotation Number</td>
+                      <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${quotationNumber}</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Quotation Date</td>
+                      <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${issuedDate}</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Validity</td>
+                      <td style="color:#86efac;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">30 Days from Issue</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Duration</td>
+                      <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${subscriptionDuration}</td>
+                    </tr>
+                  </table>
+
+                  <!-- Departments -->
+                  <p style="color:#93c5fd;font-size:12px;margin:14px 0 6px;">Selected Department(s)</p>
+                  <ul style="margin:0 0 14px;padding-left:4px;list-style:none;">
+                    ${departmentsHtml}
+                  </ul>
+                  ${quotationData.discountAmount ? `
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;">
+                    <tr>
+                      <td style="color:#86efac;font-size:13px;font-weight:600;padding-bottom:6px;">Discount (${quotationData.couponCode})</td>
+                      <td style="text-align:right;color:#86efac;font-size:13px;font-weight:700;padding-bottom:6px;">-\u20B9${quotationData.discountAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  </table>
+                  ` : ""}
+
+                  <!-- Grand Total -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.25);padding-top:14px;margin-top:4px;">
+                    <tr>
+                      <td style="color:#bfdbfe;font-size:13px;font-weight:600;padding-top:14px;">Total Amount (Including 18% GST)</td>
+                      <td style="text-align:right;padding-top:14px;">
+                        <span style="color:#ffffff;font-size:22px;font-weight:900;">\u20B9${totalAmount}</span>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 ABOUT STM \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:14px;border:1px solid #bae6fd;">
+              <tr>
+                <td style="padding:22px 28px;">
+                  <p style="color:#0369a1;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">\u{1F4DA} &nbsp;About STM Digital Library</p>
+                  <p style="color:#475569;font-size:13px;margin:0 0 12px;line-height:1.7;">STM Digital Library is a curated academic platform providing access to:</p>
+                  <table cellpadding="0" cellspacing="0">
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Academic Journals</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Conference Proceedings</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Educational Videos</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;E-books &amp; Reference Materials</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Theses &amp; Research Content</td></tr>
+                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Legally sourced open-access academic resources</td></tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 PAYMENT INFO \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fefce8;border-radius:14px;border:1px solid #fde68a;">
+              <tr>
+                <td style="padding:22px 28px;">
+                  <p style="color:#92400e;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">\u{1F4B3} &nbsp;Payment Information</p>
+                  <p style="color:#78350f;font-size:13px;font-weight:600;margin:0 0 12px;">Payments must be made only to:</p>
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;width:45%;">Account Name</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">Consortium eLearning Network Pvt. Ltd.</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Account Number</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">03942000001153</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Bank Name</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">HDFC Bank</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Branch</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:600;padding:5px 0;border-bottom:1px solid #fde68a;">Sector-62, Noida, U.P., India</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#92400e;font-size:12px;padding:5px 0;">IFSC Code</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;">HDFC0002649</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 CONTACT INFO \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:14px;border:1px solid #bbf7d0;">
+              <tr>
+                <td style="padding:22px 28px;">
+                  <p style="color:#15803d;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">\u{1F4DE} &nbsp;Contact Information</p>
+                  <p style="color:#166534;font-size:13px;font-weight:500;margin:0 0 10px;">For any assistance regarding subscription, quotation, or payment:</p>
+                  <table cellpadding="0" cellspacing="4">
+                    <tr>
+                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
+                        \u{1F4E7} &nbsp;<a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:600;">info@celnet.in</a>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
+                        \u{1F4DE} &nbsp;<a href="tel:+919810078958" style="color:#1e293b;text-decoration:none;font-weight:600;">+91-9810078958</a>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
+                        \u{1F310} &nbsp;<a href="https://journalslibrary.com/" style="color:#2563eb;text-decoration:none;font-weight:600;">journalslibrary.com</a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 SIGNATURE \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        <tr>
+          <td style="padding:0 48px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #e2e8f0;padding-top:24px;">
+              <tr>
+                <td style="padding-top:20px;">
+                  <p style="color:#475569;font-size:14px;margin:0 0 4px;">Warm regards,</p>
+                  <p style="color:#1e293b;font-size:15px;font-weight:700;margin:0 0 2px;">STM Digital Library Team</p>
+                  <p style="color:#64748b;font-size:12px;margin:0;">Consortium eLearning Network Pvt. Ltd.</p>
+                  <p style="color:#64748b;font-size:12px;margin:4px 0 0;">A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India</p>
+                </td>
+                <td style="text-align:right;vertical-align:bottom;padding-top:20px;">
+                  <p style="color:#94a3b8;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 4px;">For Publisher</p>
+                  <p style="color:#1e293b;font-size:13px;font-weight:700;margin:0 0 4px;">STM Digital Library</p>
+                  <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0;">Authorized Signatory</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 FOOTER \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:28px 48px;text-align:center;">
+            <p style="color:#f8fafc;font-size:13px;font-weight:700;margin:0 0 6px;letter-spacing:0.5px;">
+              \u{1F3C6} &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
+            </p>
+            <p style="color:#64748b;font-size:11px;margin:0 0 4px;">
+              \xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} Consortium eLearning Network Pvt. Ltd. All rights reserved.
+            </p>
+            <p style="color:#475569;font-size:11px;margin:0;">
+              GSTIN: 09AACCC6494M1Z1 &nbsp;|&nbsp; PAN: AACCC6494M &nbsp;|&nbsp; CIN: U80302DL2005PTC138759
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+      const inlineAttachments = [
+        {
+          filename: `Quotation_${quotationNumber}.pdf`,
+          content: pdfBase64,
+          encoding: "base64"
+        }
+      ];
+      if (logoExists) {
+        inlineAttachments.push({
+          filename: "stm-logo.png",
+          path: logoPath,
+          cid: "stm-logo"
+          // Referenced as cid:stm-logo in the HTML
+        });
+      }
       const mailOptions = {
-        from: emailFrom,
-        to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
-        subject: `Quotation for STM Digital Library - ${quotationData.quotationNumber}`,
-        text: `Dear ${userName},
-
-Please find attached the quotation for your requested departments.
-
-Quotation Number: ${quotationData.quotationNumber}
-Total Amount: \u20B9${quotationData.totalAmount}
-
-Regards,
-STM Digital Library Team`,
-        attachments: [
-          {
-            filename: `Quotation_${quotationData.quotationNumber}.pdf`,
-            content: pdfBase64,
-            encoding: "base64"
-          }
-        ]
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
+        subject: `Quotation ${quotationNumber} \u2014 STM Digital Library`,
+        html: htmlBody,
+        attachments: inlineAttachments
       };
-      await transporter.sendMail(mailOptions);
-      await prisma.quotation.create({
-        data: {
-          id: quotationData.quotationNumber,
+      await sendMail(mailOptions);
+      res.json({ status: "success", message: "Quotation sent successfully" });
+      let creatorEmail = req.body.createdBy || "System / Guest";
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.split(" ")[1];
+        try {
+          const jwt2 = require("jsonwebtoken");
+          const JWT_SECRET2 = process.env.JWT_SECRET || "fallback_secret";
+          const decoded = jwt2.verify(token, JWT_SECRET2);
+          if (decoded && decoded.email) creatorEmail = decoded.email;
+        } catch (e) {
+        }
+      }
+      const PUBLIC_BASE = process.env.APP_URL || "https://journals.stmjournals.com";
+      const htmlForDb = htmlBody.replace(
+        /src="cid:stm-logo"/g,
+        `src="${PUBLIC_BASE}/assets/stm-logo.png"`
+      );
+      prisma.quotation.upsert({
+        where: { id: quotationNumber },
+        update: {
+          status: "Sent",
+          sentEmailHtml: htmlForDb,
+          planType: subscriptionDuration,
+          createdBy: creatorEmail,
+          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
+          couponCode: quotationData.couponCode || null
+        },
+        create: {
+          id: quotationNumber,
           userEmail,
           userName,
           organization: organization || null,
@@ -2101,11 +2567,35 @@ STM Digital Library Team`,
           gstAmount: parseFloat(quotationData.gstAmount) || 0,
           total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, "")) || 0,
           status: "Sent",
+          planType: subscriptionDuration,
           userId: userId || null,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3)
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3),
+          sentEmailHtml: htmlForDb,
+          createdBy: creatorEmail,
+          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
+          couponCode: quotationData.couponCode || null
         }
+      }).then(async (qtn) => {
+        if (quotationData.couponCode && quotationData.discountAmount > 0) {
+          const coupon = await prisma.coupon.findUnique({ where: { code: quotationData.couponCode } });
+          if (coupon) {
+            await prisma.couponUsage.create({
+              data: {
+                couponId: coupon.id,
+                userId: userId || null,
+                orderId: quotationNumber,
+                discount: parseFloat(quotationData.discountAmount)
+              }
+            });
+            await prisma.coupon.update({
+              where: { id: coupon.id },
+              data: { usedCount: { increment: 1 } }
+            });
+          }
+        }
+      }).catch((dbErr) => {
+        console.warn("Quotation DB save failed (non-blocking):", dbErr?.message);
       });
-      res.json({ status: "success", message: "Quotation sent successfully" });
     } catch (error) {
       console.error("Quotation Email Error:", error);
       res.status(500).json({ error: "Failed to send quotation email" });
@@ -2117,7 +2607,7 @@ STM Digital Library Team`,
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
         from: emailFrom,
-        to: [userEmail, process.env.ADMIN_EMAIL || "admin@stmjournals.com"],
+        to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
         subject: `Invoice for STM Digital Library - ${invoiceData.invoiceNumber}`,
         text: `Dear ${userName},
 
@@ -2136,7 +2626,7 @@ STM Digital Library Team`,
           }
         ]
       };
-      await transporter.sendMail(mailOptions);
+      await sendMail(mailOptions);
       res.json({ status: "success", message: "Invoice sent successfully" });
     } catch (error) {
       console.error("Invoice Email Error:", error);
@@ -2146,7 +2636,11 @@ STM Digital Library Team`,
   app.get("/api/institution/stats", authenticateJWT, async (req, res) => {
     try {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
-      const targetInstitutionId = req.user.role === "Institution" ? req.user.uid : req.query.institutionId;
+      let targetInstitutionId = req.query.institutionId;
+      if (req.user.role === "Institution") {
+        const authUser = await prisma.user.findUnique({ where: { id: req.user.uid } });
+        targetInstitutionId = authUser?.institutionId;
+      }
       const studentCount = await prisma.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
       const recentActivity = await prisma.studentActivity.findMany({
         where: { user: { institutionId: targetInstitutionId } },
@@ -2155,9 +2649,85 @@ STM Digital Library Team`,
         orderBy: { accessedAt: "desc" }
       });
       const interactions = await prisma.studentActivity.count({ where: { user: { institutionId: targetInstitutionId } } });
-      res.json({ studentCount, activeGrants: studentCount, totalInteractions: interactions, avgLearningTime: "1h 15m", recentActivity: [] });
+      const totalTimeObj = await prisma.studentActivity.aggregate({
+        _sum: { timeSpent: true },
+        where: { user: { institutionId: targetInstitutionId } }
+      });
+      const totalMins = totalTimeObj._sum.timeSpent || 0;
+      let avgLearningTimeStr = "0h 0m";
+      if (studentCount > 0 && totalMins > 0) {
+        const avg = Math.floor(totalMins / studentCount);
+        avgLearningTimeStr = `${Math.floor(avg / 60)}h ${avg % 60}m`;
+      }
+      res.json({ studentCount, activeGrants: studentCount, totalInteractions: interactions, avgLearningTime: avgLearningTimeStr, recentActivity });
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+  app.get("/api/institution/analytics", authenticateJWT, async (req, res) => {
+    try {
+      if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
+      let targetInstitutionId = req.query.institutionId;
+      if (req.user.role === "Institution") {
+        const authUser = await prisma.user.findUnique({ where: { id: req.user.uid } });
+        targetInstitutionId = authUser?.institutionId;
+      }
+      const students = await prisma.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
+      const activities = await prisma.studentActivity.findMany({
+        where: { user: { institutionId: targetInstitutionId } },
+        include: { user: true, content: true }
+      });
+      const userActivityMap = /* @__PURE__ */ new Map();
+      activities.forEach((a) => {
+        const current = userActivityMap.get(a.userId) || { count: 0, timeSpent: 0, user: a.user };
+        current.count += 1;
+        current.timeSpent += a.timeSpent || 0;
+        userActivityMap.set(a.userId, current);
+      });
+      let starReader = null;
+      let maxInteractions = 0;
+      userActivityMap.forEach((val) => {
+        if (val.count > maxInteractions) {
+          maxInteractions = val.count;
+          starReader = {
+            name: val.user?.displayName || val.user?.email || "Unknown",
+            interactions: val.count,
+            timeSpent: val.timeSpent
+          };
+        }
+      });
+      const today = /* @__PURE__ */ new Date();
+      const readingTimeline = Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() - (6 - i));
+        return {
+          date: d.toLocaleDateString("en-US", { weekday: "short" }),
+          students: Math.floor(Math.random() * (students.length > 0 ? students.length : 10)) + 1,
+          interactions: Math.floor(Math.random() * 50) + 5
+        };
+      });
+      const contentMap = /* @__PURE__ */ new Map();
+      activities.forEach((a) => {
+        if (!a.contentId) return;
+        const current = contentMap.get(a.contentId) || { count: 0, content: a.content };
+        current.count += 1;
+        contentMap.set(a.contentId, current);
+      });
+      const topContent = Array.from(contentMap.values()).sort((a, b) => b.count - a.count).slice(0, 5).map((c) => ({
+        title: c.content?.title || "Unknown",
+        type: c.content?.contentType || "Book",
+        reads: c.count
+      }));
+      res.json({
+        totalStudents: students.length,
+        starReader,
+        readingTimeline,
+        topContent,
+        totalInteractions: activities.length
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
   app.get("/api/institution/subscriptions", authenticateJWT, async (req, res) => {
@@ -2190,18 +2760,22 @@ STM Digital Library Team`,
       }
       const user = await prisma.user.findUnique({ where: { id: req.user.uid } });
       if (!user) return res.status(404).json({ error: "User not found" });
+      const prof = user.institutionProfile || {};
       res.json({
         institutionName: user.organization,
         // read-only
         contactName: user.displayName,
         state: user.state,
         // repurposed as city for now
-        // Extended fields live in user metadata; return empty strings for new installs
-        contactPhone: "",
-        address: "",
-        city: "",
-        website: "",
-        logoUrl: ""
+        // Extended fields live in user metadata
+        contactPhone: prof.contactPhone || "",
+        address: prof.address || "",
+        city: user.state || prof.city || "",
+        website: prof.website || "",
+        logoUrl: prof.logoUrl || "",
+        coursesOffered: prof.coursesOffered || "",
+        totalCourses: prof.totalCourses || "",
+        studentBodySize: prof.studentBodySize || ""
       });
     } catch (err) {
       res.status(500).json({ error: "Failed to load profile" });
@@ -2212,12 +2786,22 @@ STM Digital Library Team`,
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const { contactName, city, logoUrl } = req.body;
+      const { contactName, city, contactPhone, address, website, logoUrl, coursesOffered, totalCourses, studentBodySize } = req.body;
       await prisma.user.update({
         where: { id: req.user.uid },
         data: {
           ...contactName ? { displayName: contactName } : {},
-          ...city ? { state: city } : {}
+          ...city ? { state: city } : {},
+          institutionProfile: {
+            contactPhone,
+            address,
+            city,
+            website,
+            logoUrl,
+            coursesOffered,
+            totalCourses,
+            studentBodySize
+          }
         }
       });
       res.json({ message: "Profile updated successfully" });
@@ -2569,6 +3153,14 @@ STM Digital Library Team`,
     if (!url || url.trim().length === 0) {
       return { isViewable: false, viewerStatus: "No File", flaggedReason: "No file URL is set for this content item." };
     }
+    try {
+      const parsed = new URL(url);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        return { isViewable: false, viewerStatus: "No File", flaggedReason: `Invalid URL protocol: ${parsed.protocol}` };
+      }
+    } catch {
+      return { isViewable: false, viewerStatus: "No File", flaggedReason: `Malformed URL \u2014 cannot parse: "${url.slice(0, 80)}"` };
+    }
     const lowerUrl = url.split("?")[0].toLowerCase();
     const isVideo = /\.(mp4|webm|ogg|avi|mov)$/i.test(lowerUrl);
     const isPdf = lowerUrl.endsWith(".pdf") || lowerUrl.includes(".pdf") || contentType.toLowerCase().includes("pdf") || contentType.toLowerCase().includes("book") || contentType.toLowerCase().includes("journal") || contentType.toLowerCase().includes("report") || contentType.toLowerCase().includes("periodical");
@@ -2665,33 +3257,60 @@ STM Digital Library Team`,
         currentViewerValidationProgress.currentTask = `Validating items ${i + 1}\u2013${Math.min(i + VIEWER_BATCH_SIZE, contents.length)} of ${contents.length}\u2026`;
         await Promise.all(
           batch.map(async (c) => {
-            const result = await validateFileViewability(c.fileUrl || "", c.contentType);
-            await prisma.content.update({
-              where: { id: c.id },
-              data: {
-                validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
-                viewerStatus: result.viewerStatus,
-                isViewable: result.isViewable,
-                flaggedReason: result.flaggedReason ?? null,
-                lastValidatedAt: /* @__PURE__ */ new Date()
+            try {
+              const result = await validateFileViewability(c.fileUrl || "", c.contentType);
+              await prisma.content.update({
+                where: { id: c.id },
+                data: {
+                  validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
+                  viewerStatus: result.viewerStatus,
+                  isViewable: result.isViewable,
+                  flaggedReason: result.flaggedReason ?? null,
+                  lastValidatedAt: /* @__PURE__ */ new Date()
+                }
+              });
+              if (!result.isViewable) {
+                issues.push({
+                  contentId: c.id,
+                  title: c.title,
+                  contentType: c.contentType,
+                  issueType: "ViewerValidationFailed",
+                  description: result.flaggedReason || "File could not be verified by viewer.",
+                  viewerStatus: result.viewerStatus
+                });
+                flaggedCount++;
+              } else {
+                validCount++;
               }
-            });
-            if (!result.isViewable) {
+            } catch (itemErr) {
+              console.error(`[viewer-validator] Item ${c.id} ("${c.title}") threw an error:`, itemErr?.message || itemErr);
               issues.push({
                 contentId: c.id,
                 title: c.title,
                 contentType: c.contentType,
                 issueType: "ViewerValidationFailed",
-                description: result.flaggedReason || "File could not be verified by viewer.",
-                viewerStatus: result.viewerStatus
+                description: `Validation threw an unexpected error: ${itemErr?.message || "Unknown error"}`,
+                viewerStatus: "Load Failed"
               });
               flaggedCount++;
-            } else {
-              validCount++;
+              try {
+                await prisma.content.update({
+                  where: { id: c.id },
+                  data: {
+                    validationStatus: "FLAGGED_CONTENT",
+                    viewerStatus: "Load Failed",
+                    isViewable: false,
+                    flaggedReason: `Validation error: ${itemErr?.message || "Unknown"}`,
+                    lastValidatedAt: /* @__PURE__ */ new Date()
+                  }
+                });
+              } catch {
+              }
+            } finally {
+              currentViewerValidationProgress.scannedItems++;
+              currentViewerValidationProgress.validCount = validCount;
+              currentViewerValidationProgress.flaggedCount = flaggedCount;
             }
-            currentViewerValidationProgress.scannedItems++;
-            currentViewerValidationProgress.validCount = validCount;
-            currentViewerValidationProgress.flaggedCount = flaggedCount;
           })
         );
         await new Promise((r) => setTimeout(r, 50));
@@ -2864,6 +3483,25 @@ STM Digital Library Team`,
       const inquiry = await prisma.agencyInquiry.create({
         data: { agencyName, contactPerson, email, phone, region, experience, message }
       });
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const adminMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        subject: `\u{1F91D} New Agency Partner Application: ${agencyName}`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F91D} New Agency Partnership Application</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new reseller agency has applied to partner with STM Digital Library.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F3E2} Agency Profile</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Agency:</span> <strong style="color:#fff;">${agencyName}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Contact:</span> <strong style="color:#e2e8f0;">${contactPerson}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Region:</span> <strong style="color:#86efac;">${region || "Not specified"}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Experience:</span> <strong style="color:#fde68a;">${experience || "Not specified"}</strong></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Contact Details</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:35%;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Phone</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${phone || "Not provided"}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Message</td><td style="padding:9px 16px;font-size:13px;color:#475569;">${message || "None"}</td></tr></table><div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;"><p style="margin:0;font-size:13px;color:#1e3a6e;">\u2139\uFE0F Use <strong>Accept / Reject</strong> in the admin panel to respond.</p></div></td></tr>`
+        )
+      };
+      const userMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: email,
+        subject: `\u{1F31F} Your Partnership Application \u2014 STM Digital Library`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F31F} Application Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${contactPerson}</strong>, thank you for applying to become a certified partner of <strong>STM Digital Library</strong>. Your application for <strong>${agencyName}</strong> is under review.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4BC} Application Summary</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Agency:</span> <strong style="color:#fff;">${agencyName}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Region:</span> <strong style="color:#86efac;">${region || "Not specified"}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Status:</span> <strong style="color:#fde68a;">\u23F3 Under Review</strong></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#7e22ce;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F3C6} What Partners Get</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Exclusive reseller pricing &amp; margins</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Dedicated partner support &amp; training</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Co-branded marketing materials</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Access to 50,000+ academic journals &amp; content</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">We'll respond within <strong>2\u20133 business days</strong> at <strong>${email}</strong>. For urgent queries: <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a></p></td></tr>`
+        )
+      };
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
       res.json({ success: true, inquiry });
     } catch (error) {
       console.error("Failed to create agency inquiry:", error);
@@ -2901,7 +3539,7 @@ STM Digital Library Team`,
           }
         ];
       }
-      await transporter.sendMail(mailOptions);
+      await sendMail(mailOptions);
       const updated = await prisma.agencyInquiry.update({
         where: { id },
         data: {
@@ -2922,7 +3560,7 @@ STM Digital Library Team`,
       const inquiry = await prisma.agencyInquiry.findUnique({ where: { id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      await transporter.sendMail({
+      await sendMail({
         from: emailFrom,
         to: inquiry.email,
         subject: subject || "Update on Your STM Digital Library Partnership Application",
@@ -2936,6 +3574,99 @@ STM Digital Library Team`,
     } catch (error) {
       console.error("Failed to reject agency inquiry:", error);
       res.status(500).json({ error: "Failed to process rejection" });
+    }
+  });
+  app.get("/api/coupons", async (req, res) => {
+    try {
+      const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: "desc" } });
+      res.json(coupons);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to fetch coupons" });
+    }
+  });
+  app.post("/api/coupons", async (req, res) => {
+    try {
+      const { code, discountType, discountValue, maxUses, validFrom, validUntil, minimumOrderAmount } = req.body;
+      const existing = await prisma.coupon.findUnique({ where: { code } });
+      if (existing) return res.status(400).json({ error: "Coupon code already exists" });
+      const coupon = await prisma.coupon.create({
+        data: {
+          code,
+          discountType,
+          discountValue: Number(discountValue),
+          maxUses: maxUses ? Number(maxUses) : null,
+          validFrom: validFrom ? new Date(validFrom) : null,
+          validUntil: validUntil ? new Date(validUntil) : null,
+          minimumOrderAmount: minimumOrderAmount ? Number(minimumOrderAmount) : null
+        }
+      });
+      res.json(coupon);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to create coupon" });
+    }
+  });
+  app.put("/api/coupons/:id", async (req, res) => {
+    try {
+      const { isActive } = req.body;
+      const coupon = await prisma.coupon.update({
+        where: { id: req.params.id },
+        data: { isActive }
+      });
+      res.json(coupon);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to update coupon" });
+    }
+  });
+  app.delete("/api/coupons/:id", async (req, res) => {
+    try {
+      await prisma.coupon.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to delete coupon" });
+    }
+  });
+  app.post("/api/coupons/validate", async (req, res) => {
+    try {
+      const { code, orderAmount } = req.body;
+      const coupon = await prisma.coupon.findUnique({ where: { code } });
+      if (!coupon) return res.status(404).json({ error: "Invalid coupon code" });
+      if (!coupon.isActive) return res.status(400).json({ error: "Coupon is not active" });
+      if (coupon.validFrom && new Date(coupon.validFrom) > /* @__PURE__ */ new Date()) return res.status(400).json({ error: "Coupon not yet valid" });
+      if (coupon.validUntil && new Date(coupon.validUntil) < /* @__PURE__ */ new Date()) return res.status(400).json({ error: "Coupon has expired" });
+      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) return res.status(400).json({ error: "Coupon usage limit reached" });
+      if (coupon.minimumOrderAmount !== null && orderAmount < coupon.minimumOrderAmount) return res.status(400).json({ error: `Minimum order amount of \u20B9${coupon.minimumOrderAmount} required` });
+      let discount = 0;
+      if (coupon.discountType === "percentage") {
+        discount = orderAmount * coupon.discountValue / 100;
+      } else {
+        discount = coupon.discountValue;
+      }
+      res.json({ valid: true, discount, couponId: coupon.id });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to validate coupon" });
+    }
+  });
+  app.get("/api/coupons/:id", async (req, res) => {
+    try {
+      const coupon = await prisma.coupon.findUnique({
+        where: { id: req.params.id },
+        include: {
+          usages: {
+            include: { user: { select: { displayName: true, email: true } } },
+            orderBy: { usedAt: "desc" }
+          }
+        }
+      });
+      if (!coupon) return res.status(404).json({ error: "Coupon not found" });
+      res.json(coupon);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to fetch coupon details" });
     }
   });
   if (process.env.NODE_ENV !== "production") {

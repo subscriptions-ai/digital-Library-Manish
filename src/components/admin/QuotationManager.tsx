@@ -362,6 +362,11 @@ export function QuotationManager() {
                   <div className="flex justify-between text-sm text-slate-600">
                     <span>Subtotal</span><span className="font-semibold">{formatPrice(selected.subtotal)}</span>
                   </div>
+                  {selected.couponCode && selected.discountAmount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600 font-semibold">
+                      <span>Discount ({selected.couponCode})</span><span>-{formatPrice(selected.discountAmount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm text-slate-600">
                     <span>GST (18%)</span><span className="font-semibold">{formatPrice(selected.gstAmount)}</span>
                   </div>

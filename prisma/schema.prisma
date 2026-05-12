@@ -40,6 +40,7 @@ model User {
   usageLogs             UsageLog[]
   subscriptionRequests  SubscriptionRequest[]
   activities            StudentActivity[]
+  couponUsages          CouponUsage[]
 }
 
 model Payment {
@@ -134,6 +135,9 @@ model Quotation {
 
   createdAt         DateTime @default(now())
   expiresAt         DateTime
+  
+  discountAmount    Float?   @default(0.0)
+  couponCode        String?
 }
 
 model ContentModule {
@@ -327,4 +331,37 @@ model ContactInquiry {
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Coupon {
+  id                 String        @id @default(uuid())
+  code               String        @unique
+  discountType       String        @default("percentage") // "percentage" | "fixed"
+  discountValue      Float
+  maxUses            Int?          // null means unlimited
+  usedCount          Int           @default(0)
+  validFrom          DateTime?
+  validUntil         DateTime?
+  isActive           Boolean       @default(true)
+  minimumOrderAmount Float?
+
+  usages             CouponUsage[]
+  
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model CouponUsage {
+  id         String   @id @default(uuid())
+  
+  coupon     Coupon   @relation(fields: [couponId], references: [id])
+  couponId   String
+  
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     String?
+  
+  orderId    String?  // Reference to Quotation ID or Payment ID
+  discount   Float    // The actual discount amount applied
+  
+  usedAt     DateTime @default(now())
 }

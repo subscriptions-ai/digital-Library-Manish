@@ -2472,6 +2472,25 @@ async function startServer() {
             }
           });
 
+          // Log Coupon Usage if present
+          if (req.body.couponCode && req.body.discountAmount > 0) {
+            const coupon = await prisma.coupon.findUnique({ where: { code: req.body.couponCode } });
+            if (coupon) {
+              await prisma.couponUsage.create({
+                data: {
+                  couponId: coupon.id,
+                  userId: userId || null,
+                  orderId: razorpay_order_id,
+                  discount: parseFloat(req.body.discountAmount)
+                }
+              });
+              await prisma.coupon.update({
+                where: { id: coupon.id },
+                data: { usedCount: { increment: 1 } }
+              });
+            }
+          }
+
           if (Array.isArray(items)) {
             for (const item of items) {
               const days = item.duration === 'Yearly' ? 365 : item.duration === 'Half-Yearly' ? 180 : item.duration === 'Quarterly' ? 90 : 30;
@@ -2878,6 +2897,14 @@ async function startServer() {
                   <ul style="margin:0 0 14px;padding-left:4px;list-style:none;">
                     ${departmentsHtml}
                   </ul>
+                  ${quotationData.discountAmount ? `
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;">
+                    <tr>
+                      <td style="color:#86efac;font-size:13px;font-weight:600;padding-bottom:6px;">Discount (${quotationData.couponCode})</td>
+                      <td style="text-align:right;color:#86efac;font-size:13px;font-weight:700;padding-bottom:6px;">-₹${quotationData.discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  </table>
+                  ` : ''}
 
                   <!-- Grand Total -->
                   <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.25);padding-top:14px;margin-top:4px;">
@@ -3078,7 +3105,9 @@ async function startServer() {
           status: "Sent",
           sentEmailHtml: htmlForDb,
           planType: subscriptionDuration,
-          createdBy: creatorEmail
+          createdBy: creatorEmail,
+          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
+          couponCode: quotationData.couponCode || null
         },
         create: {
           id: quotationNumber,
@@ -3095,7 +3124,27 @@ async function startServer() {
           userId: userId || null,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           sentEmailHtml: htmlForDb,
-          createdBy: creatorEmail
+          createdBy: creatorEmail,
+          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
+          couponCode: quotationData.couponCode || null
+        }
+      }).then(async (qtn) => {
+        if (quotationData.couponCode && quotationData.discountAmount > 0) {
+          const coupon = await prisma.coupon.findUnique({ where: { code: quotationData.couponCode } });
+          if (coupon) {
+            await prisma.couponUsage.create({
+              data: {
+                couponId: coupon.id,
+                userId: userId || null,
+                orderId: quotationNumber,
+                discount: parseFloat(quotationData.discountAmount)
+              }
+            });
+            await prisma.coupon.update({
+              where: { id: coupon.id },
+              data: { usedCount: { increment: 1 } }
+            });
+          }
         }
       }).catch((dbErr: any) => {
         console.warn("Quotation DB save failed (non-blocking):", dbErr?.message);
@@ -4336,6 +4385,104 @@ async function startServer() {
     } catch (error) {
       console.error("Failed to reject agency inquiry:", error);
       res.status(500).json({ error: "Failed to process rejection" });
+    }
+  });
+
+  // ========================
+  // Coupon Module
+  // ========================
+  app.get("/api/coupons", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: "desc" } });
+      res.json(coupons);
+    } catch (e) {
+      console.error(e); res.status(500).json({ error: "Failed to fetch coupons" });
+    }
+  });
+
+  app.post("/api/coupons", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { code, discountType, discountValue, maxUses, validFrom, validUntil, minimumOrderAmount } = req.body;
+      const existing = await prisma.coupon.findUnique({ where: { code } });
+      if (existing) return res.status(400).json({ error: "Coupon code already exists" });
+      const coupon = await prisma.coupon.create({
+        data: { 
+          code, 
+          discountType, 
+          discountValue: Number(discountValue), 
+          maxUses: maxUses ? Number(maxUses) : null, 
+          validFrom: validFrom ? new Date(validFrom) : null, 
+          validUntil: validUntil ? new Date(validUntil) : null, 
+          minimumOrderAmount: minimumOrderAmount ? Number(minimumOrderAmount) : null 
+        }
+      });
+      res.json(coupon);
+    } catch (e) {
+      console.error(e); res.status(500).json({ error: "Failed to create coupon" });
+    }
+  });
+
+  app.put("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { isActive } = req.body;
+      const coupon = await prisma.coupon.update({
+        where: { id: req.params.id },
+        data: { isActive }
+      });
+      res.json(coupon);
+    } catch (e) {
+      console.error(e); res.status(500).json({ error: "Failed to update coupon" });
+    }
+  });
+
+  app.delete("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      await prisma.coupon.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (e) {
+      console.error(e); res.status(500).json({ error: "Failed to delete coupon" });
+    }
+  });
+
+  app.post("/api/coupons/validate", async (req, res) => {
+    try {
+      const { code, orderAmount } = req.body;
+      const coupon = await prisma.coupon.findUnique({ where: { code } });
+      if (!coupon) return res.status(404).json({ error: "Invalid coupon code" });
+      if (!coupon.isActive) return res.status(400).json({ error: "Coupon is not active" });
+      if (coupon.validFrom && new Date(coupon.validFrom) > new Date()) return res.status(400).json({ error: "Coupon not yet valid" });
+      if (coupon.validUntil && new Date(coupon.validUntil) < new Date()) return res.status(400).json({ error: "Coupon has expired" });
+      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) return res.status(400).json({ error: "Coupon usage limit reached" });
+      if (coupon.minimumOrderAmount !== null && orderAmount < coupon.minimumOrderAmount) return res.status(400).json({ error: `Minimum order amount of ₹${coupon.minimumOrderAmount} required` });
+      
+      let discount = 0;
+      if (coupon.discountType === "percentage") {
+        discount = (orderAmount * coupon.discountValue) / 100;
+      } else {
+        discount = coupon.discountValue;
+      }
+      
+      res.json({ valid: true, discount, couponId: coupon.id });
+    } catch (e) {
+      console.error(e); res.status(500).json({ error: "Failed to validate coupon" });
+    }
+  });
+
+  app.get("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const coupon = await prisma.coupon.findUnique({
+        where: { id: req.params.id },
+        include: {
+          usages: {
+            include: { user: { select: { displayName: true, email: true } } },
+            orderBy: { usedAt: "desc" }
+          }
+        }
+      });
+      if (!coupon) return res.status(404).json({ error: "Coupon not found" });
+      res.json(coupon);
+    } catch (e) {
+      console.error(e); res.status(500).json({ error: "Failed to fetch coupon details" });
     }
   });
 

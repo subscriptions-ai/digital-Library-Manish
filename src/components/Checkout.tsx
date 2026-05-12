@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
-import { CreditCard, FileText, ChevronLeft, ShieldCheck, Building2, User, Mail, MapPin } from 'lucide-react';
+import { CreditCard, FileText, ChevronLeft, ShieldCheck, Building2, User, Mail, MapPin, Trash2, Tag } from 'lucide-react';
 import { COMPANY_DETAILS } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { InvoicePreview } from './InvoicePreview';
@@ -16,8 +16,14 @@ export function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { items: cartItems, totalBasePrice: cartTotalBasePrice, clearCart } = useCart();
-  const { type, selectedState: initialSelectedState, userCategory: initialUserCategory, items: stateItems, formData: stateFormData } = location.state || { type: 'payment', selectedState: COMPANY_STATE, userCategory: 'Academic' };
+  const { items: cartItems, totalBasePrice: cartTotalBasePrice, clearCart, appliedCoupon, applyCoupon, removeCoupon } = useCart();
+  const locationState = location.state || { type: 'payment', selectedState: COMPANY_STATE, userCategory: 'Academic' };
+  const { type, selectedState: initialSelectedState, userCategory: initialUserCategory, items: stateItems, formData: stateFormData } = locationState;
+  
+  const couponCode = appliedCoupon?.code || null;
+  const discountAmount = appliedCoupon?.discount || 0;
+  const [couponInput, setCouponInput] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: stateFormData?.name || '',
@@ -40,8 +46,29 @@ export function Checkout() {
     ? stateItems.reduce((sum: number, item: any) => sum + item.price, 0) 
     : cartTotalBasePrice;
 
+  const handleApplyCoupon = async () => {
+    if (!couponInput) return;
+    setCouponLoading(true);
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponInput, orderAmount: totalBasePrice })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Invalid coupon');
+      applyCoupon({ id: data.couponId, discount: data.discount, code: couponInput.toUpperCase() });
+      toast.success('Coupon applied successfully!');
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const discountedBasePrice = Math.max(0, totalBasePrice - discountAmount);
   const isInterState = formData.state !== COMPANY_STATE;
-  const gstBreakdown = calculateGST(totalBasePrice, isInterState);
+  const gstBreakdown = calculateGST(discountedBasePrice, isInterState);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -123,22 +150,30 @@ export function Checkout() {
     // Totals
     doc.setFontSize(9);
     doc.text('Subtotal:', 140, finalY);
-    doc.text(`₹${gstBreakdown.basePrice.toLocaleString()}`, 185, finalY, { align: 'right' });
+    doc.text(`₹${totalBasePrice.toLocaleString()}`, 185, finalY, { align: 'right' });
+    let currentY = finalY;
+    if (couponCode) {
+      currentY += 5;
+      doc.text(`Discount (${couponCode}):`, 140, currentY);
+      doc.text(`-₹${discountAmount.toLocaleString()}`, 185, currentY, { align: 'right' });
+    }
 
     if (isInterState) {
-      doc.text('IGST (18%):', 140, finalY + 5);
-      doc.text(`₹${gstBreakdown.igst.toLocaleString()}`, 185, finalY + 5, { align: 'right' });
+      doc.text('IGST (18%):', 140, currentY + 5);
+      doc.text(`₹${gstBreakdown.igst.toLocaleString()}`, 185, currentY + 5, { align: 'right' });
+      currentY += 5;
     } else {
-      doc.text('CGST (9%):', 140, finalY + 5);
-      doc.text(`₹${gstBreakdown.cgst.toLocaleString()}`, 185, finalY + 5, { align: 'right' });
-      doc.text('SGST (9%):', 140, finalY + 10);
-      doc.text(`₹${gstBreakdown.sgst.toLocaleString()}`, 185, finalY + 10, { align: 'right' });
+      doc.text('CGST (9%):', 140, currentY + 5);
+      doc.text(`₹${gstBreakdown.cgst.toLocaleString()}`, 185, currentY + 5, { align: 'right' });
+      doc.text('SGST (9%):', 140, currentY + 10);
+      doc.text(`₹${gstBreakdown.sgst.toLocaleString()}`, 185, currentY + 10, { align: 'right' });
+      currentY += 10;
     }
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Total Payable:', 140, finalY + 20);
-    doc.text(`₹${gstBreakdown.totalAmount.toLocaleString()}`, 185, finalY + 20, { align: 'right' });
+    doc.text('Total Payable:', 140, currentY + 10);
+    doc.text(`₹${gstBreakdown.totalAmount.toLocaleString()}`, 185, currentY + 10, { align: 'right' });
 
     // Bank Details
     const bankY = finalY + 35;
@@ -225,7 +260,9 @@ export function Checkout() {
               ...response,
               amount: gstBreakdown.totalAmount,
               items: items,
-              userId: user?.uid || null
+              userId: user?.uid || null,
+              couponCode,
+              discountAmount
             })
           });
           const verifyData = await verifyRes.json();
@@ -244,7 +281,9 @@ export function Checkout() {
                 description: `${item.domainName} (${item.planName} - ${item.duration})`,
                 quantity: 1,
                 unitPrice: item.price
-              }))
+              })),
+              couponCode,
+              discountAmount
             };
             
             setInvoiceData(newInvoiceData);
@@ -413,10 +452,44 @@ export function Checkout() {
                 
                 <div className="h-px bg-slate-100 my-4" />
                 
+                {/* Coupon Input in Checkout */}
+                {!couponCode ? (
+                  <div className="flex gap-2 my-4">
+                    <input 
+                      type="text" 
+                      placeholder="Coupon Code" 
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                      className="flex-1 rounded-xl border-slate-200 bg-slate-50 py-2 px-3 text-sm focus:border-blue-500 outline-none uppercase"
+                    />
+                    <button 
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponInput}
+                      className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50"
+                    >
+                      {couponLoading ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={removeCoupon}
+                    className="text-[10px] text-red-500 hover:underline mb-2 flex items-center gap-1"
+                  >
+                    <Trash2 size={10} /> Remove Coupon
+                  </button>
+                )}
+
                 <div className="flex justify-between text-slate-600 text-sm">
                   <span>Subtotal</span>
-                  <span>₹{gstBreakdown.basePrice.toLocaleString()}</span>
+                  <span>₹{totalBasePrice.toLocaleString()}</span>
                 </div>
+                
+                {couponCode && (
+                  <div className="flex justify-between text-green-600 text-sm font-semibold">
+                    <span>Discount ({couponCode})</span>
+                    <span>-₹{discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
                 
                 {isInterState ? (
                   <div className="flex justify-between text-slate-600 text-sm">

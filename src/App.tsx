@@ -44,6 +44,8 @@ import { UserCreationPanel } from "./components/admin/UserCreationPanel";
 import { ValidatorDashboard } from "./components/admin/ValidatorDashboard";
 import { AgencyInquiriesPage } from "./components/admin/AgencyInquiriesPage";
 import { ContactInquiriesPage } from "./components/admin/ContactInquiriesPage";
+import { CouponsManager } from './components/admin/CouponsManager';
+import { CouponDetails } from './components/admin/CouponDetails';
 
 const CONTENT_MODULES = [
   { slug: 'books',                  contentType: 'Books'                   },
@@ -128,6 +130,8 @@ export default function App() {
                 <Route path="/admin/agency-inquiries" element={<AdminLayout><AgencyInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/contact-inquiries" element={<AdminLayout><ContactInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/validator" element={<AdminLayout><ValidatorDashboard /></AdminLayout>} />
+                <Route path="/admin/coupons" element={<AdminLayout><CouponsManager /></AdminLayout>} />
+                <Route path="/admin/coupons/:id" element={<AdminLayout><CouponDetails /></AdminLayout>} />
 
                 {/* Per Content Type Module Routes (8 modules × 3 pages each) */}
                 {CONTENT_MODULES.map(({ slug, contentType }) => (

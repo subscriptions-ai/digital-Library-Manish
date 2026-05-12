@@ -17,6 +17,8 @@ export interface InvoiceData {
   customerAddress?: string;
   customerGSTIN?: string;
   items: InvoiceItem[];
+  couponCode?: string | null;
+  discountAmount?: number;
 }
 
 export const generateInvoicePDF = (data: InvoiceData) => {
@@ -88,7 +90,9 @@ export const generateInvoicePDF = (data: InvoiceData) => {
     ];
   });
 
-  const subTotal = data.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+  const rawSubTotal = data.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+  const discount = data.discountAmount || 0;
+  const subTotal = Math.max(0, rawSubTotal - discount);
   const totalGST = (subTotal * 18) / 100;
   const grandTotal = subTotal + totalGST;
 
@@ -115,19 +119,30 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   // Totals
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text("Sub Total:", pageWidth - margin - 60, finalY);
-  doc.text(subTotal.toFixed(2), pageWidth - margin, finalY, { align: "right" });
+  let currentY = finalY;
 
-  doc.text("CGST (9%):", pageWidth - margin - 60, finalY + 5);
-  doc.text((totalGST / 2).toFixed(2), pageWidth - margin, finalY + 5, { align: "right" });
+  doc.text("Sub Total:", pageWidth - margin - 60, currentY);
+  doc.text(rawSubTotal.toFixed(2), pageWidth - margin, currentY, { align: "right" });
 
-  doc.text("SGST (9%):", pageWidth - margin - 60, finalY + 10);
-  doc.text((totalGST / 2).toFixed(2), pageWidth - margin, finalY + 10, { align: "right" });
+  if (data.couponCode && discount > 0) {
+    currentY += 5;
+    doc.text(`Discount (${data.couponCode}):`, pageWidth - margin - 60, currentY);
+    doc.text(`-${discount.toFixed(2)}`, pageWidth - margin, currentY, { align: "right" });
+  }
 
+  currentY += 5;
+  doc.text("CGST (9%):", pageWidth - margin - 60, currentY);
+  doc.text((totalGST / 2).toFixed(2), pageWidth - margin, currentY, { align: "right" });
+
+  currentY += 5;
+  doc.text("SGST (9%):", pageWidth - margin - 60, currentY);
+  doc.text((totalGST / 2).toFixed(2), pageWidth - margin, currentY, { align: "right" });
+
+  currentY += 8;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("Grand Total:", pageWidth - margin - 60, finalY + 18);
-  doc.text(`INR ${grandTotal.toFixed(2)}`, pageWidth - margin, finalY + 18, { align: "right" });
+  doc.text("Grand Total:", pageWidth - margin - 60, currentY);
+  doc.text(`INR ${grandTotal.toFixed(2)}`, pageWidth - margin, currentY, { align: "right" });
 
   // Bank Details
   const bankY = finalY + 40;

@@ -11,12 +11,21 @@ export interface CartItem {
   category: string;
 }
 
+export interface AppliedCoupon {
+  id: string;
+  code: string;
+  discount: number;
+}
+
 interface CartContextType {
   items: CartItem[];
   addToCart: (item: CartItem) => void;
   removeFromCart: (domainId: string) => void;
   clearCart: () => void;
   totalBasePrice: number;
+  appliedCoupon: AppliedCoupon | null;
+  applyCoupon: (coupon: AppliedCoupon) => void;
+  removeCoupon: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -27,9 +36,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(() => {
+    const saved = localStorage.getItem('appliedCoupon');
+    return saved ? JSON.parse(saved) : null;
+  });
+
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    if (appliedCoupon) {
+      localStorage.setItem('appliedCoupon', JSON.stringify(appliedCoupon));
+    } else {
+      localStorage.removeItem('appliedCoupon');
+    }
+  }, [appliedCoupon]);
 
   const addToCart = (newItem: CartItem) => {
     setItems(prev => {
@@ -47,12 +69,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     setItems([]);
+    setAppliedCoupon(null);
   };
+
+  const applyCoupon = (coupon: AppliedCoupon) => setAppliedCoupon(coupon);
+  const removeCoupon = () => setAppliedCoupon(null);
 
   const totalBasePrice = items.reduce((sum, item) => sum + item.price, 0);
 
   return (
-    <CartContext.Provider value={{ items, addToCart, removeFromCart, clearCart, totalBasePrice }}>
+    <CartContext.Provider value={{ 
+      items, 
+      addToCart, 
+      removeFromCart, 
+      clearCart, 
+      totalBasePrice,
+      appliedCoupon,
+      applyCoupon,
+      removeCoupon
+    }}>
       {children}
     </CartContext.Provider>
   );

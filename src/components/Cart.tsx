@@ -1,15 +1,37 @@
 import React, { useState } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { calculateGST, INDIAN_STATES, COMPANY_STATE } from '../lib/gstUtils';
-import { Trash2, FileText, CreditCard, ChevronRight, ShoppingCart } from 'lucide-react';
+import { Trash2, FileText, CreditCard, ChevronRight, ShoppingCart, Tag } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export function Cart() {
-  const { items, removeFromCart, totalBasePrice, clearCart } = useCart();
+  const { items, removeFromCart, totalBasePrice, clearCart, appliedCoupon, applyCoupon, removeCoupon } = useCart();
   const [selectedState, setSelectedState] = useState(COMPANY_STATE);
   const [userCategory, setUserCategory] = useState('Academic');
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    setCouponLoading(true);
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode, orderAmount: totalBasePrice })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Invalid coupon');
+      applyCoupon({ id: data.couponId, discount: data.discount, code: couponCode.toUpperCase() });
+      toast.success('Coupon applied successfully!');
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
 
   const USER_CATEGORIES = [
     'Student',
@@ -19,7 +41,9 @@ export function Cart() {
   ];
 
   const isInterState = selectedState !== COMPANY_STATE;
-  const gstBreakdown = calculateGST(totalBasePrice, isInterState);
+  const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
+  const discountedBasePrice = Math.max(0, totalBasePrice - discountAmount);
+  const gstBreakdown = calculateGST(discountedBasePrice, isInterState);
 
   if (items.length === 0) {
     return (
@@ -113,13 +137,54 @@ export function Cart() {
                     ))}
                   </select>
                 </div>
+
+                {/* Coupon Code Section */}
+                <div className="pt-4 border-t border-slate-100">
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Discount Coupon</label>
+                  {appliedCoupon ? (
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-emerald-700">
+                        <Tag size={14} className="text-emerald-500" />
+                        <span className="text-sm font-bold">{appliedCoupon.code}</span>
+                        <span className="text-xs font-medium">Applied</span>
+                      </div>
+                      <button onClick={removeCoupon} className="text-slate-400 hover:text-red-500 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Coupon Code" 
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        className="flex-1 rounded-xl border-slate-200 bg-slate-50 py-2 px-3 text-sm focus:border-blue-500 outline-none uppercase"
+                      />
+                      <button 
+                        onClick={handleApplyCoupon}
+                        disabled={couponLoading || !couponCode}
+                        className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-800 transition-all disabled:opacity-50"
+                      >
+                        {couponLoading ? '...' : 'Apply'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-4 mb-8">
                 <div className="flex justify-between text-slate-600">
-                  <span>Base Price</span>
-                  <span>₹{gstBreakdown.basePrice.toLocaleString()}</span>
+                  <span>Subtotal</span>
+                  <span>₹{totalBasePrice.toLocaleString()}</span>
                 </div>
+
+                {appliedCoupon && (
+                  <div className="flex justify-between text-emerald-600 font-medium">
+                    <span className="flex items-center gap-1"><Tag size={12} /> Discount ({appliedCoupon.code})</span>
+                    <span>-₹{discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
                 
                 {isInterState ? (
                   <div className="flex justify-between text-slate-600 text-sm">
@@ -163,7 +228,13 @@ export function Cart() {
                       toast.error("Invalid amount. Please add items to cart.");
                       return;
                     }
-                    navigate('/checkout', { state: { type: 'payment', selectedState, userCategory } });
+                    navigate('/checkout', { 
+                      state: { 
+                        type: 'payment', 
+                        selectedState, 
+                        userCategory
+                      } 
+                    });
                   }}
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
                 >
@@ -177,7 +248,13 @@ export function Cart() {
                       toast.error("Invalid amount. Please add items to cart.");
                       return;
                     }
-                    navigate('/checkout', { state: { type: 'quotation', selectedState, userCategory } });
+                    navigate('/checkout', { 
+                      state: { 
+                        type: 'quotation', 
+                        selectedState, 
+                        userCategory
+                      } 
+                    });
                   }}
                   className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-4 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all"
                 >

@@ -12,7 +12,9 @@ interface InvoicePreviewProps {
 
 export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data, onClose }) => {
   const [isEmailing, setIsEmailing] = useState(false);
-  const subTotal = data.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+  const rawSubTotal = data.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+  const discount = data.discountAmount || 0;
+  const subTotal = Math.max(0, rawSubTotal - discount);
   const totalGST = (subTotal * 18) / 100;
   const grandTotal = subTotal + totalGST;
 
@@ -170,8 +172,14 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data, onClose })
           <div className="w-80 space-y-3">
             <div className="flex justify-between text-sm text-slate-500">
               <span>Sub Total:</span>
-              <span className="font-medium text-slate-900">₹{subTotal.toFixed(2)}</span>
+              <span className="font-medium text-slate-900">₹{rawSubTotal.toFixed(2)}</span>
             </div>
+            {data.couponCode && discount > 0 && (
+              <div className="flex justify-between text-sm text-green-600 font-semibold">
+                <span>Discount ({data.couponCode}):</span>
+                <span>-₹{discount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm text-slate-500">
               <span>CGST (9%):</span>
               <span className="font-medium text-slate-900">₹{(totalGST / 2).toFixed(2)}</span>
