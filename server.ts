@@ -118,19 +118,53 @@ async function startServer() {
     });
   }
 
-  // Wrapper: sends email and in dev prints the Ethereal preview URL
+  // Logo CID attachment - auto-injected by sendMail for all buildEmail() templates
+  const _logoPath = path.join(process.cwd(), 'public', 'assets', 'stm-logo-email.png');
+  const _logoCidAttachment = fs.existsSync(_logoPath) ? {
+    filename: 'stm-logo-email.png',
+    path: _logoPath,
+    cid: 'stm-logo-email'
+  } : null;
+
   const sendMail = async (mailOptions: any) => {
-    const info = await transporter.sendMail(mailOptions);
+    const opts = { ...mailOptions };
+    if (_logoCidAttachment && opts.html && typeof opts.html === 'string' && opts.html.includes('cid:stm-logo-email')) {
+      opts.attachments = [...(opts.attachments || []), _logoCidAttachment];
+    }
+    const info = await transporter.sendMail(opts);
     if (isDevMode) {
       const previewUrl = nodemailer.getTestMessageUrl(info);
       console.log('\n📨 ===== EMAIL SENT (DEV PREVIEW) =====');
-      console.log(`   To: ${mailOptions.to}`);
-      console.log(`   Subject: ${mailOptions.subject}`);
+      console.log(`   To: ${opts.to}`);
+      console.log(`   Subject: ${opts.subject}`);
       console.log(`   🔗 Preview URL: ${previewUrl}`);
       console.log('=======================================\n');
     }
     return info;
   };
+
+  // ── Shared Email Layout ───────────────────────────────────────────────────
+  const buildEmail = (bodyRows: string) =>
+    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>` +
+    `<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">` +
+    `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center">` +
+    `<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">` +
+    `<tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/>` +
+    `<h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2>` +
+    `<p style="margin:0;font-size:12px;color:#64748b;">A Division of Consortium eLearning Network Pvt. Ltd.</p>` +
+    `<div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` +
+    bodyRows +
+    `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;">` +
+    `<p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">🏆 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>` +
+    `<p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p>` +
+    `<p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p>` +
+    `<p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">A Division of Consortium eLearning Network Pvt. Ltd.</p>` +
+    `<div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;">` +
+    `<p style="margin:0;font-size:11px;color:#64748b;">© 2026 STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;` +
+    `<a href="#" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;` +
+    `<a href="#" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr>` +
+    `<tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr>` +
+    `</table></td></tr></table></body></html>`;
 
   // API Routes
   app.get("/api/health", (req, res) => {
@@ -209,6 +243,54 @@ async function startServer() {
 
       const token = jwt.sign({ uid: userObj.id, email, role: userObj.role }, JWT_SECRET, { expiresIn: '24h' });
       
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const adminMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        subject: `🆕 New User Registration — ${name}`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">` +
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">🆕 New Subscriber Alert</p>` +
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;">A new user has just registered on the platform.</p>` +
+          `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:20px;">` +
+          `<tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">User Details</td></tr>` +
+          `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${name}</td></tr>` +
+          `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr>` +
+          `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;">${organization || 'Not provided'}</td></tr>` +
+          `</table>` +
+          `<div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;">` +
+          `<p style="margin:0;font-size:13px;color:#1e3a6e;">⚡ <strong>Action:</strong> Review the new subscriber and assign a plan if needed.</p></div>` +
+          `</td></tr>`)
+      };
+
+      const userMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: email,
+        subject: `🎉 Welcome to STM Digital Library, ${name}!`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">` +
+          `<h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome aboard, ${name}! 🎓</h3>` +
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Your account is ready. You now have access to STM Digital Library — your gateway to peer-reviewed journals, e-books, conference proceedings &amp; more.</p>` +
+          `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr>` +
+          `<td style="text-align:center;padding:14px 8px;background:#f0f9ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">📚</div><p style="margin:0;font-size:11px;font-weight:700;color:#0369a1;">50,000+<br/>Journals</p></td>` +
+          `<td width="4"></td>` +
+          `<td style="text-align:center;padding:14px 8px;background:#f0fdf4;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">🎥</div><p style="margin:0;font-size:11px;font-weight:700;color:#15803d;">Educational<br/>Videos</p></td>` +
+          `<td width="4"></td>` +
+          `<td style="text-align:center;padding:14px 8px;background:#fdf4ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">📖</div><p style="margin:0;font-size:11px;font-weight:700;color:#7e22ce;">E-Books &amp;<br/>Theses</p></td>` +
+          `</tr></table>` +
+          `<div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;">` +
+          `<p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">🚀 Getting Started</p>` +
+          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Log in at <strong>journalslibrary.com</strong></p>` +
+          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Browse domains &amp; subscribe to your field</p>` +
+          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Access full-text content instantly</p>` +
+          `</div>` +
+          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p>` +
+          `</td></tr>`)
+      };
+
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
+
       // Don't send password back
       const { password: _, ...profile } = userObj;
       res.json({ token, user: profile });
@@ -1787,6 +1869,61 @@ async function startServer() {
         }
       });
 
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const durationMonths = planType === 'Yearly' ? 12 : planType === 'Quarterly' ? 3 : 1;
+      const adminMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        subject: `🔥 New Domain Access Lead: ${domain} — ${userName}`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">`+
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">🔥 New Domain Access Lead</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;">A new access request has been submitted for the <strong>${domain}</strong> collection.</p>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;">`+
+          `<p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">📦 Request Details</p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Domain:</span> <strong style="color:#fff;">${domain}</strong></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Notes:</span> <span style="color:#e2e8f0;">${notes||'—'}</span></p>`+
+          `</td></tr></table>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:18px;">`+
+          `<tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Contact Info</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:35%;border-bottom:1px solid #f1f5f9;">Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${userName}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${organization||'N/A'}</td></tr>`+
+          `</table>`+
+          `<div style="background:#fefce8;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:12px 16px;">`+
+          `<p style="margin:0;font-size:13px;color:#92400e;">🏃 <strong>Hot Lead!</strong> Follow up within 24 hours.</p></div>`+
+          `</td></tr>`
+        )
+      };
+
+      const userMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: email,
+        subject: `✅ Your Request for ${domain} Access — Received!`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">`+
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">✅ Request Received!</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${userName}</strong>, we have received your request for the <strong>${domain}</strong> collection. Our team will contact you shortly to finalize the setup.</p>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;">`+
+          `<p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">📋 Your Request Summary</p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Domain:</span> <strong style="color:#fff;">${domain}</strong></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Organization:</span> <span style="color:#e2e8f0;">${organization||'—'}</span></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Notes:</span> <span style="color:#e2e8f0;">${notes||'—'}</span></p>`+
+          `</td></tr></table>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:18px;"><tr><td style="padding:18px 20px;">`+
+          `<p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">🕐 What Happens Next?</p>`+
+          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our team reviews your request within 24 hrs</p>`+
+          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We confirm subscription &amp; payment details</p>`+
+          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Full-text access is activated instantly</p>`+
+          `</td></tr></table>`+
+          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p>`+
+          `</td></tr>`
+        )
+      };
+
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
+
       res.json({ success: true, requestId: request.id, message: "Your request has been received. We will contact you shortly." });
     } catch (err) {
       console.error("POST /api/domain-request error:", err);
@@ -2387,68 +2524,23 @@ async function startServer() {
         from: emailFrom,
         to: process.env.ADMIN_EMAIL || "info@celnet.in",
         subject: `New Institutional Trial Request: ${institutionName}`,
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">New Institutional Trial Request</h2>
-            <p>A new request for an institutional trial has been submitted through the website.</p>
-            
-            <h3 style="color: #1e40af; margin-top: 25px;">Personal Details</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px; background: #f8fafc;">Full Name</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${fullName}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Institutional Email</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${institutionalEmail}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Designation</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${designation || "N/A"}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">WhatsApp Number</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${whatsappNumber || "N/A"}</td>
-              </tr>
-            </table>
-
-            <h3 style="color: #1e40af; margin-top: 25px;">Institution & Department</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px; background: #f8fafc;">Institution Name</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${institutionName}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Department</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${department}</td>
-              </tr>
-            </table>
-
-            <h3 style="color: #1e40af; margin-top: 25px;">Address Details</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px; background: #f8fafc;">Pincode</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${pincode}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">City</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${city}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">State</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${state}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Country</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${country}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background: #f8fafc;">Full Address</td>
-                <td style="padding: 8px; border: 1px solid #e2e8f0;">${fullAddress || "N/A"}</td>
-              </tr>
-            </table>
-          </div>
-        `
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">`+
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">🏛️ New Institutional Trial Request</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;">An institution has requested a trial access through the website.</p>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;">`+
+          `<tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Personal Details</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${institutionalEmail}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation||'N/A'}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">WhatsApp</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${whatsappNumber||'N/A'}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Institution</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${institutionName}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Department</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${department}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">City / State</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${city}, ${state}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Country</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${country}</td></tr>`+
+          `</table>`+
+          `</td></tr>`
+        )
       };
 
       // 2. Send User Confirmation Email
@@ -2456,37 +2548,23 @@ async function startServer() {
         from: emailFrom,
         to: institutionalEmail,
         subject: "Your Institutional Trial Request has been received",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-            <h2 style="color: #2563eb;">Hello ${fullName},</h2>
-            <p>Thank you for requesting an institutional trial for <strong>${institutionName}</strong>.</p>
-            <p>We have received your request for the <strong>${department}</strong> department. Our team is reviewing your details and will get in touch with you shortly to set up the trial access.</p>
-            
-            <div style="background: #f1f5f9; padding: 20px; border-radius: 10px; margin: 20px 0;">
-              <h3 style="margin-top: 0; color: #1e40af;">What happens next?</h3>
-              <ol>
-                <li>Our institutional access team will verify your details.</li>
-                <li>We will contact you to discuss IP-based authentication or remote access options.</li>
-                <li>Once configured, your entire institution will have seamless access for the trial period.</li>
-              </ol>
-            </div>
-
-            <p>If you have any questions in the meantime, please reply to this email or contact us at info@celnet.in.</p>
-            
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-            <p style="font-size: 12px; color: #64748b;">
-              <strong>STM Digital Library</strong><br />
-              A-118, 2nd Floor, Sector-63, Noida - 201301, U.P., India<br />
-              Email: info@celnet.in | Web: journalslibrary.com
-            </p>
-          </div>
-        `
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">`+
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">🏛️ Trial Request Received!</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for requesting an institutional trial for <strong>${institutionName}</strong> — <strong>${department}</strong>. Our team is reviewing your request and will get in touch shortly to set up the access.</p>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;">`+
+          `<p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">🕐 What Happens Next?</p>`+
+          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our institutional access team verifies your details</p>`+
+          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We discuss IP-based or remote access setup</p>`+
+          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Your institution gets seamless trial access</p>`+
+          `</td></tr></table>`+
+          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p>`+
+          `</td></tr>`
+        )
       };
 
-      await Promise.all([
-        transporter.sendMail(adminMailOptions),
-        transporter.sendMail(userMailOptions)
-      ]);
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
 
       res.json({ status: "success", message: "Trial request submitted successfully" });
     } catch (error) {
@@ -2537,50 +2615,26 @@ async function startServer() {
         from: emailFrom,
         to: process.env.ADMIN_EMAIL || "info@celnet.in",
         subject: "New Contact Inquiry from Website",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #2563eb;">New Contact Inquiry</h2>
-            <p>You have received a new inquiry from the website contact form.</p>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; width: 200px;">Full Name</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${fullName}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Email Address</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${email}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Mobile Number</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${mobile}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">WhatsApp Number</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${whatsapp}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Designation</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${designation}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Departments</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${Array.isArray(departments) ? departments.join(", ") : departments}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">State</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${state}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Organization</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${organization}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold;">Message</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0;">${message}</td>
-              </tr>
-            </table>
-          </div>
-        `
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">`+
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">📩 New Contact Inquiry</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;">A new inquiry was submitted via the website contact form.</p>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;">`+
+          `<tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Inquiry Details</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:35%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Mobile</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${mobile||'N/A'}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organization</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${organization||'N/A'}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation||'N/A'}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">State</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${state||'N/A'}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Departments</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${Array.isArray(departments)?departments.join(', '):(departments||'N/A')}</td></tr>`+
+          `</table>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd;"><tr><td style="padding:16px 20px;">`+
+          `<p style="color:#0369a1;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">💬 Message</p>`+
+          `<p style="font-size:13px;color:#1e293b;line-height:1.6;margin:0;">${message}</p>`+
+          `</td></tr></table>`+
+          `</td></tr>`
+        )
       };
 
       // 2. Send User Confirmation Email
@@ -2588,33 +2642,33 @@ async function startServer() {
         from: emailFrom,
         to: email,
         subject: "Thank you for contacting STM Digital Library",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-            <h2 style="color: #2563eb;">Hello ${fullName},</h2>
-            <p>Thank you for reaching out to us. We have received your inquiry and our team will get back to you shortly.</p>
-            <div style="background: #f1f5f9; padding: 20px; border-radius: 10px; margin: 20px 0;">
-              <h3 style="margin-top: 0;">Summary of your details:</h3>
-              <ul style="list-style: none; padding: 0;">
-                <li><strong>Organization:</strong> ${organization}</li>
-                <li><strong>Departments:</strong> ${Array.isArray(departments) ? departments.join(", ") : departments}</li>
-                <li><strong>Message:</strong> ${message}</li>
-              </ul>
-            </div>
-            <p>If you have any urgent queries, feel free to call us at +91-120-4781200.</p>
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-            <p style="font-size: 12px; color: #64748b;">
-              <strong>STM Digital Library</strong><br />
-              A-118, 2nd Floor, Sector-63, Noida - 201301, U.P., India<br />
-              Email: info@celnet.in | Web: journalslibrary.com
-            </p>
-          </div>
-        `
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">`+
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">✅ We've Got Your Message!</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for contacting <strong>STM Digital Library</strong>. We have received your inquiry and our team will get back to you within <strong>1–2 business days</strong>.</p>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd;margin-bottom:16px;"><tr><td style="padding:16px 20px;">`+
+          `<p style="color:#0369a1;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">💬 Your Message</p>`+
+          `<p style="font-size:13px;color:#1e293b;line-height:1.6;margin:0;">${message}</p>`+
+          `</td></tr></table>`+
+          (departments && (Array.isArray(departments) ? departments.length > 0 : true) ?
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;margin-bottom:16px;"><tr><td style="padding:16px 20px;">` +
+          `<p style="color:#7e22ce;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">📚 Selected Departments</p>` +
+          (Array.isArray(departments) ? departments : [departments]).map((d: string) =>
+            `<span style="display:inline-block;background:#ede9fe;color:#6d28d9;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;margin:3px 4px 3px 0;">${d}</span>`
+          ).join('') +
+          `</td></tr></table>` : '') +
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:18px;"><tr><td style="padding:18px 20px;">`+
+          `<p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">📞 Reach Us Directly</p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;">📧 <a href="mailto:info@celnet.in" style="color:#93c5fd;">info@celnet.in</a></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;">📞 +91-120-4781200</p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;">🌐 <a href="https://journalslibrary.com" style="color:#93c5fd;">journalslibrary.com</a></p>`+
+          `</td></tr></table>`+
+          `</td></tr>`
+        )
       };
 
-      await Promise.all([
-        transporter.sendMail(adminMailOptions),
-        transporter.sendMail(userMailOptions)
-      ]);
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
 
       res.json({ status: "success", message: "Inquiry submitted successfully" });
     } catch (error) {
@@ -4138,6 +4192,64 @@ async function startServer() {
       const inquiry = await prisma.agencyInquiry.create({
         data: { agencyName, contactPerson, email, phone, region, experience, message }
       });
+
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const adminMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        subject: `🤝 New Agency Partner Application: ${agencyName}`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">`+
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">🤝 New Agency Partnership Application</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;">A new reseller agency has applied to partner with STM Digital Library.</p>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;">`+
+          `<p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">🏢 Agency Profile</p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Agency:</span> <strong style="color:#fff;">${agencyName}</strong></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Contact:</span> <strong style="color:#e2e8f0;">${contactPerson}</strong></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Region:</span> <strong style="color:#86efac;">${region||'Not specified'}</strong></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Experience:</span> <strong style="color:#fde68a;">${experience||'Not specified'}</strong></p>`+
+          `</td></tr></table>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;">`+
+          `<tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Contact Details</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:35%;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Phone</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${phone||'Not provided'}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Message</td><td style="padding:9px 16px;font-size:13px;color:#475569;">${message||'None'}</td></tr>`+
+          `</table>`+
+          `<div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;">`+
+          `<p style="margin:0;font-size:13px;color:#1e3a6e;">ℹ️ Use <strong>Accept / Reject</strong> in the admin panel to respond.</p></div>`+
+          `</td></tr>`
+        )
+      };
+
+      const userMailOptions = {
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: email,
+        subject: `🌟 Your Partnership Application — STM Digital Library`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;">`+
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">🌟 Application Received!</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${contactPerson}</strong>, thank you for applying to become a certified partner of <strong>STM Digital Library</strong>. Your application for <strong>${agencyName}</strong> is under review.</p>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;">`+
+          `<p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">💼 Application Summary</p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Agency:</span> <strong style="color:#fff;">${agencyName}</strong></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Region:</span> <strong style="color:#86efac;">${region||'Not specified'}</strong></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Status:</span> <strong style="color:#fde68a;">⏳ Under Review</strong></p>`+
+          `</td></tr></table>`+
+          `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;margin-bottom:18px;"><tr><td style="padding:18px 20px;">`+
+          `<p style="color:#7e22ce;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">🏆 What Partners Get</p>`+
+          `<p style="margin:4px 0;font-size:13px;color:#1e293b;">✦ Exclusive reseller pricing &amp; margins</p>`+
+          `<p style="margin:4px 0;font-size:13px;color:#1e293b;">✦ Dedicated partner support &amp; training</p>`+
+          `<p style="margin:4px 0;font-size:13px;color:#1e293b;">✦ Co-branded marketing materials</p>`+
+          `<p style="margin:4px 0;font-size:13px;color:#1e293b;">✦ Access to 50,000+ academic journals &amp; content</p>`+
+          `</td></tr></table>`+
+          `<p style="font-size:12px;color:#64748b;margin:0;">We'll respond within <strong>2–3 business days</strong> at <strong>${email}</strong>. For urgent queries: <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a></p>`+
+          `</td></tr>`
+        )
+      };
+
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
+
       res.json({ success: true, inquiry });
     } catch (error) {
       console.error("Failed to create agency inquiry:", error);
