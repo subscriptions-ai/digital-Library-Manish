@@ -2708,6 +2708,57 @@ async function startServer() {
     }
   });
 
+  // Admin: Resend Demo Credentials (Reset password and email new one)
+  app.post("/api/admin/demo-requests/:id/resend-credentials", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const demoReq = await prisma.demoRequest.findUnique({ where: { id } });
+      if (!demoReq) return res.status(404).json({ error: "Demo request not found" });
+
+      const userObj = await prisma.user.findUnique({ where: { email: demoReq.institutionalEmail } });
+      if (!userObj) return res.status(404).json({ error: "No associated user account found for this email." });
+
+      const plainPassword = generatePassword();
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+      // Reset password and reset first-login status
+      await prisma.user.update({
+        where: { id: userObj.id },
+        data: {
+          password: hashedPassword,
+          isFirstLogin: true
+        }
+      });
+
+      await sendCredentialsEmail(
+        demoReq.institutionalEmail, 
+        demoReq.fullName, 
+        plainPassword,
+        {
+          institution: demoReq.institutionName,
+          department: demoReq.department,
+          planName: "Demo Access Trial",
+          validity: userObj.demoExpiresAt ? `${Math.ceil((userObj.demoExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} Days remaining` : 'N/A',
+          customMessage: `As requested, we have <strong>reset your Demo Access credentials</strong>. Your access has been refreshed and updated.`
+        }
+      );
+
+      // Log in admin notes
+      const updated = await prisma.demoRequest.update({
+        where: { id },
+        data: {
+          adminNotes: (demoReq.adminNotes ? demoReq.adminNotes + "\n\n" : "") + `[AUTO] Credentials reset and resent on ${new Date().toISOString().split('T')[0]}`
+        }
+      });
+
+      res.json({ success: true, request: updated });
+    } catch (error) {
+      console.error("Failed to resend credentials:", error);
+      res.status(500).json({ error: "Failed to resend credentials" });
+    }
+  });
+
+
   // Institutional Trial Request
   app.post("/api/institutional-trial", async (req, res) => {
     try {

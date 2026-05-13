@@ -13,6 +13,7 @@ export function DemoRequestsPage() {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
   const [provisionLoading, setProvisionLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [provisionDuration, setProvisionDuration] = useState(14);
 
   useEffect(() => {
@@ -83,6 +84,31 @@ export function DemoRequestsPage() {
       toast.error(error.message || 'Failed to provision demo access');
     } finally {
       setProvisionLoading(false);
+    }
+  };
+
+  const handleResendCredentials = async () => {
+    try {
+      setResendLoading(true);
+      const response = await fetch(`/api/admin/demo-requests/${selectedRequest.id}/resend-credentials`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}` 
+        }
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to resend credentials');
+      
+      toast.success('Credentials reset and resent successfully!');
+      fetchRequests();
+      setSelectedRequest(data.request);
+      setAdminNotes(data.request.adminNotes);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to resend credentials');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -395,6 +421,31 @@ export function DemoRequestsPage() {
                                 <Key size={16} />
                               )}
                               Provision Demo Access
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedRequest.status === 'Completed' && (
+                      <div className="pt-6 mt-6 border-t border-slate-100">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Demo Credentials Management</label>
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                          <p className="text-sm text-emerald-800 mb-4">
+                            This demo has been successfully provisioned. If the user is having trouble logging in, you can reset their password and resend their credentials.
+                          </p>
+                          <div className="flex flex-wrap items-center gap-4">
+                            <button
+                              onClick={handleResendCredentials}
+                              disabled={resendLoading}
+                              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm shadow-emerald-200"
+                            >
+                              {resendLoading ? (
+                                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              ) : (
+                                <Mail size={16} />
+                              )}
+                              Resend Credentials
                             </button>
                           </div>
                         </div>
