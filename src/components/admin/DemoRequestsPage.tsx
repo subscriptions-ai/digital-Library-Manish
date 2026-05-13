@@ -130,6 +130,14 @@ export function DemoRequestsPage() {
     }
   };
 
+  const getTypeColor = (type: string = 'Institution') => {
+    switch(type) {
+      case 'Student': return 'bg-indigo-50 text-indigo-600 border-indigo-100';
+      case 'Corporate': return 'bg-fuchsia-50 text-fuchsia-600 border-fuchsia-100';
+      default: return 'bg-sky-50 text-sky-600 border-sky-100';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -188,7 +196,12 @@ export function DemoRequestsPage() {
                     {format(new Date(req.createdAt), 'MMM dd, yyyy')}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-semibold text-slate-900">{req.institutionName}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="font-semibold text-slate-900">{req.institutionName}</div>
+                      <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase border ${getTypeColor(req.requestType)}`}>
+                        {req.requestType || 'Institution'}
+                      </span>
+                    </div>
                     <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
                       <MapPin size={12} /> {req.city || 'N/A'}, {req.state || 'N/A'}
                     </div>
@@ -271,8 +284,15 @@ export function DemoRequestsPage() {
                             <Building2 size={16} />
                           </div>
                           <div>
-                            <div className="text-xs font-medium text-slate-500">Institution Name</div>
-                            <div className="font-semibold text-slate-900">{selectedRequest.institutionName}</div>
+                            <div className="text-xs font-medium text-slate-500">
+                              {selectedRequest.requestType === 'Student' ? 'University / College' : selectedRequest.requestType === 'Corporate' ? 'Company / Corporate' : 'Institution Name'}
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="font-semibold text-slate-900">{selectedRequest.institutionName}</div>
+                              <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold uppercase border ${getTypeColor(selectedRequest.requestType)}`}>
+                                {selectedRequest.requestType || 'Institution'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         <div className="flex gap-3">

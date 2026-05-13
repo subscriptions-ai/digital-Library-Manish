@@ -37,7 +37,8 @@ export function RequestDemo() {
     state: "",
     country: "",
     fullAddress: "",
-    department: ""
+    department: "",
+    requestType: "Institution"
   });
 
   const [loading, setLoading] = useState(false);
@@ -104,7 +105,8 @@ export function RequestDemo() {
           state: "",
           country: "",
           fullAddress: "",
-          department: ""
+          department: "",
+          requestType: "Institution"
         });
       } else {
         throw new Error("Failed to submit request");
@@ -244,7 +246,33 @@ export function RequestDemo() {
                 
                 <div className="relative z-10">
                   <h3 className="text-2xl font-bold mb-2">Request Personalized Demo</h3>
-                  <p className="text-slate-400 text-sm mb-8">Fill in the details below and our team will get back to you within 24 hours.</p>
+                  <p className="text-slate-400 text-sm mb-6">Fill in the details below and our team will get back to you within 24 hours.</p>
+                  
+                  {/* User Type Selection tabs */}
+                  <div className="mb-8 space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">I am requesting as a: *</label>
+                    <div className="grid grid-cols-3 gap-2 bg-white/5 p-1 rounded-xl border border-white/5">
+                      {[
+                        { id: 'Institution', label: 'Institution', icon: <Building2 size={14} /> },
+                        { id: 'Student', label: 'Student', icon: <User size={14} /> },
+                        { id: 'Corporate', label: 'Corporate', icon: <Briefcase size={14} /> }
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, requestType: tab.id }))}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-bold transition-all ${
+                            formData.requestType === tab.id 
+                              ? 'bg-blue-600 text-white shadow-md' 
+                              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                          }`}
+                        >
+                          {tab.icon}
+                          <span>{tab.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   
                   <form className="space-y-6" onSubmit={handleSubmit}>
                     {/* Personal Details */}
@@ -260,12 +288,14 @@ export function RequestDemo() {
                               value={formData.fullName}
                               onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                               className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white/10 transition-all placeholder:text-slate-600" 
-                              placeholder="Dr. John Doe"
+                              placeholder={formData.requestType === 'Institution' ? "Dr. John Doe" : "John Doe"}
                             />
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Institutional Email *</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            {formData.requestType === 'Student' ? 'Student / Personal Email *' : formData.requestType === 'Corporate' ? 'Work Email *' : 'Institutional Email *'}
+                          </label>
                           <div className="relative group">
                             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={16} />
                             <input 
@@ -274,14 +304,16 @@ export function RequestDemo() {
                               value={formData.institutionalEmail}
                               onChange={(e) => setFormData({...formData, institutionalEmail: e.target.value})}
                               className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white/10 transition-all placeholder:text-slate-600" 
-                              placeholder="john.doe@university.edu"
+                              placeholder={formData.requestType === 'Student' ? "student@university.edu" : formData.requestType === 'Corporate' ? "manager@company.com" : "john.doe@university.edu"}
                             />
                           </div>
                         </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Designation</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            {formData.requestType === 'Student' ? 'Degree / Subject' : 'Designation'}
+                          </label>
                           <div className="relative group">
                             <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={16} />
                             <input 
@@ -289,7 +321,7 @@ export function RequestDemo() {
                               value={formData.designation}
                               onChange={(e) => setFormData({...formData, designation: e.target.value})}
                               className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white/10 transition-all placeholder:text-slate-600" 
-                              placeholder="Librarian / Professor"
+                              placeholder={formData.requestType === 'Student' ? "B.Tech CSE / Research Scholar" : formData.requestType === 'Corporate' ? "R&D Head / Tech Lead" : "Librarian / Professor"}
                             />
                           </div>
                         </div>
@@ -312,7 +344,9 @@ export function RequestDemo() {
                     {/* Institution Details */}
                     <div className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Institution Name *</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          {formData.requestType === 'Student' ? 'University / College Name *' : formData.requestType === 'Corporate' ? 'Company / Corporate Name *' : 'Institution Name *'}
+                        </label>
                         <div className="relative group">
                           <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={16} />
                           <input 
@@ -321,7 +355,7 @@ export function RequestDemo() {
                             value={formData.institutionName}
                             onChange={(e) => setFormData({...formData, institutionName: e.target.value})}
                             className="w-full rounded-xl bg-white/5 border border-white/10 pl-11 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white/10 transition-all placeholder:text-slate-600" 
-                            placeholder="Indian Institute of Technology, Delhi"
+                            placeholder={formData.requestType === 'Student' ? "Delhi Technological University" : formData.requestType === 'Corporate' ? "Celnet Systems Ltd" : "Indian Institute of Technology, Delhi"}
                           />
                         </div>
                       </div>
@@ -387,7 +421,9 @@ export function RequestDemo() {
 
                     {/* Department */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Academic Department *</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        {formData.requestType === 'Student' ? 'Field of Interest / Study *' : formData.requestType === 'Corporate' ? 'Tech Domain / Division *' : 'Academic Department *'}
+                      </label>
                       <select 
                         required
                         value={formData.department}

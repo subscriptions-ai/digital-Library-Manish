@@ -2533,7 +2533,8 @@ async function startServer() {
         whatsappNumber,
         city,
         state,
-        department
+        department,
+        requestType
       } = formData;
 
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
@@ -2548,7 +2549,8 @@ async function startServer() {
           whatsappNumber,
           city,
           state,
-          department
+          department,
+          requestType: requestType || "Institution"
         }
       });
 
@@ -2556,19 +2558,20 @@ async function startServer() {
       const adminMailOptions = {
         from: emailFrom,
         to: process.env.ADMIN_EMAIL || "info@celnet.in",
-        subject: `New Demo Session Request: ${institutionName}`,
+        subject: `New ${requestType||'Demo'} Session Request: ${institutionName}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">`+
-          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">🎯 New Demo Session Request</p>`+
-          `<p style="margin:0 0 20px;font-size:13px;color:#475569;">An institutional user has requested a personalized demo of the platform.</p>`+
+          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">🎯 New Demo Session Request (${requestType || "Institution"})</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;">A user has requested a personalized demo of the platform.</p>`+
           `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;">`+
           `<tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Request Details</td></tr>`+
-          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr>`+
-          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${institutionalEmail}</td></tr>`+
-          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Institution</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${institutionName}</td></tr>`+
-          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">WhatsApp</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${whatsappNumber||'N/A'}</td></tr>`+
-          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Department</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${department}</td></tr>`+
-          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Location</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${city}, ${state}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Type</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#2563eb;border-bottom:1px solid #f1f5f9;">${requestType||'Institution'}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${institutionalEmail}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organization / Inst.</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${institutionName}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">WhatsApp</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${whatsappNumber||'N/A'}</td></tr>`+
+          `<tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Department / Tech</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${department}</td></tr>`+
+          `<tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Location</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${city}, ${state}</td></tr>`+
           `</table>`+
           `</td></tr>`
         )
@@ -2582,12 +2585,12 @@ async function startServer() {
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">`+
           `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">👋 Demo Request Received!</p>`+
-          `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for showing interest in a personalized demo for <strong>${institutionName}</strong>. Our team will contact you within 24 hours to schedule a convenient time.</p>`+
+          `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for showing interest in a personalized demo. Our team will contact you within 24 hours to schedule a convenient walkthrough of the platform.</p>`+
           `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;">`+
           `<p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">🕐 Next Steps</p>`+
-          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our experts review your institutional profile</p>`+
+          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our experts review your request details</p>`+
           `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We reach out via email/WhatsApp to fix a slot</p>`+
-          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; A guided platform tour for your team</p>`+
+          `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; A guided platform tour tailored for your needs</p>`+
           `</td></tr></table>`+
           `<p style="font-size:12px;color:#64748b;margin:0;">Need immediate assistance? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a></p>`+
           `</td></tr>`
@@ -2649,20 +2652,27 @@ async function startServer() {
       const plainPassword = generatePassword();
       const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-      const newInst = await prisma.institution.create({
-        data: { name: demoReq.institutionName, status: "Active" }
-      });
+      const isStudent = demoReq.requestType === 'Student';
+      const targetRole = isStudent ? "Subscriber" : "Institution";
+
+      let newInstId = undefined;
+      if (!isStudent) {
+        const newInst = await prisma.institution.create({
+          data: { name: demoReq.institutionName, status: "Active" }
+        });
+        newInstId = newInst.id;
+      }
 
       const newUser = await prisma.user.create({
         data: {
           email: demoReq.institutionalEmail,
           password: hashedPassword,
           displayName: demoReq.fullName,
-          role: "Institution",
+          role: targetRole,
           status: "Active",
           isFirstLogin: true,
           organization: demoReq.institutionName,
-          institutionId: newInst.id,
+          institutionId: newInstId,
           isDemoAccount: true,
           demoExpiresAt: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
         }
@@ -2671,11 +2681,11 @@ async function startServer() {
       await prisma.subscription.create({
         data: {
           domainName: demoReq.department,
-          planName: "Demo Trial",
+          planName: `${demoReq.requestType || 'Demo'} Trial`,
           durationMonths: 1,
           status: "Active",
           userId: newUser.id,
-          institutionId: newInst.id,
+          institutionId: newInstId,
           endDate: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
         }
       });

@@ -376,6 +376,7 @@ model DemoRequest {
   city               String?
   state              String?
   department         String
+  requestType        String?  @default("Institution") // Institution | Student | Corporate
   status             String   @default("Pending") // Pending | Contacted | Completed
   adminNotes         String?
   
