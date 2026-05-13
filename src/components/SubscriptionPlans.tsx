@@ -293,7 +293,7 @@ export function SubscriptionPlans({
                 "A complete digital knowledge hub for learning, teaching, research, and institutional growth."
               </p>
               <div className="mt-10 flex flex-wrap justify-center gap-4">
-                <button onClick={() => navigate("/contact")} className="rounded-full bg-blue-600 px-8 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center gap-2 shadow-xl shadow-blue-600/20">
+                <button onClick={() => navigate("/request-demo")} className="rounded-full bg-blue-600 px-8 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center gap-2 shadow-xl shadow-blue-600/20">
                   Request Institutional Trial <ArrowRight size={16} />
                 </button>
                 <button onClick={() => navigate("/contact")} className="rounded-full bg-white px-8 py-3.5 text-sm font-bold text-slate-900 hover:bg-slate-50 transition-all">

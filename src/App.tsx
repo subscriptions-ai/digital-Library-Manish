@@ -44,8 +44,10 @@ import { UserCreationPanel } from "./components/admin/UserCreationPanel";
 import { ValidatorDashboard } from "./components/admin/ValidatorDashboard";
 import { AgencyInquiriesPage } from "./components/admin/AgencyInquiriesPage";
 import { ContactInquiriesPage } from "./components/admin/ContactInquiriesPage";
+import { DemoRequestsPage } from "./components/admin/DemoRequestsPage";
 import { CouponsManager } from './components/admin/CouponsManager';
 import { CouponDetails } from './components/admin/CouponDetails';
+import { RequestDemo } from './components/RequestDemo';
 
 const CONTENT_MODULES = [
   { slug: 'books',                  contentType: 'Books'                   },
@@ -129,6 +131,7 @@ export default function App() {
                 <Route path="/admin/quotations" element={<AdminLayout><QuotationManager /></AdminLayout>} />
                 <Route path="/admin/agency-inquiries" element={<AdminLayout><AgencyInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/contact-inquiries" element={<AdminLayout><ContactInquiriesPage /></AdminLayout>} />
+                <Route path="/admin/demo-requests" element={<AdminLayout><DemoRequestsPage /></AdminLayout>} />
                 <Route path="/admin/validator" element={<AdminLayout><ValidatorDashboard /></AdminLayout>} />
                 <Route path="/admin/coupons" element={<AdminLayout><CouponsManager /></AdminLayout>} />
                 <Route path="/admin/coupons/:id" element={<AdminLayout><CouponDetails /></AdminLayout>} />
@@ -214,6 +217,7 @@ export default function App() {
                       <Route path="/content-sources" element={<ContentSources />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
+                      <Route path="/request-demo" element={<RequestDemo />} />
                       <Route path="/cart" element={<Cart />} />
                       <Route path="/checkout" element={<Checkout />} />
                       <Route path="/create-quotation" element={<QuotationWizard />} />

@@ -351,7 +351,7 @@ export function DigitalLibrary() {
           </p>
           <div className="flex flex-wrap justify-center gap-6">
             <Link 
-              to="/contact" 
+              to="/request-demo" 
               className="rounded-full bg-white px-10 py-4 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all shadow-xl"
             >
               Request a Demo

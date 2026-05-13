@@ -365,3 +365,20 @@ model CouponUsage {
   
   usedAt     DateTime @default(now())
 }
+
+model DemoRequest {
+  id                 String   @id @default(uuid())
+  fullName           String
+  institutionalEmail String
+  institutionName    String
+  designation        String?
+  whatsappNumber     String?
+  city               String?
+  state              String?
+  department         String
+  status             String   @default("Pending") // Pending | Contacted | Completed
+  adminNotes         String?
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

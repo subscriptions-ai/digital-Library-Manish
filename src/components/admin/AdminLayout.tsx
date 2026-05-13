@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, Tag
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, Tag, PlayCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -32,6 +32,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [subsExpanded, setSubsExpanded] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [newInquiriesCount, setNewInquiriesCount] = useState(0);
+  const [newDemoRequestsCount, setNewDemoRequestsCount] = useState(0);
 
   useEffect(() => {
     if (!loading && profile) {
@@ -51,6 +52,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         }).then(r => r.json()).then(data => {
           if (Array.isArray(data)) setNewInquiriesCount(data.length);
+        }).catch(() => {});
+        fetch('/api/admin/demo-requests', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        }).then(r => r.json()).then(data => {
+          if (Array.isArray(data)) setNewDemoRequestsCount(data.filter((d: any) => d.status === 'Pending').length);
         }).catch(() => {});
       }
     } else if (!loading && !profile) {
@@ -253,6 +259,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/admin/contact-inquiries')}
             badge={newInquiriesCount > 0 ? newInquiriesCount : undefined}
+          />
+
+          {/* Demo Requests */}
+          <NavButton
+            icon={<PlayCircle size={17} />}
+            label="Demo Requests"
+            active={location.pathname === '/admin/demo-requests'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/demo-requests')}
+            badge={newDemoRequestsCount > 0 ? newDemoRequestsCount : undefined}
           />
 
           {/* Coupons */}
