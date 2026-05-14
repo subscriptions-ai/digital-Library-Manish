@@ -2432,17 +2432,32 @@ async function startServer() {
 
   // Create Razorpay Order
   app.post("/api/payment/order", async (req, res) => {
-
     try {
-      const razorpay = getRazorpay();
       const { amount, currency = "INR", receipt } = req.body;
+      
+      // Check if keys exist, if not, fallback to Mock Payment Order for local dev ONLY
+      if (process.env.NODE_ENV !== "production" && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+        console.log("ℹ️ [Razorpay] Keys not configured. Falling back to local mock order...");
+        return res.json({
+          id: `order_mock_${Date.now()}`,
+          amount: Math.round(amount * 100),
+          currency: currency,
+          receipt,
+          isMock: true
+        });
+      }
+
+      const razorpay = getRazorpay();
       const options = {
         amount: Math.round(amount * 100), // amount in the smallest currency unit
         currency,
         receipt,
       };
       const order = await razorpay.orders.create(options);
-      res.json(order);
+      res.json({
+        ...order,
+        razorpayKey: process.env.RAZORPAY_KEY_ID
+      });
     } catch (error) {
       console.error("Razorpay Order Error:", error);
       res.status(500).json({ error: "Failed to create order" });
@@ -2453,13 +2468,29 @@ async function startServer() {
   app.post("/api/payment/verify", async (req, res) => {
     try {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, items, userId } = req.body;
-      const sign = razorpay_order_id + "|" + razorpay_payment_id;
-      const expectedSign = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
-        .update(sign.toString())
-        .digest("hex");
+      
+      let isVerified = false;
+      const isMockOrder = process.env.NODE_ENV !== "production" && razorpay_order_id && razorpay_order_id.startsWith("order_mock_");
+      
+      if (isMockOrder) {
+        console.log("✅ [Razorpay] Mock Order verified automatically for local development.");
+        isVerified = true;
+      } else {
+        const keySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
+        const sign = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSign = crypto
+          .createHmac("sha256", keySecret)
+          .update(sign.toString())
+          .digest("hex");
+          
+        isVerified = razorpay_signature === expectedSign;
+        
+        if (!isVerified) {
+          console.warn(`⚠️ [Razorpay] Payment signature mismatch for Order: ${razorpay_order_id}`);
+        }
+      }
 
-      if (razorpay_signature === expectedSign) {
+      if (isVerified) {
         // Payment verified, save to PostgreSQL
         if (items && amount) {
           await prisma.payment.create({

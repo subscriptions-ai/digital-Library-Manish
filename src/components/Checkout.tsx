@@ -246,8 +246,68 @@ export function Checkout() {
 
       const order = await response.json();
 
+      if (order.isMock) {
+        // Automatically bypass standard payment gateway flow for local development
+        const toastId = toast.loading("Razorpay keys missing. Simulating success for local testing...", { id: "mock-payment" });
+        
+        setTimeout(async () => {
+          try {
+            const verifyRes = await fetch('/api/payment/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: order.id,
+                razorpay_payment_id: `pay_mock_${Date.now()}`,
+                razorpay_signature: `sig_mock_${Date.now()}`,
+                amount: gstBreakdown.totalAmount,
+                items: items,
+                userId: user?.uid || null,
+                couponCode,
+                discountAmount
+              })
+            });
+            
+            const verifyData = await verifyRes.json();
+            toast.dismiss(toastId);
+            
+            if (verifyData.status === 'success') {
+              toast.success('Mock Payment successful! Access activated.');
+              
+              // Prepare Invoice Data
+              const newInvoiceData: InvoiceData = {
+                invoiceNumber: `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`,
+                date: new Date(),
+                customerName: formData.name,
+                customerEmail: formData.email,
+                customerAddress: `${formData.address}, ${formData.state} - ${formData.pincode}`,
+                customerGSTIN: formData.gstNumber,
+                items: items.map(item => ({
+                  description: `${item.domainName} (${item.planName} - ${item.duration})`,
+                  quantity: 1,
+                  unitPrice: item.price
+                })),
+                couponCode,
+                discountAmount
+              };
+              
+              setInvoiceData(newInvoiceData);
+              setShowInvoice(true);
+              clearCart();
+            } else {
+              toast.error('Mock payment verification failed.');
+            }
+          } catch (err) {
+            toast.dismiss(toastId);
+            toast.error('Failed to complete simulated payment.');
+          } finally {
+            setIsProcessing(false);
+          }
+        }, 1200);
+        return;
+      }
+
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+        key: order.razorpayKey || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
         amount: order.amount,
         currency: order.currency,
         name: 'STM Digital Library',
