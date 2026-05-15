@@ -2390,6 +2390,19 @@ async function startServer() {
     }
   });
 
+  // Admin: Payments Management
+  app.get("/api/admin/payments", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const payments = await prisma.payment.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { user: true }
+      });
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  });
+
   // Admin: Subscription Management
   app.get("/api/admin/subscriptions", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
@@ -2467,7 +2480,7 @@ async function startServer() {
   // Verify Razorpay Payment
   app.post("/api/payment/verify", async (req, res) => {
     try {
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, items, userId } = req.body;
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, items, userId, guestData } = req.body;
       
       let isVerified = false;
       const isMockOrder = process.env.NODE_ENV !== "production" && razorpay_order_id && razorpay_order_id.startsWith("order_mock_");
@@ -2491,6 +2504,40 @@ async function startServer() {
       }
 
       if (isVerified) {
+        let finalUserId = userId || null;
+        let isNewUser = false;
+        let generatedPassword = "";
+
+        // Guest Checkout Handling
+        if (!finalUserId && guestData && guestData.email) {
+          try {
+            const existingUser = await prisma.user.findUnique({ where: { email: guestData.email } });
+            if (existingUser) {
+              finalUserId = existingUser.id;
+            } else {
+              // Create new user for guest
+              generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase() + "!";
+              const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+              
+              const newUser = await prisma.user.create({
+                data: {
+                  email: guestData.email,
+                  displayName: guestData.name || "New User",
+                  password: hashedPassword,
+                  role: guestData.userCategory === 'Institution' || guestData.organization ? 'Institution' : 'Subscriber',
+                  organization: guestData.organization || null,
+                  status: 'Active',
+                  isFirstLogin: true,
+                }
+              });
+              finalUserId = newUser.id;
+              isNewUser = true;
+            }
+          } catch (userErr) {
+            console.error("Guest User Creation Error:", userErr);
+          }
+        }
+
         // Payment verified, save to PostgreSQL
         if (items && amount) {
           await prisma.payment.create({
@@ -2499,7 +2546,7 @@ async function startServer() {
               paymentId: razorpay_payment_id,
               amount: parseFloat(amount),
               status: "Success",
-              userId: userId || null,
+              userId: finalUserId,
               items: items || []
             }
           });
@@ -2511,7 +2558,7 @@ async function startServer() {
               await prisma.couponUsage.create({
                 data: {
                   couponId: coupon.id,
-                  userId: userId || null,
+                  userId: finalUserId,
                   orderId: razorpay_order_id,
                   discount: parseFloat(req.body.discountAmount)
                 }
@@ -2523,6 +2570,32 @@ async function startServer() {
             }
           }
 
+          let newInstitutionId = null;
+          if (finalUserId) {
+            const u = await prisma.user.findUnique({ where: { id: finalUserId } });
+            if (u && u.role === 'Institution') {
+               if (u.institutionId) {
+                 newInstitutionId = u.institutionId;
+               } else {
+                 let inst = await prisma.institution.findFirst({ where: { subscriptionId: u.id } });
+                 if (!inst && u.organization) {
+                    inst = await prisma.institution.create({
+                      data: {
+                        name: u.organization,
+                        status: 'Active',
+                        subscriptionId: u.id
+                      }
+                    });
+                    await prisma.user.update({
+                      where: { id: u.id },
+                      data: { institutionId: inst.id }
+                    });
+                 }
+                 newInstitutionId = inst?.id || null;
+               }
+            }
+          }
+
           if (Array.isArray(items)) {
             for (const item of items) {
               const days = item.duration === 'Yearly' ? 365 : item.duration === 'Half-Yearly' ? 180 : item.duration === 'Quarterly' ? 90 : 30;
@@ -2530,15 +2603,32 @@ async function startServer() {
               
               await prisma.subscription.create({
                 data: {
-                  domainId: item.domainId,
+                  domainId: item.domainId ? String(item.domainId) : null,
                   domainName: item.domainName,
                   planName: item.planName || item.plan?.name || "Trial", 
                   duration: item.duration || "Monthly",
                   status: "Active",
-                  userId: userId || null,
+                  userId: finalUserId,
+                  institutionId: newInstitutionId,
                   endDate
                 }
               });
+            }
+          }
+
+          if (isNewUser && guestData && guestData.email) {
+            try {
+               await sendCredentialsEmail(
+                 guestData.email,
+                 guestData.name || "New User",
+                 generatedPassword,
+                 {
+                   planName: items[0]?.planName || "Purchased Subscription",
+                   validity: items[0]?.duration || "Monthly",
+                 }
+               );
+            } catch (err) {
+               console.error("Failed to send guest credentials email:", err);
             }
           }
         }

@@ -262,6 +262,7 @@ export function Checkout() {
                 amount: gstBreakdown.totalAmount,
                 items: items,
                 userId: user?.uid || null,
+                guestData: formData,
                 couponCode,
                 discountAmount
               })
@@ -310,6 +311,7 @@ export function Checkout() {
         key: order.razorpayKey || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
         amount: order.amount,
         currency: order.currency,
+        order_id: order.id,
         name: 'STM Digital Library',
         description: 'Subscription Purchase',
         handler: async (response: any) => {
@@ -321,6 +323,7 @@ export function Checkout() {
               amount: gstBreakdown.totalAmount,
               items: items,
               userId: user?.uid || null,
+              guestData: formData,
               couponCode,
               discountAmount
             })

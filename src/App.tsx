@@ -47,6 +47,7 @@ import { ContactInquiriesPage } from "./components/admin/ContactInquiriesPage";
 import { DemoRequestsPage } from "./components/admin/DemoRequestsPage";
 import { CouponsManager } from './components/admin/CouponsManager';
 import { CouponDetails } from './components/admin/CouponDetails';
+import { AdminPayments } from './components/admin/AdminPayments';
 import { RequestDemo } from './components/RequestDemo';
 
 const CONTENT_MODULES = [
@@ -135,6 +136,7 @@ export default function App() {
                 <Route path="/admin/validator" element={<AdminLayout><ValidatorDashboard /></AdminLayout>} />
                 <Route path="/admin/coupons" element={<AdminLayout><CouponsManager /></AdminLayout>} />
                 <Route path="/admin/coupons/:id" element={<AdminLayout><CouponDetails /></AdminLayout>} />
+                <Route path="/admin/payments" element={<AdminLayout><AdminPayments /></AdminLayout>} />
 
                 {/* Per Content Type Module Routes (8 modules × 3 pages each) */}
                 {CONTENT_MODULES.map(({ slug, contentType }) => (
