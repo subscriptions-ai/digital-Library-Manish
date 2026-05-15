@@ -246,30 +246,56 @@ export function AdminPayments() {
                 {/* Items Purchased */}
                 {Array.isArray(selectedPayment.items) && selectedPayment.items.length > 0 && (
                   <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
+                    <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                         <ShoppingBag size={12} /> Items Purchased ({selectedPayment.items.length})
                       </p>
                     </div>
                     <div className="divide-y divide-slate-100">
                       {selectedPayment.items.map((item: any, i: number) => (
-                        <div key={i} className="px-4 py-3 flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                              <Package size={14} className="text-blue-600" />
+                        <div key={i} className="px-4 py-4 space-y-3">
+                          {/* Domain Name — the actual product */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
+                                <Package size={16} className="text-indigo-600" />
+                              </div>
+                              <div>
+                                <p className="font-black text-slate-900 text-sm leading-tight">
+                                  {item.domainName || 'Unknown Domain'}
+                                </p>
+                                <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide font-bold">Domain / Subject Area</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-bold text-slate-900 text-sm">{item.domainName || 'Unknown Domain'}</p>
-                              <p className="text-xs text-slate-500">
-                                {item.planName || item.plan?.name || 'Subscription'} · {item.duration || 'Monthly'}
+                            <div className="text-right shrink-0">
+                              <p className="font-black text-slate-900 text-base">
+                                {item.price ? `₹${Number(item.price).toLocaleString()}` : '—'}
                               </p>
+                              <p className="text-[10px] text-slate-400">base price</p>
                             </div>
                           </div>
-                          <p className="font-bold text-slate-900 text-sm shrink-0">
-                            {item.price ? `₹${Number(item.price).toLocaleString()}` : '—'}
-                          </p>
+                          {/* Plan details */}
+                          <div className="ml-11 grid grid-cols-3 gap-2">
+                            <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-center">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Plan</p>
+                              <p className="text-xs font-bold text-slate-700">{item.planName || item.plan?.name || '—'}</p>
+                            </div>
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-center">
+                              <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-0.5">Category</p>
+                              <p className="text-xs font-bold text-blue-700">{item.category || '—'}</p>
+                            </div>
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 text-center">
+                              <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-0.5">Duration</p>
+                              <p className="text-xs font-bold text-emerald-700">{item.duration || 'Monthly'}</p>
+                            </div>
+                          </div>
                         </div>
                       ))}
+                    </div>
+                    {/* Totals footer */}
+                    <div className="bg-slate-900 px-4 py-3 flex items-center justify-between">
+                      <p className="text-xs font-bold text-slate-400">{selectedPayment.items.length} item(s) total (incl. 18% GST)</p>
+                      <p className="text-base font-black text-white">₹{selectedPayment.amount?.toLocaleString()}</p>
                     </div>
                   </div>
                 )}
