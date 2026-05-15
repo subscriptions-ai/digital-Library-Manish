@@ -39,6 +39,8 @@ export function Checkout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
+  const [paymentId, setPaymentId] = useState<string>('');
+  const [orderId, setOrderId] = useState<string>('');
 
   // Determine which items to use: state items (from QuotationWizard) or cart items
   const items = stateItems || cartItems;
@@ -273,6 +275,8 @@ export function Checkout() {
             
             if (verifyData.status === 'success') {
               toast.success('Mock Payment successful! Access activated.');
+              setPaymentId('sim_pay_' + Math.random().toString(36).substring(7));
+              setOrderId('sim_ord_' + Math.random().toString(36).substring(7));
               
               // Prepare Invoice Data
               const newInvoiceData: InvoiceData = {
@@ -329,10 +333,12 @@ export function Checkout() {
             })
           });
           const verifyData = await verifyRes.json();
-          if (verifyData.status === 'success') {
-            toast.success('Payment successful! Access activated.');
-            
-            // Prepare Invoice Data
+            if (verifyData.status === 'success') {
+              toast.success('Payment successful! Access activated.');
+              setPaymentId(response.razorpay_payment_id || '');
+              setOrderId(response.razorpay_order_id || '');
+              
+              // Prepare Invoice Data
             const newInvoiceData: InvoiceData = {
               invoiceNumber: `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`,
               date: new Date(),
@@ -387,7 +393,13 @@ export function Checkout() {
               Go to Dashboard
             </button>
           </div>
-          <InvoicePreview data={invoiceData} onClose={() => navigate('/dashboard')} />
+          <InvoicePreview 
+            data={invoiceData} 
+            onClose={() => navigate('/dashboard')} 
+            rawItems={items}
+            paymentId={paymentId}
+            orderId={orderId}
+          />
         </div>
       </div>
     );

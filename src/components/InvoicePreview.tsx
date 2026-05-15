@@ -8,9 +8,12 @@ import { toast } from "react-hot-toast";
 interface InvoicePreviewProps {
   data: InvoiceData;
   onClose?: () => void;
+  rawItems?: any[];
+  paymentId?: string;
+  orderId?: string;
 }
 
-export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data, onClose }) => {
+export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data, onClose, rawItems, paymentId, orderId }) => {
   const [isEmailing, setIsEmailing] = useState(false);
   const rawSubTotal = data.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
   const discount = data.discountAmount || 0;
@@ -46,6 +49,9 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data, onClose })
             grandTotal: grandTotal.toFixed(2),
           },
           pdfBase64,
+          items: rawItems || [],
+          paymentId: paymentId || null,
+          orderId: orderId || null,
         }),
       });
 

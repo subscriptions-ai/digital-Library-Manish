@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { COMPANY_DETAILS } from "../config";
 
@@ -96,7 +96,7 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   const totalGST = (subTotal * 18) / 100;
   const grandTotal = subTotal + totalGST;
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: 115,
     head: [["Description", "Qty", "Unit Price", "Taxable Value", "GST %", "GST Amt", "Total"]],
     body: tableData,

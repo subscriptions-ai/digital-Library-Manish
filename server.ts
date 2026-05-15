@@ -1271,6 +1271,179 @@ async function startServer() {
     }
   };
 
+  // Helper: Send comprehensive rich-HTML payment success emails (Customer + Admin)
+  const sendPaymentSuccessEmails = async (
+    userEmail: string,
+    userName: string,
+    totalAmount: string,
+    items: any[],
+    paymentId: string,
+    orderId: string,
+    invoiceNumber: string,
+    pdfBase64?: string
+  ) => {
+    const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+    const adminEmail = process.env.ADMIN_EMAIL || "info@celnet.in";
+    const year = new Date().getFullYear();
+
+    const itemsHtml = Array.isArray(items) ? items.map((item: any) => `
+      <tr>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#1e293b;font-weight:600;">${item.domainName || item.description || 'Subscription'}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;text-align:center;">${item.planName || '—'}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;text-align:center;">${item.duration || 'Monthly'}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#1e293b;font-weight:700;text-align:right;">₹${Number(item.price || item.unitPrice || 0).toLocaleString('en-IN')}</td>
+      </tr>`).join('') : '<tr><td colspan="4" style="padding:12px;text-align:center;color:#94a3b8;">No items</td></tr>';
+
+    const customerHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef2f7;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;padding:32px 0;">
+<tr><td align="center">
+<table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);max-width:620px;">
+  <!-- Header -->
+  <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
+    <h1 style="color:#ffffff;margin:0 0 4px;font-size:24px;font-weight:900;letter-spacing:1px;">STM DIGITAL LIBRARY</h1>
+    <p style="color:#93c5fd;margin:0 0 16px;font-size:12px;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+    <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;">✅ &nbsp;Payment Confirmed</span>
+  </td></tr>
+  <!-- Success Banner -->
+  <tr><td style="background:#f0fdf4;border-bottom:2px solid #bbf7d0;padding:22px 48px;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="font-size:28px;">✅</td>
+      <td style="padding-left:14px;">
+        <p style="margin:0;font-size:17px;font-weight:800;color:#15803d;">Payment Successful!</p>
+        <p style="margin:4px 0 0;font-size:13px;color:#166534;">Thank you, ${userName}. Your subscription is now active.</p>
+      </td>
+      <td style="text-align:right;">
+        <p style="margin:0;font-size:26px;font-weight:900;color:#15803d;">₹${totalAmount}</p>
+        <p style="margin:2px 0 0;font-size:11px;color:#6b7280;">incl. 18% GST</p>
+      </td>
+    </tr></table>
+  </td></tr>
+  <!-- Invoice Details -->
+  <tr><td style="padding:28px 48px 0;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1d4ed8,#1e40af);border-radius:12px;">
+    <tr><td style="padding:18px 24px;">
+      <p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">📄 &nbsp;Invoice Details</p>
+      <table width="100%" cellpadding="0" cellspacing="0"><tbody>
+        <tr>
+          <td style="color:#93c5fd;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);width:50%;">Invoice Number</td>
+          <td style="color:#fff;font-size:13px;font-weight:700;text-align:right;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${invoiceNumber}</td>
+        </tr>
+        <tr>
+          <td style="color:#93c5fd;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Payment ID</td>
+          <td style="color:#fff;font-size:12px;font-weight:600;text-align:right;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);font-family:monospace;">${paymentId || '—'}</td>
+        </tr>
+        <tr>
+          <td style="color:#93c5fd;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Order ID</td>
+          <td style="color:#fff;font-size:12px;font-weight:600;text-align:right;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);font-family:monospace;">${orderId || '—'}</td>
+        </tr>
+        <tr>
+          <td style="color:#93c5fd;font-size:12px;padding:5px 0;">Date</td>
+          <td style="color:#fff;font-size:13px;font-weight:600;text-align:right;padding:5px 0;">${new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })}</td>
+        </tr>
+      </tbody></table>
+    </td></tr></table>
+  </td></tr>
+  <!-- Items Table -->
+  <tr><td style="padding:24px 48px 0;">
+    <p style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;margin:0 0 10px;">🛒 Items Purchased</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+      <thead><tr style="background:#f8fafc;">
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;text-align:left;border-bottom:1px solid #e2e8f0;">Domain / Subject</th>
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;text-align:center;border-bottom:1px solid #e2e8f0;">Plan</th>
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;text-align:center;border-bottom:1px solid #e2e8f0;">Duration</th>
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;text-align:right;border-bottom:1px solid #e2e8f0;">Price</th>
+      </tr></thead>
+      <tbody>${itemsHtml}</tbody>
+      <tfoot><tr style="background:#1e293b;">
+        <td colspan="3" style="padding:12px 14px;font-size:12px;font-weight:700;color:#94a3b8;">Total (incl. 18% GST)</td>
+        <td style="padding:12px 14px;font-size:15px;font-weight:900;color:#ffffff;text-align:right;">₹${totalAmount}</td>
+      </tr></tfoot>
+    </table>
+  </td></tr>
+  <!-- Access Info -->
+  <tr><td style="padding:24px 48px 0;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;">
+    <tr><td style="padding:18px 22px;">
+      <p style="color:#92400e;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">🔐 Access Your Subscription</p>
+      <p style="color:#78350f;font-size:13px;margin:0 0 8px;">Log in to your dashboard to start reading:</p>
+      <a href="https://journalslibrary.com/dashboard" style="display:inline-block;background:#1d4ed8;color:#fff;font-size:13px;font-weight:700;padding:10px 24px;border-radius:8px;text-decoration:none;">Go to My Dashboard →</a>
+    </td></tr></table>
+  </td></tr>
+  <!-- Contact -->
+  <tr><td style="padding:24px 48px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+    <tr><td style="padding:16px 22px;">
+      <p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">📞 Need Help?</p>
+      <p style="margin:2px 0;font-size:13px;color:#1e293b;">📧 <a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:600;">info@celnet.in</a></p>
+      <p style="margin:2px 0;font-size:13px;color:#1e293b;">📞 +91-9810078958</p>
+    </td></tr></table>
+  </td></tr>
+  <!-- Footer -->
+  <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:24px 48px;text-align:center;">
+    <p style="color:#f8fafc;font-size:12px;margin:0 0 4px;font-weight:700;">STM Digital Library — 21 Years of Trusted Excellence</p>
+    <p style="color:#64748b;font-size:11px;margin:0;">© ${year} Consortium eLearning Network Pvt. Ltd. All rights reserved.</p>
+    <p style="color:#475569;font-size:10px;margin:4px 0 0;">GSTIN: 09AACCC6494M1Z1 &nbsp;|&nbsp; PAN: AACCC6494M</p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+
+    // Admin notification HTML
+    const adminHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:24px;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+  <div style="background:#0f172a;padding:20px 28px;">
+    <h2 style="color:#fff;margin:0;font-size:18px;">🔔 New Payment Received</h2>
+    <p style="color:#94a3b8;margin:4px 0 0;font-size:13px;">STM Digital Library — Admin Notification</p>
+  </div>
+  <div style="padding:24px 28px;border-bottom:1px solid #e2e8f0;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Customer</td><td style="font-size:13px;font-weight:700;color:#1e293b;text-align:right;">${userName} &lt;${userEmail}&gt;</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Invoice No</td><td style="font-size:13px;font-weight:700;color:#1e293b;text-align:right;">${invoiceNumber}</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Payment ID</td><td style="font-size:12px;font-family:monospace;color:#1e293b;text-align:right;">${paymentId || '—'}</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Order ID</td><td style="font-size:12px;font-family:monospace;color:#1e293b;text-align:right;">${orderId || '—'}</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Amount</td><td style="font-size:18px;font-weight:900;color:#15803d;text-align:right;">₹${totalAmount}</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Date</td><td style="font-size:13px;font-weight:600;color:#1e293b;text-align:right;">${new Date().toLocaleString('en-IN')}</td></tr>
+    </table>
+  </div>
+  <div style="padding:16px 28px;background:#f8fafc;">
+    <p style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 8px;">Items</p>
+    ${Array.isArray(items) ? items.map((item: any) => `<p style="margin:4px 0;font-size:13px;color:#1e293b;"><strong>${item.domainName || item.description}</strong> — ${item.planName || ''} | ${item.duration || 'Monthly'} | <strong>₹${Number(item.price || item.unitPrice || 0).toLocaleString('en-IN')}</strong></p>`).join('') : ''}
+  </div>
+  <div style="padding:16px 28px;text-align:center;">
+    <a href="https://journalslibrary.com/admin/payments" style="display:inline-block;background:#1d4ed8;color:#fff;font-size:13px;font-weight:700;padding:10px 24px;border-radius:8px;text-decoration:none;">View in Admin Dashboard →</a>
+  </div>
+</div>
+</body></html>`;
+
+    try {
+      // 1. Send to customer
+      await sendMail({
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: userEmail,
+        subject: `Payment Confirmation — Invoice ${invoiceNumber} | STM Digital Library`,
+        html: customerHtml,
+        attachments: pdfBase64 ? [{ filename: `Invoice_${invoiceNumber}.pdf`, content: pdfBase64, encoding: 'base64' }] : []
+      });
+
+      // 2. Send to admin
+      await sendMail({
+        from: `"STM Payments Alert" <${emailFrom}>`,
+        to: adminEmail,
+        subject: `[New Payment] ₹${totalAmount} from ${userName} — ${invoiceNumber}`,
+        html: adminHtml
+      });
+      
+      return true;
+    } catch (err) {
+      console.error("Payment Confirmation Emails Failed:", err);
+      return false;
+    }
+  };
+
   // GET /api/admin/users — list users with optional role filter
   app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
@@ -2631,6 +2804,37 @@ async function startServer() {
                console.error("Failed to send guest credentials email:", err);
             }
           }
+
+          // Automated Order & Receipt Notification Email Triggers
+          try {
+            let targetEmail = guestData?.email || "";
+            let targetName = guestData?.name || "Valued Customer";
+
+            if (!targetEmail && finalUserId) {
+              const dbUser = await prisma.user.findUnique({ where: { id: finalUserId } });
+              if (dbUser) {
+                targetEmail = dbUser.email;
+                targetName = dbUser.displayName || "Subscriber";
+              }
+            }
+
+            const backendInvoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+            if (targetEmail) {
+              // Trigger automated emails asynchronously so the request responds promptly to Razorpay
+              sendPaymentSuccessEmails(
+                targetEmail,
+                targetName,
+                parseFloat(amount).toFixed(2),
+                items || [],
+                razorpay_payment_id || '',
+                razorpay_order_id || '',
+                backendInvoiceNum
+              ).catch(err => console.error("⚠️ Auto-payment success email trigger failed:", err));
+            }
+          } catch (emailSendErr) {
+            console.error("Failed to trigger automated receipt notification:", emailSendErr);
+          }
         }
         res.json({ status: "success", message: "Payment verified successfully" });
       } else {
@@ -3529,25 +3733,24 @@ async function startServer() {
   // Send Invoice Email
   app.post("/api/invoice/send", async (req, res) => {
     try {
-      const { userEmail, userName, invoiceData, pdfBase64 } = req.body;
+      const { userEmail, userName, invoiceData, pdfBase64, items, paymentId, orderId } = req.body;
       
-      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      const mailOptions = {
-        from: emailFrom,
-        to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
-        subject: `Invoice for STM Digital Library - ${invoiceData.invoiceNumber}`,
-        text: `Dear ${userName},\n\nThank you for your subscription. Please find attached the tax invoice for your purchase.\n\nInvoice Number: ${invoiceData.invoiceNumber}\nTotal Amount: ₹${invoiceData.grandTotal}\n\nRegards,\nSTM Digital Library Team`,
-        attachments: [
-          {
-            filename: `Invoice_${invoiceData.invoiceNumber}.pdf`,
-            content: pdfBase64,
-            encoding: 'base64'
-          }
-        ]
-      };
+      const emailSent = await sendPaymentSuccessEmails(
+        userEmail,
+        userName,
+        invoiceData.grandTotal,
+        items || [],
+        paymentId || '',
+        orderId || '',
+        invoiceData.invoiceNumber,
+        pdfBase64
+      );
 
-      await sendMail(mailOptions);
-      res.json({ status: "success", message: "Invoice sent successfully" });
+      if (emailSent) {
+        res.json({ status: "success", message: "Invoice sent successfully" });
+      } else {
+        res.status(500).json({ error: "Failed to send email notifications" });
+      }
     } catch (error) {
       console.error("Invoice Email Error:", error);
       res.status(500).json({ error: "Failed to send invoice email" });
