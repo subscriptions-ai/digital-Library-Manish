@@ -40,7 +40,7 @@ function priceForPlan(m: PricingModule, plan: PlanType) {
 
 // ─── Domain → Unsplash hero image map ────────────────────────────────────────
 const HERO_IMAGES: Record<string, string> = {
-  "electrical-engineering":    "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=900&q=80",
+  "electrical-engineering":    "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=900&q=80",
   "computer-it":               "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&q=80",
   "medical-sciences":          "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
   "management":                "https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&q=80",
@@ -51,8 +51,8 @@ const HERO_IMAGES: Record<string, string> = {
   "nano-technology":           "https://images.unsplash.com/photo-1628595351029-c2bf17511435?w=900&q=80",
   "bio-technology":            "https://images.unsplash.com/photo-1576086213369-97a306d36557?w=900&q=80",
   "energy":                    "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=900&q=80",
-  "life-sciences":             "https://images.unsplash.com/photo-1530210124550-912dc1381cb8?w=900&q=80",
-  "law":                       "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=900&q=80",
+  "life-sciences":             "https://images.unsplash.com/photo-1518152006812-edab29b069ac?w=900&q=80",
+  "law":                       "https://images.unsplash.com/photo-1505664194779-8beaceb93744?w=900&q=80",
   "agriculture":               "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=900&q=80",
   "nursing":                   "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=900&q=80",
   "education-social-sciences": "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=900&q=80",
@@ -60,10 +60,10 @@ const HERO_IMAGES: Record<string, string> = {
   "multidisciplinary":         "https://images.unsplash.com/photo-1456406644174-8ddd4cd52a06?w=900&q=80",
   "electronics-telecommunication": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&q=80",
   "chemical-engineering":      "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=900&q=80",
-  "ayurveda":                  "https://images.unsplash.com/photo-1620662955757-e9b7e820e5da?w=900&q=80",
+  "ayurveda":                  "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=900&q=80",
   "architecture":              "https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=900&q=80",
-  "material-science":          "https://images.unsplash.com/photo-1548783300-1c4c8f6c5b72?w=900&q=80",
-  "applied-mechanics":         "https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=900&q=80",
+  "material-science":          "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=900&q=80",
+  "applied-mechanics":         "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?w=900&q=80",
   "social-sciences":           "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=900&q=80",
 };
 
@@ -131,6 +131,7 @@ export function DomainLandingPage() {
 
   const fetchDomainData = useCallback(async () => {
     if (!domain) return;
+    setDomainData(null);
     setApiLoading(true);
     setApiError(false);
     try {
