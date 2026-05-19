@@ -70,10 +70,12 @@ const STAT_COLORS: Record<string, { bg: string; icon: string; text: string }> = 
 };
 
 const TIMELINE_CONFIG: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-  drafted:        { color: 'bg-green-500',  icon: <CheckCircle size={12} />,      label: 'Content Drafted'  },
-  status_changed: { color: 'bg-blue-500',   icon: <ArrowRightCircle size={12} />, label: 'Status Changed'   },
-  scan_started:   { color: 'bg-indigo-500', icon: <Play size={12} />,             label: 'Scan Started'     },
-  scan_completed: { color: 'bg-emerald-500',icon: <ShieldCheck size={12} />,      label: 'Scan Completed'   },
+  drafted:        { color: 'bg-green-500',  icon: <CheckCircle size={12} />,      label: 'Content Drafted'   },
+  status_changed: { color: 'bg-blue-500',   icon: <ArrowRightCircle size={12} />, label: 'Status Changed'    },
+  scan_started:   { color: 'bg-indigo-500', icon: <Play size={12} />,             label: 'Scan Started'      },
+  scan_completed: { color: 'bg-emerald-500',icon: <ShieldCheck size={12} />,      label: 'Scan Completed'    },
+  auto_draft:     { color: 'bg-red-500',    icon: <Layers size={12} />,           label: 'Auto-Drafted'      },
+  auto_cleanup:   { color: 'bg-orange-500', icon: <Zap size={12} />,              label: 'Auto-Cleanup'      },
 };
 function tlConfig(action: string) {
   return TIMELINE_CONFIG[action] ?? { color: 'bg-slate-400', icon: <GitCommit size={12} />, label: action };

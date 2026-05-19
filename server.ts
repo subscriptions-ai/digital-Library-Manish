@@ -915,14 +915,19 @@ async function startServer() {
   app.get("/api/content/:id/proxy-pdf", authenticateJWT, async (req: any, res) => {
     try {
       const contentId = req.params.id;
-      const content = await prisma.content.findFirst({ 
-        where: { id: contentId, status: { not: "Draft" } } 
-      });
+      // Admins bypass subscription checks — they can preview any content for validation
+      const isAdmin = req.user.role === 'SuperAdmin' || req.user.role === 'Admin';
+      
+      const whereClause: any = { id: contentId };
+      if (!isAdmin) {
+        whereClause.status = { not: "Draft" }; // Only admins can proxy drafts
+      }
+
+      const content = await prisma.content.findFirst({ where: whereClause });
+      
       if (!content || !content.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
-      // Admins bypass subscription checks — they can preview any content for validation
-      const isAdmin = req.user.role === 'SuperAdmin' || req.user.role === 'Admin';
       if (!isAdmin) {
         const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
         const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
@@ -931,74 +936,60 @@ async function startServer() {
         }
       }
 
-      // Fetch the PDF from the upstream URL
-      const https = await import('https');
-      const http = await import('http');
-      const upstreamUrl = new URL(content.fileUrl);
-      const protocol = upstreamUrl.protocol === 'https:' ? https : http;
+      // Use node-fetch to stream PDF — handles keep-alive, redirects and socket issues correctly.
+      const nodeFetch = (await import('node-fetch')).default;
 
-      // Realistic browser headers to bypass Akamai/Cloudflare bot protection
-      const proxyHeaders = {
+      const proxyHeaders: Record<string, string> = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Accept': 'application/pdf, text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept': 'application/pdf,*/*;q=0.9',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1'
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
       };
 
-      const proxyReq = protocol.get(content.fileUrl, {
+      // Forward range requests from pdf.js so chunked loading works
+      if (req.headers['range']) {
+        proxyHeaders['Range'] = req.headers['range'] as string;
+      }
+
+      const controller = new AbortController();
+      req.on('close', () => controller.abort());
+
+      const upstreamRes = await nodeFetch(content.fileUrl, {
         headers: proxyHeaders,
-      }, (proxyRes) => {
-        // Follow redirects (up to 1 hop)
-        if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode || 0) && proxyRes.headers.location) {
-          const redirectUrl = proxyRes.headers.location;
-          // handle relative redirect URLs
-          const finalRedirectUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, content.fileUrl).toString();
-          const redirectProtocol = finalRedirectUrl.startsWith('https') ? https : http;
-          
-          // Forward anti-bot cookies (e.g. ak_bmsc from Akamai)
-          const redirHeaders = { ...proxyHeaders };
-          if (proxyRes.headers['set-cookie']) {
-            redirHeaders['Cookie'] = proxyRes.headers['set-cookie'].map((c: string) => c.split(';')[0]).join('; ');
-          }
-
-          const redirReq = redirectProtocol.get(finalRedirectUrl, {
-            headers: redirHeaders
-          }, (redirRes) => {
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', 'inline');
-            res.setHeader('Cache-Control', 'private, max-age=3600');
-            res.setHeader('X-Content-Type-Options', 'nosniff');
-            redirRes.pipe(res);
-          });
-          redirReq.on('error', () => res.status(502).json({ error: 'PDF proxy redirect failed' }));
-          return;
-        }
-
-        if ((proxyRes.statusCode || 500) >= 400) {
-          console.error(`[proxy-pdf] Upstream failed with ${proxyRes.statusCode} for ${content.fileUrl}`);
-          return res.status(proxyRes.statusCode || 502).json({ error: `Upstream returned ${proxyRes.statusCode}` });
-        }
-
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'inline');
-        res.setHeader('Cache-Control', 'private, max-age=3600');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        if (proxyRes.headers['content-length']) {
-          res.setHeader('Content-Length', proxyRes.headers['content-length']);
-        }
-        proxyRes.pipe(res);
+        redirect: 'follow',
+        signal: controller.signal as any,
+      }).catch((err: any) => {
+        if (err.name === 'AbortError') return null;
+        throw err;
       });
 
-      proxyReq.on('error', (err) => {
-        console.error('[proxy-pdf] Error fetching upstream:', err.message);
-        if (!res.headersSent) res.status(502).json({ error: 'Failed to fetch PDF from upstream' });
-      });
-      req.on('close', () => proxyReq.destroy());
+      if (!upstreamRes) return; // client disconnected
+
+      if (!upstreamRes.ok) {
+        console.error(`[proxy-pdf] Upstream failed with ${upstreamRes.status} for ${content.fileUrl}`);
+        if (!res.headersSent) res.status(upstreamRes.status).json({ error: `Upstream returned ${upstreamRes.status}` });
+        return;
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      if (upstreamRes.headers.get('content-length')) {
+        res.setHeader('Content-Length', upstreamRes.headers.get('content-length')!);
+      }
+      if (upstreamRes.headers.get('content-range')) {
+        res.setHeader('Content-Range', upstreamRes.headers.get('content-range')!);
+        res.status(206);
+      }
+
+      (upstreamRes.body as any).pipe(res);
 
     } catch (error) {
       console.error('[proxy-pdf] unexpected error:', error);
@@ -2235,12 +2226,13 @@ async function startServer() {
   app.get("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
 
     try {
-      const { domain, contentType, search, page = "1", limit = "10" } = req.query;
+      const { domain, contentType, search, status, page = "1", limit = "10" } = req.query;
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
       
       const where: any = {};
       if (domain) where.domain = domain;
       if (contentType) where.contentType = contentType;
+      if (status) where.status = status;
       if (search) {
         where.OR = [
           { title: { contains: search as string, mode: "insensitive" } },
@@ -2284,6 +2276,70 @@ async function startServer() {
     } catch (error) {
       console.error("Admin Content PUT Error:", error);
       res.status(500).json({ error: "Failed to update content" });
+    }
+  });
+
+  app.delete("/api/admin/content-drafts-cleanup", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { limit } = req.query;
+      let count = 0;
+
+      if (limit && parseInt(limit) > 0) {
+        const take = parseInt(limit);
+        const drafts = await prisma.content.findMany({
+          where: { status: "Draft" },
+          select: { id: true },
+          take: take
+        });
+        const ids = drafts.map(d => d.id);
+        if (ids.length > 0) {
+          const result = await prisma.content.deleteMany({ where: { id: { in: ids } } });
+          count = result.count;
+        }
+      } else {
+        const result = await prisma.content.deleteMany({ where: { status: "Draft" } });
+        count = result.count;
+      }
+
+      res.json({ success: true, count, message: `Deleted ${count} drafted items.` });
+    } catch (error) {
+      console.error("Admin Draft Cleanup Error:", error);
+      res.status(500).json({ error: "Failed to clean up drafted content" });
+    }
+  });
+
+  app.post("/api/admin/content-drafts-publish", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { limit } = req.query;
+      let count = 0;
+
+      if (limit && parseInt(limit) > 0) {
+        const take = parseInt(limit);
+        const drafts = await prisma.content.findMany({
+          where: { status: "Draft" },
+          select: { id: true },
+          take: take
+        });
+        const ids = drafts.map(d => d.id);
+        if (ids.length > 0) {
+          const result = await prisma.content.updateMany({ 
+            where: { id: { in: ids } },
+            data: { status: "Published", validationStatus: null, flaggedReason: null }
+          });
+          count = result.count;
+        }
+      } else {
+        const result = await prisma.content.updateMany({ 
+          where: { status: "Draft" },
+          data: { status: "Published", validationStatus: null, flaggedReason: null }
+        });
+        count = result.count;
+      }
+
+      res.json({ success: true, count, message: `Successfully published ${count} drafted items.` });
+    } catch (error) {
+      console.error("Admin Draft Publish Error:", error);
+      res.status(500).json({ error: "Failed to publish drafted content" });
     }
   });
 
@@ -4401,23 +4457,20 @@ async function startServer() {
     currentTask: "Idle",
   };
 
-  // ── Per-file viewability check ─────────────────────────────────────────────
+  // ── Internal admin JWT for validator (short-lived, never exposed) ──────────
+  const makeValidatorToken = () =>
+    jwt.sign({ uid: "__validator__", role: "SuperAdmin" }, JWT_SECRET, { expiresIn: "10m" });
+
+  // ── Per-file viewability check via PROXY (Option A + B) ──────────────────
+  // Tests files the exact same way users open them, then verifies PDF structure.
   const validateFileViewability = async (
+    contentId: string,
     url: string,
     contentType: string
   ): Promise<{ isViewable: boolean; viewerStatus: string; flaggedReason?: string }> => {
+    // Step 0: No URL → instant fail
     if (!url || url.trim().length === 0) {
       return { isViewable: false, viewerStatus: "No File", flaggedReason: "No file URL is set for this content item." };
-    }
-
-    // Validate URL structure — malformed URLs crash new URL() and would kill the engine
-    try {
-      const parsed = new URL(url);
-      if (!["http:", "https:"].includes(parsed.protocol)) {
-        return { isViewable: false, viewerStatus: "No File", flaggedReason: `Invalid URL protocol: ${parsed.protocol}` };
-      }
-    } catch {
-      return { isViewable: false, viewerStatus: "No File", flaggedReason: `Malformed URL — cannot parse: "${url.slice(0, 80)}"` };
     }
 
     const lowerUrl = url.split("?")[0].toLowerCase();
@@ -4431,76 +4484,116 @@ async function startServer() {
       contentType.toLowerCase().includes("report") ||
       contentType.toLowerCase().includes("periodical");
 
+    // ── Step 1: Webpage URL pre-check ──────────────────────────────────────────
+    // Detect URLs that are clearly webpage links, not direct file downloads.
+    // These cannot be opened in a PDF viewer under any circumstances.
+    const knownPagePatterns = [
+      /archive\.org\/details\//i,
+      /jstor\.org\/stable\//i,
+      /doi\.org\//i,
+      /pubmed\.ncbi\.nlm\.nih\.gov\//i,
+      /researchgate\.net\/publication\//i,
+      /sciencedirect\.com\/science\/article\//i,
+      /springer\.com\/article\//i,
+      /wiley\.com\/doi\//i,
+      /tandfonline\.com\/doi\//i,
+      /ncbi\.nlm\.nih\.gov\/pmc\/articles\//i,
+    ];
+    const hasFileExtension = /\.(pdf|mp4|webm|ogg|avi|mov|epub|djvu)(\?|$)/i.test(url);
+    const isKnownPageUrl = knownPagePatterns.some(p => p.test(url));
+    if (isKnownPageUrl && !hasFileExtension) {
+      return {
+        isViewable: false,
+        viewerStatus: "Load Failed",
+        flaggedReason: `Webpage URL detected — "${url.slice(0, 120)}" is a webpage link, not a direct file download. Users cannot open this in the PDF viewer. Replace with a direct .pdf download URL.`,
+      };
+    }
+
     try {
-      // ── Step 1: HEAD check (fast status verification) ───────────────────────
-      const headCtrl = new AbortController();
-      const headTid = setTimeout(() => headCtrl.abort(), 6000);
-      const headRes = await fetch(url, {
-        method: "HEAD",
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; STMLibraryValidator/2.0)" },
-        signal: headCtrl.signal as any,
+      // ── OPTION A: Test via proxy endpoint — identical path as real users ────
+      // This catches expired S3 URLs, permission errors, and all access issues.
+      const PORT_INTERNAL = process.env.PORT || 3000;
+      const proxyUrl = `http://127.0.0.1:${PORT_INTERNAL}/api/content/${contentId}/proxy-pdf`;
+      const validatorToken = makeValidatorToken();
+
+      const proxyCtrl = new AbortController();
+      const proxyTid = setTimeout(() => proxyCtrl.abort(), 15000);
+
+      const proxyRes = await fetch(proxyUrl, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${validatorToken}` },
+        signal: proxyCtrl.signal as any,
       }).catch(() => null);
-      clearTimeout(headTid);
+      clearTimeout(proxyTid);
 
-      if (!headRes) {
-        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "File URL did not respond within 6 seconds (HEAD)." };
+      if (!proxyRes) {
+        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "Proxy endpoint did not respond within 15 seconds — file may be unreachable." };
       }
-      if (headRes.status >= 400) {
-        return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `Server returned HTTP ${headRes.status} for file URL.` };
+      if (proxyRes.status === 404) {
+        return { isViewable: false, viewerStatus: "No File", flaggedReason: "Content not found or has no file URL." };
+      }
+      if (proxyRes.status >= 400) {
+        return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `Proxy returned HTTP ${proxyRes.status} — file inaccessible to users.` };
       }
 
-      // ── Step 2: Video — HEAD OK is sufficient ───────────────────────────────
+      // Videos: proxy 2xx is sufficient
       if (isVideo) {
         return { isViewable: true, viewerStatus: "Rendered OK" };
       }
 
-      // ── Step 3: PDF — Fetch first 8 bytes and verify %PDF magic bytes ───────
-      if (isPdf) {
-        const getCtrl = new AbortController();
-        const getTid = setTimeout(() => getCtrl.abort(), 10000);
-        const getRes = await fetch(url, {
-          method: "GET",
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; STMLibraryValidator/2.0)",
-            Range: "bytes=0-7",
-          },
-          signal: getCtrl.signal as any,
-        }).catch(() => null);
-        clearTimeout(getTid);
+      // ── Read actual bytes — NEVER trust proxy Content-Type ──────────────────
+      // The proxy ALWAYS sets Content-Type: application/pdf regardless of what
+      // the upstream URL actually returns. So content-type headers are useless here.
+      // We must check the actual bytes received to determine the real file type.
+      const rawBuf = await proxyRes.arrayBuffer();
+      const rawBytes = new Uint8Array(rawBuf.slice(0, 16));
+      const magic = new TextDecoder("latin1").decode(rawBytes).substring(0, 5);
 
-        if (!getRes) {
-          return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "Failed to fetch file bytes within 10 seconds." };
-        }
-        if (getRes.status >= 400) {
-          return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `GET request returned HTTP ${getRes.status}.` };
-        }
-
-        const buf = await getRes.arrayBuffer();
-        const bytes = new Uint8Array(buf.slice(0, 5));
-        const magic = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
-
-        if (magic.startsWith("%PDF")) {
-          return { isViewable: true, viewerStatus: "Rendered OK" };
-        }
-
-        // Some servers ignore Range header and return the full file — check content-type header
-        const ct = getRes.headers.get("content-type") || "";
-        if (ct.includes("pdf")) {
-          return { isViewable: true, viewerStatus: "Rendered OK" };
-        }
-
+      // ── Detect HTML response — catches webpage URLs not in the known-pattern list ─
+      // e.g. archive.org/details/, jstor.org/stable/, any redirect page, etc.
+      const first16Str = magic.toLowerCase();
+      const isHtml = first16Str.startsWith("<!doc") || first16Str.startsWith("<html") ||
+                     first16Str.startsWith("<!-") || first16Str.trimStart().startsWith("<");
+      if (isHtml) {
         return {
           isViewable: false,
           viewerStatus: "Load Failed",
-          flaggedReason: `File does not appear to be a valid PDF (magic bytes: "${magic.substring(0, 4)}"). Expected "%PDF".`,
+          flaggedReason: `The stored URL returns an HTML webpage, not a PDF file. URL: "${url.slice(0, 100)}". This cannot be opened in the PDF viewer. Replace it with a direct download link ending in .pdf`,
         };
       }
 
-      // ── Step 4: Unknown type — treat HEAD 2xx as OK ─────────────────────────
+      if (isPdf) {
+        // Strictly require %PDF magic bytes — NO content-type fallback.
+        // (The proxy always reports application/pdf so that header is meaningless.)
+        if (!magic.startsWith("%PDF")) {
+          return {
+            isViewable: false,
+            viewerStatus: "Load Failed",
+            flaggedReason: `File does not start with PDF magic bytes (found: "${magic.substring(0, 4)}"). The URL may point to a redirect page, login wall, or non-PDF file instead of a direct PDF download.`,
+          };
+        }
+
+        // Deeper structure check: look for /Page or stream in first 8KB
+        const fullBytes = new Uint8Array(rawBuf);
+        const pdfStr = new TextDecoder("latin1").decode(fullBytes.slice(0, Math.min(fullBytes.length, 8192)));
+        const hasPages = pdfStr.includes("/Page") || pdfStr.includes("/Type") || pdfStr.includes("stream");
+
+        if (!hasPages && fullBytes.length < 512) {
+          return {
+            isViewable: false,
+            viewerStatus: "Load Failed",
+            flaggedReason: "PDF file is too small or contains no readable page structure. The file is likely empty or corrupt.",
+          };
+        }
+
+        return { isViewable: true, viewerStatus: "Rendered OK" };
+      }
+
+      // Non-PDF, non-video, non-HTML — proxy 2xx = accessible
       return { isViewable: true, viewerStatus: "Rendered OK" };
     } catch (err: any) {
       if (err?.name === "AbortError") {
-        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "File URL connection timed out." };
+        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "Proxy connection timed out." };
       }
       return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `Network error: ${err?.message || "Unknown"}` };
     }
@@ -4514,8 +4607,8 @@ async function startServer() {
 
     try {
       const contents = await prisma.content.findMany({
-        where: { status: { not: "Draft" } },
-        select: { id: true, title: true, contentType: true, fileUrl: true },
+        where: { fileUrl: { not: null } }, // scan all content that has a file URL
+        select: { id: true, title: true, contentType: true, fileUrl: true, status: true },
       });
 
       currentViewerValidationProgress = {
@@ -4551,19 +4644,25 @@ async function startServer() {
         await Promise.all(
           batch.map(async (c) => {
             try {
-              const result = await validateFileViewability(c.fileUrl || "", c.contentType);
+              const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
 
               // Persist per-content validation status
-              await prisma.content.update({
-                where: { id: c.id },
-                data: {
-                  validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
-                  viewerStatus: result.viewerStatus,
-                  isViewable: result.isViewable,
-                  flaggedReason: result.flaggedReason ?? null,
-                  lastValidatedAt: new Date(),
-                },
-              });
+              // If a Draft item PASSES — auto-promote it back to Published
+              // If a Published item FAILS — auto-move it to Draft
+              const updateData: any = {
+                validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
+                viewerStatus: result.viewerStatus,
+                isViewable: result.isViewable,
+                flaggedReason: result.flaggedReason ?? null,
+                lastValidatedAt: new Date(),
+              };
+              if (result.isViewable && (c as any).status === "Draft") {
+                updateData.status = "Published"; // Restore valid Drafts
+                updateData.flaggedReason = null;
+              } else if (!result.isViewable && (c as any).status !== "Draft") {
+                updateData.status = "Draft"; // Move invalid Published items to Draft
+              }
+              await prisma.content.update({ where: { id: c.id }, data: updateData });
 
               if (!result.isViewable) {
                 issues.push({
@@ -4629,6 +4728,32 @@ async function startServer() {
           completedAt: new Date(),
         },
       });
+
+      // ── OPTION C: Auto-draft all flagged content immediately ─────────────────
+      // No manual "Auto-Cleanup" click required — flagged content is hidden from
+      // users the moment the scan completes, protecting brand value.
+      if (flaggedCount > 0) {
+        currentViewerValidationProgress.currentTask = `Auto-drafting ${flaggedCount} flagged item(s)…`;
+        const autoDraftResult = await prisma.content.updateMany({
+          where: { validationStatus: "FLAGGED_CONTENT", status: { not: "Draft" } },
+          data: { status: "Draft" },
+        });
+        console.log(`[viewer-validator] Auto-drafted ${autoDraftResult.count} flagged item(s) to Draft.`);
+
+        // Append auto-draft event to the report timeline
+        const tl: any[] = Array.isArray(report.timeline) ? (report.timeline as any[]) : [];
+        tl.push({
+          action: "auto_draft",
+          by: "System (Validator)",
+          at: new Date().toISOString(),
+          count: autoDraftResult.count,
+          note: `Auto-draft: ${autoDraftResult.count} flagged item(s) moved to Draft automatically on scan completion.`,
+        });
+        await prisma.validationReport.update({
+          where: { id: report.id },
+          data: { timeline: tl },
+        });
+      }
     } catch (e) {
       console.error("Viewer validation engine crashed:", e);
     } finally {
@@ -4787,7 +4912,7 @@ async function startServer() {
 
       const results: any[] = [];
       for (const c of contents) {
-        const result = await validateFileViewability(c.fileUrl || "", c.contentType);
+        const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
         await prisma.content.update({
           where: { id: c.id },
           data: {

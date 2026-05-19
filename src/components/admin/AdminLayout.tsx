@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, Tag, PlayCircle, Receipt
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, Tag, PlayCircle, Receipt, Trash2
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -251,6 +251,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             onClick={() => navigate('/admin/validator')}
           />
 
+          {/* Drafts & Cleanup */}
+          <NavButton
+            icon={<Trash2 size={17} />}
+            label="Drafts & Cleanup"
+            active={location.pathname === '/admin/drafts'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/drafts')}
+          />
+
           {/* Agency Inquiries */}
           <NavButton
             icon={<Handshake size={17} />}
@@ -318,6 +327,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/users/create' ? 'Create User'
               : location.pathname === '/admin/users' ? 'Users'
               : location.pathname === '/admin/validator' ? 'System Validator'
+              : location.pathname === '/admin/drafts' ? 'Drafts & Cleanup'
               : location.pathname === '/admin/agency-inquiries' ? 'Agency Inquiries'
               : location.pathname === '/admin/contact-inquiries' ? 'Contact Inquiries'
               : location.pathname === '/admin/payments' ? 'Payments'

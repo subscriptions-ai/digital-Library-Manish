@@ -530,12 +530,12 @@ export function ViewerValidationPanel() {
                 </div>
               )}
               <h2 className="text-3xl font-bold text-slate-800 mb-2">
-                {successScreen ? 'Viewer Validation Complete!' : 'Viewer Validation Running'}
+                {successScreen ? '✅ Validation Complete — Content Auto-Cleaned!' : 'Viewer Validation Running'}
               </h2>
               <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
                 {successScreen
-                  ? 'All content has been tested against the PDF viewer. Check results below.'
-                  : 'Testing each content file for PDF magic bytes and HTTP accessibility — simulating what users see.'}
+                  ? 'Scan complete. All flagged content has been automatically moved to Draft — users only see readable files.'
+                  : 'Testing every file through the same proxy path users use. Verifying PDF structure and accessibility — broken files are auto-drafted on completion.'}
               </p>
             </div>
             <div className="p-8 pb-10 bg-slate-50">
@@ -557,9 +557,9 @@ export function ViewerValidationPanel() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: 'Current Task', value: successScreen ? 'Done!' : (progress?.currentTask ?? 'Initializing…'), color: 'text-slate-700', bg: 'bg-white border-slate-100' },
-                  { label: 'Valid Files', value: progress?.validCount ?? 0, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
-                  { label: 'Flagged Files', value: progress?.flaggedCount ?? 0, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
+                  { label: 'Current Task', value: successScreen ? 'Auto-Draft Done!' : (progress?.currentTask ?? 'Initializing…'), color: 'text-slate-700', bg: 'bg-white border-slate-100' },
+                  { label: 'Valid & Live', value: progress?.validCount ?? 0, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
+                  { label: 'Auto-Drafted', value: progress?.flaggedCount ?? 0, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
                 ].map(({ label, value, color, bg }) => (
                   <div key={label} className={`p-4 rounded-2xl border ${bg}`}>
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</div>
@@ -575,17 +575,30 @@ export function ViewerValidationPanel() {
       {/* ── Summary stat cards ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Content', value: summary.notValidated + summary.validViewable + summary.flaggedContent, Icon: Database, c: 'bg-slate-50 text-slate-600 border-slate-100' },
-          { label: 'Not Validated', value: summary.notValidated, Icon: HelpCircle, c: 'bg-slate-50 text-slate-600 border-slate-100' },
-          { label: 'Valid & Viewable', value: summary.validViewable, Icon: ShieldCheck, c: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-          { label: 'Flagged Content', value: summary.flaggedContent, Icon: ShieldX, c: 'bg-red-50 text-red-700 border-red-100' },
-        ].map(({ label, value, Icon, c }) => (
-          <div key={label} className={`rounded-2xl border p-5 flex flex-col gap-2 ${c}`}>
+          { label: 'Total Content', value: summary.notValidated + summary.validViewable + summary.flaggedContent, Icon: Database, c: 'bg-slate-50 text-slate-600 border-slate-100', sub: null },
+          { label: 'Not Validated', value: summary.notValidated, Icon: HelpCircle, c: 'bg-slate-50 text-slate-600 border-slate-100', sub: 'Run scan to check' },
+          { label: 'Valid & Live', value: summary.validViewable, Icon: ShieldCheck, c: 'bg-emerald-50 text-emerald-700 border-emerald-100', sub: 'Visible to users' },
+          { label: 'Flagged / Drafted', value: summary.flaggedContent, Icon: ShieldX, c: 'bg-red-50 text-red-700 border-red-100', sub: 'Auto-hidden from users' },
+        ].map(({ label, value, Icon, c, sub }) => (
+          <div key={label} className={`rounded-2xl border p-5 flex flex-col gap-1 ${c}`}>
             <Icon size={20} />
             <div className="text-2xl font-black">{value}</div>
             <div className="text-xs font-semibold uppercase tracking-wider opacity-70">{label}</div>
+            {sub && <div className="text-[10px] opacity-50 font-medium">{sub}</div>}
           </div>
         ))}
+      </div>
+
+      {/* ── Auto-draft info banner ─────────────────────────────────────────────── */}
+      <div className="bg-violet-50 border border-violet-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+        <Zap size={18} className="text-violet-600 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-bold text-violet-800">Smart Auto-Draft Engine Active</p>
+          <p className="text-xs text-violet-600 mt-0.5 leading-relaxed">
+            Files are tested through the <strong>same proxy path users use</strong> — expired links, broken PDFs, and inaccessible files are detected accurately.
+            When the scan completes, <strong>all flagged content is automatically moved to Draft</strong> with no manual step required. Only verified, readable content stays live.
+          </p>
+        </div>
       </div>
 
       {/* ── Controls bar ─────────────────────────────────────────────────────── */}
@@ -602,7 +615,7 @@ export function ViewerValidationPanel() {
                   : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
               }`}
             >
-              {tab === 'VALID_VIEWABLE' ? '✓ Valid' : tab === 'FLAGGED_CONTENT' ? '⚑ Flagged' : tab === 'Not Validated' ? '? Not Validated' : 'All'}
+              {tab === 'VALID_VIEWABLE' ? '✓ Valid & Live' : tab === 'FLAGGED_CONTENT' ? '⚑ Flagged / Drafted' : tab === 'Not Validated' ? '? Not Validated' : 'All'}
             </button>
           ))}
         </div>
@@ -624,16 +637,11 @@ export function ViewerValidationPanel() {
             disabled={isRunning}
             className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isRunning ? <><RefreshCw size={14} className="animate-spin" /> Running…</> : <><Play size={14} fill="currentColor" /> Run Viewer Validation</>}
+            {isRunning
+              ? <><RefreshCw size={14} className="animate-spin" /> Running…</>
+              : <><Play size={14} fill="currentColor" /> Run Viewer Validation</>}
           </button>
-          {summary.flaggedContent > 0 && (
-            <button
-              onClick={autoCleanup}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition shadow-sm"
-            >
-              <Zap size={14} /> Auto-Cleanup ({summary.flaggedContent})
-            </button>
-          )}
+          {/* Auto-Cleanup button removed — cleanup now happens automatically on scan completion */}
         </div>
       </div>
 
