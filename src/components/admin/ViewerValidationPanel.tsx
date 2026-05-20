@@ -529,8 +529,13 @@ export function ViewerValidationPanel() {
                   <Eye size={32} className="text-violet-600" />
                 </div>
               )}
-              <h2 className="text-3xl font-bold text-slate-800 mb-2">
+              <h2 className="text-3xl font-bold text-slate-800 mb-2 flex flex-col items-center justify-center gap-2">
                 {successScreen ? '✅ Validation Complete — Content Auto-Cleaned!' : 'Viewer Validation Running'}
+                {!successScreen && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-widest px-3 py-1 bg-gradient-to-r from-violet-100 to-fuchsia-100 text-violet-700 rounded-full border border-violet-200 shadow-sm mt-1">
+                    <Zap size={12} className="text-violet-600 fill-current" /> Turbo Engine v2 Active (8KB Stream Limit)
+                  </span>
+                )}
               </h2>
               <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
                 {successScreen
@@ -635,11 +640,11 @@ export function ViewerValidationPanel() {
           <button
             onClick={runValidation}
             disabled={isRunning}
-            className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition shadow-md shadow-violet-200 disabled:opacity-60 disabled:cursor-not-allowed group"
           >
             {isRunning
-              ? <><RefreshCw size={14} className="animate-spin" /> Running…</>
-              : <><Play size={14} fill="currentColor" /> Run Viewer Validation</>}
+              ? <><RefreshCw size={14} className="animate-spin" /> Running Turbo v2…</>
+              : <><Zap size={14} className="text-violet-200 fill-violet-200 group-hover:scale-110 transition-transform" /> Run Turbo Validator v2</>}
           </button>
           {/* Auto-Cleanup button removed — cleanup now happens automatically on scan completion */}
         </div>
