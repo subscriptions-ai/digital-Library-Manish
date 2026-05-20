@@ -4548,8 +4548,39 @@ async function startServer() {
       // The proxy ALWAYS sets Content-Type: application/pdf regardless of what
       // the upstream URL actually returns. So content-type headers are useless here.
       // We must check the actual bytes received to determine the real file type.
-      const rawBuf = await proxyRes.arrayBuffer();
-      const rawBytes = new Uint8Array(rawBuf.slice(0, 16));
+      
+      // Instead of .arrayBuffer() which downloads the ENTIRE file if the server ignores Range,
+      // we manually read only the first 8KB from the stream and immediately abort!
+      let totalLength = 0;
+      const chunks: Uint8Array[] = [];
+      
+      if (proxyRes.body) {
+        const reader = proxyRes.body.getReader();
+        try {
+          while (totalLength < 8192) {
+            const { done, value } = await reader.read();
+            if (done || !value) break;
+            chunks.push(value);
+            totalLength += value.length;
+          }
+        } finally {
+          // Forcefully abort the rest of the stream to save massive bandwidth/time
+          proxyCtrl.abort(); 
+        }
+      } else {
+        const rawBuf = await proxyRes.arrayBuffer();
+        chunks.push(new Uint8Array(rawBuf));
+        totalLength = chunks[0].length;
+      }
+
+      const fullBytes = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        fullBytes.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      const rawBytes = fullBytes.slice(0, 16);
       const magic = new TextDecoder("latin1").decode(rawBytes).substring(0, 5);
 
       // ── Detect HTML response — catches webpage URLs not in the known-pattern list ─
@@ -4577,7 +4608,6 @@ async function startServer() {
         }
 
         // Deeper structure check: look for /Page or stream in first 8KB
-        const fullBytes = new Uint8Array(rawBuf);
         const pdfStr = new TextDecoder("latin1").decode(fullBytes.slice(0, Math.min(fullBytes.length, 8192)));
         const hasPages = pdfStr.includes("/Page") || pdfStr.includes("/Type") || pdfStr.includes("stream");
 
