@@ -126,29 +126,7 @@ export function InstitutionDashboardHome() {
         </Link>
       </div>
 
-      {/* Expiry Alert */}
-      {expiringSoon.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-start gap-4"
-        >
-          <div className="h-9 w-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-            <AlertTriangle className="text-amber-600" size={18} />
-          </div>
-          <div className="flex-1">
-            <div className="font-bold text-amber-900 text-sm">
-              {expiringSoon.length} subscription{expiringSoon.length > 1 ? 's' : ''} expiring within 30 days
-            </div>
-            <div className="text-amber-700 text-xs mt-0.5">
-              {expiringSoon.map(s => s.planName || s.domainName).join(', ')} — Contact your STM subscription manager to renew access.
-            </div>
-          </div>
-          <div className="text-xs font-bold text-amber-700 shrink-0 hidden sm:block">
-            Action Required
-          </div>
-        </motion.div>
-      )}
+
 
       {/* Subscription Countdown Clock */}
       {nearestSub && (

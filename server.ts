@@ -4521,7 +4521,10 @@ async function startServer() {
 
       const proxyRes = await fetch(proxyUrl, {
         method: "GET",
-        headers: { Authorization: `Bearer ${validatorToken}` },
+        headers: { 
+          Authorization: `Bearer ${validatorToken}`,
+          Range: "bytes=0-8192" // Only fetch the first 8KB for validation, drastically speeding up the engine!
+        },
         signal: proxyCtrl.signal as any,
       }).catch(() => null);
       clearTimeout(proxyTid);
@@ -4600,7 +4603,7 @@ async function startServer() {
   };
 
   // ── Main viewer validation runner ──────────────────────────────────────────
-  const VIEWER_BATCH_SIZE = 8;
+  const VIEWER_BATCH_SIZE = 50;
 
   const runViewerValidationEngine = async (type: "Manual" | "Automatic") => {
     if (currentViewerValidationProgress.isRunning) return;
