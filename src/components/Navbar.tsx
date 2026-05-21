@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Menu, X, BookOpen, ChevronDown, LayoutGrid, ShoppingCart, FileText } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Search, Menu, X, BookOpen, ChevronDown, LayoutGrid, ShoppingCart, FileText, User, LogOut } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "../lib/utils";
 import { DOMAINS } from "../constants";
 import { useCart } from "../contexts/CartContext";
+import { useAuth } from "../contexts/AuthContext";
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,7 +12,18 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [domainCounts, setDomainCounts] = useState<Record<string, number> | null>(null);
   const { items } = useCart();
+  const { user, logout, isAdmin, isInstitutionAdmin, isSubscriptionManager } = useAuth();
   const navigate = useNavigate();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Determine dashboard path based on user role
+  const getDashboardPath = () => {
+    if (isAdmin) return '/admin';
+    if (isInstitutionAdmin) return '/institution';
+    if (isSubscriptionManager) return '/manager';
+    return '/dashboard';
+  };
 
   useEffect(() => {
     fetch('/api/public/domain-counts')
@@ -72,8 +84,69 @@ export function Navbar() {
                 </span>
               )}
             </Link>
-            <Link to="/login" className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors px-2">Login</Link>
-            <Link to="/signup" className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">Get Started</Link>
+            {user ? (
+              <>
+                {/* Profile Dropdown */}
+                <div
+                  className="relative"
+                  ref={profileRef}
+                  onMouseEnter={() => setIsProfileOpen(true)}
+                  onMouseLeave={() => setIsProfileOpen(false)}
+                >
+                  <button
+                    className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:border-blue-300 hover:bg-blue-50 transition-all shadow-sm"
+                  >
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white">
+                      <User size={14} />
+                    </div>
+                    <span className="max-w-[100px] truncate">{user.displayName || 'Profile'}</span>
+                    <ChevronDown size={14} className={cn("transition-transform duration-200", isProfileOpen && "rotate-180")} />
+                  </button>
+
+                  {isProfileOpen && (
+                    <div className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-slate-200 bg-white py-2 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 z-[60]">
+                      <Link
+                        to={getDashboardPath()}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                        onClick={() => setIsProfileOpen(false)}
+                      >
+                        <LayoutGrid size={16} />
+                        Dashboard
+                      </Link>
+                      <div className="my-1 border-t border-slate-100" />
+                      <button
+                        onClick={() => { logout(); navigate('/'); setIsProfileOpen(false); }}
+                        className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut size={16} />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <a
+                  href="https://journalslibrary.com/request-demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                >
+                  Request Demo
+                </a>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors px-2">Login</Link>
+                <Link to="/signup" className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">Get Started</Link>
+                <a
+                  href="https://journalslibrary.com/request-demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                >
+                  Request Demo
+                </a>
+              </>
+            )}
           </div>
         </div>
 
@@ -219,8 +292,48 @@ export function Navbar() {
           </div>
 
           <div className="pt-6 border-t border-slate-100 flex flex-col gap-4">
-            <Link to="/login" className="flex items-center justify-center rounded-xl border border-slate-200 py-4 text-base font-bold text-slate-700" onClick={() => setIsMenuOpen(false)}>Login</Link>
-            <Link to="/signup" className="flex items-center justify-center rounded-xl bg-slate-900 py-4 text-base font-bold text-white shadow-lg shadow-slate-200" onClick={() => setIsMenuOpen(false)}>Get Started</Link>
+            {user ? (
+              <>
+                <Link
+                  to={getDashboardPath()}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-4 text-base font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <LayoutGrid size={20} />
+                  Dashboard
+                </Link>
+                <button
+                  onClick={() => { logout(); navigate('/'); setIsMenuOpen(false); }}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-red-200 py-4 text-base font-bold text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut size={20} />
+                  Logout
+                </button>
+                <a
+                  href="https://journalslibrary.com/request-demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center rounded-xl bg-blue-600 py-4 text-base font-bold text-white shadow-lg shadow-blue-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Request Demo
+                </a>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="flex items-center justify-center rounded-xl border border-slate-200 py-4 text-base font-bold text-slate-700" onClick={() => setIsMenuOpen(false)}>Login</Link>
+                <Link to="/signup" className="flex items-center justify-center rounded-xl bg-slate-900 py-4 text-base font-bold text-white shadow-lg shadow-slate-200" onClick={() => setIsMenuOpen(false)}>Get Started</Link>
+                <a
+                  href="https://journalslibrary.com/request-demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center rounded-xl bg-blue-600 py-4 text-base font-bold text-white shadow-lg shadow-blue-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Request Demo
+                </a>
+              </>
+            )}
           </div>
         </div>
       )}

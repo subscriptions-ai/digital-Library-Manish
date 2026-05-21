@@ -1,0 +1,29 @@
+
+> react-example@0.0.0 dev
+> npx -y tsx@4.7.1 server.ts
+
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+(node:20883) Warning: NodeDeprecationWarning: The AWS SDK for JavaScript (v3) will
+no longer support Node.js v18.20.8 in January 2026.
+
+To continue receiving updates to AWS services, bug fixes, and security
+updates please upgrade to a supported Node.js LTS version.
+
+More information can be found at: https://a.co/c895JFp
+(Use `node --trace-warnings ...` to show where the warning was created)
+✅ Email Transporter is ready (SES v2)
+Server running on port 3000 (Mode: development)
+10:16:47 AM [vite] hmr update /src/components/DomainLandingPage.tsx, /src/index.css
+10:16:47 AM [vite] page reload server_log.txt
+10:18:51 AM [vite] hmr update /src/components/DomainLandingPage.tsx, /src/index.css
+10:18:51 AM [vite] page reload server_log.txt
+10:21:15 AM [vite] hmr update /src/components/DomainLandingPage.tsx, /src/index.css
+10:21:15 AM [vite] page reload server_log.txt
+10:24:45 AM [vite] hmr update /src/components/DomainLandingPage.tsx, /src/index.css
+10:24:45 AM [vite] page reload server_log.txt
+10:30:56 AM [vite] hmr update /src/components/DomainLandingPage.tsx, /src/index.css
+10:30:56 AM [vite] page reload server_log.txt
+10:43:14 AM [vite] hmr update /src/components/DomainLandingPage.tsx, /src/index.css
+10:43:14 AM [vite] page reload server_log.txt
+10:46:26 AM [vite] hmr update /src/components/DomainLandingPage.tsx, /src/index.css
+10:46:26 AM [vite] page reload server_log.txt
