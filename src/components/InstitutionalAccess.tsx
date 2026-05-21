@@ -6,26 +6,9 @@ import { COMPANY_DETAILS } from "../config";
 
 
 
-const departments = [
-  "Electrical Engineering",
-  "Computer / IT",
-  "Medical Sciences",
-  "Management",
-  "Chemistry",
-  "Mechanical Engineering",
-  "Pharmacy",
-  "Civil / Construction Engineering",
-  "Nano Technology",
-  "Bio Technology",
-  "Energy",
-  "Life Sciences",
-  "Law",
-  "Agriculture",
-  "Nursing",
-  "Education and Social Sciences",
-  "Applied Sciences",
-  "Multidisciplinary"
-];
+import { DOMAINS } from "../constants";
+
+const departments = DOMAINS.map(d => d.name);
 
 export function InstitutionalAccess() {
   const [totalContentCount, setTotalContentCount] = useState<number | null>(null);

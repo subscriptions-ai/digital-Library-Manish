@@ -4,26 +4,9 @@ import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { motion } from "motion/react";
 
-const departments = [
-  "Electrical Engineering",
-  "Computer / IT",
-  "Medical Sciences",
-  "Management",
-  "Chemistry",
-  "Mechanical Engineering",
-  "Pharmacy",
-  "Civil / Construction Engineering",
-  "Nano Technology",
-  "Bio Technology",
-  "Energy",
-  "Life Sciences",
-  "Law",
-  "Agriculture",
-  "Nursing",
-  "Education and Social Sciences",
-  "Applied Sciences",
-  "Multidisciplinary"
-];
+import { DOMAINS } from "../constants";
+
+const departments = DOMAINS.map(domain => domain.name);
 
 export function RequestDemo() {
   const [formData, setFormData] = useState({

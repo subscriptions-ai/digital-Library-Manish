@@ -53,18 +53,34 @@ const contentTypeBadgeColor = (type?: string) => {
   return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
 };
 
-const domainGradient = (domain: string) => {
+import { DOMAINS } from '../../constants';
+
+const domainGradient = (domainName: string) => {
+  const domainObj = DOMAINS.find(d => d.name === domainName);
+  const c = domainObj?.themeColor || 'slate';
   const map: Record<string, string> = {
-    'Medical': 'from-rose-500 to-rose-700',
-    'Engineering': 'from-blue-500 to-blue-700',
-    'Pharmacy': 'from-green-500 to-green-700',
-    'Nursing': 'from-teal-500 to-teal-700',
-    'Law': 'from-amber-500 to-amber-700',
-    'Management': 'from-purple-500 to-purple-700',
-    'Architecture': 'from-orange-500 to-orange-700',
-    'Arts & Humanities': 'from-pink-500 to-pink-700',
+    'red': 'from-red-500 to-red-700',
+    'blue': 'from-blue-500 to-blue-700',
+    'green': 'from-green-500 to-green-700',
+    'emerald': 'from-emerald-500 to-emerald-700',
+    'teal': 'from-teal-500 to-teal-700',
+    'amber': 'from-amber-500 to-amber-700',
+    'purple': 'from-purple-500 to-purple-700',
+    'orange': 'from-orange-500 to-orange-700',
+    'pink': 'from-pink-500 to-pink-700',
+    'slate': 'from-slate-500 to-slate-700',
+    'indigo': 'from-indigo-500 to-indigo-700',
+    'lime': 'from-lime-500 to-lime-700',
+    'stone': 'from-stone-500 to-stone-700',
+    'zinc': 'from-zinc-500 to-zinc-700',
+    'neutral': 'from-neutral-500 to-neutral-700',
+    'gray': 'from-gray-500 to-gray-700',
+    'sky': 'from-sky-500 to-sky-700',
+    'rose': 'from-rose-500 to-rose-700',
+    'cyan': 'from-cyan-500 to-cyan-700',
+    'violet': 'from-violet-500 to-violet-700',
   };
-  return map[domain] || 'from-slate-500 to-slate-700';
+  return map[c] || 'from-slate-500 to-slate-700';
 };
 
 // ─── Content Card ─────────────────────────────────────────────────────────────

@@ -33,7 +33,7 @@ export function ContentBulkImport({ contentType }: ContentBulkImportProps) {
   const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: any[] } | null>(null);
 
   const downloadTemplate = () => {
-    const csv = TEMPLATE_HEADERS.join(',') + '\n"Sample Title","Description here","John Doe","Medical","Cardiology","https://...","","tag1,tag2","0","Subscription","Published"';
+    const csv = TEMPLATE_HEADERS.join(',') + '\n"Sample Title","Description here","John Doe","Medical Sciences","Cardiology","https://...","","tag1,tag2","0","Subscription","Published"';
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

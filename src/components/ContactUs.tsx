@@ -15,26 +15,9 @@ const INDIA_STATES = [
   "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
-const DEPARTMENTS = [
-  "Electrical Engineering",
-  "Computer / IT",
-  "Medical Sciences",
-  "Management",
-  "Chemistry",
-  "Mechanical Engineering",
-  "Pharmacy",
-  "Civil / Construction Engineering",
-  "Nano Technology",
-  "Bio Technology",
-  "Energy",
-  "Life Sciences",
-  "Law",
-  "Agriculture",
-  "Nursing",
-  "Education and Social Sciences",
-  "Applied Sciences",
-  "Multidisciplinary"
-];
+import { DOMAINS } from "../constants";
+
+const DEPARTMENTS = DOMAINS.map(d => d.name);
 
 function MultiSelect({ 
   options, 
