@@ -745,7 +745,7 @@ async function startServer() {
   // GET /api/content/filters - Get dynamic filters (subjectAreas and tags) for a specific domain
   app.get("/api/content/filters", async (req: any, res) => {
     try {
-      const { domain } = req.query;
+      const { domain, subjectArea } = req.query;
       const where: any = { status: "Published" };
       if (domain) where.domain = String(domain);
 
@@ -756,10 +756,22 @@ async function startServer() {
 
       const subjectsSet = new Set<string>();
       const tagsSet = new Set<string>();
+      const domainsSet = new Set<string>();
+      const selectedSubjects = subjectArea ? String(subjectArea).split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
 
       contents.forEach((c: any) => {
+        if (c.domain) domainsSet.add(c.domain.trim());
         if (c.subjectArea) subjectsSet.add(c.subjectArea.trim());
-        if (c.tags) {
+        
+        let shouldAddTags = true;
+        if (selectedSubjects.length > 0) {
+          const cSub = c.subjectArea ? c.subjectArea.trim().toLowerCase() : "";
+          if (!selectedSubjects.includes(cSub)) {
+            shouldAddTags = false;
+          }
+        }
+
+        if (shouldAddTags && c.tags) {
           const tagsArray = Array.isArray(c.tags) ? c.tags : (typeof c.tags === 'string' ? c.tags.split(',') : []);
           tagsArray.forEach((t: string) => {
             if (typeof t === 'string') {
@@ -771,6 +783,7 @@ async function startServer() {
       });
 
       res.json({
+        domains: Array.from(domainsSet).sort(),
         subjects: Array.from(subjectsSet).sort(),
         tags: Array.from(tagsSet).sort()
       });
@@ -792,16 +805,39 @@ async function startServer() {
       const where: any = { status: { not: "Draft" } };
       if (domain) where.domain = String(domain);
       if (contentType) where.contentType = String(contentType);
-      if (subjectArea) where.subjectArea = { equals: String(subjectArea), mode: "insensitive" };
-      if (tag) where.tags = { contains: String(tag), mode: "insensitive" };
+      
+      if (subjectArea) {
+        const subjects = String(subjectArea).split(',').map(s => s.trim()).filter(Boolean);
+        if (subjects.length > 0) {
+          if (subjects.length === 1) {
+            where.subjectArea = { equals: subjects[0], mode: "insensitive" };
+          } else {
+            where.subjectArea = { in: subjects };
+          }
+        }
+      }
+
+      if (tag) {
+        const tags = String(tag).split(',').map(t => t.trim()).filter(Boolean);
+        if (tags.length > 0) {
+          if (tags.length === 1) {
+            where.tags = { array_contains: tags[0] };
+          } else {
+            where.AND = where.AND || [];
+            where.AND.push({
+              OR: tags.map(t => ({ tags: { array_contains: t } }))
+            });
+          }
+        }
+      }
 
       if (search) {
         where.OR = [
           { title: { contains: String(search), mode: "insensitive" } },
           { authors: { contains: String(search), mode: "insensitive" } },
           { description: { contains: String(search), mode: "insensitive" } },
-          { tags: { contains: String(search), mode: "insensitive" } },
-          { subjectArea: { contains: String(search), mode: "insensitive" } }
+          { subjectArea: { contains: String(search), mode: "insensitive" } },
+          { tags: { array_contains: String(search) } }
         ];
       }
 
