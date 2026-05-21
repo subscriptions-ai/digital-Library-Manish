@@ -168,6 +168,9 @@ export function LMSDashboard() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [domainFilter, setDomainFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
+  const [availableFilters, setAvailableFilters] = useState<{ subjects: string[], tags: string[] }>({ subjects: [], tags: [] });
   const [viewMode, setViewMode] = useState<'grid' | 'grouped'>('grouped');
   const [showLocked, setShowLocked] = useState(false);
 
@@ -202,6 +205,20 @@ export function LMSDashboard() {
       .finally(() => setLoadingDash(false));
   }, []);
 
+  // Fetch dynamic filters when domain changes
+  useEffect(() => {
+    if (domainFilter) {
+      fetch(`/api/content/filters?domain=${encodeURIComponent(domainFilter)}`, { headers: authHeader() })
+        .then(r => r.json())
+        .then(data => setAvailableFilters(data))
+        .catch(err => console.error("Failed to fetch filters", err));
+    } else {
+      setAvailableFilters({ subjects: [], tags: [] });
+    }
+    setSubjectFilter('');
+    setTagFilter('');
+  }, [domainFilter]);
+
   // Fetch content list
   const fetchContent = useCallback(async () => {
     setLoadingContent(true);
@@ -213,6 +230,8 @@ export function LMSDashboard() {
       if (!showLocked) q.set('onlyUnlocked', 'true');
       if (domainFilter) q.set('domain', domainFilter);
       if (typeFilter) q.set('contentType', typeFilter);
+      if (subjectFilter) q.set('subjectArea', subjectFilter);
+      if (tagFilter) q.set('tag', tagFilter);
       if (debouncedSearch) q.set('search', debouncedSearch);
       const res = await fetch(`/api/content/list?${q}`, { headers: authHeader() });
       if (!res.ok) throw new Error();
@@ -223,7 +242,7 @@ export function LMSDashboard() {
       setTotalItems(total);
     } catch { toast.error('Failed to load content'); }
     finally { setLoadingContent(false); }
-  }, [domainFilter, typeFilter, debouncedSearch, page, showLocked]);
+  }, [domainFilter, typeFilter, subjectFilter, tagFilter, debouncedSearch, page, showLocked]);
 
   useEffect(() => { fetchContent(); }, [fetchContent]);
 
@@ -437,53 +456,90 @@ export function LMSDashboard() {
         )}
 
         {/* ── FILTERS & SEARCH ── */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              type="text"
-              placeholder="Search titles, authors, topics..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 text-slate-800 dark:text-white placeholder:text-slate-400"
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search titles, authors, subjects, tags..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 text-slate-800 dark:text-white placeholder:text-slate-400"
+              />
+            </div>
+            {/* Domain Filter */}
+            <select value={domainFilter} onChange={e => setDomainFilter(e.target.value)}
+              className="min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
+              <option value="">All Domains</option>
+              {(dashData?.allowedDomains || domains).map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            {/* Content Type Filter */}
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+              className="min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
+              <option value="">All Types</option>
+              {CONTENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            {/* Subject Filter */}
+            {availableFilters.subjects.length > 0 && (
+              <select value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}
+                className="min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
+                <option value="">All Subjects</option>
+                {availableFilters.subjects.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
+            {/* View Toggle */}
+            <div className="flex gap-1 bg-slate-100 dark:bg-slate-700 rounded-xl p-1">
+              <button onClick={() => setViewMode('grouped')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grouped' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>
+                Grouped
+              </button>
+              <button onClick={() => setViewMode('grid')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grid' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>
+                Grid
+              </button>
+            </div>
+            {/* Toggle Locked */}
+            {lockedCount > 0 && (
+              <button 
+                onClick={() => setShowLocked(!showLocked)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border
+                  ${showLocked 
+                    ? 'bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400' 
+                    : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400 hover:border-blue-300'
+                  }`}
+              >
+                {showLocked ? <Eye size={14} /> : <Lock size={14} />}
+                {showLocked ? 'Hide Locked' : 'Show All'}
+              </button>
+            )}
           </div>
-          {/* Domain Filter */}
-          <select value={domainFilter} onChange={e => setDomainFilter(e.target.value)}
-            className="min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
-            <option value="">All Domains</option>
-            {(dashData?.allowedDomains || domains).map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          {/* Content Type Filter */}
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-            className="min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
-            <option value="">All Types</option>
-            {CONTENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          {/* View Toggle */}
-          <div className="flex gap-1 bg-slate-100 dark:bg-slate-700 rounded-xl p-1">
-            <button onClick={() => setViewMode('grouped')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grouped' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>
-              Grouped
-            </button>
-            <button onClick={() => setViewMode('grid')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grid' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>
-              Grid
-            </button>
-          </div>
-          {/* Toggle Locked */}
-          {lockedCount > 0 && (
-            <button 
-              onClick={() => setShowLocked(!showLocked)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border
-                ${showLocked 
-                  ? 'bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400' 
-                  : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400 hover:border-blue-300'
-                }`}
-            >
-              {showLocked ? <Eye size={14} /> : <Lock size={14} />}
-              {showLocked ? 'Hide Locked' : 'Show All'}
-            </button>
-          )}
+          
+          {/* Quick-Tag Chips */}
+          <AnimatePresence>
+            {availableFilters.tags.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} 
+                animate={{ opacity: 1, height: 'auto' }} 
+                exit={{ opacity: 0, height: 0 }}
+                className="flex flex-wrap gap-2 items-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm"
+              >
+                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mr-1">Popular Tags:</span>
+                {availableFilters.tags.slice(0, 15).map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border
+                      ${tagFilter === tag 
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20' 
+                        : 'bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-300 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                      }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Refresh */}
           <button onClick={fetchContent} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors">

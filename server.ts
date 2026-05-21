@@ -742,10 +742,45 @@ async function startServer() {
     }
   });
 
+  // GET /api/content/filters - Get dynamic filters (subjectAreas and tags) for a specific domain
+  app.get("/api/content/filters", async (req: any, res) => {
+    try {
+      const { domain } = req.query;
+      const where: any = { status: "Published" };
+      if (domain) where.domain = String(domain);
+
+      const contents = await prisma.content.findMany({
+        where,
+        select: { subjectArea: true, tags: true },
+      });
+
+      const subjectsSet = new Set<string>();
+      const tagsSet = new Set<string>();
+
+      contents.forEach((c: any) => {
+        if (c.subjectArea) subjectsSet.add(c.subjectArea.trim());
+        if (c.tags) {
+          c.tags.split(',').forEach((t: string) => {
+            const trimmed = t.trim();
+            if (trimmed) tagsSet.add(trimmed);
+          });
+        }
+      });
+
+      res.json({
+        subjects: Array.from(subjectsSet).sort(),
+        tags: Array.from(tagsSet).sort()
+      });
+    } catch (error) {
+      console.error("Filter fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch filters" });
+    }
+  });
+
   // GET /api/content/list - Lists all actual content items, with locked flags for regular users
   app.get("/api/content/list", async (req: any, res) => {
     try {
-      const { domain, contentType, search, page = "1", limit = "20", onlyUnlocked } = req.query;
+      const { domain, contentType, search, subjectArea, tag, page = "1", limit = "20", onlyUnlocked } = req.query;
       
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
       const take = parseInt(limit as string);
@@ -754,11 +789,16 @@ async function startServer() {
       const where: any = { status: { not: "Draft" } };
       if (domain) where.domain = String(domain);
       if (contentType) where.contentType = String(contentType);
+      if (subjectArea) where.subjectArea = { equals: String(subjectArea), mode: "insensitive" };
+      if (tag) where.tags = { contains: String(tag), mode: "insensitive" };
+
       if (search) {
         where.OR = [
           { title: { contains: String(search), mode: "insensitive" } },
           { authors: { contains: String(search), mode: "insensitive" } },
-          { description: { contains: String(search), mode: "insensitive" } }
+          { description: { contains: String(search), mode: "insensitive" } },
+          { tags: { contains: String(search), mode: "insensitive" } },
+          { subjectArea: { contains: String(search), mode: "insensitive" } }
         ];
       }
 
