@@ -203,6 +203,8 @@ model Content {
   flaggedReason     String?
   lastValidatedAt   DateTime?
 
+  fingerprint     String?   @unique  // SHA-256 of normalized title+authors
+
   submission      Submission? @relation(fields: [submissionId], references: [id])
   submissionId    String?     @unique
   
@@ -382,4 +384,66 @@ model DemoRequest {
   
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model ExtractionJob {
+  id              String   @id @default(uuid())
+  name            String                        // "Medical Sciences OJS Import"
+  sourceType      String                        // "OJS" | "URL" | "CSV" | "Manual"
+  sourceConfig    Json                          // { baseUrl, domain hints, etc. }
+  targetDomain    String?                       // Pre-filter domain, or null for auto-classify
+  targetContentType String?                     // Pre-filter type, or null for auto-classify
+  
+  status          String   @default("Pending")  // Pending | Running | Completed | Failed
+  
+  totalDiscovered Int      @default(0)
+  totalProcessed  Int      @default(0)
+  totalInserted   Int      @default(0)
+  totalDuplicates Int      @default(0)
+  totalFailed     Int      @default(0)
+  totalFlagged    Int      @default(0)          // Low-confidence items for review
+  
+  errorLog        Json     @default("[]")       // Array of error details
+  
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  items           ExtractionItem[]
+}
+
+model ExtractionItem {
+  id              String   @id @default(uuid())
+  
+  job             ExtractionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId           String
+  
+  rawData         Json                          // Original scraped data
+  aiResult        Json?                         // AI classification output
+  fingerprint     String?                       // Dedup fingerprint
+  
+  status          String   @default("Pending")  // Pending | Classified | Validated | Inserted | Duplicate | Failed | Flagged
+  
+  // Final mapped fields (after AI processing)
+  title           String?
+  authors         String?
+  description     String?
+  domain          String?
+  contentType     String?
+  subjectArea     String?
+  fileUrl         String?
+  tags            Json?    @default("[]")
+  
+  confidence      Float?   @default(0)          // AI confidence score
+  validationResult Json?                        // PDF validation details
+  errorMessage    String?
+  
+  contentId       String?                       // ID of inserted Content record (if successful)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([jobId, status])
+  @@index([fingerprint])
 }

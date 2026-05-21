@@ -2441,11 +2441,33 @@ async function startServer() {
         return res.status(400).json({ error: "Invalid payload format. Expected { items: [...] }" });
       }
 
-      const results = { success: 0, failed: 0, errors: [] as any[] };
+      const generateFingerprint = (title: string, authors: string) => {
+        const normalizedTitle = (title || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+        const normalizedAuthors = (authors || '').toLowerCase().replace(/[^a-z0-9\s,]/g, '').split(',').map(a => a.trim()).sort().join(',');
+        return crypto.createHash('sha256').update(`${normalizedTitle}::${normalizedAuthors}`).digest('hex');
+      };
+
+      const results = { success: 0, failed: 0, skipped: 0, errors: [] as any[] };
       
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         try {
+          if (!item.title || !item.authors) {
+            results.failed++;
+            results.errors.push({ row: i + 1, item, error: "Missing title or authors" });
+            continue;
+          }
+          
+          const fingerprint = generateFingerprint(item.title, item.authors);
+          
+          // Check for existing fingerprint
+          const existing = await prisma.content.findUnique({ where: { fingerprint } });
+          if (existing) {
+            results.skipped++;
+            results.errors.push({ row: i + 1, item, error: "Duplicate content (fingerprint match)" });
+            continue;
+          }
+
           await prisma.content.create({
             data: {
               title: item.title,
@@ -2460,7 +2482,8 @@ async function startServer() {
               price: parseFloat(item.price) || 0,
               accessType: item.accessType || "Subscription",
               status: item.status || "Published",
-              publishingMode: item.publishingMode || "Direct"
+              publishingMode: item.publishingMode || "Direct",
+              fingerprint
             }
           });
           results.success++;
