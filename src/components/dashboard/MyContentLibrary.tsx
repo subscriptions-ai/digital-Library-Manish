@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, FileText, ArrowLeft, Search, PlayCircle } from 'lucide-react';
 
 export function MyContentLibrary() {
@@ -16,6 +16,9 @@ export function MyContentLibrary() {
   // Search & Pagination State
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filterSubject, setFilterSubject] = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [availableFilters, setAvailableFilters] = useState<{ subjects: string[], tags: string[] }>({ subjects: [], tags: [] });
   const ITEMS_PER_PAGE = 24;
   const [page, setPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -26,10 +29,24 @@ export function MyContentLibrary() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Fetch dynamic filters based on URL domain
+  useEffect(() => {
+    if (domain) {
+      fetch(`/api/content/filters?domain=${encodeURIComponent(domain)}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      })
+        .then(r => r.json())
+        .then(data => setAvailableFilters(data))
+        .catch(() => {});
+    }
+  }, [domain]);
+
   useEffect(() => {
     setLoading(true);
     let url = `/api/content/list?onlyUnlocked=true&domain=${encodeURIComponent(domain)}&page=${page}&limit=${ITEMS_PER_PAGE}`;
     if (type) url += `&contentType=${encodeURIComponent(type)}`;
+    if (filterSubject) url += `&subjectArea=${encodeURIComponent(filterSubject)}`;
+    if (filterTag) url += `&tag=${encodeURIComponent(filterTag)}`;
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
 
     fetch(url, {
@@ -43,7 +60,7 @@ export function MyContentLibrary() {
       })
       .catch(() => toast.error("Failed to load content"))
       .finally(() => setLoading(false));
-  }, [domain, type, page, debouncedSearch]);
+  }, [domain, type, page, filterSubject, filterTag, debouncedSearch]);
 
   const handleOpen = (item: any) => {
     if (item.locked) {
@@ -70,15 +87,53 @@ export function MyContentLibrary() {
         </div>
       </div>
 
-      <div className="relative flex-1 w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-4">
-        <Search className="absolute left-7 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
-        <input
-          type="text"
-          placeholder="Search items..."
-          className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 transition-shadow outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-4">
+            <Search className="absolute left-7 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
+            <input
+              type="text"
+              placeholder="Search items..."
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 transition-shadow outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          {availableFilters.subjects.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-4 md:w-64 flex-shrink-0">
+              <select value={filterSubject} onChange={e => { setFilterSubject(e.target.value); setPage(1); }}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 dark:text-slate-200">
+                <option value="">All Subjects</option>
+                {availableFilters.subjects.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
+        <AnimatePresence>
+          {availableFilters.tags.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }} 
+              animate={{ opacity: 1, height: 'auto' }} 
+              exit={{ opacity: 0, height: 0 }}
+              className="flex flex-wrap gap-2 items-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 shadow-sm"
+            >
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mr-1">Popular Tags:</span>
+              {availableFilters.tags.slice(0, 15).map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => { setFilterTag(filterTag === tag ? '' : tag); setPage(1); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border
+                    ${filterTag === tag 
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20' 
+                      : 'bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-300 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400'
+                    }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {loading ? (

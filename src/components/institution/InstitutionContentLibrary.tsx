@@ -39,6 +39,9 @@ export function InstitutionContentLibrary() {
   const [debouncedSearch, setDebounced] = useState('');
   const [filterDomain, setFilterDomain] = useState('');
   const [filterType, setFilterType]   = useState('');
+  const [filterSubject, setFilterSubject] = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [availableFilters, setAvailableFilters] = useState<{ subjects: string[], tags: string[] }>({ subjects: [], tags: [] });
   const [viewMode, setViewMode]       = useState<'grid' | 'list'>('grid');
 
   // Pagination
@@ -64,12 +67,30 @@ export function InstitutionContentLibrary() {
       .finally(() => setSubsLoading(false));
   }, []);
 
+  // Fetch dynamic filters when domain changes
+  useEffect(() => {
+    if (filterDomain) {
+      fetch(`/api/content/filters?domain=${encodeURIComponent(filterDomain)}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      })
+        .then(r => r.json())
+        .then(data => setAvailableFilters(data))
+        .catch(() => {});
+    } else {
+      setAvailableFilters({ subjects: [], tags: [] });
+    }
+    setFilterSubject('');
+    setFilterTag('');
+  }, [filterDomain]);
+
   // Fetch content based on filters
   const fetchContent = useCallback(() => {
     setLoading(true);
     let url = `/api/content/list?onlyUnlocked=true&page=${page}&limit=${PER_PAGE}`;
     if (filterDomain) url += `&domain=${encodeURIComponent(filterDomain)}`;
     if (filterType)   url += `&contentType=${encodeURIComponent(filterType)}`;
+    if (filterSubject) url += `&subjectArea=${encodeURIComponent(filterSubject)}`;
+    if (filterTag)   url += `&tag=${encodeURIComponent(filterTag)}`;
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
 
     fetch(url, {
@@ -83,7 +104,7 @@ export function InstitutionContentLibrary() {
       })
       .catch(() => toast.error('Failed to load content'))
       .finally(() => setLoading(false));
-  }, [page, filterDomain, filterType, debouncedSearch]);
+  }, [page, filterDomain, filterType, filterSubject, filterTag, debouncedSearch]);
 
   useEffect(() => { fetchContent(); }, [fetchContent]);
 
@@ -154,11 +175,44 @@ export function InstitutionContentLibrary() {
               <option key={t} value={t}>{t}</option>
             ))}
           </select>
+          {availableFilters.subjects.length > 0 && (
+            <select value={filterSubject} onChange={e => { setFilterSubject(e.target.value); setPage(1); }}
+              className="border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm focus:border-indigo-400 outline-none">
+              <option value="">All Subjects</option>
+              {availableFilters.subjects.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          )}
           <button onClick={fetchContent} className="p-2.5 border border-slate-200 bg-white rounded-xl text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition-all">
             <RefreshCw size={16} />
           </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {availableFilters.tags.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }} 
+            animate={{ opacity: 1, height: 'auto' }} 
+            exit={{ opacity: 0, height: 0 }}
+            className="flex flex-wrap gap-2 items-center bg-white rounded-xl border border-slate-100 p-3 shadow-sm mt-3"
+          >
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mr-1">Popular Tags:</span>
+            {availableFilters.tags.slice(0, 15).map(tag => (
+              <button
+                key={tag}
+                onClick={() => { setFilterTag(filterTag === tag ? '' : tag); setPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border
+                  ${filterTag === tag 
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20' 
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+                  }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Content Grid / List */}
       {loading ? (
