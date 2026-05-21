@@ -38,11 +38,7 @@ export function ExtractionDashboard() {
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newJobName) return toast.error("Job name is required");
-    
-    if (sourceType === 'Manual' && !manualUrls.trim()) {
-      return toast.error("Please enter at least one URL");
-    }
+    setIsCreating(true);
     
     try {
       const res = await fetch('/api/admin/extraction/jobs', {
