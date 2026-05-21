@@ -760,9 +760,12 @@ async function startServer() {
       contents.forEach((c: any) => {
         if (c.subjectArea) subjectsSet.add(c.subjectArea.trim());
         if (c.tags) {
-          c.tags.split(',').forEach((t: string) => {
-            const trimmed = t.trim();
-            if (trimmed) tagsSet.add(trimmed);
+          const tagsArray = Array.isArray(c.tags) ? c.tags : (typeof c.tags === 'string' ? c.tags.split(',') : []);
+          tagsArray.forEach((t: string) => {
+            if (typeof t === 'string') {
+              const trimmed = t.trim();
+              if (trimmed) tagsSet.add(trimmed);
+            }
           });
         }
       });
