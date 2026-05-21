@@ -50,6 +50,7 @@ import { CouponsManager } from './components/admin/CouponsManager';
 import { CouponDetails } from './components/admin/CouponDetails';
 import { AdminPayments } from './components/admin/AdminPayments';
 import { RequestDemo } from './components/RequestDemo';
+import { ExtractionDashboard } from './components/admin/ExtractionDashboard';
 
 const CONTENT_MODULES = [
   { slug: 'books',                  contentType: 'Books'                   },
@@ -139,6 +140,7 @@ export default function App() {
                 <Route path="/admin/coupons" element={<AdminLayout><CouponsManager /></AdminLayout>} />
                 <Route path="/admin/coupons/:id" element={<AdminLayout><CouponDetails /></AdminLayout>} />
                 <Route path="/admin/payments" element={<AdminLayout><AdminPayments /></AdminLayout>} />
+                <Route path="/admin/extraction" element={<AdminLayout><ExtractionDashboard /></AdminLayout>} />
 
                 {/* Per Content Type Module Routes (8 modules × 3 pages each) */}
                 {CONTENT_MODULES.map(({ slug, contentType }) => (

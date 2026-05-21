@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, Tag, PlayCircle, Receipt, Trash2
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, Tag, PlayCircle, Receipt, Trash2, Database
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -146,6 +146,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </div>
             )}
           </div>
+
+          {/* AI Extractor */}
+          <NavButton
+            icon={<Database size={17} />}
+            label="AI Extractor"
+            active={location.pathname.startsWith('/admin/extraction')}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/extraction')}
+            highlight
+          />
 
           {/* Users */}
           <NavButton
@@ -331,6 +341,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/agency-inquiries' ? 'Agency Inquiries'
               : location.pathname === '/admin/contact-inquiries' ? 'Contact Inquiries'
               : location.pathname === '/admin/payments' ? 'Payments'
+              : location.pathname.startsWith('/admin/extraction') ? 'AI Extraction Engine'
               : location.pathname.startsWith('/admin/coupons') ? 'Coupons'
               : 'Dashboard')}
           </h1>

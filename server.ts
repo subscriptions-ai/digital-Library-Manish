@@ -19,6 +19,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
+import { setupExtractionRoutes } from "./src/routes/extraction.js";
 
 const prisma = new PrismaClient();
 
@@ -5337,6 +5338,9 @@ async function startServer() {
     console.error("Unhandled Error:", err);
     res.status(500).json({ error: "Internal server error" });
   });
+  
+  // Mount extraction routes
+  setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || 'development'})`);
