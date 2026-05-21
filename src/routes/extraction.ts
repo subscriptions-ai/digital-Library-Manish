@@ -64,7 +64,6 @@ export function setupExtractionRoutes(app: any, authenticateJWT: any, requireSup
   // Start job
   app.post("/api/admin/extraction/jobs/:id/start", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      let { items } = req.body; 
       const jobId = req.params.id;
       
       const job = await prisma.extractionJob.findUnique({ where: { id: jobId } });
@@ -75,138 +74,120 @@ export function setupExtractionRoutes(app: any, authenticateJWT: any, requireSup
         data: { status: "Running", startedAt: new Date() }
       });
       
-      if (job.sourceType === 'OpenAccess') {
-        const query = (job.sourceConfig as any)?.searchTopic || job.targetDomain || "Science";
-        try {
-          const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=10`);
-          const data = await fetchRes.json();
-          items = [];
-          if (data && data.resultList && data.resultList.result) {
-            for (const result of data.resultList.result) {
-              const urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.documentStyle === 'pdf');
-              if (urlInfo && urlInfo.url) {
-                items.push({
-                  url: urlInfo.url,
-                  title: result.title,
-                  authors: result.authorString,
-                  description: result.abstractText || ""
-                });
-              }
-            }
-          }
-        } catch (err) {
-          console.error("OpenAccess Discovery Error:", err);
-        }
+      // Start Mass Extraction in background
+      if (job.sourceType === 'AutomatedMassScraper') {
+        runMassExtraction(job).catch(console.error);
+        return res.json({ success: true, message: `Mass Extraction started for ${job.targetDomain}.` });
       }
-      
-      // Start processing asynchronously so we don't block the request
-      if (items && items.length > 0) {
-        processJobItems(job, items).catch(console.error);
-        res.json({ success: true, message: `Job started in background with ${items.length} discovered items.` });
-      } else {
-        await prisma.extractionJob.update({
-          where: { id: jobId },
-          data: { status: "Failed", completedAt: new Date(), errorLog: [{ error: "No items discovered" }] }
-        });
-        res.json({ success: false, message: "No open access items discovered for this query." });
-      }
-      
+
+      res.json({ success: false, message: "Unknown source type" });
     } catch (error) {
       res.status(500).json({ error: "Failed to start job" });
     }
   });
 }
 
-async function processJobItems(job: any, rawItems: any[]) {
+async function runMassExtraction(job: any) {
   let processed = 0;
   let duplicates = 0;
   let flagged = 0;
   let failed = 0;
   
-  for (const raw of rawItems) {
-    try {
-      // 1. Create pending item
-      const item = await prisma.extractionItem.create({
-        data: {
-          jobId: job.id,
-          rawData: raw,
-          status: "Pending"
-        }
-      });
-      
-      // 2. Classify with AI
-      const classification = await classifyContent(raw);
-      
-      const fingerprint = generateFingerprint(classification.title, classification.authors);
-      
-      // 3. Deduplication check
-      const existing = await prisma.content.findUnique({ where: { fingerprint } });
-      
-      if (existing) {
-        await prisma.extractionItem.update({
-          where: { id: item.id },
-          data: {
-            aiResult: classification as any,
-            fingerprint,
-            status: "Duplicate"
-          }
-        });
-        duplicates++;
-        processed++;
-        continue;
-      }
-      
-      // 4. Validate PDF
-      let validationResult: any = null;
-      let isFlagged = classification.confidence < 0.7;
-      
-      if (raw.url) {
-        validationResult = await validateContentUrl(raw.url, classification.contentType === 'Educational Videos' ? 'video/mp4' : 'application/pdf');
-        if (!validationResult.isValid) {
-          isFlagged = true;
-        }
-      }
-      
-      await prisma.extractionItem.update({
-        where: { id: item.id },
-        data: {
-          aiResult: classification as any,
-          fingerprint,
-          title: classification.title,
-          authors: classification.authors,
-          description: classification.description,
-          domain: job.targetDomain || classification.domain,
-          contentType: job.targetContentType || classification.contentType,
-          subjectArea: classification.subjectArea,
-          tags: classification.tags as any,
-          fileUrl: raw.url,
-          confidence: classification.confidence,
-          validationResult: validationResult as any,
-          status: isFlagged ? "Flagged" : "Validated"
-        }
-      });
-      
-      if (isFlagged) flagged++;
-      processed++;
-      
-    } catch (e: any) {
-      failed++;
-      processed++;
-      console.error("Item processing failed:", e);
-    }
+  const query = `${job.targetDomain} ${job.targetContentType === 'Books' ? 'book' : ''}`.trim();
+  
+  try {
+    // Fetch up to 100 items per batch to simulate mass extraction
+    const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=100`);
+    const data = await fetchRes.json();
     
-    // Update job stats periodically
-    if (processed % 5 === 0) {
-      await prisma.extractionJob.update({
-        where: { id: job.id },
-        data: { 
-          totalProcessed: processed,
-          totalDuplicates: duplicates,
-          totalFlagged: flagged,
-          totalFailed: failed
+    if (data && data.resultList && data.resultList.result) {
+      const results = data.resultList.result;
+      
+      for (const result of results) {
+        try {
+          const urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.documentStyle === 'pdf');
+          if (!urlInfo || !urlInfo.url) continue; // Skip if no PDF
+
+          const title = result.title || "Untitled";
+          const authors = result.authorString || "Unknown";
+          const description = result.abstractText || `Open access content from ${result.journalTitle || 'Europe PMC'}.`;
+          
+          const fingerprint = generateFingerprint(title, authors);
+          
+          // 1. Create Pending Item
+          const item = await prisma.extractionItem.create({
+            data: {
+              jobId: job.id,
+              rawData: result,
+              status: "Pending"
+            }
+          });
+          
+          // 2. Deduplication check
+          const existing = await prisma.content.findUnique({ where: { fingerprint } });
+          
+          if (existing) {
+            await prisma.extractionItem.update({
+              where: { id: item.id },
+              data: { fingerprint, status: "Duplicate" }
+            });
+            duplicates++;
+            processed++;
+            continue;
+          }
+          
+          // 3. Direct Mapping (No AI bottleneck for mass scale)
+          // Insert directly into the main Content table just like Bulk Import!
+          const newContent = await prisma.content.create({
+            data: {
+              title,
+              authors,
+              description,
+              domain: job.targetDomain,
+              contentType: job.targetContentType,
+              subjectArea: result.keywordList?.keyword?.[0] || job.targetDomain,
+              fileUrl: urlInfo.url,
+              tags: result.keywordList?.keyword || [],
+              price: 0,
+              accessType: "OpenAccess",
+              status: "Published",
+              publishingMode: "Auto-Extracted",
+              fingerprint
+            }
+          });
+          
+          await prisma.extractionItem.update({
+            where: { id: item.id },
+            data: {
+              fingerprint,
+              title,
+              authors,
+              domain: job.targetDomain,
+              contentType: job.targetContentType,
+              fileUrl: urlInfo.url,
+              contentId: newContent.id,
+              status: "Inserted"
+            }
+          });
+          
+          processed++;
+          
+          // Update job stats periodically
+          if (processed % 10 === 0) {
+            await prisma.extractionJob.update({
+              where: { id: job.id },
+              data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted: processed - duplicates - failed }
+            });
+          }
+        } catch (e) {
+          failed++;
+          processed++;
         }
-      });
+      }
     }
+  } catch (err) {
+    console.error("Mass Extraction Error:", err);
+    failed++;
   }
   
   // Final update
@@ -217,8 +198,8 @@ async function processJobItems(job: any, rawItems: any[]) {
       completedAt: new Date(),
       totalProcessed: processed,
       totalDuplicates: duplicates,
-      totalFlagged: flagged,
-      totalFailed: failed
+      totalFailed: failed,
+      totalInserted: processed - duplicates - failed
     }
   });
 }

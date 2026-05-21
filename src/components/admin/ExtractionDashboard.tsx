@@ -9,11 +9,10 @@ export function ExtractionDashboard() {
   const [isCreating, setIsCreating] = useState(false);
   
   // Job Creation State
+  // Job Creation State
   const [newJobName, setNewJobName] = useState('');
-  const [sourceType, setSourceType] = useState('OpenAccess');
-  const [targetDomain, setTargetDomain] = useState('');
-  const [manualUrls, setManualUrls] = useState('');
-  const [searchTopic, setSearchTopic] = useState('');
+  const [targetDomain, setTargetDomain] = useState('Management');
+  const [targetContentType, setTargetContentType] = useState('Periodicals');
 
   const fetchJobs = () => {
     fetch('/api/admin/extraction/jobs', {
@@ -46,26 +45,19 @@ export function ExtractionDashboard() {
     }
     
     try {
-      const reqBody: any = {
-        name: newJobName,
-        sourceType,
-        targetDomain: targetDomain || null,
-      };
-
-      if (sourceType === 'Manual') {
-        reqBody.sourceConfig = { urls: manualUrls.split('\n').map(u => u.trim()).filter(Boolean) };
-      } else if (sourceType === 'OpenAccess') {
-        if (!searchTopic.trim()) return toast.error("Please enter a search topic");
-        reqBody.sourceConfig = { searchTopic };
-      }
-
       const res = await fetch('/api/admin/extraction/jobs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(reqBody)
+        body: JSON.stringify({
+          name: newJobName || `${targetDomain} ${targetContentType} Auto-Extraction`,
+          sourceType: 'AutomatedMassScraper',
+          targetDomain,
+          targetContentType,
+          sourceConfig: {}
+        })
       });
       
       if (!res.ok) throw new Error("Failed to create job");
@@ -73,25 +65,20 @@ export function ExtractionDashboard() {
       const newJob = await res.json();
       
       // Auto-start the job
-      if (sourceType === 'Manual' || sourceType === 'OpenAccess') {
-        const startRes = await fetch(`/api/admin/extraction/jobs/${newJob.id}/start`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify(sourceType === 'Manual' ? { items: manualUrls.split('\n').map(u => u.trim()).filter(Boolean).map(url => ({ url })) } : {})
-        });
-        if (startRes.ok) toast.success("Job created and Auto-Discovery started!");
-        else toast.success("Job created, but failed to start automatically");
-      } else {
-        toast.success("Extraction job created");
-      }
+      const startRes = await fetch(`/api/admin/extraction/jobs/${newJob.id}/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({})
+      });
+      
+      if (startRes.ok) toast.success(`Mass Extraction started for ${targetDomain}!`);
+      else toast.success("Job created, but failed to start automatically");
       
       setIsCreating(false);
       setNewJobName('');
-      setManualUrls('');
-      setSearchTopic('');
       fetchJobs();
     } catch (err) {
       toast.error("Error creating job");
@@ -124,76 +111,39 @@ export function ExtractionDashboard() {
           <form onSubmit={handleCreateJob} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Job Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newJobName}
-                  onChange={e => setNewJobName(e.target.value)}
-                  placeholder="e.g. Medical Journals Batch 1"
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Source Type</label>
-                <select
-                  value={sourceType}
-                  onChange={e => setSourceType(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
-                >
-                  <option value="OpenAccess">Open Access Auto-Discovery (Internet API)</option>
-                  <option value="Manual">Manual URL Batch</option>
-                  <option value="OJS" disabled>OJS Integration (Coming Soon)</option>
-                  <option value="CSV" disabled>CSV AI Enrichment (Coming Soon)</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Target Domain (Optional)</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Target Domain</label>
                 <select
                   value={targetDomain}
                   onChange={e => setTargetDomain(e.target.value)}
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
                 >
-                  <option value="">Auto-Detect via AI</option>
+                  <option value="Management">Management</option>
                   <option value="Medical Sciences">Medical Sciences</option>
                   <option value="Computer/IT">Computer/IT</option>
                   <option value="Electrical Engineering">Electrical Engineering</option>
-                  {/* Add others as needed */}
+                  <option value="Chemistry">Chemistry</option>
+                  <option value="Life Sciences">Life Sciences</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Content Type</label>
+                <select
+                  value={targetContentType}
+                  onChange={e => setTargetContentType(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
+                >
+                  <option value="Periodicals">Periodicals</option>
+                  <option value="Books">Books</option>
+                  <option value="Theses">Theses</option>
+                  <option value="Educational Videos">Educational Videos</option>
                 </select>
               </div>
             </div>
 
-            {sourceType === 'OpenAccess' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Search Topic (e.g. "Cardiology", "Quantum Physics")</label>
-                <input
-                  type="text"
-                  required
-                  value={searchTopic}
-                  onChange={e => setSearchTopic(e.target.value)}
-                  placeholder="What open access PDFs should we find?"
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
-                />
-                <p className="text-xs text-slate-500 mt-2">We will automatically scan global open access databases for real, valid PDFs matching this query.</p>
-              </div>
-            )}
-
-            {sourceType === 'Manual' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Source URLs (One per line)</label>
-                <textarea
-                  required
-                  rows={5}
-                  value={manualUrls}
-                  onChange={e => setManualUrls(e.target.value)}
-                  placeholder="https://example.com/paper1.pdf&#10;https://example.com/video2.mp4"
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white resize-none font-mono text-sm"
-                />
-                <p className="text-xs text-slate-500 mt-2">Enter direct links to PDFs or MP4 videos.</p>
-              </div>
-            )}
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl text-sm text-blue-700 dark:text-blue-300">
+              <strong>Mass Extraction Mode:</strong> The engine will automatically query global open access repositories for <strong>{targetDomain} {targetContentType}</strong>, validate the PDFs, and bulk import thousands of items directly into your library.
+            </div>
 
             <div className="flex justify-end gap-3 pt-4">
               <button
@@ -207,7 +157,7 @@ export function ExtractionDashboard() {
                 type="submit"
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
               >
-                Create Job
+                Start Mass Extraction
               </button>
             </div>
           </form>
