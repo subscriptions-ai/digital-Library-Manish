@@ -751,7 +751,7 @@ async function startServer() {
 
       const contents = await prisma.content.findMany({
         where,
-        select: { subjectArea: true, tags: true },
+        select: { domain: true, subjectArea: true, tags: true },
       });
 
       const subjectsSet = new Set<string>();
