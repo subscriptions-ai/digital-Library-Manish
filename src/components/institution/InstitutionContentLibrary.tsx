@@ -67,18 +67,14 @@ export function InstitutionContentLibrary() {
       .finally(() => setSubsLoading(false));
   }, []);
 
-  // Fetch dynamic filters when domain changes
+  // Fetch dynamic filters when domain changes (fetches all if empty)
   useEffect(() => {
-    if (filterDomain) {
-      fetch(`/api/content/filters?domain=${encodeURIComponent(filterDomain)}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      })
-        .then(r => r.json())
-        .then(data => setAvailableFilters(data))
-        .catch(() => {});
-    } else {
-      setAvailableFilters({ subjects: [], tags: [] });
-    }
+    fetch(`/api/content/filters?domain=${encodeURIComponent(filterDomain)}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    })
+      .then(r => r.json())
+      .then(data => setAvailableFilters(data))
+      .catch(() => {});
     setFilterSubject('');
     setFilterTag('');
   }, [filterDomain]);

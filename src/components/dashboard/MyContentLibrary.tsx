@@ -29,16 +29,14 @@ export function MyContentLibrary() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Fetch dynamic filters based on URL domain
+  // Fetch dynamic filters based on URL domain (fetches all if empty)
   useEffect(() => {
-    if (domain) {
-      fetch(`/api/content/filters?domain=${encodeURIComponent(domain)}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      })
-        .then(r => r.json())
-        .then(data => setAvailableFilters(data))
-        .catch(() => {});
-    }
+    fetch(`/api/content/filters?domain=${encodeURIComponent(domain)}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+      .then(r => r.json())
+      .then(data => setAvailableFilters(data))
+      .catch(() => {});
   }, [domain]);
 
   useEffect(() => {
