@@ -10,9 +10,10 @@ export function ExtractionDashboard() {
   
   // Job Creation State
   const [newJobName, setNewJobName] = useState('');
-  const [sourceType, setSourceType] = useState('Manual');
+  const [sourceType, setSourceType] = useState('OpenAccess');
   const [targetDomain, setTargetDomain] = useState('');
   const [manualUrls, setManualUrls] = useState('');
+  const [searchTopic, setSearchTopic] = useState('');
 
   const fetchJobs = () => {
     fetch('/api/admin/extraction/jobs', {
@@ -45,38 +46,43 @@ export function ExtractionDashboard() {
     }
     
     try {
-      const urls = manualUrls.split('\n').map(u => u.trim()).filter(Boolean);
+      const reqBody: any = {
+        name: newJobName,
+        sourceType,
+        targetDomain: targetDomain || null,
+      };
+
+      if (sourceType === 'Manual') {
+        reqBody.sourceConfig = { urls: manualUrls.split('\n').map(u => u.trim()).filter(Boolean) };
+      } else if (sourceType === 'OpenAccess') {
+        if (!searchTopic.trim()) return toast.error("Please enter a search topic");
+        reqBody.sourceConfig = { searchTopic };
+      }
+
       const res = await fetch('/api/admin/extraction/jobs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({
-          name: newJobName,
-          sourceType,
-          targetDomain: targetDomain || null,
-          sourceConfig: { urls }
-        })
+        body: JSON.stringify(reqBody)
       });
       
       if (!res.ok) throw new Error("Failed to create job");
       
       const newJob = await res.json();
       
-      // Auto-start the job for Manual URL batch
-      if (sourceType === 'Manual') {
+      // Auto-start the job
+      if (sourceType === 'Manual' || sourceType === 'OpenAccess') {
         const startRes = await fetch(`/api/admin/extraction/jobs/${newJob.id}/start`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
-          body: JSON.stringify({
-            items: urls.map(url => ({ url }))
-          })
+          body: JSON.stringify(sourceType === 'Manual' ? { items: manualUrls.split('\n').map(u => u.trim()).filter(Boolean).map(url => ({ url })) } : {})
         });
-        if (startRes.ok) toast.success("Job created and started!");
+        if (startRes.ok) toast.success("Job created and Auto-Discovery started!");
         else toast.success("Job created, but failed to start automatically");
       } else {
         toast.success("Extraction job created");
@@ -85,6 +91,7 @@ export function ExtractionDashboard() {
       setIsCreating(false);
       setNewJobName('');
       setManualUrls('');
+      setSearchTopic('');
       fetchJobs();
     } catch (err) {
       toast.error("Error creating job");
@@ -135,6 +142,7 @@ export function ExtractionDashboard() {
                   onChange={e => setSourceType(e.target.value)}
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
                 >
+                  <option value="OpenAccess">Open Access Auto-Discovery (Internet API)</option>
                   <option value="Manual">Manual URL Batch</option>
                   <option value="OJS" disabled>OJS Integration (Coming Soon)</option>
                   <option value="CSV" disabled>CSV AI Enrichment (Coming Soon)</option>
@@ -156,6 +164,21 @@ export function ExtractionDashboard() {
                 </select>
               </div>
             </div>
+
+            {sourceType === 'OpenAccess' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Search Topic (e.g. "Cardiology", "Quantum Physics")</label>
+                <input
+                  type="text"
+                  required
+                  value={searchTopic}
+                  onChange={e => setSearchTopic(e.target.value)}
+                  placeholder="What open access PDFs should we find?"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
+                />
+                <p className="text-xs text-slate-500 mt-2">We will automatically scan global open access databases for real, valid PDFs matching this query.</p>
+              </div>
+            )}
 
             {sourceType === 'Manual' && (
               <div>

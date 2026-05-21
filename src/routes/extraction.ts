@@ -61,11 +61,10 @@ export function setupExtractionRoutes(app: any, authenticateJWT: any, requireSup
     }
   });
 
-  // Basic implementation of Manual Batch processing
-  // This will eventually be moved to a background worker
+  // Start job
   app.post("/api/admin/extraction/jobs/:id/start", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      const { items } = req.body; // Array of raw URLs or items for manual batch
+      let { items } = req.body; 
       const jobId = req.params.id;
       
       const job = await prisma.extractionJob.findUnique({ where: { id: jobId } });
@@ -76,10 +75,42 @@ export function setupExtractionRoutes(app: any, authenticateJWT: any, requireSup
         data: { status: "Running", startedAt: new Date() }
       });
       
-      // Start processing asynchronously so we don't block the request
-      processJobItems(job, items).catch(console.error);
+      if (job.sourceType === 'OpenAccess') {
+        const query = (job.sourceConfig as any)?.searchTopic || job.targetDomain || "Science";
+        try {
+          const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=10`);
+          const data = await fetchRes.json();
+          items = [];
+          if (data && data.resultList && data.resultList.result) {
+            for (const result of data.resultList.result) {
+              const urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.documentStyle === 'pdf');
+              if (urlInfo && urlInfo.url) {
+                items.push({
+                  url: urlInfo.url,
+                  title: result.title,
+                  authors: result.authorString,
+                  description: result.abstractText || ""
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error("OpenAccess Discovery Error:", err);
+        }
+      }
       
-      res.json({ success: true, message: "Job started in background" });
+      // Start processing asynchronously so we don't block the request
+      if (items && items.length > 0) {
+        processJobItems(job, items).catch(console.error);
+        res.json({ success: true, message: `Job started in background with ${items.length} discovered items.` });
+      } else {
+        await prisma.extractionJob.update({
+          where: { id: jobId },
+          data: { status: "Failed", completedAt: new Date(), errorLog: [{ error: "No items discovered" }] }
+        });
+        res.json({ success: false, message: "No open access items discovered for this query." });
+      }
+      
     } catch (error) {
       res.status(500).json({ error: "Failed to start job" });
     }
