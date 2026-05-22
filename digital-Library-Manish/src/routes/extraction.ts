@@ -105,8 +105,14 @@ async function runMassExtraction(job: any) {
       
       for (const result of results) {
         try {
-          const urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.documentStyle === 'pdf');
-          if (!urlInfo || !urlInfo.url) continue; // Skip if no PDF
+          // Prefer Europe_PMC site because PubMedCentral often blocks proxy downloads
+          let urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.documentStyle === 'pdf' && u.site === 'Europe_PMC');
+          if (!urlInfo) {
+            urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.documentStyle === 'pdf');
+          }
+          if (!urlInfo || !urlInfo.url) {
+            failed++; processed++; continue;
+          }
 
           const title = result.title || "Untitled";
           const authors = result.authorString || "Unknown";
@@ -132,6 +138,23 @@ async function runMassExtraction(job: any) {
               data: { fingerprint, status: "Duplicate" }
             });
             duplicates++;
+            processed++;
+            continue;
+          }
+          
+          // 3. Validation Check (ensure PDF viewer supports it)
+          const validation = await validateContentUrl(urlInfo.url, 'application/pdf');
+          if (!validation.isValid) {
+            await prisma.extractionItem.update({
+              where: { id: item.id },
+              data: { 
+                fingerprint, 
+                status: "Failed", 
+                errorMessage: validation.errors?.join(', ') || "Validation failed",
+                validationResult: validation as any 
+              }
+            });
+            failed++;
             processed++;
             continue;
           }
