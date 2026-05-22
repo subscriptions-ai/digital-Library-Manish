@@ -19,7 +19,7 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Global Cache Buster to guarantee new layer mapping on broken Coolify machines
-ENV CACHE_BUSTER="2026-05-08T10-56-00-REBUILD"
+ENV CACHE_BUSTER="2026-05-22T16-43-00-REBUILD"
 ENV NODE_ENV=production
 
 # Copy package files and install PRODUCTION-only dependencies
@@ -37,12 +37,12 @@ COPY public/ ./public/
 RUN npx prisma@6.19.3 generate
 
 # Cache buster to bypass BuildKit mount locks on Coolify
-ENV CACHE_BUSTER="2026-05-08T17-25-00-REDEPLOY"
+ENV CACHE_BUSTER="2026-05-22T16-43-00-REDEPLOY"
 
 # Expose the port (default 3000, overridable via PORT env var)
 EXPOSE 3000
 
-LABEL deployment.id="2026-05-08T14-02-00-LOGO"
+LABEL deployment.id="2026-05-22T16-43-00-LOGO"
 
 # Run DB schema sync then start the server using the compiled CJS file
 CMD ["npm", "start"]
