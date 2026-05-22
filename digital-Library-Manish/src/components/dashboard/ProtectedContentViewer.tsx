@@ -231,8 +231,7 @@ export function ProtectedContentViewer() {
     let isMounted = true;
     if (!content?.url) return;
     const url: string = content.url;
-    const urlPath = url.split('?')[0].toLowerCase();
-    const isPdf = urlPath.endsWith('.pdf') || urlPath.endsWith('/pdf') || urlPath.includes('.pdf') || content.contentType?.toLowerCase().includes('pdf');
+    const isPdf = url.toLowerCase().includes('pdf') || url.toLowerCase().includes('europepmc') || content.contentType?.toLowerCase().includes('pdf');
     if (!isPdf) return; // video handled separately
 
     setLoadingPdf(true);
@@ -380,8 +379,7 @@ export function ProtectedContentViewer() {
     );
   }
 
-  const urlPath = (content?.url || '').split('?')[0].toLowerCase();
-  const isPdf = urlPath.endsWith('.pdf') || urlPath.endsWith('/pdf') || urlPath.includes('.pdf');
+  const isPdf = content?.url?.toLowerCase().includes('pdf') || content?.url?.toLowerCase().includes('europepmc') || content?.contentType?.toLowerCase().includes('pdf');
   const isVideo = content?.url?.toLowerCase().match(/\.(mp4|webm|ogg)$/i);
 
   // ────────────────────────────────────────────────────
