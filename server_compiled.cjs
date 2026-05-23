@@ -4,6 +4,16 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __commonJS = (cb, mod) => function __require() {
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
@@ -21,6 +31,6493 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// node_modules/data-uri-to-buffer/dist/index.js
+function dataUriToBuffer(uri) {
+  if (!/^data:/i.test(uri)) {
+    throw new TypeError('`uri` does not appear to be a Data URI (must begin with "data:")');
+  }
+  uri = uri.replace(/\r?\n/g, "");
+  const firstComma = uri.indexOf(",");
+  if (firstComma === -1 || firstComma <= 4) {
+    throw new TypeError("malformed data: URI");
+  }
+  const meta = uri.substring(5, firstComma).split(";");
+  let charset = "";
+  let base64 = false;
+  const type = meta[0] || "text/plain";
+  let typeFull = type;
+  for (let i2 = 1; i2 < meta.length; i2++) {
+    if (meta[i2] === "base64") {
+      base64 = true;
+    } else if (meta[i2]) {
+      typeFull += `;${meta[i2]}`;
+      if (meta[i2].indexOf("charset=") === 0) {
+        charset = meta[i2].substring(8);
+      }
+    }
+  }
+  if (!meta[0] && !charset.length) {
+    typeFull += ";charset=US-ASCII";
+    charset = "US-ASCII";
+  }
+  const encoding = base64 ? "base64" : "ascii";
+  const data = unescape(uri.substring(firstComma + 1));
+  const buffer = Buffer.from(data, encoding);
+  buffer.type = type;
+  buffer.typeFull = typeFull;
+  buffer.charset = charset;
+  return buffer;
+}
+var dist_default;
+var init_dist = __esm({
+  "node_modules/data-uri-to-buffer/dist/index.js"() {
+    dist_default = dataUriToBuffer;
+  }
+});
+
+// node_modules/web-streams-polyfill/dist/ponyfill.es2018.js
+var require_ponyfill_es2018 = __commonJS({
+  "node_modules/web-streams-polyfill/dist/ponyfill.es2018.js"(exports2, module2) {
+    (function(global2, factory) {
+      typeof exports2 === "object" && typeof module2 !== "undefined" ? factory(exports2) : typeof define === "function" && define.amd ? define(["exports"], factory) : (global2 = typeof globalThis !== "undefined" ? globalThis : global2 || self, factory(global2.WebStreamsPolyfill = {}));
+    })(exports2, (function(exports3) {
+      "use strict";
+      function noop2() {
+        return void 0;
+      }
+      function typeIsObject(x2) {
+        return typeof x2 === "object" && x2 !== null || typeof x2 === "function";
+      }
+      const rethrowAssertionErrorRejection = noop2;
+      function setFunctionName(fn, name) {
+        try {
+          Object.defineProperty(fn, "name", {
+            value: name,
+            configurable: true
+          });
+        } catch (_a2) {
+        }
+      }
+      const originalPromise = Promise;
+      const originalPromiseThen = Promise.prototype.then;
+      const originalPromiseReject = Promise.reject.bind(originalPromise);
+      function newPromise(executor) {
+        return new originalPromise(executor);
+      }
+      function promiseResolvedWith(value) {
+        return newPromise((resolve) => resolve(value));
+      }
+      function promiseRejectedWith(reason) {
+        return originalPromiseReject(reason);
+      }
+      function PerformPromiseThen(promise, onFulfilled, onRejected) {
+        return originalPromiseThen.call(promise, onFulfilled, onRejected);
+      }
+      function uponPromise(promise, onFulfilled, onRejected) {
+        PerformPromiseThen(PerformPromiseThen(promise, onFulfilled, onRejected), void 0, rethrowAssertionErrorRejection);
+      }
+      function uponFulfillment(promise, onFulfilled) {
+        uponPromise(promise, onFulfilled);
+      }
+      function uponRejection(promise, onRejected) {
+        uponPromise(promise, void 0, onRejected);
+      }
+      function transformPromiseWith(promise, fulfillmentHandler, rejectionHandler) {
+        return PerformPromiseThen(promise, fulfillmentHandler, rejectionHandler);
+      }
+      function setPromiseIsHandledToTrue(promise) {
+        PerformPromiseThen(promise, void 0, rethrowAssertionErrorRejection);
+      }
+      let _queueMicrotask = (callback) => {
+        if (typeof queueMicrotask === "function") {
+          _queueMicrotask = queueMicrotask;
+        } else {
+          const resolvedPromise = promiseResolvedWith(void 0);
+          _queueMicrotask = (cb) => PerformPromiseThen(resolvedPromise, cb);
+        }
+        return _queueMicrotask(callback);
+      };
+      function reflectCall(F2, V, args) {
+        if (typeof F2 !== "function") {
+          throw new TypeError("Argument is not a function");
+        }
+        return Function.prototype.apply.call(F2, V, args);
+      }
+      function promiseCall(F2, V, args) {
+        try {
+          return promiseResolvedWith(reflectCall(F2, V, args));
+        } catch (value) {
+          return promiseRejectedWith(value);
+        }
+      }
+      const QUEUE_MAX_ARRAY_SIZE = 16384;
+      class SimpleQueue {
+        constructor() {
+          this._cursor = 0;
+          this._size = 0;
+          this._front = {
+            _elements: [],
+            _next: void 0
+          };
+          this._back = this._front;
+          this._cursor = 0;
+          this._size = 0;
+        }
+        get length() {
+          return this._size;
+        }
+        // For exception safety, this method is structured in order:
+        // 1. Read state
+        // 2. Calculate required state mutations
+        // 3. Perform state mutations
+        push(element) {
+          const oldBack = this._back;
+          let newBack = oldBack;
+          if (oldBack._elements.length === QUEUE_MAX_ARRAY_SIZE - 1) {
+            newBack = {
+              _elements: [],
+              _next: void 0
+            };
+          }
+          oldBack._elements.push(element);
+          if (newBack !== oldBack) {
+            this._back = newBack;
+            oldBack._next = newBack;
+          }
+          ++this._size;
+        }
+        // Like push(), shift() follows the read -> calculate -> mutate pattern for
+        // exception safety.
+        shift() {
+          const oldFront = this._front;
+          let newFront = oldFront;
+          const oldCursor = this._cursor;
+          let newCursor = oldCursor + 1;
+          const elements = oldFront._elements;
+          const element = elements[oldCursor];
+          if (newCursor === QUEUE_MAX_ARRAY_SIZE) {
+            newFront = oldFront._next;
+            newCursor = 0;
+          }
+          --this._size;
+          this._cursor = newCursor;
+          if (oldFront !== newFront) {
+            this._front = newFront;
+          }
+          elements[oldCursor] = void 0;
+          return element;
+        }
+        // The tricky thing about forEach() is that it can be called
+        // re-entrantly. The queue may be mutated inside the callback. It is easy to
+        // see that push() within the callback has no negative effects since the end
+        // of the queue is checked for on every iteration. If shift() is called
+        // repeatedly within the callback then the next iteration may return an
+        // element that has been removed. In this case the callback will be called
+        // with undefined values until we either "catch up" with elements that still
+        // exist or reach the back of the queue.
+        forEach(callback) {
+          let i2 = this._cursor;
+          let node = this._front;
+          let elements = node._elements;
+          while (i2 !== elements.length || node._next !== void 0) {
+            if (i2 === elements.length) {
+              node = node._next;
+              elements = node._elements;
+              i2 = 0;
+              if (elements.length === 0) {
+                break;
+              }
+            }
+            callback(elements[i2]);
+            ++i2;
+          }
+        }
+        // Return the element that would be returned if shift() was called now,
+        // without modifying the queue.
+        peek() {
+          const front = this._front;
+          const cursor = this._cursor;
+          return front._elements[cursor];
+        }
+      }
+      const AbortSteps = /* @__PURE__ */ Symbol("[[AbortSteps]]");
+      const ErrorSteps = /* @__PURE__ */ Symbol("[[ErrorSteps]]");
+      const CancelSteps = /* @__PURE__ */ Symbol("[[CancelSteps]]");
+      const PullSteps = /* @__PURE__ */ Symbol("[[PullSteps]]");
+      const ReleaseSteps = /* @__PURE__ */ Symbol("[[ReleaseSteps]]");
+      function ReadableStreamReaderGenericInitialize(reader, stream) {
+        reader._ownerReadableStream = stream;
+        stream._reader = reader;
+        if (stream._state === "readable") {
+          defaultReaderClosedPromiseInitialize(reader);
+        } else if (stream._state === "closed") {
+          defaultReaderClosedPromiseInitializeAsResolved(reader);
+        } else {
+          defaultReaderClosedPromiseInitializeAsRejected(reader, stream._storedError);
+        }
+      }
+      function ReadableStreamReaderGenericCancel(reader, reason) {
+        const stream = reader._ownerReadableStream;
+        return ReadableStreamCancel(stream, reason);
+      }
+      function ReadableStreamReaderGenericRelease(reader) {
+        const stream = reader._ownerReadableStream;
+        if (stream._state === "readable") {
+          defaultReaderClosedPromiseReject(reader, new TypeError(`Reader was released and can no longer be used to monitor the stream's closedness`));
+        } else {
+          defaultReaderClosedPromiseResetToRejected(reader, new TypeError(`Reader was released and can no longer be used to monitor the stream's closedness`));
+        }
+        stream._readableStreamController[ReleaseSteps]();
+        stream._reader = void 0;
+        reader._ownerReadableStream = void 0;
+      }
+      function readerLockException(name) {
+        return new TypeError("Cannot " + name + " a stream using a released reader");
+      }
+      function defaultReaderClosedPromiseInitialize(reader) {
+        reader._closedPromise = newPromise((resolve, reject) => {
+          reader._closedPromise_resolve = resolve;
+          reader._closedPromise_reject = reject;
+        });
+      }
+      function defaultReaderClosedPromiseInitializeAsRejected(reader, reason) {
+        defaultReaderClosedPromiseInitialize(reader);
+        defaultReaderClosedPromiseReject(reader, reason);
+      }
+      function defaultReaderClosedPromiseInitializeAsResolved(reader) {
+        defaultReaderClosedPromiseInitialize(reader);
+        defaultReaderClosedPromiseResolve(reader);
+      }
+      function defaultReaderClosedPromiseReject(reader, reason) {
+        if (reader._closedPromise_reject === void 0) {
+          return;
+        }
+        setPromiseIsHandledToTrue(reader._closedPromise);
+        reader._closedPromise_reject(reason);
+        reader._closedPromise_resolve = void 0;
+        reader._closedPromise_reject = void 0;
+      }
+      function defaultReaderClosedPromiseResetToRejected(reader, reason) {
+        defaultReaderClosedPromiseInitializeAsRejected(reader, reason);
+      }
+      function defaultReaderClosedPromiseResolve(reader) {
+        if (reader._closedPromise_resolve === void 0) {
+          return;
+        }
+        reader._closedPromise_resolve(void 0);
+        reader._closedPromise_resolve = void 0;
+        reader._closedPromise_reject = void 0;
+      }
+      const NumberIsFinite = Number.isFinite || function(x2) {
+        return typeof x2 === "number" && isFinite(x2);
+      };
+      const MathTrunc = Math.trunc || function(v) {
+        return v < 0 ? Math.ceil(v) : Math.floor(v);
+      };
+      function isDictionary(x2) {
+        return typeof x2 === "object" || typeof x2 === "function";
+      }
+      function assertDictionary(obj, context) {
+        if (obj !== void 0 && !isDictionary(obj)) {
+          throw new TypeError(`${context} is not an object.`);
+        }
+      }
+      function assertFunction(x2, context) {
+        if (typeof x2 !== "function") {
+          throw new TypeError(`${context} is not a function.`);
+        }
+      }
+      function isObject(x2) {
+        return typeof x2 === "object" && x2 !== null || typeof x2 === "function";
+      }
+      function assertObject(x2, context) {
+        if (!isObject(x2)) {
+          throw new TypeError(`${context} is not an object.`);
+        }
+      }
+      function assertRequiredArgument(x2, position, context) {
+        if (x2 === void 0) {
+          throw new TypeError(`Parameter ${position} is required in '${context}'.`);
+        }
+      }
+      function assertRequiredField(x2, field, context) {
+        if (x2 === void 0) {
+          throw new TypeError(`${field} is required in '${context}'.`);
+        }
+      }
+      function convertUnrestrictedDouble(value) {
+        return Number(value);
+      }
+      function censorNegativeZero(x2) {
+        return x2 === 0 ? 0 : x2;
+      }
+      function integerPart(x2) {
+        return censorNegativeZero(MathTrunc(x2));
+      }
+      function convertUnsignedLongLongWithEnforceRange(value, context) {
+        const lowerBound = 0;
+        const upperBound = Number.MAX_SAFE_INTEGER;
+        let x2 = Number(value);
+        x2 = censorNegativeZero(x2);
+        if (!NumberIsFinite(x2)) {
+          throw new TypeError(`${context} is not a finite number`);
+        }
+        x2 = integerPart(x2);
+        if (x2 < lowerBound || x2 > upperBound) {
+          throw new TypeError(`${context} is outside the accepted range of ${lowerBound} to ${upperBound}, inclusive`);
+        }
+        if (!NumberIsFinite(x2) || x2 === 0) {
+          return 0;
+        }
+        return x2;
+      }
+      function assertReadableStream(x2, context) {
+        if (!IsReadableStream(x2)) {
+          throw new TypeError(`${context} is not a ReadableStream.`);
+        }
+      }
+      function AcquireReadableStreamDefaultReader(stream) {
+        return new ReadableStreamDefaultReader(stream);
+      }
+      function ReadableStreamAddReadRequest(stream, readRequest) {
+        stream._reader._readRequests.push(readRequest);
+      }
+      function ReadableStreamFulfillReadRequest(stream, chunk, done) {
+        const reader = stream._reader;
+        const readRequest = reader._readRequests.shift();
+        if (done) {
+          readRequest._closeSteps();
+        } else {
+          readRequest._chunkSteps(chunk);
+        }
+      }
+      function ReadableStreamGetNumReadRequests(stream) {
+        return stream._reader._readRequests.length;
+      }
+      function ReadableStreamHasDefaultReader(stream) {
+        const reader = stream._reader;
+        if (reader === void 0) {
+          return false;
+        }
+        if (!IsReadableStreamDefaultReader(reader)) {
+          return false;
+        }
+        return true;
+      }
+      class ReadableStreamDefaultReader {
+        constructor(stream) {
+          assertRequiredArgument(stream, 1, "ReadableStreamDefaultReader");
+          assertReadableStream(stream, "First parameter");
+          if (IsReadableStreamLocked(stream)) {
+            throw new TypeError("This stream has already been locked for exclusive reading by another reader");
+          }
+          ReadableStreamReaderGenericInitialize(this, stream);
+          this._readRequests = new SimpleQueue();
+        }
+        /**
+         * Returns a promise that will be fulfilled when the stream becomes closed,
+         * or rejected if the stream ever errors or the reader's lock is released before the stream finishes closing.
+         */
+        get closed() {
+          if (!IsReadableStreamDefaultReader(this)) {
+            return promiseRejectedWith(defaultReaderBrandCheckException("closed"));
+          }
+          return this._closedPromise;
+        }
+        /**
+         * If the reader is active, behaves the same as {@link ReadableStream.cancel | stream.cancel(reason)}.
+         */
+        cancel(reason = void 0) {
+          if (!IsReadableStreamDefaultReader(this)) {
+            return promiseRejectedWith(defaultReaderBrandCheckException("cancel"));
+          }
+          if (this._ownerReadableStream === void 0) {
+            return promiseRejectedWith(readerLockException("cancel"));
+          }
+          return ReadableStreamReaderGenericCancel(this, reason);
+        }
+        /**
+         * Returns a promise that allows access to the next chunk from the stream's internal queue, if available.
+         *
+         * If reading a chunk causes the queue to become empty, more data will be pulled from the underlying source.
+         */
+        read() {
+          if (!IsReadableStreamDefaultReader(this)) {
+            return promiseRejectedWith(defaultReaderBrandCheckException("read"));
+          }
+          if (this._ownerReadableStream === void 0) {
+            return promiseRejectedWith(readerLockException("read from"));
+          }
+          let resolvePromise;
+          let rejectPromise;
+          const promise = newPromise((resolve, reject) => {
+            resolvePromise = resolve;
+            rejectPromise = reject;
+          });
+          const readRequest = {
+            _chunkSteps: (chunk) => resolvePromise({ value: chunk, done: false }),
+            _closeSteps: () => resolvePromise({ value: void 0, done: true }),
+            _errorSteps: (e2) => rejectPromise(e2)
+          };
+          ReadableStreamDefaultReaderRead(this, readRequest);
+          return promise;
+        }
+        /**
+         * Releases the reader's lock on the corresponding stream. After the lock is released, the reader is no longer active.
+         * If the associated stream is errored when the lock is released, the reader will appear errored in the same way
+         * from now on; otherwise, the reader will appear closed.
+         *
+         * A reader's lock cannot be released while it still has a pending read request, i.e., if a promise returned by
+         * the reader's {@link ReadableStreamDefaultReader.read | read()} method has not yet been settled. Attempting to
+         * do so will throw a `TypeError` and leave the reader locked to the stream.
+         */
+        releaseLock() {
+          if (!IsReadableStreamDefaultReader(this)) {
+            throw defaultReaderBrandCheckException("releaseLock");
+          }
+          if (this._ownerReadableStream === void 0) {
+            return;
+          }
+          ReadableStreamDefaultReaderRelease(this);
+        }
+      }
+      Object.defineProperties(ReadableStreamDefaultReader.prototype, {
+        cancel: { enumerable: true },
+        read: { enumerable: true },
+        releaseLock: { enumerable: true },
+        closed: { enumerable: true }
+      });
+      setFunctionName(ReadableStreamDefaultReader.prototype.cancel, "cancel");
+      setFunctionName(ReadableStreamDefaultReader.prototype.read, "read");
+      setFunctionName(ReadableStreamDefaultReader.prototype.releaseLock, "releaseLock");
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(ReadableStreamDefaultReader.prototype, Symbol.toStringTag, {
+          value: "ReadableStreamDefaultReader",
+          configurable: true
+        });
+      }
+      function IsReadableStreamDefaultReader(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_readRequests")) {
+          return false;
+        }
+        return x2 instanceof ReadableStreamDefaultReader;
+      }
+      function ReadableStreamDefaultReaderRead(reader, readRequest) {
+        const stream = reader._ownerReadableStream;
+        stream._disturbed = true;
+        if (stream._state === "closed") {
+          readRequest._closeSteps();
+        } else if (stream._state === "errored") {
+          readRequest._errorSteps(stream._storedError);
+        } else {
+          stream._readableStreamController[PullSteps](readRequest);
+        }
+      }
+      function ReadableStreamDefaultReaderRelease(reader) {
+        ReadableStreamReaderGenericRelease(reader);
+        const e2 = new TypeError("Reader was released");
+        ReadableStreamDefaultReaderErrorReadRequests(reader, e2);
+      }
+      function ReadableStreamDefaultReaderErrorReadRequests(reader, e2) {
+        const readRequests = reader._readRequests;
+        reader._readRequests = new SimpleQueue();
+        readRequests.forEach((readRequest) => {
+          readRequest._errorSteps(e2);
+        });
+      }
+      function defaultReaderBrandCheckException(name) {
+        return new TypeError(`ReadableStreamDefaultReader.prototype.${name} can only be used on a ReadableStreamDefaultReader`);
+      }
+      const AsyncIteratorPrototype = Object.getPrototypeOf(Object.getPrototypeOf(async function* () {
+      }).prototype);
+      class ReadableStreamAsyncIteratorImpl {
+        constructor(reader, preventCancel) {
+          this._ongoingPromise = void 0;
+          this._isFinished = false;
+          this._reader = reader;
+          this._preventCancel = preventCancel;
+        }
+        next() {
+          const nextSteps = () => this._nextSteps();
+          this._ongoingPromise = this._ongoingPromise ? transformPromiseWith(this._ongoingPromise, nextSteps, nextSteps) : nextSteps();
+          return this._ongoingPromise;
+        }
+        return(value) {
+          const returnSteps = () => this._returnSteps(value);
+          return this._ongoingPromise ? transformPromiseWith(this._ongoingPromise, returnSteps, returnSteps) : returnSteps();
+        }
+        _nextSteps() {
+          if (this._isFinished) {
+            return Promise.resolve({ value: void 0, done: true });
+          }
+          const reader = this._reader;
+          let resolvePromise;
+          let rejectPromise;
+          const promise = newPromise((resolve, reject) => {
+            resolvePromise = resolve;
+            rejectPromise = reject;
+          });
+          const readRequest = {
+            _chunkSteps: (chunk) => {
+              this._ongoingPromise = void 0;
+              _queueMicrotask(() => resolvePromise({ value: chunk, done: false }));
+            },
+            _closeSteps: () => {
+              this._ongoingPromise = void 0;
+              this._isFinished = true;
+              ReadableStreamReaderGenericRelease(reader);
+              resolvePromise({ value: void 0, done: true });
+            },
+            _errorSteps: (reason) => {
+              this._ongoingPromise = void 0;
+              this._isFinished = true;
+              ReadableStreamReaderGenericRelease(reader);
+              rejectPromise(reason);
+            }
+          };
+          ReadableStreamDefaultReaderRead(reader, readRequest);
+          return promise;
+        }
+        _returnSteps(value) {
+          if (this._isFinished) {
+            return Promise.resolve({ value, done: true });
+          }
+          this._isFinished = true;
+          const reader = this._reader;
+          if (!this._preventCancel) {
+            const result = ReadableStreamReaderGenericCancel(reader, value);
+            ReadableStreamReaderGenericRelease(reader);
+            return transformPromiseWith(result, () => ({ value, done: true }));
+          }
+          ReadableStreamReaderGenericRelease(reader);
+          return promiseResolvedWith({ value, done: true });
+        }
+      }
+      const ReadableStreamAsyncIteratorPrototype = {
+        next() {
+          if (!IsReadableStreamAsyncIterator(this)) {
+            return promiseRejectedWith(streamAsyncIteratorBrandCheckException("next"));
+          }
+          return this._asyncIteratorImpl.next();
+        },
+        return(value) {
+          if (!IsReadableStreamAsyncIterator(this)) {
+            return promiseRejectedWith(streamAsyncIteratorBrandCheckException("return"));
+          }
+          return this._asyncIteratorImpl.return(value);
+        }
+      };
+      Object.setPrototypeOf(ReadableStreamAsyncIteratorPrototype, AsyncIteratorPrototype);
+      function AcquireReadableStreamAsyncIterator(stream, preventCancel) {
+        const reader = AcquireReadableStreamDefaultReader(stream);
+        const impl = new ReadableStreamAsyncIteratorImpl(reader, preventCancel);
+        const iterator = Object.create(ReadableStreamAsyncIteratorPrototype);
+        iterator._asyncIteratorImpl = impl;
+        return iterator;
+      }
+      function IsReadableStreamAsyncIterator(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_asyncIteratorImpl")) {
+          return false;
+        }
+        try {
+          return x2._asyncIteratorImpl instanceof ReadableStreamAsyncIteratorImpl;
+        } catch (_a2) {
+          return false;
+        }
+      }
+      function streamAsyncIteratorBrandCheckException(name) {
+        return new TypeError(`ReadableStreamAsyncIterator.${name} can only be used on a ReadableSteamAsyncIterator`);
+      }
+      const NumberIsNaN = Number.isNaN || function(x2) {
+        return x2 !== x2;
+      };
+      var _a, _b, _c;
+      function CreateArrayFromList(elements) {
+        return elements.slice();
+      }
+      function CopyDataBlockBytes(dest, destOffset, src, srcOffset, n) {
+        new Uint8Array(dest).set(new Uint8Array(src, srcOffset, n), destOffset);
+      }
+      let TransferArrayBuffer = (O) => {
+        if (typeof O.transfer === "function") {
+          TransferArrayBuffer = (buffer) => buffer.transfer();
+        } else if (typeof structuredClone === "function") {
+          TransferArrayBuffer = (buffer) => structuredClone(buffer, { transfer: [buffer] });
+        } else {
+          TransferArrayBuffer = (buffer) => buffer;
+        }
+        return TransferArrayBuffer(O);
+      };
+      let IsDetachedBuffer = (O) => {
+        if (typeof O.detached === "boolean") {
+          IsDetachedBuffer = (buffer) => buffer.detached;
+        } else {
+          IsDetachedBuffer = (buffer) => buffer.byteLength === 0;
+        }
+        return IsDetachedBuffer(O);
+      };
+      function ArrayBufferSlice(buffer, begin, end) {
+        if (buffer.slice) {
+          return buffer.slice(begin, end);
+        }
+        const length = end - begin;
+        const slice = new ArrayBuffer(length);
+        CopyDataBlockBytes(slice, 0, buffer, begin, length);
+        return slice;
+      }
+      function GetMethod(receiver, prop) {
+        const func = receiver[prop];
+        if (func === void 0 || func === null) {
+          return void 0;
+        }
+        if (typeof func !== "function") {
+          throw new TypeError(`${String(prop)} is not a function`);
+        }
+        return func;
+      }
+      function CreateAsyncFromSyncIterator(syncIteratorRecord) {
+        const syncIterable = {
+          [Symbol.iterator]: () => syncIteratorRecord.iterator
+        };
+        const asyncIterator = (async function* () {
+          return yield* syncIterable;
+        })();
+        const nextMethod = asyncIterator.next;
+        return { iterator: asyncIterator, nextMethod, done: false };
+      }
+      const SymbolAsyncIterator = (_c = (_a = Symbol.asyncIterator) !== null && _a !== void 0 ? _a : (_b = Symbol.for) === null || _b === void 0 ? void 0 : _b.call(Symbol, "Symbol.asyncIterator")) !== null && _c !== void 0 ? _c : "@@asyncIterator";
+      function GetIterator(obj, hint = "sync", method) {
+        if (method === void 0) {
+          if (hint === "async") {
+            method = GetMethod(obj, SymbolAsyncIterator);
+            if (method === void 0) {
+              const syncMethod = GetMethod(obj, Symbol.iterator);
+              const syncIteratorRecord = GetIterator(obj, "sync", syncMethod);
+              return CreateAsyncFromSyncIterator(syncIteratorRecord);
+            }
+          } else {
+            method = GetMethod(obj, Symbol.iterator);
+          }
+        }
+        if (method === void 0) {
+          throw new TypeError("The object is not iterable");
+        }
+        const iterator = reflectCall(method, obj, []);
+        if (!typeIsObject(iterator)) {
+          throw new TypeError("The iterator method must return an object");
+        }
+        const nextMethod = iterator.next;
+        return { iterator, nextMethod, done: false };
+      }
+      function IteratorNext(iteratorRecord) {
+        const result = reflectCall(iteratorRecord.nextMethod, iteratorRecord.iterator, []);
+        if (!typeIsObject(result)) {
+          throw new TypeError("The iterator.next() method must return an object");
+        }
+        return result;
+      }
+      function IteratorComplete(iterResult) {
+        return Boolean(iterResult.done);
+      }
+      function IteratorValue(iterResult) {
+        return iterResult.value;
+      }
+      function IsNonNegativeNumber(v) {
+        if (typeof v !== "number") {
+          return false;
+        }
+        if (NumberIsNaN(v)) {
+          return false;
+        }
+        if (v < 0) {
+          return false;
+        }
+        return true;
+      }
+      function CloneAsUint8Array(O) {
+        const buffer = ArrayBufferSlice(O.buffer, O.byteOffset, O.byteOffset + O.byteLength);
+        return new Uint8Array(buffer);
+      }
+      function DequeueValue(container) {
+        const pair = container._queue.shift();
+        container._queueTotalSize -= pair.size;
+        if (container._queueTotalSize < 0) {
+          container._queueTotalSize = 0;
+        }
+        return pair.value;
+      }
+      function EnqueueValueWithSize(container, value, size) {
+        if (!IsNonNegativeNumber(size) || size === Infinity) {
+          throw new RangeError("Size must be a finite, non-NaN, non-negative number.");
+        }
+        container._queue.push({ value, size });
+        container._queueTotalSize += size;
+      }
+      function PeekQueueValue(container) {
+        const pair = container._queue.peek();
+        return pair.value;
+      }
+      function ResetQueue(container) {
+        container._queue = new SimpleQueue();
+        container._queueTotalSize = 0;
+      }
+      function isDataViewConstructor(ctor) {
+        return ctor === DataView;
+      }
+      function isDataView(view) {
+        return isDataViewConstructor(view.constructor);
+      }
+      function arrayBufferViewElementSize(ctor) {
+        if (isDataViewConstructor(ctor)) {
+          return 1;
+        }
+        return ctor.BYTES_PER_ELEMENT;
+      }
+      class ReadableStreamBYOBRequest {
+        constructor() {
+          throw new TypeError("Illegal constructor");
+        }
+        /**
+         * Returns the view for writing in to, or `null` if the BYOB request has already been responded to.
+         */
+        get view() {
+          if (!IsReadableStreamBYOBRequest(this)) {
+            throw byobRequestBrandCheckException("view");
+          }
+          return this._view;
+        }
+        respond(bytesWritten) {
+          if (!IsReadableStreamBYOBRequest(this)) {
+            throw byobRequestBrandCheckException("respond");
+          }
+          assertRequiredArgument(bytesWritten, 1, "respond");
+          bytesWritten = convertUnsignedLongLongWithEnforceRange(bytesWritten, "First parameter");
+          if (this._associatedReadableByteStreamController === void 0) {
+            throw new TypeError("This BYOB request has been invalidated");
+          }
+          if (IsDetachedBuffer(this._view.buffer)) {
+            throw new TypeError(`The BYOB request's buffer has been detached and so cannot be used as a response`);
+          }
+          ReadableByteStreamControllerRespond(this._associatedReadableByteStreamController, bytesWritten);
+        }
+        respondWithNewView(view) {
+          if (!IsReadableStreamBYOBRequest(this)) {
+            throw byobRequestBrandCheckException("respondWithNewView");
+          }
+          assertRequiredArgument(view, 1, "respondWithNewView");
+          if (!ArrayBuffer.isView(view)) {
+            throw new TypeError("You can only respond with array buffer views");
+          }
+          if (this._associatedReadableByteStreamController === void 0) {
+            throw new TypeError("This BYOB request has been invalidated");
+          }
+          if (IsDetachedBuffer(view.buffer)) {
+            throw new TypeError("The given view's buffer has been detached and so cannot be used as a response");
+          }
+          ReadableByteStreamControllerRespondWithNewView(this._associatedReadableByteStreamController, view);
+        }
+      }
+      Object.defineProperties(ReadableStreamBYOBRequest.prototype, {
+        respond: { enumerable: true },
+        respondWithNewView: { enumerable: true },
+        view: { enumerable: true }
+      });
+      setFunctionName(ReadableStreamBYOBRequest.prototype.respond, "respond");
+      setFunctionName(ReadableStreamBYOBRequest.prototype.respondWithNewView, "respondWithNewView");
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(ReadableStreamBYOBRequest.prototype, Symbol.toStringTag, {
+          value: "ReadableStreamBYOBRequest",
+          configurable: true
+        });
+      }
+      class ReadableByteStreamController {
+        constructor() {
+          throw new TypeError("Illegal constructor");
+        }
+        /**
+         * Returns the current BYOB pull request, or `null` if there isn't one.
+         */
+        get byobRequest() {
+          if (!IsReadableByteStreamController(this)) {
+            throw byteStreamControllerBrandCheckException("byobRequest");
+          }
+          return ReadableByteStreamControllerGetBYOBRequest(this);
+        }
+        /**
+         * Returns the desired size to fill the controlled stream's internal queue. It can be negative, if the queue is
+         * over-full. An underlying byte source ought to use this information to determine when and how to apply backpressure.
+         */
+        get desiredSize() {
+          if (!IsReadableByteStreamController(this)) {
+            throw byteStreamControllerBrandCheckException("desiredSize");
+          }
+          return ReadableByteStreamControllerGetDesiredSize(this);
+        }
+        /**
+         * Closes the controlled readable stream. Consumers will still be able to read any previously-enqueued chunks from
+         * the stream, but once those are read, the stream will become closed.
+         */
+        close() {
+          if (!IsReadableByteStreamController(this)) {
+            throw byteStreamControllerBrandCheckException("close");
+          }
+          if (this._closeRequested) {
+            throw new TypeError("The stream has already been closed; do not close it again!");
+          }
+          const state = this._controlledReadableByteStream._state;
+          if (state !== "readable") {
+            throw new TypeError(`The stream (in ${state} state) is not in the readable state and cannot be closed`);
+          }
+          ReadableByteStreamControllerClose(this);
+        }
+        enqueue(chunk) {
+          if (!IsReadableByteStreamController(this)) {
+            throw byteStreamControllerBrandCheckException("enqueue");
+          }
+          assertRequiredArgument(chunk, 1, "enqueue");
+          if (!ArrayBuffer.isView(chunk)) {
+            throw new TypeError("chunk must be an array buffer view");
+          }
+          if (chunk.byteLength === 0) {
+            throw new TypeError("chunk must have non-zero byteLength");
+          }
+          if (chunk.buffer.byteLength === 0) {
+            throw new TypeError(`chunk's buffer must have non-zero byteLength`);
+          }
+          if (this._closeRequested) {
+            throw new TypeError("stream is closed or draining");
+          }
+          const state = this._controlledReadableByteStream._state;
+          if (state !== "readable") {
+            throw new TypeError(`The stream (in ${state} state) is not in the readable state and cannot be enqueued to`);
+          }
+          ReadableByteStreamControllerEnqueue(this, chunk);
+        }
+        /**
+         * Errors the controlled readable stream, making all future interactions with it fail with the given error `e`.
+         */
+        error(e2 = void 0) {
+          if (!IsReadableByteStreamController(this)) {
+            throw byteStreamControllerBrandCheckException("error");
+          }
+          ReadableByteStreamControllerError(this, e2);
+        }
+        /** @internal */
+        [CancelSteps](reason) {
+          ReadableByteStreamControllerClearPendingPullIntos(this);
+          ResetQueue(this);
+          const result = this._cancelAlgorithm(reason);
+          ReadableByteStreamControllerClearAlgorithms(this);
+          return result;
+        }
+        /** @internal */
+        [PullSteps](readRequest) {
+          const stream = this._controlledReadableByteStream;
+          if (this._queueTotalSize > 0) {
+            ReadableByteStreamControllerFillReadRequestFromQueue(this, readRequest);
+            return;
+          }
+          const autoAllocateChunkSize = this._autoAllocateChunkSize;
+          if (autoAllocateChunkSize !== void 0) {
+            let buffer;
+            try {
+              buffer = new ArrayBuffer(autoAllocateChunkSize);
+            } catch (bufferE) {
+              readRequest._errorSteps(bufferE);
+              return;
+            }
+            const pullIntoDescriptor = {
+              buffer,
+              bufferByteLength: autoAllocateChunkSize,
+              byteOffset: 0,
+              byteLength: autoAllocateChunkSize,
+              bytesFilled: 0,
+              minimumFill: 1,
+              elementSize: 1,
+              viewConstructor: Uint8Array,
+              readerType: "default"
+            };
+            this._pendingPullIntos.push(pullIntoDescriptor);
+          }
+          ReadableStreamAddReadRequest(stream, readRequest);
+          ReadableByteStreamControllerCallPullIfNeeded(this);
+        }
+        /** @internal */
+        [ReleaseSteps]() {
+          if (this._pendingPullIntos.length > 0) {
+            const firstPullInto = this._pendingPullIntos.peek();
+            firstPullInto.readerType = "none";
+            this._pendingPullIntos = new SimpleQueue();
+            this._pendingPullIntos.push(firstPullInto);
+          }
+        }
+      }
+      Object.defineProperties(ReadableByteStreamController.prototype, {
+        close: { enumerable: true },
+        enqueue: { enumerable: true },
+        error: { enumerable: true },
+        byobRequest: { enumerable: true },
+        desiredSize: { enumerable: true }
+      });
+      setFunctionName(ReadableByteStreamController.prototype.close, "close");
+      setFunctionName(ReadableByteStreamController.prototype.enqueue, "enqueue");
+      setFunctionName(ReadableByteStreamController.prototype.error, "error");
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(ReadableByteStreamController.prototype, Symbol.toStringTag, {
+          value: "ReadableByteStreamController",
+          configurable: true
+        });
+      }
+      function IsReadableByteStreamController(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_controlledReadableByteStream")) {
+          return false;
+        }
+        return x2 instanceof ReadableByteStreamController;
+      }
+      function IsReadableStreamBYOBRequest(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_associatedReadableByteStreamController")) {
+          return false;
+        }
+        return x2 instanceof ReadableStreamBYOBRequest;
+      }
+      function ReadableByteStreamControllerCallPullIfNeeded(controller) {
+        const shouldPull = ReadableByteStreamControllerShouldCallPull(controller);
+        if (!shouldPull) {
+          return;
+        }
+        if (controller._pulling) {
+          controller._pullAgain = true;
+          return;
+        }
+        controller._pulling = true;
+        const pullPromise = controller._pullAlgorithm();
+        uponPromise(pullPromise, () => {
+          controller._pulling = false;
+          if (controller._pullAgain) {
+            controller._pullAgain = false;
+            ReadableByteStreamControllerCallPullIfNeeded(controller);
+          }
+          return null;
+        }, (e2) => {
+          ReadableByteStreamControllerError(controller, e2);
+          return null;
+        });
+      }
+      function ReadableByteStreamControllerClearPendingPullIntos(controller) {
+        ReadableByteStreamControllerInvalidateBYOBRequest(controller);
+        controller._pendingPullIntos = new SimpleQueue();
+      }
+      function ReadableByteStreamControllerCommitPullIntoDescriptor(stream, pullIntoDescriptor) {
+        let done = false;
+        if (stream._state === "closed") {
+          done = true;
+        }
+        const filledView = ReadableByteStreamControllerConvertPullIntoDescriptor(pullIntoDescriptor);
+        if (pullIntoDescriptor.readerType === "default") {
+          ReadableStreamFulfillReadRequest(stream, filledView, done);
+        } else {
+          ReadableStreamFulfillReadIntoRequest(stream, filledView, done);
+        }
+      }
+      function ReadableByteStreamControllerConvertPullIntoDescriptor(pullIntoDescriptor) {
+        const bytesFilled = pullIntoDescriptor.bytesFilled;
+        const elementSize = pullIntoDescriptor.elementSize;
+        return new pullIntoDescriptor.viewConstructor(pullIntoDescriptor.buffer, pullIntoDescriptor.byteOffset, bytesFilled / elementSize);
+      }
+      function ReadableByteStreamControllerEnqueueChunkToQueue(controller, buffer, byteOffset, byteLength) {
+        controller._queue.push({ buffer, byteOffset, byteLength });
+        controller._queueTotalSize += byteLength;
+      }
+      function ReadableByteStreamControllerEnqueueClonedChunkToQueue(controller, buffer, byteOffset, byteLength) {
+        let clonedChunk;
+        try {
+          clonedChunk = ArrayBufferSlice(buffer, byteOffset, byteOffset + byteLength);
+        } catch (cloneE) {
+          ReadableByteStreamControllerError(controller, cloneE);
+          throw cloneE;
+        }
+        ReadableByteStreamControllerEnqueueChunkToQueue(controller, clonedChunk, 0, byteLength);
+      }
+      function ReadableByteStreamControllerEnqueueDetachedPullIntoToQueue(controller, firstDescriptor) {
+        if (firstDescriptor.bytesFilled > 0) {
+          ReadableByteStreamControllerEnqueueClonedChunkToQueue(controller, firstDescriptor.buffer, firstDescriptor.byteOffset, firstDescriptor.bytesFilled);
+        }
+        ReadableByteStreamControllerShiftPendingPullInto(controller);
+      }
+      function ReadableByteStreamControllerFillPullIntoDescriptorFromQueue(controller, pullIntoDescriptor) {
+        const maxBytesToCopy = Math.min(controller._queueTotalSize, pullIntoDescriptor.byteLength - pullIntoDescriptor.bytesFilled);
+        const maxBytesFilled = pullIntoDescriptor.bytesFilled + maxBytesToCopy;
+        let totalBytesToCopyRemaining = maxBytesToCopy;
+        let ready = false;
+        const remainderBytes = maxBytesFilled % pullIntoDescriptor.elementSize;
+        const maxAlignedBytes = maxBytesFilled - remainderBytes;
+        if (maxAlignedBytes >= pullIntoDescriptor.minimumFill) {
+          totalBytesToCopyRemaining = maxAlignedBytes - pullIntoDescriptor.bytesFilled;
+          ready = true;
+        }
+        const queue = controller._queue;
+        while (totalBytesToCopyRemaining > 0) {
+          const headOfQueue = queue.peek();
+          const bytesToCopy = Math.min(totalBytesToCopyRemaining, headOfQueue.byteLength);
+          const destStart = pullIntoDescriptor.byteOffset + pullIntoDescriptor.bytesFilled;
+          CopyDataBlockBytes(pullIntoDescriptor.buffer, destStart, headOfQueue.buffer, headOfQueue.byteOffset, bytesToCopy);
+          if (headOfQueue.byteLength === bytesToCopy) {
+            queue.shift();
+          } else {
+            headOfQueue.byteOffset += bytesToCopy;
+            headOfQueue.byteLength -= bytesToCopy;
+          }
+          controller._queueTotalSize -= bytesToCopy;
+          ReadableByteStreamControllerFillHeadPullIntoDescriptor(controller, bytesToCopy, pullIntoDescriptor);
+          totalBytesToCopyRemaining -= bytesToCopy;
+        }
+        return ready;
+      }
+      function ReadableByteStreamControllerFillHeadPullIntoDescriptor(controller, size, pullIntoDescriptor) {
+        pullIntoDescriptor.bytesFilled += size;
+      }
+      function ReadableByteStreamControllerHandleQueueDrain(controller) {
+        if (controller._queueTotalSize === 0 && controller._closeRequested) {
+          ReadableByteStreamControllerClearAlgorithms(controller);
+          ReadableStreamClose(controller._controlledReadableByteStream);
+        } else {
+          ReadableByteStreamControllerCallPullIfNeeded(controller);
+        }
+      }
+      function ReadableByteStreamControllerInvalidateBYOBRequest(controller) {
+        if (controller._byobRequest === null) {
+          return;
+        }
+        controller._byobRequest._associatedReadableByteStreamController = void 0;
+        controller._byobRequest._view = null;
+        controller._byobRequest = null;
+      }
+      function ReadableByteStreamControllerProcessPullIntoDescriptorsUsingQueue(controller) {
+        while (controller._pendingPullIntos.length > 0) {
+          if (controller._queueTotalSize === 0) {
+            return;
+          }
+          const pullIntoDescriptor = controller._pendingPullIntos.peek();
+          if (ReadableByteStreamControllerFillPullIntoDescriptorFromQueue(controller, pullIntoDescriptor)) {
+            ReadableByteStreamControllerShiftPendingPullInto(controller);
+            ReadableByteStreamControllerCommitPullIntoDescriptor(controller._controlledReadableByteStream, pullIntoDescriptor);
+          }
+        }
+      }
+      function ReadableByteStreamControllerProcessReadRequestsUsingQueue(controller) {
+        const reader = controller._controlledReadableByteStream._reader;
+        while (reader._readRequests.length > 0) {
+          if (controller._queueTotalSize === 0) {
+            return;
+          }
+          const readRequest = reader._readRequests.shift();
+          ReadableByteStreamControllerFillReadRequestFromQueue(controller, readRequest);
+        }
+      }
+      function ReadableByteStreamControllerPullInto(controller, view, min, readIntoRequest) {
+        const stream = controller._controlledReadableByteStream;
+        const ctor = view.constructor;
+        const elementSize = arrayBufferViewElementSize(ctor);
+        const { byteOffset, byteLength } = view;
+        const minimumFill = min * elementSize;
+        let buffer;
+        try {
+          buffer = TransferArrayBuffer(view.buffer);
+        } catch (e2) {
+          readIntoRequest._errorSteps(e2);
+          return;
+        }
+        const pullIntoDescriptor = {
+          buffer,
+          bufferByteLength: buffer.byteLength,
+          byteOffset,
+          byteLength,
+          bytesFilled: 0,
+          minimumFill,
+          elementSize,
+          viewConstructor: ctor,
+          readerType: "byob"
+        };
+        if (controller._pendingPullIntos.length > 0) {
+          controller._pendingPullIntos.push(pullIntoDescriptor);
+          ReadableStreamAddReadIntoRequest(stream, readIntoRequest);
+          return;
+        }
+        if (stream._state === "closed") {
+          const emptyView = new ctor(pullIntoDescriptor.buffer, pullIntoDescriptor.byteOffset, 0);
+          readIntoRequest._closeSteps(emptyView);
+          return;
+        }
+        if (controller._queueTotalSize > 0) {
+          if (ReadableByteStreamControllerFillPullIntoDescriptorFromQueue(controller, pullIntoDescriptor)) {
+            const filledView = ReadableByteStreamControllerConvertPullIntoDescriptor(pullIntoDescriptor);
+            ReadableByteStreamControllerHandleQueueDrain(controller);
+            readIntoRequest._chunkSteps(filledView);
+            return;
+          }
+          if (controller._closeRequested) {
+            const e2 = new TypeError("Insufficient bytes to fill elements in the given buffer");
+            ReadableByteStreamControllerError(controller, e2);
+            readIntoRequest._errorSteps(e2);
+            return;
+          }
+        }
+        controller._pendingPullIntos.push(pullIntoDescriptor);
+        ReadableStreamAddReadIntoRequest(stream, readIntoRequest);
+        ReadableByteStreamControllerCallPullIfNeeded(controller);
+      }
+      function ReadableByteStreamControllerRespondInClosedState(controller, firstDescriptor) {
+        if (firstDescriptor.readerType === "none") {
+          ReadableByteStreamControllerShiftPendingPullInto(controller);
+        }
+        const stream = controller._controlledReadableByteStream;
+        if (ReadableStreamHasBYOBReader(stream)) {
+          while (ReadableStreamGetNumReadIntoRequests(stream) > 0) {
+            const pullIntoDescriptor = ReadableByteStreamControllerShiftPendingPullInto(controller);
+            ReadableByteStreamControllerCommitPullIntoDescriptor(stream, pullIntoDescriptor);
+          }
+        }
+      }
+      function ReadableByteStreamControllerRespondInReadableState(controller, bytesWritten, pullIntoDescriptor) {
+        ReadableByteStreamControllerFillHeadPullIntoDescriptor(controller, bytesWritten, pullIntoDescriptor);
+        if (pullIntoDescriptor.readerType === "none") {
+          ReadableByteStreamControllerEnqueueDetachedPullIntoToQueue(controller, pullIntoDescriptor);
+          ReadableByteStreamControllerProcessPullIntoDescriptorsUsingQueue(controller);
+          return;
+        }
+        if (pullIntoDescriptor.bytesFilled < pullIntoDescriptor.minimumFill) {
+          return;
+        }
+        ReadableByteStreamControllerShiftPendingPullInto(controller);
+        const remainderSize = pullIntoDescriptor.bytesFilled % pullIntoDescriptor.elementSize;
+        if (remainderSize > 0) {
+          const end = pullIntoDescriptor.byteOffset + pullIntoDescriptor.bytesFilled;
+          ReadableByteStreamControllerEnqueueClonedChunkToQueue(controller, pullIntoDescriptor.buffer, end - remainderSize, remainderSize);
+        }
+        pullIntoDescriptor.bytesFilled -= remainderSize;
+        ReadableByteStreamControllerCommitPullIntoDescriptor(controller._controlledReadableByteStream, pullIntoDescriptor);
+        ReadableByteStreamControllerProcessPullIntoDescriptorsUsingQueue(controller);
+      }
+      function ReadableByteStreamControllerRespondInternal(controller, bytesWritten) {
+        const firstDescriptor = controller._pendingPullIntos.peek();
+        ReadableByteStreamControllerInvalidateBYOBRequest(controller);
+        const state = controller._controlledReadableByteStream._state;
+        if (state === "closed") {
+          ReadableByteStreamControllerRespondInClosedState(controller, firstDescriptor);
+        } else {
+          ReadableByteStreamControllerRespondInReadableState(controller, bytesWritten, firstDescriptor);
+        }
+        ReadableByteStreamControllerCallPullIfNeeded(controller);
+      }
+      function ReadableByteStreamControllerShiftPendingPullInto(controller) {
+        const descriptor = controller._pendingPullIntos.shift();
+        return descriptor;
+      }
+      function ReadableByteStreamControllerShouldCallPull(controller) {
+        const stream = controller._controlledReadableByteStream;
+        if (stream._state !== "readable") {
+          return false;
+        }
+        if (controller._closeRequested) {
+          return false;
+        }
+        if (!controller._started) {
+          return false;
+        }
+        if (ReadableStreamHasDefaultReader(stream) && ReadableStreamGetNumReadRequests(stream) > 0) {
+          return true;
+        }
+        if (ReadableStreamHasBYOBReader(stream) && ReadableStreamGetNumReadIntoRequests(stream) > 0) {
+          return true;
+        }
+        const desiredSize = ReadableByteStreamControllerGetDesiredSize(controller);
+        if (desiredSize > 0) {
+          return true;
+        }
+        return false;
+      }
+      function ReadableByteStreamControllerClearAlgorithms(controller) {
+        controller._pullAlgorithm = void 0;
+        controller._cancelAlgorithm = void 0;
+      }
+      function ReadableByteStreamControllerClose(controller) {
+        const stream = controller._controlledReadableByteStream;
+        if (controller._closeRequested || stream._state !== "readable") {
+          return;
+        }
+        if (controller._queueTotalSize > 0) {
+          controller._closeRequested = true;
+          return;
+        }
+        if (controller._pendingPullIntos.length > 0) {
+          const firstPendingPullInto = controller._pendingPullIntos.peek();
+          if (firstPendingPullInto.bytesFilled % firstPendingPullInto.elementSize !== 0) {
+            const e2 = new TypeError("Insufficient bytes to fill elements in the given buffer");
+            ReadableByteStreamControllerError(controller, e2);
+            throw e2;
+          }
+        }
+        ReadableByteStreamControllerClearAlgorithms(controller);
+        ReadableStreamClose(stream);
+      }
+      function ReadableByteStreamControllerEnqueue(controller, chunk) {
+        const stream = controller._controlledReadableByteStream;
+        if (controller._closeRequested || stream._state !== "readable") {
+          return;
+        }
+        const { buffer, byteOffset, byteLength } = chunk;
+        if (IsDetachedBuffer(buffer)) {
+          throw new TypeError("chunk's buffer is detached and so cannot be enqueued");
+        }
+        const transferredBuffer = TransferArrayBuffer(buffer);
+        if (controller._pendingPullIntos.length > 0) {
+          const firstPendingPullInto = controller._pendingPullIntos.peek();
+          if (IsDetachedBuffer(firstPendingPullInto.buffer)) {
+            throw new TypeError("The BYOB request's buffer has been detached and so cannot be filled with an enqueued chunk");
+          }
+          ReadableByteStreamControllerInvalidateBYOBRequest(controller);
+          firstPendingPullInto.buffer = TransferArrayBuffer(firstPendingPullInto.buffer);
+          if (firstPendingPullInto.readerType === "none") {
+            ReadableByteStreamControllerEnqueueDetachedPullIntoToQueue(controller, firstPendingPullInto);
+          }
+        }
+        if (ReadableStreamHasDefaultReader(stream)) {
+          ReadableByteStreamControllerProcessReadRequestsUsingQueue(controller);
+          if (ReadableStreamGetNumReadRequests(stream) === 0) {
+            ReadableByteStreamControllerEnqueueChunkToQueue(controller, transferredBuffer, byteOffset, byteLength);
+          } else {
+            if (controller._pendingPullIntos.length > 0) {
+              ReadableByteStreamControllerShiftPendingPullInto(controller);
+            }
+            const transferredView = new Uint8Array(transferredBuffer, byteOffset, byteLength);
+            ReadableStreamFulfillReadRequest(stream, transferredView, false);
+          }
+        } else if (ReadableStreamHasBYOBReader(stream)) {
+          ReadableByteStreamControllerEnqueueChunkToQueue(controller, transferredBuffer, byteOffset, byteLength);
+          ReadableByteStreamControllerProcessPullIntoDescriptorsUsingQueue(controller);
+        } else {
+          ReadableByteStreamControllerEnqueueChunkToQueue(controller, transferredBuffer, byteOffset, byteLength);
+        }
+        ReadableByteStreamControllerCallPullIfNeeded(controller);
+      }
+      function ReadableByteStreamControllerError(controller, e2) {
+        const stream = controller._controlledReadableByteStream;
+        if (stream._state !== "readable") {
+          return;
+        }
+        ReadableByteStreamControllerClearPendingPullIntos(controller);
+        ResetQueue(controller);
+        ReadableByteStreamControllerClearAlgorithms(controller);
+        ReadableStreamError(stream, e2);
+      }
+      function ReadableByteStreamControllerFillReadRequestFromQueue(controller, readRequest) {
+        const entry = controller._queue.shift();
+        controller._queueTotalSize -= entry.byteLength;
+        ReadableByteStreamControllerHandleQueueDrain(controller);
+        const view = new Uint8Array(entry.buffer, entry.byteOffset, entry.byteLength);
+        readRequest._chunkSteps(view);
+      }
+      function ReadableByteStreamControllerGetBYOBRequest(controller) {
+        if (controller._byobRequest === null && controller._pendingPullIntos.length > 0) {
+          const firstDescriptor = controller._pendingPullIntos.peek();
+          const view = new Uint8Array(firstDescriptor.buffer, firstDescriptor.byteOffset + firstDescriptor.bytesFilled, firstDescriptor.byteLength - firstDescriptor.bytesFilled);
+          const byobRequest = Object.create(ReadableStreamBYOBRequest.prototype);
+          SetUpReadableStreamBYOBRequest(byobRequest, controller, view);
+          controller._byobRequest = byobRequest;
+        }
+        return controller._byobRequest;
+      }
+      function ReadableByteStreamControllerGetDesiredSize(controller) {
+        const state = controller._controlledReadableByteStream._state;
+        if (state === "errored") {
+          return null;
+        }
+        if (state === "closed") {
+          return 0;
+        }
+        return controller._strategyHWM - controller._queueTotalSize;
+      }
+      function ReadableByteStreamControllerRespond(controller, bytesWritten) {
+        const firstDescriptor = controller._pendingPullIntos.peek();
+        const state = controller._controlledReadableByteStream._state;
+        if (state === "closed") {
+          if (bytesWritten !== 0) {
+            throw new TypeError("bytesWritten must be 0 when calling respond() on a closed stream");
+          }
+        } else {
+          if (bytesWritten === 0) {
+            throw new TypeError("bytesWritten must be greater than 0 when calling respond() on a readable stream");
+          }
+          if (firstDescriptor.bytesFilled + bytesWritten > firstDescriptor.byteLength) {
+            throw new RangeError("bytesWritten out of range");
+          }
+        }
+        firstDescriptor.buffer = TransferArrayBuffer(firstDescriptor.buffer);
+        ReadableByteStreamControllerRespondInternal(controller, bytesWritten);
+      }
+      function ReadableByteStreamControllerRespondWithNewView(controller, view) {
+        const firstDescriptor = controller._pendingPullIntos.peek();
+        const state = controller._controlledReadableByteStream._state;
+        if (state === "closed") {
+          if (view.byteLength !== 0) {
+            throw new TypeError("The view's length must be 0 when calling respondWithNewView() on a closed stream");
+          }
+        } else {
+          if (view.byteLength === 0) {
+            throw new TypeError("The view's length must be greater than 0 when calling respondWithNewView() on a readable stream");
+          }
+        }
+        if (firstDescriptor.byteOffset + firstDescriptor.bytesFilled !== view.byteOffset) {
+          throw new RangeError("The region specified by view does not match byobRequest");
+        }
+        if (firstDescriptor.bufferByteLength !== view.buffer.byteLength) {
+          throw new RangeError("The buffer of view has different capacity than byobRequest");
+        }
+        if (firstDescriptor.bytesFilled + view.byteLength > firstDescriptor.byteLength) {
+          throw new RangeError("The region specified by view is larger than byobRequest");
+        }
+        const viewByteLength = view.byteLength;
+        firstDescriptor.buffer = TransferArrayBuffer(view.buffer);
+        ReadableByteStreamControllerRespondInternal(controller, viewByteLength);
+      }
+      function SetUpReadableByteStreamController(stream, controller, startAlgorithm, pullAlgorithm, cancelAlgorithm, highWaterMark, autoAllocateChunkSize) {
+        controller._controlledReadableByteStream = stream;
+        controller._pullAgain = false;
+        controller._pulling = false;
+        controller._byobRequest = null;
+        controller._queue = controller._queueTotalSize = void 0;
+        ResetQueue(controller);
+        controller._closeRequested = false;
+        controller._started = false;
+        controller._strategyHWM = highWaterMark;
+        controller._pullAlgorithm = pullAlgorithm;
+        controller._cancelAlgorithm = cancelAlgorithm;
+        controller._autoAllocateChunkSize = autoAllocateChunkSize;
+        controller._pendingPullIntos = new SimpleQueue();
+        stream._readableStreamController = controller;
+        const startResult = startAlgorithm();
+        uponPromise(promiseResolvedWith(startResult), () => {
+          controller._started = true;
+          ReadableByteStreamControllerCallPullIfNeeded(controller);
+          return null;
+        }, (r2) => {
+          ReadableByteStreamControllerError(controller, r2);
+          return null;
+        });
+      }
+      function SetUpReadableByteStreamControllerFromUnderlyingSource(stream, underlyingByteSource, highWaterMark) {
+        const controller = Object.create(ReadableByteStreamController.prototype);
+        let startAlgorithm;
+        let pullAlgorithm;
+        let cancelAlgorithm;
+        if (underlyingByteSource.start !== void 0) {
+          startAlgorithm = () => underlyingByteSource.start(controller);
+        } else {
+          startAlgorithm = () => void 0;
+        }
+        if (underlyingByteSource.pull !== void 0) {
+          pullAlgorithm = () => underlyingByteSource.pull(controller);
+        } else {
+          pullAlgorithm = () => promiseResolvedWith(void 0);
+        }
+        if (underlyingByteSource.cancel !== void 0) {
+          cancelAlgorithm = (reason) => underlyingByteSource.cancel(reason);
+        } else {
+          cancelAlgorithm = () => promiseResolvedWith(void 0);
+        }
+        const autoAllocateChunkSize = underlyingByteSource.autoAllocateChunkSize;
+        if (autoAllocateChunkSize === 0) {
+          throw new TypeError("autoAllocateChunkSize must be greater than 0");
+        }
+        SetUpReadableByteStreamController(stream, controller, startAlgorithm, pullAlgorithm, cancelAlgorithm, highWaterMark, autoAllocateChunkSize);
+      }
+      function SetUpReadableStreamBYOBRequest(request, controller, view) {
+        request._associatedReadableByteStreamController = controller;
+        request._view = view;
+      }
+      function byobRequestBrandCheckException(name) {
+        return new TypeError(`ReadableStreamBYOBRequest.prototype.${name} can only be used on a ReadableStreamBYOBRequest`);
+      }
+      function byteStreamControllerBrandCheckException(name) {
+        return new TypeError(`ReadableByteStreamController.prototype.${name} can only be used on a ReadableByteStreamController`);
+      }
+      function convertReaderOptions(options, context) {
+        assertDictionary(options, context);
+        const mode = options === null || options === void 0 ? void 0 : options.mode;
+        return {
+          mode: mode === void 0 ? void 0 : convertReadableStreamReaderMode(mode, `${context} has member 'mode' that`)
+        };
+      }
+      function convertReadableStreamReaderMode(mode, context) {
+        mode = `${mode}`;
+        if (mode !== "byob") {
+          throw new TypeError(`${context} '${mode}' is not a valid enumeration value for ReadableStreamReaderMode`);
+        }
+        return mode;
+      }
+      function convertByobReadOptions(options, context) {
+        var _a2;
+        assertDictionary(options, context);
+        const min = (_a2 = options === null || options === void 0 ? void 0 : options.min) !== null && _a2 !== void 0 ? _a2 : 1;
+        return {
+          min: convertUnsignedLongLongWithEnforceRange(min, `${context} has member 'min' that`)
+        };
+      }
+      function AcquireReadableStreamBYOBReader(stream) {
+        return new ReadableStreamBYOBReader(stream);
+      }
+      function ReadableStreamAddReadIntoRequest(stream, readIntoRequest) {
+        stream._reader._readIntoRequests.push(readIntoRequest);
+      }
+      function ReadableStreamFulfillReadIntoRequest(stream, chunk, done) {
+        const reader = stream._reader;
+        const readIntoRequest = reader._readIntoRequests.shift();
+        if (done) {
+          readIntoRequest._closeSteps(chunk);
+        } else {
+          readIntoRequest._chunkSteps(chunk);
+        }
+      }
+      function ReadableStreamGetNumReadIntoRequests(stream) {
+        return stream._reader._readIntoRequests.length;
+      }
+      function ReadableStreamHasBYOBReader(stream) {
+        const reader = stream._reader;
+        if (reader === void 0) {
+          return false;
+        }
+        if (!IsReadableStreamBYOBReader(reader)) {
+          return false;
+        }
+        return true;
+      }
+      class ReadableStreamBYOBReader {
+        constructor(stream) {
+          assertRequiredArgument(stream, 1, "ReadableStreamBYOBReader");
+          assertReadableStream(stream, "First parameter");
+          if (IsReadableStreamLocked(stream)) {
+            throw new TypeError("This stream has already been locked for exclusive reading by another reader");
+          }
+          if (!IsReadableByteStreamController(stream._readableStreamController)) {
+            throw new TypeError("Cannot construct a ReadableStreamBYOBReader for a stream not constructed with a byte source");
+          }
+          ReadableStreamReaderGenericInitialize(this, stream);
+          this._readIntoRequests = new SimpleQueue();
+        }
+        /**
+         * Returns a promise that will be fulfilled when the stream becomes closed, or rejected if the stream ever errors or
+         * the reader's lock is released before the stream finishes closing.
+         */
+        get closed() {
+          if (!IsReadableStreamBYOBReader(this)) {
+            return promiseRejectedWith(byobReaderBrandCheckException("closed"));
+          }
+          return this._closedPromise;
+        }
+        /**
+         * If the reader is active, behaves the same as {@link ReadableStream.cancel | stream.cancel(reason)}.
+         */
+        cancel(reason = void 0) {
+          if (!IsReadableStreamBYOBReader(this)) {
+            return promiseRejectedWith(byobReaderBrandCheckException("cancel"));
+          }
+          if (this._ownerReadableStream === void 0) {
+            return promiseRejectedWith(readerLockException("cancel"));
+          }
+          return ReadableStreamReaderGenericCancel(this, reason);
+        }
+        read(view, rawOptions = {}) {
+          if (!IsReadableStreamBYOBReader(this)) {
+            return promiseRejectedWith(byobReaderBrandCheckException("read"));
+          }
+          if (!ArrayBuffer.isView(view)) {
+            return promiseRejectedWith(new TypeError("view must be an array buffer view"));
+          }
+          if (view.byteLength === 0) {
+            return promiseRejectedWith(new TypeError("view must have non-zero byteLength"));
+          }
+          if (view.buffer.byteLength === 0) {
+            return promiseRejectedWith(new TypeError(`view's buffer must have non-zero byteLength`));
+          }
+          if (IsDetachedBuffer(view.buffer)) {
+            return promiseRejectedWith(new TypeError("view's buffer has been detached"));
+          }
+          let options;
+          try {
+            options = convertByobReadOptions(rawOptions, "options");
+          } catch (e2) {
+            return promiseRejectedWith(e2);
+          }
+          const min = options.min;
+          if (min === 0) {
+            return promiseRejectedWith(new TypeError("options.min must be greater than 0"));
+          }
+          if (!isDataView(view)) {
+            if (min > view.length) {
+              return promiseRejectedWith(new RangeError("options.min must be less than or equal to view's length"));
+            }
+          } else if (min > view.byteLength) {
+            return promiseRejectedWith(new RangeError("options.min must be less than or equal to view's byteLength"));
+          }
+          if (this._ownerReadableStream === void 0) {
+            return promiseRejectedWith(readerLockException("read from"));
+          }
+          let resolvePromise;
+          let rejectPromise;
+          const promise = newPromise((resolve, reject) => {
+            resolvePromise = resolve;
+            rejectPromise = reject;
+          });
+          const readIntoRequest = {
+            _chunkSteps: (chunk) => resolvePromise({ value: chunk, done: false }),
+            _closeSteps: (chunk) => resolvePromise({ value: chunk, done: true }),
+            _errorSteps: (e2) => rejectPromise(e2)
+          };
+          ReadableStreamBYOBReaderRead(this, view, min, readIntoRequest);
+          return promise;
+        }
+        /**
+         * Releases the reader's lock on the corresponding stream. After the lock is released, the reader is no longer active.
+         * If the associated stream is errored when the lock is released, the reader will appear errored in the same way
+         * from now on; otherwise, the reader will appear closed.
+         *
+         * A reader's lock cannot be released while it still has a pending read request, i.e., if a promise returned by
+         * the reader's {@link ReadableStreamBYOBReader.read | read()} method has not yet been settled. Attempting to
+         * do so will throw a `TypeError` and leave the reader locked to the stream.
+         */
+        releaseLock() {
+          if (!IsReadableStreamBYOBReader(this)) {
+            throw byobReaderBrandCheckException("releaseLock");
+          }
+          if (this._ownerReadableStream === void 0) {
+            return;
+          }
+          ReadableStreamBYOBReaderRelease(this);
+        }
+      }
+      Object.defineProperties(ReadableStreamBYOBReader.prototype, {
+        cancel: { enumerable: true },
+        read: { enumerable: true },
+        releaseLock: { enumerable: true },
+        closed: { enumerable: true }
+      });
+      setFunctionName(ReadableStreamBYOBReader.prototype.cancel, "cancel");
+      setFunctionName(ReadableStreamBYOBReader.prototype.read, "read");
+      setFunctionName(ReadableStreamBYOBReader.prototype.releaseLock, "releaseLock");
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(ReadableStreamBYOBReader.prototype, Symbol.toStringTag, {
+          value: "ReadableStreamBYOBReader",
+          configurable: true
+        });
+      }
+      function IsReadableStreamBYOBReader(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_readIntoRequests")) {
+          return false;
+        }
+        return x2 instanceof ReadableStreamBYOBReader;
+      }
+      function ReadableStreamBYOBReaderRead(reader, view, min, readIntoRequest) {
+        const stream = reader._ownerReadableStream;
+        stream._disturbed = true;
+        if (stream._state === "errored") {
+          readIntoRequest._errorSteps(stream._storedError);
+        } else {
+          ReadableByteStreamControllerPullInto(stream._readableStreamController, view, min, readIntoRequest);
+        }
+      }
+      function ReadableStreamBYOBReaderRelease(reader) {
+        ReadableStreamReaderGenericRelease(reader);
+        const e2 = new TypeError("Reader was released");
+        ReadableStreamBYOBReaderErrorReadIntoRequests(reader, e2);
+      }
+      function ReadableStreamBYOBReaderErrorReadIntoRequests(reader, e2) {
+        const readIntoRequests = reader._readIntoRequests;
+        reader._readIntoRequests = new SimpleQueue();
+        readIntoRequests.forEach((readIntoRequest) => {
+          readIntoRequest._errorSteps(e2);
+        });
+      }
+      function byobReaderBrandCheckException(name) {
+        return new TypeError(`ReadableStreamBYOBReader.prototype.${name} can only be used on a ReadableStreamBYOBReader`);
+      }
+      function ExtractHighWaterMark(strategy, defaultHWM) {
+        const { highWaterMark } = strategy;
+        if (highWaterMark === void 0) {
+          return defaultHWM;
+        }
+        if (NumberIsNaN(highWaterMark) || highWaterMark < 0) {
+          throw new RangeError("Invalid highWaterMark");
+        }
+        return highWaterMark;
+      }
+      function ExtractSizeAlgorithm(strategy) {
+        const { size } = strategy;
+        if (!size) {
+          return () => 1;
+        }
+        return size;
+      }
+      function convertQueuingStrategy(init, context) {
+        assertDictionary(init, context);
+        const highWaterMark = init === null || init === void 0 ? void 0 : init.highWaterMark;
+        const size = init === null || init === void 0 ? void 0 : init.size;
+        return {
+          highWaterMark: highWaterMark === void 0 ? void 0 : convertUnrestrictedDouble(highWaterMark),
+          size: size === void 0 ? void 0 : convertQueuingStrategySize(size, `${context} has member 'size' that`)
+        };
+      }
+      function convertQueuingStrategySize(fn, context) {
+        assertFunction(fn, context);
+        return (chunk) => convertUnrestrictedDouble(fn(chunk));
+      }
+      function convertUnderlyingSink(original, context) {
+        assertDictionary(original, context);
+        const abort = original === null || original === void 0 ? void 0 : original.abort;
+        const close = original === null || original === void 0 ? void 0 : original.close;
+        const start = original === null || original === void 0 ? void 0 : original.start;
+        const type = original === null || original === void 0 ? void 0 : original.type;
+        const write = original === null || original === void 0 ? void 0 : original.write;
+        return {
+          abort: abort === void 0 ? void 0 : convertUnderlyingSinkAbortCallback(abort, original, `${context} has member 'abort' that`),
+          close: close === void 0 ? void 0 : convertUnderlyingSinkCloseCallback(close, original, `${context} has member 'close' that`),
+          start: start === void 0 ? void 0 : convertUnderlyingSinkStartCallback(start, original, `${context} has member 'start' that`),
+          write: write === void 0 ? void 0 : convertUnderlyingSinkWriteCallback(write, original, `${context} has member 'write' that`),
+          type
+        };
+      }
+      function convertUnderlyingSinkAbortCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (reason) => promiseCall(fn, original, [reason]);
+      }
+      function convertUnderlyingSinkCloseCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return () => promiseCall(fn, original, []);
+      }
+      function convertUnderlyingSinkStartCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (controller) => reflectCall(fn, original, [controller]);
+      }
+      function convertUnderlyingSinkWriteCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (chunk, controller) => promiseCall(fn, original, [chunk, controller]);
+      }
+      function assertWritableStream(x2, context) {
+        if (!IsWritableStream(x2)) {
+          throw new TypeError(`${context} is not a WritableStream.`);
+        }
+      }
+      function isAbortSignal2(value) {
+        if (typeof value !== "object" || value === null) {
+          return false;
+        }
+        try {
+          return typeof value.aborted === "boolean";
+        } catch (_a2) {
+          return false;
+        }
+      }
+      const supportsAbortController = typeof AbortController === "function";
+      function createAbortController() {
+        if (supportsAbortController) {
+          return new AbortController();
+        }
+        return void 0;
+      }
+      class WritableStream {
+        constructor(rawUnderlyingSink = {}, rawStrategy = {}) {
+          if (rawUnderlyingSink === void 0) {
+            rawUnderlyingSink = null;
+          } else {
+            assertObject(rawUnderlyingSink, "First parameter");
+          }
+          const strategy = convertQueuingStrategy(rawStrategy, "Second parameter");
+          const underlyingSink = convertUnderlyingSink(rawUnderlyingSink, "First parameter");
+          InitializeWritableStream(this);
+          const type = underlyingSink.type;
+          if (type !== void 0) {
+            throw new RangeError("Invalid type is specified");
+          }
+          const sizeAlgorithm = ExtractSizeAlgorithm(strategy);
+          const highWaterMark = ExtractHighWaterMark(strategy, 1);
+          SetUpWritableStreamDefaultControllerFromUnderlyingSink(this, underlyingSink, highWaterMark, sizeAlgorithm);
+        }
+        /**
+         * Returns whether or not the writable stream is locked to a writer.
+         */
+        get locked() {
+          if (!IsWritableStream(this)) {
+            throw streamBrandCheckException$2("locked");
+          }
+          return IsWritableStreamLocked(this);
+        }
+        /**
+         * Aborts the stream, signaling that the producer can no longer successfully write to the stream and it is to be
+         * immediately moved to an errored state, with any queued-up writes discarded. This will also execute any abort
+         * mechanism of the underlying sink.
+         *
+         * The returned promise will fulfill if the stream shuts down successfully, or reject if the underlying sink signaled
+         * that there was an error doing so. Additionally, it will reject with a `TypeError` (without attempting to cancel
+         * the stream) if the stream is currently locked.
+         */
+        abort(reason = void 0) {
+          if (!IsWritableStream(this)) {
+            return promiseRejectedWith(streamBrandCheckException$2("abort"));
+          }
+          if (IsWritableStreamLocked(this)) {
+            return promiseRejectedWith(new TypeError("Cannot abort a stream that already has a writer"));
+          }
+          return WritableStreamAbort(this, reason);
+        }
+        /**
+         * Closes the stream. The underlying sink will finish processing any previously-written chunks, before invoking its
+         * close behavior. During this time any further attempts to write will fail (without erroring the stream).
+         *
+         * The method returns a promise that will fulfill if all remaining chunks are successfully written and the stream
+         * successfully closes, or rejects if an error is encountered during this process. Additionally, it will reject with
+         * a `TypeError` (without attempting to cancel the stream) if the stream is currently locked.
+         */
+        close() {
+          if (!IsWritableStream(this)) {
+            return promiseRejectedWith(streamBrandCheckException$2("close"));
+          }
+          if (IsWritableStreamLocked(this)) {
+            return promiseRejectedWith(new TypeError("Cannot close a stream that already has a writer"));
+          }
+          if (WritableStreamCloseQueuedOrInFlight(this)) {
+            return promiseRejectedWith(new TypeError("Cannot close an already-closing stream"));
+          }
+          return WritableStreamClose(this);
+        }
+        /**
+         * Creates a {@link WritableStreamDefaultWriter | writer} and locks the stream to the new writer. While the stream
+         * is locked, no other writer can be acquired until this one is released.
+         *
+         * This functionality is especially useful for creating abstractions that desire the ability to write to a stream
+         * without interruption or interleaving. By getting a writer for the stream, you can ensure nobody else can write at
+         * the same time, which would cause the resulting written data to be unpredictable and probably useless.
+         */
+        getWriter() {
+          if (!IsWritableStream(this)) {
+            throw streamBrandCheckException$2("getWriter");
+          }
+          return AcquireWritableStreamDefaultWriter(this);
+        }
+      }
+      Object.defineProperties(WritableStream.prototype, {
+        abort: { enumerable: true },
+        close: { enumerable: true },
+        getWriter: { enumerable: true },
+        locked: { enumerable: true }
+      });
+      setFunctionName(WritableStream.prototype.abort, "abort");
+      setFunctionName(WritableStream.prototype.close, "close");
+      setFunctionName(WritableStream.prototype.getWriter, "getWriter");
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(WritableStream.prototype, Symbol.toStringTag, {
+          value: "WritableStream",
+          configurable: true
+        });
+      }
+      function AcquireWritableStreamDefaultWriter(stream) {
+        return new WritableStreamDefaultWriter(stream);
+      }
+      function CreateWritableStream(startAlgorithm, writeAlgorithm, closeAlgorithm, abortAlgorithm, highWaterMark = 1, sizeAlgorithm = () => 1) {
+        const stream = Object.create(WritableStream.prototype);
+        InitializeWritableStream(stream);
+        const controller = Object.create(WritableStreamDefaultController.prototype);
+        SetUpWritableStreamDefaultController(stream, controller, startAlgorithm, writeAlgorithm, closeAlgorithm, abortAlgorithm, highWaterMark, sizeAlgorithm);
+        return stream;
+      }
+      function InitializeWritableStream(stream) {
+        stream._state = "writable";
+        stream._storedError = void 0;
+        stream._writer = void 0;
+        stream._writableStreamController = void 0;
+        stream._writeRequests = new SimpleQueue();
+        stream._inFlightWriteRequest = void 0;
+        stream._closeRequest = void 0;
+        stream._inFlightCloseRequest = void 0;
+        stream._pendingAbortRequest = void 0;
+        stream._backpressure = false;
+      }
+      function IsWritableStream(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_writableStreamController")) {
+          return false;
+        }
+        return x2 instanceof WritableStream;
+      }
+      function IsWritableStreamLocked(stream) {
+        if (stream._writer === void 0) {
+          return false;
+        }
+        return true;
+      }
+      function WritableStreamAbort(stream, reason) {
+        var _a2;
+        if (stream._state === "closed" || stream._state === "errored") {
+          return promiseResolvedWith(void 0);
+        }
+        stream._writableStreamController._abortReason = reason;
+        (_a2 = stream._writableStreamController._abortController) === null || _a2 === void 0 ? void 0 : _a2.abort(reason);
+        const state = stream._state;
+        if (state === "closed" || state === "errored") {
+          return promiseResolvedWith(void 0);
+        }
+        if (stream._pendingAbortRequest !== void 0) {
+          return stream._pendingAbortRequest._promise;
+        }
+        let wasAlreadyErroring = false;
+        if (state === "erroring") {
+          wasAlreadyErroring = true;
+          reason = void 0;
+        }
+        const promise = newPromise((resolve, reject) => {
+          stream._pendingAbortRequest = {
+            _promise: void 0,
+            _resolve: resolve,
+            _reject: reject,
+            _reason: reason,
+            _wasAlreadyErroring: wasAlreadyErroring
+          };
+        });
+        stream._pendingAbortRequest._promise = promise;
+        if (!wasAlreadyErroring) {
+          WritableStreamStartErroring(stream, reason);
+        }
+        return promise;
+      }
+      function WritableStreamClose(stream) {
+        const state = stream._state;
+        if (state === "closed" || state === "errored") {
+          return promiseRejectedWith(new TypeError(`The stream (in ${state} state) is not in the writable state and cannot be closed`));
+        }
+        const promise = newPromise((resolve, reject) => {
+          const closeRequest = {
+            _resolve: resolve,
+            _reject: reject
+          };
+          stream._closeRequest = closeRequest;
+        });
+        const writer = stream._writer;
+        if (writer !== void 0 && stream._backpressure && state === "writable") {
+          defaultWriterReadyPromiseResolve(writer);
+        }
+        WritableStreamDefaultControllerClose(stream._writableStreamController);
+        return promise;
+      }
+      function WritableStreamAddWriteRequest(stream) {
+        const promise = newPromise((resolve, reject) => {
+          const writeRequest = {
+            _resolve: resolve,
+            _reject: reject
+          };
+          stream._writeRequests.push(writeRequest);
+        });
+        return promise;
+      }
+      function WritableStreamDealWithRejection(stream, error) {
+        const state = stream._state;
+        if (state === "writable") {
+          WritableStreamStartErroring(stream, error);
+          return;
+        }
+        WritableStreamFinishErroring(stream);
+      }
+      function WritableStreamStartErroring(stream, reason) {
+        const controller = stream._writableStreamController;
+        stream._state = "erroring";
+        stream._storedError = reason;
+        const writer = stream._writer;
+        if (writer !== void 0) {
+          WritableStreamDefaultWriterEnsureReadyPromiseRejected(writer, reason);
+        }
+        if (!WritableStreamHasOperationMarkedInFlight(stream) && controller._started) {
+          WritableStreamFinishErroring(stream);
+        }
+      }
+      function WritableStreamFinishErroring(stream) {
+        stream._state = "errored";
+        stream._writableStreamController[ErrorSteps]();
+        const storedError = stream._storedError;
+        stream._writeRequests.forEach((writeRequest) => {
+          writeRequest._reject(storedError);
+        });
+        stream._writeRequests = new SimpleQueue();
+        if (stream._pendingAbortRequest === void 0) {
+          WritableStreamRejectCloseAndClosedPromiseIfNeeded(stream);
+          return;
+        }
+        const abortRequest = stream._pendingAbortRequest;
+        stream._pendingAbortRequest = void 0;
+        if (abortRequest._wasAlreadyErroring) {
+          abortRequest._reject(storedError);
+          WritableStreamRejectCloseAndClosedPromiseIfNeeded(stream);
+          return;
+        }
+        const promise = stream._writableStreamController[AbortSteps](abortRequest._reason);
+        uponPromise(promise, () => {
+          abortRequest._resolve();
+          WritableStreamRejectCloseAndClosedPromiseIfNeeded(stream);
+          return null;
+        }, (reason) => {
+          abortRequest._reject(reason);
+          WritableStreamRejectCloseAndClosedPromiseIfNeeded(stream);
+          return null;
+        });
+      }
+      function WritableStreamFinishInFlightWrite(stream) {
+        stream._inFlightWriteRequest._resolve(void 0);
+        stream._inFlightWriteRequest = void 0;
+      }
+      function WritableStreamFinishInFlightWriteWithError(stream, error) {
+        stream._inFlightWriteRequest._reject(error);
+        stream._inFlightWriteRequest = void 0;
+        WritableStreamDealWithRejection(stream, error);
+      }
+      function WritableStreamFinishInFlightClose(stream) {
+        stream._inFlightCloseRequest._resolve(void 0);
+        stream._inFlightCloseRequest = void 0;
+        const state = stream._state;
+        if (state === "erroring") {
+          stream._storedError = void 0;
+          if (stream._pendingAbortRequest !== void 0) {
+            stream._pendingAbortRequest._resolve();
+            stream._pendingAbortRequest = void 0;
+          }
+        }
+        stream._state = "closed";
+        const writer = stream._writer;
+        if (writer !== void 0) {
+          defaultWriterClosedPromiseResolve(writer);
+        }
+      }
+      function WritableStreamFinishInFlightCloseWithError(stream, error) {
+        stream._inFlightCloseRequest._reject(error);
+        stream._inFlightCloseRequest = void 0;
+        if (stream._pendingAbortRequest !== void 0) {
+          stream._pendingAbortRequest._reject(error);
+          stream._pendingAbortRequest = void 0;
+        }
+        WritableStreamDealWithRejection(stream, error);
+      }
+      function WritableStreamCloseQueuedOrInFlight(stream) {
+        if (stream._closeRequest === void 0 && stream._inFlightCloseRequest === void 0) {
+          return false;
+        }
+        return true;
+      }
+      function WritableStreamHasOperationMarkedInFlight(stream) {
+        if (stream._inFlightWriteRequest === void 0 && stream._inFlightCloseRequest === void 0) {
+          return false;
+        }
+        return true;
+      }
+      function WritableStreamMarkCloseRequestInFlight(stream) {
+        stream._inFlightCloseRequest = stream._closeRequest;
+        stream._closeRequest = void 0;
+      }
+      function WritableStreamMarkFirstWriteRequestInFlight(stream) {
+        stream._inFlightWriteRequest = stream._writeRequests.shift();
+      }
+      function WritableStreamRejectCloseAndClosedPromiseIfNeeded(stream) {
+        if (stream._closeRequest !== void 0) {
+          stream._closeRequest._reject(stream._storedError);
+          stream._closeRequest = void 0;
+        }
+        const writer = stream._writer;
+        if (writer !== void 0) {
+          defaultWriterClosedPromiseReject(writer, stream._storedError);
+        }
+      }
+      function WritableStreamUpdateBackpressure(stream, backpressure) {
+        const writer = stream._writer;
+        if (writer !== void 0 && backpressure !== stream._backpressure) {
+          if (backpressure) {
+            defaultWriterReadyPromiseReset(writer);
+          } else {
+            defaultWriterReadyPromiseResolve(writer);
+          }
+        }
+        stream._backpressure = backpressure;
+      }
+      class WritableStreamDefaultWriter {
+        constructor(stream) {
+          assertRequiredArgument(stream, 1, "WritableStreamDefaultWriter");
+          assertWritableStream(stream, "First parameter");
+          if (IsWritableStreamLocked(stream)) {
+            throw new TypeError("This stream has already been locked for exclusive writing by another writer");
+          }
+          this._ownerWritableStream = stream;
+          stream._writer = this;
+          const state = stream._state;
+          if (state === "writable") {
+            if (!WritableStreamCloseQueuedOrInFlight(stream) && stream._backpressure) {
+              defaultWriterReadyPromiseInitialize(this);
+            } else {
+              defaultWriterReadyPromiseInitializeAsResolved(this);
+            }
+            defaultWriterClosedPromiseInitialize(this);
+          } else if (state === "erroring") {
+            defaultWriterReadyPromiseInitializeAsRejected(this, stream._storedError);
+            defaultWriterClosedPromiseInitialize(this);
+          } else if (state === "closed") {
+            defaultWriterReadyPromiseInitializeAsResolved(this);
+            defaultWriterClosedPromiseInitializeAsResolved(this);
+          } else {
+            const storedError = stream._storedError;
+            defaultWriterReadyPromiseInitializeAsRejected(this, storedError);
+            defaultWriterClosedPromiseInitializeAsRejected(this, storedError);
+          }
+        }
+        /**
+         * Returns a promise that will be fulfilled when the stream becomes closed, or rejected if the stream ever errors or
+         * the writer’s lock is released before the stream finishes closing.
+         */
+        get closed() {
+          if (!IsWritableStreamDefaultWriter(this)) {
+            return promiseRejectedWith(defaultWriterBrandCheckException("closed"));
+          }
+          return this._closedPromise;
+        }
+        /**
+         * Returns the desired size to fill the stream’s internal queue. It can be negative, if the queue is over-full.
+         * A producer can use this information to determine the right amount of data to write.
+         *
+         * It will be `null` if the stream cannot be successfully written to (due to either being errored, or having an abort
+         * queued up). It will return zero if the stream is closed. And the getter will throw an exception if invoked when
+         * the writer’s lock is released.
+         */
+        get desiredSize() {
+          if (!IsWritableStreamDefaultWriter(this)) {
+            throw defaultWriterBrandCheckException("desiredSize");
+          }
+          if (this._ownerWritableStream === void 0) {
+            throw defaultWriterLockException("desiredSize");
+          }
+          return WritableStreamDefaultWriterGetDesiredSize(this);
+        }
+        /**
+         * Returns a promise that will be fulfilled when the desired size to fill the stream’s internal queue transitions
+         * from non-positive to positive, signaling that it is no longer applying backpressure. Once the desired size dips
+         * back to zero or below, the getter will return a new promise that stays pending until the next transition.
+         *
+         * If the stream becomes errored or aborted, or the writer’s lock is released, the returned promise will become
+         * rejected.
+         */
+        get ready() {
+          if (!IsWritableStreamDefaultWriter(this)) {
+            return promiseRejectedWith(defaultWriterBrandCheckException("ready"));
+          }
+          return this._readyPromise;
+        }
+        /**
+         * If the reader is active, behaves the same as {@link WritableStream.abort | stream.abort(reason)}.
+         */
+        abort(reason = void 0) {
+          if (!IsWritableStreamDefaultWriter(this)) {
+            return promiseRejectedWith(defaultWriterBrandCheckException("abort"));
+          }
+          if (this._ownerWritableStream === void 0) {
+            return promiseRejectedWith(defaultWriterLockException("abort"));
+          }
+          return WritableStreamDefaultWriterAbort(this, reason);
+        }
+        /**
+         * If the reader is active, behaves the same as {@link WritableStream.close | stream.close()}.
+         */
+        close() {
+          if (!IsWritableStreamDefaultWriter(this)) {
+            return promiseRejectedWith(defaultWriterBrandCheckException("close"));
+          }
+          const stream = this._ownerWritableStream;
+          if (stream === void 0) {
+            return promiseRejectedWith(defaultWriterLockException("close"));
+          }
+          if (WritableStreamCloseQueuedOrInFlight(stream)) {
+            return promiseRejectedWith(new TypeError("Cannot close an already-closing stream"));
+          }
+          return WritableStreamDefaultWriterClose(this);
+        }
+        /**
+         * Releases the writer’s lock on the corresponding stream. After the lock is released, the writer is no longer active.
+         * If the associated stream is errored when the lock is released, the writer will appear errored in the same way from
+         * now on; otherwise, the writer will appear closed.
+         *
+         * Note that the lock can still be released even if some ongoing writes have not yet finished (i.e. even if the
+         * promises returned from previous calls to {@link WritableStreamDefaultWriter.write | write()} have not yet settled).
+         * It’s not necessary to hold the lock on the writer for the duration of the write; the lock instead simply prevents
+         * other producers from writing in an interleaved manner.
+         */
+        releaseLock() {
+          if (!IsWritableStreamDefaultWriter(this)) {
+            throw defaultWriterBrandCheckException("releaseLock");
+          }
+          const stream = this._ownerWritableStream;
+          if (stream === void 0) {
+            return;
+          }
+          WritableStreamDefaultWriterRelease(this);
+        }
+        write(chunk = void 0) {
+          if (!IsWritableStreamDefaultWriter(this)) {
+            return promiseRejectedWith(defaultWriterBrandCheckException("write"));
+          }
+          if (this._ownerWritableStream === void 0) {
+            return promiseRejectedWith(defaultWriterLockException("write to"));
+          }
+          return WritableStreamDefaultWriterWrite(this, chunk);
+        }
+      }
+      Object.defineProperties(WritableStreamDefaultWriter.prototype, {
+        abort: { enumerable: true },
+        close: { enumerable: true },
+        releaseLock: { enumerable: true },
+        write: { enumerable: true },
+        closed: { enumerable: true },
+        desiredSize: { enumerable: true },
+        ready: { enumerable: true }
+      });
+      setFunctionName(WritableStreamDefaultWriter.prototype.abort, "abort");
+      setFunctionName(WritableStreamDefaultWriter.prototype.close, "close");
+      setFunctionName(WritableStreamDefaultWriter.prototype.releaseLock, "releaseLock");
+      setFunctionName(WritableStreamDefaultWriter.prototype.write, "write");
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(WritableStreamDefaultWriter.prototype, Symbol.toStringTag, {
+          value: "WritableStreamDefaultWriter",
+          configurable: true
+        });
+      }
+      function IsWritableStreamDefaultWriter(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_ownerWritableStream")) {
+          return false;
+        }
+        return x2 instanceof WritableStreamDefaultWriter;
+      }
+      function WritableStreamDefaultWriterAbort(writer, reason) {
+        const stream = writer._ownerWritableStream;
+        return WritableStreamAbort(stream, reason);
+      }
+      function WritableStreamDefaultWriterClose(writer) {
+        const stream = writer._ownerWritableStream;
+        return WritableStreamClose(stream);
+      }
+      function WritableStreamDefaultWriterCloseWithErrorPropagation(writer) {
+        const stream = writer._ownerWritableStream;
+        const state = stream._state;
+        if (WritableStreamCloseQueuedOrInFlight(stream) || state === "closed") {
+          return promiseResolvedWith(void 0);
+        }
+        if (state === "errored") {
+          return promiseRejectedWith(stream._storedError);
+        }
+        return WritableStreamDefaultWriterClose(writer);
+      }
+      function WritableStreamDefaultWriterEnsureClosedPromiseRejected(writer, error) {
+        if (writer._closedPromiseState === "pending") {
+          defaultWriterClosedPromiseReject(writer, error);
+        } else {
+          defaultWriterClosedPromiseResetToRejected(writer, error);
+        }
+      }
+      function WritableStreamDefaultWriterEnsureReadyPromiseRejected(writer, error) {
+        if (writer._readyPromiseState === "pending") {
+          defaultWriterReadyPromiseReject(writer, error);
+        } else {
+          defaultWriterReadyPromiseResetToRejected(writer, error);
+        }
+      }
+      function WritableStreamDefaultWriterGetDesiredSize(writer) {
+        const stream = writer._ownerWritableStream;
+        const state = stream._state;
+        if (state === "errored" || state === "erroring") {
+          return null;
+        }
+        if (state === "closed") {
+          return 0;
+        }
+        return WritableStreamDefaultControllerGetDesiredSize(stream._writableStreamController);
+      }
+      function WritableStreamDefaultWriterRelease(writer) {
+        const stream = writer._ownerWritableStream;
+        const releasedError = new TypeError(`Writer was released and can no longer be used to monitor the stream's closedness`);
+        WritableStreamDefaultWriterEnsureReadyPromiseRejected(writer, releasedError);
+        WritableStreamDefaultWriterEnsureClosedPromiseRejected(writer, releasedError);
+        stream._writer = void 0;
+        writer._ownerWritableStream = void 0;
+      }
+      function WritableStreamDefaultWriterWrite(writer, chunk) {
+        const stream = writer._ownerWritableStream;
+        const controller = stream._writableStreamController;
+        const chunkSize = WritableStreamDefaultControllerGetChunkSize(controller, chunk);
+        if (stream !== writer._ownerWritableStream) {
+          return promiseRejectedWith(defaultWriterLockException("write to"));
+        }
+        const state = stream._state;
+        if (state === "errored") {
+          return promiseRejectedWith(stream._storedError);
+        }
+        if (WritableStreamCloseQueuedOrInFlight(stream) || state === "closed") {
+          return promiseRejectedWith(new TypeError("The stream is closing or closed and cannot be written to"));
+        }
+        if (state === "erroring") {
+          return promiseRejectedWith(stream._storedError);
+        }
+        const promise = WritableStreamAddWriteRequest(stream);
+        WritableStreamDefaultControllerWrite(controller, chunk, chunkSize);
+        return promise;
+      }
+      const closeSentinel = {};
+      class WritableStreamDefaultController {
+        constructor() {
+          throw new TypeError("Illegal constructor");
+        }
+        /**
+         * The reason which was passed to `WritableStream.abort(reason)` when the stream was aborted.
+         *
+         * @deprecated
+         *  This property has been removed from the specification, see https://github.com/whatwg/streams/pull/1177.
+         *  Use {@link WritableStreamDefaultController.signal}'s `reason` instead.
+         */
+        get abortReason() {
+          if (!IsWritableStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException$2("abortReason");
+          }
+          return this._abortReason;
+        }
+        /**
+         * An `AbortSignal` that can be used to abort the pending write or close operation when the stream is aborted.
+         */
+        get signal() {
+          if (!IsWritableStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException$2("signal");
+          }
+          if (this._abortController === void 0) {
+            throw new TypeError("WritableStreamDefaultController.prototype.signal is not supported");
+          }
+          return this._abortController.signal;
+        }
+        /**
+         * Closes the controlled writable stream, making all future interactions with it fail with the given error `e`.
+         *
+         * This method is rarely used, since usually it suffices to return a rejected promise from one of the underlying
+         * sink's methods. However, it can be useful for suddenly shutting down a stream in response to an event outside the
+         * normal lifecycle of interactions with the underlying sink.
+         */
+        error(e2 = void 0) {
+          if (!IsWritableStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException$2("error");
+          }
+          const state = this._controlledWritableStream._state;
+          if (state !== "writable") {
+            return;
+          }
+          WritableStreamDefaultControllerError(this, e2);
+        }
+        /** @internal */
+        [AbortSteps](reason) {
+          const result = this._abortAlgorithm(reason);
+          WritableStreamDefaultControllerClearAlgorithms(this);
+          return result;
+        }
+        /** @internal */
+        [ErrorSteps]() {
+          ResetQueue(this);
+        }
+      }
+      Object.defineProperties(WritableStreamDefaultController.prototype, {
+        abortReason: { enumerable: true },
+        signal: { enumerable: true },
+        error: { enumerable: true }
+      });
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(WritableStreamDefaultController.prototype, Symbol.toStringTag, {
+          value: "WritableStreamDefaultController",
+          configurable: true
+        });
+      }
+      function IsWritableStreamDefaultController(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_controlledWritableStream")) {
+          return false;
+        }
+        return x2 instanceof WritableStreamDefaultController;
+      }
+      function SetUpWritableStreamDefaultController(stream, controller, startAlgorithm, writeAlgorithm, closeAlgorithm, abortAlgorithm, highWaterMark, sizeAlgorithm) {
+        controller._controlledWritableStream = stream;
+        stream._writableStreamController = controller;
+        controller._queue = void 0;
+        controller._queueTotalSize = void 0;
+        ResetQueue(controller);
+        controller._abortReason = void 0;
+        controller._abortController = createAbortController();
+        controller._started = false;
+        controller._strategySizeAlgorithm = sizeAlgorithm;
+        controller._strategyHWM = highWaterMark;
+        controller._writeAlgorithm = writeAlgorithm;
+        controller._closeAlgorithm = closeAlgorithm;
+        controller._abortAlgorithm = abortAlgorithm;
+        const backpressure = WritableStreamDefaultControllerGetBackpressure(controller);
+        WritableStreamUpdateBackpressure(stream, backpressure);
+        const startResult = startAlgorithm();
+        const startPromise = promiseResolvedWith(startResult);
+        uponPromise(startPromise, () => {
+          controller._started = true;
+          WritableStreamDefaultControllerAdvanceQueueIfNeeded(controller);
+          return null;
+        }, (r2) => {
+          controller._started = true;
+          WritableStreamDealWithRejection(stream, r2);
+          return null;
+        });
+      }
+      function SetUpWritableStreamDefaultControllerFromUnderlyingSink(stream, underlyingSink, highWaterMark, sizeAlgorithm) {
+        const controller = Object.create(WritableStreamDefaultController.prototype);
+        let startAlgorithm;
+        let writeAlgorithm;
+        let closeAlgorithm;
+        let abortAlgorithm;
+        if (underlyingSink.start !== void 0) {
+          startAlgorithm = () => underlyingSink.start(controller);
+        } else {
+          startAlgorithm = () => void 0;
+        }
+        if (underlyingSink.write !== void 0) {
+          writeAlgorithm = (chunk) => underlyingSink.write(chunk, controller);
+        } else {
+          writeAlgorithm = () => promiseResolvedWith(void 0);
+        }
+        if (underlyingSink.close !== void 0) {
+          closeAlgorithm = () => underlyingSink.close();
+        } else {
+          closeAlgorithm = () => promiseResolvedWith(void 0);
+        }
+        if (underlyingSink.abort !== void 0) {
+          abortAlgorithm = (reason) => underlyingSink.abort(reason);
+        } else {
+          abortAlgorithm = () => promiseResolvedWith(void 0);
+        }
+        SetUpWritableStreamDefaultController(stream, controller, startAlgorithm, writeAlgorithm, closeAlgorithm, abortAlgorithm, highWaterMark, sizeAlgorithm);
+      }
+      function WritableStreamDefaultControllerClearAlgorithms(controller) {
+        controller._writeAlgorithm = void 0;
+        controller._closeAlgorithm = void 0;
+        controller._abortAlgorithm = void 0;
+        controller._strategySizeAlgorithm = void 0;
+      }
+      function WritableStreamDefaultControllerClose(controller) {
+        EnqueueValueWithSize(controller, closeSentinel, 0);
+        WritableStreamDefaultControllerAdvanceQueueIfNeeded(controller);
+      }
+      function WritableStreamDefaultControllerGetChunkSize(controller, chunk) {
+        try {
+          return controller._strategySizeAlgorithm(chunk);
+        } catch (chunkSizeE) {
+          WritableStreamDefaultControllerErrorIfNeeded(controller, chunkSizeE);
+          return 1;
+        }
+      }
+      function WritableStreamDefaultControllerGetDesiredSize(controller) {
+        return controller._strategyHWM - controller._queueTotalSize;
+      }
+      function WritableStreamDefaultControllerWrite(controller, chunk, chunkSize) {
+        try {
+          EnqueueValueWithSize(controller, chunk, chunkSize);
+        } catch (enqueueE) {
+          WritableStreamDefaultControllerErrorIfNeeded(controller, enqueueE);
+          return;
+        }
+        const stream = controller._controlledWritableStream;
+        if (!WritableStreamCloseQueuedOrInFlight(stream) && stream._state === "writable") {
+          const backpressure = WritableStreamDefaultControllerGetBackpressure(controller);
+          WritableStreamUpdateBackpressure(stream, backpressure);
+        }
+        WritableStreamDefaultControllerAdvanceQueueIfNeeded(controller);
+      }
+      function WritableStreamDefaultControllerAdvanceQueueIfNeeded(controller) {
+        const stream = controller._controlledWritableStream;
+        if (!controller._started) {
+          return;
+        }
+        if (stream._inFlightWriteRequest !== void 0) {
+          return;
+        }
+        const state = stream._state;
+        if (state === "erroring") {
+          WritableStreamFinishErroring(stream);
+          return;
+        }
+        if (controller._queue.length === 0) {
+          return;
+        }
+        const value = PeekQueueValue(controller);
+        if (value === closeSentinel) {
+          WritableStreamDefaultControllerProcessClose(controller);
+        } else {
+          WritableStreamDefaultControllerProcessWrite(controller, value);
+        }
+      }
+      function WritableStreamDefaultControllerErrorIfNeeded(controller, error) {
+        if (controller._controlledWritableStream._state === "writable") {
+          WritableStreamDefaultControllerError(controller, error);
+        }
+      }
+      function WritableStreamDefaultControllerProcessClose(controller) {
+        const stream = controller._controlledWritableStream;
+        WritableStreamMarkCloseRequestInFlight(stream);
+        DequeueValue(controller);
+        const sinkClosePromise = controller._closeAlgorithm();
+        WritableStreamDefaultControllerClearAlgorithms(controller);
+        uponPromise(sinkClosePromise, () => {
+          WritableStreamFinishInFlightClose(stream);
+          return null;
+        }, (reason) => {
+          WritableStreamFinishInFlightCloseWithError(stream, reason);
+          return null;
+        });
+      }
+      function WritableStreamDefaultControllerProcessWrite(controller, chunk) {
+        const stream = controller._controlledWritableStream;
+        WritableStreamMarkFirstWriteRequestInFlight(stream);
+        const sinkWritePromise = controller._writeAlgorithm(chunk);
+        uponPromise(sinkWritePromise, () => {
+          WritableStreamFinishInFlightWrite(stream);
+          const state = stream._state;
+          DequeueValue(controller);
+          if (!WritableStreamCloseQueuedOrInFlight(stream) && state === "writable") {
+            const backpressure = WritableStreamDefaultControllerGetBackpressure(controller);
+            WritableStreamUpdateBackpressure(stream, backpressure);
+          }
+          WritableStreamDefaultControllerAdvanceQueueIfNeeded(controller);
+          return null;
+        }, (reason) => {
+          if (stream._state === "writable") {
+            WritableStreamDefaultControllerClearAlgorithms(controller);
+          }
+          WritableStreamFinishInFlightWriteWithError(stream, reason);
+          return null;
+        });
+      }
+      function WritableStreamDefaultControllerGetBackpressure(controller) {
+        const desiredSize = WritableStreamDefaultControllerGetDesiredSize(controller);
+        return desiredSize <= 0;
+      }
+      function WritableStreamDefaultControllerError(controller, error) {
+        const stream = controller._controlledWritableStream;
+        WritableStreamDefaultControllerClearAlgorithms(controller);
+        WritableStreamStartErroring(stream, error);
+      }
+      function streamBrandCheckException$2(name) {
+        return new TypeError(`WritableStream.prototype.${name} can only be used on a WritableStream`);
+      }
+      function defaultControllerBrandCheckException$2(name) {
+        return new TypeError(`WritableStreamDefaultController.prototype.${name} can only be used on a WritableStreamDefaultController`);
+      }
+      function defaultWriterBrandCheckException(name) {
+        return new TypeError(`WritableStreamDefaultWriter.prototype.${name} can only be used on a WritableStreamDefaultWriter`);
+      }
+      function defaultWriterLockException(name) {
+        return new TypeError("Cannot " + name + " a stream using a released writer");
+      }
+      function defaultWriterClosedPromiseInitialize(writer) {
+        writer._closedPromise = newPromise((resolve, reject) => {
+          writer._closedPromise_resolve = resolve;
+          writer._closedPromise_reject = reject;
+          writer._closedPromiseState = "pending";
+        });
+      }
+      function defaultWriterClosedPromiseInitializeAsRejected(writer, reason) {
+        defaultWriterClosedPromiseInitialize(writer);
+        defaultWriterClosedPromiseReject(writer, reason);
+      }
+      function defaultWriterClosedPromiseInitializeAsResolved(writer) {
+        defaultWriterClosedPromiseInitialize(writer);
+        defaultWriterClosedPromiseResolve(writer);
+      }
+      function defaultWriterClosedPromiseReject(writer, reason) {
+        if (writer._closedPromise_reject === void 0) {
+          return;
+        }
+        setPromiseIsHandledToTrue(writer._closedPromise);
+        writer._closedPromise_reject(reason);
+        writer._closedPromise_resolve = void 0;
+        writer._closedPromise_reject = void 0;
+        writer._closedPromiseState = "rejected";
+      }
+      function defaultWriterClosedPromiseResetToRejected(writer, reason) {
+        defaultWriterClosedPromiseInitializeAsRejected(writer, reason);
+      }
+      function defaultWriterClosedPromiseResolve(writer) {
+        if (writer._closedPromise_resolve === void 0) {
+          return;
+        }
+        writer._closedPromise_resolve(void 0);
+        writer._closedPromise_resolve = void 0;
+        writer._closedPromise_reject = void 0;
+        writer._closedPromiseState = "resolved";
+      }
+      function defaultWriterReadyPromiseInitialize(writer) {
+        writer._readyPromise = newPromise((resolve, reject) => {
+          writer._readyPromise_resolve = resolve;
+          writer._readyPromise_reject = reject;
+        });
+        writer._readyPromiseState = "pending";
+      }
+      function defaultWriterReadyPromiseInitializeAsRejected(writer, reason) {
+        defaultWriterReadyPromiseInitialize(writer);
+        defaultWriterReadyPromiseReject(writer, reason);
+      }
+      function defaultWriterReadyPromiseInitializeAsResolved(writer) {
+        defaultWriterReadyPromiseInitialize(writer);
+        defaultWriterReadyPromiseResolve(writer);
+      }
+      function defaultWriterReadyPromiseReject(writer, reason) {
+        if (writer._readyPromise_reject === void 0) {
+          return;
+        }
+        setPromiseIsHandledToTrue(writer._readyPromise);
+        writer._readyPromise_reject(reason);
+        writer._readyPromise_resolve = void 0;
+        writer._readyPromise_reject = void 0;
+        writer._readyPromiseState = "rejected";
+      }
+      function defaultWriterReadyPromiseReset(writer) {
+        defaultWriterReadyPromiseInitialize(writer);
+      }
+      function defaultWriterReadyPromiseResetToRejected(writer, reason) {
+        defaultWriterReadyPromiseInitializeAsRejected(writer, reason);
+      }
+      function defaultWriterReadyPromiseResolve(writer) {
+        if (writer._readyPromise_resolve === void 0) {
+          return;
+        }
+        writer._readyPromise_resolve(void 0);
+        writer._readyPromise_resolve = void 0;
+        writer._readyPromise_reject = void 0;
+        writer._readyPromiseState = "fulfilled";
+      }
+      function getGlobals() {
+        if (typeof globalThis !== "undefined") {
+          return globalThis;
+        } else if (typeof self !== "undefined") {
+          return self;
+        } else if (typeof global !== "undefined") {
+          return global;
+        }
+        return void 0;
+      }
+      const globals = getGlobals();
+      function isDOMExceptionConstructor(ctor) {
+        if (!(typeof ctor === "function" || typeof ctor === "object")) {
+          return false;
+        }
+        if (ctor.name !== "DOMException") {
+          return false;
+        }
+        try {
+          new ctor();
+          return true;
+        } catch (_a2) {
+          return false;
+        }
+      }
+      function getFromGlobal() {
+        const ctor = globals === null || globals === void 0 ? void 0 : globals.DOMException;
+        return isDOMExceptionConstructor(ctor) ? ctor : void 0;
+      }
+      function createPolyfill() {
+        const ctor = function DOMException3(message, name) {
+          this.message = message || "";
+          this.name = name || "Error";
+          if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, this.constructor);
+          }
+        };
+        setFunctionName(ctor, "DOMException");
+        ctor.prototype = Object.create(Error.prototype);
+        Object.defineProperty(ctor.prototype, "constructor", { value: ctor, writable: true, configurable: true });
+        return ctor;
+      }
+      const DOMException2 = getFromGlobal() || createPolyfill();
+      function ReadableStreamPipeTo(source, dest, preventClose, preventAbort, preventCancel, signal) {
+        const reader = AcquireReadableStreamDefaultReader(source);
+        const writer = AcquireWritableStreamDefaultWriter(dest);
+        source._disturbed = true;
+        let shuttingDown = false;
+        let currentWrite = promiseResolvedWith(void 0);
+        return newPromise((resolve, reject) => {
+          let abortAlgorithm;
+          if (signal !== void 0) {
+            abortAlgorithm = () => {
+              const error = signal.reason !== void 0 ? signal.reason : new DOMException2("Aborted", "AbortError");
+              const actions = [];
+              if (!preventAbort) {
+                actions.push(() => {
+                  if (dest._state === "writable") {
+                    return WritableStreamAbort(dest, error);
+                  }
+                  return promiseResolvedWith(void 0);
+                });
+              }
+              if (!preventCancel) {
+                actions.push(() => {
+                  if (source._state === "readable") {
+                    return ReadableStreamCancel(source, error);
+                  }
+                  return promiseResolvedWith(void 0);
+                });
+              }
+              shutdownWithAction(() => Promise.all(actions.map((action) => action())), true, error);
+            };
+            if (signal.aborted) {
+              abortAlgorithm();
+              return;
+            }
+            signal.addEventListener("abort", abortAlgorithm);
+          }
+          function pipeLoop() {
+            return newPromise((resolveLoop, rejectLoop) => {
+              function next(done) {
+                if (done) {
+                  resolveLoop();
+                } else {
+                  PerformPromiseThen(pipeStep(), next, rejectLoop);
+                }
+              }
+              next(false);
+            });
+          }
+          function pipeStep() {
+            if (shuttingDown) {
+              return promiseResolvedWith(true);
+            }
+            return PerformPromiseThen(writer._readyPromise, () => {
+              return newPromise((resolveRead, rejectRead) => {
+                ReadableStreamDefaultReaderRead(reader, {
+                  _chunkSteps: (chunk) => {
+                    currentWrite = PerformPromiseThen(WritableStreamDefaultWriterWrite(writer, chunk), void 0, noop2);
+                    resolveRead(false);
+                  },
+                  _closeSteps: () => resolveRead(true),
+                  _errorSteps: rejectRead
+                });
+              });
+            });
+          }
+          isOrBecomesErrored(source, reader._closedPromise, (storedError) => {
+            if (!preventAbort) {
+              shutdownWithAction(() => WritableStreamAbort(dest, storedError), true, storedError);
+            } else {
+              shutdown(true, storedError);
+            }
+            return null;
+          });
+          isOrBecomesErrored(dest, writer._closedPromise, (storedError) => {
+            if (!preventCancel) {
+              shutdownWithAction(() => ReadableStreamCancel(source, storedError), true, storedError);
+            } else {
+              shutdown(true, storedError);
+            }
+            return null;
+          });
+          isOrBecomesClosed(source, reader._closedPromise, () => {
+            if (!preventClose) {
+              shutdownWithAction(() => WritableStreamDefaultWriterCloseWithErrorPropagation(writer));
+            } else {
+              shutdown();
+            }
+            return null;
+          });
+          if (WritableStreamCloseQueuedOrInFlight(dest) || dest._state === "closed") {
+            const destClosed = new TypeError("the destination writable stream closed before all data could be piped to it");
+            if (!preventCancel) {
+              shutdownWithAction(() => ReadableStreamCancel(source, destClosed), true, destClosed);
+            } else {
+              shutdown(true, destClosed);
+            }
+          }
+          setPromiseIsHandledToTrue(pipeLoop());
+          function waitForWritesToFinish() {
+            const oldCurrentWrite = currentWrite;
+            return PerformPromiseThen(currentWrite, () => oldCurrentWrite !== currentWrite ? waitForWritesToFinish() : void 0);
+          }
+          function isOrBecomesErrored(stream, promise, action) {
+            if (stream._state === "errored") {
+              action(stream._storedError);
+            } else {
+              uponRejection(promise, action);
+            }
+          }
+          function isOrBecomesClosed(stream, promise, action) {
+            if (stream._state === "closed") {
+              action();
+            } else {
+              uponFulfillment(promise, action);
+            }
+          }
+          function shutdownWithAction(action, originalIsError, originalError) {
+            if (shuttingDown) {
+              return;
+            }
+            shuttingDown = true;
+            if (dest._state === "writable" && !WritableStreamCloseQueuedOrInFlight(dest)) {
+              uponFulfillment(waitForWritesToFinish(), doTheRest);
+            } else {
+              doTheRest();
+            }
+            function doTheRest() {
+              uponPromise(action(), () => finalize(originalIsError, originalError), (newError) => finalize(true, newError));
+              return null;
+            }
+          }
+          function shutdown(isError, error) {
+            if (shuttingDown) {
+              return;
+            }
+            shuttingDown = true;
+            if (dest._state === "writable" && !WritableStreamCloseQueuedOrInFlight(dest)) {
+              uponFulfillment(waitForWritesToFinish(), () => finalize(isError, error));
+            } else {
+              finalize(isError, error);
+            }
+          }
+          function finalize(isError, error) {
+            WritableStreamDefaultWriterRelease(writer);
+            ReadableStreamReaderGenericRelease(reader);
+            if (signal !== void 0) {
+              signal.removeEventListener("abort", abortAlgorithm);
+            }
+            if (isError) {
+              reject(error);
+            } else {
+              resolve(void 0);
+            }
+            return null;
+          }
+        });
+      }
+      class ReadableStreamDefaultController {
+        constructor() {
+          throw new TypeError("Illegal constructor");
+        }
+        /**
+         * Returns the desired size to fill the controlled stream's internal queue. It can be negative, if the queue is
+         * over-full. An underlying source ought to use this information to determine when and how to apply backpressure.
+         */
+        get desiredSize() {
+          if (!IsReadableStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException$1("desiredSize");
+          }
+          return ReadableStreamDefaultControllerGetDesiredSize(this);
+        }
+        /**
+         * Closes the controlled readable stream. Consumers will still be able to read any previously-enqueued chunks from
+         * the stream, but once those are read, the stream will become closed.
+         */
+        close() {
+          if (!IsReadableStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException$1("close");
+          }
+          if (!ReadableStreamDefaultControllerCanCloseOrEnqueue(this)) {
+            throw new TypeError("The stream is not in a state that permits close");
+          }
+          ReadableStreamDefaultControllerClose(this);
+        }
+        enqueue(chunk = void 0) {
+          if (!IsReadableStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException$1("enqueue");
+          }
+          if (!ReadableStreamDefaultControllerCanCloseOrEnqueue(this)) {
+            throw new TypeError("The stream is not in a state that permits enqueue");
+          }
+          return ReadableStreamDefaultControllerEnqueue(this, chunk);
+        }
+        /**
+         * Errors the controlled readable stream, making all future interactions with it fail with the given error `e`.
+         */
+        error(e2 = void 0) {
+          if (!IsReadableStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException$1("error");
+          }
+          ReadableStreamDefaultControllerError(this, e2);
+        }
+        /** @internal */
+        [CancelSteps](reason) {
+          ResetQueue(this);
+          const result = this._cancelAlgorithm(reason);
+          ReadableStreamDefaultControllerClearAlgorithms(this);
+          return result;
+        }
+        /** @internal */
+        [PullSteps](readRequest) {
+          const stream = this._controlledReadableStream;
+          if (this._queue.length > 0) {
+            const chunk = DequeueValue(this);
+            if (this._closeRequested && this._queue.length === 0) {
+              ReadableStreamDefaultControllerClearAlgorithms(this);
+              ReadableStreamClose(stream);
+            } else {
+              ReadableStreamDefaultControllerCallPullIfNeeded(this);
+            }
+            readRequest._chunkSteps(chunk);
+          } else {
+            ReadableStreamAddReadRequest(stream, readRequest);
+            ReadableStreamDefaultControllerCallPullIfNeeded(this);
+          }
+        }
+        /** @internal */
+        [ReleaseSteps]() {
+        }
+      }
+      Object.defineProperties(ReadableStreamDefaultController.prototype, {
+        close: { enumerable: true },
+        enqueue: { enumerable: true },
+        error: { enumerable: true },
+        desiredSize: { enumerable: true }
+      });
+      setFunctionName(ReadableStreamDefaultController.prototype.close, "close");
+      setFunctionName(ReadableStreamDefaultController.prototype.enqueue, "enqueue");
+      setFunctionName(ReadableStreamDefaultController.prototype.error, "error");
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(ReadableStreamDefaultController.prototype, Symbol.toStringTag, {
+          value: "ReadableStreamDefaultController",
+          configurable: true
+        });
+      }
+      function IsReadableStreamDefaultController(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_controlledReadableStream")) {
+          return false;
+        }
+        return x2 instanceof ReadableStreamDefaultController;
+      }
+      function ReadableStreamDefaultControllerCallPullIfNeeded(controller) {
+        const shouldPull = ReadableStreamDefaultControllerShouldCallPull(controller);
+        if (!shouldPull) {
+          return;
+        }
+        if (controller._pulling) {
+          controller._pullAgain = true;
+          return;
+        }
+        controller._pulling = true;
+        const pullPromise = controller._pullAlgorithm();
+        uponPromise(pullPromise, () => {
+          controller._pulling = false;
+          if (controller._pullAgain) {
+            controller._pullAgain = false;
+            ReadableStreamDefaultControllerCallPullIfNeeded(controller);
+          }
+          return null;
+        }, (e2) => {
+          ReadableStreamDefaultControllerError(controller, e2);
+          return null;
+        });
+      }
+      function ReadableStreamDefaultControllerShouldCallPull(controller) {
+        const stream = controller._controlledReadableStream;
+        if (!ReadableStreamDefaultControllerCanCloseOrEnqueue(controller)) {
+          return false;
+        }
+        if (!controller._started) {
+          return false;
+        }
+        if (IsReadableStreamLocked(stream) && ReadableStreamGetNumReadRequests(stream) > 0) {
+          return true;
+        }
+        const desiredSize = ReadableStreamDefaultControllerGetDesiredSize(controller);
+        if (desiredSize > 0) {
+          return true;
+        }
+        return false;
+      }
+      function ReadableStreamDefaultControllerClearAlgorithms(controller) {
+        controller._pullAlgorithm = void 0;
+        controller._cancelAlgorithm = void 0;
+        controller._strategySizeAlgorithm = void 0;
+      }
+      function ReadableStreamDefaultControllerClose(controller) {
+        if (!ReadableStreamDefaultControllerCanCloseOrEnqueue(controller)) {
+          return;
+        }
+        const stream = controller._controlledReadableStream;
+        controller._closeRequested = true;
+        if (controller._queue.length === 0) {
+          ReadableStreamDefaultControllerClearAlgorithms(controller);
+          ReadableStreamClose(stream);
+        }
+      }
+      function ReadableStreamDefaultControllerEnqueue(controller, chunk) {
+        if (!ReadableStreamDefaultControllerCanCloseOrEnqueue(controller)) {
+          return;
+        }
+        const stream = controller._controlledReadableStream;
+        if (IsReadableStreamLocked(stream) && ReadableStreamGetNumReadRequests(stream) > 0) {
+          ReadableStreamFulfillReadRequest(stream, chunk, false);
+        } else {
+          let chunkSize;
+          try {
+            chunkSize = controller._strategySizeAlgorithm(chunk);
+          } catch (chunkSizeE) {
+            ReadableStreamDefaultControllerError(controller, chunkSizeE);
+            throw chunkSizeE;
+          }
+          try {
+            EnqueueValueWithSize(controller, chunk, chunkSize);
+          } catch (enqueueE) {
+            ReadableStreamDefaultControllerError(controller, enqueueE);
+            throw enqueueE;
+          }
+        }
+        ReadableStreamDefaultControllerCallPullIfNeeded(controller);
+      }
+      function ReadableStreamDefaultControllerError(controller, e2) {
+        const stream = controller._controlledReadableStream;
+        if (stream._state !== "readable") {
+          return;
+        }
+        ResetQueue(controller);
+        ReadableStreamDefaultControllerClearAlgorithms(controller);
+        ReadableStreamError(stream, e2);
+      }
+      function ReadableStreamDefaultControllerGetDesiredSize(controller) {
+        const state = controller._controlledReadableStream._state;
+        if (state === "errored") {
+          return null;
+        }
+        if (state === "closed") {
+          return 0;
+        }
+        return controller._strategyHWM - controller._queueTotalSize;
+      }
+      function ReadableStreamDefaultControllerHasBackpressure(controller) {
+        if (ReadableStreamDefaultControllerShouldCallPull(controller)) {
+          return false;
+        }
+        return true;
+      }
+      function ReadableStreamDefaultControllerCanCloseOrEnqueue(controller) {
+        const state = controller._controlledReadableStream._state;
+        if (!controller._closeRequested && state === "readable") {
+          return true;
+        }
+        return false;
+      }
+      function SetUpReadableStreamDefaultController(stream, controller, startAlgorithm, pullAlgorithm, cancelAlgorithm, highWaterMark, sizeAlgorithm) {
+        controller._controlledReadableStream = stream;
+        controller._queue = void 0;
+        controller._queueTotalSize = void 0;
+        ResetQueue(controller);
+        controller._started = false;
+        controller._closeRequested = false;
+        controller._pullAgain = false;
+        controller._pulling = false;
+        controller._strategySizeAlgorithm = sizeAlgorithm;
+        controller._strategyHWM = highWaterMark;
+        controller._pullAlgorithm = pullAlgorithm;
+        controller._cancelAlgorithm = cancelAlgorithm;
+        stream._readableStreamController = controller;
+        const startResult = startAlgorithm();
+        uponPromise(promiseResolvedWith(startResult), () => {
+          controller._started = true;
+          ReadableStreamDefaultControllerCallPullIfNeeded(controller);
+          return null;
+        }, (r2) => {
+          ReadableStreamDefaultControllerError(controller, r2);
+          return null;
+        });
+      }
+      function SetUpReadableStreamDefaultControllerFromUnderlyingSource(stream, underlyingSource, highWaterMark, sizeAlgorithm) {
+        const controller = Object.create(ReadableStreamDefaultController.prototype);
+        let startAlgorithm;
+        let pullAlgorithm;
+        let cancelAlgorithm;
+        if (underlyingSource.start !== void 0) {
+          startAlgorithm = () => underlyingSource.start(controller);
+        } else {
+          startAlgorithm = () => void 0;
+        }
+        if (underlyingSource.pull !== void 0) {
+          pullAlgorithm = () => underlyingSource.pull(controller);
+        } else {
+          pullAlgorithm = () => promiseResolvedWith(void 0);
+        }
+        if (underlyingSource.cancel !== void 0) {
+          cancelAlgorithm = (reason) => underlyingSource.cancel(reason);
+        } else {
+          cancelAlgorithm = () => promiseResolvedWith(void 0);
+        }
+        SetUpReadableStreamDefaultController(stream, controller, startAlgorithm, pullAlgorithm, cancelAlgorithm, highWaterMark, sizeAlgorithm);
+      }
+      function defaultControllerBrandCheckException$1(name) {
+        return new TypeError(`ReadableStreamDefaultController.prototype.${name} can only be used on a ReadableStreamDefaultController`);
+      }
+      function ReadableStreamTee(stream, cloneForBranch2) {
+        if (IsReadableByteStreamController(stream._readableStreamController)) {
+          return ReadableByteStreamTee(stream);
+        }
+        return ReadableStreamDefaultTee(stream);
+      }
+      function ReadableStreamDefaultTee(stream, cloneForBranch2) {
+        const reader = AcquireReadableStreamDefaultReader(stream);
+        let reading = false;
+        let readAgain = false;
+        let canceled1 = false;
+        let canceled2 = false;
+        let reason1;
+        let reason2;
+        let branch1;
+        let branch2;
+        let resolveCancelPromise;
+        const cancelPromise = newPromise((resolve) => {
+          resolveCancelPromise = resolve;
+        });
+        function pullAlgorithm() {
+          if (reading) {
+            readAgain = true;
+            return promiseResolvedWith(void 0);
+          }
+          reading = true;
+          const readRequest = {
+            _chunkSteps: (chunk) => {
+              _queueMicrotask(() => {
+                readAgain = false;
+                const chunk1 = chunk;
+                const chunk2 = chunk;
+                if (!canceled1) {
+                  ReadableStreamDefaultControllerEnqueue(branch1._readableStreamController, chunk1);
+                }
+                if (!canceled2) {
+                  ReadableStreamDefaultControllerEnqueue(branch2._readableStreamController, chunk2);
+                }
+                reading = false;
+                if (readAgain) {
+                  pullAlgorithm();
+                }
+              });
+            },
+            _closeSteps: () => {
+              reading = false;
+              if (!canceled1) {
+                ReadableStreamDefaultControllerClose(branch1._readableStreamController);
+              }
+              if (!canceled2) {
+                ReadableStreamDefaultControllerClose(branch2._readableStreamController);
+              }
+              if (!canceled1 || !canceled2) {
+                resolveCancelPromise(void 0);
+              }
+            },
+            _errorSteps: () => {
+              reading = false;
+            }
+          };
+          ReadableStreamDefaultReaderRead(reader, readRequest);
+          return promiseResolvedWith(void 0);
+        }
+        function cancel1Algorithm(reason) {
+          canceled1 = true;
+          reason1 = reason;
+          if (canceled2) {
+            const compositeReason = CreateArrayFromList([reason1, reason2]);
+            const cancelResult = ReadableStreamCancel(stream, compositeReason);
+            resolveCancelPromise(cancelResult);
+          }
+          return cancelPromise;
+        }
+        function cancel2Algorithm(reason) {
+          canceled2 = true;
+          reason2 = reason;
+          if (canceled1) {
+            const compositeReason = CreateArrayFromList([reason1, reason2]);
+            const cancelResult = ReadableStreamCancel(stream, compositeReason);
+            resolveCancelPromise(cancelResult);
+          }
+          return cancelPromise;
+        }
+        function startAlgorithm() {
+        }
+        branch1 = CreateReadableStream(startAlgorithm, pullAlgorithm, cancel1Algorithm);
+        branch2 = CreateReadableStream(startAlgorithm, pullAlgorithm, cancel2Algorithm);
+        uponRejection(reader._closedPromise, (r2) => {
+          ReadableStreamDefaultControllerError(branch1._readableStreamController, r2);
+          ReadableStreamDefaultControllerError(branch2._readableStreamController, r2);
+          if (!canceled1 || !canceled2) {
+            resolveCancelPromise(void 0);
+          }
+          return null;
+        });
+        return [branch1, branch2];
+      }
+      function ReadableByteStreamTee(stream) {
+        let reader = AcquireReadableStreamDefaultReader(stream);
+        let reading = false;
+        let readAgainForBranch1 = false;
+        let readAgainForBranch2 = false;
+        let canceled1 = false;
+        let canceled2 = false;
+        let reason1;
+        let reason2;
+        let branch1;
+        let branch2;
+        let resolveCancelPromise;
+        const cancelPromise = newPromise((resolve) => {
+          resolveCancelPromise = resolve;
+        });
+        function forwardReaderError(thisReader) {
+          uponRejection(thisReader._closedPromise, (r2) => {
+            if (thisReader !== reader) {
+              return null;
+            }
+            ReadableByteStreamControllerError(branch1._readableStreamController, r2);
+            ReadableByteStreamControllerError(branch2._readableStreamController, r2);
+            if (!canceled1 || !canceled2) {
+              resolveCancelPromise(void 0);
+            }
+            return null;
+          });
+        }
+        function pullWithDefaultReader() {
+          if (IsReadableStreamBYOBReader(reader)) {
+            ReadableStreamReaderGenericRelease(reader);
+            reader = AcquireReadableStreamDefaultReader(stream);
+            forwardReaderError(reader);
+          }
+          const readRequest = {
+            _chunkSteps: (chunk) => {
+              _queueMicrotask(() => {
+                readAgainForBranch1 = false;
+                readAgainForBranch2 = false;
+                const chunk1 = chunk;
+                let chunk2 = chunk;
+                if (!canceled1 && !canceled2) {
+                  try {
+                    chunk2 = CloneAsUint8Array(chunk);
+                  } catch (cloneE) {
+                    ReadableByteStreamControllerError(branch1._readableStreamController, cloneE);
+                    ReadableByteStreamControllerError(branch2._readableStreamController, cloneE);
+                    resolveCancelPromise(ReadableStreamCancel(stream, cloneE));
+                    return;
+                  }
+                }
+                if (!canceled1) {
+                  ReadableByteStreamControllerEnqueue(branch1._readableStreamController, chunk1);
+                }
+                if (!canceled2) {
+                  ReadableByteStreamControllerEnqueue(branch2._readableStreamController, chunk2);
+                }
+                reading = false;
+                if (readAgainForBranch1) {
+                  pull1Algorithm();
+                } else if (readAgainForBranch2) {
+                  pull2Algorithm();
+                }
+              });
+            },
+            _closeSteps: () => {
+              reading = false;
+              if (!canceled1) {
+                ReadableByteStreamControllerClose(branch1._readableStreamController);
+              }
+              if (!canceled2) {
+                ReadableByteStreamControllerClose(branch2._readableStreamController);
+              }
+              if (branch1._readableStreamController._pendingPullIntos.length > 0) {
+                ReadableByteStreamControllerRespond(branch1._readableStreamController, 0);
+              }
+              if (branch2._readableStreamController._pendingPullIntos.length > 0) {
+                ReadableByteStreamControllerRespond(branch2._readableStreamController, 0);
+              }
+              if (!canceled1 || !canceled2) {
+                resolveCancelPromise(void 0);
+              }
+            },
+            _errorSteps: () => {
+              reading = false;
+            }
+          };
+          ReadableStreamDefaultReaderRead(reader, readRequest);
+        }
+        function pullWithBYOBReader(view, forBranch2) {
+          if (IsReadableStreamDefaultReader(reader)) {
+            ReadableStreamReaderGenericRelease(reader);
+            reader = AcquireReadableStreamBYOBReader(stream);
+            forwardReaderError(reader);
+          }
+          const byobBranch = forBranch2 ? branch2 : branch1;
+          const otherBranch = forBranch2 ? branch1 : branch2;
+          const readIntoRequest = {
+            _chunkSteps: (chunk) => {
+              _queueMicrotask(() => {
+                readAgainForBranch1 = false;
+                readAgainForBranch2 = false;
+                const byobCanceled = forBranch2 ? canceled2 : canceled1;
+                const otherCanceled = forBranch2 ? canceled1 : canceled2;
+                if (!otherCanceled) {
+                  let clonedChunk;
+                  try {
+                    clonedChunk = CloneAsUint8Array(chunk);
+                  } catch (cloneE) {
+                    ReadableByteStreamControllerError(byobBranch._readableStreamController, cloneE);
+                    ReadableByteStreamControllerError(otherBranch._readableStreamController, cloneE);
+                    resolveCancelPromise(ReadableStreamCancel(stream, cloneE));
+                    return;
+                  }
+                  if (!byobCanceled) {
+                    ReadableByteStreamControllerRespondWithNewView(byobBranch._readableStreamController, chunk);
+                  }
+                  ReadableByteStreamControllerEnqueue(otherBranch._readableStreamController, clonedChunk);
+                } else if (!byobCanceled) {
+                  ReadableByteStreamControllerRespondWithNewView(byobBranch._readableStreamController, chunk);
+                }
+                reading = false;
+                if (readAgainForBranch1) {
+                  pull1Algorithm();
+                } else if (readAgainForBranch2) {
+                  pull2Algorithm();
+                }
+              });
+            },
+            _closeSteps: (chunk) => {
+              reading = false;
+              const byobCanceled = forBranch2 ? canceled2 : canceled1;
+              const otherCanceled = forBranch2 ? canceled1 : canceled2;
+              if (!byobCanceled) {
+                ReadableByteStreamControllerClose(byobBranch._readableStreamController);
+              }
+              if (!otherCanceled) {
+                ReadableByteStreamControllerClose(otherBranch._readableStreamController);
+              }
+              if (chunk !== void 0) {
+                if (!byobCanceled) {
+                  ReadableByteStreamControllerRespondWithNewView(byobBranch._readableStreamController, chunk);
+                }
+                if (!otherCanceled && otherBranch._readableStreamController._pendingPullIntos.length > 0) {
+                  ReadableByteStreamControllerRespond(otherBranch._readableStreamController, 0);
+                }
+              }
+              if (!byobCanceled || !otherCanceled) {
+                resolveCancelPromise(void 0);
+              }
+            },
+            _errorSteps: () => {
+              reading = false;
+            }
+          };
+          ReadableStreamBYOBReaderRead(reader, view, 1, readIntoRequest);
+        }
+        function pull1Algorithm() {
+          if (reading) {
+            readAgainForBranch1 = true;
+            return promiseResolvedWith(void 0);
+          }
+          reading = true;
+          const byobRequest = ReadableByteStreamControllerGetBYOBRequest(branch1._readableStreamController);
+          if (byobRequest === null) {
+            pullWithDefaultReader();
+          } else {
+            pullWithBYOBReader(byobRequest._view, false);
+          }
+          return promiseResolvedWith(void 0);
+        }
+        function pull2Algorithm() {
+          if (reading) {
+            readAgainForBranch2 = true;
+            return promiseResolvedWith(void 0);
+          }
+          reading = true;
+          const byobRequest = ReadableByteStreamControllerGetBYOBRequest(branch2._readableStreamController);
+          if (byobRequest === null) {
+            pullWithDefaultReader();
+          } else {
+            pullWithBYOBReader(byobRequest._view, true);
+          }
+          return promiseResolvedWith(void 0);
+        }
+        function cancel1Algorithm(reason) {
+          canceled1 = true;
+          reason1 = reason;
+          if (canceled2) {
+            const compositeReason = CreateArrayFromList([reason1, reason2]);
+            const cancelResult = ReadableStreamCancel(stream, compositeReason);
+            resolveCancelPromise(cancelResult);
+          }
+          return cancelPromise;
+        }
+        function cancel2Algorithm(reason) {
+          canceled2 = true;
+          reason2 = reason;
+          if (canceled1) {
+            const compositeReason = CreateArrayFromList([reason1, reason2]);
+            const cancelResult = ReadableStreamCancel(stream, compositeReason);
+            resolveCancelPromise(cancelResult);
+          }
+          return cancelPromise;
+        }
+        function startAlgorithm() {
+          return;
+        }
+        branch1 = CreateReadableByteStream(startAlgorithm, pull1Algorithm, cancel1Algorithm);
+        branch2 = CreateReadableByteStream(startAlgorithm, pull2Algorithm, cancel2Algorithm);
+        forwardReaderError(reader);
+        return [branch1, branch2];
+      }
+      function isReadableStreamLike(stream) {
+        return typeIsObject(stream) && typeof stream.getReader !== "undefined";
+      }
+      function ReadableStreamFrom(source) {
+        if (isReadableStreamLike(source)) {
+          return ReadableStreamFromDefaultReader(source.getReader());
+        }
+        return ReadableStreamFromIterable(source);
+      }
+      function ReadableStreamFromIterable(asyncIterable) {
+        let stream;
+        const iteratorRecord = GetIterator(asyncIterable, "async");
+        const startAlgorithm = noop2;
+        function pullAlgorithm() {
+          let nextResult;
+          try {
+            nextResult = IteratorNext(iteratorRecord);
+          } catch (e2) {
+            return promiseRejectedWith(e2);
+          }
+          const nextPromise = promiseResolvedWith(nextResult);
+          return transformPromiseWith(nextPromise, (iterResult) => {
+            if (!typeIsObject(iterResult)) {
+              throw new TypeError("The promise returned by the iterator.next() method must fulfill with an object");
+            }
+            const done = IteratorComplete(iterResult);
+            if (done) {
+              ReadableStreamDefaultControllerClose(stream._readableStreamController);
+            } else {
+              const value = IteratorValue(iterResult);
+              ReadableStreamDefaultControllerEnqueue(stream._readableStreamController, value);
+            }
+          });
+        }
+        function cancelAlgorithm(reason) {
+          const iterator = iteratorRecord.iterator;
+          let returnMethod;
+          try {
+            returnMethod = GetMethod(iterator, "return");
+          } catch (e2) {
+            return promiseRejectedWith(e2);
+          }
+          if (returnMethod === void 0) {
+            return promiseResolvedWith(void 0);
+          }
+          let returnResult;
+          try {
+            returnResult = reflectCall(returnMethod, iterator, [reason]);
+          } catch (e2) {
+            return promiseRejectedWith(e2);
+          }
+          const returnPromise = promiseResolvedWith(returnResult);
+          return transformPromiseWith(returnPromise, (iterResult) => {
+            if (!typeIsObject(iterResult)) {
+              throw new TypeError("The promise returned by the iterator.return() method must fulfill with an object");
+            }
+            return void 0;
+          });
+        }
+        stream = CreateReadableStream(startAlgorithm, pullAlgorithm, cancelAlgorithm, 0);
+        return stream;
+      }
+      function ReadableStreamFromDefaultReader(reader) {
+        let stream;
+        const startAlgorithm = noop2;
+        function pullAlgorithm() {
+          let readPromise;
+          try {
+            readPromise = reader.read();
+          } catch (e2) {
+            return promiseRejectedWith(e2);
+          }
+          return transformPromiseWith(readPromise, (readResult) => {
+            if (!typeIsObject(readResult)) {
+              throw new TypeError("The promise returned by the reader.read() method must fulfill with an object");
+            }
+            if (readResult.done) {
+              ReadableStreamDefaultControllerClose(stream._readableStreamController);
+            } else {
+              const value = readResult.value;
+              ReadableStreamDefaultControllerEnqueue(stream._readableStreamController, value);
+            }
+          });
+        }
+        function cancelAlgorithm(reason) {
+          try {
+            return promiseResolvedWith(reader.cancel(reason));
+          } catch (e2) {
+            return promiseRejectedWith(e2);
+          }
+        }
+        stream = CreateReadableStream(startAlgorithm, pullAlgorithm, cancelAlgorithm, 0);
+        return stream;
+      }
+      function convertUnderlyingDefaultOrByteSource(source, context) {
+        assertDictionary(source, context);
+        const original = source;
+        const autoAllocateChunkSize = original === null || original === void 0 ? void 0 : original.autoAllocateChunkSize;
+        const cancel = original === null || original === void 0 ? void 0 : original.cancel;
+        const pull = original === null || original === void 0 ? void 0 : original.pull;
+        const start = original === null || original === void 0 ? void 0 : original.start;
+        const type = original === null || original === void 0 ? void 0 : original.type;
+        return {
+          autoAllocateChunkSize: autoAllocateChunkSize === void 0 ? void 0 : convertUnsignedLongLongWithEnforceRange(autoAllocateChunkSize, `${context} has member 'autoAllocateChunkSize' that`),
+          cancel: cancel === void 0 ? void 0 : convertUnderlyingSourceCancelCallback(cancel, original, `${context} has member 'cancel' that`),
+          pull: pull === void 0 ? void 0 : convertUnderlyingSourcePullCallback(pull, original, `${context} has member 'pull' that`),
+          start: start === void 0 ? void 0 : convertUnderlyingSourceStartCallback(start, original, `${context} has member 'start' that`),
+          type: type === void 0 ? void 0 : convertReadableStreamType(type, `${context} has member 'type' that`)
+        };
+      }
+      function convertUnderlyingSourceCancelCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (reason) => promiseCall(fn, original, [reason]);
+      }
+      function convertUnderlyingSourcePullCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (controller) => promiseCall(fn, original, [controller]);
+      }
+      function convertUnderlyingSourceStartCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (controller) => reflectCall(fn, original, [controller]);
+      }
+      function convertReadableStreamType(type, context) {
+        type = `${type}`;
+        if (type !== "bytes") {
+          throw new TypeError(`${context} '${type}' is not a valid enumeration value for ReadableStreamType`);
+        }
+        return type;
+      }
+      function convertIteratorOptions(options, context) {
+        assertDictionary(options, context);
+        const preventCancel = options === null || options === void 0 ? void 0 : options.preventCancel;
+        return { preventCancel: Boolean(preventCancel) };
+      }
+      function convertPipeOptions(options, context) {
+        assertDictionary(options, context);
+        const preventAbort = options === null || options === void 0 ? void 0 : options.preventAbort;
+        const preventCancel = options === null || options === void 0 ? void 0 : options.preventCancel;
+        const preventClose = options === null || options === void 0 ? void 0 : options.preventClose;
+        const signal = options === null || options === void 0 ? void 0 : options.signal;
+        if (signal !== void 0) {
+          assertAbortSignal(signal, `${context} has member 'signal' that`);
+        }
+        return {
+          preventAbort: Boolean(preventAbort),
+          preventCancel: Boolean(preventCancel),
+          preventClose: Boolean(preventClose),
+          signal
+        };
+      }
+      function assertAbortSignal(signal, context) {
+        if (!isAbortSignal2(signal)) {
+          throw new TypeError(`${context} is not an AbortSignal.`);
+        }
+      }
+      function convertReadableWritablePair(pair, context) {
+        assertDictionary(pair, context);
+        const readable = pair === null || pair === void 0 ? void 0 : pair.readable;
+        assertRequiredField(readable, "readable", "ReadableWritablePair");
+        assertReadableStream(readable, `${context} has member 'readable' that`);
+        const writable = pair === null || pair === void 0 ? void 0 : pair.writable;
+        assertRequiredField(writable, "writable", "ReadableWritablePair");
+        assertWritableStream(writable, `${context} has member 'writable' that`);
+        return { readable, writable };
+      }
+      class ReadableStream2 {
+        constructor(rawUnderlyingSource = {}, rawStrategy = {}) {
+          if (rawUnderlyingSource === void 0) {
+            rawUnderlyingSource = null;
+          } else {
+            assertObject(rawUnderlyingSource, "First parameter");
+          }
+          const strategy = convertQueuingStrategy(rawStrategy, "Second parameter");
+          const underlyingSource = convertUnderlyingDefaultOrByteSource(rawUnderlyingSource, "First parameter");
+          InitializeReadableStream(this);
+          if (underlyingSource.type === "bytes") {
+            if (strategy.size !== void 0) {
+              throw new RangeError("The strategy for a byte stream cannot have a size function");
+            }
+            const highWaterMark = ExtractHighWaterMark(strategy, 0);
+            SetUpReadableByteStreamControllerFromUnderlyingSource(this, underlyingSource, highWaterMark);
+          } else {
+            const sizeAlgorithm = ExtractSizeAlgorithm(strategy);
+            const highWaterMark = ExtractHighWaterMark(strategy, 1);
+            SetUpReadableStreamDefaultControllerFromUnderlyingSource(this, underlyingSource, highWaterMark, sizeAlgorithm);
+          }
+        }
+        /**
+         * Whether or not the readable stream is locked to a {@link ReadableStreamDefaultReader | reader}.
+         */
+        get locked() {
+          if (!IsReadableStream(this)) {
+            throw streamBrandCheckException$1("locked");
+          }
+          return IsReadableStreamLocked(this);
+        }
+        /**
+         * Cancels the stream, signaling a loss of interest in the stream by a consumer.
+         *
+         * The supplied `reason` argument will be given to the underlying source's {@link UnderlyingSource.cancel | cancel()}
+         * method, which might or might not use it.
+         */
+        cancel(reason = void 0) {
+          if (!IsReadableStream(this)) {
+            return promiseRejectedWith(streamBrandCheckException$1("cancel"));
+          }
+          if (IsReadableStreamLocked(this)) {
+            return promiseRejectedWith(new TypeError("Cannot cancel a stream that already has a reader"));
+          }
+          return ReadableStreamCancel(this, reason);
+        }
+        getReader(rawOptions = void 0) {
+          if (!IsReadableStream(this)) {
+            throw streamBrandCheckException$1("getReader");
+          }
+          const options = convertReaderOptions(rawOptions, "First parameter");
+          if (options.mode === void 0) {
+            return AcquireReadableStreamDefaultReader(this);
+          }
+          return AcquireReadableStreamBYOBReader(this);
+        }
+        pipeThrough(rawTransform, rawOptions = {}) {
+          if (!IsReadableStream(this)) {
+            throw streamBrandCheckException$1("pipeThrough");
+          }
+          assertRequiredArgument(rawTransform, 1, "pipeThrough");
+          const transform = convertReadableWritablePair(rawTransform, "First parameter");
+          const options = convertPipeOptions(rawOptions, "Second parameter");
+          if (IsReadableStreamLocked(this)) {
+            throw new TypeError("ReadableStream.prototype.pipeThrough cannot be used on a locked ReadableStream");
+          }
+          if (IsWritableStreamLocked(transform.writable)) {
+            throw new TypeError("ReadableStream.prototype.pipeThrough cannot be used on a locked WritableStream");
+          }
+          const promise = ReadableStreamPipeTo(this, transform.writable, options.preventClose, options.preventAbort, options.preventCancel, options.signal);
+          setPromiseIsHandledToTrue(promise);
+          return transform.readable;
+        }
+        pipeTo(destination, rawOptions = {}) {
+          if (!IsReadableStream(this)) {
+            return promiseRejectedWith(streamBrandCheckException$1("pipeTo"));
+          }
+          if (destination === void 0) {
+            return promiseRejectedWith(`Parameter 1 is required in 'pipeTo'.`);
+          }
+          if (!IsWritableStream(destination)) {
+            return promiseRejectedWith(new TypeError(`ReadableStream.prototype.pipeTo's first argument must be a WritableStream`));
+          }
+          let options;
+          try {
+            options = convertPipeOptions(rawOptions, "Second parameter");
+          } catch (e2) {
+            return promiseRejectedWith(e2);
+          }
+          if (IsReadableStreamLocked(this)) {
+            return promiseRejectedWith(new TypeError("ReadableStream.prototype.pipeTo cannot be used on a locked ReadableStream"));
+          }
+          if (IsWritableStreamLocked(destination)) {
+            return promiseRejectedWith(new TypeError("ReadableStream.prototype.pipeTo cannot be used on a locked WritableStream"));
+          }
+          return ReadableStreamPipeTo(this, destination, options.preventClose, options.preventAbort, options.preventCancel, options.signal);
+        }
+        /**
+         * Tees this readable stream, returning a two-element array containing the two resulting branches as
+         * new {@link ReadableStream} instances.
+         *
+         * Teeing a stream will lock it, preventing any other consumer from acquiring a reader.
+         * To cancel the stream, cancel both of the resulting branches; a composite cancellation reason will then be
+         * propagated to the stream's underlying source.
+         *
+         * Note that the chunks seen in each branch will be the same object. If the chunks are not immutable,
+         * this could allow interference between the two branches.
+         */
+        tee() {
+          if (!IsReadableStream(this)) {
+            throw streamBrandCheckException$1("tee");
+          }
+          const branches = ReadableStreamTee(this);
+          return CreateArrayFromList(branches);
+        }
+        values(rawOptions = void 0) {
+          if (!IsReadableStream(this)) {
+            throw streamBrandCheckException$1("values");
+          }
+          const options = convertIteratorOptions(rawOptions, "First parameter");
+          return AcquireReadableStreamAsyncIterator(this, options.preventCancel);
+        }
+        [SymbolAsyncIterator](options) {
+          return this.values(options);
+        }
+        /**
+         * Creates a new ReadableStream wrapping the provided iterable or async iterable.
+         *
+         * This can be used to adapt various kinds of objects into a readable stream,
+         * such as an array, an async generator, or a Node.js readable stream.
+         */
+        static from(asyncIterable) {
+          return ReadableStreamFrom(asyncIterable);
+        }
+      }
+      Object.defineProperties(ReadableStream2, {
+        from: { enumerable: true }
+      });
+      Object.defineProperties(ReadableStream2.prototype, {
+        cancel: { enumerable: true },
+        getReader: { enumerable: true },
+        pipeThrough: { enumerable: true },
+        pipeTo: { enumerable: true },
+        tee: { enumerable: true },
+        values: { enumerable: true },
+        locked: { enumerable: true }
+      });
+      setFunctionName(ReadableStream2.from, "from");
+      setFunctionName(ReadableStream2.prototype.cancel, "cancel");
+      setFunctionName(ReadableStream2.prototype.getReader, "getReader");
+      setFunctionName(ReadableStream2.prototype.pipeThrough, "pipeThrough");
+      setFunctionName(ReadableStream2.prototype.pipeTo, "pipeTo");
+      setFunctionName(ReadableStream2.prototype.tee, "tee");
+      setFunctionName(ReadableStream2.prototype.values, "values");
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(ReadableStream2.prototype, Symbol.toStringTag, {
+          value: "ReadableStream",
+          configurable: true
+        });
+      }
+      Object.defineProperty(ReadableStream2.prototype, SymbolAsyncIterator, {
+        value: ReadableStream2.prototype.values,
+        writable: true,
+        configurable: true
+      });
+      function CreateReadableStream(startAlgorithm, pullAlgorithm, cancelAlgorithm, highWaterMark = 1, sizeAlgorithm = () => 1) {
+        const stream = Object.create(ReadableStream2.prototype);
+        InitializeReadableStream(stream);
+        const controller = Object.create(ReadableStreamDefaultController.prototype);
+        SetUpReadableStreamDefaultController(stream, controller, startAlgorithm, pullAlgorithm, cancelAlgorithm, highWaterMark, sizeAlgorithm);
+        return stream;
+      }
+      function CreateReadableByteStream(startAlgorithm, pullAlgorithm, cancelAlgorithm) {
+        const stream = Object.create(ReadableStream2.prototype);
+        InitializeReadableStream(stream);
+        const controller = Object.create(ReadableByteStreamController.prototype);
+        SetUpReadableByteStreamController(stream, controller, startAlgorithm, pullAlgorithm, cancelAlgorithm, 0, void 0);
+        return stream;
+      }
+      function InitializeReadableStream(stream) {
+        stream._state = "readable";
+        stream._reader = void 0;
+        stream._storedError = void 0;
+        stream._disturbed = false;
+      }
+      function IsReadableStream(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_readableStreamController")) {
+          return false;
+        }
+        return x2 instanceof ReadableStream2;
+      }
+      function IsReadableStreamLocked(stream) {
+        if (stream._reader === void 0) {
+          return false;
+        }
+        return true;
+      }
+      function ReadableStreamCancel(stream, reason) {
+        stream._disturbed = true;
+        if (stream._state === "closed") {
+          return promiseResolvedWith(void 0);
+        }
+        if (stream._state === "errored") {
+          return promiseRejectedWith(stream._storedError);
+        }
+        ReadableStreamClose(stream);
+        const reader = stream._reader;
+        if (reader !== void 0 && IsReadableStreamBYOBReader(reader)) {
+          const readIntoRequests = reader._readIntoRequests;
+          reader._readIntoRequests = new SimpleQueue();
+          readIntoRequests.forEach((readIntoRequest) => {
+            readIntoRequest._closeSteps(void 0);
+          });
+        }
+        const sourceCancelPromise = stream._readableStreamController[CancelSteps](reason);
+        return transformPromiseWith(sourceCancelPromise, noop2);
+      }
+      function ReadableStreamClose(stream) {
+        stream._state = "closed";
+        const reader = stream._reader;
+        if (reader === void 0) {
+          return;
+        }
+        defaultReaderClosedPromiseResolve(reader);
+        if (IsReadableStreamDefaultReader(reader)) {
+          const readRequests = reader._readRequests;
+          reader._readRequests = new SimpleQueue();
+          readRequests.forEach((readRequest) => {
+            readRequest._closeSteps();
+          });
+        }
+      }
+      function ReadableStreamError(stream, e2) {
+        stream._state = "errored";
+        stream._storedError = e2;
+        const reader = stream._reader;
+        if (reader === void 0) {
+          return;
+        }
+        defaultReaderClosedPromiseReject(reader, e2);
+        if (IsReadableStreamDefaultReader(reader)) {
+          ReadableStreamDefaultReaderErrorReadRequests(reader, e2);
+        } else {
+          ReadableStreamBYOBReaderErrorReadIntoRequests(reader, e2);
+        }
+      }
+      function streamBrandCheckException$1(name) {
+        return new TypeError(`ReadableStream.prototype.${name} can only be used on a ReadableStream`);
+      }
+      function convertQueuingStrategyInit(init, context) {
+        assertDictionary(init, context);
+        const highWaterMark = init === null || init === void 0 ? void 0 : init.highWaterMark;
+        assertRequiredField(highWaterMark, "highWaterMark", "QueuingStrategyInit");
+        return {
+          highWaterMark: convertUnrestrictedDouble(highWaterMark)
+        };
+      }
+      const byteLengthSizeFunction = (chunk) => {
+        return chunk.byteLength;
+      };
+      setFunctionName(byteLengthSizeFunction, "size");
+      class ByteLengthQueuingStrategy {
+        constructor(options) {
+          assertRequiredArgument(options, 1, "ByteLengthQueuingStrategy");
+          options = convertQueuingStrategyInit(options, "First parameter");
+          this._byteLengthQueuingStrategyHighWaterMark = options.highWaterMark;
+        }
+        /**
+         * Returns the high water mark provided to the constructor.
+         */
+        get highWaterMark() {
+          if (!IsByteLengthQueuingStrategy(this)) {
+            throw byteLengthBrandCheckException("highWaterMark");
+          }
+          return this._byteLengthQueuingStrategyHighWaterMark;
+        }
+        /**
+         * Measures the size of `chunk` by returning the value of its `byteLength` property.
+         */
+        get size() {
+          if (!IsByteLengthQueuingStrategy(this)) {
+            throw byteLengthBrandCheckException("size");
+          }
+          return byteLengthSizeFunction;
+        }
+      }
+      Object.defineProperties(ByteLengthQueuingStrategy.prototype, {
+        highWaterMark: { enumerable: true },
+        size: { enumerable: true }
+      });
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(ByteLengthQueuingStrategy.prototype, Symbol.toStringTag, {
+          value: "ByteLengthQueuingStrategy",
+          configurable: true
+        });
+      }
+      function byteLengthBrandCheckException(name) {
+        return new TypeError(`ByteLengthQueuingStrategy.prototype.${name} can only be used on a ByteLengthQueuingStrategy`);
+      }
+      function IsByteLengthQueuingStrategy(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_byteLengthQueuingStrategyHighWaterMark")) {
+          return false;
+        }
+        return x2 instanceof ByteLengthQueuingStrategy;
+      }
+      const countSizeFunction = () => {
+        return 1;
+      };
+      setFunctionName(countSizeFunction, "size");
+      class CountQueuingStrategy {
+        constructor(options) {
+          assertRequiredArgument(options, 1, "CountQueuingStrategy");
+          options = convertQueuingStrategyInit(options, "First parameter");
+          this._countQueuingStrategyHighWaterMark = options.highWaterMark;
+        }
+        /**
+         * Returns the high water mark provided to the constructor.
+         */
+        get highWaterMark() {
+          if (!IsCountQueuingStrategy(this)) {
+            throw countBrandCheckException("highWaterMark");
+          }
+          return this._countQueuingStrategyHighWaterMark;
+        }
+        /**
+         * Measures the size of `chunk` by always returning 1.
+         * This ensures that the total queue size is a count of the number of chunks in the queue.
+         */
+        get size() {
+          if (!IsCountQueuingStrategy(this)) {
+            throw countBrandCheckException("size");
+          }
+          return countSizeFunction;
+        }
+      }
+      Object.defineProperties(CountQueuingStrategy.prototype, {
+        highWaterMark: { enumerable: true },
+        size: { enumerable: true }
+      });
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(CountQueuingStrategy.prototype, Symbol.toStringTag, {
+          value: "CountQueuingStrategy",
+          configurable: true
+        });
+      }
+      function countBrandCheckException(name) {
+        return new TypeError(`CountQueuingStrategy.prototype.${name} can only be used on a CountQueuingStrategy`);
+      }
+      function IsCountQueuingStrategy(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_countQueuingStrategyHighWaterMark")) {
+          return false;
+        }
+        return x2 instanceof CountQueuingStrategy;
+      }
+      function convertTransformer(original, context) {
+        assertDictionary(original, context);
+        const cancel = original === null || original === void 0 ? void 0 : original.cancel;
+        const flush = original === null || original === void 0 ? void 0 : original.flush;
+        const readableType = original === null || original === void 0 ? void 0 : original.readableType;
+        const start = original === null || original === void 0 ? void 0 : original.start;
+        const transform = original === null || original === void 0 ? void 0 : original.transform;
+        const writableType = original === null || original === void 0 ? void 0 : original.writableType;
+        return {
+          cancel: cancel === void 0 ? void 0 : convertTransformerCancelCallback(cancel, original, `${context} has member 'cancel' that`),
+          flush: flush === void 0 ? void 0 : convertTransformerFlushCallback(flush, original, `${context} has member 'flush' that`),
+          readableType,
+          start: start === void 0 ? void 0 : convertTransformerStartCallback(start, original, `${context} has member 'start' that`),
+          transform: transform === void 0 ? void 0 : convertTransformerTransformCallback(transform, original, `${context} has member 'transform' that`),
+          writableType
+        };
+      }
+      function convertTransformerFlushCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (controller) => promiseCall(fn, original, [controller]);
+      }
+      function convertTransformerStartCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (controller) => reflectCall(fn, original, [controller]);
+      }
+      function convertTransformerTransformCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (chunk, controller) => promiseCall(fn, original, [chunk, controller]);
+      }
+      function convertTransformerCancelCallback(fn, original, context) {
+        assertFunction(fn, context);
+        return (reason) => promiseCall(fn, original, [reason]);
+      }
+      class TransformStream {
+        constructor(rawTransformer = {}, rawWritableStrategy = {}, rawReadableStrategy = {}) {
+          if (rawTransformer === void 0) {
+            rawTransformer = null;
+          }
+          const writableStrategy = convertQueuingStrategy(rawWritableStrategy, "Second parameter");
+          const readableStrategy = convertQueuingStrategy(rawReadableStrategy, "Third parameter");
+          const transformer = convertTransformer(rawTransformer, "First parameter");
+          if (transformer.readableType !== void 0) {
+            throw new RangeError("Invalid readableType specified");
+          }
+          if (transformer.writableType !== void 0) {
+            throw new RangeError("Invalid writableType specified");
+          }
+          const readableHighWaterMark = ExtractHighWaterMark(readableStrategy, 0);
+          const readableSizeAlgorithm = ExtractSizeAlgorithm(readableStrategy);
+          const writableHighWaterMark = ExtractHighWaterMark(writableStrategy, 1);
+          const writableSizeAlgorithm = ExtractSizeAlgorithm(writableStrategy);
+          let startPromise_resolve;
+          const startPromise = newPromise((resolve) => {
+            startPromise_resolve = resolve;
+          });
+          InitializeTransformStream(this, startPromise, writableHighWaterMark, writableSizeAlgorithm, readableHighWaterMark, readableSizeAlgorithm);
+          SetUpTransformStreamDefaultControllerFromTransformer(this, transformer);
+          if (transformer.start !== void 0) {
+            startPromise_resolve(transformer.start(this._transformStreamController));
+          } else {
+            startPromise_resolve(void 0);
+          }
+        }
+        /**
+         * The readable side of the transform stream.
+         */
+        get readable() {
+          if (!IsTransformStream(this)) {
+            throw streamBrandCheckException("readable");
+          }
+          return this._readable;
+        }
+        /**
+         * The writable side of the transform stream.
+         */
+        get writable() {
+          if (!IsTransformStream(this)) {
+            throw streamBrandCheckException("writable");
+          }
+          return this._writable;
+        }
+      }
+      Object.defineProperties(TransformStream.prototype, {
+        readable: { enumerable: true },
+        writable: { enumerable: true }
+      });
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(TransformStream.prototype, Symbol.toStringTag, {
+          value: "TransformStream",
+          configurable: true
+        });
+      }
+      function InitializeTransformStream(stream, startPromise, writableHighWaterMark, writableSizeAlgorithm, readableHighWaterMark, readableSizeAlgorithm) {
+        function startAlgorithm() {
+          return startPromise;
+        }
+        function writeAlgorithm(chunk) {
+          return TransformStreamDefaultSinkWriteAlgorithm(stream, chunk);
+        }
+        function abortAlgorithm(reason) {
+          return TransformStreamDefaultSinkAbortAlgorithm(stream, reason);
+        }
+        function closeAlgorithm() {
+          return TransformStreamDefaultSinkCloseAlgorithm(stream);
+        }
+        stream._writable = CreateWritableStream(startAlgorithm, writeAlgorithm, closeAlgorithm, abortAlgorithm, writableHighWaterMark, writableSizeAlgorithm);
+        function pullAlgorithm() {
+          return TransformStreamDefaultSourcePullAlgorithm(stream);
+        }
+        function cancelAlgorithm(reason) {
+          return TransformStreamDefaultSourceCancelAlgorithm(stream, reason);
+        }
+        stream._readable = CreateReadableStream(startAlgorithm, pullAlgorithm, cancelAlgorithm, readableHighWaterMark, readableSizeAlgorithm);
+        stream._backpressure = void 0;
+        stream._backpressureChangePromise = void 0;
+        stream._backpressureChangePromise_resolve = void 0;
+        TransformStreamSetBackpressure(stream, true);
+        stream._transformStreamController = void 0;
+      }
+      function IsTransformStream(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_transformStreamController")) {
+          return false;
+        }
+        return x2 instanceof TransformStream;
+      }
+      function TransformStreamError(stream, e2) {
+        ReadableStreamDefaultControllerError(stream._readable._readableStreamController, e2);
+        TransformStreamErrorWritableAndUnblockWrite(stream, e2);
+      }
+      function TransformStreamErrorWritableAndUnblockWrite(stream, e2) {
+        TransformStreamDefaultControllerClearAlgorithms(stream._transformStreamController);
+        WritableStreamDefaultControllerErrorIfNeeded(stream._writable._writableStreamController, e2);
+        TransformStreamUnblockWrite(stream);
+      }
+      function TransformStreamUnblockWrite(stream) {
+        if (stream._backpressure) {
+          TransformStreamSetBackpressure(stream, false);
+        }
+      }
+      function TransformStreamSetBackpressure(stream, backpressure) {
+        if (stream._backpressureChangePromise !== void 0) {
+          stream._backpressureChangePromise_resolve();
+        }
+        stream._backpressureChangePromise = newPromise((resolve) => {
+          stream._backpressureChangePromise_resolve = resolve;
+        });
+        stream._backpressure = backpressure;
+      }
+      class TransformStreamDefaultController {
+        constructor() {
+          throw new TypeError("Illegal constructor");
+        }
+        /**
+         * Returns the desired size to fill the readable side’s internal queue. It can be negative, if the queue is over-full.
+         */
+        get desiredSize() {
+          if (!IsTransformStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException("desiredSize");
+          }
+          const readableController = this._controlledTransformStream._readable._readableStreamController;
+          return ReadableStreamDefaultControllerGetDesiredSize(readableController);
+        }
+        enqueue(chunk = void 0) {
+          if (!IsTransformStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException("enqueue");
+          }
+          TransformStreamDefaultControllerEnqueue(this, chunk);
+        }
+        /**
+         * Errors both the readable side and the writable side of the controlled transform stream, making all future
+         * interactions with it fail with the given error `e`. Any chunks queued for transformation will be discarded.
+         */
+        error(reason = void 0) {
+          if (!IsTransformStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException("error");
+          }
+          TransformStreamDefaultControllerError(this, reason);
+        }
+        /**
+         * Closes the readable side and errors the writable side of the controlled transform stream. This is useful when the
+         * transformer only needs to consume a portion of the chunks written to the writable side.
+         */
+        terminate() {
+          if (!IsTransformStreamDefaultController(this)) {
+            throw defaultControllerBrandCheckException("terminate");
+          }
+          TransformStreamDefaultControllerTerminate(this);
+        }
+      }
+      Object.defineProperties(TransformStreamDefaultController.prototype, {
+        enqueue: { enumerable: true },
+        error: { enumerable: true },
+        terminate: { enumerable: true },
+        desiredSize: { enumerable: true }
+      });
+      setFunctionName(TransformStreamDefaultController.prototype.enqueue, "enqueue");
+      setFunctionName(TransformStreamDefaultController.prototype.error, "error");
+      setFunctionName(TransformStreamDefaultController.prototype.terminate, "terminate");
+      if (typeof Symbol.toStringTag === "symbol") {
+        Object.defineProperty(TransformStreamDefaultController.prototype, Symbol.toStringTag, {
+          value: "TransformStreamDefaultController",
+          configurable: true
+        });
+      }
+      function IsTransformStreamDefaultController(x2) {
+        if (!typeIsObject(x2)) {
+          return false;
+        }
+        if (!Object.prototype.hasOwnProperty.call(x2, "_controlledTransformStream")) {
+          return false;
+        }
+        return x2 instanceof TransformStreamDefaultController;
+      }
+      function SetUpTransformStreamDefaultController(stream, controller, transformAlgorithm, flushAlgorithm, cancelAlgorithm) {
+        controller._controlledTransformStream = stream;
+        stream._transformStreamController = controller;
+        controller._transformAlgorithm = transformAlgorithm;
+        controller._flushAlgorithm = flushAlgorithm;
+        controller._cancelAlgorithm = cancelAlgorithm;
+        controller._finishPromise = void 0;
+        controller._finishPromise_resolve = void 0;
+        controller._finishPromise_reject = void 0;
+      }
+      function SetUpTransformStreamDefaultControllerFromTransformer(stream, transformer) {
+        const controller = Object.create(TransformStreamDefaultController.prototype);
+        let transformAlgorithm;
+        let flushAlgorithm;
+        let cancelAlgorithm;
+        if (transformer.transform !== void 0) {
+          transformAlgorithm = (chunk) => transformer.transform(chunk, controller);
+        } else {
+          transformAlgorithm = (chunk) => {
+            try {
+              TransformStreamDefaultControllerEnqueue(controller, chunk);
+              return promiseResolvedWith(void 0);
+            } catch (transformResultE) {
+              return promiseRejectedWith(transformResultE);
+            }
+          };
+        }
+        if (transformer.flush !== void 0) {
+          flushAlgorithm = () => transformer.flush(controller);
+        } else {
+          flushAlgorithm = () => promiseResolvedWith(void 0);
+        }
+        if (transformer.cancel !== void 0) {
+          cancelAlgorithm = (reason) => transformer.cancel(reason);
+        } else {
+          cancelAlgorithm = () => promiseResolvedWith(void 0);
+        }
+        SetUpTransformStreamDefaultController(stream, controller, transformAlgorithm, flushAlgorithm, cancelAlgorithm);
+      }
+      function TransformStreamDefaultControllerClearAlgorithms(controller) {
+        controller._transformAlgorithm = void 0;
+        controller._flushAlgorithm = void 0;
+        controller._cancelAlgorithm = void 0;
+      }
+      function TransformStreamDefaultControllerEnqueue(controller, chunk) {
+        const stream = controller._controlledTransformStream;
+        const readableController = stream._readable._readableStreamController;
+        if (!ReadableStreamDefaultControllerCanCloseOrEnqueue(readableController)) {
+          throw new TypeError("Readable side is not in a state that permits enqueue");
+        }
+        try {
+          ReadableStreamDefaultControllerEnqueue(readableController, chunk);
+        } catch (e2) {
+          TransformStreamErrorWritableAndUnblockWrite(stream, e2);
+          throw stream._readable._storedError;
+        }
+        const backpressure = ReadableStreamDefaultControllerHasBackpressure(readableController);
+        if (backpressure !== stream._backpressure) {
+          TransformStreamSetBackpressure(stream, true);
+        }
+      }
+      function TransformStreamDefaultControllerError(controller, e2) {
+        TransformStreamError(controller._controlledTransformStream, e2);
+      }
+      function TransformStreamDefaultControllerPerformTransform(controller, chunk) {
+        const transformPromise = controller._transformAlgorithm(chunk);
+        return transformPromiseWith(transformPromise, void 0, (r2) => {
+          TransformStreamError(controller._controlledTransformStream, r2);
+          throw r2;
+        });
+      }
+      function TransformStreamDefaultControllerTerminate(controller) {
+        const stream = controller._controlledTransformStream;
+        const readableController = stream._readable._readableStreamController;
+        ReadableStreamDefaultControllerClose(readableController);
+        const error = new TypeError("TransformStream terminated");
+        TransformStreamErrorWritableAndUnblockWrite(stream, error);
+      }
+      function TransformStreamDefaultSinkWriteAlgorithm(stream, chunk) {
+        const controller = stream._transformStreamController;
+        if (stream._backpressure) {
+          const backpressureChangePromise = stream._backpressureChangePromise;
+          return transformPromiseWith(backpressureChangePromise, () => {
+            const writable = stream._writable;
+            const state = writable._state;
+            if (state === "erroring") {
+              throw writable._storedError;
+            }
+            return TransformStreamDefaultControllerPerformTransform(controller, chunk);
+          });
+        }
+        return TransformStreamDefaultControllerPerformTransform(controller, chunk);
+      }
+      function TransformStreamDefaultSinkAbortAlgorithm(stream, reason) {
+        const controller = stream._transformStreamController;
+        if (controller._finishPromise !== void 0) {
+          return controller._finishPromise;
+        }
+        const readable = stream._readable;
+        controller._finishPromise = newPromise((resolve, reject) => {
+          controller._finishPromise_resolve = resolve;
+          controller._finishPromise_reject = reject;
+        });
+        const cancelPromise = controller._cancelAlgorithm(reason);
+        TransformStreamDefaultControllerClearAlgorithms(controller);
+        uponPromise(cancelPromise, () => {
+          if (readable._state === "errored") {
+            defaultControllerFinishPromiseReject(controller, readable._storedError);
+          } else {
+            ReadableStreamDefaultControllerError(readable._readableStreamController, reason);
+            defaultControllerFinishPromiseResolve(controller);
+          }
+          return null;
+        }, (r2) => {
+          ReadableStreamDefaultControllerError(readable._readableStreamController, r2);
+          defaultControllerFinishPromiseReject(controller, r2);
+          return null;
+        });
+        return controller._finishPromise;
+      }
+      function TransformStreamDefaultSinkCloseAlgorithm(stream) {
+        const controller = stream._transformStreamController;
+        if (controller._finishPromise !== void 0) {
+          return controller._finishPromise;
+        }
+        const readable = stream._readable;
+        controller._finishPromise = newPromise((resolve, reject) => {
+          controller._finishPromise_resolve = resolve;
+          controller._finishPromise_reject = reject;
+        });
+        const flushPromise = controller._flushAlgorithm();
+        TransformStreamDefaultControllerClearAlgorithms(controller);
+        uponPromise(flushPromise, () => {
+          if (readable._state === "errored") {
+            defaultControllerFinishPromiseReject(controller, readable._storedError);
+          } else {
+            ReadableStreamDefaultControllerClose(readable._readableStreamController);
+            defaultControllerFinishPromiseResolve(controller);
+          }
+          return null;
+        }, (r2) => {
+          ReadableStreamDefaultControllerError(readable._readableStreamController, r2);
+          defaultControllerFinishPromiseReject(controller, r2);
+          return null;
+        });
+        return controller._finishPromise;
+      }
+      function TransformStreamDefaultSourcePullAlgorithm(stream) {
+        TransformStreamSetBackpressure(stream, false);
+        return stream._backpressureChangePromise;
+      }
+      function TransformStreamDefaultSourceCancelAlgorithm(stream, reason) {
+        const controller = stream._transformStreamController;
+        if (controller._finishPromise !== void 0) {
+          return controller._finishPromise;
+        }
+        const writable = stream._writable;
+        controller._finishPromise = newPromise((resolve, reject) => {
+          controller._finishPromise_resolve = resolve;
+          controller._finishPromise_reject = reject;
+        });
+        const cancelPromise = controller._cancelAlgorithm(reason);
+        TransformStreamDefaultControllerClearAlgorithms(controller);
+        uponPromise(cancelPromise, () => {
+          if (writable._state === "errored") {
+            defaultControllerFinishPromiseReject(controller, writable._storedError);
+          } else {
+            WritableStreamDefaultControllerErrorIfNeeded(writable._writableStreamController, reason);
+            TransformStreamUnblockWrite(stream);
+            defaultControllerFinishPromiseResolve(controller);
+          }
+          return null;
+        }, (r2) => {
+          WritableStreamDefaultControllerErrorIfNeeded(writable._writableStreamController, r2);
+          TransformStreamUnblockWrite(stream);
+          defaultControllerFinishPromiseReject(controller, r2);
+          return null;
+        });
+        return controller._finishPromise;
+      }
+      function defaultControllerBrandCheckException(name) {
+        return new TypeError(`TransformStreamDefaultController.prototype.${name} can only be used on a TransformStreamDefaultController`);
+      }
+      function defaultControllerFinishPromiseResolve(controller) {
+        if (controller._finishPromise_resolve === void 0) {
+          return;
+        }
+        controller._finishPromise_resolve();
+        controller._finishPromise_resolve = void 0;
+        controller._finishPromise_reject = void 0;
+      }
+      function defaultControllerFinishPromiseReject(controller, reason) {
+        if (controller._finishPromise_reject === void 0) {
+          return;
+        }
+        setPromiseIsHandledToTrue(controller._finishPromise);
+        controller._finishPromise_reject(reason);
+        controller._finishPromise_resolve = void 0;
+        controller._finishPromise_reject = void 0;
+      }
+      function streamBrandCheckException(name) {
+        return new TypeError(`TransformStream.prototype.${name} can only be used on a TransformStream`);
+      }
+      exports3.ByteLengthQueuingStrategy = ByteLengthQueuingStrategy;
+      exports3.CountQueuingStrategy = CountQueuingStrategy;
+      exports3.ReadableByteStreamController = ReadableByteStreamController;
+      exports3.ReadableStream = ReadableStream2;
+      exports3.ReadableStreamBYOBReader = ReadableStreamBYOBReader;
+      exports3.ReadableStreamBYOBRequest = ReadableStreamBYOBRequest;
+      exports3.ReadableStreamDefaultController = ReadableStreamDefaultController;
+      exports3.ReadableStreamDefaultReader = ReadableStreamDefaultReader;
+      exports3.TransformStream = TransformStream;
+      exports3.TransformStreamDefaultController = TransformStreamDefaultController;
+      exports3.WritableStream = WritableStream;
+      exports3.WritableStreamDefaultController = WritableStreamDefaultController;
+      exports3.WritableStreamDefaultWriter = WritableStreamDefaultWriter;
+    }));
+  }
+});
+
+// node_modules/fetch-blob/streams.cjs
+var require_streams = __commonJS({
+  "node_modules/fetch-blob/streams.cjs"() {
+    var POOL_SIZE2 = 65536;
+    if (!globalThis.ReadableStream) {
+      try {
+        const process2 = require("node:process");
+        const { emitWarning } = process2;
+        try {
+          process2.emitWarning = () => {
+          };
+          Object.assign(globalThis, require("node:stream/web"));
+          process2.emitWarning = emitWarning;
+        } catch (error) {
+          process2.emitWarning = emitWarning;
+          throw error;
+        }
+      } catch (error) {
+        Object.assign(globalThis, require_ponyfill_es2018());
+      }
+    }
+    try {
+      const { Blob: Blob3 } = require("buffer");
+      if (Blob3 && !Blob3.prototype.stream) {
+        Blob3.prototype.stream = function name(params) {
+          let position = 0;
+          const blob = this;
+          return new ReadableStream({
+            type: "bytes",
+            async pull(ctrl) {
+              const chunk = blob.slice(position, Math.min(blob.size, position + POOL_SIZE2));
+              const buffer = await chunk.arrayBuffer();
+              position += buffer.byteLength;
+              ctrl.enqueue(new Uint8Array(buffer));
+              if (position === blob.size) {
+                ctrl.close();
+              }
+            }
+          });
+        };
+      }
+    } catch (error) {
+    }
+  }
+});
+
+// node_modules/fetch-blob/index.js
+async function* toIterator(parts, clone2 = true) {
+  for (const part of parts) {
+    if ("stream" in part) {
+      yield* (
+        /** @type {AsyncIterableIterator<Uint8Array>} */
+        part.stream()
+      );
+    } else if (ArrayBuffer.isView(part)) {
+      if (clone2) {
+        let position = part.byteOffset;
+        const end = part.byteOffset + part.byteLength;
+        while (position !== end) {
+          const size = Math.min(end - position, POOL_SIZE);
+          const chunk = part.buffer.slice(position, position + size);
+          position += chunk.byteLength;
+          yield new Uint8Array(chunk);
+        }
+      } else {
+        yield part;
+      }
+    } else {
+      let position = 0, b = (
+        /** @type {Blob} */
+        part
+      );
+      while (position !== b.size) {
+        const chunk = b.slice(position, Math.min(b.size, position + POOL_SIZE));
+        const buffer = await chunk.arrayBuffer();
+        position += buffer.byteLength;
+        yield new Uint8Array(buffer);
+      }
+    }
+  }
+}
+var import_streams, POOL_SIZE, _Blob, Blob2, fetch_blob_default;
+var init_fetch_blob = __esm({
+  "node_modules/fetch-blob/index.js"() {
+    import_streams = __toESM(require_streams(), 1);
+    POOL_SIZE = 65536;
+    _Blob = class Blob {
+      /** @type {Array.<(Blob|Uint8Array)>} */
+      #parts = [];
+      #type = "";
+      #size = 0;
+      #endings = "transparent";
+      /**
+       * The Blob() constructor returns a new Blob object. The content
+       * of the blob consists of the concatenation of the values given
+       * in the parameter array.
+       *
+       * @param {*} blobParts
+       * @param {{ type?: string, endings?: string }} [options]
+       */
+      constructor(blobParts = [], options = {}) {
+        if (typeof blobParts !== "object" || blobParts === null) {
+          throw new TypeError("Failed to construct 'Blob': The provided value cannot be converted to a sequence.");
+        }
+        if (typeof blobParts[Symbol.iterator] !== "function") {
+          throw new TypeError("Failed to construct 'Blob': The object must have a callable @@iterator property.");
+        }
+        if (typeof options !== "object" && typeof options !== "function") {
+          throw new TypeError("Failed to construct 'Blob': parameter 2 cannot convert to dictionary.");
+        }
+        if (options === null) options = {};
+        const encoder = new TextEncoder();
+        for (const element of blobParts) {
+          let part;
+          if (ArrayBuffer.isView(element)) {
+            part = new Uint8Array(element.buffer.slice(element.byteOffset, element.byteOffset + element.byteLength));
+          } else if (element instanceof ArrayBuffer) {
+            part = new Uint8Array(element.slice(0));
+          } else if (element instanceof Blob) {
+            part = element;
+          } else {
+            part = encoder.encode(`${element}`);
+          }
+          this.#size += ArrayBuffer.isView(part) ? part.byteLength : part.size;
+          this.#parts.push(part);
+        }
+        this.#endings = `${options.endings === void 0 ? "transparent" : options.endings}`;
+        const type = options.type === void 0 ? "" : String(options.type);
+        this.#type = /^[\x20-\x7E]*$/.test(type) ? type : "";
+      }
+      /**
+       * The Blob interface's size property returns the
+       * size of the Blob in bytes.
+       */
+      get size() {
+        return this.#size;
+      }
+      /**
+       * The type property of a Blob object returns the MIME type of the file.
+       */
+      get type() {
+        return this.#type;
+      }
+      /**
+       * The text() method in the Blob interface returns a Promise
+       * that resolves with a string containing the contents of
+       * the blob, interpreted as UTF-8.
+       *
+       * @return {Promise<string>}
+       */
+      async text() {
+        const decoder = new TextDecoder();
+        let str = "";
+        for await (const part of toIterator(this.#parts, false)) {
+          str += decoder.decode(part, { stream: true });
+        }
+        str += decoder.decode();
+        return str;
+      }
+      /**
+       * The arrayBuffer() method in the Blob interface returns a
+       * Promise that resolves with the contents of the blob as
+       * binary data contained in an ArrayBuffer.
+       *
+       * @return {Promise<ArrayBuffer>}
+       */
+      async arrayBuffer() {
+        const data = new Uint8Array(this.size);
+        let offset = 0;
+        for await (const chunk of toIterator(this.#parts, false)) {
+          data.set(chunk, offset);
+          offset += chunk.length;
+        }
+        return data.buffer;
+      }
+      stream() {
+        const it = toIterator(this.#parts, true);
+        return new globalThis.ReadableStream({
+          // @ts-ignore
+          type: "bytes",
+          async pull(ctrl) {
+            const chunk = await it.next();
+            chunk.done ? ctrl.close() : ctrl.enqueue(chunk.value);
+          },
+          async cancel() {
+            await it.return();
+          }
+        });
+      }
+      /**
+       * The Blob interface's slice() method creates and returns a
+       * new Blob object which contains data from a subset of the
+       * blob on which it's called.
+       *
+       * @param {number} [start]
+       * @param {number} [end]
+       * @param {string} [type]
+       */
+      slice(start = 0, end = this.size, type = "") {
+        const { size } = this;
+        let relativeStart = start < 0 ? Math.max(size + start, 0) : Math.min(start, size);
+        let relativeEnd = end < 0 ? Math.max(size + end, 0) : Math.min(end, size);
+        const span = Math.max(relativeEnd - relativeStart, 0);
+        const parts = this.#parts;
+        const blobParts = [];
+        let added = 0;
+        for (const part of parts) {
+          if (added >= span) {
+            break;
+          }
+          const size2 = ArrayBuffer.isView(part) ? part.byteLength : part.size;
+          if (relativeStart && size2 <= relativeStart) {
+            relativeStart -= size2;
+            relativeEnd -= size2;
+          } else {
+            let chunk;
+            if (ArrayBuffer.isView(part)) {
+              chunk = part.subarray(relativeStart, Math.min(size2, relativeEnd));
+              added += chunk.byteLength;
+            } else {
+              chunk = part.slice(relativeStart, Math.min(size2, relativeEnd));
+              added += chunk.size;
+            }
+            relativeEnd -= size2;
+            blobParts.push(chunk);
+            relativeStart = 0;
+          }
+        }
+        const blob = new Blob([], { type: String(type).toLowerCase() });
+        blob.#size = span;
+        blob.#parts = blobParts;
+        return blob;
+      }
+      get [Symbol.toStringTag]() {
+        return "Blob";
+      }
+      static [Symbol.hasInstance](object) {
+        return object && typeof object === "object" && typeof object.constructor === "function" && (typeof object.stream === "function" || typeof object.arrayBuffer === "function") && /^(Blob|File)$/.test(object[Symbol.toStringTag]);
+      }
+    };
+    Object.defineProperties(_Blob.prototype, {
+      size: { enumerable: true },
+      type: { enumerable: true },
+      slice: { enumerable: true }
+    });
+    Blob2 = _Blob;
+    fetch_blob_default = Blob2;
+  }
+});
+
+// node_modules/fetch-blob/file.js
+var _File, File2, file_default;
+var init_file = __esm({
+  "node_modules/fetch-blob/file.js"() {
+    init_fetch_blob();
+    _File = class File extends fetch_blob_default {
+      #lastModified = 0;
+      #name = "";
+      /**
+       * @param {*[]} fileBits
+       * @param {string} fileName
+       * @param {{lastModified?: number, type?: string}} options
+       */
+      // @ts-ignore
+      constructor(fileBits, fileName, options = {}) {
+        if (arguments.length < 2) {
+          throw new TypeError(`Failed to construct 'File': 2 arguments required, but only ${arguments.length} present.`);
+        }
+        super(fileBits, options);
+        if (options === null) options = {};
+        const lastModified = options.lastModified === void 0 ? Date.now() : Number(options.lastModified);
+        if (!Number.isNaN(lastModified)) {
+          this.#lastModified = lastModified;
+        }
+        this.#name = String(fileName);
+      }
+      get name() {
+        return this.#name;
+      }
+      get lastModified() {
+        return this.#lastModified;
+      }
+      get [Symbol.toStringTag]() {
+        return "File";
+      }
+      static [Symbol.hasInstance](object) {
+        return !!object && object instanceof fetch_blob_default && /^(File)$/.test(object[Symbol.toStringTag]);
+      }
+    };
+    File2 = _File;
+    file_default = File2;
+  }
+});
+
+// node_modules/formdata-polyfill/esm.min.js
+function formDataToBlob(F2, B = fetch_blob_default) {
+  var b = `${r()}${r()}`.replace(/\./g, "").slice(-28).padStart(32, "-"), c = [], p = `--${b}\r
+Content-Disposition: form-data; name="`;
+  F2.forEach((v, n) => typeof v == "string" ? c.push(p + e(n) + `"\r
+\r
+${v.replace(/\r(?!\n)|(?<!\r)\n/g, "\r\n")}\r
+`) : c.push(p + e(n) + `"; filename="${e(v.name, 1)}"\r
+Content-Type: ${v.type || "application/octet-stream"}\r
+\r
+`, v, "\r\n"));
+  c.push(`--${b}--`);
+  return new B(c, { type: "multipart/form-data; boundary=" + b });
+}
+var t, i, h, r, m, f, e, x, FormData;
+var init_esm_min = __esm({
+  "node_modules/formdata-polyfill/esm.min.js"() {
+    init_fetch_blob();
+    init_file();
+    ({ toStringTag: t, iterator: i, hasInstance: h } = Symbol);
+    r = Math.random;
+    m = "append,set,get,getAll,delete,keys,values,entries,forEach,constructor".split(",");
+    f = (a, b, c) => (a += "", /^(Blob|File)$/.test(b && b[t]) ? [(c = c !== void 0 ? c + "" : b[t] == "File" ? b.name : "blob", a), b.name !== c || b[t] == "blob" ? new file_default([b], c, b) : b] : [a, b + ""]);
+    e = (c, f3) => (f3 ? c : c.replace(/\r?\n|\r/g, "\r\n")).replace(/\n/g, "%0A").replace(/\r/g, "%0D").replace(/"/g, "%22");
+    x = (n, a, e2) => {
+      if (a.length < e2) {
+        throw new TypeError(`Failed to execute '${n}' on 'FormData': ${e2} arguments required, but only ${a.length} present.`);
+      }
+    };
+    FormData = class FormData2 {
+      #d = [];
+      constructor(...a) {
+        if (a.length) throw new TypeError(`Failed to construct 'FormData': parameter 1 is not of type 'HTMLFormElement'.`);
+      }
+      get [t]() {
+        return "FormData";
+      }
+      [i]() {
+        return this.entries();
+      }
+      static [h](o) {
+        return o && typeof o === "object" && o[t] === "FormData" && !m.some((m2) => typeof o[m2] != "function");
+      }
+      append(...a) {
+        x("append", arguments, 2);
+        this.#d.push(f(...a));
+      }
+      delete(a) {
+        x("delete", arguments, 1);
+        a += "";
+        this.#d = this.#d.filter(([b]) => b !== a);
+      }
+      get(a) {
+        x("get", arguments, 1);
+        a += "";
+        for (var b = this.#d, l = b.length, c = 0; c < l; c++) if (b[c][0] === a) return b[c][1];
+        return null;
+      }
+      getAll(a, b) {
+        x("getAll", arguments, 1);
+        b = [];
+        a += "";
+        this.#d.forEach((c) => c[0] === a && b.push(c[1]));
+        return b;
+      }
+      has(a) {
+        x("has", arguments, 1);
+        a += "";
+        return this.#d.some((b) => b[0] === a);
+      }
+      forEach(a, b) {
+        x("forEach", arguments, 1);
+        for (var [c, d] of this) a.call(b, d, c, this);
+      }
+      set(...a) {
+        x("set", arguments, 2);
+        var b = [], c = true;
+        a = f(...a);
+        this.#d.forEach((d) => {
+          d[0] === a[0] ? c && (c = !b.push(a)) : b.push(d);
+        });
+        c && b.push(a);
+        this.#d = b;
+      }
+      *entries() {
+        yield* this.#d;
+      }
+      *keys() {
+        for (var [a] of this) yield a;
+      }
+      *values() {
+        for (var [, a] of this) yield a;
+      }
+    };
+  }
+});
+
+// node_modules/node-fetch/src/errors/base.js
+var FetchBaseError;
+var init_base = __esm({
+  "node_modules/node-fetch/src/errors/base.js"() {
+    FetchBaseError = class extends Error {
+      constructor(message, type) {
+        super(message);
+        Error.captureStackTrace(this, this.constructor);
+        this.type = type;
+      }
+      get name() {
+        return this.constructor.name;
+      }
+      get [Symbol.toStringTag]() {
+        return this.constructor.name;
+      }
+    };
+  }
+});
+
+// node_modules/node-fetch/src/errors/fetch-error.js
+var FetchError;
+var init_fetch_error = __esm({
+  "node_modules/node-fetch/src/errors/fetch-error.js"() {
+    init_base();
+    FetchError = class extends FetchBaseError {
+      /**
+       * @param  {string} message -      Error message for human
+       * @param  {string} [type] -        Error type for machine
+       * @param  {SystemError} [systemError] - For Node.js system error
+       */
+      constructor(message, type, systemError) {
+        super(message, type);
+        if (systemError) {
+          this.code = this.errno = systemError.code;
+          this.erroredSysCall = systemError.syscall;
+        }
+      }
+    };
+  }
+});
+
+// node_modules/node-fetch/src/utils/is.js
+var NAME, isURLSearchParameters, isBlob, isAbortSignal, isDomainOrSubdomain, isSameProtocol;
+var init_is = __esm({
+  "node_modules/node-fetch/src/utils/is.js"() {
+    NAME = Symbol.toStringTag;
+    isURLSearchParameters = (object) => {
+      return typeof object === "object" && typeof object.append === "function" && typeof object.delete === "function" && typeof object.get === "function" && typeof object.getAll === "function" && typeof object.has === "function" && typeof object.set === "function" && typeof object.sort === "function" && object[NAME] === "URLSearchParams";
+    };
+    isBlob = (object) => {
+      return object && typeof object === "object" && typeof object.arrayBuffer === "function" && typeof object.type === "string" && typeof object.stream === "function" && typeof object.constructor === "function" && /^(Blob|File)$/.test(object[NAME]);
+    };
+    isAbortSignal = (object) => {
+      return typeof object === "object" && (object[NAME] === "AbortSignal" || object[NAME] === "EventTarget");
+    };
+    isDomainOrSubdomain = (destination, original) => {
+      const orig = new URL(original).hostname;
+      const dest = new URL(destination).hostname;
+      return orig === dest || orig.endsWith(`.${dest}`);
+    };
+    isSameProtocol = (destination, original) => {
+      const orig = new URL(original).protocol;
+      const dest = new URL(destination).protocol;
+      return orig === dest;
+    };
+  }
+});
+
+// node_modules/node-domexception/index.js
+var require_node_domexception = __commonJS({
+  "node_modules/node-domexception/index.js"(exports2, module2) {
+    if (!globalThis.DOMException) {
+      try {
+        const { MessageChannel } = require("worker_threads"), port = new MessageChannel().port1, ab = new ArrayBuffer();
+        port.postMessage(ab, [ab, ab]);
+      } catch (err) {
+        err.constructor.name === "DOMException" && (globalThis.DOMException = err.constructor);
+      }
+    }
+    module2.exports = globalThis.DOMException;
+  }
+});
+
+// node_modules/fetch-blob/from.js
+var import_node_fs, import_node_path, import_node_domexception, stat, blobFromSync, blobFrom, fileFrom, fileFromSync, fromBlob, fromFile, BlobDataItem;
+var init_from = __esm({
+  "node_modules/fetch-blob/from.js"() {
+    import_node_fs = require("node:fs");
+    import_node_path = require("node:path");
+    import_node_domexception = __toESM(require_node_domexception(), 1);
+    init_file();
+    init_fetch_blob();
+    ({ stat } = import_node_fs.promises);
+    blobFromSync = (path2, type) => fromBlob((0, import_node_fs.statSync)(path2), path2, type);
+    blobFrom = (path2, type) => stat(path2).then((stat2) => fromBlob(stat2, path2, type));
+    fileFrom = (path2, type) => stat(path2).then((stat2) => fromFile(stat2, path2, type));
+    fileFromSync = (path2, type) => fromFile((0, import_node_fs.statSync)(path2), path2, type);
+    fromBlob = (stat2, path2, type = "") => new fetch_blob_default([new BlobDataItem({
+      path: path2,
+      size: stat2.size,
+      lastModified: stat2.mtimeMs,
+      start: 0
+    })], { type });
+    fromFile = (stat2, path2, type = "") => new file_default([new BlobDataItem({
+      path: path2,
+      size: stat2.size,
+      lastModified: stat2.mtimeMs,
+      start: 0
+    })], (0, import_node_path.basename)(path2), { type, lastModified: stat2.mtimeMs });
+    BlobDataItem = class _BlobDataItem {
+      #path;
+      #start;
+      constructor(options) {
+        this.#path = options.path;
+        this.#start = options.start;
+        this.size = options.size;
+        this.lastModified = options.lastModified;
+      }
+      /**
+       * Slicing arguments is first validated and formatted
+       * to not be out of range by Blob.prototype.slice
+       */
+      slice(start, end) {
+        return new _BlobDataItem({
+          path: this.#path,
+          lastModified: this.lastModified,
+          size: end - start,
+          start: this.#start + start
+        });
+      }
+      async *stream() {
+        const { mtimeMs } = await stat(this.#path);
+        if (mtimeMs > this.lastModified) {
+          throw new import_node_domexception.default("The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired.", "NotReadableError");
+        }
+        yield* (0, import_node_fs.createReadStream)(this.#path, {
+          start: this.#start,
+          end: this.#start + this.size - 1
+        });
+      }
+      get [Symbol.toStringTag]() {
+        return "Blob";
+      }
+    };
+  }
+});
+
+// node_modules/node-fetch/src/utils/multipart-parser.js
+var multipart_parser_exports = {};
+__export(multipart_parser_exports, {
+  toFormData: () => toFormData
+});
+function _fileName(headerValue) {
+  const m2 = headerValue.match(/\bfilename=("(.*?)"|([^()<>@,;:\\"/[\]?={}\s\t]+))($|;\s)/i);
+  if (!m2) {
+    return;
+  }
+  const match = m2[2] || m2[3] || "";
+  let filename = match.slice(match.lastIndexOf("\\") + 1);
+  filename = filename.replace(/%22/g, '"');
+  filename = filename.replace(/&#(\d{4});/g, (m3, code) => {
+    return String.fromCharCode(code);
+  });
+  return filename;
+}
+async function toFormData(Body2, ct) {
+  if (!/multipart/i.test(ct)) {
+    throw new TypeError("Failed to fetch");
+  }
+  const m2 = ct.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!m2) {
+    throw new TypeError("no or bad content-type header, no multipart boundary");
+  }
+  const parser = new MultipartParser(m2[1] || m2[2]);
+  let headerField;
+  let headerValue;
+  let entryValue;
+  let entryName;
+  let contentType;
+  let filename;
+  const entryChunks = [];
+  const formData = new FormData();
+  const onPartData = (ui8a) => {
+    entryValue += decoder.decode(ui8a, { stream: true });
+  };
+  const appendToFile = (ui8a) => {
+    entryChunks.push(ui8a);
+  };
+  const appendFileToFormData = () => {
+    const file = new file_default(entryChunks, filename, { type: contentType });
+    formData.append(entryName, file);
+  };
+  const appendEntryToFormData = () => {
+    formData.append(entryName, entryValue);
+  };
+  const decoder = new TextDecoder("utf-8");
+  decoder.decode();
+  parser.onPartBegin = function() {
+    parser.onPartData = onPartData;
+    parser.onPartEnd = appendEntryToFormData;
+    headerField = "";
+    headerValue = "";
+    entryValue = "";
+    entryName = "";
+    contentType = "";
+    filename = null;
+    entryChunks.length = 0;
+  };
+  parser.onHeaderField = function(ui8a) {
+    headerField += decoder.decode(ui8a, { stream: true });
+  };
+  parser.onHeaderValue = function(ui8a) {
+    headerValue += decoder.decode(ui8a, { stream: true });
+  };
+  parser.onHeaderEnd = function() {
+    headerValue += decoder.decode();
+    headerField = headerField.toLowerCase();
+    if (headerField === "content-disposition") {
+      const m3 = headerValue.match(/\bname=("([^"]*)"|([^()<>@,;:\\"/[\]?={}\s\t]+))/i);
+      if (m3) {
+        entryName = m3[2] || m3[3] || "";
+      }
+      filename = _fileName(headerValue);
+      if (filename) {
+        parser.onPartData = appendToFile;
+        parser.onPartEnd = appendFileToFormData;
+      }
+    } else if (headerField === "content-type") {
+      contentType = headerValue;
+    }
+    headerValue = "";
+    headerField = "";
+  };
+  for await (const chunk of Body2) {
+    parser.write(chunk);
+  }
+  parser.end();
+  return formData;
+}
+var s, S, f2, F, LF, CR, SPACE, HYPHEN, COLON, A, Z, lower, noop, MultipartParser;
+var init_multipart_parser = __esm({
+  "node_modules/node-fetch/src/utils/multipart-parser.js"() {
+    init_from();
+    init_esm_min();
+    s = 0;
+    S = {
+      START_BOUNDARY: s++,
+      HEADER_FIELD_START: s++,
+      HEADER_FIELD: s++,
+      HEADER_VALUE_START: s++,
+      HEADER_VALUE: s++,
+      HEADER_VALUE_ALMOST_DONE: s++,
+      HEADERS_ALMOST_DONE: s++,
+      PART_DATA_START: s++,
+      PART_DATA: s++,
+      END: s++
+    };
+    f2 = 1;
+    F = {
+      PART_BOUNDARY: f2,
+      LAST_BOUNDARY: f2 *= 2
+    };
+    LF = 10;
+    CR = 13;
+    SPACE = 32;
+    HYPHEN = 45;
+    COLON = 58;
+    A = 97;
+    Z = 122;
+    lower = (c) => c | 32;
+    noop = () => {
+    };
+    MultipartParser = class {
+      /**
+       * @param {string} boundary
+       */
+      constructor(boundary) {
+        this.index = 0;
+        this.flags = 0;
+        this.onHeaderEnd = noop;
+        this.onHeaderField = noop;
+        this.onHeadersEnd = noop;
+        this.onHeaderValue = noop;
+        this.onPartBegin = noop;
+        this.onPartData = noop;
+        this.onPartEnd = noop;
+        this.boundaryChars = {};
+        boundary = "\r\n--" + boundary;
+        const ui8a = new Uint8Array(boundary.length);
+        for (let i2 = 0; i2 < boundary.length; i2++) {
+          ui8a[i2] = boundary.charCodeAt(i2);
+          this.boundaryChars[ui8a[i2]] = true;
+        }
+        this.boundary = ui8a;
+        this.lookbehind = new Uint8Array(this.boundary.length + 8);
+        this.state = S.START_BOUNDARY;
+      }
+      /**
+       * @param {Uint8Array} data
+       */
+      write(data) {
+        let i2 = 0;
+        const length_ = data.length;
+        let previousIndex = this.index;
+        let { lookbehind, boundary, boundaryChars, index, state, flags } = this;
+        const boundaryLength = this.boundary.length;
+        const boundaryEnd = boundaryLength - 1;
+        const bufferLength = data.length;
+        let c;
+        let cl;
+        const mark = (name) => {
+          this[name + "Mark"] = i2;
+        };
+        const clear = (name) => {
+          delete this[name + "Mark"];
+        };
+        const callback = (callbackSymbol, start, end, ui8a) => {
+          if (start === void 0 || start !== end) {
+            this[callbackSymbol](ui8a && ui8a.subarray(start, end));
+          }
+        };
+        const dataCallback = (name, clear2) => {
+          const markSymbol = name + "Mark";
+          if (!(markSymbol in this)) {
+            return;
+          }
+          if (clear2) {
+            callback(name, this[markSymbol], i2, data);
+            delete this[markSymbol];
+          } else {
+            callback(name, this[markSymbol], data.length, data);
+            this[markSymbol] = 0;
+          }
+        };
+        for (i2 = 0; i2 < length_; i2++) {
+          c = data[i2];
+          switch (state) {
+            case S.START_BOUNDARY:
+              if (index === boundary.length - 2) {
+                if (c === HYPHEN) {
+                  flags |= F.LAST_BOUNDARY;
+                } else if (c !== CR) {
+                  return;
+                }
+                index++;
+                break;
+              } else if (index - 1 === boundary.length - 2) {
+                if (flags & F.LAST_BOUNDARY && c === HYPHEN) {
+                  state = S.END;
+                  flags = 0;
+                } else if (!(flags & F.LAST_BOUNDARY) && c === LF) {
+                  index = 0;
+                  callback("onPartBegin");
+                  state = S.HEADER_FIELD_START;
+                } else {
+                  return;
+                }
+                break;
+              }
+              if (c !== boundary[index + 2]) {
+                index = -2;
+              }
+              if (c === boundary[index + 2]) {
+                index++;
+              }
+              break;
+            case S.HEADER_FIELD_START:
+              state = S.HEADER_FIELD;
+              mark("onHeaderField");
+              index = 0;
+            // falls through
+            case S.HEADER_FIELD:
+              if (c === CR) {
+                clear("onHeaderField");
+                state = S.HEADERS_ALMOST_DONE;
+                break;
+              }
+              index++;
+              if (c === HYPHEN) {
+                break;
+              }
+              if (c === COLON) {
+                if (index === 1) {
+                  return;
+                }
+                dataCallback("onHeaderField", true);
+                state = S.HEADER_VALUE_START;
+                break;
+              }
+              cl = lower(c);
+              if (cl < A || cl > Z) {
+                return;
+              }
+              break;
+            case S.HEADER_VALUE_START:
+              if (c === SPACE) {
+                break;
+              }
+              mark("onHeaderValue");
+              state = S.HEADER_VALUE;
+            // falls through
+            case S.HEADER_VALUE:
+              if (c === CR) {
+                dataCallback("onHeaderValue", true);
+                callback("onHeaderEnd");
+                state = S.HEADER_VALUE_ALMOST_DONE;
+              }
+              break;
+            case S.HEADER_VALUE_ALMOST_DONE:
+              if (c !== LF) {
+                return;
+              }
+              state = S.HEADER_FIELD_START;
+              break;
+            case S.HEADERS_ALMOST_DONE:
+              if (c !== LF) {
+                return;
+              }
+              callback("onHeadersEnd");
+              state = S.PART_DATA_START;
+              break;
+            case S.PART_DATA_START:
+              state = S.PART_DATA;
+              mark("onPartData");
+            // falls through
+            case S.PART_DATA:
+              previousIndex = index;
+              if (index === 0) {
+                i2 += boundaryEnd;
+                while (i2 < bufferLength && !(data[i2] in boundaryChars)) {
+                  i2 += boundaryLength;
+                }
+                i2 -= boundaryEnd;
+                c = data[i2];
+              }
+              if (index < boundary.length) {
+                if (boundary[index] === c) {
+                  if (index === 0) {
+                    dataCallback("onPartData", true);
+                  }
+                  index++;
+                } else {
+                  index = 0;
+                }
+              } else if (index === boundary.length) {
+                index++;
+                if (c === CR) {
+                  flags |= F.PART_BOUNDARY;
+                } else if (c === HYPHEN) {
+                  flags |= F.LAST_BOUNDARY;
+                } else {
+                  index = 0;
+                }
+              } else if (index - 1 === boundary.length) {
+                if (flags & F.PART_BOUNDARY) {
+                  index = 0;
+                  if (c === LF) {
+                    flags &= ~F.PART_BOUNDARY;
+                    callback("onPartEnd");
+                    callback("onPartBegin");
+                    state = S.HEADER_FIELD_START;
+                    break;
+                  }
+                } else if (flags & F.LAST_BOUNDARY) {
+                  if (c === HYPHEN) {
+                    callback("onPartEnd");
+                    state = S.END;
+                    flags = 0;
+                  } else {
+                    index = 0;
+                  }
+                } else {
+                  index = 0;
+                }
+              }
+              if (index > 0) {
+                lookbehind[index - 1] = c;
+              } else if (previousIndex > 0) {
+                const _lookbehind = new Uint8Array(lookbehind.buffer, lookbehind.byteOffset, lookbehind.byteLength);
+                callback("onPartData", 0, previousIndex, _lookbehind);
+                previousIndex = 0;
+                mark("onPartData");
+                i2--;
+              }
+              break;
+            case S.END:
+              break;
+            default:
+              throw new Error(`Unexpected state entered: ${state}`);
+          }
+        }
+        dataCallback("onHeaderField");
+        dataCallback("onHeaderValue");
+        dataCallback("onPartData");
+        this.index = index;
+        this.state = state;
+        this.flags = flags;
+      }
+      end() {
+        if (this.state === S.HEADER_FIELD_START && this.index === 0 || this.state === S.PART_DATA && this.index === this.boundary.length) {
+          this.onPartEnd();
+        } else if (this.state !== S.END) {
+          throw new Error("MultipartParser.end(): stream ended unexpectedly");
+        }
+      }
+    };
+  }
+});
+
+// node_modules/node-fetch/src/body.js
+async function consumeBody(data) {
+  if (data[INTERNALS].disturbed) {
+    throw new TypeError(`body used already for: ${data.url}`);
+  }
+  data[INTERNALS].disturbed = true;
+  if (data[INTERNALS].error) {
+    throw data[INTERNALS].error;
+  }
+  const { body } = data;
+  if (body === null) {
+    return import_node_buffer.Buffer.alloc(0);
+  }
+  if (!(body instanceof import_node_stream.default)) {
+    return import_node_buffer.Buffer.alloc(0);
+  }
+  const accum = [];
+  let accumBytes = 0;
+  try {
+    for await (const chunk of body) {
+      if (data.size > 0 && accumBytes + chunk.length > data.size) {
+        const error = new FetchError(`content size at ${data.url} over limit: ${data.size}`, "max-size");
+        body.destroy(error);
+        throw error;
+      }
+      accumBytes += chunk.length;
+      accum.push(chunk);
+    }
+  } catch (error) {
+    const error_ = error instanceof FetchBaseError ? error : new FetchError(`Invalid response body while trying to fetch ${data.url}: ${error.message}`, "system", error);
+    throw error_;
+  }
+  if (body.readableEnded === true || body._readableState.ended === true) {
+    try {
+      if (accum.every((c) => typeof c === "string")) {
+        return import_node_buffer.Buffer.from(accum.join(""));
+      }
+      return import_node_buffer.Buffer.concat(accum, accumBytes);
+    } catch (error) {
+      throw new FetchError(`Could not create Buffer from response body for ${data.url}: ${error.message}`, "system", error);
+    }
+  } else {
+    throw new FetchError(`Premature close of server response while trying to fetch ${data.url}`);
+  }
+}
+var import_node_stream, import_node_util, import_node_buffer, pipeline, INTERNALS, Body, clone, getNonSpecFormDataBoundary, extractContentType, getTotalBytes, writeToStream;
+var init_body = __esm({
+  "node_modules/node-fetch/src/body.js"() {
+    import_node_stream = __toESM(require("node:stream"), 1);
+    import_node_util = require("node:util");
+    import_node_buffer = require("node:buffer");
+    init_fetch_blob();
+    init_esm_min();
+    init_fetch_error();
+    init_base();
+    init_is();
+    pipeline = (0, import_node_util.promisify)(import_node_stream.default.pipeline);
+    INTERNALS = /* @__PURE__ */ Symbol("Body internals");
+    Body = class {
+      constructor(body, {
+        size = 0
+      } = {}) {
+        let boundary = null;
+        if (body === null) {
+          body = null;
+        } else if (isURLSearchParameters(body)) {
+          body = import_node_buffer.Buffer.from(body.toString());
+        } else if (isBlob(body)) {
+        } else if (import_node_buffer.Buffer.isBuffer(body)) {
+        } else if (import_node_util.types.isAnyArrayBuffer(body)) {
+          body = import_node_buffer.Buffer.from(body);
+        } else if (ArrayBuffer.isView(body)) {
+          body = import_node_buffer.Buffer.from(body.buffer, body.byteOffset, body.byteLength);
+        } else if (body instanceof import_node_stream.default) {
+        } else if (body instanceof FormData) {
+          body = formDataToBlob(body);
+          boundary = body.type.split("=")[1];
+        } else {
+          body = import_node_buffer.Buffer.from(String(body));
+        }
+        let stream = body;
+        if (import_node_buffer.Buffer.isBuffer(body)) {
+          stream = import_node_stream.default.Readable.from(body);
+        } else if (isBlob(body)) {
+          stream = import_node_stream.default.Readable.from(body.stream());
+        }
+        this[INTERNALS] = {
+          body,
+          stream,
+          boundary,
+          disturbed: false,
+          error: null
+        };
+        this.size = size;
+        if (body instanceof import_node_stream.default) {
+          body.on("error", (error_) => {
+            const error = error_ instanceof FetchBaseError ? error_ : new FetchError(`Invalid response body while trying to fetch ${this.url}: ${error_.message}`, "system", error_);
+            this[INTERNALS].error = error;
+          });
+        }
+      }
+      get body() {
+        return this[INTERNALS].stream;
+      }
+      get bodyUsed() {
+        return this[INTERNALS].disturbed;
+      }
+      /**
+       * Decode response as ArrayBuffer
+       *
+       * @return  Promise
+       */
+      async arrayBuffer() {
+        const { buffer, byteOffset, byteLength } = await consumeBody(this);
+        return buffer.slice(byteOffset, byteOffset + byteLength);
+      }
+      async formData() {
+        const ct = this.headers.get("content-type");
+        if (ct.startsWith("application/x-www-form-urlencoded")) {
+          const formData = new FormData();
+          const parameters = new URLSearchParams(await this.text());
+          for (const [name, value] of parameters) {
+            formData.append(name, value);
+          }
+          return formData;
+        }
+        const { toFormData: toFormData2 } = await Promise.resolve().then(() => (init_multipart_parser(), multipart_parser_exports));
+        return toFormData2(this.body, ct);
+      }
+      /**
+       * Return raw response as Blob
+       *
+       * @return Promise
+       */
+      async blob() {
+        const ct = this.headers && this.headers.get("content-type") || this[INTERNALS].body && this[INTERNALS].body.type || "";
+        const buf = await this.arrayBuffer();
+        return new fetch_blob_default([buf], {
+          type: ct
+        });
+      }
+      /**
+       * Decode response as json
+       *
+       * @return  Promise
+       */
+      async json() {
+        const text = await this.text();
+        return JSON.parse(text);
+      }
+      /**
+       * Decode response as text
+       *
+       * @return  Promise
+       */
+      async text() {
+        const buffer = await consumeBody(this);
+        return new TextDecoder().decode(buffer);
+      }
+      /**
+       * Decode response as buffer (non-spec api)
+       *
+       * @return  Promise
+       */
+      buffer() {
+        return consumeBody(this);
+      }
+    };
+    Body.prototype.buffer = (0, import_node_util.deprecate)(Body.prototype.buffer, "Please use 'response.arrayBuffer()' instead of 'response.buffer()'", "node-fetch#buffer");
+    Object.defineProperties(Body.prototype, {
+      body: { enumerable: true },
+      bodyUsed: { enumerable: true },
+      arrayBuffer: { enumerable: true },
+      blob: { enumerable: true },
+      json: { enumerable: true },
+      text: { enumerable: true },
+      data: { get: (0, import_node_util.deprecate)(
+        () => {
+        },
+        "data doesn't exist, use json(), text(), arrayBuffer(), or body instead",
+        "https://github.com/node-fetch/node-fetch/issues/1000 (response)"
+      ) }
+    });
+    clone = (instance, highWaterMark) => {
+      let p1;
+      let p2;
+      let { body } = instance[INTERNALS];
+      if (instance.bodyUsed) {
+        throw new Error("cannot clone body after it is used");
+      }
+      if (body instanceof import_node_stream.default && typeof body.getBoundary !== "function") {
+        p1 = new import_node_stream.PassThrough({ highWaterMark });
+        p2 = new import_node_stream.PassThrough({ highWaterMark });
+        body.pipe(p1);
+        body.pipe(p2);
+        instance[INTERNALS].stream = p1;
+        body = p2;
+      }
+      return body;
+    };
+    getNonSpecFormDataBoundary = (0, import_node_util.deprecate)(
+      (body) => body.getBoundary(),
+      "form-data doesn't follow the spec and requires special treatment. Use alternative package",
+      "https://github.com/node-fetch/node-fetch/issues/1167"
+    );
+    extractContentType = (body, request) => {
+      if (body === null) {
+        return null;
+      }
+      if (typeof body === "string") {
+        return "text/plain;charset=UTF-8";
+      }
+      if (isURLSearchParameters(body)) {
+        return "application/x-www-form-urlencoded;charset=UTF-8";
+      }
+      if (isBlob(body)) {
+        return body.type || null;
+      }
+      if (import_node_buffer.Buffer.isBuffer(body) || import_node_util.types.isAnyArrayBuffer(body) || ArrayBuffer.isView(body)) {
+        return null;
+      }
+      if (body instanceof FormData) {
+        return `multipart/form-data; boundary=${request[INTERNALS].boundary}`;
+      }
+      if (body && typeof body.getBoundary === "function") {
+        return `multipart/form-data;boundary=${getNonSpecFormDataBoundary(body)}`;
+      }
+      if (body instanceof import_node_stream.default) {
+        return null;
+      }
+      return "text/plain;charset=UTF-8";
+    };
+    getTotalBytes = (request) => {
+      const { body } = request[INTERNALS];
+      if (body === null) {
+        return 0;
+      }
+      if (isBlob(body)) {
+        return body.size;
+      }
+      if (import_node_buffer.Buffer.isBuffer(body)) {
+        return body.length;
+      }
+      if (body && typeof body.getLengthSync === "function") {
+        return body.hasKnownLength && body.hasKnownLength() ? body.getLengthSync() : null;
+      }
+      return null;
+    };
+    writeToStream = async (dest, { body }) => {
+      if (body === null) {
+        dest.end();
+      } else {
+        await pipeline(body, dest);
+      }
+    };
+  }
+});
+
+// node_modules/node-fetch/src/headers.js
+function fromRawHeaders(headers = []) {
+  return new Headers(
+    headers.reduce((result, value, index, array) => {
+      if (index % 2 === 0) {
+        result.push(array.slice(index, index + 2));
+      }
+      return result;
+    }, []).filter(([name, value]) => {
+      try {
+        validateHeaderName(name);
+        validateHeaderValue(name, String(value));
+        return true;
+      } catch {
+        return false;
+      }
+    })
+  );
+}
+var import_node_util2, import_node_http, validateHeaderName, validateHeaderValue, Headers;
+var init_headers = __esm({
+  "node_modules/node-fetch/src/headers.js"() {
+    import_node_util2 = require("node:util");
+    import_node_http = __toESM(require("node:http"), 1);
+    validateHeaderName = typeof import_node_http.default.validateHeaderName === "function" ? import_node_http.default.validateHeaderName : (name) => {
+      if (!/^[\^`\-\w!#$%&'*+.|~]+$/.test(name)) {
+        const error = new TypeError(`Header name must be a valid HTTP token [${name}]`);
+        Object.defineProperty(error, "code", { value: "ERR_INVALID_HTTP_TOKEN" });
+        throw error;
+      }
+    };
+    validateHeaderValue = typeof import_node_http.default.validateHeaderValue === "function" ? import_node_http.default.validateHeaderValue : (name, value) => {
+      if (/[^\t\u0020-\u007E\u0080-\u00FF]/.test(value)) {
+        const error = new TypeError(`Invalid character in header content ["${name}"]`);
+        Object.defineProperty(error, "code", { value: "ERR_INVALID_CHAR" });
+        throw error;
+      }
+    };
+    Headers = class _Headers extends URLSearchParams {
+      /**
+       * Headers class
+       *
+       * @constructor
+       * @param {HeadersInit} [init] - Response headers
+       */
+      constructor(init) {
+        let result = [];
+        if (init instanceof _Headers) {
+          const raw = init.raw();
+          for (const [name, values] of Object.entries(raw)) {
+            result.push(...values.map((value) => [name, value]));
+          }
+        } else if (init == null) {
+        } else if (typeof init === "object" && !import_node_util2.types.isBoxedPrimitive(init)) {
+          const method = init[Symbol.iterator];
+          if (method == null) {
+            result.push(...Object.entries(init));
+          } else {
+            if (typeof method !== "function") {
+              throw new TypeError("Header pairs must be iterable");
+            }
+            result = [...init].map((pair) => {
+              if (typeof pair !== "object" || import_node_util2.types.isBoxedPrimitive(pair)) {
+                throw new TypeError("Each header pair must be an iterable object");
+              }
+              return [...pair];
+            }).map((pair) => {
+              if (pair.length !== 2) {
+                throw new TypeError("Each header pair must be a name/value tuple");
+              }
+              return [...pair];
+            });
+          }
+        } else {
+          throw new TypeError("Failed to construct 'Headers': The provided value is not of type '(sequence<sequence<ByteString>> or record<ByteString, ByteString>)");
+        }
+        result = result.length > 0 ? result.map(([name, value]) => {
+          validateHeaderName(name);
+          validateHeaderValue(name, String(value));
+          return [String(name).toLowerCase(), String(value)];
+        }) : void 0;
+        super(result);
+        return new Proxy(this, {
+          get(target, p, receiver) {
+            switch (p) {
+              case "append":
+              case "set":
+                return (name, value) => {
+                  validateHeaderName(name);
+                  validateHeaderValue(name, String(value));
+                  return URLSearchParams.prototype[p].call(
+                    target,
+                    String(name).toLowerCase(),
+                    String(value)
+                  );
+                };
+              case "delete":
+              case "has":
+              case "getAll":
+                return (name) => {
+                  validateHeaderName(name);
+                  return URLSearchParams.prototype[p].call(
+                    target,
+                    String(name).toLowerCase()
+                  );
+                };
+              case "keys":
+                return () => {
+                  target.sort();
+                  return new Set(URLSearchParams.prototype.keys.call(target)).keys();
+                };
+              default:
+                return Reflect.get(target, p, receiver);
+            }
+          }
+        });
+      }
+      get [Symbol.toStringTag]() {
+        return this.constructor.name;
+      }
+      toString() {
+        return Object.prototype.toString.call(this);
+      }
+      get(name) {
+        const values = this.getAll(name);
+        if (values.length === 0) {
+          return null;
+        }
+        let value = values.join(", ");
+        if (/^content-encoding$/i.test(name)) {
+          value = value.toLowerCase();
+        }
+        return value;
+      }
+      forEach(callback, thisArg = void 0) {
+        for (const name of this.keys()) {
+          Reflect.apply(callback, thisArg, [this.get(name), name, this]);
+        }
+      }
+      *values() {
+        for (const name of this.keys()) {
+          yield this.get(name);
+        }
+      }
+      /**
+       * @type {() => IterableIterator<[string, string]>}
+       */
+      *entries() {
+        for (const name of this.keys()) {
+          yield [name, this.get(name)];
+        }
+      }
+      [Symbol.iterator]() {
+        return this.entries();
+      }
+      /**
+       * Node-fetch non-spec method
+       * returning all headers and their values as array
+       * @returns {Record<string, string[]>}
+       */
+      raw() {
+        return [...this.keys()].reduce((result, key) => {
+          result[key] = this.getAll(key);
+          return result;
+        }, {});
+      }
+      /**
+       * For better console.log(headers) and also to convert Headers into Node.js Request compatible format
+       */
+      [/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")]() {
+        return [...this.keys()].reduce((result, key) => {
+          const values = this.getAll(key);
+          if (key === "host") {
+            result[key] = values[0];
+          } else {
+            result[key] = values.length > 1 ? values : values[0];
+          }
+          return result;
+        }, {});
+      }
+    };
+    Object.defineProperties(
+      Headers.prototype,
+      ["get", "entries", "forEach", "values"].reduce((result, property) => {
+        result[property] = { enumerable: true };
+        return result;
+      }, {})
+    );
+  }
+});
+
+// node_modules/node-fetch/src/utils/is-redirect.js
+var redirectStatus, isRedirect;
+var init_is_redirect = __esm({
+  "node_modules/node-fetch/src/utils/is-redirect.js"() {
+    redirectStatus = /* @__PURE__ */ new Set([301, 302, 303, 307, 308]);
+    isRedirect = (code) => {
+      return redirectStatus.has(code);
+    };
+  }
+});
+
+// node_modules/node-fetch/src/response.js
+var INTERNALS2, Response;
+var init_response = __esm({
+  "node_modules/node-fetch/src/response.js"() {
+    init_headers();
+    init_body();
+    init_is_redirect();
+    INTERNALS2 = /* @__PURE__ */ Symbol("Response internals");
+    Response = class _Response extends Body {
+      constructor(body = null, options = {}) {
+        super(body, options);
+        const status = options.status != null ? options.status : 200;
+        const headers = new Headers(options.headers);
+        if (body !== null && !headers.has("Content-Type")) {
+          const contentType = extractContentType(body, this);
+          if (contentType) {
+            headers.append("Content-Type", contentType);
+          }
+        }
+        this[INTERNALS2] = {
+          type: "default",
+          url: options.url,
+          status,
+          statusText: options.statusText || "",
+          headers,
+          counter: options.counter,
+          highWaterMark: options.highWaterMark
+        };
+      }
+      get type() {
+        return this[INTERNALS2].type;
+      }
+      get url() {
+        return this[INTERNALS2].url || "";
+      }
+      get status() {
+        return this[INTERNALS2].status;
+      }
+      /**
+       * Convenience property representing if the request ended normally
+       */
+      get ok() {
+        return this[INTERNALS2].status >= 200 && this[INTERNALS2].status < 300;
+      }
+      get redirected() {
+        return this[INTERNALS2].counter > 0;
+      }
+      get statusText() {
+        return this[INTERNALS2].statusText;
+      }
+      get headers() {
+        return this[INTERNALS2].headers;
+      }
+      get highWaterMark() {
+        return this[INTERNALS2].highWaterMark;
+      }
+      /**
+       * Clone this response
+       *
+       * @return  Response
+       */
+      clone() {
+        return new _Response(clone(this, this.highWaterMark), {
+          type: this.type,
+          url: this.url,
+          status: this.status,
+          statusText: this.statusText,
+          headers: this.headers,
+          ok: this.ok,
+          redirected: this.redirected,
+          size: this.size,
+          highWaterMark: this.highWaterMark
+        });
+      }
+      /**
+       * @param {string} url    The URL that the new response is to originate from.
+       * @param {number} status An optional status code for the response (e.g., 302.)
+       * @returns {Response}    A Response object.
+       */
+      static redirect(url, status = 302) {
+        if (!isRedirect(status)) {
+          throw new RangeError('Failed to execute "redirect" on "response": Invalid status code');
+        }
+        return new _Response(null, {
+          headers: {
+            location: new URL(url).toString()
+          },
+          status
+        });
+      }
+      static error() {
+        const response = new _Response(null, { status: 0, statusText: "" });
+        response[INTERNALS2].type = "error";
+        return response;
+      }
+      static json(data = void 0, init = {}) {
+        const body = JSON.stringify(data);
+        if (body === void 0) {
+          throw new TypeError("data is not JSON serializable");
+        }
+        const headers = new Headers(init && init.headers);
+        if (!headers.has("content-type")) {
+          headers.set("content-type", "application/json");
+        }
+        return new _Response(body, {
+          ...init,
+          headers
+        });
+      }
+      get [Symbol.toStringTag]() {
+        return "Response";
+      }
+    };
+    Object.defineProperties(Response.prototype, {
+      type: { enumerable: true },
+      url: { enumerable: true },
+      status: { enumerable: true },
+      ok: { enumerable: true },
+      redirected: { enumerable: true },
+      statusText: { enumerable: true },
+      headers: { enumerable: true },
+      clone: { enumerable: true }
+    });
+  }
+});
+
+// node_modules/node-fetch/src/utils/get-search.js
+var getSearch;
+var init_get_search = __esm({
+  "node_modules/node-fetch/src/utils/get-search.js"() {
+    getSearch = (parsedURL) => {
+      if (parsedURL.search) {
+        return parsedURL.search;
+      }
+      const lastOffset = parsedURL.href.length - 1;
+      const hash = parsedURL.hash || (parsedURL.href[lastOffset] === "#" ? "#" : "");
+      return parsedURL.href[lastOffset - hash.length] === "?" ? "?" : "";
+    };
+  }
+});
+
+// node_modules/node-fetch/src/utils/referrer.js
+function stripURLForUseAsAReferrer(url, originOnly = false) {
+  if (url == null) {
+    return "no-referrer";
+  }
+  url = new URL(url);
+  if (/^(about|blob|data):$/.test(url.protocol)) {
+    return "no-referrer";
+  }
+  url.username = "";
+  url.password = "";
+  url.hash = "";
+  if (originOnly) {
+    url.pathname = "";
+    url.search = "";
+  }
+  return url;
+}
+function validateReferrerPolicy(referrerPolicy) {
+  if (!ReferrerPolicy.has(referrerPolicy)) {
+    throw new TypeError(`Invalid referrerPolicy: ${referrerPolicy}`);
+  }
+  return referrerPolicy;
+}
+function isOriginPotentiallyTrustworthy(url) {
+  if (/^(http|ws)s:$/.test(url.protocol)) {
+    return true;
+  }
+  const hostIp = url.host.replace(/(^\[)|(]$)/g, "");
+  const hostIPVersion = (0, import_node_net.isIP)(hostIp);
+  if (hostIPVersion === 4 && /^127\./.test(hostIp)) {
+    return true;
+  }
+  if (hostIPVersion === 6 && /^(((0+:){7})|(::(0+:){0,6}))0*1$/.test(hostIp)) {
+    return true;
+  }
+  if (url.host === "localhost" || url.host.endsWith(".localhost")) {
+    return false;
+  }
+  if (url.protocol === "file:") {
+    return true;
+  }
+  return false;
+}
+function isUrlPotentiallyTrustworthy(url) {
+  if (/^about:(blank|srcdoc)$/.test(url)) {
+    return true;
+  }
+  if (url.protocol === "data:") {
+    return true;
+  }
+  if (/^(blob|filesystem):$/.test(url.protocol)) {
+    return true;
+  }
+  return isOriginPotentiallyTrustworthy(url);
+}
+function determineRequestsReferrer(request, { referrerURLCallback, referrerOriginCallback } = {}) {
+  if (request.referrer === "no-referrer" || request.referrerPolicy === "") {
+    return null;
+  }
+  const policy = request.referrerPolicy;
+  if (request.referrer === "about:client") {
+    return "no-referrer";
+  }
+  const referrerSource = request.referrer;
+  let referrerURL = stripURLForUseAsAReferrer(referrerSource);
+  let referrerOrigin = stripURLForUseAsAReferrer(referrerSource, true);
+  if (referrerURL.toString().length > 4096) {
+    referrerURL = referrerOrigin;
+  }
+  if (referrerURLCallback) {
+    referrerURL = referrerURLCallback(referrerURL);
+  }
+  if (referrerOriginCallback) {
+    referrerOrigin = referrerOriginCallback(referrerOrigin);
+  }
+  const currentURL = new URL(request.url);
+  switch (policy) {
+    case "no-referrer":
+      return "no-referrer";
+    case "origin":
+      return referrerOrigin;
+    case "unsafe-url":
+      return referrerURL;
+    case "strict-origin":
+      if (isUrlPotentiallyTrustworthy(referrerURL) && !isUrlPotentiallyTrustworthy(currentURL)) {
+        return "no-referrer";
+      }
+      return referrerOrigin.toString();
+    case "strict-origin-when-cross-origin":
+      if (referrerURL.origin === currentURL.origin) {
+        return referrerURL;
+      }
+      if (isUrlPotentiallyTrustworthy(referrerURL) && !isUrlPotentiallyTrustworthy(currentURL)) {
+        return "no-referrer";
+      }
+      return referrerOrigin;
+    case "same-origin":
+      if (referrerURL.origin === currentURL.origin) {
+        return referrerURL;
+      }
+      return "no-referrer";
+    case "origin-when-cross-origin":
+      if (referrerURL.origin === currentURL.origin) {
+        return referrerURL;
+      }
+      return referrerOrigin;
+    case "no-referrer-when-downgrade":
+      if (isUrlPotentiallyTrustworthy(referrerURL) && !isUrlPotentiallyTrustworthy(currentURL)) {
+        return "no-referrer";
+      }
+      return referrerURL;
+    default:
+      throw new TypeError(`Invalid referrerPolicy: ${policy}`);
+  }
+}
+function parseReferrerPolicyFromHeader(headers) {
+  const policyTokens = (headers.get("referrer-policy") || "").split(/[,\s]+/);
+  let policy = "";
+  for (const token of policyTokens) {
+    if (token && ReferrerPolicy.has(token)) {
+      policy = token;
+    }
+  }
+  return policy;
+}
+var import_node_net, ReferrerPolicy, DEFAULT_REFERRER_POLICY;
+var init_referrer = __esm({
+  "node_modules/node-fetch/src/utils/referrer.js"() {
+    import_node_net = require("node:net");
+    ReferrerPolicy = /* @__PURE__ */ new Set([
+      "",
+      "no-referrer",
+      "no-referrer-when-downgrade",
+      "same-origin",
+      "origin",
+      "strict-origin",
+      "origin-when-cross-origin",
+      "strict-origin-when-cross-origin",
+      "unsafe-url"
+    ]);
+    DEFAULT_REFERRER_POLICY = "strict-origin-when-cross-origin";
+  }
+});
+
+// node_modules/node-fetch/src/request.js
+var import_node_url, import_node_util3, INTERNALS3, isRequest, doBadDataWarn, Request, getNodeRequestOptions;
+var init_request = __esm({
+  "node_modules/node-fetch/src/request.js"() {
+    import_node_url = require("node:url");
+    import_node_util3 = require("node:util");
+    init_headers();
+    init_body();
+    init_is();
+    init_get_search();
+    init_referrer();
+    INTERNALS3 = /* @__PURE__ */ Symbol("Request internals");
+    isRequest = (object) => {
+      return typeof object === "object" && typeof object[INTERNALS3] === "object";
+    };
+    doBadDataWarn = (0, import_node_util3.deprecate)(
+      () => {
+      },
+      ".data is not a valid RequestInit property, use .body instead",
+      "https://github.com/node-fetch/node-fetch/issues/1000 (request)"
+    );
+    Request = class _Request extends Body {
+      constructor(input, init = {}) {
+        let parsedURL;
+        if (isRequest(input)) {
+          parsedURL = new URL(input.url);
+        } else {
+          parsedURL = new URL(input);
+          input = {};
+        }
+        if (parsedURL.username !== "" || parsedURL.password !== "") {
+          throw new TypeError(`${parsedURL} is an url with embedded credentials.`);
+        }
+        let method = init.method || input.method || "GET";
+        if (/^(delete|get|head|options|post|put)$/i.test(method)) {
+          method = method.toUpperCase();
+        }
+        if (!isRequest(init) && "data" in init) {
+          doBadDataWarn();
+        }
+        if ((init.body != null || isRequest(input) && input.body !== null) && (method === "GET" || method === "HEAD")) {
+          throw new TypeError("Request with GET/HEAD method cannot have body");
+        }
+        const inputBody = init.body ? init.body : isRequest(input) && input.body !== null ? clone(input) : null;
+        super(inputBody, {
+          size: init.size || input.size || 0
+        });
+        const headers = new Headers(init.headers || input.headers || {});
+        if (inputBody !== null && !headers.has("Content-Type")) {
+          const contentType = extractContentType(inputBody, this);
+          if (contentType) {
+            headers.set("Content-Type", contentType);
+          }
+        }
+        let signal = isRequest(input) ? input.signal : null;
+        if ("signal" in init) {
+          signal = init.signal;
+        }
+        if (signal != null && !isAbortSignal(signal)) {
+          throw new TypeError("Expected signal to be an instanceof AbortSignal or EventTarget");
+        }
+        let referrer = init.referrer == null ? input.referrer : init.referrer;
+        if (referrer === "") {
+          referrer = "no-referrer";
+        } else if (referrer) {
+          const parsedReferrer = new URL(referrer);
+          referrer = /^about:(\/\/)?client$/.test(parsedReferrer) ? "client" : parsedReferrer;
+        } else {
+          referrer = void 0;
+        }
+        this[INTERNALS3] = {
+          method,
+          redirect: init.redirect || input.redirect || "follow",
+          headers,
+          parsedURL,
+          signal,
+          referrer
+        };
+        this.follow = init.follow === void 0 ? input.follow === void 0 ? 20 : input.follow : init.follow;
+        this.compress = init.compress === void 0 ? input.compress === void 0 ? true : input.compress : init.compress;
+        this.counter = init.counter || input.counter || 0;
+        this.agent = init.agent || input.agent;
+        this.highWaterMark = init.highWaterMark || input.highWaterMark || 16384;
+        this.insecureHTTPParser = init.insecureHTTPParser || input.insecureHTTPParser || false;
+        this.referrerPolicy = init.referrerPolicy || input.referrerPolicy || "";
+      }
+      /** @returns {string} */
+      get method() {
+        return this[INTERNALS3].method;
+      }
+      /** @returns {string} */
+      get url() {
+        return (0, import_node_url.format)(this[INTERNALS3].parsedURL);
+      }
+      /** @returns {Headers} */
+      get headers() {
+        return this[INTERNALS3].headers;
+      }
+      get redirect() {
+        return this[INTERNALS3].redirect;
+      }
+      /** @returns {AbortSignal} */
+      get signal() {
+        return this[INTERNALS3].signal;
+      }
+      // https://fetch.spec.whatwg.org/#dom-request-referrer
+      get referrer() {
+        if (this[INTERNALS3].referrer === "no-referrer") {
+          return "";
+        }
+        if (this[INTERNALS3].referrer === "client") {
+          return "about:client";
+        }
+        if (this[INTERNALS3].referrer) {
+          return this[INTERNALS3].referrer.toString();
+        }
+        return void 0;
+      }
+      get referrerPolicy() {
+        return this[INTERNALS3].referrerPolicy;
+      }
+      set referrerPolicy(referrerPolicy) {
+        this[INTERNALS3].referrerPolicy = validateReferrerPolicy(referrerPolicy);
+      }
+      /**
+       * Clone this request
+       *
+       * @return  Request
+       */
+      clone() {
+        return new _Request(this);
+      }
+      get [Symbol.toStringTag]() {
+        return "Request";
+      }
+    };
+    Object.defineProperties(Request.prototype, {
+      method: { enumerable: true },
+      url: { enumerable: true },
+      headers: { enumerable: true },
+      redirect: { enumerable: true },
+      clone: { enumerable: true },
+      signal: { enumerable: true },
+      referrer: { enumerable: true },
+      referrerPolicy: { enumerable: true }
+    });
+    getNodeRequestOptions = (request) => {
+      const { parsedURL } = request[INTERNALS3];
+      const headers = new Headers(request[INTERNALS3].headers);
+      if (!headers.has("Accept")) {
+        headers.set("Accept", "*/*");
+      }
+      let contentLengthValue = null;
+      if (request.body === null && /^(post|put)$/i.test(request.method)) {
+        contentLengthValue = "0";
+      }
+      if (request.body !== null) {
+        const totalBytes = getTotalBytes(request);
+        if (typeof totalBytes === "number" && !Number.isNaN(totalBytes)) {
+          contentLengthValue = String(totalBytes);
+        }
+      }
+      if (contentLengthValue) {
+        headers.set("Content-Length", contentLengthValue);
+      }
+      if (request.referrerPolicy === "") {
+        request.referrerPolicy = DEFAULT_REFERRER_POLICY;
+      }
+      if (request.referrer && request.referrer !== "no-referrer") {
+        request[INTERNALS3].referrer = determineRequestsReferrer(request);
+      } else {
+        request[INTERNALS3].referrer = "no-referrer";
+      }
+      if (request[INTERNALS3].referrer instanceof URL) {
+        headers.set("Referer", request.referrer);
+      }
+      if (!headers.has("User-Agent")) {
+        headers.set("User-Agent", "node-fetch");
+      }
+      if (request.compress && !headers.has("Accept-Encoding")) {
+        headers.set("Accept-Encoding", "gzip, deflate, br");
+      }
+      let { agent } = request;
+      if (typeof agent === "function") {
+        agent = agent(parsedURL);
+      }
+      const search = getSearch(parsedURL);
+      const options = {
+        // Overwrite search to retain trailing ? (issue #776)
+        path: parsedURL.pathname + search,
+        // The following options are not expressed in the URL
+        method: request.method,
+        headers: headers[/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")](),
+        insecureHTTPParser: request.insecureHTTPParser,
+        agent
+      };
+      return {
+        /** @type {URL} */
+        parsedURL,
+        options
+      };
+    };
+  }
+});
+
+// node_modules/node-fetch/src/errors/abort-error.js
+var AbortError;
+var init_abort_error = __esm({
+  "node_modules/node-fetch/src/errors/abort-error.js"() {
+    init_base();
+    AbortError = class extends FetchBaseError {
+      constructor(message, type = "aborted") {
+        super(message, type);
+      }
+    };
+  }
+});
+
+// node_modules/node-fetch/src/index.js
+var src_exports = {};
+__export(src_exports, {
+  AbortError: () => AbortError,
+  Blob: () => fetch_blob_default,
+  FetchError: () => FetchError,
+  File: () => file_default,
+  FormData: () => FormData,
+  Headers: () => Headers,
+  Request: () => Request,
+  Response: () => Response,
+  blobFrom: () => blobFrom,
+  blobFromSync: () => blobFromSync,
+  default: () => fetch2,
+  fileFrom: () => fileFrom,
+  fileFromSync: () => fileFromSync,
+  isRedirect: () => isRedirect
+});
+async function fetch2(url, options_) {
+  return new Promise((resolve, reject) => {
+    const request = new Request(url, options_);
+    const { parsedURL, options } = getNodeRequestOptions(request);
+    if (!supportedSchemas.has(parsedURL.protocol)) {
+      throw new TypeError(`node-fetch cannot load ${url}. URL scheme "${parsedURL.protocol.replace(/:$/, "")}" is not supported.`);
+    }
+    if (parsedURL.protocol === "data:") {
+      const data = dist_default(request.url);
+      const response2 = new Response(data, { headers: { "Content-Type": data.typeFull } });
+      resolve(response2);
+      return;
+    }
+    const send = (parsedURL.protocol === "https:" ? import_node_https.default : import_node_http2.default).request;
+    const { signal } = request;
+    let response = null;
+    const abort = () => {
+      const error = new AbortError("The operation was aborted.");
+      reject(error);
+      if (request.body && request.body instanceof import_node_stream2.default.Readable) {
+        request.body.destroy(error);
+      }
+      if (!response || !response.body) {
+        return;
+      }
+      response.body.emit("error", error);
+    };
+    if (signal && signal.aborted) {
+      abort();
+      return;
+    }
+    const abortAndFinalize = () => {
+      abort();
+      finalize();
+    };
+    const request_ = send(parsedURL.toString(), options);
+    if (signal) {
+      signal.addEventListener("abort", abortAndFinalize);
+    }
+    const finalize = () => {
+      request_.abort();
+      if (signal) {
+        signal.removeEventListener("abort", abortAndFinalize);
+      }
+    };
+    request_.on("error", (error) => {
+      reject(new FetchError(`request to ${request.url} failed, reason: ${error.message}`, "system", error));
+      finalize();
+    });
+    fixResponseChunkedTransferBadEnding(request_, (error) => {
+      if (response && response.body) {
+        response.body.destroy(error);
+      }
+    });
+    if (process.version < "v14") {
+      request_.on("socket", (s2) => {
+        let endedWithEventsCount;
+        s2.prependListener("end", () => {
+          endedWithEventsCount = s2._eventsCount;
+        });
+        s2.prependListener("close", (hadError) => {
+          if (response && endedWithEventsCount < s2._eventsCount && !hadError) {
+            const error = new Error("Premature close");
+            error.code = "ERR_STREAM_PREMATURE_CLOSE";
+            response.body.emit("error", error);
+          }
+        });
+      });
+    }
+    request_.on("response", (response_) => {
+      request_.setTimeout(0);
+      const headers = fromRawHeaders(response_.rawHeaders);
+      if (isRedirect(response_.statusCode)) {
+        const location = headers.get("Location");
+        let locationURL = null;
+        try {
+          locationURL = location === null ? null : new URL(location, request.url);
+        } catch {
+          if (request.redirect !== "manual") {
+            reject(new FetchError(`uri requested responds with an invalid redirect URL: ${location}`, "invalid-redirect"));
+            finalize();
+            return;
+          }
+        }
+        switch (request.redirect) {
+          case "error":
+            reject(new FetchError(`uri requested responds with a redirect, redirect mode is set to error: ${request.url}`, "no-redirect"));
+            finalize();
+            return;
+          case "manual":
+            break;
+          case "follow": {
+            if (locationURL === null) {
+              break;
+            }
+            if (request.counter >= request.follow) {
+              reject(new FetchError(`maximum redirect reached at: ${request.url}`, "max-redirect"));
+              finalize();
+              return;
+            }
+            const requestOptions = {
+              headers: new Headers(request.headers),
+              follow: request.follow,
+              counter: request.counter + 1,
+              agent: request.agent,
+              compress: request.compress,
+              method: request.method,
+              body: clone(request),
+              signal: request.signal,
+              size: request.size,
+              referrer: request.referrer,
+              referrerPolicy: request.referrerPolicy
+            };
+            if (!isDomainOrSubdomain(request.url, locationURL) || !isSameProtocol(request.url, locationURL)) {
+              for (const name of ["authorization", "www-authenticate", "cookie", "cookie2"]) {
+                requestOptions.headers.delete(name);
+              }
+            }
+            if (response_.statusCode !== 303 && request.body && options_.body instanceof import_node_stream2.default.Readable) {
+              reject(new FetchError("Cannot follow redirect with body being a readable stream", "unsupported-redirect"));
+              finalize();
+              return;
+            }
+            if (response_.statusCode === 303 || (response_.statusCode === 301 || response_.statusCode === 302) && request.method === "POST") {
+              requestOptions.method = "GET";
+              requestOptions.body = void 0;
+              requestOptions.headers.delete("content-length");
+            }
+            const responseReferrerPolicy = parseReferrerPolicyFromHeader(headers);
+            if (responseReferrerPolicy) {
+              requestOptions.referrerPolicy = responseReferrerPolicy;
+            }
+            resolve(fetch2(new Request(locationURL, requestOptions)));
+            finalize();
+            return;
+          }
+          default:
+            return reject(new TypeError(`Redirect option '${request.redirect}' is not a valid value of RequestRedirect`));
+        }
+      }
+      if (signal) {
+        response_.once("end", () => {
+          signal.removeEventListener("abort", abortAndFinalize);
+        });
+      }
+      let body = (0, import_node_stream2.pipeline)(response_, new import_node_stream2.PassThrough(), (error) => {
+        if (error) {
+          reject(error);
+        }
+      });
+      if (process.version < "v12.10") {
+        response_.on("aborted", abortAndFinalize);
+      }
+      const responseOptions = {
+        url: request.url,
+        status: response_.statusCode,
+        statusText: response_.statusMessage,
+        headers,
+        size: request.size,
+        counter: request.counter,
+        highWaterMark: request.highWaterMark
+      };
+      const codings = headers.get("Content-Encoding");
+      if (!request.compress || request.method === "HEAD" || codings === null || response_.statusCode === 204 || response_.statusCode === 304) {
+        response = new Response(body, responseOptions);
+        resolve(response);
+        return;
+      }
+      const zlibOptions = {
+        flush: import_node_zlib.default.Z_SYNC_FLUSH,
+        finishFlush: import_node_zlib.default.Z_SYNC_FLUSH
+      };
+      if (codings === "gzip" || codings === "x-gzip") {
+        body = (0, import_node_stream2.pipeline)(body, import_node_zlib.default.createGunzip(zlibOptions), (error) => {
+          if (error) {
+            reject(error);
+          }
+        });
+        response = new Response(body, responseOptions);
+        resolve(response);
+        return;
+      }
+      if (codings === "deflate" || codings === "x-deflate") {
+        const raw = (0, import_node_stream2.pipeline)(response_, new import_node_stream2.PassThrough(), (error) => {
+          if (error) {
+            reject(error);
+          }
+        });
+        raw.once("data", (chunk) => {
+          if ((chunk[0] & 15) === 8) {
+            body = (0, import_node_stream2.pipeline)(body, import_node_zlib.default.createInflate(), (error) => {
+              if (error) {
+                reject(error);
+              }
+            });
+          } else {
+            body = (0, import_node_stream2.pipeline)(body, import_node_zlib.default.createInflateRaw(), (error) => {
+              if (error) {
+                reject(error);
+              }
+            });
+          }
+          response = new Response(body, responseOptions);
+          resolve(response);
+        });
+        raw.once("end", () => {
+          if (!response) {
+            response = new Response(body, responseOptions);
+            resolve(response);
+          }
+        });
+        return;
+      }
+      if (codings === "br") {
+        body = (0, import_node_stream2.pipeline)(body, import_node_zlib.default.createBrotliDecompress(), (error) => {
+          if (error) {
+            reject(error);
+          }
+        });
+        response = new Response(body, responseOptions);
+        resolve(response);
+        return;
+      }
+      response = new Response(body, responseOptions);
+      resolve(response);
+    });
+    writeToStream(request_, request).catch(reject);
+  });
+}
+function fixResponseChunkedTransferBadEnding(request, errorCallback) {
+  const LAST_CHUNK = import_node_buffer2.Buffer.from("0\r\n\r\n");
+  let isChunkedTransfer = false;
+  let properLastChunkReceived = false;
+  let previousChunk;
+  request.on("response", (response) => {
+    const { headers } = response;
+    isChunkedTransfer = headers["transfer-encoding"] === "chunked" && !headers["content-length"];
+  });
+  request.on("socket", (socket) => {
+    const onSocketClose = () => {
+      if (isChunkedTransfer && !properLastChunkReceived) {
+        const error = new Error("Premature close");
+        error.code = "ERR_STREAM_PREMATURE_CLOSE";
+        errorCallback(error);
+      }
+    };
+    const onData = (buf) => {
+      properLastChunkReceived = import_node_buffer2.Buffer.compare(buf.slice(-5), LAST_CHUNK) === 0;
+      if (!properLastChunkReceived && previousChunk) {
+        properLastChunkReceived = import_node_buffer2.Buffer.compare(previousChunk.slice(-3), LAST_CHUNK.slice(0, 3)) === 0 && import_node_buffer2.Buffer.compare(buf.slice(-2), LAST_CHUNK.slice(3)) === 0;
+      }
+      previousChunk = buf;
+    };
+    socket.prependListener("close", onSocketClose);
+    socket.on("data", onData);
+    request.on("close", () => {
+      socket.removeListener("close", onSocketClose);
+      socket.removeListener("data", onData);
+    });
+  });
+}
+var import_node_http2, import_node_https, import_node_zlib, import_node_stream2, import_node_buffer2, supportedSchemas;
+var init_src = __esm({
+  "node_modules/node-fetch/src/index.js"() {
+    import_node_http2 = __toESM(require("node:http"), 1);
+    import_node_https = __toESM(require("node:https"), 1);
+    import_node_zlib = __toESM(require("node:zlib"), 1);
+    import_node_stream2 = __toESM(require("node:stream"), 1);
+    import_node_buffer2 = require("node:buffer");
+    init_dist();
+    init_body();
+    init_response();
+    init_headers();
+    init_request();
+    init_fetch_error();
+    init_abort_error();
+    init_is_redirect();
+    init_esm_min();
+    init_is();
+    init_referrer();
+    init_from();
+    supportedSchemas = /* @__PURE__ */ new Set(["data:", "http:", "https:"]);
+  }
+});
+
 // server.ts
 var import_express = __toESM(require("express"), 1);
 var import_path = __toESM(require("path"), 1);
@@ -29,19 +6526,334 @@ var import_dotenv = __toESM(require("dotenv"), 1);
 var import_razorpay = __toESM(require("razorpay"), 1);
 var import_nodemailer = __toESM(require("nodemailer"), 1);
 var sesv2 = __toESM(require("@aws-sdk/client-sesv2"), 1);
-var import_crypto = __toESM(require("crypto"), 1);
+var import_crypto2 = __toESM(require("crypto"), 1);
 var import_helmet = __toESM(require("helmet"), 1);
 var import_compression = __toESM(require("compression"), 1);
 var import_bcryptjs = __toESM(require("bcryptjs"), 1);
 var import_jsonwebtoken = __toESM(require("jsonwebtoken"), 1);
 var import_node_cron = __toESM(require("node-cron"), 1);
+var import_client2 = require("@prisma/client");
+
+// src/routes/extraction.ts
 var import_client = require("@prisma/client");
-if (!import_crypto.default.hash) {
-  import_crypto.default.hash = function(algo, data, encoding) {
-    return import_crypto.default.createHash(algo).update(data).digest(encoding);
+
+// src/lib/dedup.ts
+var import_crypto = __toESM(require("crypto"), 1);
+function generateFingerprint(title, authors) {
+  const normalizedTitle = (title || "").toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+  const normalizedAuthors = (authors || "").toLowerCase().replace(/[^a-z0-9\s,]/g, "").split(",").map((a) => a.trim()).sort().join(",");
+  return import_crypto.default.createHash("sha256").update(`${normalizedTitle}::${normalizedAuthors}`).digest("hex");
+}
+
+// src/lib/pdfValidator.ts
+async function validateContentUrl(url, expectedType = "application/pdf") {
+  const result = {
+    isValid: false,
+    pdfReachable: false,
+    pdfMagicBytesOk: false,
+    contentTypeHeader: "",
+    responseStatus: 0,
+    errors: [],
+    warnings: []
+  };
+  if (!url) {
+    result.errors.push("URL is empty");
+    return result;
+  }
+  try {
+    const headController = new AbortController();
+    const headTimeout = setTimeout(() => headController.abort(), 1e4);
+    let headResponse;
+    try {
+      headResponse = await fetch(url, {
+        method: "HEAD",
+        signal: headController.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "*/*"
+        }
+      });
+      clearTimeout(headTimeout);
+    } catch (e2) {
+      clearTimeout(headTimeout);
+      if (e2.name === "AbortError" || e2.code === "ECONNRESET") {
+        throw e2;
+      }
+    }
+    let targetResponse = headResponse;
+    if (!targetResponse || targetResponse.status === 405) {
+      const getController = new AbortController();
+      const getTimeout = setTimeout(() => getController.abort(), 1e4);
+      targetResponse = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Range": "bytes=0-8192",
+          "User-Agent": "Mozilla/5.0"
+        },
+        signal: getController.signal
+      });
+      clearTimeout(getTimeout);
+      if (targetResponse.ok) {
+        result.pdfReachable = true;
+        result.responseStatus = targetResponse.status;
+        result.contentTypeHeader = targetResponse.headers.get("content-type") || "";
+        if (expectedType === "application/pdf") {
+          const ab = await targetResponse.arrayBuffer();
+          const buffer = Buffer.from(ab);
+          if (buffer.toString("utf8", 0, 5) === "%PDF-") {
+            result.pdfMagicBytesOk = true;
+          } else {
+            result.errors.push("File does not start with PDF magic bytes");
+          }
+        }
+      }
+    } else {
+      result.responseStatus = targetResponse.status;
+      result.contentTypeHeader = targetResponse.headers.get("content-type") || "";
+      if (targetResponse.ok) {
+        result.pdfReachable = true;
+        if (expectedType === "application/pdf") {
+          const rangeController = new AbortController();
+          const rangeTimeout = setTimeout(() => rangeController.abort(), 1e4);
+          try {
+            const rangeRes = await fetch(url, {
+              headers: { "Range": "bytes=0-8192", "User-Agent": "Mozilla/5.0" },
+              signal: rangeController.signal
+            });
+            clearTimeout(rangeTimeout);
+            if (rangeRes.ok) {
+              const ab = await rangeRes.arrayBuffer();
+              const buffer = Buffer.from(ab);
+              if (buffer.toString("utf8", 0, 5) === "%PDF-") {
+                result.pdfMagicBytesOk = true;
+              } else {
+                result.errors.push("File does not start with PDF magic bytes");
+              }
+            } else {
+              result.warnings.push(`Range request failed with status: ${rangeRes.status}.`);
+            }
+          } catch (e2) {
+            clearTimeout(rangeTimeout);
+            result.warnings.push(`Failed to download magic bytes: ${e2.message}`);
+          }
+        }
+      } else {
+        result.errors.push(`URL returned non-OK status: ${targetResponse.status}`);
+      }
+    }
+    if (!result.pdfReachable) {
+      result.errors.push("URL is not reachable or returned an error.");
+    }
+    if (expectedType === "application/pdf") {
+      if (!result.contentTypeHeader.toLowerCase().includes("pdf")) {
+        result.warnings.push(`Content-Type is '${result.contentTypeHeader}', expected 'application/pdf'`);
+      }
+      if (result.pdfReachable && result.pdfMagicBytesOk) {
+        result.isValid = true;
+      }
+    } else {
+      result.isValid = result.pdfReachable;
+    }
+  } catch (error) {
+    result.errors.push(`Validation exception: ${error.message}`);
+  }
+  return result;
+}
+
+// src/routes/extraction.ts
+var prisma = new import_client.PrismaClient();
+function setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin) {
+  app.post("/api/admin/extraction/jobs", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { name, sourceType, sourceConfig, targetDomain, targetContentType } = req.body;
+      const job = await prisma.extractionJob.create({
+        data: {
+          name,
+          sourceType,
+          sourceConfig,
+          targetDomain,
+          targetContentType,
+          status: "Pending"
+        }
+      });
+      res.json(job);
+    } catch (error) {
+      console.error("Create job error:", error);
+      res.status(500).json({ error: "Failed to create extraction job" });
+    }
+  });
+  app.get("/api/admin/extraction/jobs", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const jobs = await prisma.extractionJob.findMany({
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch jobs" });
+    }
+  });
+  app.get("/api/admin/extraction/jobs/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const job = await prisma.extractionJob.findUnique({
+        where: { id: req.params.id },
+        include: {
+          items: {
+            take: 100,
+            // Just return first 100 for now to avoid huge payloads
+            orderBy: { createdAt: "desc" }
+          }
+        }
+      });
+      if (!job) return res.status(404).json({ error: "Job not found" });
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job" });
+    }
+  });
+  app.post("/api/admin/extraction/jobs/:id/start", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const job = await prisma.extractionJob.findUnique({ where: { id: jobId } });
+      if (!job) return res.status(404).json({ error: "Job not found" });
+      await prisma.extractionJob.update({
+        where: { id: jobId },
+        data: { status: "Running", startedAt: /* @__PURE__ */ new Date() }
+      });
+      if (job.sourceType === "AutomatedMassScraper") {
+        runMassExtraction(job).catch(console.error);
+        return res.json({ success: true, message: `Mass Extraction started for ${job.targetDomain}.` });
+      }
+      res.json({ success: false, message: "Unknown source type" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start job" });
+    }
+  });
+}
+async function runMassExtraction(job) {
+  let processed = 0;
+  let duplicates = 0;
+  let flagged = 0;
+  let failed = 0;
+  const query = `${job.targetDomain} ${job.targetContentType === "Books" ? "book" : ""}`.trim();
+  try {
+    const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=100`);
+    const data = await fetchRes.json();
+    if (data && data.resultList && data.resultList.result) {
+      const results = data.resultList.result;
+      for (const result of results) {
+        try {
+          let urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u) => u.documentStyle === "pdf" && u.site === "Europe_PMC");
+          if (!urlInfo) {
+            urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u) => u.documentStyle === "pdf");
+          }
+          if (!urlInfo || !urlInfo.url) {
+            failed++;
+            processed++;
+            continue;
+          }
+          const title = result.title || "Untitled";
+          const authors = result.authorString || "Unknown";
+          const description = result.abstractText || `Open access content from ${result.journalTitle || "Europe PMC"}.`;
+          const fingerprint = generateFingerprint(title, authors);
+          const item = await prisma.extractionItem.create({
+            data: {
+              jobId: job.id,
+              rawData: result,
+              status: "Pending"
+            }
+          });
+          const existing = await prisma.content.findUnique({ where: { fingerprint } });
+          if (existing) {
+            await prisma.extractionItem.update({
+              where: { id: item.id },
+              data: { fingerprint, status: "Duplicate" }
+            });
+            duplicates++;
+            processed++;
+            continue;
+          }
+          const validation = await validateContentUrl(urlInfo.url, "application/pdf");
+          if (!validation.isValid) {
+            await prisma.extractionItem.update({
+              where: { id: item.id },
+              data: {
+                fingerprint,
+                status: "Failed",
+                errorMessage: validation.errors?.join(", ") || "Validation failed",
+                validationResult: validation
+              }
+            });
+            failed++;
+            processed++;
+            continue;
+          }
+          const newContent = await prisma.content.create({
+            data: {
+              title,
+              authors,
+              description,
+              domain: job.targetDomain,
+              contentType: job.targetContentType,
+              subjectArea: result.keywordList?.keyword?.[0] || job.targetDomain,
+              fileUrl: urlInfo.url,
+              tags: result.keywordList?.keyword || [],
+              price: 0,
+              accessType: "OpenAccess",
+              status: "Published",
+              publishingMode: "Auto-Extracted",
+              fingerprint
+            }
+          });
+          await prisma.extractionItem.update({
+            where: { id: item.id },
+            data: {
+              fingerprint,
+              title,
+              authors,
+              domain: job.targetDomain,
+              contentType: job.targetContentType,
+              fileUrl: urlInfo.url,
+              contentId: newContent.id,
+              status: "Inserted"
+            }
+          });
+          processed++;
+          if (processed % 10 === 0) {
+            await prisma.extractionJob.update({
+              where: { id: job.id },
+              data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted: processed - duplicates - failed }
+            });
+          }
+        } catch (e2) {
+          failed++;
+          processed++;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Mass Extraction Error:", err);
+    failed++;
+  }
+  await prisma.extractionJob.update({
+    where: { id: job.id },
+    data: {
+      status: "Completed",
+      completedAt: /* @__PURE__ */ new Date(),
+      totalProcessed: processed,
+      totalDuplicates: duplicates,
+      totalFailed: failed,
+      totalInserted: processed - duplicates - failed
+    }
+  });
+}
+
+// server.ts
+if (!import_crypto2.default.hash) {
+  import_crypto2.default.hash = function(algo, data, encoding) {
+    return import_crypto2.default.createHash(algo).update(data).digest(encoding);
   };
 }
-var prisma = new import_client.PrismaClient();
+var prisma2 = new import_client2.PrismaClient();
 import_dotenv.default.config();
 var currentDir = process.cwd();
 async function startServer() {
@@ -150,11 +6962,11 @@ async function startServer() {
   app.get("/api/public/counts", async (req, res) => {
     try {
       const [books, periodicals, theses, videos, totalContent] = await Promise.all([
-        prisma.content.count({ where: { contentType: "Books", status: { not: "Draft" } } }),
-        prisma.content.count({ where: { contentType: "Periodicals", status: { not: "Draft" } } }),
-        prisma.content.count({ where: { contentType: "Theses", status: { not: "Draft" } } }),
-        prisma.content.count({ where: { contentType: "Educational Videos", status: { not: "Draft" } } }),
-        prisma.content.count({ where: { status: { not: "Draft" } } })
+        prisma2.content.count({ where: { contentType: "Books", status: { not: "Draft" } } }),
+        prisma2.content.count({ where: { contentType: "Periodicals", status: { not: "Draft" } } }),
+        prisma2.content.count({ where: { contentType: "Theses", status: { not: "Draft" } } }),
+        prisma2.content.count({ where: { contentType: "Educational Videos", status: { not: "Draft" } } }),
+        prisma2.content.count({ where: { status: { not: "Draft" } } })
       ]);
       res.json({
         categories: [
@@ -172,7 +6984,7 @@ async function startServer() {
   });
   app.get("/api/public/domain-counts", async (req, res) => {
     try {
-      const groups = await prisma.content.groupBy({
+      const groups = await prisma2.content.groupBy({
         by: ["domain"],
         where: { status: { not: "Draft" }, domain: { not: null } },
         _count: { id: true }
@@ -190,12 +7002,12 @@ async function startServer() {
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, name, organization } = req.body;
-      const existingUser = await prisma.user.findUnique({ where: { email } });
+      const existingUser = await prisma2.user.findUnique({ where: { email } });
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
       }
       const hashedPassword = await import_bcryptjs.default.hash(password, 10);
-      const userObj = await prisma.user.create({
+      const userObj = await prisma2.user.create({
         data: {
           email,
           password: hashedPassword,
@@ -235,7 +7047,7 @@ async function startServer() {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      const userObj = await prisma.user.findUnique({ where: { email } });
+      const userObj = await prisma2.user.findUnique({ where: { email } });
       if (!userObj) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
@@ -263,7 +7075,7 @@ async function startServer() {
   });
   app.get("/api/auth/me", authenticateJWT, async (req, res) => {
     try {
-      const userObj = await prisma.user.findUnique({
+      const userObj = await prisma2.user.findUnique({
         where: { email: req.user.email },
         include: {
           quotations: { orderBy: { createdAt: "desc" } },
@@ -295,19 +7107,19 @@ async function startServer() {
     try {
       const CONTENT_TYPES = ["Books", "Periodicals", "Magazines", "Case Reports", "Theses", "Conference Proceedings", "Educational Videos", "Newsletters"];
       const [users, payments, subscriptions, quotations, contentCounts, pendingRequests, totalContent] = await Promise.all([
-        prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-        prisma.payment.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { user: true } }),
-        prisma.subscription.findMany({ orderBy: { createdAt: "desc" }, include: { user: true } }),
-        prisma.quotation.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+        prisma2.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+        prisma2.payment.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { user: true } }),
+        prisma2.subscription.findMany({ orderBy: { createdAt: "desc" }, include: { user: true } }),
+        prisma2.quotation.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
         Promise.all(CONTENT_TYPES.map(async (ct) => ({
           name: ct,
-          value: await prisma.content.count({ where: { contentType: ct } })
+          value: await prisma2.content.count({ where: { contentType: ct } })
         }))),
-        prisma.subscriptionRequest.count({ where: { status: "Pending" } }),
-        prisma.content.count()
+        prisma2.subscriptionRequest.count({ where: { status: "Pending" } }),
+        prisma2.content.count()
       ]);
-      const totalUsers = await prisma.user.count();
-      const domainGroups = await prisma.content.groupBy({
+      const totalUsers = await prisma2.user.count();
+      const domainGroups = await prisma2.content.groupBy({
         by: ["domain"],
         _count: { id: true },
         where: { domain: { not: null } }
@@ -373,7 +7185,7 @@ async function startServer() {
           totalUsers,
           totalContent,
           totalRevenue: payments.filter((p) => p.status === "Success").reduce((acc, p) => acc + p.amount, 0),
-          activeSubscriptions: subscriptions.filter((s) => s.status === "Active").length,
+          activeSubscriptions: subscriptions.filter((s2) => s2.status === "Active").length,
           pendingRequests,
           contentGrowthPct: 12.5,
           revenueGrowthPct: 8.2,
@@ -388,21 +7200,21 @@ async function startServer() {
   app.get("/api/admin/india-state-stats", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const [usersByState, quotationsByState, contactsByState, totalUsers, totalSubscriptions, totalRevenue] = await Promise.all([
-        prisma.user.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
-        prisma.quotation.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
-        prisma.contactInquiry.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
-        prisma.user.count({ where: { role: { not: "SuperAdmin" } } }),
-        prisma.subscription.count({ where: { status: "Active" } }),
-        prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "Success" } })
+        prisma2.user.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma2.quotation.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma2.contactInquiry.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma2.user.count({ where: { role: { not: "SuperAdmin" } } }),
+        prisma2.subscription.count({ where: { status: "Active" } }),
+        prisma2.payment.aggregate({ _sum: { amount: true }, where: { status: "Success" } })
       ]);
       const stateMap = {};
       const add = (state, field, count) => {
         if (!state || state === "null") return;
-        const s = state.trim();
-        if (!s) return;
-        if (!stateMap[s]) stateMap[s] = { users: 0, quotations: 0, contacts: 0, total: 0 };
-        stateMap[s][field] += count;
-        stateMap[s].total += count;
+        const s2 = state.trim();
+        if (!s2) return;
+        if (!stateMap[s2]) stateMap[s2] = { users: 0, quotations: 0, contacts: 0, total: 0 };
+        stateMap[s2][field] += count;
+        stateMap[s2].total += count;
       };
       for (const u of usersByState) add(u.state, "users", u._count.id);
       for (const q of quotationsByState) add(q.state, "quotations", q._count.id);
@@ -410,9 +7222,9 @@ async function startServer() {
       res.json({
         stateMap,
         meta: {
-          stateUsers: usersByState.reduce((s, u) => s + u._count.id, 0),
-          stateQuotations: quotationsByState.reduce((s, q) => s + q._count.id, 0),
-          stateContacts: contactsByState.reduce((s, c) => s + c._count.id, 0),
+          stateUsers: usersByState.reduce((s2, u) => s2 + u._count.id, 0),
+          stateQuotations: quotationsByState.reduce((s2, q) => s2 + q._count.id, 0),
+          stateContacts: contactsByState.reduce((s2, c) => s2 + c._count.id, 0),
           activeStates: Object.keys(stateMap).length,
           totalUsers,
           totalSubscriptions,
@@ -427,8 +7239,8 @@ async function startServer() {
   app.get("/api/user/dashboard", authenticateJWT, async (req, res) => {
     try {
       const subscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const payments = await prisma.payment.findMany({ where: { userId: req.user.uid, status: "Success" } });
-      const recentViews = await prisma.studentActivity.findMany({
+      const payments = await prisma2.payment.findMany({ where: { userId: req.user.uid, status: "Success" } });
+      const recentViews = await prisma2.studentActivity.findMany({
         where: { userId: req.user.uid },
         orderBy: { accessedAt: "desc" },
         take: 6,
@@ -446,8 +7258,8 @@ async function startServer() {
       const nearestExpiry = activeSubs.sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())[0]?.endDate || null;
       const totalSpent = payments.reduce((acc, p) => acc + p.amount, 0);
       const allowedDomains = Array.from(new Set(
-        activeSubs.flatMap((s) => {
-          const d = Array.isArray(s.domains) ? s.domains : s.domains ? JSON.parse(s.domains) : [];
+        activeSubs.flatMap((s2) => {
+          const d = Array.isArray(s2.domains) ? s2.domains : s2.domains ? JSON.parse(s2.domains) : [];
           return d;
         }).filter(Boolean)
       ));
@@ -467,17 +7279,17 @@ async function startServer() {
     try {
       const { contentId, lastPage, timeSpent } = req.body;
       if (!contentId || !lastPage) return res.status(400).json({ error: "contentId and lastPage are required" });
-      const existing = await prisma.studentActivity.findFirst({
+      const existing = await prisma2.studentActivity.findFirst({
         where: { userId: req.user.uid, contentId }
       });
       if (existing) {
-        await prisma.studentActivity.update({
+        await prisma2.studentActivity.update({
           where: { id: existing.id },
           data: { lastPage: Number(lastPage), timeSpent: { increment: Number(timeSpent) || 0 } }
         });
         res.json({ success: true, lastPage: Number(lastPage) });
       } else {
-        await prisma.studentActivity.create({
+        await prisma2.studentActivity.create({
           data: { userId: req.user.uid, contentId, lastPage: Number(lastPage), timeSpent: Number(timeSpent) || 0 }
         });
         res.json({ success: true, lastPage: Number(lastPage) });
@@ -489,7 +7301,7 @@ async function startServer() {
   });
   app.get("/api/user/reading-progress/:contentId", authenticateJWT, async (req, res) => {
     try {
-      const activity = await prisma.studentActivity.findFirst({
+      const activity = await prisma2.studentActivity.findFirst({
         where: { userId: req.user.uid, contentId: req.params.contentId }
       });
       res.json({ lastPage: activity?.lastPage || 1, accessedAt: activity?.accessedAt || null });
@@ -503,10 +7315,10 @@ async function startServer() {
       if (req.user.institutionId) {
         OR_clauses.push({ institutionId: req.user.institutionId });
       } else if (req.user.role === "Institution" || req.user.role === "Student" || req.user.role === "Subscriber") {
-        const u = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        const u = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
         if (u?.institutionId) OR_clauses.push({ institutionId: u.institutionId });
       }
-      const subscriptions = await prisma.subscription.findMany({
+      const subscriptions = await prisma2.subscription.findMany({
         where: { OR: OR_clauses },
         orderBy: { startDate: "desc" }
       });
@@ -519,13 +7331,13 @@ async function startServer() {
     const OR_clauses = [{ userId: uid }];
     let resolvedInstId = institutionId;
     if (!resolvedInstId) {
-      const u = await prisma.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+      const u = await prisma2.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
       if (u?.institutionId) resolvedInstId = u.institutionId;
     }
     if (resolvedInstId) {
       OR_clauses.push({ institutionId: resolvedInstId });
     }
-    return prisma.subscription.findMany({
+    return prisma2.subscription.findMany({
       where: {
         OR: OR_clauses,
         status: "Active",
@@ -568,7 +7380,7 @@ async function startServer() {
   app.get("/api/user/content-access", authenticateJWT, async (req, res) => {
     try {
       const activeSubscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const allModules = await prisma.contentModule.findMany({ where: { isActive: true } });
+      const allModules = await prisma2.contentModule.findMany({ where: { isActive: true } });
       const uniqueModulesMap = /* @__PURE__ */ new Map();
       allModules.forEach((mod) => {
         const key = `${mod.domain}_${mod.contentType}`;
@@ -594,19 +7406,87 @@ async function startServer() {
       res.status(500).json({ error: "Failed to load access map" });
     }
   });
+  app.get("/api/content/filters", async (req, res) => {
+    try {
+      const { domain, subjectArea } = req.query;
+      const where = { status: "Published" };
+      if (domain) where.domain = String(domain);
+      const contents = await prisma2.content.findMany({
+        where,
+        select: { domain: true, subjectArea: true, tags: true }
+      });
+      const subjectsSet = /* @__PURE__ */ new Set();
+      const tagsSet = /* @__PURE__ */ new Set();
+      const domainsSet = /* @__PURE__ */ new Set();
+      const selectedSubjects = subjectArea ? String(subjectArea).split(",").map((s2) => s2.trim().toLowerCase()).filter(Boolean) : [];
+      contents.forEach((c) => {
+        if (c.domain) domainsSet.add(c.domain.trim());
+        if (c.subjectArea) subjectsSet.add(c.subjectArea.trim());
+        let shouldAddTags = true;
+        if (selectedSubjects.length > 0) {
+          const cSub = c.subjectArea ? c.subjectArea.trim().toLowerCase() : "";
+          if (!selectedSubjects.includes(cSub)) {
+            shouldAddTags = false;
+          }
+        }
+        if (shouldAddTags && c.tags) {
+          const tagsArray = Array.isArray(c.tags) ? c.tags : typeof c.tags === "string" ? c.tags.split(",") : [];
+          tagsArray.forEach((t2) => {
+            if (typeof t2 === "string") {
+              const trimmed = t2.trim();
+              if (trimmed) tagsSet.add(trimmed);
+            }
+          });
+        }
+      });
+      res.json({
+        domains: Array.from(domainsSet).sort(),
+        subjects: Array.from(subjectsSet).sort(),
+        tags: Array.from(tagsSet).sort()
+      });
+    } catch (error) {
+      console.error("Filter fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch filters" });
+    }
+  });
   app.get("/api/content/list", async (req, res) => {
     try {
-      const { domain, contentType, search, page = "1", limit = "20", onlyUnlocked } = req.query;
+      const { domain, contentType, search, subjectArea, tag, page = "1", limit = "20", onlyUnlocked } = req.query;
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const take = parseInt(limit);
       const where = { status: { not: "Draft" } };
       if (domain) where.domain = String(domain);
       if (contentType) where.contentType = String(contentType);
+      if (subjectArea) {
+        const subjects = String(subjectArea).split(",").map((s2) => s2.trim()).filter(Boolean);
+        if (subjects.length > 0) {
+          if (subjects.length === 1) {
+            where.subjectArea = { equals: subjects[0], mode: "insensitive" };
+          } else {
+            where.subjectArea = { in: subjects };
+          }
+        }
+      }
+      if (tag) {
+        const tags = String(tag).split(",").map((t2) => t2.trim()).filter(Boolean);
+        if (tags.length > 0) {
+          if (tags.length === 1) {
+            where.tags = { array_contains: tags[0] };
+          } else {
+            where.AND = where.AND || [];
+            where.AND.push({
+              OR: tags.map((t2) => ({ tags: { array_contains: t2 } }))
+            });
+          }
+        }
+      }
       if (search) {
         where.OR = [
           { title: { contains: String(search), mode: "insensitive" } },
           { authors: { contains: String(search), mode: "insensitive" } },
-          { description: { contains: String(search), mode: "insensitive" } }
+          { description: { contains: String(search), mode: "insensitive" } },
+          { subjectArea: { contains: String(search), mode: "insensitive" } },
+          { tags: { array_contains: String(search) } }
         ];
       }
       const authHeader = req.headers.authorization;
@@ -615,8 +7495,8 @@ async function startServer() {
         const token = authHeader.split(" ")[1];
         try {
           userDetails = import_jsonwebtoken.default.verify(token, JWT_SECRET);
-        } catch (e) {
-          console.log("JWT Error:", e);
+        } catch (e2) {
+          console.log("JWT Error:", e2);
         }
       }
       if (onlyUnlocked === "true" && userDetails) {
@@ -660,8 +7540,8 @@ async function startServer() {
           }
         }
         const [contents2, total2] = await Promise.all([
-          prisma.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
-          prisma.content.count({ where })
+          prisma2.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
+          prisma2.content.count({ where })
         ]);
         return res.json({
           data: contents2.map((c) => ({ ...c, locked: false })),
@@ -671,8 +7551,8 @@ async function startServer() {
         });
       }
       const [contents, total] = await Promise.all([
-        prisma.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
-        prisma.content.count({ where })
+        prisma2.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
+        prisma2.content.count({ where })
       ]);
       if (!userDetails) {
         return res.json({
@@ -700,7 +7580,7 @@ async function startServer() {
     try {
       const contentId = req.params.id;
       const isAdminRole = ["SuperAdmin", "Admin", "ContentManager"].includes(req.user.role);
-      const content = isAdminRole ? await prisma.content.findUnique({ where: { id: contentId } }) : await prisma.content.findFirst({ where: { id: contentId, status: { not: "Draft" } } });
+      const content = isAdminRole ? await prisma2.content.findUnique({ where: { id: contentId } }) : await prisma2.content.findFirst({ where: { id: contentId, status: { not: "Draft" } } });
       if (!content) {
         return res.status(404).json({ error: "Content not found" });
       }
@@ -711,16 +7591,16 @@ async function startServer() {
       }
       if (req.user.role === "Student" || req.user.role === "Subscriber") {
         try {
-          const existing = await prisma.studentActivity.findFirst({
+          const existing = await prisma2.studentActivity.findFirst({
             where: { userId: req.user.uid, contentId: content.id }
           });
           if (existing) {
-            await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
+            await prisma2.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
           } else {
-            await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
+            await prisma2.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
           }
-        } catch (e) {
-          console.error("Activity log failed", e);
+        } catch (e2) {
+          console.error("Activity log failed", e2);
         }
       }
       return res.json({
@@ -735,13 +7615,15 @@ async function startServer() {
   app.get("/api/content/:id/proxy-pdf", authenticateJWT, async (req, res) => {
     try {
       const contentId = req.params.id;
-      const content = await prisma.content.findFirst({
-        where: { id: contentId, status: { not: "Draft" } }
-      });
+      const isAdmin = req.user.role === "SuperAdmin" || req.user.role === "Admin";
+      const whereClause = { id: contentId };
+      if (!isAdmin) {
+        whereClause.status = { not: "Draft" };
+      }
+      const content = await prisma2.content.findFirst({ where: whereClause });
       if (!content || !content.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
-      const isAdmin = req.user.role === "SuperAdmin" || req.user.role === "Admin";
       if (!isAdmin) {
         const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
         const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
@@ -749,62 +7631,50 @@ async function startServer() {
           return res.status(403).json({ error: "Access denied." });
         }
       }
-      const https = await import("https");
-      const http = await import("http");
-      const upstreamUrl = new URL(content.fileUrl);
-      const protocol = upstreamUrl.protocol === "https:" ? https : http;
+      const nodeFetch = (await Promise.resolve().then(() => (init_src(), src_exports))).default;
       const proxyHeaders = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-        "Accept": "application/pdf, text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
+        "Accept": "application/pdf,*/*;q=0.9",
+        "Accept-Language": "en-US,en;q=0.9",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1",
         "Sec-Fetch-Dest": "document",
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1"
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0"
       };
-      const proxyReq = protocol.get(content.fileUrl, {
-        headers: proxyHeaders
-      }, (proxyRes) => {
-        if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode || 0) && proxyRes.headers.location) {
-          const redirectUrl = proxyRes.headers.location;
-          const finalRedirectUrl = redirectUrl.startsWith("http") ? redirectUrl : new URL(redirectUrl, content.fileUrl).toString();
-          const redirectProtocol = finalRedirectUrl.startsWith("https") ? https : http;
-          const redirHeaders = { ...proxyHeaders };
-          if (proxyRes.headers["set-cookie"]) {
-            redirHeaders["Cookie"] = proxyRes.headers["set-cookie"].map((c) => c.split(";")[0]).join("; ");
-          }
-          const redirReq = redirectProtocol.get(finalRedirectUrl, {
-            headers: redirHeaders
-          }, (redirRes) => {
-            res.setHeader("Content-Type", "application/pdf");
-            res.setHeader("Content-Disposition", "inline");
-            res.setHeader("Cache-Control", "private, max-age=3600");
-            res.setHeader("X-Content-Type-Options", "nosniff");
-            redirRes.pipe(res);
-          });
-          redirReq.on("error", () => res.status(502).json({ error: "PDF proxy redirect failed" }));
-          return;
-        }
-        if ((proxyRes.statusCode || 500) >= 400) {
-          console.error(`[proxy-pdf] Upstream failed with ${proxyRes.statusCode} for ${content.fileUrl}`);
-          return res.status(proxyRes.statusCode || 502).json({ error: `Upstream returned ${proxyRes.statusCode}` });
-        }
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", "inline");
-        res.setHeader("Cache-Control", "private, max-age=3600");
-        res.setHeader("X-Content-Type-Options", "nosniff");
-        if (proxyRes.headers["content-length"]) {
-          res.setHeader("Content-Length", proxyRes.headers["content-length"]);
-        }
-        proxyRes.pipe(res);
+      if (req.headers["range"]) {
+        proxyHeaders["Range"] = req.headers["range"];
+      }
+      const controller = new AbortController();
+      req.on("close", () => controller.abort());
+      const upstreamRes = await nodeFetch(content.fileUrl, {
+        headers: proxyHeaders,
+        redirect: "follow",
+        signal: controller.signal
+      }).catch((err) => {
+        if (err.name === "AbortError") return null;
+        throw err;
       });
-      proxyReq.on("error", (err) => {
-        console.error("[proxy-pdf] Error fetching upstream:", err.message);
-        if (!res.headersSent) res.status(502).json({ error: "Failed to fetch PDF from upstream" });
-      });
-      req.on("close", () => proxyReq.destroy());
+      if (!upstreamRes) return;
+      if (!upstreamRes.ok) {
+        console.error(`[proxy-pdf] Upstream failed with ${upstreamRes.status} for ${content.fileUrl}`);
+        if (!res.headersSent) res.status(upstreamRes.status).json({ error: `Upstream returned ${upstreamRes.status}` });
+        return;
+      }
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      if (upstreamRes.headers.get("content-length")) {
+        res.setHeader("Content-Length", upstreamRes.headers.get("content-length"));
+      }
+      if (upstreamRes.headers.get("content-range")) {
+        res.setHeader("Content-Range", upstreamRes.headers.get("content-range"));
+        res.status(206);
+      }
+      upstreamRes.body.pipe(res);
     } catch (error) {
       console.error("[proxy-pdf] unexpected error:", error);
       res.status(500).json({ error: "PDF proxy failed" });
@@ -812,7 +7682,7 @@ async function startServer() {
   });
   app.get("/api/user/quotations", authenticateJWT, async (req, res) => {
     try {
-      const quotations = await prisma.quotation.findMany({
+      const quotations = await prisma2.quotation.findMany({
         where: { userEmail: req.user.email },
         orderBy: { createdAt: "desc" }
       });
@@ -823,7 +7693,7 @@ async function startServer() {
   });
   app.get("/api/user/invoices", authenticateJWT, async (req, res) => {
     try {
-      const payments = await prisma.payment.findMany({
+      const payments = await prisma2.payment.findMany({
         where: { userId: req.user.uid },
         orderBy: { createdAt: "desc" }
       });
@@ -843,7 +7713,7 @@ async function startServer() {
       if (clearFirstLogin || password) {
         dataToUpdate.isFirstLogin = false;
       }
-      const updatedUser = await prisma.user.update({
+      const updatedUser = await prisma2.user.update({
         where: { id: req.user.uid },
         data: dataToUpdate
       });
@@ -854,8 +7724,8 @@ async function startServer() {
     }
   });
   const generatePassword = (length = 12) => {
-    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
-    return Array.from(import_crypto.default.randomBytes(length)).map((b) => chars[b % chars.length]).join("");
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    return Array.from(import_crypto2.default.randomBytes(length)).map((b) => chars[b % chars.length]).join("");
   };
   const sendCredentialsEmail = async (to, name, password, extra) => {
     const siteUrl = process.env.SITE_URL || "https://journalslibrary.com";
@@ -895,7 +7765,7 @@ async function startServer() {
             <p style="margin:0 0 6px;font-size:13px;color:#2563EB;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">Greetings from STM Digital Library</p>
             <p style="margin:0 0 14px;font-size:20px;font-weight:700;color:#1A3A6B;">Dear ${name},</p>
             <p style="margin:0 0 10px;font-size:14px;color:#4A5568;line-height:1.7;">
-              We are pleased to inform you that your subscription access has been <span style="color:#16A34A;font-weight:700;">successfully activated</span>.
+              ${extra?.customMessage || 'We are pleased to inform you that your subscription access has been <span style="color:#16A34A;font-weight:700;">successfully activated</span>.'}
             </p>
             <p style="margin:0;font-size:14px;color:#4A5568;line-height:1.7;">
               You can now log in to the STM Digital Library platform using the credentials provided below.
@@ -1045,6 +7915,159 @@ async function startServer() {
       if (emailErr.stack) console.error(emailErr.stack);
     }
   };
+  const sendPaymentSuccessEmails = async (userEmail, userName, totalAmount, items, paymentId, orderId, invoiceNumber, pdfBase64) => {
+    const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+    const adminEmail = process.env.ADMIN_EMAIL || "info@celnet.in";
+    const year = (/* @__PURE__ */ new Date()).getFullYear();
+    const itemsHtml = Array.isArray(items) ? items.map((item) => `
+      <tr>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#1e293b;font-weight:600;">${item.domainName || item.description || "Subscription"}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;text-align:center;">${item.planName || "\u2014"}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;text-align:center;">${item.duration || "Monthly"}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#1e293b;font-weight:700;text-align:right;">\u20B9${Number(item.price || item.unitPrice || 0).toLocaleString("en-IN")}</td>
+      </tr>`).join("") : '<tr><td colspan="4" style="padding:12px;text-align:center;color:#94a3b8;">No items</td></tr>';
+    const customerHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef2f7;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;padding:32px 0;">
+<tr><td align="center">
+<table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);max-width:620px;">
+  <!-- Header -->
+  <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
+    <h1 style="color:#ffffff;margin:0 0 4px;font-size:24px;font-weight:900;letter-spacing:1px;">STM DIGITAL LIBRARY</h1>
+    <p style="color:#93c5fd;margin:0 0 16px;font-size:12px;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+    <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;">\u2705 &nbsp;Payment Confirmed</span>
+  </td></tr>
+  <!-- Success Banner -->
+  <tr><td style="background:#f0fdf4;border-bottom:2px solid #bbf7d0;padding:22px 48px;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="font-size:28px;">\u2705</td>
+      <td style="padding-left:14px;">
+        <p style="margin:0;font-size:17px;font-weight:800;color:#15803d;">Payment Successful!</p>
+        <p style="margin:4px 0 0;font-size:13px;color:#166534;">Thank you, ${userName}. Your subscription is now active.</p>
+      </td>
+      <td style="text-align:right;">
+        <p style="margin:0;font-size:26px;font-weight:900;color:#15803d;">\u20B9${totalAmount}</p>
+        <p style="margin:2px 0 0;font-size:11px;color:#6b7280;">incl. 18% GST</p>
+      </td>
+    </tr></table>
+  </td></tr>
+  <!-- Invoice Details -->
+  <tr><td style="padding:28px 48px 0;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1d4ed8,#1e40af);border-radius:12px;">
+    <tr><td style="padding:18px 24px;">
+      <p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">\u{1F4C4} &nbsp;Invoice Details</p>
+      <table width="100%" cellpadding="0" cellspacing="0"><tbody>
+        <tr>
+          <td style="color:#93c5fd;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);width:50%;">Invoice Number</td>
+          <td style="color:#fff;font-size:13px;font-weight:700;text-align:right;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${invoiceNumber}</td>
+        </tr>
+        <tr>
+          <td style="color:#93c5fd;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Payment ID</td>
+          <td style="color:#fff;font-size:12px;font-weight:600;text-align:right;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);font-family:monospace;">${paymentId || "\u2014"}</td>
+        </tr>
+        <tr>
+          <td style="color:#93c5fd;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Order ID</td>
+          <td style="color:#fff;font-size:12px;font-weight:600;text-align:right;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);font-family:monospace;">${orderId || "\u2014"}</td>
+        </tr>
+        <tr>
+          <td style="color:#93c5fd;font-size:12px;padding:5px 0;">Date</td>
+          <td style="color:#fff;font-size:13px;font-weight:600;text-align:right;padding:5px 0;">${(/* @__PURE__ */ new Date()).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</td>
+        </tr>
+      </tbody></table>
+    </td></tr></table>
+  </td></tr>
+  <!-- Items Table -->
+  <tr><td style="padding:24px 48px 0;">
+    <p style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;margin:0 0 10px;">\u{1F6D2} Items Purchased</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+      <thead><tr style="background:#f8fafc;">
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;text-align:left;border-bottom:1px solid #e2e8f0;">Domain / Subject</th>
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;text-align:center;border-bottom:1px solid #e2e8f0;">Plan</th>
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;text-align:center;border-bottom:1px solid #e2e8f0;">Duration</th>
+        <th style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;text-align:right;border-bottom:1px solid #e2e8f0;">Price</th>
+      </tr></thead>
+      <tbody>${itemsHtml}</tbody>
+      <tfoot><tr style="background:#1e293b;">
+        <td colspan="3" style="padding:12px 14px;font-size:12px;font-weight:700;color:#94a3b8;">Total (incl. 18% GST)</td>
+        <td style="padding:12px 14px;font-size:15px;font-weight:900;color:#ffffff;text-align:right;">\u20B9${totalAmount}</td>
+      </tr></tfoot>
+    </table>
+  </td></tr>
+  <!-- Access Info -->
+  <tr><td style="padding:24px 48px 0;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;">
+    <tr><td style="padding:18px 22px;">
+      <p style="color:#92400e;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">\u{1F510} Access Your Subscription</p>
+      <p style="color:#78350f;font-size:13px;margin:0 0 8px;">Log in to your dashboard to start reading:</p>
+      <a href="https://journalslibrary.com/dashboard" style="display:inline-block;background:#1d4ed8;color:#fff;font-size:13px;font-weight:700;padding:10px 24px;border-radius:8px;text-decoration:none;">Go to My Dashboard \u2192</a>
+    </td></tr></table>
+  </td></tr>
+  <!-- Contact -->
+  <tr><td style="padding:24px 48px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+    <tr><td style="padding:16px 22px;">
+      <p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">\u{1F4DE} Need Help?</p>
+      <p style="margin:2px 0;font-size:13px;color:#1e293b;">\u{1F4E7} <a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:600;">info@celnet.in</a></p>
+      <p style="margin:2px 0;font-size:13px;color:#1e293b;">\u{1F4DE} +91-9810078958</p>
+    </td></tr></table>
+  </td></tr>
+  <!-- Footer -->
+  <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:24px 48px;text-align:center;">
+    <p style="color:#f8fafc;font-size:12px;margin:0 0 4px;font-weight:700;">STM Digital Library \u2014 21 Years of Trusted Excellence</p>
+    <p style="color:#64748b;font-size:11px;margin:0;">\xA9 ${year} Consortium eLearning Network Pvt. Ltd. All rights reserved.</p>
+    <p style="color:#475569;font-size:10px;margin:4px 0 0;">GSTIN: 09AACCC6494M1Z1 &nbsp;|&nbsp; PAN: AACCC6494M</p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+    const adminHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:24px;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+  <div style="background:#0f172a;padding:20px 28px;">
+    <h2 style="color:#fff;margin:0;font-size:18px;">\u{1F514} New Payment Received</h2>
+    <p style="color:#94a3b8;margin:4px 0 0;font-size:13px;">STM Digital Library \u2014 Admin Notification</p>
+  </div>
+  <div style="padding:24px 28px;border-bottom:1px solid #e2e8f0;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Customer</td><td style="font-size:13px;font-weight:700;color:#1e293b;text-align:right;">${userName} &lt;${userEmail}&gt;</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Invoice No</td><td style="font-size:13px;font-weight:700;color:#1e293b;text-align:right;">${invoiceNumber}</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Payment ID</td><td style="font-size:12px;font-family:monospace;color:#1e293b;text-align:right;">${paymentId || "\u2014"}</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Order ID</td><td style="font-size:12px;font-family:monospace;color:#1e293b;text-align:right;">${orderId || "\u2014"}</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Amount</td><td style="font-size:18px;font-weight:900;color:#15803d;text-align:right;">\u20B9${totalAmount}</td></tr>
+      <tr><td style="font-size:12px;color:#94a3b8;padding:4px 0;">Date</td><td style="font-size:13px;font-weight:600;color:#1e293b;text-align:right;">${(/* @__PURE__ */ new Date()).toLocaleString("en-IN")}</td></tr>
+    </table>
+  </div>
+  <div style="padding:16px 28px;background:#f8fafc;">
+    <p style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 8px;">Items</p>
+    ${Array.isArray(items) ? items.map((item) => `<p style="margin:4px 0;font-size:13px;color:#1e293b;"><strong>${item.domainName || item.description}</strong> \u2014 ${item.planName || ""} | ${item.duration || "Monthly"} | <strong>\u20B9${Number(item.price || item.unitPrice || 0).toLocaleString("en-IN")}</strong></p>`).join("") : ""}
+  </div>
+  <div style="padding:16px 28px;text-align:center;">
+    <a href="https://journalslibrary.com/admin/payments" style="display:inline-block;background:#1d4ed8;color:#fff;font-size:13px;font-weight:700;padding:10px 24px;border-radius:8px;text-decoration:none;">View in Admin Dashboard \u2192</a>
+  </div>
+</div>
+</body></html>`;
+    try {
+      await sendMail({
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: userEmail,
+        subject: `Payment Confirmation \u2014 Invoice ${invoiceNumber} | STM Digital Library`,
+        html: customerHtml,
+        attachments: pdfBase64 ? [{ filename: `Invoice_${invoiceNumber}.pdf`, content: pdfBase64, encoding: "base64" }] : []
+      });
+      await sendMail({
+        from: `"STM Payments Alert" <${emailFrom}>`,
+        to: adminEmail,
+        subject: `[New Payment] \u20B9${totalAmount} from ${userName} \u2014 ${invoiceNumber}`,
+        html: adminHtml
+      });
+      return true;
+    } catch (err) {
+      console.error("Payment Confirmation Emails Failed:", err);
+      return false;
+    }
+  };
   app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { role: filterRole, search } = req.query;
@@ -1056,7 +8079,7 @@ async function startServer() {
           { displayName: { contains: search, mode: "insensitive" } }
         ];
       }
-      const users = await prisma.user.findMany({
+      const users = await prisma2.user.findMany({
         where,
         include: {
           subscriptions: { where: { status: "Active" }, take: 3 },
@@ -1082,7 +8105,7 @@ async function startServer() {
   });
   app.get("/api/admin/institutions", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const institutions = await prisma.institution.findMany({
+      const institutions = await prisma2.institution.findMany({
         select: { id: true, name: true, status: true },
         orderBy: { name: "asc" }
       });
@@ -1100,13 +8123,13 @@ async function startServer() {
       if (role === "Institution" && !institutionName) {
         return res.status(400).json({ error: "Institution Name is required for Institution role" });
       }
-      const existing = await prisma.user.findUnique({ where: { email } });
+      const existing = await prisma2.user.findUnique({ where: { email } });
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
       const plainPassword = customPassword || generatePassword();
       const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
       let newInstId = null;
       if (role === "Institution") {
-        const newInst = await prisma.institution.create({
+        const newInst = await prisma2.institution.create({
           data: {
             name: institutionName,
             status: "Active"
@@ -1114,7 +8137,7 @@ async function startServer() {
         });
         newInstId = newInst.id;
       }
-      const newUser = await prisma.user.create({
+      const newUser = await prisma2.user.create({
         data: {
           email,
           password: hashedPassword,
@@ -1128,7 +8151,7 @@ async function startServer() {
           demoExpiresAt: isDemoAccount ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3) : null
         }
       });
-      await prisma.usageLog.create({
+      await prisma2.usageLog.create({
         data: {
           action: "USER_CREATED",
           details: `User ${email} created with role ${role} by ${req.user.email}`,
@@ -1156,13 +8179,13 @@ async function startServer() {
       if (role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
       }
-      const existing = await prisma.user.findUnique({ where: { id } });
+      const existing = await prisma2.user.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: "User not found" });
       if (email && email !== existing.email) {
-        const taken = await prisma.user.findUnique({ where: { email } });
+        const taken = await prisma2.user.findUnique({ where: { email } });
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
-      const updated = await prisma.user.update({
+      const updated = await prisma2.user.update({
         where: { id },
         data: {
           ...displayName ? { displayName } : {},
@@ -1189,10 +8212,10 @@ async function startServer() {
       if (role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
       }
-      const prevUser = await prisma.user.findUnique({ where: { id } });
+      const prevUser = await prisma2.user.findUnique({ where: { id } });
       if (!prevUser) return res.status(404).json({ error: "User not found" });
-      const updated = await prisma.user.update({ where: { id }, data: { role } });
-      await prisma.usageLog.create({
+      const updated = await prisma2.user.update({ where: { id }, data: { role } });
+      await prisma2.usageLog.create({
         data: {
           action: "ROLE_CHANGE",
           details: `Role changed from ${prevUser.role} \u2192 ${role} for user ${prevUser.email} by ${req.user.email}`,
@@ -1208,16 +8231,16 @@ async function startServer() {
   app.post("/api/admin/users/:id/reset-password", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const targetUser = await prisma.user.findUnique({ where: { id } });
+      const targetUser = await prisma2.user.findUnique({ where: { id } });
       if (!targetUser) return res.status(404).json({ error: "User not found" });
       const newPlain = generatePassword();
       const hashed = await import_bcryptjs.default.hash(newPlain, 10);
-      await prisma.user.update({
+      await prisma2.user.update({
         where: { id },
         data: { password: hashed, isFirstLogin: true }
       });
       await sendCredentialsEmail(targetUser.email, targetUser.displayName || "User", newPlain);
-      await prisma.usageLog.create({
+      await prisma2.usageLog.create({
         data: {
           action: "PASSWORD_RESET",
           details: `Password reset for ${targetUser.email} by ${req.user.email}`,
@@ -1233,7 +8256,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       if (id === req.user.uid) return res.status(400).json({ error: "Cannot delete your own account" });
-      await prisma.user.delete({ where: { id } });
+      await prisma2.user.delete({ where: { id } });
       res.json({ message: "User deleted" });
     } catch (err) {
       res.status(500).json({ error: "Failed to delete user" });
@@ -1249,7 +8272,7 @@ async function startServer() {
     "Corporate Innovator"
   ];
   async function syncContentModuleCounts() {
-    const groups = await prisma.content.groupBy({
+    const groups = await prisma2.content.groupBy({
       by: ["domain", "contentType"],
       where: { status: "Published", domain: { not: null } },
       _count: { id: true }
@@ -1257,7 +8280,7 @@ async function startServer() {
     for (const g of groups) {
       if (!g.domain) continue;
       for (const userType of USER_TYPES) {
-        await prisma.contentModule.upsert({
+        await prisma2.contentModule.upsert({
           where: { domain_contentType_userType: { domain: g.domain, contentType: g.contentType, userType } },
           create: { domain: g.domain, contentType: g.contentType, userType, totalCount: g._count.id },
           update: { totalCount: g._count.id }
@@ -1271,7 +8294,7 @@ async function startServer() {
       const where = { isActive: true };
       if (domain) where.domain = domain;
       where.userType = userType ? userType : "General";
-      const modules = await prisma.contentModule.findMany({
+      const modules = await prisma2.contentModule.findMany({
         where,
         orderBy: [{ domain: "asc" }, { contentType: "asc" }]
       });
@@ -1286,23 +8309,23 @@ async function startServer() {
       if (!Array.isArray(moduleIds) || moduleIds.length === 0) {
         return res.json({ subtotal: 0, gstAmount: 0, total: 0, breakdown: [], planType });
       }
-      const modules = await prisma.contentModule.findMany({
+      const modules = await prisma2.contentModule.findMany({
         where: { id: { in: moduleIds }, isActive: true }
       });
-      const breakdown = modules.map((m) => {
+      const breakdown = modules.map((m2) => {
         let price = 0;
-        if (planType === "Monthly") price = m.monthlyPrice;
-        else if (planType === "Quarterly") price = m.quarterlyPrice;
-        else if (planType === "Half-Yearly") price = m.halfYearlyPrice;
-        else if (planType === "Yearly") price = m.yearlyPrice;
+        if (planType === "Monthly") price = m2.monthlyPrice;
+        else if (planType === "Quarterly") price = m2.quarterlyPrice;
+        else if (planType === "Half-Yearly") price = m2.halfYearlyPrice;
+        else if (planType === "Yearly") price = m2.yearlyPrice;
         return {
-          id: m.id,
-          domain: m.domain,
-          contentType: m.contentType,
+          id: m2.id,
+          domain: m2.domain,
+          contentType: m2.contentType,
           price,
-          totalCount: m.totalCount,
+          totalCount: m2.totalCount,
           planType,
-          userType: m.userType
+          userType: m2.userType
         };
       });
       const subtotal = breakdown.reduce((sum, b) => sum + b.price, 0);
@@ -1330,7 +8353,7 @@ async function startServer() {
       const { userType } = req.query;
       const where = {};
       if (userType && userType !== "all") where.userType = userType;
-      const modules = await prisma.contentModule.findMany({
+      const modules = await prisma2.contentModule.findMany({
         where,
         orderBy: [{ domain: "asc" }, { userType: "asc" }, { contentType: "asc" }]
       });
@@ -1351,7 +8374,7 @@ async function startServer() {
       if (yearlyDiscountPct !== void 0) data.yearlyDiscountPct = parseFloat(yearlyDiscountPct);
       if (isActive !== void 0) data.isActive = isActive;
       if (userType !== void 0) data.userType = userType;
-      const updated = await prisma.contentModule.update({ where: { id }, data });
+      const updated = await prisma2.contentModule.update({ where: { id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update module" });
@@ -1360,7 +8383,7 @@ async function startServer() {
   app.post("/api/admin/content-modules/sync", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       await syncContentModuleCounts();
-      const modules = await prisma.contentModule.findMany({ orderBy: [{ domain: "asc" }, { contentType: "asc" }] });
+      const modules = await prisma2.contentModule.findMany({ orderBy: [{ domain: "asc" }, { contentType: "asc" }] });
       res.json({ synced: modules.length, modules });
     } catch (error) {
       res.status(500).json({ error: "Sync failed" });
@@ -1369,7 +8392,7 @@ async function startServer() {
   app.get("/api/videos/grouped", authenticateJWT, async (req, res) => {
     try {
       const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const videos = await prisma.content.findMany({
+      const videos = await prisma2.content.findMany({
         where: {
           contentType: "Educational Videos",
           status: { in: ["Published", "published"] }
@@ -1391,7 +8414,7 @@ async function startServer() {
   app.get("/api/videos/:id/details", authenticateJWT, async (req, res) => {
     try {
       const videoId = req.params.id;
-      const content = await prisma.content.findUnique({ where: { id: videoId } });
+      const content = await prisma2.content.findUnique({ where: { id: videoId } });
       if (!content || content.contentType !== "Educational Videos") {
         return res.status(404).json({ error: "Video not found" });
       }
@@ -1401,21 +8424,21 @@ async function startServer() {
       }
       if (["Student", "Subscriber"].includes(req.user.role)) {
         try {
-          const existing = await prisma.studentActivity.findFirst({
+          const existing = await prisma2.studentActivity.findFirst({
             where: { userId: req.user.uid, contentId: content.id }
           });
           if (existing) {
-            await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
+            await prisma2.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
           } else {
-            await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
+            await prisma2.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
           }
-        } catch (e) {
-          console.error("Activity log failed (video):", e);
+        } catch (e2) {
+          console.error("Activity log failed (video):", e2);
         }
       }
       let related = [];
       if (content.domain) {
-        const allRelated = await prisma.content.findMany({
+        const allRelated = await prisma2.content.findMany({
           where: {
             contentType: "Educational Videos",
             domain: content.domain,
@@ -1462,7 +8485,7 @@ async function startServer() {
       if (domain) where.domain = domain;
       if (contentType) where.contentType = contentType;
       const [data, total] = await Promise.all([
-        prisma.content.findMany({
+        prisma2.content.findMany({
           where,
           skip,
           take: parseInt(limit),
@@ -1481,7 +8504,7 @@ async function startServer() {
             publishedAt: true
           }
         }),
-        prisma.content.count({ where })
+        prisma2.content.count({ where })
       ]);
       res.json({ data, total, query: q, page: parseInt(page), limit: parseInt(limit) });
     } catch (err) {
@@ -1493,7 +8516,7 @@ async function startServer() {
     try {
       const domain = req.query.domain;
       if (!domain) return res.status(400).json({ error: "domain query param required" });
-      const contentGroups = await prisma.content.groupBy({
+      const contentGroups = await prisma2.content.groupBy({
         by: ["contentType"],
         where: { domain, status: "Published" },
         _count: { id: true },
@@ -1507,21 +8530,21 @@ async function startServer() {
       const moduleWhere = { domain, isActive: true };
       if (userType) moduleWhere.userType = userType;
       else moduleWhere.userType = "General";
-      const modules = await prisma.contentModule.findMany({
+      const modules = await prisma2.contentModule.findMany({
         where: moduleWhere,
         orderBy: { contentType: "asc" }
       });
-      const pricing_modules = modules.map((m) => ({
-        id: m.id,
-        type: m.contentType,
-        userType: m.userType,
-        monthlyPrice: m.monthlyPrice,
-        quarterlyPrice: m.quarterlyPrice,
-        halfYearlyPrice: m.halfYearlyPrice,
-        yearlyPrice: m.yearlyPrice,
-        yearlyDiscountPct: m.yearlyDiscountPct,
-        totalCount: m.totalCount,
-        visible: m.isActive
+      const pricing_modules = modules.map((m2) => ({
+        id: m2.id,
+        type: m2.contentType,
+        userType: m2.userType,
+        monthlyPrice: m2.monthlyPrice,
+        quarterlyPrice: m2.quarterlyPrice,
+        halfYearlyPrice: m2.halfYearlyPrice,
+        yearlyPrice: m2.yearlyPrice,
+        yearlyDiscountPct: m2.yearlyDiscountPct,
+        totalCount: m2.totalCount,
+        visible: m2.isActive
       }));
       res.json({ domain, content_summary, pricing_modules, userTypes: USER_TYPES });
     } catch (err) {
@@ -1536,7 +8559,7 @@ async function startServer() {
         return res.status(400).json({ error: "Name, email and domain are required" });
       }
       const planDesc = `Domain Access Request: ${domain} | Plan: ${planType || "Monthly"} | Modules: ${Array.isArray(selectedModules) ? selectedModules.join(", ") : "All"} | Est. Total: \u20B9${totalPrice || 0}${organization ? ` | Org: ${organization}` : ""}`;
-      const request = await prisma.subscriptionRequest.create({
+      const request = await prisma2.subscriptionRequest.create({
         data: {
           userName,
           email,
@@ -1579,7 +8602,7 @@ async function startServer() {
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, "0");
       const prefix = `QTN-${year}-${month}-`;
-      const count = await prisma.quotation.count({
+      const count = await prisma2.quotation.count({
         where: { id: { startsWith: prefix } }
       });
       const seq = String(count + 1).padStart(2, "0");
@@ -1608,7 +8631,7 @@ async function startServer() {
       } = req.body;
       const expiresAt = /* @__PURE__ */ new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
-      const quotation = await prisma.quotation.create({
+      const quotation = await prisma2.quotation.create({
         data: {
           userName,
           userEmail,
@@ -1638,7 +8661,7 @@ async function startServer() {
       const { status } = req.query;
       const where = {};
       if (status) where.status = status;
-      const quotations = await prisma.quotation.findMany({
+      const quotations = await prisma2.quotation.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { user: true }
@@ -1655,7 +8678,7 @@ async function startServer() {
       const data = {};
       if (status) data.status = status;
       if (notes !== void 0) data.notes = notes;
-      const updated = await prisma.quotation.update({ where: { id }, data });
+      const updated = await prisma2.quotation.update({ where: { id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update quotation" });
@@ -1665,7 +8688,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
-      const quotation = await prisma.quotation.findUnique({ where: { id } });
+      const quotation = await prisma2.quotation.findUnique({ where: { id } });
       if (!quotation) return res.status(404).json({ error: "Quotation not found" });
       if (!quotation.userId) return res.status(400).json({ error: "Quotation has no linked user; assign manually" });
       const breakdown = quotation.pricingBreakdown || {};
@@ -1677,7 +8700,7 @@ async function startServer() {
         d.setMonth(d.getMonth() + months);
         return d;
       })();
-      const sub = await prisma.subscription.create({
+      const sub = await prisma2.subscription.create({
         data: {
           userId: quotation.userId,
           planName: `Custom Package (${quotation.planType})`,
@@ -1688,7 +8711,7 @@ async function startServer() {
           status: "Active"
         }
       });
-      await prisma.quotation.update({ where: { id }, data: { status: "Paid" } });
+      await prisma2.quotation.update({ where: { id }, data: { status: "Paid" } });
       res.json({ subscription: sub, quotation: { ...quotation, status: "Paid" } });
     } catch (error) {
       console.error("Convert quotation error:", error);
@@ -1697,11 +8720,12 @@ async function startServer() {
   });
   app.get("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const { domain, contentType, search, page = "1", limit = "10" } = req.query;
+      const { domain, contentType, search, status, page = "1", limit = "10" } = req.query;
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const where = {};
       if (domain) where.domain = domain;
       if (contentType) where.contentType = contentType;
+      if (status) where.status = status;
       if (search) {
         where.OR = [
           { title: { contains: search, mode: "insensitive" } },
@@ -1710,8 +8734,8 @@ async function startServer() {
         ];
       }
       const [contents, total] = await Promise.all([
-        prisma.content.findMany({ where, skip, take: parseInt(limit), orderBy: { publishedAt: "desc" } }),
-        prisma.content.count({ where })
+        prisma2.content.findMany({ where, skip, take: parseInt(limit), orderBy: { publishedAt: "desc" } }),
+        prisma2.content.count({ where })
       ]);
       res.json({ data: contents, total, page: parseInt(page), limit: parseInt(limit) });
     } catch (error) {
@@ -1722,7 +8746,7 @@ async function startServer() {
   app.post("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price, accessType, status, publishingMode } = req.body;
-      const newContent = await prisma.content.create({
+      const newContent = await prisma2.content.create({
         data: { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price: parseFloat(price) || 0, accessType, status, publishingMode: publishingMode || "Direct" }
       });
       res.json(newContent);
@@ -1736,17 +8760,75 @@ async function startServer() {
       const { id } = req.params;
       const data = req.body;
       if (data.price !== void 0) data.price = parseFloat(data.price) || 0;
-      const updatedContent = await prisma.content.update({ where: { id }, data });
+      const updatedContent = await prisma2.content.update({ where: { id }, data });
       res.json(updatedContent);
     } catch (error) {
       console.error("Admin Content PUT Error:", error);
       res.status(500).json({ error: "Failed to update content" });
     }
   });
+  app.delete("/api/admin/content-drafts-cleanup", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { limit } = req.query;
+      let count = 0;
+      if (limit && parseInt(limit) > 0) {
+        const take = parseInt(limit);
+        const drafts = await prisma2.content.findMany({
+          where: { status: "Draft" },
+          select: { id: true },
+          take
+        });
+        const ids = drafts.map((d) => d.id);
+        if (ids.length > 0) {
+          const result = await prisma2.content.deleteMany({ where: { id: { in: ids } } });
+          count = result.count;
+        }
+      } else {
+        const result = await prisma2.content.deleteMany({ where: { status: "Draft" } });
+        count = result.count;
+      }
+      res.json({ success: true, count, message: `Deleted ${count} drafted items.` });
+    } catch (error) {
+      console.error("Admin Draft Cleanup Error:", error);
+      res.status(500).json({ error: "Failed to clean up drafted content" });
+    }
+  });
+  app.post("/api/admin/content-drafts-publish", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { limit } = req.query;
+      let count = 0;
+      if (limit && parseInt(limit) > 0) {
+        const take = parseInt(limit);
+        const drafts = await prisma2.content.findMany({
+          where: { status: "Draft" },
+          select: { id: true },
+          take
+        });
+        const ids = drafts.map((d) => d.id);
+        if (ids.length > 0) {
+          const result = await prisma2.content.updateMany({
+            where: { id: { in: ids } },
+            data: { status: "Published", validationStatus: null, flaggedReason: null }
+          });
+          count = result.count;
+        }
+      } else {
+        const result = await prisma2.content.updateMany({
+          where: { status: "Draft" },
+          data: { status: "Published", validationStatus: null, flaggedReason: null }
+        });
+        count = result.count;
+      }
+      res.json({ success: true, count, message: `Successfully published ${count} drafted items.` });
+    } catch (error) {
+      console.error("Admin Draft Publish Error:", error);
+      res.status(500).json({ error: "Failed to publish drafted content" });
+    }
+  });
   app.delete("/api/admin/content/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma.content.delete({ where: { id } });
+      await prisma2.content.delete({ where: { id } });
       res.json({ success: true });
     } catch (error) {
       console.error("Admin Content DELETE Error:", error);
@@ -1759,11 +8841,28 @@ async function startServer() {
       if (!items || !Array.isArray(items)) {
         return res.status(400).json({ error: "Invalid payload format. Expected { items: [...] }" });
       }
-      const results = { success: 0, failed: 0, errors: [] };
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
+      const generateFingerprint2 = (title, authors) => {
+        const normalizedTitle = (title || "").toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+        const normalizedAuthors = (authors || "").toLowerCase().replace(/[^a-z0-9\s,]/g, "").split(",").map((a) => a.trim()).sort().join(",");
+        return import_crypto2.default.createHash("sha256").update(`${normalizedTitle}::${normalizedAuthors}`).digest("hex");
+      };
+      const results = { success: 0, failed: 0, skipped: 0, errors: [] };
+      for (let i2 = 0; i2 < items.length; i2++) {
+        const item = items[i2];
         try {
-          await prisma.content.create({
+          if (!item.title || !item.authors) {
+            results.failed++;
+            results.errors.push({ row: i2 + 1, item, error: "Missing title or authors" });
+            continue;
+          }
+          const fingerprint = generateFingerprint2(item.title, item.authors);
+          const existing = await prisma2.content.findUnique({ where: { fingerprint } });
+          if (existing) {
+            results.skipped++;
+            results.errors.push({ row: i2 + 1, item, error: "Duplicate content (fingerprint match)" });
+            continue;
+          }
+          await prisma2.content.create({
             data: {
               title: item.title,
               description: item.description,
@@ -1773,17 +8872,18 @@ async function startServer() {
               subjectArea: item.subjectArea,
               fileUrl: item.fileUrl,
               thumbnailUrl: item.thumbnailUrl,
-              tags: item.tags ? typeof item.tags === "string" ? item.tags.startsWith("[") ? JSON.parse(item.tags) : item.tags.split(",").map((t) => t.trim()) : item.tags : [],
+              tags: item.tags ? typeof item.tags === "string" ? item.tags.startsWith("[") ? JSON.parse(item.tags) : item.tags.split(",").map((t2) => t2.trim()) : item.tags : [],
               price: parseFloat(item.price) || 0,
               accessType: item.accessType || "Subscription",
               status: item.status || "Published",
-              publishingMode: item.publishingMode || "Direct"
+              publishingMode: item.publishingMode || "Direct",
+              fingerprint
             }
           });
           results.success++;
         } catch (err) {
           results.failed++;
-          results.errors.push({ row: i + 1, item, error: err.message });
+          results.errors.push({ row: i2 + 1, item, error: err.message });
         }
       }
       res.json(results);
@@ -1799,10 +8899,10 @@ async function startServer() {
         return res.status(400).json({ error: "Invalid payload. Expected action and contentIds array." });
       }
       if (action === "Delete") {
-        await prisma.content.deleteMany({ where: { id: { in: contentIds } } });
+        await prisma2.content.deleteMany({ where: { id: { in: contentIds } } });
       } else if (action === "Publish" || action === "Draft") {
         const statusVal = action === "Publish" ? "Published" : "Draft";
-        await prisma.content.updateMany({
+        await prisma2.content.updateMany({
           where: { id: { in: contentIds } },
           data: { status: statusVal }
         });
@@ -1819,7 +8919,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { isBlocked } = req.body;
-      const user = await prisma.user.update({
+      const user = await prisma2.user.update({
         where: { id },
         data: { isBlocked: !!isBlocked }
       });
@@ -1835,7 +8935,7 @@ async function startServer() {
       let finalContentTypes = [];
       let finalPlanName = "Custom Plan";
       if (bundleId) {
-        const bundle = await prisma.bundle.findUnique({ where: { id: bundleId } });
+        const bundle = await prisma2.bundle.findUnique({ where: { id: bundleId } });
         if (!bundle) return res.status(404).json({ error: "Bundle not found" });
         finalDomains = Array.isArray(bundle.domains) ? bundle.domains : [];
         finalContentTypes = Array.isArray(bundle.contentTypes) ? bundle.contentTypes : [];
@@ -1858,18 +8958,18 @@ async function startServer() {
       const targets = Array.isArray(userIds) ? userIds : [userIds].filter(Boolean);
       if (targets.length === 0) return res.status(400).json({ error: "No users selected" });
       for (const userId of targets) {
-        const user = await prisma.user.findUnique({ where: { id: userId } });
+        const user = await prisma2.user.findUnique({ where: { id: userId } });
         const isInst = user?.role === "Institution";
         let assignedInstitutionId = null;
         if (isInst) {
           if (user.institutionId) {
             assignedInstitutionId = user.institutionId;
           } else {
-            const inst = await prisma.institution.findFirst({ where: { subscriptionId: userId } });
+            const inst = await prisma2.institution.findFirst({ where: { subscriptionId: userId } });
             if (inst) assignedInstitutionId = inst.id;
           }
         }
-        const sub = await prisma.subscription.create({
+        const sub = await prisma2.subscription.create({
           data: {
             userId: isInst ? null : userId,
             institutionId: assignedInstitutionId,
@@ -1893,7 +8993,7 @@ async function startServer() {
   });
   app.get("/api/bundles", authenticateJWT, async (req, res) => {
     try {
-      const bundles = await prisma.bundle.findMany({
+      const bundles = await prisma2.bundle.findMany({
         where: { status: "Active" },
         orderBy: { name: "asc" }
       });
@@ -1908,7 +9008,7 @@ async function startServer() {
       const { status } = req.query;
       const where = {};
       if (status) where.status = status;
-      const requests = await prisma.subscriptionRequest.findMany({
+      const requests = await prisma2.subscriptionRequest.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { user: true, subscription: true }
@@ -1921,7 +9021,7 @@ async function startServer() {
   app.post("/api/admin/subscription-requests", async (req, res) => {
     try {
       const { userName, email, planType, durationMonths, planDescription, paymentRef, notes, userId } = req.body;
-      const request = await prisma.subscriptionRequest.create({
+      const request = await prisma2.subscriptionRequest.create({
         data: { userName, email, planType, durationMonths: parseInt(durationMonths) || 1, planDescription, paymentRef, notes, userId }
       });
       res.json(request);
@@ -1933,7 +9033,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
-      const requestObj = await prisma.subscriptionRequest.findUnique({ where: { id } });
+      const requestObj = await prisma2.subscriptionRequest.findUnique({ where: { id } });
       if (!requestObj) return res.status(404).json({ error: "Request not found" });
       const start = startDate ? new Date(startDate) : /* @__PURE__ */ new Date();
       let end;
@@ -1943,7 +9043,7 @@ async function startServer() {
         end = new Date(start);
         end.setMonth(end.getMonth() + (requestObj.durationMonths || 1));
       }
-      const subscription = await prisma.subscription.create({
+      const subscription = await prisma2.subscription.create({
         data: {
           userId: requestObj.userId,
           planName: requestObj.planDescription || requestObj.planType,
@@ -1955,7 +9055,7 @@ async function startServer() {
           requestId: id
         }
       });
-      await prisma.subscriptionRequest.update({
+      await prisma2.subscriptionRequest.update({
         where: { id },
         data: { status: "Approved" }
       });
@@ -1969,7 +9069,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { rejectionNote } = req.body;
-      const updated = await prisma.subscriptionRequest.update({
+      const updated = await prisma2.subscriptionRequest.update({
         where: { id },
         data: { status: "Rejected", rejectionNote }
       });
@@ -1978,16 +9078,27 @@ async function startServer() {
       res.status(500).json({ error: "Failed to reject request" });
     }
   });
+  app.get("/api/admin/payments", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const payments = await prisma2.payment.findMany({
+        orderBy: { createdAt: "desc" },
+        include: { user: true }
+      });
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  });
   app.get("/api/admin/subscriptions", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { status } = req.query;
       const where = {};
       if (status) where.status = status;
-      await prisma.subscription.updateMany({
+      await prisma2.subscription.updateMany({
         where: { endDate: { lt: /* @__PURE__ */ new Date() }, status: "Active" },
         data: { status: "Expired" }
       });
-      const subscriptions = await prisma.subscription.findMany({
+      const subscriptions = await prisma2.subscription.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { user: true, request: true, institution: { include: { users: true } } }
@@ -2005,7 +9116,7 @@ async function startServer() {
       if (status) data.status = status;
       if (endDate) data.endDate = new Date(endDate);
       if (status === "Cancelled") data.cancelledAt = /* @__PURE__ */ new Date();
-      const updated = await prisma.subscription.update({ where: { id }, data });
+      const updated = await prisma2.subscription.update({ where: { id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update subscription" });
@@ -2013,8 +9124,18 @@ async function startServer() {
   });
   app.post("/api/payment/order", async (req, res) => {
     try {
-      const razorpay = getRazorpay();
       const { amount, currency = "INR", receipt } = req.body;
+      if (process.env.NODE_ENV !== "production" && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+        console.log("\u2139\uFE0F [Razorpay] Keys not configured. Falling back to local mock order...");
+        return res.json({
+          id: `order_mock_${Date.now()}`,
+          amount: Math.round(amount * 100),
+          currency,
+          receipt,
+          isMock: true
+        });
+      }
+      const razorpay = getRazorpay();
       const options = {
         amount: Math.round(amount * 100),
         // amount in the smallest currency unit
@@ -2022,7 +9143,10 @@ async function startServer() {
         receipt
       };
       const order = await razorpay.orders.create(options);
-      res.json(order);
+      res.json({
+        ...order,
+        razorpayKey: process.env.RAZORPAY_KEY_ID
+      });
     } catch (error) {
       console.error("Razorpay Order Error:", error);
       res.status(500).json({ error: "Failed to create order" });
@@ -2030,37 +9154,161 @@ async function startServer() {
   });
   app.post("/api/payment/verify", async (req, res) => {
     try {
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, items, userId } = req.body;
-      const sign = razorpay_order_id + "|" + razorpay_payment_id;
-      const expectedSign = import_crypto.default.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "").update(sign.toString()).digest("hex");
-      if (razorpay_signature === expectedSign) {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, items, userId, guestData } = req.body;
+      let isVerified = false;
+      const isMockOrder = process.env.NODE_ENV !== "production" && razorpay_order_id && razorpay_order_id.startsWith("order_mock_");
+      if (isMockOrder) {
+        console.log("\u2705 [Razorpay] Mock Order verified automatically for local development.");
+        isVerified = true;
+      } else {
+        const keySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
+        const sign = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSign = import_crypto2.default.createHmac("sha256", keySecret).update(sign.toString()).digest("hex");
+        isVerified = razorpay_signature === expectedSign;
+        if (!isVerified) {
+          console.warn(`\u26A0\uFE0F [Razorpay] Payment signature mismatch for Order: ${razorpay_order_id}`);
+        }
+      }
+      if (isVerified) {
+        let finalUserId = userId || null;
+        let isNewUser = false;
+        let generatedPassword = "";
+        if (!finalUserId && guestData && guestData.email) {
+          try {
+            const existingUser = await prisma2.user.findUnique({ where: { email: guestData.email } });
+            if (existingUser) {
+              finalUserId = existingUser.id;
+            } else {
+              generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase() + "!";
+              const hashedPassword = await import_bcryptjs.default.hash(generatedPassword, 10);
+              const newUser = await prisma2.user.create({
+                data: {
+                  email: guestData.email,
+                  displayName: guestData.name || "New User",
+                  password: hashedPassword,
+                  role: guestData.userCategory === "Institution" || guestData.organization ? "Institution" : "Subscriber",
+                  organization: guestData.organization || null,
+                  status: "Active",
+                  isFirstLogin: true
+                }
+              });
+              finalUserId = newUser.id;
+              isNewUser = true;
+            }
+          } catch (userErr) {
+            console.error("Guest User Creation Error:", userErr);
+          }
+        }
         if (items && amount) {
-          await prisma.payment.create({
+          await prisma2.payment.create({
             data: {
               orderId: razorpay_order_id,
               paymentId: razorpay_payment_id,
               amount: parseFloat(amount),
               status: "Success",
-              userId: userId || null,
+              userId: finalUserId,
               items: items || []
             }
           });
+          if (req.body.couponCode && req.body.discountAmount > 0) {
+            const coupon = await prisma2.coupon.findUnique({ where: { code: req.body.couponCode } });
+            if (coupon) {
+              await prisma2.couponUsage.create({
+                data: {
+                  couponId: coupon.id,
+                  userId: finalUserId,
+                  orderId: razorpay_order_id,
+                  discount: parseFloat(req.body.discountAmount)
+                }
+              });
+              await prisma2.coupon.update({
+                where: { id: coupon.id },
+                data: { usedCount: { increment: 1 } }
+              });
+            }
+          }
+          let newInstitutionId = null;
+          if (finalUserId) {
+            const u = await prisma2.user.findUnique({ where: { id: finalUserId } });
+            if (u && u.role === "Institution") {
+              if (u.institutionId) {
+                newInstitutionId = u.institutionId;
+              } else {
+                let inst = await prisma2.institution.findFirst({ where: { subscriptionId: u.id } });
+                if (!inst && u.organization) {
+                  inst = await prisma2.institution.create({
+                    data: {
+                      name: u.organization,
+                      status: "Active",
+                      subscriptionId: u.id
+                    }
+                  });
+                  await prisma2.user.update({
+                    where: { id: u.id },
+                    data: { institutionId: inst.id }
+                  });
+                }
+                newInstitutionId = inst?.id || null;
+              }
+            }
+          }
           if (Array.isArray(items)) {
             for (const item of items) {
               const days = item.duration === "Yearly" ? 365 : item.duration === "Half-Yearly" ? 180 : item.duration === "Quarterly" ? 90 : 30;
               const endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1e3);
-              await prisma.subscription.create({
+              await prisma2.subscription.create({
                 data: {
-                  domainId: item.domainId,
+                  domainId: item.domainId ? String(item.domainId) : null,
                   domainName: item.domainName,
                   planName: item.planName || item.plan?.name || "Trial",
                   duration: item.duration || "Monthly",
                   status: "Active",
-                  userId: userId || null,
+                  userId: finalUserId,
+                  institutionId: newInstitutionId,
                   endDate
                 }
               });
             }
+          }
+          if (isNewUser && guestData && guestData.email) {
+            try {
+              await sendCredentialsEmail(
+                guestData.email,
+                guestData.name || "New User",
+                generatedPassword,
+                {
+                  planName: items[0]?.planName || "Purchased Subscription",
+                  validity: items[0]?.duration || "Monthly"
+                }
+              );
+            } catch (err) {
+              console.error("Failed to send guest credentials email:", err);
+            }
+          }
+          try {
+            let targetEmail = guestData?.email || "";
+            let targetName = guestData?.name || "Valued Customer";
+            if (!targetEmail && finalUserId) {
+              const dbUser = await prisma2.user.findUnique({ where: { id: finalUserId } });
+              if (dbUser) {
+                targetEmail = dbUser.email;
+                targetName = dbUser.displayName || "Subscriber";
+              }
+            }
+            const backendInvoiceNum = `INV-${(/* @__PURE__ */ new Date()).getFullYear()}-${Math.floor(1e5 + Math.random() * 9e5)}`;
+            if (targetEmail) {
+              sendPaymentSuccessEmails(
+                targetEmail,
+                targetName,
+                parseFloat(amount).toFixed(2),
+                items || [],
+                razorpay_payment_id || "",
+                razorpay_order_id || "",
+                backendInvoiceNum
+              ).catch((err) => console.error("\u26A0\uFE0F Auto-payment success email trigger failed:", err));
+            }
+          } catch (emailSendErr) {
+            console.error("Failed to trigger automated receipt notification:", emailSendErr);
           }
         }
         res.json({ status: "success", message: "Payment verified successfully" });
@@ -2070,6 +9318,193 @@ async function startServer() {
     } catch (error) {
       console.error("Payment Verification Error:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  app.post("/api/demo-request", async (req, res) => {
+    try {
+      const formData = req.body;
+      const {
+        fullName,
+        institutionalEmail,
+        institutionName,
+        designation,
+        whatsappNumber,
+        city,
+        state,
+        department,
+        requestType
+      } = formData;
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      await prisma2.demoRequest.create({
+        data: {
+          fullName,
+          institutionalEmail,
+          institutionName,
+          designation,
+          whatsappNumber,
+          city,
+          state,
+          department,
+          requestType: requestType || "Institution"
+        }
+      });
+      const adminMailOptions = {
+        from: emailFrom,
+        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        subject: `New ${requestType || "Demo"} Session Request: ${institutionName}`,
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F3AF} New Demo Session Request (${requestType || "Institution"})</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A user has requested a personalized demo of the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Request Details</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Type</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#2563eb;border-bottom:1px solid #f1f5f9;">${requestType || "Institution"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${institutionalEmail}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organization / Inst.</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${institutionName}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">WhatsApp</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${whatsappNumber || "N/A"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Department / Tech</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${department}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Location</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${city}, ${state}</td></tr></table></td></tr>`
+        )
+      };
+      const userMailOptions = {
+        from: emailFrom,
+        to: institutionalEmail,
+        subject: "Your Demo Session Request has been received",
+        html: buildEmail(
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F44B} Demo Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for showing interest in a personalized demo. Our team will contact you within 24 hours to schedule a convenient walkthrough of the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} Next Steps</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our experts review your request details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We reach out via email/WhatsApp to fix a slot</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; A guided platform tour tailored for your needs</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Need immediate assistance? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a></p></td></tr>`
+        )
+      };
+      await sendMail(adminMailOptions);
+      await sendMail(userMailOptions);
+      res.json({ status: "success", message: "Demo request submitted successfully" });
+    } catch (error) {
+      console.error("Demo Request Error:", error);
+      res.status(500).json({ error: "Failed to submit demo request" });
+    }
+  });
+  app.get("/api/admin/demo-requests", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const requests = await prisma2.demoRequest.findMany({
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(requests);
+    } catch (error) {
+      console.error("Failed to fetch demo requests:", error);
+      res.status(500).json({ error: "Failed to fetch demo requests" });
+    }
+  });
+  app.patch("/api/admin/demo-requests/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, adminNotes } = req.body;
+      const updated = await prisma2.demoRequest.update({
+        where: { id },
+        data: { status, adminNotes }
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update demo request:", error);
+      res.status(500).json({ error: "Failed to update demo request" });
+    }
+  });
+  app.post("/api/admin/demo-requests/:id/provision", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { durationDays } = req.body;
+      const days = Number(durationDays) || 14;
+      const demoReq = await prisma2.demoRequest.findUnique({ where: { id } });
+      if (!demoReq) return res.status(404).json({ error: "Demo request not found" });
+      const existingUser = await prisma2.user.findUnique({ where: { email: demoReq.institutionalEmail } });
+      if (existingUser) return res.status(400).json({ error: "User with this email already exists. Cannot auto-provision." });
+      const plainPassword = generatePassword();
+      const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
+      const isStudent = demoReq.requestType === "Student";
+      const targetRole = isStudent ? "Subscriber" : "Institution";
+      let newInstId = void 0;
+      if (!isStudent) {
+        const newInst = await prisma2.institution.create({
+          data: { name: demoReq.institutionName, status: "Active" }
+        });
+        newInstId = newInst.id;
+      }
+      const newUser = await prisma2.user.create({
+        data: {
+          email: demoReq.institutionalEmail,
+          password: hashedPassword,
+          displayName: demoReq.fullName,
+          role: targetRole,
+          status: "Active",
+          isFirstLogin: true,
+          organization: demoReq.institutionName,
+          institutionId: newInstId,
+          isDemoAccount: true,
+          demoExpiresAt: new Date(Date.now() + days * 24 * 60 * 60 * 1e3)
+        }
+      });
+      await prisma2.subscription.create({
+        data: {
+          domainName: demoReq.department,
+          planName: `${demoReq.requestType || "Demo"} Trial`,
+          durationMonths: 1,
+          status: "Active",
+          userId: newUser.id,
+          institutionId: newInstId,
+          endDate: new Date(Date.now() + days * 24 * 60 * 60 * 1e3)
+        }
+      });
+      await sendCredentialsEmail(
+        demoReq.institutionalEmail,
+        demoReq.fullName,
+        plainPassword,
+        {
+          institution: demoReq.institutionName,
+          department: demoReq.department,
+          planName: "Demo Access Trial",
+          validity: `${days} Days`,
+          customMessage: `We are delighted to inform you that your <strong>Demo Request has been accepted</strong>. Your temporary trial access has been <span style="color:#16A34A;font-weight:700;">successfully provisioned</span> for your requested department.`
+        }
+      );
+      const updated = await prisma2.demoRequest.update({
+        where: { id },
+        data: {
+          status: "Completed",
+          adminNotes: (demoReq.adminNotes ? demoReq.adminNotes + "\n\n" : "") + `[AUTO] Provisioned ${days}-day demo access on ${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}`
+        }
+      });
+      res.json({ success: true, request: updated });
+    } catch (error) {
+      console.error("Failed to provision demo:", error);
+      res.status(500).json({ error: "Failed to provision demo account" });
+    }
+  });
+  app.post("/api/admin/demo-requests/:id/resend-credentials", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const demoReq = await prisma2.demoRequest.findUnique({ where: { id } });
+      if (!demoReq) return res.status(404).json({ error: "Demo request not found" });
+      const userObj = await prisma2.user.findUnique({ where: { email: demoReq.institutionalEmail } });
+      if (!userObj) return res.status(404).json({ error: "No associated user account found for this email." });
+      const plainPassword = generatePassword();
+      const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
+      await prisma2.user.update({
+        where: { id: userObj.id },
+        data: {
+          password: hashedPassword,
+          isFirstLogin: true
+        }
+      });
+      await sendCredentialsEmail(
+        demoReq.institutionalEmail,
+        demoReq.fullName,
+        plainPassword,
+        {
+          institution: demoReq.institutionName,
+          department: demoReq.department,
+          planName: "Demo Access Trial",
+          validity: userObj.demoExpiresAt ? `${Math.ceil((userObj.demoExpiresAt.getTime() - Date.now()) / (1e3 * 60 * 60 * 24))} Days remaining` : "N/A",
+          customMessage: `As requested, we have <strong>reset your Demo Access credentials</strong>. Your access has been refreshed and updated.`
+        }
+      );
+      const updated = await prisma2.demoRequest.update({
+        where: { id },
+        data: {
+          adminNotes: (demoReq.adminNotes ? demoReq.adminNotes + "\n\n" : "") + `[AUTO] Credentials reset and resent on ${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}`
+        }
+      });
+      res.json({ success: true, request: updated });
+    } catch (error) {
+      console.error("Failed to resend credentials:", error);
+      res.status(500).json({ error: "Failed to resend credentials" });
     }
   });
   app.post("/api/institutional-trial", async (req, res) => {
@@ -2128,7 +9563,7 @@ async function startServer() {
         message
       } = formData;
       try {
-        await prisma.contactInquiry.create({
+        await prisma2.contactInquiry.create({
           data: {
             fullName,
             email,
@@ -2185,7 +9620,7 @@ async function startServer() {
           { message: { contains: search, mode: "insensitive" } }
         ];
       }
-      const inquiries = await prisma.contactInquiry.findMany({
+      const inquiries = await prisma2.contactInquiry.findMany({
         where,
         orderBy: { createdAt: "desc" }
       });
@@ -2197,10 +9632,10 @@ async function startServer() {
   });
   app.get("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const inquiry = await prisma.contactInquiry.findUnique({ where: { id: req.params.id } });
+      const inquiry = await prisma2.contactInquiry.findUnique({ where: { id: req.params.id } });
       if (!inquiry) return res.status(404).json({ error: "Not found" });
       if (inquiry.status === "New") {
-        await prisma.contactInquiry.update({ where: { id: req.params.id }, data: { status: "Read" } });
+        await prisma2.contactInquiry.update({ where: { id: req.params.id }, data: { status: "Read" } });
         inquiry.status = "Read";
       }
       res.json(inquiry);
@@ -2214,7 +9649,7 @@ async function startServer() {
       const data = {};
       if (status) data.status = status;
       if (adminNotes !== void 0) data.adminNotes = adminNotes;
-      const updated = await prisma.contactInquiry.update({ where: { id: req.params.id }, data });
+      const updated = await prisma2.contactInquiry.update({ where: { id: req.params.id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update inquiry" });
@@ -2223,7 +9658,7 @@ async function startServer() {
   app.post("/api/admin/contact-inquiries/:id/reply", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { replyText, subject } = req.body;
-      const inquiry = await prisma.contactInquiry.findUnique({ where: { id: req.params.id } });
+      const inquiry = await prisma2.contactInquiry.findUnique({ where: { id: req.params.id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       await sendMail({
@@ -2249,7 +9684,7 @@ async function startServer() {
           </div>
         `
       });
-      const updated = await prisma.contactInquiry.update({
+      const updated = await prisma2.contactInquiry.update({
         where: { id: req.params.id },
         data: { status: "Replied", replyText, repliedAt: /* @__PURE__ */ new Date() }
       });
@@ -2261,7 +9696,7 @@ async function startServer() {
   });
   app.delete("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma.contactInquiry.delete({ where: { id: req.params.id } });
+      await prisma2.contactInquiry.delete({ where: { id: req.params.id } });
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete inquiry" });
@@ -2538,7 +9973,7 @@ async function startServer() {
           const JWT_SECRET2 = process.env.JWT_SECRET || "fallback_secret";
           const decoded = jwt2.verify(token, JWT_SECRET2);
           if (decoded && decoded.email) creatorEmail = decoded.email;
-        } catch (e) {
+        } catch (e2) {
         }
       }
       const PUBLIC_BASE = process.env.APP_URL || "https://journals.stmjournals.com";
@@ -2546,7 +9981,7 @@ async function startServer() {
         /src="cid:stm-logo"/g,
         `src="${PUBLIC_BASE}/assets/stm-logo.png"`
       );
-      prisma.quotation.upsert({
+      prisma2.quotation.upsert({
         where: { id: quotationNumber },
         update: {
           status: "Sent",
@@ -2577,9 +10012,9 @@ async function startServer() {
         }
       }).then(async (qtn) => {
         if (quotationData.couponCode && quotationData.discountAmount > 0) {
-          const coupon = await prisma.coupon.findUnique({ where: { code: quotationData.couponCode } });
+          const coupon = await prisma2.coupon.findUnique({ where: { code: quotationData.couponCode } });
           if (coupon) {
-            await prisma.couponUsage.create({
+            await prisma2.couponUsage.create({
               data: {
                 couponId: coupon.id,
                 userId: userId || null,
@@ -2587,7 +10022,7 @@ async function startServer() {
                 discount: parseFloat(quotationData.discountAmount)
               }
             });
-            await prisma.coupon.update({
+            await prisma2.coupon.update({
               where: { id: coupon.id },
               data: { usedCount: { increment: 1 } }
             });
@@ -2603,31 +10038,22 @@ async function startServer() {
   });
   app.post("/api/invoice/send", async (req, res) => {
     try {
-      const { userEmail, userName, invoiceData, pdfBase64 } = req.body;
-      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      const mailOptions = {
-        from: emailFrom,
-        to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
-        subject: `Invoice for STM Digital Library - ${invoiceData.invoiceNumber}`,
-        text: `Dear ${userName},
-
-Thank you for your subscription. Please find attached the tax invoice for your purchase.
-
-Invoice Number: ${invoiceData.invoiceNumber}
-Total Amount: \u20B9${invoiceData.grandTotal}
-
-Regards,
-STM Digital Library Team`,
-        attachments: [
-          {
-            filename: `Invoice_${invoiceData.invoiceNumber}.pdf`,
-            content: pdfBase64,
-            encoding: "base64"
-          }
-        ]
-      };
-      await sendMail(mailOptions);
-      res.json({ status: "success", message: "Invoice sent successfully" });
+      const { userEmail, userName, invoiceData, pdfBase64, items, paymentId, orderId } = req.body;
+      const emailSent = await sendPaymentSuccessEmails(
+        userEmail,
+        userName,
+        invoiceData.grandTotal,
+        items || [],
+        paymentId || "",
+        orderId || "",
+        invoiceData.invoiceNumber,
+        pdfBase64
+      );
+      if (emailSent) {
+        res.json({ status: "success", message: "Invoice sent successfully" });
+      } else {
+        res.status(500).json({ error: "Failed to send email notifications" });
+      }
     } catch (error) {
       console.error("Invoice Email Error:", error);
       res.status(500).json({ error: "Failed to send invoice email" });
@@ -2638,18 +10064,18 @@ STM Digital Library Team`,
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
-        const authUser = await prisma.user.findUnique({ where: { id: req.user.uid } });
+        const authUser = await prisma2.user.findUnique({ where: { id: req.user.uid } });
         targetInstitutionId = authUser?.institutionId;
       }
-      const studentCount = await prisma.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
-      const recentActivity = await prisma.studentActivity.findMany({
+      const studentCount = await prisma2.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
+      const recentActivity = await prisma2.studentActivity.findMany({
         where: { user: { institutionId: targetInstitutionId } },
         include: { user: true, content: true },
         take: 5,
         orderBy: { accessedAt: "desc" }
       });
-      const interactions = await prisma.studentActivity.count({ where: { user: { institutionId: targetInstitutionId } } });
-      const totalTimeObj = await prisma.studentActivity.aggregate({
+      const interactions = await prisma2.studentActivity.count({ where: { user: { institutionId: targetInstitutionId } } });
+      const totalTimeObj = await prisma2.studentActivity.aggregate({
         _sum: { timeSpent: true },
         where: { user: { institutionId: targetInstitutionId } }
       });
@@ -2669,11 +10095,11 @@ STM Digital Library Team`,
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
-        const authUser = await prisma.user.findUnique({ where: { id: req.user.uid } });
+        const authUser = await prisma2.user.findUnique({ where: { id: req.user.uid } });
         targetInstitutionId = authUser?.institutionId;
       }
-      const students = await prisma.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
-      const activities = await prisma.studentActivity.findMany({
+      const students = await prisma2.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
+      const activities = await prisma2.studentActivity.findMany({
         where: { user: { institutionId: targetInstitutionId } },
         include: { user: true, content: true }
       });
@@ -2697,9 +10123,9 @@ STM Digital Library Team`,
         }
       });
       const today = /* @__PURE__ */ new Date();
-      const readingTimeline = Array.from({ length: 7 }).map((_, i) => {
+      const readingTimeline = Array.from({ length: 7 }).map((_, i2) => {
         const d = new Date(today);
-        d.setDate(d.getDate() - (6 - i));
+        d.setDate(d.getDate() - (6 - i2));
         return {
           date: d.toLocaleDateString("en-US", { weekday: "short" }),
           students: Math.floor(Math.random() * (students.length > 0 ? students.length : 10)) + 1,
@@ -2738,13 +10164,13 @@ STM Digital Library Team`,
       const OR_clauses = [{ userId: req.user.uid }];
       let instId = req.user.institutionId;
       if (!instId) {
-        const u = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        const u = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
         instId = u?.institutionId;
       }
       if (instId) {
         OR_clauses.push({ institutionId: instId });
       }
-      const subscriptions = await prisma.subscription.findMany({
+      const subscriptions = await prisma2.subscription.findMany({
         where: { OR: OR_clauses },
         orderBy: { startDate: "desc" }
       });
@@ -2758,7 +10184,7 @@ STM Digital Library Team`,
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const user = await prisma.user.findUnique({ where: { id: req.user.uid } });
+      const user = await prisma2.user.findUnique({ where: { id: req.user.uid } });
       if (!user) return res.status(404).json({ error: "User not found" });
       const prof = user.institutionProfile || {};
       res.json({
@@ -2787,7 +10213,7 @@ STM Digital Library Team`,
         return res.status(403).json({ error: "Unauthorized" });
       }
       const { contactName, city, contactPhone, address, website, logoUrl, coursesOffered, totalCourses, studentBodySize } = req.body;
-      await prisma.user.update({
+      await prisma2.user.update({
         where: { id: req.user.uid },
         data: {
           ...contactName ? { displayName: contactName } : {},
@@ -2814,13 +10240,13 @@ STM Digital Library Team`,
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
-        const authUser = await prisma.user.findUnique({ where: { id: req.user.uid } });
+        const authUser = await prisma2.user.findUnique({ where: { id: req.user.uid } });
         targetInstitutionId = authUser?.institutionId;
       }
       if (!targetInstitutionId) {
         return res.json([]);
       }
-      const students = await prisma.user.findMany({
+      const students = await prisma2.user.findMany({
         where: { institutionId: targetInstitutionId, role: "Student" },
         include: { subscriptions: true, activities: { include: { content: true } } },
         orderBy: { createdAt: "desc" }
@@ -2839,17 +10265,17 @@ STM Digital Library Team`,
       if (!name || !email || !password) {
         return res.status(400).json({ error: "Name, email and password are required" });
       }
-      const existing = await prisma.user.findUnique({ where: { email } });
+      const existing = await prisma2.user.findUnique({ where: { email } });
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
       const hashed = await import_bcryptjs.default.hash(password, 10);
       let institutionName = "";
       let targetInstitutionId = void 0;
       if (req.user.role === "Institution") {
-        const institutionUser = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
+        const institutionUser = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
         institutionName = institutionUser?.organization || "";
         targetInstitutionId = institutionUser?.institutionId;
       }
-      const student = await prisma.user.create({
+      const student = await prisma2.user.create({
         data: {
           email,
           password: hashed,
@@ -2871,7 +10297,7 @@ STM Digital Library Team`,
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
       const { id } = req.params;
       const { isBlocked } = req.body;
-      const student = await prisma.user.update({
+      const student = await prisma2.user.update({
         where: { id },
         data: { isBlocked }
       });
@@ -2888,10 +10314,10 @@ STM Digital Library Team`,
       const { id } = req.params;
       const { displayName, email } = req.body;
       if (email) {
-        const taken = await prisma.user.findFirst({ where: { email, id: { not: id } } });
+        const taken = await prisma2.user.findFirst({ where: { email, id: { not: id } } });
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
-      const updated = await prisma.user.update({
+      const updated = await prisma2.user.update({
         where: { id },
         data: {
           ...displayName ? { displayName } : {},
@@ -2910,7 +10336,7 @@ STM Digital Library Team`,
         return res.status(403).json({ error: "Unauthorized" });
       }
       const { id } = req.params;
-      await prisma.user.delete({ where: { id } });
+      await prisma2.user.delete({ where: { id } });
       res.json({ message: "Student removed" });
     } catch (err) {
       res.status(500).json({ error: "Failed to delete student" });
@@ -2945,8 +10371,8 @@ STM Digital Library Team`,
   const LINK_BATCH_SIZE = 10;
   const checkLinksBatch = async (items) => {
     const results = [];
-    for (let i = 0; i < items.length; i += LINK_BATCH_SIZE) {
-      const batch = items.slice(i, i + LINK_BATCH_SIZE);
+    for (let i2 = 0; i2 < items.length; i2 += LINK_BATCH_SIZE) {
+      const batch = items.slice(i2, i2 + LINK_BATCH_SIZE);
       const batchResults = await Promise.all(
         batch.map(async (item) => {
           const isOk = await checkLink(item.url);
@@ -2970,7 +10396,7 @@ STM Digital Library Team`,
   const runValidationEngine = async (type) => {
     if (currentValidationProgress.isRunning) return;
     try {
-      const contents = await prisma.content.findMany({
+      const contents = await prisma2.content.findMany({
         where: { status: { not: "Draft" } },
         // Skip already-drafted content — no point re-flagging it
         select: { id: true, title: true, description: true, authors: true, fileUrl: true, thumbnailUrl: true, domain: true, contentType: true }
@@ -2983,7 +10409,7 @@ STM Digital Library Team`,
         currentTask: "Initializing Engine...",
         startedAt: Date.now()
       };
-      const report = await prisma.validationReport.create({
+      const report = await prisma2.validationReport.create({
         data: { type, status: "Reviewing", issues: [] }
       });
       const issues = [];
@@ -3033,7 +10459,7 @@ STM Digital Library Team`,
         currentValidationProgress.issuesFound = issues.length;
       }
       currentValidationProgress.currentTask = "Saving report...";
-      await prisma.validationReport.update({
+      await prisma2.validationReport.update({
         where: { id: report.id },
         data: {
           status: "Draft",
@@ -3043,8 +10469,8 @@ STM Digital Library Team`,
           completedAt: /* @__PURE__ */ new Date()
         }
       });
-    } catch (e) {
-      console.error("Validation engine crashed: ", e);
+    } catch (e2) {
+      console.error("Validation engine crashed: ", e2);
     } finally {
       currentValidationProgress.isRunning = false;
       currentValidationProgress.currentTask = "Idle";
@@ -3062,12 +10488,12 @@ STM Digital Library Team`,
     try {
       const { contentIds, reportId } = req.body;
       if (!contentIds || !Array.isArray(contentIds)) return res.status(400).json({ error: "Invalid contentIds array" });
-      await prisma.content.updateMany({
+      await prisma2.content.updateMany({
         where: { id: { in: contentIds } },
         data: { status: "Draft" }
       });
       if (reportId) {
-        const report = await prisma.validationReport.findUnique({ where: { id: reportId } });
+        const report = await prisma2.validationReport.findUnique({ where: { id: reportId } });
         if (report) {
           const existingDrafted = Array.isArray(report.draftedContentIds) ? report.draftedContentIds : [];
           const merged = Array.from(/* @__PURE__ */ new Set([...existingDrafted, ...contentIds]));
@@ -3080,7 +10506,7 @@ STM Digital Library Team`,
             count: contentIds.length,
             note: `${contentIds.length} item(s) moved to Draft status.`
           });
-          await prisma.validationReport.update({
+          await prisma2.validationReport.update({
             where: { id: reportId },
             data: { draftedContentIds: merged, timeline: tl }
           });
@@ -3094,7 +10520,7 @@ STM Digital Library Team`,
   });
   app.get("/api/admin/validator/reports", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const reports = await prisma.validationReport.findMany({ orderBy: { startedAt: "desc" } });
+      const reports = await prisma2.validationReport.findMany({ orderBy: { startedAt: "desc" } });
       res.json(reports);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch validation reports" });
@@ -3113,7 +10539,7 @@ STM Digital Library Team`,
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const report = await prisma.validationReport.findUnique({ where: { id } });
+      const report = await prisma2.validationReport.findUnique({ where: { id } });
       if (!report) return res.status(404).json({ error: "Report not found" });
       const tl = Array.isArray(report.timeline) ? report.timeline : [];
       const actor = req.user?.email || req.user?.name || "Admin";
@@ -3123,7 +10549,7 @@ STM Digital Library Team`,
         at: (/* @__PURE__ */ new Date()).toISOString(),
         note: `Status changed to "${status}".`
       });
-      const updated = await prisma.validationReport.update({
+      const updated = await prisma2.validationReport.update({
         where: { id },
         data: { status, timeline: tl }
       });
@@ -3135,7 +10561,7 @@ STM Digital Library Team`,
   app.delete("/api/admin/validator/reports/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma.validationReport.delete({ where: { id } });
+      await prisma2.validationReport.delete({ where: { id } });
       res.json({ message: "Report deleted successfully." });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete report" });
@@ -3149,88 +10575,134 @@ STM Digital Library Team`,
     flaggedCount: 0,
     currentTask: "Idle"
   };
-  const validateFileViewability = async (url, contentType) => {
+  const makeValidatorToken = () => import_jsonwebtoken.default.sign({ uid: "__validator__", role: "SuperAdmin" }, JWT_SECRET, { expiresIn: "10m" });
+  const validateFileViewability = async (contentId, url, contentType) => {
     if (!url || url.trim().length === 0) {
       return { isViewable: false, viewerStatus: "No File", flaggedReason: "No file URL is set for this content item." };
-    }
-    try {
-      const parsed = new URL(url);
-      if (!["http:", "https:"].includes(parsed.protocol)) {
-        return { isViewable: false, viewerStatus: "No File", flaggedReason: `Invalid URL protocol: ${parsed.protocol}` };
-      }
-    } catch {
-      return { isViewable: false, viewerStatus: "No File", flaggedReason: `Malformed URL \u2014 cannot parse: "${url.slice(0, 80)}"` };
     }
     const lowerUrl = url.split("?")[0].toLowerCase();
     const isVideo = /\.(mp4|webm|ogg|avi|mov)$/i.test(lowerUrl);
     const isPdf = lowerUrl.endsWith(".pdf") || lowerUrl.includes(".pdf") || contentType.toLowerCase().includes("pdf") || contentType.toLowerCase().includes("book") || contentType.toLowerCase().includes("journal") || contentType.toLowerCase().includes("report") || contentType.toLowerCase().includes("periodical");
+    const knownPagePatterns = [
+      /archive\.org\/details\//i,
+      /jstor\.org\/stable\//i,
+      /doi\.org\//i,
+      /pubmed\.ncbi\.nlm\.nih\.gov\//i,
+      /researchgate\.net\/publication\//i,
+      /sciencedirect\.com\/science\/article\//i,
+      /springer\.com\/article\//i,
+      /wiley\.com\/doi\//i,
+      /tandfonline\.com\/doi\//i,
+      /ncbi\.nlm\.nih\.gov\/pmc\/articles\//i
+    ];
+    const hasFileExtension = /\.(pdf|mp4|webm|ogg|avi|mov|epub|djvu)(\?|$)/i.test(url);
+    const isKnownPageUrl = knownPagePatterns.some((p) => p.test(url));
+    if (isKnownPageUrl && !hasFileExtension) {
+      return {
+        isViewable: false,
+        viewerStatus: "Load Failed",
+        flaggedReason: `Webpage URL detected \u2014 "${url.slice(0, 120)}" is a webpage link, not a direct file download. Users cannot open this in the PDF viewer. Replace with a direct .pdf download URL.`
+      };
+    }
     try {
-      const headCtrl = new AbortController();
-      const headTid = setTimeout(() => headCtrl.abort(), 6e3);
-      const headRes = await fetch(url, {
-        method: "HEAD",
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; STMLibraryValidator/2.0)" },
-        signal: headCtrl.signal
+      const PORT_INTERNAL = process.env.PORT || 3e3;
+      const proxyUrl = `http://127.0.0.1:${PORT_INTERNAL}/api/content/${contentId}/proxy-pdf`;
+      const validatorToken = makeValidatorToken();
+      const proxyCtrl = new AbortController();
+      const proxyTid = setTimeout(() => proxyCtrl.abort(), 15e3);
+      const proxyRes = await fetch(proxyUrl, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${validatorToken}`,
+          Range: "bytes=0-8192"
+          // Only fetch the first 8KB for validation, drastically speeding up the engine!
+        },
+        signal: proxyCtrl.signal
       }).catch(() => null);
-      clearTimeout(headTid);
-      if (!headRes) {
-        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "File URL did not respond within 6 seconds (HEAD)." };
+      clearTimeout(proxyTid);
+      if (!proxyRes) {
+        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "Proxy endpoint did not respond within 15 seconds \u2014 file may be unreachable." };
       }
-      if (headRes.status >= 400) {
-        return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `Server returned HTTP ${headRes.status} for file URL.` };
+      if (proxyRes.status === 404) {
+        return { isViewable: false, viewerStatus: "No File", flaggedReason: "Content not found or has no file URL." };
+      }
+      if (proxyRes.status >= 400) {
+        return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `Proxy returned HTTP ${proxyRes.status} \u2014 file inaccessible to users.` };
       }
       if (isVideo) {
         return { isViewable: true, viewerStatus: "Rendered OK" };
       }
-      if (isPdf) {
-        const getCtrl = new AbortController();
-        const getTid = setTimeout(() => getCtrl.abort(), 1e4);
-        const getRes = await fetch(url, {
-          method: "GET",
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; STMLibraryValidator/2.0)",
-            Range: "bytes=0-7"
-          },
-          signal: getCtrl.signal
-        }).catch(() => null);
-        clearTimeout(getTid);
-        if (!getRes) {
-          return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "Failed to fetch file bytes within 10 seconds." };
+      let totalLength = 0;
+      const chunks = [];
+      if (proxyRes.body) {
+        const reader = proxyRes.body.getReader();
+        try {
+          while (totalLength < 8192) {
+            const { done, value } = await reader.read();
+            if (done || !value) break;
+            chunks.push(value);
+            totalLength += value.length;
+          }
+        } finally {
+          proxyCtrl.abort();
         }
-        if (getRes.status >= 400) {
-          return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `GET request returned HTTP ${getRes.status}.` };
-        }
-        const buf = await getRes.arrayBuffer();
-        const bytes = new Uint8Array(buf.slice(0, 5));
-        const magic = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
-        if (magic.startsWith("%PDF")) {
-          return { isViewable: true, viewerStatus: "Rendered OK" };
-        }
-        const ct = getRes.headers.get("content-type") || "";
-        if (ct.includes("pdf")) {
-          return { isViewable: true, viewerStatus: "Rendered OK" };
-        }
+      } else {
+        const rawBuf = await proxyRes.arrayBuffer();
+        chunks.push(new Uint8Array(rawBuf));
+        totalLength = chunks[0].length;
+      }
+      const fullBytes = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        fullBytes.set(chunk, offset);
+        offset += chunk.length;
+      }
+      const rawBytes = fullBytes.slice(0, 16);
+      const magic = new TextDecoder("latin1").decode(rawBytes).substring(0, 5);
+      const first16Str = magic.toLowerCase();
+      const isHtml = first16Str.startsWith("<!doc") || first16Str.startsWith("<html") || first16Str.startsWith("<!-") || first16Str.trimStart().startsWith("<");
+      if (isHtml) {
         return {
           isViewable: false,
           viewerStatus: "Load Failed",
-          flaggedReason: `File does not appear to be a valid PDF (magic bytes: "${magic.substring(0, 4)}"). Expected "%PDF".`
+          flaggedReason: `The stored URL returns an HTML webpage, not a PDF file. URL: "${url.slice(0, 100)}". This cannot be opened in the PDF viewer. Replace it with a direct download link ending in .pdf`
         };
+      }
+      if (isPdf) {
+        if (!magic.startsWith("%PDF")) {
+          return {
+            isViewable: false,
+            viewerStatus: "Load Failed",
+            flaggedReason: `File does not start with PDF magic bytes (found: "${magic.substring(0, 4)}"). The URL may point to a redirect page, login wall, or non-PDF file instead of a direct PDF download.`
+          };
+        }
+        const pdfStr = new TextDecoder("latin1").decode(fullBytes.slice(0, Math.min(fullBytes.length, 8192)));
+        const hasPages = pdfStr.includes("/Page") || pdfStr.includes("/Type") || pdfStr.includes("stream");
+        if (!hasPages && fullBytes.length < 512) {
+          return {
+            isViewable: false,
+            viewerStatus: "Load Failed",
+            flaggedReason: "PDF file is too small or contains no readable page structure. The file is likely empty or corrupt."
+          };
+        }
+        return { isViewable: true, viewerStatus: "Rendered OK" };
       }
       return { isViewable: true, viewerStatus: "Rendered OK" };
     } catch (err) {
       if (err?.name === "AbortError") {
-        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "File URL connection timed out." };
+        return { isViewable: false, viewerStatus: "Timeout", flaggedReason: "Proxy connection timed out." };
       }
       return { isViewable: false, viewerStatus: "Load Failed", flaggedReason: `Network error: ${err?.message || "Unknown"}` };
     }
   };
-  const VIEWER_BATCH_SIZE = 8;
+  const VIEWER_BATCH_SIZE = 50;
   const runViewerValidationEngine = async (type) => {
     if (currentViewerValidationProgress.isRunning) return;
     try {
-      const contents = await prisma.content.findMany({
-        where: { status: { not: "Draft" } },
-        select: { id: true, title: true, contentType: true, fileUrl: true }
+      const contents = await prisma2.content.findMany({
+        where: { fileUrl: { not: null } },
+        // scan all content that has a file URL
+        select: { id: true, title: true, contentType: true, fileUrl: true, status: true }
       });
       currentViewerValidationProgress = {
         isRunning: true,
@@ -3241,7 +10713,7 @@ STM Digital Library Team`,
         currentTask: "Initializing Viewer Engine...",
         startedAt: Date.now()
       };
-      const report = await prisma.validationReport.create({
+      const report = await prisma2.validationReport.create({
         data: {
           type,
           validationType: "ViewerBased",
@@ -3252,23 +10724,27 @@ STM Digital Library Team`,
       const issues = [];
       let validCount = 0;
       let flaggedCount = 0;
-      for (let i = 0; i < contents.length; i += VIEWER_BATCH_SIZE) {
-        const batch = contents.slice(i, i + VIEWER_BATCH_SIZE);
-        currentViewerValidationProgress.currentTask = `Validating items ${i + 1}\u2013${Math.min(i + VIEWER_BATCH_SIZE, contents.length)} of ${contents.length}\u2026`;
+      for (let i2 = 0; i2 < contents.length; i2 += VIEWER_BATCH_SIZE) {
+        const batch = contents.slice(i2, i2 + VIEWER_BATCH_SIZE);
+        currentViewerValidationProgress.currentTask = `Validating items ${i2 + 1}\u2013${Math.min(i2 + VIEWER_BATCH_SIZE, contents.length)} of ${contents.length}\u2026`;
         await Promise.all(
           batch.map(async (c) => {
             try {
-              const result = await validateFileViewability(c.fileUrl || "", c.contentType);
-              await prisma.content.update({
-                where: { id: c.id },
-                data: {
-                  validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
-                  viewerStatus: result.viewerStatus,
-                  isViewable: result.isViewable,
-                  flaggedReason: result.flaggedReason ?? null,
-                  lastValidatedAt: /* @__PURE__ */ new Date()
-                }
-              });
+              const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
+              const updateData = {
+                validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
+                viewerStatus: result.viewerStatus,
+                isViewable: result.isViewable,
+                flaggedReason: result.flaggedReason ?? null,
+                lastValidatedAt: /* @__PURE__ */ new Date()
+              };
+              if (result.isViewable && c.status === "Draft") {
+                updateData.status = "Published";
+                updateData.flaggedReason = null;
+              } else if (!result.isViewable && c.status !== "Draft") {
+                updateData.status = "Draft";
+              }
+              await prisma2.content.update({ where: { id: c.id }, data: updateData });
               if (!result.isViewable) {
                 issues.push({
                   contentId: c.id,
@@ -3294,7 +10770,7 @@ STM Digital Library Team`,
               });
               flaggedCount++;
               try {
-                await prisma.content.update({
+                await prisma2.content.update({
                   where: { id: c.id },
                   data: {
                     validationStatus: "FLAGGED_CONTENT",
@@ -3313,10 +10789,10 @@ STM Digital Library Team`,
             }
           })
         );
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r2) => setTimeout(r2, 50));
       }
       currentViewerValidationProgress.currentTask = "Saving report\u2026";
-      await prisma.validationReport.update({
+      await prisma2.validationReport.update({
         where: { id: report.id },
         data: {
           status: "Draft",
@@ -3328,8 +10804,28 @@ STM Digital Library Team`,
           completedAt: /* @__PURE__ */ new Date()
         }
       });
-    } catch (e) {
-      console.error("Viewer validation engine crashed:", e);
+      if (flaggedCount > 0) {
+        currentViewerValidationProgress.currentTask = `Auto-drafting ${flaggedCount} flagged item(s)\u2026`;
+        const autoDraftResult = await prisma2.content.updateMany({
+          where: { validationStatus: "FLAGGED_CONTENT", status: { not: "Draft" } },
+          data: { status: "Draft" }
+        });
+        console.log(`[viewer-validator] Auto-drafted ${autoDraftResult.count} flagged item(s) to Draft.`);
+        const tl = Array.isArray(report.timeline) ? report.timeline : [];
+        tl.push({
+          action: "auto_draft",
+          by: "System (Validator)",
+          at: (/* @__PURE__ */ new Date()).toISOString(),
+          count: autoDraftResult.count,
+          note: `Auto-draft: ${autoDraftResult.count} flagged item(s) moved to Draft automatically on scan completion.`
+        });
+        await prisma2.validationReport.update({
+          where: { id: report.id },
+          data: { timeline: tl }
+        });
+      }
+    } catch (e2) {
+      console.error("Viewer validation engine crashed:", e2);
     } finally {
       currentViewerValidationProgress.isRunning = false;
       currentViewerValidationProgress.currentTask = "Idle";
@@ -3341,7 +10837,7 @@ STM Digital Library Team`,
       return res.status(400).json({ error: "Viewer validation is already running." });
     }
     res.json({ message: "Viewer validation triggered. Running in background." });
-    runViewerValidationEngine("Manual").catch((e) => console.error("Viewer validation error:", e));
+    runViewerValidationEngine("Manual").catch((e2) => console.error("Viewer validation error:", e2));
   });
   app.get("/api/admin/validator/viewer-progress", authenticateJWT, requireSuperAdmin, async (_req, res) => {
     res.json(currentViewerValidationProgress);
@@ -3359,7 +10855,7 @@ STM Digital Library Team`,
         ];
       }
       const [items, total] = await Promise.all([
-        prisma.content.findMany({
+        prisma2.content.findMany({
           where,
           select: {
             id: true,
@@ -3378,12 +10874,12 @@ STM Digital Library Team`,
           skip,
           take: parseInt(limit)
         }),
-        prisma.content.count({ where })
+        prisma2.content.count({ where })
       ]);
       const [notValidated, validViewable, flaggedContent] = await Promise.all([
-        prisma.content.count({ where: { validationStatus: "Not Validated", status: { not: "Draft" } } }),
-        prisma.content.count({ where: { validationStatus: "VALID_VIEWABLE" } }),
-        prisma.content.count({ where: { validationStatus: "FLAGGED_CONTENT" } })
+        prisma2.content.count({ where: { validationStatus: "Not Validated", status: { not: "Draft" } } }),
+        prisma2.content.count({ where: { validationStatus: "VALID_VIEWABLE" } }),
+        prisma2.content.count({ where: { validationStatus: "FLAGGED_CONTENT" } })
       ]);
       res.json({ items, total, page: parseInt(page), limit: parseInt(limit), summary: { notValidated, validViewable, flaggedContent } });
     } catch (error) {
@@ -3393,7 +10889,7 @@ STM Digital Library Team`,
   app.patch("/api/admin/validator/content/:id/mark-valid", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma.content.update({
+      await prisma2.content.update({
         where: { id },
         data: {
           validationStatus: "VALID_VIEWABLE",
@@ -3411,7 +10907,7 @@ STM Digital Library Team`,
   app.patch("/api/admin/validator/content/:id/move-draft", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma.content.update({
+      await prisma2.content.update({
         where: { id },
         data: { status: "Draft" }
       });
@@ -3422,11 +10918,11 @@ STM Digital Library Team`,
   });
   app.post("/api/admin/validator/auto-cleanup", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const result = await prisma.content.updateMany({
+      const result = await prisma2.content.updateMany({
         where: { validationStatus: "FLAGGED_CONTENT", status: { not: "Draft" } },
         data: { status: "Draft" }
       });
-      const latestReport = await prisma.validationReport.findFirst({
+      const latestReport = await prisma2.validationReport.findFirst({
         where: { validationType: "ViewerBased" },
         orderBy: { startedAt: "desc" }
       });
@@ -3440,7 +10936,7 @@ STM Digital Library Team`,
           count: result.count,
           note: `Auto-cleanup: ${result.count} flagged item(s) moved to Draft.`
         });
-        await prisma.validationReport.update({ where: { id: latestReport.id }, data: { timeline: tl } });
+        await prisma2.validationReport.update({ where: { id: latestReport.id }, data: { timeline: tl } });
       }
       res.json({ message: `Auto-cleanup complete. ${result.count} item(s) moved to Draft.`, count: result.count });
     } catch (error) {
@@ -3453,14 +10949,14 @@ STM Digital Library Team`,
       if (!Array.isArray(contentIds) || contentIds.length === 0) {
         return res.status(400).json({ error: "contentIds array is required." });
       }
-      const contents = await prisma.content.findMany({
+      const contents = await prisma2.content.findMany({
         where: { id: { in: contentIds } },
         select: { id: true, title: true, contentType: true, fileUrl: true }
       });
       const results = [];
       for (const c of contents) {
-        const result = await validateFileViewability(c.fileUrl || "", c.contentType);
-        await prisma.content.update({
+        const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
+        await prisma2.content.update({
           where: { id: c.id },
           data: {
             validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
@@ -3480,7 +10976,7 @@ STM Digital Library Team`,
   app.post("/api/agency-inquiry", async (req, res) => {
     try {
       const { agencyName, contactPerson, email, phone, region, experience, message } = req.body;
-      const inquiry = await prisma.agencyInquiry.create({
+      const inquiry = await prisma2.agencyInquiry.create({
         data: { agencyName, contactPerson, email, phone, region, experience, message }
       });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
@@ -3510,7 +11006,7 @@ STM Digital Library Team`,
   });
   app.get("/api/agency-inquiry", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const inquiries = await prisma.agencyInquiry.findMany({
+      const inquiries = await prisma2.agencyInquiry.findMany({
         orderBy: { createdAt: "desc" }
       });
       res.json(inquiries);
@@ -3521,7 +11017,7 @@ STM Digital Library Team`,
   app.post("/api/agency-inquiry/accept", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id, discount, emailContent, validUntil, subject, html, attachment } = req.body;
-      const inquiry = await prisma.agencyInquiry.findUnique({ where: { id } });
+      const inquiry = await prisma2.agencyInquiry.findUnique({ where: { id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
@@ -3540,7 +11036,7 @@ STM Digital Library Team`,
         ];
       }
       await sendMail(mailOptions);
-      const updated = await prisma.agencyInquiry.update({
+      const updated = await prisma2.agencyInquiry.update({
         where: { id },
         data: {
           status: "Accepted",
@@ -3557,7 +11053,7 @@ STM Digital Library Team`,
   app.post("/api/agency-inquiry/reject", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id, subject, html } = req.body;
-      const inquiry = await prisma.agencyInquiry.findUnique({ where: { id } });
+      const inquiry = await prisma2.agencyInquiry.findUnique({ where: { id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       await sendMail({
@@ -3566,7 +11062,7 @@ STM Digital Library Team`,
         subject: subject || "Update on Your STM Digital Library Partnership Application",
         html: html || "<p>Thank you for your interest, but we cannot proceed with your application at this time.</p>"
       });
-      const updated = await prisma.agencyInquiry.update({
+      const updated = await prisma2.agencyInquiry.update({
         where: { id },
         data: { status: "Rejected" }
       });
@@ -3576,21 +11072,21 @@ STM Digital Library Team`,
       res.status(500).json({ error: "Failed to process rejection" });
     }
   });
-  app.get("/api/coupons", async (req, res) => {
+  app.get("/api/coupons", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: "desc" } });
+      const coupons = await prisma2.coupon.findMany({ orderBy: { createdAt: "desc" } });
       res.json(coupons);
-    } catch (e) {
-      console.error(e);
+    } catch (e2) {
+      console.error(e2);
       res.status(500).json({ error: "Failed to fetch coupons" });
     }
   });
-  app.post("/api/coupons", async (req, res) => {
+  app.post("/api/coupons", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { code, discountType, discountValue, maxUses, validFrom, validUntil, minimumOrderAmount } = req.body;
-      const existing = await prisma.coupon.findUnique({ where: { code } });
+      const existing = await prisma2.coupon.findUnique({ where: { code } });
       if (existing) return res.status(400).json({ error: "Coupon code already exists" });
-      const coupon = await prisma.coupon.create({
+      const coupon = await prisma2.coupon.create({
         data: {
           code,
           discountType,
@@ -3602,37 +11098,37 @@ STM Digital Library Team`,
         }
       });
       res.json(coupon);
-    } catch (e) {
-      console.error(e);
+    } catch (e2) {
+      console.error(e2);
       res.status(500).json({ error: "Failed to create coupon" });
     }
   });
-  app.put("/api/coupons/:id", async (req, res) => {
+  app.put("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { isActive } = req.body;
-      const coupon = await prisma.coupon.update({
+      const coupon = await prisma2.coupon.update({
         where: { id: req.params.id },
         data: { isActive }
       });
       res.json(coupon);
-    } catch (e) {
-      console.error(e);
+    } catch (e2) {
+      console.error(e2);
       res.status(500).json({ error: "Failed to update coupon" });
     }
   });
-  app.delete("/api/coupons/:id", async (req, res) => {
+  app.delete("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      await prisma.coupon.delete({ where: { id: req.params.id } });
+      await prisma2.coupon.delete({ where: { id: req.params.id } });
       res.json({ success: true });
-    } catch (e) {
-      console.error(e);
+    } catch (e2) {
+      console.error(e2);
       res.status(500).json({ error: "Failed to delete coupon" });
     }
   });
   app.post("/api/coupons/validate", async (req, res) => {
     try {
       const { code, orderAmount } = req.body;
-      const coupon = await prisma.coupon.findUnique({ where: { code } });
+      const coupon = await prisma2.coupon.findUnique({ where: { code } });
       if (!coupon) return res.status(404).json({ error: "Invalid coupon code" });
       if (!coupon.isActive) return res.status(400).json({ error: "Coupon is not active" });
       if (coupon.validFrom && new Date(coupon.validFrom) > /* @__PURE__ */ new Date()) return res.status(400).json({ error: "Coupon not yet valid" });
@@ -3646,14 +11142,14 @@ STM Digital Library Team`,
         discount = coupon.discountValue;
       }
       res.json({ valid: true, discount, couponId: coupon.id });
-    } catch (e) {
-      console.error(e);
+    } catch (e2) {
+      console.error(e2);
       res.status(500).json({ error: "Failed to validate coupon" });
     }
   });
-  app.get("/api/coupons/:id", async (req, res) => {
+  app.get("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const coupon = await prisma.coupon.findUnique({
+      const coupon = await prisma2.coupon.findUnique({
         where: { id: req.params.id },
         include: {
           usages: {
@@ -3664,11 +11160,12 @@ STM Digital Library Team`,
       });
       if (!coupon) return res.status(404).json({ error: "Coupon not found" });
       res.json(coupon);
-    } catch (e) {
-      console.error(e);
+    } catch (e2) {
+      console.error(e2);
       res.status(500).json({ error: "Failed to fetch coupon details" });
     }
   });
+  setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
@@ -3689,3 +11186,23 @@ STM Digital Library Team`,
   });
 }
 startServer();
+/*! Bundled license information:
+
+web-streams-polyfill/dist/ponyfill.es2018.js:
+  (**
+   * @license
+   * web-streams-polyfill v3.3.3
+   * Copyright 2024 Mattias Buelens, Diwank Singh Tomer and other contributors.
+   * This code is released under the MIT license.
+   * SPDX-License-Identifier: MIT
+   *)
+
+fetch-blob/index.js:
+  (*! fetch-blob. MIT License. Jimmy Wärting <https://jimmy.warting.se/opensource> *)
+
+formdata-polyfill/esm.min.js:
+  (*! formdata-polyfill. MIT License. Jimmy Wärting <https://jimmy.warting.se/opensource> *)
+
+node-domexception/index.js:
+  (*! node-domexception. MIT License. Jimmy Wärting <https://jimmy.warting.se/opensource> *)
+*/

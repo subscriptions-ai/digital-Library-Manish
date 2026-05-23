@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Plus, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, FileText, Database, Settings, ArrowRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { DOMAINS, CONTENT_TYPES } from '../../constants';
 
 export function ExtractionDashboard() {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -113,12 +116,9 @@ export function ExtractionDashboard() {
                   onChange={e => setTargetDomain(e.target.value)}
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
                 >
-                  <option value="Management">Management</option>
-                  <option value="Medical Sciences">Medical Sciences</option>
-                  <option value="Computer/IT">Computer/IT</option>
-                  <option value="Electrical Engineering">Electrical Engineering</option>
-                  <option value="Chemistry">Chemistry</option>
-                  <option value="Life Sciences">Life Sciences</option>
+                  {DOMAINS.map(domain => (
+                    <option key={domain.id} value={domain.name}>{domain.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -129,10 +129,9 @@ export function ExtractionDashboard() {
                   onChange={e => setTargetContentType(e.target.value)}
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
                 >
-                  <option value="Periodicals">Periodicals</option>
-                  <option value="Books">Books</option>
-                  <option value="Theses">Theses</option>
-                  <option value="Educational Videos">Educational Videos</option>
+                  {CONTENT_TYPES.map(type => (
+                    <option key={type.id} value={type.name}>{type.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -222,7 +221,10 @@ export function ExtractionDashboard() {
                 </div>
 
                 <div className="pl-4 border-l border-slate-200 dark:border-slate-700 ml-2">
-                  <button className="p-3 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 dark:bg-slate-900/50 dark:hover:bg-blue-900/20 rounded-xl transition-colors">
+                  <button 
+                    onClick={() => navigate(`/admin/extraction/jobs/${job.id}`)}
+                    className="p-3 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 dark:bg-slate-900/50 dark:hover:bg-blue-900/20 rounded-xl transition-colors"
+                  >
                     <ArrowRight size={20} />
                   </button>
                 </div>
