@@ -101,8 +101,8 @@ async function runMassExtraction(job: any) {
   const query = `${baseQuery} AND FIRST_PDATE:[${randomYear}-01-01 TO ${randomYear}-12-31]`;
   
   try {
-    // Fetch up to 100 items per batch to simulate mass extraction
-    const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=100`);
+    // Fetch up to 1000 items per batch to simulate massive extraction and guarantee 500+ valid items
+    const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=1000`);
     const data = await fetchRes.json();
     
     if (data && data.resultList && data.resultList.result) {
