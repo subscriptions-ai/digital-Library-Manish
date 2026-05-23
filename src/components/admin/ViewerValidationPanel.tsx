@@ -487,13 +487,44 @@ export function ViewerValidationPanel() {
         body: JSON.stringify({ contentIds: Array.from(selectedIds) }),
       });
       if (!res.ok) throw new Error();
+      const data = await res.json();
       toast.dismiss(tid);
-      toast.success(`Re-validated ${selectedIds.size} item(s)`);
+      toast.success(data.message || `Re-validation started`);
+      if (data.background) {
+        setProgress({ isRunning: true, totalItems: 1, scannedItems: 0, validCount: 0, flaggedCount: 0, currentTask: 'Initializing…' });
+      }
       setSelectedIds(new Set());
       fetchItems();
     } catch {
       toast.dismiss(tid);
       toast.error('Re-validation failed');
+    }
+  };
+
+  const reValidateAllMatching = async () => {
+    if (!confirm(`This will re-validate ALL ${total} items matching the current filter. This will run in the background. Continue?`)) return;
+    const tid = toast.loading(`Starting bulk re-validation…`);
+    try {
+      const res = await fetch('/api/admin/validator/re-validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ status: filterStatus, search: debouncedSearch }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed');
+      }
+      const data = await res.json();
+      toast.dismiss(tid);
+      toast.success(data.message || `Bulk Re-validation started`);
+      if (data.background) {
+        setProgress({ isRunning: true, totalItems: 1, scannedItems: 0, validCount: 0, flaggedCount: 0, currentTask: 'Initializing…' });
+      }
+      setSelectedIds(new Set());
+      fetchItems();
+    } catch (e: any) {
+      toast.dismiss(tid);
+      toast.error(e.message || 'Re-validation failed');
     }
   };
 
@@ -504,8 +535,22 @@ export function ViewerValidationPanel() {
   });
 
   const toggleAll = () => {
-    if (selectedIds.size === items.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(items.map(i => i.id)));
+    const allCurrentPageSelected = items.length > 0 && items.every(i => selectedIds.has(i.id));
+    if (allCurrentPageSelected) {
+      // Deselect all on current page
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        items.forEach(i => next.delete(i.id));
+        return next;
+      });
+    } else {
+      // Select all on current page
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        items.forEach(i => next.add(i.id));
+        return next;
+      });
+    }
   };
 
   const FILTER_TABS = ['All', 'FLAGGED_CONTENT', 'VALID_VIEWABLE', 'Not Validated'];
@@ -644,29 +689,41 @@ export function ViewerValidationPanel() {
           >
             {isRunning
               ? <><RefreshCw size={14} className="animate-spin" /> Running Turbo v2…</>
-              : <><Zap size={14} className="text-violet-200 fill-violet-200 group-hover:scale-110 transition-transform" /> Run Turbo Validator v2</>}
+              : <><Zap size={14} className="text-violet-200 fill-violet-200 group-hover:scale-110 transition-transform" /> Scan All Content</>}
           </button>
-          {/* Auto-Cleanup button removed — cleanup now happens automatically on scan completion */}
         </div>
       </div>
 
       {/* ── Bulk action bar ───────────────────────────────────────────────────── */}
-      {selectedIds.size > 0 && (
+      {(selectedIds.size > 0 || (total > 0 && filterStatus !== 'All')) && (
         <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 flex flex-wrap gap-3 items-center justify-between">
-          <span className="text-sm font-semibold text-violet-700">{selectedIds.size} item(s) selected</span>
+          <span className="text-sm font-semibold text-violet-700">
+            {selectedIds.size > 0 ? `${selectedIds.size} item(s) selected manually` : `${total} item(s) found in filter`}
+          </span>
           <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={reValidateSelected}
-              className="flex items-center gap-2 bg-violet-600 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-violet-700 transition"
-            >
-              <RefreshCw size={13} /> Re-validate Selected
-            </button>
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="flex items-center gap-2 bg-white text-slate-600 border border-slate-200 text-xs font-bold px-4 py-2 rounded-xl hover:border-slate-400 transition"
-            >
-              <X size={13} /> Clear Selection
-            </button>
+            {selectedIds.size > 0 ? (
+              <>
+                <button
+                  onClick={reValidateSelected}
+                  className="flex items-center gap-2 bg-violet-600 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-violet-700 transition"
+                >
+                  <RefreshCw size={13} /> Re-validate {selectedIds.size} Selected
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="flex items-center gap-2 bg-white text-slate-600 border border-slate-200 text-xs font-bold px-4 py-2 rounded-xl hover:border-slate-400 transition"
+                >
+                  <X size={13} /> Clear Selection
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={reValidateAllMatching}
+                className="flex items-center gap-2 bg-indigo-600 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-indigo-700 transition shadow-sm"
+              >
+                <Database size={13} /> Re-Validate ALL {total} Matching Items
+              </button>
+            )}
           </div>
         </div>
       )}
