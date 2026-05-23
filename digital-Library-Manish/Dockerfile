@@ -7,6 +7,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
+# Force Stage 1 cache bust
+ENV CACHE_BUSTER_STAGE1="2026-05-23T11-08-00"
+
 # Copy source code
 COPY . .
 
