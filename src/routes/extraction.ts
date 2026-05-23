@@ -93,7 +93,12 @@ async function runMassExtraction(job: any) {
   let flagged = 0;
   let failed = 0;
   
-  const query = `${job.targetDomain} ${job.targetContentType === 'Books' ? 'book' : ''}`.trim();
+  const baseQuery = `${job.targetDomain} ${job.targetContentType === 'Books' ? 'book' : ''}`.trim();
+  
+  // Randomize the search by picking a random year between 2015 and 2024
+  // This ensures repeated extractions of the same domain will yield different results!
+  const randomYear = 2015 + Math.floor(Math.random() * 10);
+  const query = `${baseQuery} AND FIRST_PDATE:[${randomYear}-01-01 TO ${randomYear}-12-31]`;
   
   try {
     // Fetch up to 100 items per batch to simulate mass extraction
