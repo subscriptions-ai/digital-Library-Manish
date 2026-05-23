@@ -3001,8 +3001,12 @@ async function startServer() {
       }
     } catch (error) {
       console.error("Payment Verification Error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
+}
+  });
+
+  // Debug endpoint to verify deployment
+  app.get("/api/debug-version", (req, res) => {
+    res.json({ version: "1.0.1", status: "New UI deployed!" });
   });
 
   // Demo Session Request
