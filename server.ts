@@ -3001,8 +3001,12 @@ async function startServer() {
       }
     } catch (error) {
       console.error("Payment Verification Error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
+}
+  });
+
+  // Debug endpoint to verify deployment
+  app.get("/api/debug-version", (req, res) => {
+    res.json({ version: "1.0.1", status: "New UI deployed!" });
   });
 
   // Demo Session Request
@@ -5320,6 +5324,9 @@ async function startServer() {
     }
   });
 
+  // Mount extraction routes BEFORE Vite/Static middleware
+  setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import('vite');
@@ -5338,9 +5345,6 @@ async function startServer() {
     console.error("Unhandled Error:", err);
     res.status(500).json({ error: "Internal server error" });
   });
-  
-  // Mount extraction routes
-  setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || 'development'})`);
