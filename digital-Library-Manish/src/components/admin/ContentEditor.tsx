@@ -267,7 +267,7 @@ export function ContentEditor() {
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Thumbnail URL</label>
                 <div className="flex items-center gap-3">
                   <input 
-                    type="url" name="thumbnailUrl" value={formData.thumbnailUrl} onChange={handleChange}
+                    type="text" name="thumbnailUrl" value={formData.thumbnailUrl} onChange={handleChange}
                     className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                     placeholder="https://example.com/image.jpg"
                   />
@@ -283,7 +283,7 @@ export function ContentEditor() {
                     <UploadCloud size={18} />
                   </div>
                   <input 
-                    type="url" name="fileUrl" value={formData.fileUrl} onChange={handleChange}
+                    type="text" name="fileUrl" value={formData.fileUrl} onChange={handleChange}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                     placeholder="https://example.com/document.pdf or Video Embed Link"
                   />

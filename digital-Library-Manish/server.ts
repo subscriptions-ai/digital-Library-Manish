@@ -1016,6 +1016,20 @@ async function startServer() {
         }
       }
 
+      // If it's a local relative URL, serve it directly from the public folder
+      if (content.fileUrl.startsWith('/')) {
+        const localPath = path.join(process.cwd(), 'public', content.fileUrl);
+        if (fs.existsSync(localPath)) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', 'inline');
+          res.setHeader('Cache-Control', 'private, max-age=3600');
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+          return res.sendFile(localPath);
+        } else {
+          return res.status(404).json({ error: "Local file not found" });
+        }
+      }
+
       // Use node-fetch to stream PDF — handles keep-alive, redirects and socket issues correctly.
       const nodeFetch = (await import('node-fetch')).default;
 

@@ -12,10 +12,11 @@ export function ExtractionDashboard() {
   const [isCreating, setIsCreating] = useState(false);
   
   // Job Creation State
-  // Job Creation State
   const [newJobName, setNewJobName] = useState('');
   const [targetDomain, setTargetDomain] = useState('Management');
   const [targetContentType, setTargetContentType] = useState('Periodicals');
+  const [sourceType, setSourceType] = useState('AutomatedMassScraper');
+  const [ojsUrl, setOjsUrl] = useState('https://engineeringjournals.stmjournals.in');
 
   const fetchJobs = () => {
     fetch('/api/admin/extraction/jobs', {
@@ -51,11 +52,11 @@ export function ExtractionDashboard() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          name: newJobName || `${targetDomain} ${targetContentType} Auto-Extraction`,
-          sourceType: 'AutomatedMassScraper',
+          name: newJobName || (sourceType === 'OJS' ? `OJS Export - ${targetDomain}` : `${targetDomain} ${targetContentType} Auto-Extraction`),
+          sourceType: sourceType,
           targetDomain,
           targetContentType,
-          sourceConfig: {}
+          sourceConfig: sourceType === 'OJS' ? { ojsUrl } : {}
         })
       });
       
@@ -73,7 +74,7 @@ export function ExtractionDashboard() {
         body: JSON.stringify({})
       });
       
-      if (startRes.ok) toast.success(`Mass Extraction started for ${targetDomain}!`);
+      if (startRes.ok) toast.success(`Extraction started for ${targetDomain}!`);
       else toast.success("Job created, but failed to start automatically");
       
       setIsCreating(false);
@@ -110,6 +111,33 @@ export function ExtractionDashboard() {
           <form onSubmit={handleCreateJob} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Extraction Source</label>
+                <select
+                  value={sourceType}
+                  onChange={e => setSourceType(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
+                >
+                  <option value="AutomatedMassScraper">Global Repositories (Mass Scraper)</option>
+                  <option value="OJS">OJS Website Export</option>
+                </select>
+              </div>
+
+              {sourceType === 'OJS' ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">OJS Website URL</label>
+                  <input
+                    type="url"
+                    value={ojsUrl}
+                    onChange={e => setOjsUrl(e.target.value)}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
+                    placeholder="https://engineeringjournals.stmjournals.in"
+                  />
+                </div>
+              ) : (
+                <div className="hidden md:block"></div>
+              )}
+
+              <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Target Domain</label>
                 <select
                   value={targetDomain}
@@ -137,7 +165,11 @@ export function ExtractionDashboard() {
             </div>
 
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl text-sm text-blue-700 dark:text-blue-300">
-              <strong>Mass Extraction Mode:</strong> The engine will automatically query global open access repositories for <strong>{targetDomain} {targetContentType}</strong>, validate the PDFs, and bulk import thousands of items directly into your library.
+              {sourceType === 'OJS' ? (
+                <><strong>OJS Export Mode:</strong> The engine will systematically extract article metadata and PDFs from the specified Open Journal Systems (OJS) website and bulk import items directly into your library.</>
+              ) : (
+                <><strong>Mass Extraction Mode:</strong> The engine will automatically query global open access repositories for <strong>{targetDomain} {targetContentType}</strong>, validate the PDFs, and bulk import thousands of items directly into your library.</>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
@@ -152,7 +184,7 @@ export function ExtractionDashboard() {
                 type="submit"
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
               >
-                Start Mass Extraction
+                Start Extraction
               </button>
             </div>
           </form>
