@@ -103,48 +103,41 @@ async function runMassExtraction(job: any) {
   const query = `${job.targetDomain}`.trim();
   
   try {
-    // 1. Fetch from arXiv which guarantees real PDF links
-    const fetchRes = await fetch(`http://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=500`);
-    const xml = await fetchRes.text();
+    // 1. Fetch from EuropePMC (Returns thousands of OA articles)
+    const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=500`);
+    const data = await fetchRes.json();
     
-    // Quick regex parsing for XML entries
-    const entries = xml.split('<entry>').slice(1);
-    let parsedArticles = entries.map((entry, idx) => {
-      const titleMatch = entry.match(/<title>([\s\S]*?)<\/title>/);
-      const abstractMatch = entry.match(/<summary>([\s\S]*?)<\/summary>/);
-      const pdfMatch = entry.match(/<link[^>]*href="([^"]+)"[^>]*title="pdf"/);
-      const authorMatches = [...entry.matchAll(/<name>([\s\S]*?)<\/name>/g)];
+    if (data && data.resultList && data.resultList.result) {
+      const results = data.resultList.result;
       
-      return {
-        id: idx,
-        title: titleMatch ? titleMatch[1].trim().replace(/\n/g, ' ') : "Untitled",
-        abstract: abstractMatch ? abstractMatch[1].trim().replace(/\n/g, ' ') : "",
-        url: pdfMatch ? pdfMatch[1] : "",
-        authors: authorMatches.map(m => m[1].trim()).join(', ') || "Unknown"
-      };
-    }).filter(a => a.url);
+      console.log(`Extracting ${results.length} articles from EuropePMC...`);
 
-    // AI Agent is used for query optimization behind the scenes; 
-    // We insert all valid arXiv articles directly since they are guaranteed PDFs.
-    const aiApprovedArticles = parsedArticles;
-    console.log(`Extracting ${aiApprovedArticles.length} guaranteed valid articles...`);
-
-    // 3. Process approved articles
-    for (const article of aiApprovedArticles) {
-      try {
-        const fingerprint = generateFingerprint(article.title, article.authors);
-        
-        // Create Pending Item
-        const item = await prisma.extractionItem.create({
-          data: {
-            jobId: job.id,
-            rawData: article,
-            status: "Pending"
+      for (const result of results) {
+        try {
+          // Find any available link, prioritizing Europe_PMC
+          let urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.site === 'Europe_PMC' || u.documentStyle === 'pdf' || u.documentStyle === 'html');
+          
+          if (!urlInfo || !urlInfo.url) {
+            failed++; processed++; continue;
           }
-        });
-        
-        // Deduplication check
-        const existing = await prisma.content.findUnique({ where: { fingerprint } });
+
+          const title = result.title || "Untitled";
+          const authors = result.authorString || "Unknown";
+          const description = result.abstractText || `Open access content from ${result.journalTitle || 'Europe PMC'}.`;
+          
+          const fingerprint = generateFingerprint(title, authors);
+          
+          // 1. Create Pending Item
+          const item = await prisma.extractionItem.create({
+            data: {
+              jobId: job.id,
+              rawData: result,
+              status: "Pending"
+            }
+          });
+          
+          // 2. Deduplication check
+          const existing = await prisma.content.findUnique({ where: { fingerprint } });
           
           if (existing) {
             await prisma.extractionItem.update({
@@ -156,17 +149,17 @@ async function runMassExtraction(job: any) {
             continue;
           }
           
-        // Direct Mapping for AI Approved Articles
+        // Direct Mapping - No strict PDF validation block here
         const newContent = await prisma.content.create({
           data: {
-            title: article.title,
-            authors: article.authors,
-            description: article.abstract,
+            title: title,
+            authors: authors,
+            description: description,
             domain: job.targetDomain,
             contentType: job.targetContentType,
-            subjectArea: job.targetDomain,
-            fileUrl: article.url,
-            tags: [job.targetDomain],
+            subjectArea: result.keywordList?.keyword?.[0] || job.targetDomain,
+            fileUrl: urlInfo.url,
+            tags: result.keywordList?.keyword || [],
             price: 0,
             accessType: "OpenAccess",
             status: "Published",
@@ -179,11 +172,11 @@ async function runMassExtraction(job: any) {
           where: { id: item.id },
           data: {
             fingerprint,
-            title: article.title,
-            authors: article.authors,
+            title: title,
+            authors: authors,
             domain: job.targetDomain,
             contentType: job.targetContentType,
-            fileUrl: article.url,
+            fileUrl: urlInfo.url,
             contentId: newContent.id,
             status: "Inserted"
           }
