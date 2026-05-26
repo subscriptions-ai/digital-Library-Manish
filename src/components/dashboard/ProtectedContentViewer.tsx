@@ -379,7 +379,7 @@ export function ProtectedContentViewer() {
     );
   }
 
-  const isPdf = content?.url?.toLowerCase().includes('pdf') || content?.url?.toLowerCase().includes('europepmc') || content?.contentType?.toLowerCase().includes('pdf');
+  const isPdf = content?.url?.toLowerCase().includes('.pdf') || content?.contentType?.toLowerCase().includes('pdf');
   const isVideo = content?.url?.toLowerCase().match(/\.(mp4|webm|ogg)$/i);
 
   // ────────────────────────────────────────────────────

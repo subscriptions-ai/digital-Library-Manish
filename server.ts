@@ -1016,6 +1016,20 @@ async function startServer() {
         }
       }
 
+      // If it's a local relative URL, serve it directly from the public folder
+      if (content.fileUrl.startsWith('/')) {
+        const localPath = path.join(process.cwd(), 'public', content.fileUrl);
+        if (fs.existsSync(localPath)) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', 'inline');
+          res.setHeader('Cache-Control', 'private, max-age=3600');
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+          return res.sendFile(localPath);
+        } else {
+          return res.status(404).json({ error: "Local file not found" });
+        }
+      }
+
       // Use node-fetch to stream PDF — handles keep-alive, redirects and socket issues correctly.
       const nodeFetch = (await import('node-fetch')).default;
 
@@ -4742,13 +4756,12 @@ async function startServer() {
   // ── Main viewer validation runner ──────────────────────────────────────────
   const VIEWER_BATCH_SIZE = 50;
 
-  const runViewerValidationEngine = async (type: "Manual" | "Automatic", customWhere?: any) => {
+  const runViewerValidationEngine = async (type: "Manual" | "Automatic") => {
     if (currentViewerValidationProgress.isRunning) return;
 
     try {
-      const where = customWhere || { fileUrl: { not: null } };
       const contents = await prisma.content.findMany({
-        where,
+        where: { fileUrl: { not: null } }, // scan all content that has a file URL
         select: { id: true, title: true, contentType: true, fileUrl: true, status: true },
       });
 
@@ -5038,62 +5051,37 @@ async function startServer() {
   });
 
   // ── POST /api/admin/validator/re-validate ──────────────────────────────────
+  // Re-validate a specific list of content IDs
   app.post("/api/admin/validator/re-validate", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
-      const { contentIds, status, search } = req.body;
-      
-      let where: any = {};
-      if (contentIds && Array.isArray(contentIds) && contentIds.length > 0) {
-        where = { id: { in: contentIds } };
-      } else if (status) {
-        where = { fileUrl: { not: null } };
-        if (status !== "All") where.validationStatus = status;
-        if (search) {
-          where.OR = [
-            { title: { contains: search as string, mode: "insensitive" } },
-            { contentType: { contains: search as string, mode: "insensitive" } },
-          ];
-        }
-      } else {
-        return res.status(400).json({ error: "Either contentIds or status filter must be provided." });
+      const { contentIds } = req.body;
+      if (!Array.isArray(contentIds) || contentIds.length === 0) {
+        return res.status(400).json({ error: "contentIds array is required." });
       }
 
-      // Check how many items match
-      const count = await prisma.content.count({ where });
-      
-      if (count > 20) {
-        // Run in background for large sets
-        if (currentViewerValidationProgress.isRunning) {
-          return res.status(400).json({ error: "Validation engine is already running." });
-        }
-        res.json({ message: `Bulk re-validation of ${count} items started in background.`, background: true });
-        runViewerValidationEngine("Manual", where).catch((e) => console.error("Bulk re-validation error:", e));
-      } else {
-        // Run synchronously for small sets
-        const contents = await prisma.content.findMany({
-          where,
-          select: { id: true, title: true, contentType: true, fileUrl: true },
+      const contents = await prisma.content.findMany({
+        where: { id: { in: contentIds } },
+        select: { id: true, title: true, contentType: true, fileUrl: true },
+      });
+
+      const results: any[] = [];
+      for (const c of contents) {
+        const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
+        await prisma.content.update({
+          where: { id: c.id },
+          data: {
+            validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
+            viewerStatus: result.viewerStatus,
+            isViewable: result.isViewable,
+            flaggedReason: result.flaggedReason ?? null,
+            lastValidatedAt: new Date(),
+          },
         });
-
-        const results: any[] = [];
-        for (const c of contents) {
-          const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
-          await prisma.content.update({
-            where: { id: c.id },
-            data: {
-              validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
-              viewerStatus: result.viewerStatus,
-              isViewable: result.isViewable,
-              flaggedReason: result.flaggedReason ?? null,
-              lastValidatedAt: new Date(),
-            },
-          });
-          results.push({ id: c.id, title: c.title, ...result });
-        }
-        res.json({ message: `Re-validated ${results.length} item(s).`, results, background: false });
+        results.push({ id: c.id, title: c.title, ...result });
       }
+
+      res.json({ message: `Re-validated ${results.length} item(s).`, results });
     } catch (error) {
-      console.error(error);
       res.status(500).json({ error: "Re-validation failed" });
     }
   });

@@ -2,6 +2,10 @@ import { PrismaClient } from '@prisma/client';
 import { generateFingerprint } from '../lib/dedup.js';
 import { classifyContent } from '../lib/aiClassifier.js';
 import { validateContentUrl } from '../lib/pdfValidator.js';
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import { evaluateArticlesWithAI } from '../lib/aiAgent.js';
 
 const prisma = new PrismaClient();
 
@@ -74,10 +78,13 @@ export function setupExtractionRoutes(app: any, authenticateJWT: any, requireSup
         data: { status: "Running", startedAt: new Date() }
       });
       
-      // Start Mass Extraction in background
+      // Start Extraction in background
       if (job.sourceType === 'AutomatedMassScraper') {
         runMassExtraction(job).catch(console.error);
-        return res.json({ success: true, message: `Mass Extraction started for ${job.targetDomain}.` });
+        return res.json({ success: true, message: `Extraction started for ${job.targetDomain}.` });
+      } else if (job.sourceType === 'OJS') {
+        runOjsExtraction(job).catch(console.error);
+        return res.json({ success: true, message: `OJS Extraction started for ${job.targetDomain}.` });
       }
 
       res.json({ success: false, message: "Unknown source type" });
@@ -93,28 +100,23 @@ async function runMassExtraction(job: any) {
   let flagged = 0;
   let failed = 0;
   
-  const baseQuery = `${job.targetDomain} ${job.targetContentType === 'Books' ? 'book' : ''}`.trim();
-  
-  // Randomize the search by picking a random year between 2015 and 2024
-  // This ensures repeated extractions of the same domain will yield different results!
-  const randomYear = 2015 + Math.floor(Math.random() * 10);
-  const query = `${baseQuery} AND FIRST_PDATE:[${randomYear}-01-01 TO ${randomYear}-12-31]`;
+  const query = `${job.targetDomain}`.trim();
   
   try {
-    // Fetch up to 1000 items per batch to simulate massive extraction and guarantee 500+ valid items
-    const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=1000`);
+    // 1. Fetch from EuropePMC (Returns thousands of OA articles)
+    const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=500`);
     const data = await fetchRes.json();
     
     if (data && data.resultList && data.resultList.result) {
       const results = data.resultList.result;
       
+      console.log(`Extracting ${results.length} articles from EuropePMC...`);
+
       for (const result of results) {
         try {
-          // Prefer Europe_PMC site because PubMedCentral often blocks proxy downloads
-          let urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.documentStyle === 'pdf' && u.site === 'Europe_PMC');
-          if (!urlInfo) {
-            urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.documentStyle === 'pdf');
-          }
+          // Find any available link, prioritizing Europe_PMC
+          let urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.site === 'Europe_PMC' || u.documentStyle === 'pdf' || u.documentStyle === 'html');
+          
           if (!urlInfo || !urlInfo.url) {
             failed++; processed++; continue;
           }
@@ -147,74 +149,247 @@ async function runMassExtraction(job: any) {
             continue;
           }
           
-          // 3. Validation Check (ensure PDF viewer supports it)
-          const validation = await validateContentUrl(urlInfo.url, 'application/pdf');
-          if (!validation.isValid) {
+        // Direct Mapping - No strict PDF validation block here
+        const newContent = await prisma.content.create({
+          data: {
+            title: title,
+            authors: authors,
+            description: description,
+            domain: job.targetDomain,
+            contentType: job.targetContentType,
+            subjectArea: result.keywordList?.keyword?.[0] || job.targetDomain,
+            fileUrl: urlInfo.url,
+            tags: result.keywordList?.keyword || [],
+            price: 0,
+            accessType: "OpenAccess",
+            status: "Published",
+            publishingMode: "Auto-Extracted",
+            fingerprint
+          }
+        });
+        
+        await prisma.extractionItem.update({
+          where: { id: item.id },
+          data: {
+            fingerprint,
+            title: title,
+            authors: authors,
+            domain: job.targetDomain,
+            contentType: job.targetContentType,
+            fileUrl: urlInfo.url,
+            contentId: newContent.id,
+            status: "Inserted"
+          }
+        });
+        
+        processed++;
+        
+        // Update job stats periodically
+        if (processed % 5 === 0) {
+          await prisma.extractionJob.update({
+            where: { id: job.id },
+            data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted: processed - duplicates - failed }
+          });
+        }
+      } catch (e) {
+        failed++;
+        processed++;
+      }
+    }
+  } catch (err) {
+    console.error("Mass Extraction Error:", err);
+    failed++;
+  }
+  
+  // Final update
+  await prisma.extractionJob.update({
+    where: { id: job.id },
+    data: { 
+      status: "Completed",
+      completedAt: new Date(),
+      totalProcessed: processed,
+      totalDuplicates: duplicates,
+      totalFailed: failed,
+      totalInserted: processed - duplicates - failed
+    }
+  });
+}
+
+async function runOjsExtraction(job: any) {
+  let processed = 0;
+  let duplicates = 0;
+  let flagged = 0;
+  let failed = 0;
+  
+  try {
+    let baseUrl = job.sourceConfig?.ojsUrl || 'https://engineeringjournals.stmjournals.in';
+    baseUrl = baseUrl.replace(/\/$/, ''); // remove trailing slash
+    
+    // 1. Authenticate with OJS using curl to ensure cookie persistence across redirects
+    const cookieFile = path.join(process.cwd(), `ojs-cookies-${Date.now()}.txt`);
+    try {
+      execSync(`curl -s -c ${cookieFile} ${baseUrl}/index.php/index/login > /dev/null`);
+      execSync(`curl -s -b ${cookieFile} -c ${cookieFile} -d 'username=enggstm&password=EEEcal@STM%231&source=' -L ${baseUrl}/index.php/index/login/signIn > /dev/null`);
+      console.log("OJS Login Attempted via curl.");
+    } catch (e) {
+      console.error("OJS Login Error via curl:", e);
+    }
+
+    // Ensure extracted_pdfs directory exists
+    const pdfDir = path.join(process.cwd(), 'public', 'extracted_pdfs');
+    if (!fs.existsSync(pdfDir)) {
+      fs.mkdirSync(pdfDir, { recursive: true });
+    }
+    
+    // OAI-PMH endpoint for OJS
+    const oaiUrl = `${baseUrl}/index.php/index/oai?verb=ListRecords&metadataPrefix=oai_dc`;
+    
+    const fetchRes = await fetch(oaiUrl);
+    const text = await fetchRes.text();
+    
+    // Parse records via Regex
+    const records = text.match(/<record>[\s\S]*?<\/record>/g) || [];
+    
+    // Process a batch (e.g. up to 100)
+    const maxRecords = Math.min(records.length, 100);
+    
+    for (let i = 0; i < maxRecords; i++) {
+      const recordXml = records[i];
+      if (recordXml.includes('status="deleted"')) continue;
+      
+      try {
+        const titleMatch = recordXml.match(/<dc:title[^>]*>([\s\S]*?)<\/dc:title>/);
+        const title = titleMatch ? titleMatch[1].trim() : "Untitled";
+        
+        const creators = [...recordXml.matchAll(/<dc:creator[^>]*>([\s\S]*?)<\/dc:creator>/g)].map(m => m[1].trim());
+        const authors = creators.length > 0 ? creators.join(', ') : "Unknown";
+        
+        const descMatch = recordXml.match(/<dc:description[^>]*>([\s\S]*?)<\/dc:description>/);
+        const description = descMatch ? descMatch[1].trim() : `OJS Extracted Content from ${baseUrl}`;
+        
+        // Find relation or identifier that looks like a PDF link
+        const relationMatch = recordXml.match(/<dc:relation[^>]*>(https?:\/\/[^\s<]+?pdf[^\s<]*)<\/dc:relation>/i);
+        let ojsPdfUrl = relationMatch ? relationMatch[1] : null;
+        
+        if (!ojsPdfUrl) {
+          const idMatch = recordXml.match(/<dc:identifier[^>]*>(https?:\/\/[^\s<]+?pdf[^\s<]*)<\/dc:identifier>/i);
+          if (idMatch) ojsPdfUrl = idMatch[1];
+        }
+        
+        if (!ojsPdfUrl) {
+          // If no direct PDF link, construct it from article view if possible
+          const viewMatch = recordXml.match(/<dc:identifier[^>]*>(https?:\/\/[^\s<]+\/article\/view\/\d+)<\/dc:identifier>/i);
+          if (viewMatch) {
+            ojsPdfUrl = `${viewMatch[1]}/pdf`;
+          } else {
+            failed++; processed++; continue;
+          }
+        }
+        
+        // Convert /view/ links to /download/ links for direct PDF access
+        if (ojsPdfUrl.includes('/article/view/')) {
+          ojsPdfUrl = ojsPdfUrl.replace('/article/view/', '/article/download/');
+        }
+
+        const fingerprint = generateFingerprint(title, authors);
+        
+        // 1. Create Pending Item
+        const item = await prisma.extractionItem.create({
+          data: {
+            jobId: job.id,
+            rawData: { title, authors, sourceUrl: ojsPdfUrl, source: baseUrl },
+            status: "Pending"
+          }
+        });
+        
+        // 2. Deduplication check
+        const existing = await prisma.content.findUnique({ where: { fingerprint } });
+        
+        if (existing) {
+          await prisma.extractionItem.update({
+            where: { id: item.id },
+            data: { fingerprint, status: "Duplicate" }
+          });
+          duplicates++;
+          processed++;
+          continue;
+        }
+        
+        // 3. Download PDF locally via curl
+        let localFileUrl = ojsPdfUrl;
+        try {
+          const filename = `ojs_${Date.now()}_${Math.random().toString(36).substring(7)}.pdf`;
+          const filePath = path.join(pdfDir, filename);
+          
+          // Check headers first
+          const headersStr = execSync(`curl -s -I -b ${cookieFile} -L ${ojsPdfUrl}`).toString();
+          
+          if (headersStr.toLowerCase().includes('application/pdf')) {
+            execSync(`curl -s -b ${cookieFile} -L ${ojsPdfUrl} -o ${filePath}`);
+            localFileUrl = `/extracted_pdfs/${filename}`;
+          } else {
+            console.log(`Warning: Downloaded content is not PDF for ${ojsPdfUrl}`);
             await prisma.extractionItem.update({
               where: { id: item.id },
-              data: { 
-                fingerprint, 
-                status: "Failed", 
-                errorMessage: validation.errors?.join(', ') || "Validation failed",
-                validationResult: validation as any 
-              }
+              data: { fingerprint, status: "Failed", errorMessage: "Paywalled or login failed" }
             });
             failed++;
             processed++;
             continue;
           }
-          
-          // 3. Direct Mapping (No AI bottleneck for mass scale)
-          // Insert directly into the main Content table just like Bulk Import!
-          const newContent = await prisma.content.create({
-            data: {
-              title,
-              authors,
-              description,
-              domain: job.targetDomain,
-              contentType: job.targetContentType,
-              subjectArea: result.keywordList?.keyword?.[0] || job.targetDomain,
-              fileUrl: urlInfo.url,
-              tags: result.keywordList?.keyword || [],
-              price: 0,
-              accessType: "OpenAccess",
-              status: "Published",
-              publishingMode: "Auto-Extracted",
-              fingerprint
-            }
-          });
-          
-          await prisma.extractionItem.update({
-            where: { id: item.id },
-            data: {
-              fingerprint,
-              title,
-              authors,
-              domain: job.targetDomain,
-              contentType: job.targetContentType,
-              fileUrl: urlInfo.url,
-              contentId: newContent.id,
-              status: "Inserted"
-            }
-          });
-          
-          processed++;
-          
-          // Update job stats periodically
-          if (processed % 10 === 0) {
-            await prisma.extractionJob.update({
-              where: { id: job.id },
-              data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted: processed - duplicates - failed }
-            });
-          }
-        } catch (e) {
-          failed++;
-          processed++;
+        } catch (downloadErr) {
+          console.error("Download Error:", downloadErr);
+          localFileUrl = ojsPdfUrl; // Fallback
         }
+
+        // 4. Direct Mapping
+        const newContent = await prisma.content.create({
+          data: {
+            title,
+            authors,
+            description,
+            domain: job.targetDomain,
+            contentType: job.targetContentType,
+            subjectArea: job.targetDomain,
+            fileUrl: localFileUrl,
+            tags: [],
+            price: 0,
+            accessType: "OpenAccess",
+            status: "Published",
+            publishingMode: "Auto-Extracted",
+            fingerprint
+          }
+        });
+        
+        await prisma.extractionItem.update({
+          where: { id: item.id },
+          data: {
+            fingerprint,
+            title,
+            authors,
+            domain: job.targetDomain,
+            contentType: job.targetContentType,
+            fileUrl: localFileUrl,
+            contentId: newContent.id,
+            status: "Inserted"
+          }
+        });
+        
+        processed++;
+        
+        if (processed % 10 === 0) {
+          await prisma.extractionJob.update({
+            where: { id: job.id },
+            data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted: processed - duplicates - failed }
+          });
+        }
+      } catch (e) {
+        failed++;
+        processed++;
       }
     }
   } catch (err) {
-    console.error("Mass Extraction Error:", err);
+    console.error("OJS Extraction Error:", err);
     failed++;
   }
   
