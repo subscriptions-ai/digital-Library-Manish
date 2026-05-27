@@ -4840,6 +4840,11 @@ async function startServer() {
 
       // Process in batches to avoid overloading the server
       for (let i = 0; i < contents.length; i += VIEWER_BATCH_SIZE) {
+        if (!currentViewerValidationProgress.isRunning) {
+          console.log("Viewer validation stopped by user.");
+          break;
+        }
+
         const batch = contents.slice(i, i + VIEWER_BATCH_SIZE);
 
         currentViewerValidationProgress.currentTask = `Validating items ${i + 1}–${Math.min(i + VIEWER_BATCH_SIZE, contents.length)} of ${contents.length}…`;
@@ -4850,8 +4855,7 @@ async function startServer() {
               const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
 
               // Persist per-content validation status
-              // If a Draft item PASSES — auto-promote it back to Published
-              // If a Published item FAILS — auto-move it to Draft
+              // Only flag issues. Do NOT auto-draft or auto-publish items to let users decide.
               const updateData: any = {
                 validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
                 viewerStatus: result.viewerStatus,
@@ -4859,12 +4863,6 @@ async function startServer() {
                 flaggedReason: result.flaggedReason ?? null,
                 lastValidatedAt: new Date(),
               };
-              if (result.isViewable && (c as any).status === "Draft") {
-                updateData.status = "Published"; // Restore valid Drafts
-                updateData.flaggedReason = null;
-              } else if (!result.isViewable && (c as any).status !== "Draft") {
-                updateData.status = "Draft"; // Move invalid Published items to Draft
-              }
               await prisma.content.update({ where: { id: c.id }, data: updateData });
 
               if (!result.isViewable) {
@@ -4973,6 +4971,15 @@ async function startServer() {
     }
     res.json({ message: "Viewer validation triggered. Running in background." });
     runViewerValidationEngine("Manual").catch((e) => console.error("Viewer validation error:", e));
+  });
+
+  // ── POST /api/admin/validator/stop-viewer ───────────────────────────────────
+  app.post("/api/admin/validator/stop-viewer", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    if (currentViewerValidationProgress.isRunning) {
+      currentViewerValidationProgress.isRunning = false;
+      return res.json({ message: "Validation process stopped successfully." });
+    }
+    res.json({ message: "Validation is not running." });
   });
 
   // ── GET /api/admin/validator/viewer-progress ───────────────────────────────
@@ -5150,6 +5157,10 @@ async function startServer() {
           try {
             const VIEWER_BATCH_SIZE = 10;
             for (let i = 0; i < contents.length; i += VIEWER_BATCH_SIZE) {
+              if (!currentViewerValidationProgress.isRunning) {
+                console.log("Bulk re-validation stopped by user.");
+                break;
+              }
               const batch = contents.slice(i, i + VIEWER_BATCH_SIZE);
               currentViewerValidationProgress.currentTask = `Re-validating ${i + 1}–${Math.min(i + VIEWER_BATCH_SIZE, contents.length)} of ${contents.length}…`;
 
@@ -5165,7 +5176,6 @@ async function startServer() {
                         isViewable: result.isViewable,
                         flaggedReason: result.flaggedReason ?? null,
                         lastValidatedAt: new Date(),
-                        ...(result.isViewable === false ? { status: "Draft" } : {})
                       },
                     });
                     
@@ -5205,7 +5215,6 @@ async function startServer() {
             isViewable: result.isViewable,
             flaggedReason: result.flaggedReason ?? null,
             lastValidatedAt: new Date(),
-            ...(result.isViewable === false ? { status: "Draft" } : {})
           },
         });
         results.push({ id: c.id, title: c.title, ...result });

@@ -441,6 +441,22 @@ export function ViewerValidationPanel() {
     }
   };
 
+  const stopValidation = async () => {
+    try {
+      const res = await fetch('/api/admin/validator/stop-viewer', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      if (res.ok) {
+        toast.success('Validation stopped.');
+        setProgress(prev => prev ? { ...prev, isRunning: false, currentTask: 'Stopped by user' } : null);
+        fetchItems();
+      }
+    } catch {
+      toast.error('Failed to stop validation');
+    }
+  };
+
   const markValid = async (id: string) => {
     const res = await fetch(`/api/admin/validator/content/${id}/mark-valid`, {
       method: 'PATCH',
@@ -530,7 +546,7 @@ export function ViewerValidationPanel() {
                 </div>
               )}
               <h2 className="text-3xl font-bold text-slate-800 mb-2 flex flex-col items-center justify-center gap-2">
-                {successScreen ? '✅ Validation Complete — Content Auto-Cleaned!' : 'Viewer Validation Running'}
+                {successScreen ? '✅ Validation Complete!' : 'Viewer Validation Running'}
                 {!successScreen && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-widest px-3 py-1 bg-gradient-to-r from-violet-100 to-fuchsia-100 text-violet-700 rounded-full border border-violet-200 shadow-sm mt-1">
                     <Zap size={12} className="text-violet-600 fill-current" /> Turbo Engine v2 Active (8KB Stream Limit)
@@ -539,8 +555,8 @@ export function ViewerValidationPanel() {
               </h2>
               <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
                 {successScreen
-                  ? 'Scan complete. All flagged content has been automatically moved to Draft — users only see readable files.'
-                  : 'Testing every file through the same proxy path users use. Verifying PDF structure and accessibility — broken files are auto-drafted on completion.'}
+                  ? 'Scan complete. You can now review the flagged content and manually move them to Draft.'
+                  : 'Testing every file through the same proxy path users use. Verifying PDF structure and accessibility.'}
               </p>
             </div>
             <div className="p-8 pb-10 bg-slate-50">
@@ -572,6 +588,13 @@ export function ViewerValidationPanel() {
                   </div>
                 ))}
               </div>
+              {!successScreen && isRunning && (
+                <div className="mt-6 flex justify-center">
+                  <button onClick={stopValidation} className="flex items-center gap-2 px-6 py-2.5 bg-red-50 text-red-600 font-bold rounded-xl border border-red-200 hover:bg-red-100 transition shadow-sm">
+                    <X size={16} /> Stop Engine
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -594,14 +617,14 @@ export function ViewerValidationPanel() {
         ))}
       </div>
 
-      {/* ── Auto-draft info banner ─────────────────────────────────────────────── */}
+      {/* ── Engine info banner ─────────────────────────────────────────────── */}
       <div className="bg-violet-50 border border-violet-200 rounded-2xl px-5 py-4 flex items-start gap-3">
         <Zap size={18} className="text-violet-600 shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-bold text-violet-800">Smart Auto-Draft Engine Active</p>
+          <p className="text-sm font-bold text-violet-800">Turbo Validation Engine Active</p>
           <p className="text-xs text-violet-600 mt-0.5 leading-relaxed">
             Files are tested through the <strong>same proxy path users use</strong> — expired links, broken PDFs, and inaccessible files are detected accurately.
-            When the scan completes, <strong>all flagged content is automatically moved to Draft</strong> with no manual step required. Only verified, readable content stays live.
+            The scan will only FLAG broken items. <strong>It will NOT automatically change their published/draft status.</strong> You can review and manually fix or draft them afterwards.
           </p>
         </div>
       </div>
