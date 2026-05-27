@@ -12,7 +12,8 @@ import {
   Library,
   BookOpen,
   Receipt,
-  PlaySquare
+  PlaySquare,
+  Heart
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,6 +29,7 @@ const sidebarItems: SidebarItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Library', icon: Library, path: '/dashboard/library', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Content Access', icon: BookOpen, path: '/dashboard/access', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  { label: 'My Wish List', icon: Heart, path: '/dashboard/favorites', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Video Library', icon: PlaySquare, path: '/dashboard/videos', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Invoices & Payments', icon: Receipt, path: '/dashboard/invoices', roles: ['Subscriber', 'College', 'University', 'Corporate'] },

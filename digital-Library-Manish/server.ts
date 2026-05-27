@@ -598,6 +598,55 @@ async function startServer() {
     }
   });
 
+  // ── FAVORITES (WISH LIST) ───────────────────────────────────────────────────
+  app.get("/api/user/favorites", authenticateJWT, async (req: any, res) => {
+    try {
+      const favorites = await prisma.favorite.findMany({
+        where: { userId: req.user.uid },
+        include: { content: true },
+        orderBy: { createdAt: 'desc' }
+      });
+      res.json(favorites.map((f: any) => ({ ...f.content, favoriteId: f.id, favoritedAt: f.createdAt })));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch favorites" });
+    }
+  });
+
+  app.post("/api/user/favorites", authenticateJWT, async (req: any, res) => {
+    try {
+      const { contentId } = req.body;
+      if (!contentId) return res.status(400).json({ error: "contentId is required" });
+
+      const existing = await prisma.favorite.findUnique({
+        where: { userId_contentId: { userId: req.user.uid, contentId } }
+      });
+
+      if (existing) {
+        await prisma.favorite.delete({ where: { id: existing.id } });
+        return res.json({ success: true, favorited: false });
+      } else {
+        await prisma.favorite.create({
+          data: { userId: req.user.uid, contentId }
+        });
+        return res.json({ success: true, favorited: true });
+      }
+    } catch (error) {
+      console.error("Favorite toggle error:", error);
+      res.status(500).json({ error: "Failed to toggle favorite" });
+    }
+  });
+
+  app.get("/api/user/favorites/check/:contentId", authenticateJWT, async (req: any, res) => {
+    try {
+      const existing = await prisma.favorite.findUnique({
+        where: { userId_contentId: { userId: req.user.uid, contentId: req.params.contentId } }
+      });
+      res.json({ favorited: !!existing });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check favorite status" });
+    }
+  });
+
   app.get("/api/user/subscriptions", authenticateJWT, async (req: any, res) => {
     try {
       const OR_clauses: any[] = [{ userId: req.user.uid }];

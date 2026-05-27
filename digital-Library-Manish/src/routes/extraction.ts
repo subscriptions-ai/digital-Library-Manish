@@ -196,6 +196,7 @@ async function runMassExtraction(job: any) {
         processed++;
       }
     }
+    }
   } catch (err) {
     console.error("Mass Extraction Error:", err);
     failed++;

@@ -41,6 +41,7 @@ model User {
   subscriptionRequests  SubscriptionRequest[]
   activities            StudentActivity[]
   couponUsages          CouponUsage[]
+  favorites             Favorite[]
 }
 
 model Payment {
@@ -212,6 +213,7 @@ model Content {
   updatedAt       DateTime @updatedAt @default(now())
   
   studentActivities StudentActivity[]
+  favorites         Favorite[]
 }
 
 model AccessRequest {
@@ -446,4 +448,18 @@ model ExtractionItem {
   
   @@index([jobId, status])
   @@index([fingerprint])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  
+  content   Content  @relation(fields: [contentId], references: [id])
+  contentId String
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, contentId])
 }
