@@ -99,39 +99,62 @@ async function runMassExtraction(job: any) {
   let duplicates = 0;
   let flagged = 0;
   let failed = 0;
+  let totalInserted = 0;
   
-  const query = `${job.targetDomain}`.trim();
+  const query = `${job.targetDomain} ${job.targetContentType}`.trim();
   
   try {
-    // 1. Fetch from EuropePMC (Returns thousands of OA articles)
-    const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=500`);
-    const data = await fetchRes.json();
+    // 1. Fetch from OpenAlex (Massive global aggregator for all domains)
+    // We will fetch up to 3 pages (150 items) for this run to keep it fast but broad.
+    let allFetchedArticles: any[] = [];
     
-    if (data && data.resultList && data.resultList.result) {
-      const results = data.resultList.result;
-      
-      console.log(`Extracting ${results.length} articles from EuropePMC...`);
+    for (let page = 1; page <= 3; page++) {
+      const fetchRes = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent(query)}&filter=has_pdf_url:true&per-page=50&page=${page}`);
+      const data = await fetchRes.json();
+      if (data && data.results && data.results.length > 0) {
+        allFetchedArticles = allFetchedArticles.concat(data.results);
+      } else {
+        break; // no more results
+      }
+    }
+    
+    console.log(`OpenAlex found ${allFetchedArticles.length} OA articles for ${query}.`);
 
-      for (const result of results) {
+    // Process in batches of 50 for the AI Agent
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < allFetchedArticles.length; i += BATCH_SIZE) {
+      const batch = allFetchedArticles.slice(i, i + BATCH_SIZE);
+      
+      // Transform to common format
+      const articlesFormat = batch.map(a => ({
+        _raw: a,
+        title: a.title || "Untitled",
+        abstract: a.concepts ? "Keywords: " + a.concepts.map((c: any) => c.display_name).join(", ") : "No abstract",
+        authors: a.authorships?.map((au: any) => au.author?.display_name).join(", ") || "Unknown",
+        pdfUrl: a.best_oa_location?.pdf_url || a.open_access?.oa_url,
+        keywords: a.concepts?.map((c: any) => c.display_name) || []
+      })).filter(a => a.pdfUrl); // Must have PDF
+
+      if (articlesFormat.length === 0) continue;
+
+      // 2. AI Engine Curation! Let the AI decide which ones are actually relevant.
+      console.log(`Sending ${articlesFormat.length} items to AI Engine for curation...`);
+      const curatedArticles = await evaluateArticlesWithAI(job.targetDomain, articlesFormat);
+      console.log(`AI Engine approved ${curatedArticles.length} items.`);
+
+      for (const result of curatedArticles) {
         try {
-          // Find any available link, prioritizing Europe_PMC
-          let urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u: any) => u.site === 'Europe_PMC' || u.documentStyle === 'pdf' || u.documentStyle === 'html');
-          
-          if (!urlInfo || !urlInfo.url) {
+          if (!result.pdfUrl) {
             failed++; processed++; continue;
           }
 
-          const title = result.title || "Untitled";
-          const authors = result.authorString || "Unknown";
-          const description = result.abstractText || `Open access content from ${result.journalTitle || 'Europe PMC'}.`;
-          
-          const fingerprint = generateFingerprint(title, authors);
+          const fingerprint = generateFingerprint(result.title, result.authors);
           
           // 1. Create Pending Item
           const item = await prisma.extractionItem.create({
             data: {
               jobId: job.id,
-              rawData: result,
+              rawData: result._raw,
               status: "Pending"
             }
           });
@@ -149,53 +172,54 @@ async function runMassExtraction(job: any) {
             continue;
           }
           
-        // Direct Mapping - No strict PDF validation block here
-        const newContent = await prisma.content.create({
-          data: {
-            title: title,
-            authors: authors,
-            description: description,
-            domain: job.targetDomain,
-            contentType: job.targetContentType,
-            subjectArea: result.keywordList?.keyword?.[0] || job.targetDomain,
-            fileUrl: urlInfo.url,
-            tags: result.keywordList?.keyword || [],
-            price: 0,
-            accessType: "OpenAccess",
-            status: "Published",
-            publishingMode: "Auto-Extracted",
-            fingerprint
-          }
-        });
-        
-        await prisma.extractionItem.update({
-          where: { id: item.id },
-          data: {
-            fingerprint,
-            title: title,
-            authors: authors,
-            domain: job.targetDomain,
-            contentType: job.targetContentType,
-            fileUrl: urlInfo.url,
-            contentId: newContent.id,
-            status: "Inserted"
-          }
-        });
-        
-        processed++;
-        
-        // Update job stats periodically
-        if (processed % 5 === 0) {
-          await prisma.extractionJob.update({
-            where: { id: job.id },
-            data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted: processed - duplicates - failed }
+          // 3. Direct Mapping
+          const newContent = await prisma.content.create({
+            data: {
+              title: result.title,
+              authors: result.authors,
+              description: `Auto-extracted OA content from OpenAlex.`,
+              domain: job.targetDomain,
+              contentType: job.targetContentType,
+              subjectArea: result.keywords[0] || job.targetDomain,
+              fileUrl: result.pdfUrl,
+              tags: result.keywords.slice(0, 5),
+              price: 0,
+              accessType: "OpenAccess",
+              status: "Published",
+              publishingMode: "Auto-Extracted",
+              fingerprint
+            }
           });
+          
+          await prisma.extractionItem.update({
+            where: { id: item.id },
+            data: {
+              fingerprint,
+              title: result.title,
+              authors: result.authors,
+              domain: job.targetDomain,
+              contentType: job.targetContentType,
+              fileUrl: result.pdfUrl,
+              contentId: newContent.id,
+              status: "Inserted"
+            }
+          });
+          
+          totalInserted++;
+          processed++;
+          
+        } catch (e) {
+          console.error("Error inserting item:", e);
+          failed++;
+          processed++;
         }
-      } catch (e) {
-        failed++;
-        processed++;
       }
-    }
+      
+      // Update job stats after each AI batch
+      await prisma.extractionJob.update({
+        where: { id: job.id },
+        data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted: totalInserted }
+      });
     }
   } catch (err) {
     console.error("Mass Extraction Error:", err);
@@ -211,7 +235,7 @@ async function runMassExtraction(job: any) {
       totalProcessed: processed,
       totalDuplicates: duplicates,
       totalFailed: failed,
-      totalInserted: processed - duplicates - failed
+      totalInserted: totalInserted
     }
   });
 }
