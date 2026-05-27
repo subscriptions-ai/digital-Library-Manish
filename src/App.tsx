@@ -72,6 +72,7 @@ import { MyContentAccess } from "./components/dashboard/MyContentAccess";
 import { MySubscriptions } from "./components/dashboard/MySubscriptions";
 import { InvoicesPayments } from "./components/dashboard/InvoicesPayments";
 import { ProfileSettings } from "./components/dashboard/ProfileSettings";
+import MyFavorites from "./components/dashboard/MyFavorites";
 import { MyContentLibrary } from "./components/dashboard/MyContentLibrary";
 import { ProtectedContentViewer } from "./components/dashboard/ProtectedContentViewer";
 import { VideoLibrary } from "./components/dashboard/VideoLibrary";
@@ -119,6 +120,7 @@ export default function App() {
                 <Route path="/dashboard/content/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
                 <Route path="/dashboard/access" element={<DashboardLayout><MyContentAccess /></DashboardLayout>} />
                 <Route path="/dashboard/library" element={<DashboardLayout><MyContentLibrary /></DashboardLayout>} />
+                <Route path="/dashboard/favorites" element={<DashboardLayout><MyFavorites /></DashboardLayout>} />
                 <Route path="/dashboard/videos" element={<DashboardLayout><VideoLibrary /></DashboardLayout>} />
                 <Route path="/dashboard/videos/player/:id" element={<DashboardLayout><LmsVideoPlayer /></DashboardLayout>} />
                 <Route path="/dashboard/viewer/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />

@@ -196,7 +196,7 @@ async function runMassExtraction(job: any) {
         processed++;
       }
     }
-    } // Closes the if block
+    }
   } catch (err) {
     console.error("Mass Extraction Error:", err);
     failed++;

@@ -15,8 +15,10 @@ import {
   BookOpen,
   Shield,
   RotateCcw,
+  Heart,
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
+import 'pdfjs-dist/web/pdf_viewer.css';
 
 // Correctly import PDF.js worker as a static url reference using Vite's ?url suffix
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -35,6 +37,7 @@ interface PageCanvasProps {
 
 function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [rendering, setRendering] = useState(true);
 
@@ -71,7 +74,25 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
         });
 
         await renderTask.promise;
-        if (!cancelled) setRendering(false);
+        
+        if (!cancelled) {
+          const textContent = await page.getTextContent();
+          const textLayerDiv = textLayerRef.current;
+          if (textLayerDiv) {
+            textLayerDiv.innerHTML = '';
+            textLayerDiv.style.setProperty('--scale-factor', viewport.scale.toString());
+            textLayerDiv.style.width = `${viewport.width}px`;
+            textLayerDiv.style.height = `${viewport.height}px`;
+            
+            const textLayer = new pdfjsLib.TextLayer({
+              textContentSource: textContent,
+              container: textLayerDiv,
+              viewport: viewport,
+            });
+            await textLayer.render();
+          }
+          setRendering(false);
+        }
       } catch (err: any) {
         if (!cancelled) {
           setRendering(false);
@@ -110,10 +131,11 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
           display: 'block',
           filter: darkMode ? 'invert(0.88) hue-rotate(180deg)' : 'none',
           borderRadius: 2,
-          userSelect: 'none',
-          WebkitUserSelect: 'none',
-          pointerEvents: 'none', // prevent context-menu on canvas
         }}
+      />
+      <div 
+        ref={textLayerRef}
+        className="textLayer"
       />
     </div>
   );
@@ -149,6 +171,10 @@ export function ProtectedContentViewer() {
   const [resumeToastShown, setResumeToastShown] = useState(false);
   const saveProgressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Favorites
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewerWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -173,25 +199,7 @@ export function ProtectedContentViewer() {
     if (currentPage > 1 || numPages > 0) saveProgress(currentPage);
   }, [currentPage, saveProgress, numPages]);
 
-  // ── Security: block right-click, Ctrl+S, Ctrl+P ─────
-  useEffect(() => {
-    const blockContext = (e: MouseEvent) => e.preventDefault();
-    const blockKeys = (e: KeyboardEvent) => {
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        ['s', 'p', 'u', 'a'].includes(e.key.toLowerCase())
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-    document.addEventListener('contextmenu', blockContext);
-    document.addEventListener('keydown', blockKeys);
-    return () => {
-      document.removeEventListener('contextmenu', blockContext);
-      document.removeEventListener('keydown', blockKeys);
-    };
-  }, []);
+  // ── Security limits removed to allow copying ─────
 
   // ── Fetch content metadata ───────────────────────────
   useEffect(() => {
@@ -225,6 +233,44 @@ export function ProtectedContentViewer() {
       })
       .catch((err) => console.error('Failed to load progress:', err));
   }, [id]);
+
+  // ── Fetch favorite status ─────────────────────────────
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/user/favorites/check/${id}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setIsFavorite(data.favorited);
+      })
+      .catch((err) => console.error('Failed to load favorite status:', err));
+  }, [id]);
+
+  // ── Toggle favorite ───────────────────────────────────
+  const toggleFavorite = async () => {
+    if (!id || togglingFavorite) return;
+    setTogglingFavorite(true);
+    try {
+      const res = await fetch('/api/user/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ contentId: id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsFavorite(data.favorited);
+        toast.success(data.favorited ? "Added to your Wish List!" : "Removed from Wish List");
+      }
+    } catch (err) {
+      toast.error("Failed to update Wish List");
+    } finally {
+      setTogglingFavorite(false);
+    }
+  };
 
   // ── Load PDF once we have the URL ───────────────────
   useEffect(() => {
@@ -389,7 +435,6 @@ export function ProtectedContentViewer() {
     <div
       ref={viewerWrapperRef}
       className={`flex flex-col h-screen -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 ${darkMode ? 'bg-slate-950' : 'bg-slate-100'} transition-colors duration-300`}
-      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
     >
       {/* ─── TOP BAR ─────────────────────────────────── */}
       <div className={`h-14 shrink-0 flex items-center justify-between px-3 sm:px-5 border-b ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'} shadow-md z-20`}>
@@ -452,6 +497,16 @@ export function ProtectedContentViewer() {
               <RotateCcw size={16} />
             </button>
           )}
+
+          {/* Favorite Toggle */}
+          <button
+            onClick={toggleFavorite}
+            disabled={togglingFavorite}
+            title={isFavorite ? "Remove from Wish List" : "Add to Wish List"}
+            className={`p-2 rounded-xl transition-all ${isFavorite ? 'text-red-500 hover:bg-red-500/10' : (darkMode ? 'text-slate-400 hover:text-red-400 hover:bg-white/10' : 'text-slate-500 hover:text-red-500 hover:bg-slate-100')}`}
+          >
+            <Heart size={18} fill={isFavorite ? "currentColor" : "none"} className={isFavorite ? "animate-pulse" : ""} />
+          </button>
 
           {/* Dark mode toggle */}
           <button
@@ -550,7 +605,6 @@ export function ProtectedContentViewer() {
               controls
               controlsList="nodownload noremoteplayback"
               disablePictureInPicture
-              onContextMenu={(e) => e.preventDefault()}
               className="max-w-4xl w-full rounded-2xl shadow-2xl border border-white/10"
             />
           </div>
