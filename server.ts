@@ -5103,16 +5103,97 @@ async function startServer() {
   // Re-validate a specific list of content IDs
   app.post("/api/admin/validator/re-validate", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
-      const { contentIds } = req.body;
-      if (!Array.isArray(contentIds) || contentIds.length === 0) {
-        return res.status(400).json({ error: "contentIds array is required." });
+      const { contentIds, status, search } = req.body;
+      let contents;
+
+      if (Array.isArray(contentIds) && contentIds.length > 0) {
+        contents = await prisma.content.findMany({
+          where: { id: { in: contentIds } },
+          select: { id: true, title: true, contentType: true, fileUrl: true },
+        });
+      } else if (status) {
+        const where: any = {};
+        if (status !== "All") where.validationStatus = status;
+        if (search) {
+          where.OR = [
+            { title: { contains: search, mode: "insensitive" } },
+            { contentType: { contains: search, mode: "insensitive" } },
+          ];
+        }
+        contents = await prisma.content.findMany({
+          where,
+          select: { id: true, title: true, contentType: true, fileUrl: true },
+        });
+      } else {
+        return res.status(400).json({ error: "contentIds array or status filter is required." });
       }
 
-      const contents = await prisma.content.findMany({
-        where: { id: { in: contentIds } },
-        select: { id: true, title: true, contentType: true, fileUrl: true },
-      });
+      if (contents.length > 50) {
+        if (currentViewerValidationProgress.isRunning) {
+          return res.status(400).json({ error: "A viewer validation scan is already running." });
+        }
+        
+        res.json({ message: `Bulk re-validation of ${contents.length} items started.`, background: true });
+        
+        // Run in background
+        (async () => {
+          currentViewerValidationProgress = {
+            isRunning: true,
+            totalItems: contents.length,
+            scannedItems: 0,
+            validCount: 0,
+            flaggedCount: 0,
+            currentTask: "Initializing Bulk Engine...",
+            startedAt: Date.now(),
+          };
+          
+          try {
+            const VIEWER_BATCH_SIZE = 10;
+            for (let i = 0; i < contents.length; i += VIEWER_BATCH_SIZE) {
+              const batch = contents.slice(i, i + VIEWER_BATCH_SIZE);
+              currentViewerValidationProgress.currentTask = `Re-validating ${i + 1}–${Math.min(i + VIEWER_BATCH_SIZE, contents.length)} of ${contents.length}…`;
 
+              await Promise.all(
+                batch.map(async (c) => {
+                  try {
+                    const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
+                    await prisma.content.update({
+                      where: { id: c.id },
+                      data: {
+                        validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
+                        viewerStatus: result.viewerStatus,
+                        isViewable: result.isViewable,
+                        flaggedReason: result.flaggedReason ?? null,
+                        lastValidatedAt: new Date(),
+                        ...(result.isViewable === false ? { status: "Draft" } : {})
+                      },
+                    });
+                    
+                    if (result.isViewable) {
+                      currentViewerValidationProgress.validCount++;
+                    } else {
+                      currentViewerValidationProgress.flaggedCount++;
+                    }
+                  } catch (err) {
+                    console.error("Item re-validation error:", err);
+                  }
+                })
+              );
+
+              currentViewerValidationProgress.scannedItems += batch.length;
+            }
+          } catch (e) {
+            console.error("Bulk re-validation crashed:", e);
+          } finally {
+            currentViewerValidationProgress.isRunning = false;
+            currentViewerValidationProgress.currentTask = "Idle";
+            currentViewerValidationProgress.startedAt = undefined;
+          }
+        })();
+        return;
+      }
+
+      // Synchronous processing for small batches (<= 50)
       const results: any[] = [];
       for (const c of contents) {
         const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
@@ -5124,6 +5205,7 @@ async function startServer() {
             isViewable: result.isViewable,
             flaggedReason: result.flaggedReason ?? null,
             lastValidatedAt: new Date(),
+            ...(result.isViewable === false ? { status: "Draft" } : {})
           },
         });
         results.push({ id: c.id, title: c.title, ...result });
@@ -5131,6 +5213,7 @@ async function startServer() {
 
       res.json({ message: `Re-validated ${results.length} item(s).`, results });
     } catch (error) {
+      console.error("Re-validation error:", error);
       res.status(500).json({ error: "Re-validation failed" });
     }
   });
