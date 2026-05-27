@@ -617,8 +617,8 @@ async function startServer() {
       const { contentId } = req.body;
       if (!contentId) return res.status(400).json({ error: "contentId is required" });
 
-      const existing = await prisma.favorite.findUnique({
-        where: { userId_contentId: { userId: req.user.uid, contentId } }
+      const existing = await prisma.favorite.findFirst({
+        where: { userId: req.user.uid, contentId }
       });
 
       if (existing) {
@@ -638,8 +638,8 @@ async function startServer() {
 
   app.get("/api/user/favorites/check/:contentId", authenticateJWT, async (req: any, res) => {
     try {
-      const existing = await prisma.favorite.findUnique({
-        where: { userId_contentId: { userId: req.user.uid, contentId: req.params.contentId } }
+      const existing = await prisma.favorite.findFirst({
+        where: { userId: req.user.uid, contentId: req.params.contentId }
       });
       res.json({ favorited: !!existing });
     } catch (error) {
