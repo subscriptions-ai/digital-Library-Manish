@@ -600,7 +600,7 @@ export function ViewerValidationPanel() {
               </h2>
               <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
                 {successScreen
-                  ? 'Scan complete. You can now review the flagged content and manually move them to Draft.'
+                  ? 'Scan complete. You can now draft all flagged content to remove it from user dashboards.'
                   : 'Testing every file through the same proxy path users use. Verifying PDF structure and accessibility.'}
               </p>
             </div>
@@ -623,9 +623,9 @@ export function ViewerValidationPanel() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: 'Current Task', value: successScreen ? 'Auto-Draft Done!' : (progress?.currentTask ?? 'Initializing…'), color: 'text-slate-700', bg: 'bg-white border-slate-100' },
+                  { label: 'Current Task', value: successScreen ? 'Scan Complete!' : (progress?.currentTask ?? 'Initializing…'), color: 'text-slate-700', bg: 'bg-white border-slate-100' },
                   { label: 'Valid & Live', value: progress?.validCount ?? 0, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
-                  { label: 'Auto-Drafted', value: progress?.flaggedCount ?? 0, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
+                  { label: 'Flagged Found', value: progress?.flaggedCount ?? 0, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
                 ].map(({ label, value, color, bg }) => (
                   <div key={label} className={`p-4 rounded-2xl border ${bg}`}>
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</div>
@@ -637,6 +637,13 @@ export function ViewerValidationPanel() {
                 <div className="mt-6 flex justify-center">
                   <button onClick={stopValidation} className="flex items-center gap-2 px-6 py-2.5 bg-red-50 text-red-600 font-bold rounded-xl border border-red-200 hover:bg-red-100 transition shadow-sm">
                     <X size={16} /> Stop Engine
+                  </button>
+                </div>
+              )}
+              {successScreen && (
+                <div className="mt-6 flex justify-center">
+                  <button onClick={autoCleanup} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all w-full justify-center">
+                    <ShieldX size={20} /> Draft All Flagged Content
                   </button>
                 </div>
               )}
