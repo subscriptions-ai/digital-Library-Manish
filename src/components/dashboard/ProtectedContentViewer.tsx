@@ -165,6 +165,7 @@ export function ProtectedContentViewer() {
   const [scale, setScale] = useState(1.4);
   const [darkMode, setDarkMode] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const [iframeFallback, setIframeFallback] = useState(false);
 
   // Reading progress
   const [savedPage, setSavedPage] = useState(1);
@@ -276,9 +277,8 @@ export function ProtectedContentViewer() {
   useEffect(() => {
     let isMounted = true;
     if (!content?.url) return;
-    const url: string = content.url;
-    const isPdf = url.toLowerCase().includes('pdf') || url.toLowerCase().includes('europepmc') || content.contentType?.toLowerCase().includes('pdf');
-    if (!isPdf) return; // video handled separately
+    const isVideo = !!content.url.toLowerCase().match(/\.(mp4|webm|ogg)$/i);
+    if (isVideo || iframeFallback) return;
 
     setLoadingPdf(true);
     setPdfError(null);
@@ -326,8 +326,17 @@ export function ProtectedContentViewer() {
         if (err && (err.name === 'RenderingCancelledException' || err.name === 'PromiseCancelledException' || err.message?.includes('cancelled'))) {
           return;
         }
-        console.error('[viewer] PDF load error:', err);
-        setPdfError('PDF failed to load. The file may be unavailable or access is restricted.');
+        console.warn('[viewer] PDF load error:', err.message || err);
+        
+        const msg = (err.message || '').toLowerCase();
+        // If it's a network error from WAF (403, 503) or dead link (404), do not use iframe.
+        // Iframe will either be blocked by Chrome or show a blank Cloudflare challenge.
+        if (msg.includes('403') || msg.includes('404') || msg.includes('500') || msg.includes('502') || msg.includes('503')) {
+          setPdfError("This document is currently restricted by the publisher's security firewall or is temporarily unavailable. Our system has automatically flagged this item for administrative review.");
+        } else {
+          // If it's an "Invalid PDF structure" error, it's likely a valid HTML article page!
+          setIframeFallback(true);
+        }
       })
       .finally(() => {
         if (isMounted) setLoadingPdf(false);
@@ -425,8 +434,8 @@ export function ProtectedContentViewer() {
     );
   }
 
-  const isPdf = content?.url?.toLowerCase().includes('.pdf') || content?.contentType?.toLowerCase().includes('pdf');
-  const isVideo = content?.url?.toLowerCase().match(/\.(mp4|webm|ogg)$/i);
+  const isVideo = !!content?.url?.toLowerCase().match(/\.(mp4|webm|ogg)$/i);
+  const isPdf = !isVideo && !iframeFallback;
 
   // ────────────────────────────────────────────────────
   //  Render: Main viewer
@@ -563,10 +572,13 @@ export function ProtectedContentViewer() {
         style={{ scrollBehavior: 'smooth' }}
       >
         {/* PDF Error */}
-        {pdfError && (
+        {pdfError && !iframeFallback && (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 space-y-4">
-            <AlertCircle size={48} className="text-red-400" />
-            <p className="text-slate-300 max-w-sm">{pdfError}</p>
+            <AlertCircle size={56} className="text-rose-500 mb-2" />
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">Content Temporarily Unavailable</h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+              {pdfError}
+            </p>
           </div>
         )}
 
@@ -610,14 +622,14 @@ export function ProtectedContentViewer() {
           </div>
         )}
 
-        {/* Unknown format */}
-        {!isPdf && !isVideo && !loadingPdf && (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 space-y-4">
-            <BookOpen size={56} className="text-slate-600" />
-            <p className="text-slate-400 max-w-sm">
-              This content format is not supported for in-browser preview. Please contact support.
-            </p>
-          </div>
+        {/* Iframe Fallback Viewer for web content */}
+        {iframeFallback && !isVideo && (
+          <iframe 
+            src={`/api/content/${id}/proxy-frame?token=${localStorage.getItem('token')}`} 
+            className="w-full h-[85vh] border-0 bg-white" 
+            title={content.title}
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+          />
         )}
       </div>
 

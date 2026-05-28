@@ -46,9 +46,15 @@ async function startServer() {
 
   // Middleware to authenticate JWT
   const authenticateJWT = (req: any, res: any, next: any) => {
+    let token = '';
     const authHeader = req.headers.authorization;
     if (authHeader) {
-      const token = authHeader.split(' ')[1];
+      token = authHeader.split(' ')[1];
+    } else if (req.query && req.query.token) {
+      token = req.query.token;
+    }
+
+    if (token) {
       jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
         if (err) {
           return res.sendStatus(403);
@@ -1075,6 +1081,11 @@ async function startServer() {
           res.setHeader('X-Content-Type-Options', 'nosniff');
           return res.sendFile(localPath);
         } else {
+          console.warn(`[proxy-pdf] Auto-flagging missing local file: ${content.fileUrl}`);
+          await prisma.content.update({
+             where: { id: contentId },
+             data: { status: 'Draft', validationStatus: 'FLAGGED_CONTENT', isViewable: false, flaggedReason: 'Local file missing (404)' }
+          });
           return res.status(404).json({ error: "Local file not found" });
         }
       }
@@ -1083,8 +1094,8 @@ async function startServer() {
       const nodeFetch = (await import('node-fetch')).default;
 
       const proxyHeaders: Record<string, string> = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Accept': 'application/pdf,*/*;q=0.9',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/pdf,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
@@ -1116,6 +1127,12 @@ async function startServer() {
 
       if (!upstreamRes.ok) {
         console.error(`[proxy-pdf] Upstream failed with ${upstreamRes.status} for ${content.fileUrl}`);
+        if (upstreamRes.status === 403 || upstreamRes.status === 404 || upstreamRes.status >= 500) {
+          await prisma.content.update({
+             where: { id: contentId },
+             data: { status: 'Draft', validationStatus: 'FLAGGED_CONTENT', isViewable: false, flaggedReason: `Upstream failed with ${upstreamRes.status}` }
+          });
+        }
         if (!res.headersSent) res.status(upstreamRes.status).json({ error: `Upstream returned ${upstreamRes.status}` });
         return;
       }
@@ -1140,7 +1157,103 @@ async function startServer() {
     }
   });
 
+  // GET /api/content/:id/proxy-frame — streams web/HTML content, stripping X-Frame-Options to allow iframing
+  app.get("/api/content/:id/proxy-frame", authenticateJWT, async (req: any, res) => {
+    try {
+      const contentId = req.params.id;
+      const isAdmin = req.user.role === 'SuperAdmin' || req.user.role === 'Admin';
+      
+      const whereClause: any = { id: contentId };
+      if (!isAdmin) {
+        whereClause.status = { not: "Draft" };
+      }
 
+      const content = await prisma.content.findFirst({ where: whereClause });
+      if (!content || !content.fileUrl) {
+        return res.status(404).json({ error: "Content not found" });
+      }
+
+      if (!isAdmin) {
+        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+        const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
+        if (!hasAccess) {
+          return res.status(403).json({ error: "Access denied." });
+        }
+      }
+
+      if (content.fileUrl.startsWith('/')) {
+        const filePath = path.join(process.cwd(), 'dist', content.fileUrl);
+        if (!fs.existsSync(filePath)) {
+          console.warn(`[proxy-frame] Auto-flagging missing local file: ${content.fileUrl}`);
+          await prisma.content.update({
+             where: { id: contentId },
+             data: { status: 'Draft', validationStatus: 'FLAGGED_CONTENT', isViewable: false, flaggedReason: 'Local file missing (404)' }
+          });
+          return res.status(404).json({ error: "File not found" });
+        }
+        return res.redirect(content.fileUrl);
+      }
+
+      const nodeFetch = (await import('node-fetch')).default;
+      const controller = new AbortController();
+      req.on('close', () => controller.abort());
+
+      const upstreamRes = await nodeFetch(content.fileUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Sec-Fetch-User': '?1',
+          'Cache-Control': 'max-age=0'
+        },
+        redirect: 'follow',
+        signal: controller.signal as any
+      }).catch((err: any) => {
+        if (err.name === 'AbortError') return null;
+        throw err;
+      });
+
+      if (!upstreamRes) return; // Client disconnected
+
+      if (!upstreamRes.ok && (upstreamRes.status === 403 || upstreamRes.status === 404 || upstreamRes.status >= 500)) {
+        await prisma.content.update({
+           where: { id: contentId },
+           data: { status: 'Draft', validationStatus: 'FLAGGED_CONTENT', isViewable: false, flaggedReason: `Upstream failed with ${upstreamRes.status}` }
+        });
+      }
+
+      const contentType = upstreamRes.headers.get('content-type') || '';
+
+      // Strip frame-restricting headers
+      upstreamRes.headers.forEach((value: string, key: string) => {
+        const lowerKey = key.toLowerCase();
+        if (!['x-frame-options', 'content-security-policy', 'content-security-policy-report-only', 'cross-origin-opener-policy', 'cross-origin-resource-policy', 'cross-origin-embedder-policy'].includes(lowerKey)) {
+          res.setHeader(key, value);
+        }
+      });
+
+      // Always pass the status code back
+      res.status(upstreamRes.status);
+
+      // Inject <base> tag into HTML to fix relative URLs
+      if (contentType.includes('text/html')) {
+        let html = await upstreamRes.text();
+        const baseUrl = new URL(upstreamRes.url).origin;
+        html = html.replace(/<head[^>]*>/i, `$&<base href="${baseUrl}/">`);
+        return res.send(html);
+      } else {
+        (upstreamRes.body as any).pipe(res);
+      }
+
+    } catch (error) {
+      console.error('[proxy-frame] unexpected error:', error);
+      res.status(500).send("Frame proxy failed");
+    }
+  });
 
   app.get("/api/user/quotations", authenticateJWT, async (req: any, res) => {
     try {

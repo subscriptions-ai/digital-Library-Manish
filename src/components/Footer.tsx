@@ -108,9 +108,14 @@ export function Footer() {
         </div>
 
         <div className="mt-20 border-t border-slate-800/50 pt-10 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-xs text-slate-500 font-medium tracking-wide">
-            © {new Date().getFullYear()} {COMPANY_DETAILS.name}. All rights reserved.
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs text-slate-500 font-medium tracking-wide">
+              © {new Date().getFullYear()} {COMPANY_DETAILS.name}. All rights reserved.
+            </p>
+            <p className="text-[10px] text-slate-800/40 hover:text-slate-600 transition-colors select-none cursor-default">
+              shubham a developer
+            </p>
+          </div>
           <div className="flex items-center gap-8">
             <div className="flex flex-col items-end">
               <span className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">GSTIN</span>
