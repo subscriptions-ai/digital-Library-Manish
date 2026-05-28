@@ -5043,31 +5043,8 @@ async function startServer() {
         },
       });
 
-      // ── OPTION C: Auto-draft all flagged content immediately ─────────────────
-      // No manual "Auto-Cleanup" click required — flagged content is hidden from
-      // users the moment the scan completes, protecting brand value.
-      if (flaggedCount > 0) {
-        currentViewerValidationProgress.currentTask = `Auto-drafting ${flaggedCount} flagged item(s)…`;
-        const autoDraftResult = await prisma.content.updateMany({
-          where: { validationStatus: "FLAGGED_CONTENT", status: { not: "Draft" } },
-          data: { status: "Draft" },
-        });
-        console.log(`[viewer-validator] Auto-drafted ${autoDraftResult.count} flagged item(s) to Draft.`);
-
-        // Append auto-draft event to the report timeline
-        const tl: any[] = Array.isArray(report.timeline) ? (report.timeline as any[]) : [];
-        tl.push({
-          action: "auto_draft",
-          by: "System (Validator)",
-          at: new Date().toISOString(),
-          count: autoDraftResult.count,
-          note: `Auto-draft: ${autoDraftResult.count} flagged item(s) moved to Draft automatically on scan completion.`,
-        });
-        await prisma.validationReport.update({
-          where: { id: report.id },
-          data: { timeline: tl },
-        });
-      }
+      // The user requested to NOT auto-draft flagged content automatically.
+      // Instead, they will use the manual "Auto-Cleanup" authority button in the UI.
     } catch (e) {
       console.error("Viewer validation engine crashed:", e);
     } finally {
