@@ -2537,13 +2537,17 @@ async function startServer() {
 
   app.delete("/api/admin/content-drafts-cleanup", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
-      const { limit } = req.query;
+      const { limit, domain, contentType } = req.query;
       let count = 0;
+
+      const where: any = { status: "Draft" };
+      if (domain) where.domain = domain;
+      if (contentType) where.contentType = contentType;
 
       if (limit && parseInt(limit) > 0) {
         const take = parseInt(limit);
         const drafts = await prisma.content.findMany({
-          where: { status: "Draft" },
+          where,
           select: { id: true },
           take: take
         });
@@ -2553,7 +2557,7 @@ async function startServer() {
           count = result.count;
         }
       } else {
-        const result = await prisma.content.deleteMany({ where: { status: "Draft" } });
+        const result = await prisma.content.deleteMany({ where });
         count = result.count;
       }
 
@@ -2566,13 +2570,17 @@ async function startServer() {
 
   app.post("/api/admin/content-drafts-publish", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
-      const { limit } = req.query;
+      const { limit, domain, contentType } = req.query;
       let count = 0;
+
+      const where: any = { status: "Draft" };
+      if (domain) where.domain = domain;
+      if (contentType) where.contentType = contentType;
 
       if (limit && parseInt(limit) > 0) {
         const take = parseInt(limit);
         const drafts = await prisma.content.findMany({
-          where: { status: "Draft" },
+          where,
           select: { id: true },
           take: take
         });
@@ -2586,7 +2594,7 @@ async function startServer() {
         }
       } else {
         const result = await prisma.content.updateMany({ 
-          where: { status: "Draft" },
+          where,
           data: { status: "Published", validationStatus: null, flaggedReason: null }
         });
         count = result.count;

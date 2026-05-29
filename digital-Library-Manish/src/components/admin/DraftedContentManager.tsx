@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, AlertCircle, Search, RefreshCw, FileText, Loader2, ShieldAlert, CheckCircle } from 'lucide-react';
+import { Trash2, AlertCircle, Search, RefreshCw, FileText, Loader2, ShieldAlert, CheckCircle, Filter } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+
+import { DOMAINS } from '../../constants';
+const CONTENT_TYPES = ['Books', 'Periodicals', 'Magazines', 'Case Reports', 'Theses', 'Conference Proceedings', 'Educational Videos', 'Newsletters'];
 
 export function DraftedContentManager() {
   const [drafts, setDrafts] = useState<any[]>([]);
@@ -13,11 +16,21 @@ export function DraftedContentManager() {
   const [deleteLimit, setDeleteLimit] = useState<number | ''>('');
   const [massPublishing, setMassPublishing] = useState(false);
   const [publishLimit, setPublishLimit] = useState<number | ''>('');
+  const [domainFilter, setDomainFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
 
   const fetchDrafts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/content?status=Draft&page=${page}&limit=50&search=${encodeURIComponent(search)}`, {
+      const query = new URLSearchParams({
+        status: 'Draft',
+        page: page.toString(),
+        limit: '50',
+        search,
+        ...(domainFilter && { domain: domainFilter }),
+        ...(typeFilter && { contentType: typeFilter })
+      });
+      const res = await fetch(`/api/admin/content?${query}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Failed to fetch drafted content');
@@ -33,7 +46,7 @@ export function DraftedContentManager() {
 
   useEffect(() => {
     fetchDrafts();
-  }, [page, search]);
+  }, [page, search, domainFilter, typeFilter]);
 
   const handleDeleteItem = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this drafted item permanently?')) return;
@@ -55,16 +68,22 @@ export function DraftedContentManager() {
   };
 
   const handleMassDelete = async () => {
-    const limitQuery = deleteLimit ? `?limit=${deleteLimit}` : '';
+    const queryParams = new URLSearchParams({
+      ...(deleteLimit && { limit: deleteLimit.toString() }),
+      ...(domainFilter && { domain: domainFilter }),
+      ...(typeFilter && { contentType: typeFilter }),
+    });
+    const filterDesc = [domainFilter, typeFilter].filter(Boolean).join(' - ') || 'ALL';
+    
     const confirmMsg = deleteLimit 
-      ? `⚠️ WARNING: Are you sure you want to PERMANENTLY delete ${deleteLimit} drafted content items?` 
-      : '⚠️ WARNING: Are you sure you want to PERMANENTLY delete ALL drafted content? This action cannot be undone.';
+      ? `⚠️ WARNING: Are you sure you want to PERMANENTLY delete ${deleteLimit} drafted content items for (${filterDesc})?` 
+      : `⚠️ WARNING: Are you sure you want to PERMANENTLY delete ALL drafted content for (${filterDesc})? This action cannot be undone.`;
       
     if (!window.confirm(confirmMsg)) return;
     
     setMassDeleting(true);
     try {
-      const res = await fetch(`/api/admin/content-drafts-cleanup${limitQuery}`, {
+      const res = await fetch(`/api/admin/content-drafts-cleanup?${queryParams}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
@@ -80,16 +99,22 @@ export function DraftedContentManager() {
   };
 
   const handleMassPublish = async () => {
-    const limitQuery = publishLimit ? `?limit=${publishLimit}` : '';
+    const queryParams = new URLSearchParams({
+      ...(publishLimit && { limit: publishLimit.toString() }),
+      ...(domainFilter && { domain: domainFilter }),
+      ...(typeFilter && { contentType: typeFilter }),
+    });
+    const filterDesc = [domainFilter, typeFilter].filter(Boolean).join(' - ') || 'ALL';
+
     const confirmMsg = publishLimit 
-      ? `Are you sure you want to restore and PUBLISH ${publishLimit} drafted content items?` 
-      : 'Are you sure you want to restore and PUBLISH ALL drafted content?';
+      ? `Are you sure you want to restore and PUBLISH ${publishLimit} drafted content items for (${filterDesc})?` 
+      : `Are you sure you want to restore and PUBLISH ALL drafted content for (${filterDesc})?`;
       
     if (!window.confirm(confirmMsg)) return;
     
     setMassPublishing(true);
     try {
-      const res = await fetch(`/api/admin/content-drafts-publish${limitQuery}`, {
+      const res = await fetch(`/api/admin/content-drafts-publish?${queryParams}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
@@ -175,19 +200,50 @@ export function DraftedContentManager() {
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input
-            type="text"
-            placeholder="Search drafted content..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
-          />
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="relative w-full md:flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search drafted content..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+            />
+          </div>
+          
+          <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+            <div className="relative shrink-0 w-full md:w-auto">
+              <select 
+                value={domainFilter}
+                onChange={(e) => { setDomainFilter(e.target.value); setPage(1); }}
+                className="w-full appearance-none bg-white border border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none text-slate-700 md:min-w-40"
+              >
+                <option value="">All Domains</option>
+                {DOMAINS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+              </select>
+              <Filter size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            <div className="relative shrink-0 w-full md:w-auto">
+              <select 
+                value={typeFilter}
+                onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+                className="w-full appearance-none bg-white border border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none text-slate-700 md:min-w-40"
+              >
+                <option value="">All Types</option>
+                {CONTENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <Filter size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
         </div>
-        <div className="text-sm font-semibold text-slate-500">
-          Total Drafts: <span className="text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">{total}</span>
+        
+        <div className="flex justify-end border-t border-slate-100 pt-3">
+          <div className="text-sm font-semibold text-slate-500">
+            Filtered Drafts: <span className="text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">{total}</span>
+          </div>
         </div>
       </div>
 
