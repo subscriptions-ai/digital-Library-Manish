@@ -57,13 +57,13 @@ async function startServer() {
     if (token) {
       jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
         if (err) {
-          return res.sendStatus(403);
+          return res.status(403).json({ error: "Forbidden: Invalid or expired token" });
         }
         req.user = user;
         next();
       });
     } else {
-      res.sendStatus(401);
+      res.status(401).json({ error: "Unauthorized: No token provided" });
     }
   };
 

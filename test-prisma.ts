@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
-async function main() {
-  console.log(Object.keys(prisma));
+async function test() {
+  await prisma.favorite.findUnique({
+    where: { userId_contentId: { userId: '1', contentId: '2' } }
+  });
 }
-main().catch(console.error).finally(() => prisma.$disconnect());
