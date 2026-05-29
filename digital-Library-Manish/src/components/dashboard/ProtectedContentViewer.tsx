@@ -344,7 +344,7 @@ export function ProtectedContentViewer() {
       isMounted = false;
       try { loadingTask.destroy(); } catch {}
     };
-  }, [content, id, savedPage, iframeFallback, directFallback]);
+  }, [content, id, savedPage, iframeFallback]);
 
   // ── Fetch saved progress on mount ─────────────────────────────────────────
   useEffect(() => {

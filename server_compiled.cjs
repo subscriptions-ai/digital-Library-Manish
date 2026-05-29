@@ -4835,22 +4835,22 @@ var init_from = __esm({
     init_file();
     init_fetch_blob();
     ({ stat } = import_node_fs.promises);
-    blobFromSync = (path2, type) => fromBlob((0, import_node_fs.statSync)(path2), path2, type);
-    blobFrom = (path2, type) => stat(path2).then((stat2) => fromBlob(stat2, path2, type));
-    fileFrom = (path2, type) => stat(path2).then((stat2) => fromFile(stat2, path2, type));
-    fileFromSync = (path2, type) => fromFile((0, import_node_fs.statSync)(path2), path2, type);
-    fromBlob = (stat2, path2, type = "") => new fetch_blob_default([new BlobDataItem({
-      path: path2,
+    blobFromSync = (path3, type) => fromBlob((0, import_node_fs.statSync)(path3), path3, type);
+    blobFrom = (path3, type) => stat(path3).then((stat2) => fromBlob(stat2, path3, type));
+    fileFrom = (path3, type) => stat(path3).then((stat2) => fromFile(stat2, path3, type));
+    fileFromSync = (path3, type) => fromFile((0, import_node_fs.statSync)(path3), path3, type);
+    fromBlob = (stat2, path3, type = "") => new fetch_blob_default([new BlobDataItem({
+      path: path3,
       size: stat2.size,
       lastModified: stat2.mtimeMs,
       start: 0
     })], { type });
-    fromFile = (stat2, path2, type = "") => new file_default([new BlobDataItem({
-      path: path2,
+    fromFile = (stat2, path3, type = "") => new file_default([new BlobDataItem({
+      path: path3,
       size: stat2.size,
       lastModified: stat2.mtimeMs,
       start: 0
-    })], (0, import_node_path.basename)(path2), { type, lastModified: stat2.mtimeMs });
+    })], (0, import_node_path.basename)(path3), { type, lastModified: stat2.mtimeMs });
     BlobDataItem = class _BlobDataItem {
       #path;
       #start;
@@ -6520,8 +6520,8 @@ var init_src = __esm({
 
 // server.ts
 var import_express = __toESM(require("express"), 1);
-var import_path = __toESM(require("path"), 1);
-var import_fs = __toESM(require("fs"), 1);
+var import_path2 = __toESM(require("path"), 1);
+var import_fs2 = __toESM(require("fs"), 1);
 var import_dotenv = __toESM(require("dotenv"), 1);
 var import_razorpay = __toESM(require("razorpay"), 1);
 var import_nodemailer = __toESM(require("nodemailer"), 1);
@@ -6545,119 +6545,60 @@ function generateFingerprint(title, authors) {
   return import_crypto.default.createHash("sha256").update(`${normalizedTitle}::${normalizedAuthors}`).digest("hex");
 }
 
-// src/lib/pdfValidator.ts
-async function validateContentUrl(url, expectedType = "application/pdf") {
-  const result = {
-    isValid: false,
-    pdfReachable: false,
-    pdfMagicBytesOk: false,
-    contentTypeHeader: "",
-    responseStatus: 0,
-    errors: [],
-    warnings: []
-  };
-  if (!url) {
-    result.errors.push("URL is empty");
-    return result;
-  }
+// src/routes/extraction.ts
+var import_fs = __toESM(require("fs"), 1);
+var import_path = __toESM(require("path"), 1);
+var import_child_process = require("child_process");
+
+// src/lib/aiAgent.ts
+async function evaluateArticlesWithAI(domain, articles) {
+  const apiKey = process.env.OPENROUTER_API_KEY || "";
+  const model = "nvidia/nemotron-3-super-120b-a12b:free";
+  if (articles.length === 0) return [];
+  const promptData = articles.map((a, idx) => ({
+    id: idx,
+    title: a.title,
+    abstract: a.abstract ? a.abstract.substring(0, 300) + "..." : "No abstract"
+  }));
+  const systemPrompt = `You are an expert academic librarian and data curator.
+Your task is to filter a list of articles and return ONLY the ones that are strictly relevant to the domain: "${domain}".
+The articles must be high-quality, academic, and contextually appropriate.
+Ignore articles that are completely off-topic or generic low-quality entries.
+Return a valid JSON array containing ONLY the IDs of the approved articles. Example: [0, 2, 5]. Do not return any other text.`;
   try {
-    const headController = new AbortController();
-    const headTimeout = setTimeout(() => headController.abort(), 1e4);
-    let headResponse;
-    try {
-      headResponse = await fetch(url, {
-        method: "HEAD",
-        signal: headController.signal,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Accept": "*/*"
-        }
-      });
-      clearTimeout(headTimeout);
-    } catch (e2) {
-      clearTimeout(headTimeout);
-      if (e2.name === "AbortError" || e2.code === "ECONNRESET") {
-        throw e2;
-      }
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: JSON.stringify(promptData) }
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
+    if (!res.ok) {
+      console.error("OpenRouter API Error:", await res.text());
+      return articles;
     }
-    let targetResponse = headResponse;
-    if (!targetResponse || targetResponse.status === 405) {
-      const getController = new AbortController();
-      const getTimeout = setTimeout(() => getController.abort(), 1e4);
-      targetResponse = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Range": "bytes=0-8192",
-          "User-Agent": "Mozilla/5.0"
-        },
-        signal: getController.signal
-      });
-      clearTimeout(getTimeout);
-      if (targetResponse.ok) {
-        result.pdfReachable = true;
-        result.responseStatus = targetResponse.status;
-        result.contentTypeHeader = targetResponse.headers.get("content-type") || "";
-        if (expectedType === "application/pdf") {
-          const ab = await targetResponse.arrayBuffer();
-          const buffer = Buffer.from(ab);
-          if (buffer.toString("utf8", 0, 5) === "%PDF-") {
-            result.pdfMagicBytesOk = true;
-          } else {
-            result.errors.push("File does not start with PDF magic bytes");
-          }
-        }
-      }
-    } else {
-      result.responseStatus = targetResponse.status;
-      result.contentTypeHeader = targetResponse.headers.get("content-type") || "";
-      if (targetResponse.ok) {
-        result.pdfReachable = true;
-        if (expectedType === "application/pdf") {
-          const rangeController = new AbortController();
-          const rangeTimeout = setTimeout(() => rangeController.abort(), 1e4);
-          try {
-            const rangeRes = await fetch(url, {
-              headers: { "Range": "bytes=0-8192", "User-Agent": "Mozilla/5.0" },
-              signal: rangeController.signal
-            });
-            clearTimeout(rangeTimeout);
-            if (rangeRes.ok) {
-              const ab = await rangeRes.arrayBuffer();
-              const buffer = Buffer.from(ab);
-              if (buffer.toString("utf8", 0, 5) === "%PDF-") {
-                result.pdfMagicBytesOk = true;
-              } else {
-                result.errors.push("File does not start with PDF magic bytes");
-              }
-            } else {
-              result.warnings.push(`Range request failed with status: ${rangeRes.status}.`);
-            }
-          } catch (e2) {
-            clearTimeout(rangeTimeout);
-            result.warnings.push(`Failed to download magic bytes: ${e2.message}`);
-          }
-        }
-      } else {
-        result.errors.push(`URL returned non-OK status: ${targetResponse.status}`);
-      }
+    const data = await res.json();
+    const content = data.choices[0]?.message?.content || "[]";
+    let approvedIds = [];
+    const match = content.match(/\[([\d,\s]*)\]/);
+    if (match) {
+      approvedIds = match[1].split(",").map((s2) => parseInt(s2.trim(), 10)).filter((n) => !isNaN(n));
     }
-    if (!result.pdfReachable) {
-      result.errors.push("URL is not reachable or returned an error.");
-    }
-    if (expectedType === "application/pdf") {
-      if (!result.contentTypeHeader.toLowerCase().includes("pdf")) {
-        result.warnings.push(`Content-Type is '${result.contentTypeHeader}', expected 'application/pdf'`);
-      }
-      if (result.pdfReachable && result.pdfMagicBytesOk) {
-        result.isValid = true;
-      }
-    } else {
-      result.isValid = result.pdfReachable;
-    }
-  } catch (error) {
-    result.errors.push(`Validation exception: ${error.message}`);
+    const filtered = articles.filter((_, idx) => approvedIds.includes(idx));
+    console.log(`AI Agent filtered ${articles.length} down to ${filtered.length} high-quality articles.`);
+    return filtered.length > 0 ? filtered : articles.slice(0, 2);
+  } catch (err) {
+    console.error("AI Evaluation failed:", err);
+    return articles;
   }
-  return result;
 }
 
 // src/routes/extraction.ts
@@ -6721,7 +6662,10 @@ function setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin) {
       });
       if (job.sourceType === "AutomatedMassScraper") {
         runMassExtraction(job).catch(console.error);
-        return res.json({ success: true, message: `Mass Extraction started for ${job.targetDomain}.` });
+        return res.json({ success: true, message: `Extraction started for ${job.targetDomain}.` });
+      } else if (job.sourceType === "OJS") {
+        runOjsExtraction(job).catch(console.error);
+        return res.json({ success: true, message: `OJS Extraction started for ${job.targetDomain}.` });
       }
       res.json({ success: false, message: "Unknown source type" });
     } catch (error) {
@@ -6734,31 +6678,47 @@ async function runMassExtraction(job) {
   let duplicates = 0;
   let flagged = 0;
   let failed = 0;
-  const query = `${job.targetDomain} ${job.targetContentType === "Books" ? "book" : ""}`.trim();
+  let totalInserted = 0;
+  const query = `${job.targetDomain} ${job.targetContentType}`.trim();
   try {
-    const fetchRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query)}%20OPEN_ACCESS:Y&format=json&resultType=core&pageSize=100`);
-    const data = await fetchRes.json();
-    if (data && data.resultList && data.resultList.result) {
-      const results = data.resultList.result;
-      for (const result of results) {
+    let allFetchedArticles = [];
+    for (let page = 1; page <= 3; page++) {
+      const fetchRes = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent(query)}&filter=has_pdf_url:true&per-page=50&page=${page}`);
+      const data = await fetchRes.json();
+      if (data && data.results && data.results.length > 0) {
+        allFetchedArticles = allFetchedArticles.concat(data.results);
+      } else {
+        break;
+      }
+    }
+    console.log(`OpenAlex found ${allFetchedArticles.length} OA articles for ${query}.`);
+    const BATCH_SIZE = 50;
+    for (let i2 = 0; i2 < allFetchedArticles.length; i2 += BATCH_SIZE) {
+      const batch = allFetchedArticles.slice(i2, i2 + BATCH_SIZE);
+      const articlesFormat = batch.map((a) => ({
+        _raw: a,
+        title: a.title || "Untitled",
+        abstract: a.concepts ? "Keywords: " + a.concepts.map((c) => c.display_name).join(", ") : "No abstract",
+        authors: a.authorships?.map((au) => au.author?.display_name).join(", ") || "Unknown",
+        pdfUrl: a.best_oa_location?.pdf_url || a.open_access?.oa_url,
+        keywords: a.concepts?.map((c) => c.display_name) || []
+      })).filter((a) => a.pdfUrl);
+      if (articlesFormat.length === 0) continue;
+      console.log(`Sending ${articlesFormat.length} items to AI Engine for curation...`);
+      const curatedArticles = await evaluateArticlesWithAI(job.targetDomain, articlesFormat);
+      console.log(`AI Engine approved ${curatedArticles.length} items.`);
+      for (const result of curatedArticles) {
         try {
-          let urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u) => u.documentStyle === "pdf" && u.site === "Europe_PMC");
-          if (!urlInfo) {
-            urlInfo = result.fullTextUrlList?.fullTextUrl?.find((u) => u.documentStyle === "pdf");
-          }
-          if (!urlInfo || !urlInfo.url) {
+          if (!result.pdfUrl) {
             failed++;
             processed++;
             continue;
           }
-          const title = result.title || "Untitled";
-          const authors = result.authorString || "Unknown";
-          const description = result.abstractText || `Open access content from ${result.journalTitle || "Europe PMC"}.`;
-          const fingerprint = generateFingerprint(title, authors);
+          const fingerprint = generateFingerprint(result.title, result.authors);
           const item = await prisma.extractionItem.create({
             data: {
               jobId: job.id,
-              rawData: result,
+              rawData: result._raw,
               status: "Pending"
             }
           });
@@ -6772,31 +6732,16 @@ async function runMassExtraction(job) {
             processed++;
             continue;
           }
-          const validation = await validateContentUrl(urlInfo.url, "application/pdf");
-          if (!validation.isValid) {
-            await prisma.extractionItem.update({
-              where: { id: item.id },
-              data: {
-                fingerprint,
-                status: "Failed",
-                errorMessage: validation.errors?.join(", ") || "Validation failed",
-                validationResult: validation
-              }
-            });
-            failed++;
-            processed++;
-            continue;
-          }
           const newContent = await prisma.content.create({
             data: {
-              title,
-              authors,
-              description,
+              title: result.title,
+              authors: result.authors,
+              description: `Auto-extracted OA content from OpenAlex.`,
               domain: job.targetDomain,
               contentType: job.targetContentType,
-              subjectArea: result.keywordList?.keyword?.[0] || job.targetDomain,
-              fileUrl: urlInfo.url,
-              tags: result.keywordList?.keyword || [],
+              subjectArea: result.keywords[0] || job.targetDomain,
+              fileUrl: result.pdfUrl,
+              tags: result.keywords.slice(0, 5),
               price: 0,
               accessType: "OpenAccess",
               status: "Published",
@@ -6808,30 +6753,182 @@ async function runMassExtraction(job) {
             where: { id: item.id },
             data: {
               fingerprint,
-              title,
-              authors,
+              title: result.title,
+              authors: result.authors,
               domain: job.targetDomain,
               contentType: job.targetContentType,
-              fileUrl: urlInfo.url,
+              fileUrl: result.pdfUrl,
               contentId: newContent.id,
               status: "Inserted"
             }
           });
+          totalInserted++;
           processed++;
-          if (processed % 10 === 0) {
-            await prisma.extractionJob.update({
-              where: { id: job.id },
-              data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted: processed - duplicates - failed }
-            });
-          }
         } catch (e2) {
+          console.error("Error inserting item:", e2);
           failed++;
           processed++;
         }
       }
+      await prisma.extractionJob.update({
+        where: { id: job.id },
+        data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted }
+      });
     }
   } catch (err) {
     console.error("Mass Extraction Error:", err);
+    failed++;
+  }
+  await prisma.extractionJob.update({
+    where: { id: job.id },
+    data: {
+      status: "Completed",
+      completedAt: /* @__PURE__ */ new Date(),
+      totalProcessed: processed,
+      totalDuplicates: duplicates,
+      totalFailed: failed,
+      totalInserted
+    }
+  });
+}
+async function runOjsExtraction(job) {
+  let processed = 0;
+  let duplicates = 0;
+  let flagged = 0;
+  let failed = 0;
+  try {
+    let baseUrl = job.sourceConfig?.ojsUrl || "https://engineeringjournals.stmjournals.in";
+    baseUrl = baseUrl.replace(/\/$/, "");
+    const cookieFile = import_path.default.join(process.cwd(), `ojs-cookies-${Date.now()}.txt`);
+    try {
+      (0, import_child_process.execSync)(`curl -s -c ${cookieFile} ${baseUrl}/index.php/index/login > /dev/null`);
+      (0, import_child_process.execSync)(`curl -s -b ${cookieFile} -c ${cookieFile} -d 'username=enggstm&password=EEEcal@STM%231&source=' -L ${baseUrl}/index.php/index/login/signIn > /dev/null`);
+      console.log("OJS Login Attempted via curl.");
+    } catch (e2) {
+      console.error("OJS Login Error via curl:", e2);
+    }
+    const pdfDir = import_path.default.join(process.cwd(), "public", "extracted_pdfs");
+    if (!import_fs.default.existsSync(pdfDir)) {
+      import_fs.default.mkdirSync(pdfDir, { recursive: true });
+    }
+    const oaiUrl = `${baseUrl}/index.php/index/oai?verb=ListRecords&metadataPrefix=oai_dc`;
+    const fetchRes = await fetch(oaiUrl);
+    const text = await fetchRes.text();
+    const records = text.match(/<record>[\s\S]*?<\/record>/g) || [];
+    const maxRecords = Math.min(records.length, 100);
+    for (let i2 = 0; i2 < maxRecords; i2++) {
+      const recordXml = records[i2];
+      if (recordXml.includes('status="deleted"')) continue;
+      try {
+        const titleMatch = recordXml.match(/<dc:title[^>]*>([\s\S]*?)<\/dc:title>/);
+        const title = titleMatch ? titleMatch[1].trim() : "Untitled";
+        const creators = [...recordXml.matchAll(/<dc:creator[^>]*>([\s\S]*?)<\/dc:creator>/g)].map((m2) => m2[1].trim());
+        const authors = creators.length > 0 ? creators.join(", ") : "Unknown";
+        const descMatch = recordXml.match(/<dc:description[^>]*>([\s\S]*?)<\/dc:description>/);
+        const description = descMatch ? descMatch[1].trim() : `OJS Extracted Content from ${baseUrl}`;
+        const relationMatch = recordXml.match(/<dc:relation[^>]*>(https?:\/\/[^\s<]+?pdf[^\s<]*)<\/dc:relation>/i);
+        let ojsPdfUrl = relationMatch ? relationMatch[1] : null;
+        if (!ojsPdfUrl) {
+          const idMatch = recordXml.match(/<dc:identifier[^>]*>(https?:\/\/[^\s<]+?pdf[^\s<]*)<\/dc:identifier>/i);
+          if (idMatch) ojsPdfUrl = idMatch[1];
+        }
+        if (!ojsPdfUrl) {
+          const viewMatch = recordXml.match(/<dc:identifier[^>]*>(https?:\/\/[^\s<]+\/article\/view\/\d+)<\/dc:identifier>/i);
+          if (viewMatch) {
+            ojsPdfUrl = `${viewMatch[1]}/pdf`;
+          } else {
+            failed++;
+            processed++;
+            continue;
+          }
+        }
+        if (ojsPdfUrl.includes("/article/view/")) {
+          ojsPdfUrl = ojsPdfUrl.replace("/article/view/", "/article/download/");
+        }
+        const fingerprint = generateFingerprint(title, authors);
+        const item = await prisma.extractionItem.create({
+          data: {
+            jobId: job.id,
+            rawData: { title, authors, sourceUrl: ojsPdfUrl, source: baseUrl },
+            status: "Pending"
+          }
+        });
+        const existing = await prisma.content.findUnique({ where: { fingerprint } });
+        if (existing) {
+          await prisma.extractionItem.update({
+            where: { id: item.id },
+            data: { fingerprint, status: "Duplicate" }
+          });
+          duplicates++;
+          processed++;
+          continue;
+        }
+        let localFileUrl = ojsPdfUrl;
+        try {
+          const filename = `ojs_${Date.now()}_${Math.random().toString(36).substring(7)}.pdf`;
+          const filePath = import_path.default.join(pdfDir, filename);
+          const headersStr = (0, import_child_process.execSync)(`curl -s -I -b ${cookieFile} -L ${ojsPdfUrl}`).toString();
+          if (headersStr.toLowerCase().includes("application/pdf")) {
+            (0, import_child_process.execSync)(`curl -s -b ${cookieFile} -L ${ojsPdfUrl} -o ${filePath}`);
+            localFileUrl = `/extracted_pdfs/${filename}`;
+          } else {
+            console.log(`Warning: Downloaded content is not PDF for ${ojsPdfUrl}`);
+            await prisma.extractionItem.update({
+              where: { id: item.id },
+              data: { fingerprint, status: "Failed", errorMessage: "Paywalled or login failed" }
+            });
+            failed++;
+            processed++;
+            continue;
+          }
+        } catch (downloadErr) {
+          console.error("Download Error:", downloadErr);
+          localFileUrl = ojsPdfUrl;
+        }
+        const newContent = await prisma.content.create({
+          data: {
+            title,
+            authors,
+            description,
+            domain: job.targetDomain,
+            contentType: job.targetContentType,
+            subjectArea: job.targetDomain,
+            fileUrl: localFileUrl,
+            tags: [],
+            price: 0,
+            accessType: "OpenAccess",
+            status: "Published",
+            publishingMode: "Auto-Extracted",
+            fingerprint
+          }
+        });
+        await prisma.extractionItem.update({
+          where: { id: item.id },
+          data: {
+            fingerprint,
+            title,
+            authors,
+            domain: job.targetDomain,
+            contentType: job.targetContentType,
+            fileUrl: localFileUrl,
+            contentId: newContent.id,
+            status: "Inserted"
+          }
+        });
+        processed++;
+        if (processed % 10 === 0) {
+          await prisma.extractionJob.update({
+            where: { id: job.id },
+            data: { totalProcessed: processed, totalDuplicates: duplicates, totalFailed: failed, totalInserted: processed - duplicates - failed }
+          });
+        }
+      } catch (e2) {
+        failed++;
+        processed++;
+      }
+    }
+  } catch (err) {
+    console.error("OJS Extraction Error:", err);
     failed++;
   }
   await prisma.extractionJob.update({
@@ -6871,18 +6968,23 @@ async function startServer() {
     throw new Error("CRITICAL SECURITY ERROR: JWT_SECRET must be set in production environment variables.");
   }
   const authenticateJWT = (req, res, next) => {
+    let token = "";
     const authHeader = req.headers.authorization;
     if (authHeader) {
-      const token = authHeader.split(" ")[1];
+      token = authHeader.split(" ")[1];
+    } else if (req.query && req.query.token) {
+      token = req.query.token;
+    }
+    if (token) {
       import_jsonwebtoken.default.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
-          return res.sendStatus(403);
+          return res.status(403).json({ error: "Forbidden: Invalid or expired token" });
         }
         req.user = user;
         next();
       });
     } else {
-      res.sendStatus(401);
+      res.status(401).json({ error: "Unauthorized: No token provided" });
     }
   };
   const getRazorpay = () => {
@@ -6933,8 +7035,8 @@ async function startServer() {
       }
     });
   }
-  const _logoPath = import_path.default.join(process.cwd(), "public", "assets", "stm-logo-email.png");
-  const _logoCidAttachment = import_fs.default.existsSync(_logoPath) ? {
+  const _logoPath = import_path2.default.join(process.cwd(), "public", "assets", "stm-logo-email.png");
+  const _logoCidAttachment = import_fs2.default.existsSync(_logoPath) ? {
     filename: "stm-logo-email.png",
     path: _logoPath,
     cid: "stm-logo-email"
@@ -7309,6 +7411,49 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch reading progress" });
     }
   });
+  app.get("/api/user/favorites", authenticateJWT, async (req, res) => {
+    try {
+      const favorites = await prisma2.favorite.findMany({
+        where: { userId: req.user.uid },
+        include: { content: true },
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(favorites.map((f3) => ({ ...f3.content, favoriteId: f3.id, favoritedAt: f3.createdAt })));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch favorites" });
+    }
+  });
+  app.post("/api/user/favorites", authenticateJWT, async (req, res) => {
+    try {
+      const { contentId } = req.body;
+      if (!contentId) return res.status(400).json({ error: "contentId is required" });
+      const existing = await prisma2.favorite.findFirst({
+        where: { userId: req.user.uid, contentId }
+      });
+      if (existing) {
+        await prisma2.favorite.delete({ where: { id: existing.id } });
+        return res.json({ success: true, favorited: false });
+      } else {
+        await prisma2.favorite.create({
+          data: { userId: req.user.uid, contentId }
+        });
+        return res.json({ success: true, favorited: true });
+      }
+    } catch (error) {
+      console.error("Favorite toggle error:", error);
+      res.status(500).json({ error: "Failed to toggle favorite" });
+    }
+  });
+  app.get("/api/user/favorites/check/:contentId", authenticateJWT, async (req, res) => {
+    try {
+      const existing = await prisma2.favorite.findFirst({
+        where: { userId: req.user.uid, contentId: req.params.contentId }
+      });
+      res.json({ favorited: !!existing });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check favorite status" });
+    }
+  });
   app.get("/api/user/subscriptions", authenticateJWT, async (req, res) => {
     try {
       const OR_clauses = [{ userId: req.user.uid }];
@@ -7631,10 +7776,27 @@ async function startServer() {
           return res.status(403).json({ error: "Access denied." });
         }
       }
+      if (content.fileUrl.startsWith("/")) {
+        const localPath = import_path2.default.join(process.cwd(), "public", content.fileUrl);
+        if (import_fs2.default.existsSync(localPath)) {
+          res.setHeader("Content-Type", "application/pdf");
+          res.setHeader("Content-Disposition", "inline");
+          res.setHeader("Cache-Control", "private, max-age=3600");
+          res.setHeader("X-Content-Type-Options", "nosniff");
+          return res.sendFile(localPath);
+        } else {
+          console.warn(`[proxy-pdf] Auto-flagging missing local file: ${content.fileUrl}`);
+          await prisma2.content.update({
+            where: { id: contentId },
+            data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: "Local file missing (404)" }
+          });
+          return res.status(404).json({ error: "Local file not found" });
+        }
+      }
       const nodeFetch = (await Promise.resolve().then(() => (init_src(), src_exports))).default;
       const proxyHeaders = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-        "Accept": "application/pdf,*/*;q=0.9",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/pdf,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1",
@@ -7660,6 +7822,12 @@ async function startServer() {
       if (!upstreamRes) return;
       if (!upstreamRes.ok) {
         console.error(`[proxy-pdf] Upstream failed with ${upstreamRes.status} for ${content.fileUrl}`);
+        if (upstreamRes.status === 403 || upstreamRes.status === 404 || upstreamRes.status >= 500) {
+          await prisma2.content.update({
+            where: { id: contentId },
+            data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: `Upstream failed with ${upstreamRes.status}` }
+          });
+        }
         if (!res.headersSent) res.status(upstreamRes.status).json({ error: `Upstream returned ${upstreamRes.status}` });
         return;
       }
@@ -7678,6 +7846,86 @@ async function startServer() {
     } catch (error) {
       console.error("[proxy-pdf] unexpected error:", error);
       res.status(500).json({ error: "PDF proxy failed" });
+    }
+  });
+  app.get("/api/content/:id/proxy-frame", authenticateJWT, async (req, res) => {
+    try {
+      const contentId = req.params.id;
+      const isAdmin = req.user.role === "SuperAdmin" || req.user.role === "Admin";
+      const whereClause = { id: contentId };
+      if (!isAdmin) {
+        whereClause.status = { not: "Draft" };
+      }
+      const content = await prisma2.content.findFirst({ where: whereClause });
+      if (!content || !content.fileUrl) {
+        return res.status(404).json({ error: "Content not found" });
+      }
+      if (!isAdmin) {
+        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+        const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
+        if (!hasAccess) {
+          return res.status(403).json({ error: "Access denied." });
+        }
+      }
+      if (content.fileUrl.startsWith("/")) {
+        const filePath = import_path2.default.join(process.cwd(), "dist", content.fileUrl);
+        if (!import_fs2.default.existsSync(filePath)) {
+          console.warn(`[proxy-frame] Auto-flagging missing local file: ${content.fileUrl}`);
+          await prisma2.content.update({
+            where: { id: contentId },
+            data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: "Local file missing (404)" }
+          });
+          return res.status(404).json({ error: "File not found" });
+        }
+        return res.redirect(content.fileUrl);
+      }
+      const nodeFetch = (await Promise.resolve().then(() => (init_src(), src_exports))).default;
+      const controller = new AbortController();
+      req.on("close", () => controller.abort());
+      const upstreamRes = await nodeFetch(content.fileUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Upgrade-Insecure-Requests": "1",
+          "Sec-Fetch-Dest": "document",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Site": "none",
+          "Sec-Fetch-User": "?1",
+          "Cache-Control": "max-age=0"
+        },
+        redirect: "follow",
+        signal: controller.signal
+      }).catch((err) => {
+        if (err.name === "AbortError") return null;
+        throw err;
+      });
+      if (!upstreamRes) return;
+      if (!upstreamRes.ok && (upstreamRes.status === 403 || upstreamRes.status === 404 || upstreamRes.status >= 500)) {
+        await prisma2.content.update({
+          where: { id: contentId },
+          data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: `Upstream failed with ${upstreamRes.status}` }
+        });
+      }
+      const contentType = upstreamRes.headers.get("content-type") || "";
+      upstreamRes.headers.forEach((value, key) => {
+        const lowerKey = key.toLowerCase();
+        if (!["x-frame-options", "content-security-policy", "content-security-policy-report-only", "cross-origin-opener-policy", "cross-origin-resource-policy", "cross-origin-embedder-policy"].includes(lowerKey)) {
+          res.setHeader(key, value);
+        }
+      });
+      res.status(upstreamRes.status);
+      if (contentType.includes("text/html")) {
+        let html = await upstreamRes.text();
+        const baseUrl = new URL(upstreamRes.url).origin;
+        html = html.replace(/<head[^>]*>/i, `$&<base href="${baseUrl}/">`);
+        return res.send(html);
+      } else {
+        upstreamRes.body.pipe(res);
+      }
+    } catch (error) {
+      console.error("[proxy-frame] unexpected error:", error);
+      res.status(500).send("Frame proxy failed");
     }
   });
   app.get("/api/user/quotations", authenticateJWT, async (req, res) => {
@@ -9317,8 +9565,10 @@ async function startServer() {
       }
     } catch (error) {
       console.error("Payment Verification Error:", error);
-      res.status(500).json({ error: "Internal server error" });
     }
+  });
+  app.get("/api/debug-version", (req, res) => {
+    res.json({ version: "1.0.1", status: "New UI deployed!" });
   });
   app.post("/api/demo-request", async (req, res) => {
     try {
@@ -9708,8 +9958,8 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const quotationNumber = quotationData.quotationNumber;
       const totalAmount = typeof quotationData.totalAmount === "number" ? quotationData.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 }) : quotationData.totalAmount || "0";
-      const logoPath = import_path.default.join(process.cwd(), "public", "assets", "stm-logo.png");
-      const logoExists = import_fs.default.existsSync(logoPath);
+      const logoPath = import_path2.default.join(process.cwd(), "public", "assets", "stm-logo.png");
+      const logoExists = import_fs2.default.existsSync(logoPath);
       const items = quotationData.items || [];
       const departmentNames = items.map((it) => it.domainName).filter(Boolean);
       const departmentsHtml = departmentNames.length ? departmentNames.map((d) => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">\u2705 &nbsp;${d}</li>`).join("") : '<li style="color:#94a3b8;font-size:14px;">\u2014</li>';
@@ -10725,6 +10975,10 @@ async function startServer() {
       let validCount = 0;
       let flaggedCount = 0;
       for (let i2 = 0; i2 < contents.length; i2 += VIEWER_BATCH_SIZE) {
+        if (!currentViewerValidationProgress.isRunning) {
+          console.log("Viewer validation stopped by user.");
+          break;
+        }
         const batch = contents.slice(i2, i2 + VIEWER_BATCH_SIZE);
         currentViewerValidationProgress.currentTask = `Validating items ${i2 + 1}\u2013${Math.min(i2 + VIEWER_BATCH_SIZE, contents.length)} of ${contents.length}\u2026`;
         await Promise.all(
@@ -10738,12 +10992,6 @@ async function startServer() {
                 flaggedReason: result.flaggedReason ?? null,
                 lastValidatedAt: /* @__PURE__ */ new Date()
               };
-              if (result.isViewable && c.status === "Draft") {
-                updateData.status = "Published";
-                updateData.flaggedReason = null;
-              } else if (!result.isViewable && c.status !== "Draft") {
-                updateData.status = "Draft";
-              }
               await prisma2.content.update({ where: { id: c.id }, data: updateData });
               if (!result.isViewable) {
                 issues.push({
@@ -10804,26 +11052,6 @@ async function startServer() {
           completedAt: /* @__PURE__ */ new Date()
         }
       });
-      if (flaggedCount > 0) {
-        currentViewerValidationProgress.currentTask = `Auto-drafting ${flaggedCount} flagged item(s)\u2026`;
-        const autoDraftResult = await prisma2.content.updateMany({
-          where: { validationStatus: "FLAGGED_CONTENT", status: { not: "Draft" } },
-          data: { status: "Draft" }
-        });
-        console.log(`[viewer-validator] Auto-drafted ${autoDraftResult.count} flagged item(s) to Draft.`);
-        const tl = Array.isArray(report.timeline) ? report.timeline : [];
-        tl.push({
-          action: "auto_draft",
-          by: "System (Validator)",
-          at: (/* @__PURE__ */ new Date()).toISOString(),
-          count: autoDraftResult.count,
-          note: `Auto-draft: ${autoDraftResult.count} flagged item(s) moved to Draft automatically on scan completion.`
-        });
-        await prisma2.validationReport.update({
-          where: { id: report.id },
-          data: { timeline: tl }
-        });
-      }
     } catch (e2) {
       console.error("Viewer validation engine crashed:", e2);
     } finally {
@@ -10838,6 +11066,13 @@ async function startServer() {
     }
     res.json({ message: "Viewer validation triggered. Running in background." });
     runViewerValidationEngine("Manual").catch((e2) => console.error("Viewer validation error:", e2));
+  });
+  app.post("/api/admin/validator/stop-viewer", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    if (currentViewerValidationProgress.isRunning) {
+      currentViewerValidationProgress.isRunning = false;
+      return res.json({ message: "Validation process stopped successfully." });
+    }
+    res.json({ message: "Validation is not running." });
   });
   app.get("/api/admin/validator/viewer-progress", authenticateJWT, requireSuperAdmin, async (_req, res) => {
     res.json(currentViewerValidationProgress);
@@ -10945,14 +11180,89 @@ async function startServer() {
   });
   app.post("/api/admin/validator/re-validate", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const { contentIds } = req.body;
-      if (!Array.isArray(contentIds) || contentIds.length === 0) {
-        return res.status(400).json({ error: "contentIds array is required." });
+      const { contentIds, status, search } = req.body;
+      let contents;
+      if (Array.isArray(contentIds) && contentIds.length > 0) {
+        contents = await prisma2.content.findMany({
+          where: { id: { in: contentIds } },
+          select: { id: true, title: true, contentType: true, fileUrl: true }
+        });
+      } else if (status) {
+        const where = {};
+        if (status !== "All") where.validationStatus = status;
+        if (search) {
+          where.OR = [
+            { title: { contains: search, mode: "insensitive" } },
+            { contentType: { contains: search, mode: "insensitive" } }
+          ];
+        }
+        contents = await prisma2.content.findMany({
+          where,
+          select: { id: true, title: true, contentType: true, fileUrl: true }
+        });
+      } else {
+        return res.status(400).json({ error: "contentIds array or status filter is required." });
       }
-      const contents = await prisma2.content.findMany({
-        where: { id: { in: contentIds } },
-        select: { id: true, title: true, contentType: true, fileUrl: true }
-      });
+      if (contents.length > 50) {
+        if (currentViewerValidationProgress.isRunning) {
+          return res.status(400).json({ error: "A viewer validation scan is already running." });
+        }
+        res.json({ message: `Bulk re-validation of ${contents.length} items started.`, background: true });
+        (async () => {
+          currentViewerValidationProgress = {
+            isRunning: true,
+            totalItems: contents.length,
+            scannedItems: 0,
+            validCount: 0,
+            flaggedCount: 0,
+            currentTask: "Initializing Bulk Engine...",
+            startedAt: Date.now()
+          };
+          try {
+            const VIEWER_BATCH_SIZE2 = 10;
+            for (let i2 = 0; i2 < contents.length; i2 += VIEWER_BATCH_SIZE2) {
+              if (!currentViewerValidationProgress.isRunning) {
+                console.log("Bulk re-validation stopped by user.");
+                break;
+              }
+              const batch = contents.slice(i2, i2 + VIEWER_BATCH_SIZE2);
+              currentViewerValidationProgress.currentTask = `Re-validating ${i2 + 1}\u2013${Math.min(i2 + VIEWER_BATCH_SIZE2, contents.length)} of ${contents.length}\u2026`;
+              await Promise.all(
+                batch.map(async (c) => {
+                  try {
+                    const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
+                    await prisma2.content.update({
+                      where: { id: c.id },
+                      data: {
+                        validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
+                        viewerStatus: result.viewerStatus,
+                        isViewable: result.isViewable,
+                        flaggedReason: result.flaggedReason ?? null,
+                        lastValidatedAt: /* @__PURE__ */ new Date()
+                      }
+                    });
+                    if (result.isViewable) {
+                      currentViewerValidationProgress.validCount++;
+                    } else {
+                      currentViewerValidationProgress.flaggedCount++;
+                    }
+                  } catch (err) {
+                    console.error("Item re-validation error:", err);
+                  }
+                })
+              );
+              currentViewerValidationProgress.scannedItems += batch.length;
+            }
+          } catch (e2) {
+            console.error("Bulk re-validation crashed:", e2);
+          } finally {
+            currentViewerValidationProgress.isRunning = false;
+            currentViewerValidationProgress.currentTask = "Idle";
+            currentViewerValidationProgress.startedAt = void 0;
+          }
+        })();
+        return;
+      }
       const results = [];
       for (const c of contents) {
         const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
@@ -10970,6 +11280,7 @@ async function startServer() {
       }
       res.json({ message: `Re-validated ${results.length} item(s).`, results });
     } catch (error) {
+      console.error("Re-validation error:", error);
       res.status(500).json({ error: "Re-validation failed" });
     }
   });
@@ -11174,8 +11485,8 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(import_express.default.static(import_path.default.join(currentDir, "dist")));
-    app.get("*", (req, res) => res.sendFile(import_path.default.join(currentDir, "dist/index.html")));
+    app.use(import_express.default.static(import_path2.default.join(currentDir, "dist")));
+    app.get("*", (req, res) => res.sendFile(import_path2.default.join(currentDir, "dist/index.html")));
   }
   app.use((err, req, res, next) => {
     console.error("Unhandled Error:", err);
