@@ -394,7 +394,6 @@ export function ViewerValidationPanel() {
             if (prev?.isRunning && !data.isRunning) {
               setSuccessScreen(true);
               fetchItems();
-              setTimeout(() => setSuccessScreen(false), 4000);
             }
             return data;
           });
@@ -486,6 +485,7 @@ export function ViewerValidationPanel() {
       const data = await res.json();
       toast.dismiss(tid);
       toast.success(data.message);
+      setSuccessScreen(false);
       fetchItems();
     } catch {
       toast.dismiss(tid);
@@ -641,9 +641,12 @@ export function ViewerValidationPanel() {
                 </div>
               )}
               {successScreen && (
-                <div className="mt-6 flex justify-center">
-                  <button onClick={autoCleanup} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all w-full justify-center">
+                <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
+                  <button onClick={autoCleanup} className="flex flex-1 items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all justify-center">
                     <ShieldX size={20} /> Draft All Flagged Content
+                  </button>
+                  <button onClick={() => setSuccessScreen(false)} className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-200 transition justify-center">
+                    Dismiss
                   </button>
                 </div>
               )}
