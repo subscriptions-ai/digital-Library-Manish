@@ -104,14 +104,20 @@ export function RequestDemo() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Hero Section */}
-      <section className="relative bg-[#0F172A] pt-24 pb-32 lg:pt-32 lg:pb-[550px] text-left overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
-        </div>
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-center">
-            <div className="lg:col-span-5">
+      {/* Absolute Hero Background (100vh) */}
+      <div className="absolute top-0 left-0 w-full h-[100vh] bg-[#0F172A] overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
+      </div>
+
+      {/* Main Content Container */}
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-24 lg:pt-32 pb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-start">
+          
+          {/* Left Column: Info */}
+          <div className="lg:col-span-5 flex flex-col">
+            
+            {/* Hero Text */}
+            <div className="text-left mb-24 lg:mb-32">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -136,18 +142,9 @@ export function RequestDemo() {
                 Experience the full power of STM Digital Library. We provide trial/demo access for students, researchers, corporate organizations, and academic institutions to explore our vast knowledge ecosystem.
               </motion.p>
             </div>
-            <div className="lg:col-span-7 hidden lg:block"></div>
-          </div>
-        </div>
-      </section>
 
-      {/* Main Content Section */}
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-start">
-            
-            {/* Left Column: Info */}
-            <div className="lg:col-span-5 space-y-12">
+            {/* Why Explore Section (Flows naturally below hero text) */}
+            <div className="space-y-12">
               <div>
                 <h2 className="text-3xl font-bold text-slate-900 mb-6">Why Explore Our Platform?</h2>
                 <p className="text-lg text-slate-600 leading-relaxed">
@@ -260,7 +257,7 @@ export function RequestDemo() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 relative overflow-hidden p-8 md:p-12 -mt-10 lg:-mt-[800px] z-20"
+                className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 relative overflow-hidden p-8 md:p-12 z-20"
               >
                 <div className="absolute right-6 top-8 opacity-[0.03] pointer-events-none">
                   <BookOpen size={120} />
@@ -511,7 +508,7 @@ export function RequestDemo() {
             </Link>
           </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
