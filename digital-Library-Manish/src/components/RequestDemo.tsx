@@ -250,8 +250,9 @@ export function RequestDemo() {
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Right Column: Form */}
+          {/* Right Column: Form */}
             <div className="lg:col-span-7">
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}

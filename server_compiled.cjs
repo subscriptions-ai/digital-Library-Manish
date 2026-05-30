@@ -7103,7 +7103,7 @@ async function startServer() {
   });
   app.post("/api/auth/signup", async (req, res) => {
     try {
-      const { email, password, name, organization } = req.body;
+      const { email, password, name, organization, contact, designation } = req.body;
       const existingUser = await prisma2.user.findUnique({ where: { email } });
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
@@ -7115,6 +7115,8 @@ async function startServer() {
           password: hashedPassword,
           displayName: name,
           organization: organization || "",
+          contact: contact || "",
+          designation: designation || "",
           role: email === "info@celnet.in" ? "SuperAdmin" : "Subscriber",
           status: "Active"
         }
@@ -7126,7 +7128,7 @@ async function startServer() {
         to: process.env.ADMIN_EMAIL || "info@celnet.in",
         subject: `\u{1F195} New User Registration \u2014 ${name}`,
         html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F195} New Subscriber Alert</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new user has just registered on the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:20px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">User Details</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${name}</td></tr><tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;">${organization || "Not provided"}</td></tr></table><div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;"><p style="margin:0;font-size:13px;color:#1e3a6e;">\u26A1 <strong>Action:</strong> Review the new subscriber and assign a plan if needed.</p></div></td></tr>`
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F195} New Subscriber Alert</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new user has just registered on the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:20px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">User Details</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${name}</td></tr><tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Contact</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${contact || "Not provided"}</td></tr><tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || "Not provided"}</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;">${organization || "Not provided"}</td></tr></table><div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;"><p style="margin:0;font-size:13px;color:#1e3a6e;">\u26A1 <strong>Action:</strong> Review the new subscriber and assign a plan if needed.</p></div></td></tr>`
         )
       };
       const userMailOptions = {
@@ -9017,12 +9019,15 @@ async function startServer() {
   });
   app.delete("/api/admin/content-drafts-cleanup", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const { limit } = req.query;
+      const { limit, domain, contentType } = req.query;
       let count = 0;
+      const where = { status: "Draft" };
+      if (domain) where.domain = domain;
+      if (contentType) where.contentType = contentType;
       if (limit && parseInt(limit) > 0) {
         const take = parseInt(limit);
         const drafts = await prisma2.content.findMany({
-          where: { status: "Draft" },
+          where,
           select: { id: true },
           take
         });
@@ -9032,7 +9037,7 @@ async function startServer() {
           count = result.count;
         }
       } else {
-        const result = await prisma2.content.deleteMany({ where: { status: "Draft" } });
+        const result = await prisma2.content.deleteMany({ where });
         count = result.count;
       }
       res.json({ success: true, count, message: `Deleted ${count} drafted items.` });
@@ -9043,12 +9048,15 @@ async function startServer() {
   });
   app.post("/api/admin/content-drafts-publish", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const { limit } = req.query;
+      const { limit, domain, contentType } = req.query;
       let count = 0;
+      const where = { status: "Draft" };
+      if (domain) where.domain = domain;
+      if (contentType) where.contentType = contentType;
       if (limit && parseInt(limit) > 0) {
         const take = parseInt(limit);
         const drafts = await prisma2.content.findMany({
-          where: { status: "Draft" },
+          where,
           select: { id: true },
           take
         });
@@ -9062,7 +9070,7 @@ async function startServer() {
         }
       } else {
         const result = await prisma2.content.updateMany({
-          where: { status: "Draft" },
+          where,
           data: { status: "Published", validationStatus: null, flaggedReason: null }
         });
         count = result.count;
