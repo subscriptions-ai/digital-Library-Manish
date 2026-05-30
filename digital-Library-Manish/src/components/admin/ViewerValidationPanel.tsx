@@ -715,6 +715,14 @@ export function ViewerValidationPanel() {
         </div>
         {/* Action buttons */}
         <div className="flex gap-2 flex-wrap">
+          {summary.flaggedContent > 0 && !isRunning && (
+            <button
+              onClick={autoCleanup}
+              className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition shadow-md shadow-red-200"
+            >
+              <ShieldX size={14} /> Draft All Flagged ({summary.flaggedContent})
+            </button>
+          )}
           <button
             onClick={runValidation}
             disabled={isRunning}
