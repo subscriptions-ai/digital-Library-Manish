@@ -105,31 +105,39 @@ export function RequestDemo() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Hero Section */}
-      <section className="relative bg-[#0F172A] py-24 text-center lg:py-32 flex flex-col items-center justify-center">
-        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center rounded-full bg-blue-900/40 px-4 py-1.5 text-xs font-bold tracking-widest text-blue-400 mb-8 border border-blue-800/50"
-          >
-            DIGITAL ACADEMIC ACCESS
-          </motion.div>
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl font-bold tracking-tight text-white sm:text-6xl"
-          >
-            Request Trial Access
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mt-6 text-lg text-slate-300 max-w-3xl mx-auto leading-relaxed"
-          >
-            Experience the full power of STM Digital Library. We provide trial/demo access for students, researchers, corporate organizations, and academic institutions to explore our vast knowledge ecosystem.
-          </motion.p>
+      <section className="relative bg-[#0F172A] pt-24 pb-32 lg:pt-32 lg:pb-48 text-left overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
+        </div>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-center">
+            <div className="lg:col-span-5">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="inline-flex items-center rounded-full bg-blue-900/40 px-4 py-1.5 text-xs font-bold tracking-widest text-blue-400 mb-8 border border-blue-800/50"
+              >
+                DIGITAL ACADEMIC ACCESS
+              </motion.div>
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl"
+              >
+                Request Trial Access
+              </motion.h1>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mt-6 text-lg text-slate-300 leading-relaxed max-w-xl"
+              >
+                Experience the full power of STM Digital Library. We provide trial/demo access for students, researchers, corporate organizations, and academic institutions to explore our vast knowledge ecosystem.
+              </motion.p>
+            </div>
+            <div className="lg:col-span-7 hidden lg:block"></div>
+          </div>
         </div>
       </section>
 
