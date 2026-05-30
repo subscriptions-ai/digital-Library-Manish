@@ -105,7 +105,7 @@ export function RequestDemo() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Hero Section */}
-      <section className="relative bg-[#0F172A] pt-24 pb-32 lg:pt-32 lg:pb-48 text-left overflow-hidden">
+      <section className="relative bg-[#0F172A] pt-24 pb-32 lg:pt-32 lg:pb-64 text-left overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
         </div>
@@ -260,7 +260,7 @@ export function RequestDemo() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 relative overflow-hidden p-8 md:p-12 -mt-10 lg:-mt-64 z-20"
+                className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 relative overflow-hidden p-8 md:p-12 -mt-10 lg:-mt-[450px] z-20"
               >
                 <div className="absolute right-6 top-8 opacity-[0.03] pointer-events-none">
                   <BookOpen size={120} />
