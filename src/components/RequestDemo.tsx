@@ -468,8 +468,6 @@ export function RequestDemo() {
             </div>
           </div>
         </div>
-      </section>
-      
       {/* Bottom Cards Section */}
       <section className="pb-24 pt-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -508,7 +506,7 @@ export function RequestDemo() {
             </Link>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
