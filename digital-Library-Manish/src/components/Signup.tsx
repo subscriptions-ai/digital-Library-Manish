@@ -10,6 +10,8 @@ export function Signup() {
     name: '',
     email: '',
     organization: '',
+    contact: '',
+    designation: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
@@ -25,7 +27,7 @@ export function Signup() {
 
     setLoading(true);
     try {
-      await signup(formData.email, formData.password, formData.name, formData.organization);
+      await signup(formData.email, formData.password, formData.name, formData.organization, formData.contact, formData.designation);
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error: any) {
@@ -90,6 +92,30 @@ export function Signup() {
                   onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
                   placeholder="Harvard University"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Contact Number</label>
+              <div className="relative">
+                <input 
+                  type="tel" 
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                  placeholder="+1 (555) 000-0000"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Designation / Role</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={formData.designation}
+                  onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                  placeholder="e.g. Researcher, Student, Professor"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
               </div>
             </div>

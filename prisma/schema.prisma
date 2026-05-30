@@ -16,6 +16,8 @@ model User {
   password     String
   displayName  String?
   organization String?
+  contact      String?
+  designation  String?
   state        String?
   role         String         @default("Subscriber")
   status       String         @default("Active")

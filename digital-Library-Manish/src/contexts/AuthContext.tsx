@@ -12,7 +12,7 @@ interface AuthContextType {
   isContentManager: boolean;
   isInstitutionAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string, organization?: string) => Promise<void>;
+  signup: (email: string, password: string, name: string, organization?: string, contact?: string, designation?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(response.user as UserProfile);
   };
 
-  const signup = async (email: string, password: string, name: string, organization?: string) => {
-    const response = await authApi.signup(email, password, name, organization);
+  const signup = async (email: string, password: string, name: string, organization?: string, contact?: string, designation?: string) => {
+    const response = await authApi.signup(email, password, name, organization, contact, designation);
     setUser(response.user);
     setProfile(response.user as UserProfile);
   };

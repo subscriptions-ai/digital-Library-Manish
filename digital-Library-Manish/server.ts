@@ -226,7 +226,7 @@ async function startServer() {
   // Auth: Signup
   app.post("/api/auth/signup", async (req, res) => {
     try {
-      const { email, password, name, organization } = req.body;
+      const { email, password, name, organization, contact, designation } = req.body;
       
       // Check if user already exists in PostgreSQL
       const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -243,6 +243,8 @@ async function startServer() {
           password: hashedPassword,
           displayName: name,
           organization: organization || "",
+          contact: contact || "",
+          designation: designation || "",
           role: email === "info@celnet.in" ? "SuperAdmin" : "Subscriber",
           status: "Active",
         }
@@ -263,6 +265,8 @@ async function startServer() {
           `<tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">User Details</td></tr>` +
           `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${name}</td></tr>` +
           `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr>` +
+          `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Contact</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${contact || 'Not provided'}</td></tr>` +
+          `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || 'Not provided'}</td></tr>` +
           `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;">${organization || 'Not provided'}</td></tr>` +
           `</table>` +
           `<div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;">` +

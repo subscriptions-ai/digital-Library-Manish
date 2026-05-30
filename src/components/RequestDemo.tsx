@@ -136,7 +136,7 @@ export function RequestDemo() {
       {/* Main Content Section */}
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-start">
             
             {/* Left Column: Info */}
             <div className="lg:col-span-5 space-y-12">
@@ -252,7 +252,7 @@ export function RequestDemo() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 relative overflow-hidden p-8 md:p-12 -mt-10 lg:-mt-32 z-20"
+                className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 relative overflow-hidden p-8 md:p-12 -mt-10 lg:-mt-64 z-20"
               >
                 <div className="absolute right-6 top-8 opacity-[0.03] pointer-events-none">
                   <BookOpen size={120} />

@@ -10,11 +10,11 @@ export const authApi = {
   setToken: (token: string) => localStorage.setItem('token', token),
   clearToken: () => localStorage.removeItem('token'),
 
-  async signup(email: string, password: string, name: string, organization?: string): Promise<AuthResponse> {
+  async signup(email: string, password: string, name: string, organization?: string, contact?: string, designation?: string): Promise<AuthResponse> {
     const response = await fetch(`${API_URL}/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, organization }),
+      body: JSON.stringify({ email, password, name, organization, contact, designation }),
     });
     
     if (!response.ok) {
