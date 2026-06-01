@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle, Search, ArrowRight, Lock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2, XCircle, Search, ArrowRight, Lock, ChevronLeft, LayoutGrid, BookOpen, Layers } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,7 +8,7 @@ export function MyContentAccess() {
   const [accessMap, setAccessMap] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterDomain, setFilterDomain] = useState('All');
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,109 +26,168 @@ export function MyContentAccess() {
 
   const domains = Object.keys(accessMap);
 
+  // Sort domains: those with any access come first
+  const sortedDomains = [...domains].sort((a, b) => {
+    const aAccess = accessMap[a].some(m => m.hasAccess) ? 1 : 0;
+    const bAccess = accessMap[b].some(m => m.hasAccess) ? 1 : 0;
+    if (aAccess !== bAccess) return bAccess - aAccess;
+    return a.localeCompare(b);
+  });
+
   if (loading) {
     return (
       <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-48 rounded-3xl bg-slate-200 dark:bg-slate-800 animate-pulse" />
-        ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-40 rounded-3xl bg-slate-200 dark:bg-slate-800 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedDomain) {
+    const modules = accessMap[selectedDomain] || [];
+    const unlockedCount = modules.filter(m => m.hasAccess).length;
+    const isFullyUnlocked = unlockedCount > 0 && unlockedCount === modules.length;
+
+    return (
+      <div className="space-y-6 pb-12">
+        <button 
+          onClick={() => setSelectedDomain(null)}
+          className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors"
+        >
+          <ChevronLeft size={16} /> Back to Departments
+        </button>
+
+        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                <LayoutGrid className="text-blue-600" /> {selectedDomain}
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+                {unlockedCount} of {modules.length} content types unlocked
+              </p>
+            </div>
+            {isFullyUnlocked ? (
+              <span className="px-4 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 w-max border border-emerald-200 dark:border-emerald-800/40">
+                <CheckCircle2 size={16} /> Full Access
+              </span>
+            ) : (
+              <a href={`/domain/${selectedDomain.toLowerCase().replace(/\s+/g, '-')}`} className="px-5 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 w-max">
+                <Lock size={14} /> Upgrade Plan for More
+              </a>
+            )}
+          </div>
+          
+          <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
+            {modules.length === 0 ? (
+               <div className="p-8 text-center text-slate-500">No content types found in this department.</div>
+            ) : (
+              modules.map((mod) => (
+                <div key={mod.id} className="p-5 sm:px-8 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors group">
+                  <div className="flex items-center gap-5">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${mod.hasAccess ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600'}`}>
+                      {mod.hasAccess ? <BookOpen size={24} /> : <Lock size={20} />}
+                    </div>
+                    <div>
+                      <p className={`font-bold text-lg ${mod.hasAccess ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                        {mod.contentType}
+                      </p>
+                      <p className="text-sm font-medium text-slate-400 dark:text-slate-500 mt-0.5">
+                        {mod.totalCount.toLocaleString()} item{mod.totalCount !== 1 ? 's' : ''} available
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {mod.hasAccess ? (
+                    <button 
+                      onClick={() => navigate(`/dashboard/library?domain=${encodeURIComponent(selectedDomain)}&type=${encodeURIComponent(mod.contentType)}`)}
+                      className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 text-sm font-bold"
+                    >
+                      Browse <ArrowRight size={16} />
+                    </button>
+                  ) : (
+                    <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-400 text-xs font-bold rounded-lg uppercase tracking-wider hidden sm:block">Locked</span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-8 pb-12">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">My Content Access</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">See what content types you have access to across the library domains.</p>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+          <Layers className="text-blue-600" size={32} /> My Content Access
+        </h1>
+        <p className="text-base font-medium text-slate-500 dark:text-slate-400 mt-2 max-w-2xl">
+          Select a department below to see which content types (Books, Periodicals, etc.) you have unlocked. Browse and read instantly.
+        </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 bg-white dark:bg-slate-800 p-4 items-center rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
-          <input
-            type="text"
-            placeholder="Search domains or content types..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 transition-shadow outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select
-          value={filterDomain}
-          onChange={(e) => setFilterDomain(e.target.value)}
-          className="w-full sm:w-64 px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 cursor-pointer"
-        >
-          <option value="All">All Domains</option>
-          {domains.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
+      <div className="relative max-w-xl">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+        <input
+          type="text"
+          placeholder="Search departments..."
+          className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-base focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/40 focus:border-blue-500 transition-all outline-none text-slate-800 dark:text-slate-200 shadow-sm"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      <div className="space-y-8 pt-4">
-        {domains
-          .filter(d => filterDomain === 'All' || filterDomain === d)
-          .filter(d => d.toLowerCase().includes(search.toLowerCase()) || accessMap[d].some(c => c.contentType.toLowerCase().includes(search.toLowerCase())))
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+        {sortedDomains
+          .filter(d => d.toLowerCase().includes(search.toLowerCase()))
           .map((domain, index) => {
-            const modules = accessMap[domain];
+            const modules = accessMap[domain] || [];
             const unlockedCount = modules.filter(m => m.hasAccess).length;
-            const isFullyUnlocked = unlockedCount === modules.length;
+            const hasAnyAccess = unlockedCount > 0;
 
             return (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
+              <motion.button 
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.08 }}
-                key={domain} 
-                className="bg-white dark:bg-slate-800/80 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden"
+                transition={{ delay: index * 0.05 }}
+                key={domain}
+                onClick={() => setSelectedDomain(domain)}
+                className={`text-left relative p-6 rounded-3xl border transition-all duration-300 group ${
+                  hasAnyAccess 
+                    ? 'bg-white dark:bg-slate-800 border-blue-100 dark:border-blue-900/40 shadow-md hover:shadow-xl hover:-translate-y-1 hover:border-blue-300 dark:hover:border-blue-700'
+                    : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 opacity-80 hover:opacity-100 hover:shadow-md'
+                }`}
               >
-                <div className="px-6 py-4 border-b border-slate-50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">{domain}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{unlockedCount} of {modules.length} content types unlocked</p>
-                  </div>
-                  {isFullyUnlocked ? (
-                    <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-[10px] uppercase tracking-wider rounded-lg flex items-center gap-1 w-max border border-emerald-200 dark:border-emerald-800/40">
-                      <CheckCircle2 size={14} /> Full Access
-                    </span>
-                  ) : (
-                    <a href={`/domain/${domain.toLowerCase().replace(/\s+/g, '-')}`} className="px-4 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors flex items-center gap-1.5">
-                      <Lock size={12} /> Upgrade Plan
-                    </a>
-                  )}
+                {hasAnyAccess && (
+                  <div className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                )}
+                
+                <div className="mb-4">
+                  <h3 className={`text-xl font-black ${hasAnyAccess ? 'text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors' : 'text-slate-600 dark:text-slate-400'}`}>
+                    {domain}
+                  </h3>
                 </div>
                 
-                <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {modules
-                    .filter(m => m.contentType.toLowerCase().includes(search.toLowerCase()) || search === '')
-                    .map((mod) => (
-                    <div key={mod.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors group">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${mod.hasAccess ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'}`}>
-                          {mod.hasAccess ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
-                        </div>
-                        <div>
-                          <p className={`font-bold ${mod.hasAccess ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{mod.contentType}</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500">{mod.totalCount} items available</p>
-                        </div>
-                      </div>
-                      
-                      {mod.hasAccess && (
-                        <button 
-                          onClick={() => navigate(`/dashboard/library?domain=${encodeURIComponent(domain)}&type=${encodeURIComponent(mod.contentType)}`)}
-                          className="opacity-0 group-hover:opacity-100 p-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-all hidden sm:flex items-center gap-2 text-xs font-bold"
-                        >
-                          Browse <ArrowRight size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                <div className="space-y-1.5">
+                  <p className={`text-sm font-semibold flex items-center gap-1.5 ${hasAnyAccess ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                    {hasAnyAccess ? <CheckCircle2 size={16} /> : <Lock size={16} />}
+                    {unlockedCount} of {modules.length} accessible
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-500 font-medium">
+                    Total {modules.reduce((acc, m) => acc + m.totalCount, 0).toLocaleString()} items
+                  </p>
                 </div>
-              </motion.div>
+              </motion.button>
             );
         })}
         {domains.length === 0 && !loading && (
-          <div className="text-center p-12 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700">
-             <p className="font-medium text-slate-500 dark:text-slate-400">No content modules found. Contact your administrator.</p>
+          <div className="col-span-full text-center p-16 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700">
+             <p className="text-lg font-bold text-slate-500 dark:text-slate-400">No departments available.</p>
           </div>
         )}
       </div>

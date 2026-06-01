@@ -765,23 +765,25 @@ async function startServer() {
       // 1. Get all active subscriptions for the user (including institution inheritance)
       const activeSubscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
 
-      // 2. Fetch all available content modules globally 
-      const allModules = await prisma.contentModule.findMany({ where: { isActive: true } });
-
-      // 3. Deduplicate modules based on domain + contentType (ignore different pricing userTypes)
-      const uniqueModulesMap = new Map();
-      allModules.forEach(mod => {
-        const key = `${mod.domain}_${mod.contentType}`;
-        // Keep the one with the highest totalCount if they vary, or just the first one
-        if (!uniqueModulesMap.has(key) || mod.totalCount > uniqueModulesMap.get(key).totalCount) {
-          uniqueModulesMap.set(key, mod);
-        }
+      // 2. Fetch real counts grouped by domain and contentType
+      const realCounts = await prisma.content.groupBy({
+        by: ['domain', 'contentType'],
+        _count: { id: true },
+        where: { status: 'Published' }
       });
-      const uniqueModules = Array.from(uniqueModulesMap.values());
+
+      // 3. Deduplicate and map
+      const uniqueModules = realCounts
+        .filter(rc => rc.domain && rc.contentType)
+        .map(rc => ({
+          id: `${rc.domain}_${rc.contentType}`,
+          domain: rc.domain as string,
+          contentType: rc.contentType as string,
+          totalCount: rc._count.id
+        }));
 
       // 4. Map status for each module to "locked" vs "unlocked"
       const accessMap = uniqueModules.map(mod => {
-        // Construct a mock content object to reuse the checker
         const mockContent = { domain: mod.domain, contentType: mod.contentType };
         return {
           ...mod,
