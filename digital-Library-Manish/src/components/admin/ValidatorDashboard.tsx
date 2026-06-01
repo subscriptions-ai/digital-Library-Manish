@@ -5,7 +5,7 @@ import {
   FileText, Eye, ChevronRight, Layers, Hash, Filter, CheckSquare,
   Square, BarChart3, Zap, Calendar, Database, GitCommit, User,
   ArrowRightCircle, Activity, Trash2, Download, Search, RefreshCw,
-  ScanLine
+  ScanLine, EyeOff
 } from 'lucide-react';
 import { ViewerValidationPanel } from './ViewerValidationPanel';
 
@@ -116,6 +116,7 @@ export function ValidatorDashboard() {
   const [selectedReport, setSelectedReport] = useState<ValidationReport | null>(null);
   const [progress, setProgress]             = useState<ValidationProgress | null>(null);
   const [successScreen, setSuccessScreen]   = useState(false);
+  const [hideOverlay, setHideOverlay]       = useState(false);
   const [modalTab, setModalTab]             = useState<ModalTab>('issues');
   const [selectedIds, setSelectedIds]       = useState<Set<string>>(new Set());
   const [filterType, setFilterType]         = useState<string>('All');
@@ -166,6 +167,7 @@ export function ValidatorDashboard() {
           setProgress(prev => {
             if (prev?.isRunning && !data.isRunning) {
               setSuccessScreen(true);
+              setHideOverlay(false);
               fetchReports();
               setTimeout(() => setSuccessScreen(false), 4500);
             }
@@ -196,6 +198,7 @@ export function ValidatorDashboard() {
       if (!res.ok) throw new Error();
       toast.dismiss(tid);
       toast.success('Validation triggered! Running in background.');
+      setHideOverlay(false);
       setProgress({ isRunning: true, totalItems: 1, scannedItems: 0, issuesFound: 0, currentTask: 'Initializing Engine...' });
     } catch {
       toast.dismiss(tid);
@@ -404,7 +407,7 @@ export function ValidatorDashboard() {
       </div>
 
       {/* ── Progress overlay ── */}
-      {(isRunning || successScreen) && (
+      {(isRunning || successScreen) && !hideOverlay && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden">
             <div className="p-8 text-center bg-gradient-to-b from-blue-50 to-white border-b border-slate-100">
@@ -422,11 +425,19 @@ export function ValidatorDashboard() {
               <h2 className="text-3xl font-bold text-slate-800 mb-2 tracking-tight">
                 {successScreen ? 'Validation Complete!' : 'System Validation Running'}
               </h2>
-              <p className="text-slate-500 max-w-md mx-auto text-sm leading-relaxed">
+              <p className="text-slate-500 max-w-md mx-auto text-sm leading-relaxed mb-4">
                 {successScreen
                   ? 'The scan finished. A fresh detailed report is ready.'
                   : 'Scanning your database for broken links, duplicate files, missing metadata, and dummy data.'}
               </p>
+              {!successScreen && (
+                <button
+                  onClick={() => setHideOverlay(true)}
+                  className="mx-auto flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-semibold transition"
+                >
+                  <EyeOff size={16} /> Hide to Background
+                </button>
+              )}
             </div>
             <div className="p-8 pb-10 bg-slate-50">
               <div className="flex justify-between items-end mb-3">

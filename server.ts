@@ -4482,7 +4482,7 @@ async function startServer() {
   };
 
   // ── Concurrent link-check helper (batch of LINK_BATCH_SIZE) ───────────────
-  const LINK_BATCH_SIZE = 10;
+  const LINK_BATCH_SIZE = 100;
 
   const checkLinksBatch = async (
     items: Array<{ id: string; title: string; contentType: string; url: string; urlLabel: string }>
