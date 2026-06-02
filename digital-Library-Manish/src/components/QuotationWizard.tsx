@@ -379,7 +379,7 @@ export function QuotationWizard() {
       return [
         String(idx + 1).padStart(2, '0'),
         (dept?.name || '').toUpperCase(),
-        formData.duration,
+        '998439',
         `Rs.${basePricePerDept.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
         `Rs.${gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
         `Rs.${(basePricePerDept + gst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
@@ -388,7 +388,7 @@ export function QuotationWizard() {
 
     autoTable(doc, {
       startY: tableStartY,
-      head: [['SR.NO', 'DEPARTMENT', 'DURATION', 'BASE PRICE', 'GST (18%)', 'TOTAL']],
+      head: [['SR.NO', 'DEPARTMENT', 'SAC CODE', 'BASE PRICE', 'GST (18%)', 'TOTAL']],
       body: deptRows,
       theme: 'plain',
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold', cellPadding: { top: 3, bottom: 3, left: 3, right: 3 } },
@@ -1283,7 +1283,7 @@ export function QuotationWizard() {
                         <tr>
                           <th className="px-5 py-3 font-bold uppercase tracking-widest">SR.NO</th>
                           <th className="px-5 py-3 font-bold uppercase tracking-widest">Department</th>
-                          <th className="px-5 py-3 font-bold uppercase tracking-widest">Duration</th>
+                          <th className="px-5 py-3 font-bold uppercase tracking-widest">SAC Code</th>
                           <th className="px-5 py-3 font-bold uppercase tracking-widest text-right">Base Price</th>
                           <th className="px-5 py-3 font-bold uppercase tracking-widest text-right">GST (18%)</th>
                           <th className="px-5 py-3 font-bold uppercase tracking-widest text-right">Total</th>
@@ -1297,7 +1297,7 @@ export function QuotationWizard() {
                             <tr key={deptId} className="hover:bg-slate-50 transition-colors">
                               <td className="px-5 py-3 text-blue-500 font-bold">{String(idx + 1).padStart(2, '0')}</td>
                               <td className="px-5 py-3 font-black text-slate-800 uppercase">{dept?.name}</td>
-                              <td className="px-5 py-3 text-slate-500">{formData.duration}</td>
+                              <td className="px-5 py-3 font-medium text-slate-500">998439</td>
                               <td className="px-5 py-3 font-bold text-slate-800 text-right">₹{basePricePerDept.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                               <td className="px-5 py-3 font-bold text-slate-500 text-right">₹{gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                               <td className="px-5 py-3 font-black text-blue-600 text-right">₹{(basePricePerDept + gst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
