@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { DOMAINS } from "../constants";
+import { HERO_IMAGES } from "./DomainLandingPage";
 import { 
   BookOpen, 
   ShieldCheck, 
@@ -76,9 +78,11 @@ const FUNCTIONALITIES = [
 
 export function DigitalLibrary() {
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [domainCounts, setDomainCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Fetch content type counts
     fetch("/api/public/content-type-counts")
       .then(res => res.json())
       .then(data => {
@@ -88,6 +92,16 @@ export function DigitalLibrary() {
       .catch(err => {
         console.error("Error fetching content counts:", err);
         setLoading(false);
+      });
+
+    // Fetch domain counts
+    fetch("/api/public/domain-counts")
+      .then(res => res.json())
+      .then(data => {
+        setDomainCounts(data);
+      })
+      .catch(err => {
+        console.error("Error fetching domain counts:", err);
       });
   }, []);
 
@@ -129,7 +143,7 @@ export function DigitalLibrary() {
                 </span>
               </h1>
               <p className="mt-6 text-lg text-slate-400 leading-relaxed max-w-xl">
-                We don't just host PDFs. We engineer advanced digital ecosystems. 
+                We don't just store static files. We engineer advanced digital ecosystems. 
                 Experience the market's most technically advanced repository, designed 
                 specifically for top-tier institutions, researchers, and forward-thinking librarians.
               </p>
@@ -265,6 +279,53 @@ export function DigitalLibrary() {
                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">{offer.name}</div>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── DOMAINS SECTION (Cards with Images) ───────────────────────────── */}
+      <section className="py-24 bg-white relative">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-sm font-bold tracking-widest text-indigo-600 uppercase mb-3">Explore by Department</h2>
+            <h3 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">
+              Dive into our Specialized Domains
+            </h3>
+            <p className="mt-5 text-lg text-slate-600">
+              Access highly curated, peer-reviewed content meticulously organized across 25+ specialized academic departments.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {DOMAINS.map((domain, i) => {
+              const bgImg = HERO_IMAGES[domain.id] || "https://images.unsplash.com/photo-1456406644174-8ddd4cd52a06?w=900&q=80";
+              const count = domainCounts[domain.name] || 0;
+              return (
+                <Link
+                  to={`/domain/${domain.id}`}
+                  key={domain.id}
+                  className="group relative overflow-hidden rounded-3xl bg-slate-100 shadow-md hover:shadow-2xl transition-all h-64 flex flex-col justify-end"
+                >
+                  <div className="absolute inset-0 z-0">
+                    <img 
+                      src={bgImg} 
+                      alt={domain.name} 
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
+                  </div>
+                  <div className="relative z-10 p-6">
+                    <h4 className="text-xl font-bold text-white mb-1 group-hover:text-blue-400 transition-colors">
+                      {domain.name}
+                    </h4>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-blue-200 backdrop-blur-md">
+                      <Database size={12} />
+                      {count.toLocaleString("en-IN")} Items Available
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>

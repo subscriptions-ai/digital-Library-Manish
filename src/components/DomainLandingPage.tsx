@@ -39,7 +39,7 @@ function priceForPlan(m: PricingModule, plan: PlanType) {
 }
 
 // ─── Domain → Unsplash hero image map ────────────────────────────────────────
-const HERO_IMAGES: Record<string, string> = {
+export const HERO_IMAGES: Record<string, string> = {
   "electrical-engineering":    "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=900&q=80",
   "computer-it":               "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&q=80",
   "medical-sciences":          "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
