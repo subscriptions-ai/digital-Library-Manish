@@ -336,17 +336,56 @@ export const DOMAINS: Domain[] = [
     themeColor: "neutral"
   },
   {
-    id: "social-sciences",
-    name: "Social Sciences",
-    description: "Social Sciences are a group of academic disciplines dedicated to examining society. This branch of science studies how people interact with each other, behave, develop as a culture, and influence the world.",
-    importance: "Social sciences research is vital for understanding the complexities of human society. It informs public policy, social justice efforts, and our understanding of global cultural trends.",
-    contentAvailable: ["35+ Social Science Journals", "Demographic Reports", "Sociological Case Studies", "Cultural Documentary Videos"],
+    id: "dental",
+    name: "Dental",
+    description: "Dental science covers the study, diagnosis, prevention, and treatment of diseases, disorders, and conditions of the oral cavity.",
+    importance: "Dental research is essential for advancing oral healthcare, innovating new treatments, and improving overall systemic health.",
+    contentAvailable: ["25+ Dental Journals", "Clinical Case Studies", "Surgical Videos", "Orthodontic Reports"],
     contentTypes: DEFAULT_CONTENT_TYPES,
-    whySubscribe: "Explore research in anthropology, economics, political science, and sociology. Our library provides the critical perspectives needed to navigate and improve our social world.",
-    whoShouldSubscribe: ["Social Science Students", "Sociologists", "Economists", "NGOs", "Policy Research Centers"],
-    features: ["Social Science Journal Access", "Sociology E-Books", "Documentary Video Series", "Research Theses", "Social Policy Newsletters"],
-    icon: "Users",
-    themeColor: "gray"
+    whySubscribe: "Access the latest research in periodontology, prosthodontics, and oral surgery. Our library provides the clinical data needed for modern dental practice.",
+    whoShouldSubscribe: ["Dental Students", "Dentists", "Oral Surgeons", "Dental Clinics", "Research Labs"],
+    features: ["Dental Journal Access", "Clinical Textbooks", "Procedural Videos", "Research Theses", "Dental Newsletters"],
+    icon: "Stethoscope",
+    themeColor: "teal"
+  },
+  {
+    id: "physiotherapy",
+    name: "Physiotherapy",
+    description: "Physiotherapy focuses on physical rehabilitation, injury prevention, and health and fitness.",
+    importance: "Physiotherapy research helps in developing new rehabilitation techniques, improving mobility, and managing pain effectively.",
+    contentAvailable: ["20+ Physiotherapy Journals", "Rehabilitation Guides", "Exercise Videos", "Clinical Trials"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whySubscribe: "Explore research in biomechanics, sports therapy, and neuro-rehabilitation. Stay updated with evidence-based physical therapy.",
+    whoShouldSubscribe: ["Physiotherapy Students", "Physical Therapists", "Sports Clinics", "Rehabilitation Centers", "Hospitals"],
+    features: ["Physiotherapy Journal Access", "Rehab E-Books", "Therapy Videos", "Research Theses", "Health Newsletters"],
+    icon: "Activity",
+    themeColor: "blue"
+  },
+  {
+    id: "commerce",
+    name: "Commerce",
+    description: "Commerce covers the exchange of goods and services, including legal, economic, political, social, cultural, and technological systems.",
+    importance: "Commerce research is vital for understanding market dynamics, consumer behavior, and global trade.",
+    contentAvailable: ["30+ Commerce Journals", "Market Analysis", "Financial Reports", "Trade Case Studies"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whySubscribe: "Access comprehensive research in accounting, finance, and international business. Our library supports deep economic and commercial analysis.",
+    whoShouldSubscribe: ["Commerce Students", "Economists", "Business Analysts", "Financial Institutions", "Corporate Researchers"],
+    features: ["Commerce Journal Access", "Finance E-Books", "Market Trend Videos", "Research Theses", "Economic Newsletters"],
+    icon: "Briefcase",
+    themeColor: "slate"
+  },
+  {
+    id: "arts",
+    name: "Arts",
+    description: "The Arts encompass a broad range of human practices of creative expression, storytelling, and cultural commentary.",
+    importance: "Arts research preserves cultural heritage, fosters creativity, and provides critical perspectives on human history and society.",
+    contentAvailable: ["25+ Arts Journals", "Literary Critiques", "Art History Videos", "Cultural Case Studies"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whySubscribe: "Explore research in literature, performing arts, and visual arts. Our library provides the critical insights needed for humanistic studies.",
+    whoShouldSubscribe: ["Arts Students", "Historians", "Literary Critics", "Museums", "Cultural Institutions"],
+    features: ["Arts Journal Access", "Humanities E-Books", "Cultural Documentaries", "Research Theses", "Arts Newsletters"],
+    icon: "BookOpen",
+    themeColor: "pink"
   }
 ];
 
