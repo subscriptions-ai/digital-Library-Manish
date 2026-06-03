@@ -399,7 +399,7 @@ export function DomainLandingPage() {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {contentCounts.map((ct, i) => {
+            {contentCounts.filter(ct => apiLoading || ct.count > 0).map((ct, i) => {
               const meta = CT_META[ct.type] || { icon: Icons.BookOpen, desc: "" };
               const CTIcon = meta.icon;
               const ctInfo = domain.contentTypes.find(c => c.type === ct.type);

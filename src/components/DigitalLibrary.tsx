@@ -92,12 +92,12 @@ export function DigitalLibrary() {
   }, []);
 
   const OFFERINGS = [
-    { name: "Peer-Reviewed Journals", count: counts["Periodicals"] || 3500, icon: <FileText size={24} />, color: "text-indigo-600", bg: "bg-indigo-100" },
-    { name: "Academic E-Books", count: counts["Books"] || 15000, icon: <Book size={24} />, color: "text-blue-600", bg: "bg-blue-100" },
-    { name: "Research Theses", count: counts["Theses"] || 8000, icon: <GraduationCap size={24} />, color: "text-emerald-600", bg: "bg-emerald-100" },
-    { name: "Conference Proceedings", count: counts["Conference Proceedings"] || 2200, icon: <Presentation size={24} />, color: "text-amber-600", bg: "bg-amber-100" },
-    { name: "Educational Videos", count: counts["Educational Videos"] || 1500, icon: <Video size={24} />, color: "text-rose-600", bg: "bg-rose-100" },
-    { name: "Subject Newsletters", count: counts["Newsletters"] || 600, icon: <Newspaper size={24} />, color: "text-teal-600", bg: "bg-teal-100" }
+    { name: "Peer-Reviewed Journals", count: counts["Periodicals"] ?? 0, icon: <FileText size={24} />, color: "text-indigo-600", bg: "bg-indigo-100" },
+    { name: "Academic E-Books", count: counts["Books"] ?? 0, icon: <Book size={24} />, color: "text-blue-600", bg: "bg-blue-100" },
+    { name: "Research Theses", count: counts["Theses"] ?? 0, icon: <GraduationCap size={24} />, color: "text-emerald-600", bg: "bg-emerald-100" },
+    { name: "Conference Proceedings", count: counts["Conference Proceedings"] ?? 0, icon: <Presentation size={24} />, color: "text-amber-600", bg: "bg-amber-100" },
+    { name: "Educational Videos", count: counts["Educational Videos"] ?? 0, icon: <Video size={24} />, color: "text-rose-600", bg: "bg-rose-100" },
+    { name: "Subject Newsletters", count: counts["Newsletters"] ?? 0, icon: <Newspaper size={24} />, color: "text-teal-600", bg: "bg-teal-100" }
   ];
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-500 selection:text-white">
@@ -250,7 +250,7 @@ export function DigitalLibrary() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {OFFERINGS.map((offer, i) => (
+            {OFFERINGS.filter(offer => loading || offer.count > 0).map((offer, i) => (
               <motion.div 
                 key={i}
                 whileHover={{ y: -5 }}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -22,7 +22,10 @@ import {
   Lock,
   Layers,
   Database,
-  Network
+  Network,
+  Settings,
+  Heart,
+  Clock
 } from "lucide-react";
 
 const ADVANCED_FEATURES = [
@@ -48,39 +51,54 @@ const ADVANCED_FEATURES = [
   }
 ];
 
-const OFFERINGS = [
-  { name: "Peer-Reviewed Journals", count: "3,500+", icon: <FileText size={24} />, color: "text-indigo-600", bg: "bg-indigo-100" },
-  { name: "Academic E-Books", count: "15,000+", icon: <Book size={24} />, color: "text-blue-600", bg: "bg-blue-100" },
-  { name: "Research Theses", count: "8,000+", icon: <GraduationCap size={24} />, color: "text-emerald-600", bg: "bg-emerald-100" },
-  { name: "Conference Proceedings", count: "2,200+", icon: <Presentation size={24} />, color: "text-amber-600", bg: "bg-amber-100" },
-  { name: "Educational Videos", count: "1,500+", icon: <Video size={24} />, color: "text-rose-600", bg: "bg-rose-100" },
-  { name: "Subject Newsletters", count: "600+", icon: <Newspaper size={24} />, color: "text-teal-600", bg: "bg-teal-100" }
-];
-
 const FUNCTIONALITIES = [
   {
-    title: "Unified Admin Dashboard",
-    desc: "Librarians get full granular control over user management, subscription renewals, and customized department access.",
+    title: "Fully Functional Librarian Dashboard",
+    desc: "Manage all your students, monitor institutional usage, and control subscriptions easily from a centralized and powerful admin panel.",
     icon: <ShieldCheck size={20} className="text-white" />
   },
   {
-    title: "COUNTER-Compliant Analytics",
-    desc: "Generate standard usage reports instantly to justify ROI and track exact content engagement campus-wide.",
-    icon: <BarChart3 size={20} className="text-white" />
+    title: "Student Content Access Management",
+    desc: "Fine-grained control over who accesses what. Assign specific departments, journals, and content types directly to individual students.",
+    icon: <Settings size={20} className="text-white" />
   },
   {
-    title: "Seamless Remote Access",
-    desc: "Enable students and faculty to access the library from anywhere in the world using secure proxy networks.",
-    icon: <Globe size={20} className="text-white" />
+    title: "Smart 'Continue Reading' & Progress Tracking",
+    desc: "Our system remembers exactly where you left off. Start reading a thesis on your laptop, and seamlessly resume on your phone.",
+    icon: <Clock size={20} className="text-white" />
   },
   {
-    title: "Multi-Disciplinary Hub",
-    desc: "Access 25+ specialized domains, from applied mechanics to physiotherapy, under one single subscription umbrella.",
-    icon: <Layers size={20} className="text-white" />
+    title: "Wishlisting & Personal Favorites",
+    desc: "Users can effortlessly favorite journals, videos, and e-books to build their own personalized quick-access digital bookshelf.",
+    icon: <Heart size={20} className="text-white" />
   }
 ];
 
 export function DigitalLibrary() {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/public/content-type-counts")
+      .then(res => res.json())
+      .then(data => {
+        setCounts(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching content counts:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  const OFFERINGS = [
+    { name: "Peer-Reviewed Journals", count: counts["Periodicals"] ?? 0, icon: <FileText size={24} />, color: "text-indigo-600", bg: "bg-indigo-100" },
+    { name: "Academic E-Books", count: counts["Books"] ?? 0, icon: <Book size={24} />, color: "text-blue-600", bg: "bg-blue-100" },
+    { name: "Research Theses", count: counts["Theses"] ?? 0, icon: <GraduationCap size={24} />, color: "text-emerald-600", bg: "bg-emerald-100" },
+    { name: "Conference Proceedings", count: counts["Conference Proceedings"] ?? 0, icon: <Presentation size={24} />, color: "text-amber-600", bg: "bg-amber-100" },
+    { name: "Educational Videos", count: counts["Educational Videos"] ?? 0, icon: <Video size={24} />, color: "text-rose-600", bg: "bg-rose-100" },
+    { name: "Subject Newsletters", count: counts["Newsletters"] ?? 0, icon: <Newspaper size={24} />, color: "text-teal-600", bg: "bg-teal-100" }
+  ];
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-500 selection:text-white">
       
@@ -232,7 +250,7 @@ export function DigitalLibrary() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {OFFERINGS.map((offer, i) => (
+            {OFFERINGS.filter(offer => loading || offer.count > 0).map((offer, i) => (
               <motion.div 
                 key={i}
                 whileHover={{ y: -5 }}
@@ -241,7 +259,9 @@ export function DigitalLibrary() {
                 <div className={`mb-4 flex h-16 w-16 items-center justify-center rounded-2xl ${offer.bg} ${offer.color}`}>
                   {offer.icon}
                 </div>
-                <div className="text-2xl font-bold text-white mb-1">{offer.count}</div>
+                <div className="text-2xl font-bold text-white mb-1">
+                  {loading ? <span className="animate-pulse bg-slate-700 h-6 w-16 rounded inline-block"></span> : `${offer.count.toLocaleString("en-IN")}+`}
+                </div>
                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">{offer.name}</div>
               </motion.div>
             ))}
