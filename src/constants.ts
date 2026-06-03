@@ -386,6 +386,19 @@ export const DOMAINS: Domain[] = [
     features: ["Arts Journal Access", "Humanities E-Books", "Cultural Documentaries", "Research Theses", "Arts Newsletters"],
     icon: "BookOpen",
     themeColor: "pink"
+  },
+  {
+    id: "science",
+    name: "Science",
+    description: "Science is the systematic enterprise that builds and organizes knowledge in the form of testable explanations and predictions about the universe.",
+    importance: "Scientific research drives innovation, solves critical global challenges, and enhances our fundamental understanding of the natural world.",
+    contentAvailable: ["50+ Science Journals", "Experimental Protocols", "Lab Demonstration Videos", "Research Papers"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whySubscribe: "Access cutting-edge research across physics, biology, and chemistry. Our library supports comprehensive scientific inquiry and discovery.",
+    whoShouldSubscribe: ["Science Students", "Researchers", "Laboratories", "Academic Institutions", "R&D Centers"],
+    features: ["Science Journal Access", "Reference Textbooks", "Experiment Videos", "Research Theses", "Scientific Newsletters"],
+    icon: "Atom",
+    themeColor: "sky"
   }
 ];
 

@@ -68,6 +68,7 @@ const HERO_IMAGES: Record<string, string> = {
   "physiotherapy":             "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=900&q=80",
   "commerce":                  "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=900&q=80",
   "arts":                      "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=900&q=80",
+  "science":                   "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=900&q=80",
 };
 
 // ─── Content type icon + description map ─────────────────────────────────────
