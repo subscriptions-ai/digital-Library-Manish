@@ -64,7 +64,7 @@ const HERO_IMAGES: Record<string, string> = {
   "architecture":              "https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=900&q=80",
   "material-science":          "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=900&q=80",
   "applied-mechanics":         "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?w=900&q=80",
-  "dental":                    "https://images.unsplash.com/photo-1598256989800-fea5f002b8d0?w=900&q=80",
+  "dental":                    "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=900&q=80",
   "physiotherapy":             "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=900&q=80",
   "commerce":                  "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=900&q=80",
   "arts":                      "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=900&q=80",
