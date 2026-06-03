@@ -205,6 +205,25 @@ async function startServer() {
   });
 
   // Public Domain Counts for Navbar
+  // Public Stats by specific Content Type
+  app.get("/api/public/content-type-counts", async (req, res) => {
+    try {
+      const groups = await prisma.content.groupBy({
+        by: ['contentType'],
+        where: { status: { not: 'Draft' } },
+        _count: { id: true }
+      });
+      const countsMap = groups.reduce((acc: any, g: any) => {
+        if (g.contentType) acc[g.contentType] = g._count.id;
+        return acc;
+      }, {});
+      res.json(countsMap);
+    } catch (error) {
+      console.error("Content type counts error:", error);
+      res.status(500).json({ error: "Failed to fetch content type counts" });
+    }
+  });
+
   app.get("/api/public/domain-counts", async (req, res) => {
     try {
       const groups = await prisma.content.groupBy({

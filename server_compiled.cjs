@@ -7084,6 +7084,23 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch counts" });
     }
   });
+  app.get("/api/public/content-type-counts", async (req, res) => {
+    try {
+      const groups = await prisma2.content.groupBy({
+        by: ["contentType"],
+        where: { status: { not: "Draft" } },
+        _count: { id: true }
+      });
+      const countsMap = groups.reduce((acc, g) => {
+        if (g.contentType) acc[g.contentType] = g._count.id;
+        return acc;
+      }, {});
+      res.json(countsMap);
+    } catch (error) {
+      console.error("Content type counts error:", error);
+      res.status(500).json({ error: "Failed to fetch content type counts" });
+    }
+  });
   app.get("/api/public/domain-counts", async (req, res) => {
     try {
       const groups = await prisma2.content.groupBy({
@@ -7527,15 +7544,17 @@ async function startServer() {
   app.get("/api/user/content-access", authenticateJWT, async (req, res) => {
     try {
       const activeSubscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const allModules = await prisma2.contentModule.findMany({ where: { isActive: true } });
-      const uniqueModulesMap = /* @__PURE__ */ new Map();
-      allModules.forEach((mod) => {
-        const key = `${mod.domain}_${mod.contentType}`;
-        if (!uniqueModulesMap.has(key) || mod.totalCount > uniqueModulesMap.get(key).totalCount) {
-          uniqueModulesMap.set(key, mod);
-        }
+      const realCounts = await prisma2.content.groupBy({
+        by: ["domain", "contentType"],
+        _count: { id: true },
+        where: { status: "Published" }
       });
-      const uniqueModules = Array.from(uniqueModulesMap.values());
+      const uniqueModules = realCounts.filter((rc) => rc.domain && rc.contentType).map((rc) => ({
+        id: `${rc.domain}_${rc.contentType}`,
+        domain: rc.domain,
+        contentType: rc.contentType,
+        totalCount: rc._count.id
+      }));
       const accessMap = uniqueModules.map((mod) => {
         const mockContent = { domain: mod.domain, contentType: mod.contentType };
         return {
@@ -10626,7 +10645,7 @@ async function startServer() {
       return false;
     }
   };
-  const LINK_BATCH_SIZE = 10;
+  const LINK_BATCH_SIZE = 100;
   const checkLinksBatch = async (items) => {
     const results = [];
     for (let i2 = 0; i2 < items.length; i2 += LINK_BATCH_SIZE) {

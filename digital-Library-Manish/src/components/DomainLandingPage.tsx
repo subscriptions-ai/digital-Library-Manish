@@ -182,9 +182,12 @@ export function DomainLandingPage() {
   const contentCounts: ContentSummaryItem[] =
     apiLoading
       ? domain?.contentTypes.map((ct) => ({ type: ct.type, count: 0 })) || []
-      : domainData?.content_summary?.length
-        ? domainData.content_summary
-        : domain?.contentTypes.map((ct) => ({ type: ct.type, count: parseInt(ct.count) || 0 })) || [];
+      : domainData?.content_summary
+        ? domain?.contentTypes.map(ct => {
+            const found = domainData.content_summary.find((s: any) => s.type === ct.type);
+            return { type: ct.type, count: found ? found.count : 0 };
+          }) || []
+        : domain?.contentTypes.map((ct) => ({ type: ct.type, count: 0 })) || [];
 
   // Always use SUBSCRIPTION_PLANS constants for the pricing section.
   // The API's pricing_modules are content-type modules (Books, Periodicals, etc.)
@@ -365,7 +368,7 @@ export function DomainLandingPage() {
                 <div className="mt-4 text-2xl font-extrabold text-slate-900">
                   {apiLoading ? "—" : (() => {
                     const bk = contentCounts.find(c => c.type === "Books");
-                    return bk && bk.count > 0 ? bk.count.toLocaleString("en-IN") + "+" : "500+";
+                    return bk ? bk.count.toLocaleString("en-IN") : "0";
                   })()}
                 </div>
                 <div className="text-xs font-bold uppercase tracking-widest text-slate-400">E-Books</div>
@@ -417,11 +420,7 @@ export function DomainLandingPage() {
                   <div className="text-sm font-semibold text-indigo-600 mt-1">
                     {apiLoading
                       ? <span className="inline-block h-4 w-20 bg-slate-200 rounded animate-pulse" />
-                      : ct.count > 0
-                        ? `${ct.count.toLocaleString("en-IN")}+ Available`
-                        : ctInfo?.count
-                          ? `${ctInfo.count} Available`
-                          : "—"
+                      : `${ct.count.toLocaleString("en-IN")} Available`
                     }
                   </div>
                   <p className="mt-3 text-xs text-slate-500 leading-relaxed">{desc}</p>
