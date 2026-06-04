@@ -281,6 +281,12 @@ async function startServer() {
       };
       await sendMail(mailOptions);
 
+      console.log(`\n=========================================`);
+      console.log(`🔑 OTP FOR VERIFICATION (TESTING):`);
+      console.log(`📧 Email: ${email}`);
+      console.log(`🔢 OTP: ${otp}`);
+      console.log(`=========================================\n`);
+
       res.json({ otpSent: true });
     } catch (err) {
       console.error("OTP send error:", err);
