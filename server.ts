@@ -1823,8 +1823,15 @@ async function startServer() {
         },
         orderBy: { createdAt: 'desc' }
       });
-      // Strip passwords
-      const sanitized = users.map(({ password: _, ...u }) => u);
+      
+      const verifications = await (prisma as any).emailVerification.findMany();
+      const verifiedEmails = new Set(verifications.filter((v: any) => v.isVerified).map((v: any) => v.email));
+
+      // Strip passwords and append verification status
+      const sanitized = users.map(({ password: _, ...u }) => ({
+        ...u,
+        isEmailVerified: verifiedEmails.has(u.email)
+      }));
       res.json(sanitized);
     } catch (err) {
       console.error('GET /api/admin/users error:', err);
@@ -3388,7 +3395,16 @@ async function startServer() {
       const requests = await prisma.demoRequest.findMany({
         orderBy: { createdAt: "desc" }
       });
-      res.json(requests);
+      
+      const verifications = await (prisma as any).emailVerification.findMany();
+      const verifiedEmails = new Set(verifications.filter((v: any) => v.isVerified).map((v: any) => v.email));
+
+      const enhancedRequests = requests.map((req: any) => ({
+        ...req,
+        isEmailVerified: verifiedEmails.has(req.institutionalEmail)
+      }));
+
+      res.json(enhancedRequests);
     } catch (error) {
       console.error("Failed to fetch demo requests:", error);
       res.status(500).json({ error: "Failed to fetch demo requests" });

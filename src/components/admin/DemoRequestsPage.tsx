@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
-import { Mail, Phone, Building2, MapPin, Briefcase, CheckCircle2, Clock, Search, X, Key } from 'lucide-react';
+import { Mail, Phone, Building2, MapPin, Briefcase, CheckCircle2, Clock, Search, X, Key, ShieldCheck, ShieldAlert, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export function DemoRequestsPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [filterVerification, setFilterVerification] = useState('all'); // 'all', 'verified', 'unverified'
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
@@ -118,8 +122,54 @@ export function DemoRequestsPage() {
       req.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.institutionalEmail?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || req.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesVerif = filterVerification === 'all' 
+                         || (filterVerification === 'verified' && req.isEmailVerified)
+                         || (filterVerification === 'unverified' && !req.isEmailVerified);
+    return matchesSearch && matchesStatus && matchesVerif;
   });
+
+  const exportCSV = () => {
+    const headers = ['Date', 'Institution', 'Type', 'Contact Person', 'Email', 'Department', 'Status', 'Verified'];
+    const rows = filteredRequests.map(req => [
+      `"${format(new Date(req.createdAt), 'MMM dd yyyy')}"`,
+      `"${req.institutionName || ''}"`,
+      `"${req.requestType || 'Institution'}"`,
+      `"${req.fullName || ''}"`,
+      `"${req.institutionalEmail || ''}"`,
+      `"${req.department || ''}"`,
+      `"${req.status || ''}"`,
+      `"${req.isEmailVerified ? 'Yes' : 'No'}"`
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'demo_requests_export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.text('Demo Requests Export', 14, 15);
+    const tableData = filteredRequests.map(req => [
+      format(new Date(req.createdAt), 'MMM dd, yyyy'),
+      req.institutionName || '',
+      req.fullName || '',
+      req.institutionalEmail || '',
+      req.status || '',
+      req.isEmailVerified ? 'Yes' : 'No'
+    ]);
+    autoTable(doc, {
+      head: [['Date', 'Institution', 'Contact', 'Email', 'Status', 'Verified']],
+      body: tableData,
+      startY: 20,
+    });
+    doc.save('demo_requests_export.pdf');
+    setShowExportMenu(false);
+  };
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -159,12 +209,24 @@ export function DemoRequestsPage() {
             className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <div className="relative">
+            <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <select
+              value={filterVerification}
+              onChange={e => setFilterVerification(e.target.value)}
+              className="pl-9 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 outline-none appearance-none"
+            >
+              <option value="all">All Verification</option>
+              <option value="verified">Verified Emails</option>
+              <option value="unverified">Unverified Emails</option>
+            </select>
+          </div>
           {['All', 'Pending', 'Contacted', 'Completed'].map(status => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 statusFilter === status
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
@@ -173,6 +235,20 @@ export function DemoRequestsPage() {
               {status}
             </button>
           ))}
+          <div className="relative">
+            <button 
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors text-slate-700"
+            >
+              <Download size={15} /> Export
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
+                <button onClick={exportCSV} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 font-medium text-slate-700 border-b border-slate-100">Export as CSV</button>
+                <button onClick={exportPDF} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 font-medium text-slate-700">Export as PDF</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -208,7 +284,18 @@ export function DemoRequestsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="font-medium text-slate-900">{req.fullName}</div>
-                    <div className="text-xs text-slate-500">{req.institutionalEmail}</div>
+                    <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                      {req.institutionalEmail}
+                      {req.isEmailVerified ? (
+                        <span className="inline-flex items-center gap-0.5 text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ml-1">
+                          <ShieldCheck size={8} /> Verified
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 text-amber-600 bg-amber-50 px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ml-1">
+                          <ShieldAlert size={8} /> Unverified
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">

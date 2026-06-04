@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, ShieldAlert, ShieldCheck, Mail, Calendar, CreditCard,
   ChevronDown, Pencil, Trash2, RefreshCw, X, Save, Loader2,
-  UserPlus, Filter, Building2
+  UserPlus, Filter, Building2, Download
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ROLES = ['SuperAdmin', 'SubscriptionManager', 'Institution', 'Student', 'Subscriber'];
 
@@ -28,7 +30,9 @@ export function UserManager() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('all');
+  const [filterVerification, setFilterVerification] = useState('all'); // 'all', 'verified', 'unverified'
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Edit modal
   const [editUser, setEditUser] = useState<any | null>(null);
@@ -152,10 +156,52 @@ export function UserManager() {
     }
   };
 
-  const filtered = users.filter(u =>
-    u.email?.toLowerCase().includes(search.toLowerCase()) ||
-    (u.displayName?.toLowerCase() || '').includes(search.toLowerCase())
-  );
+  const filtered = users.filter(u => {
+    const searchMatch = u.email?.toLowerCase().includes(search.toLowerCase()) || (u.displayName?.toLowerCase() || '').includes(search.toLowerCase());
+    const verifMatch = filterVerification === 'all' 
+                       || (filterVerification === 'verified' && u.isEmailVerified)
+                       || (filterVerification === 'unverified' && !u.isEmailVerified);
+    return searchMatch && verifMatch;
+  });
+
+  const exportCSV = () => {
+    const headers = ['Name', 'Email', 'Role', 'Status', 'Email Verified'];
+    const rows = filtered.map(u => [
+      `"${u.displayName || ''}"`,
+      `"${u.email || ''}"`,
+      `"${u.role || ''}"`,
+      `"${u.isBlocked ? 'Blocked' : 'Active'}"`,
+      `"${u.isEmailVerified ? 'Yes' : 'No'}"`
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'users_export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.text('User Management Export', 14, 15);
+    const tableData = filtered.map(u => [
+      u.displayName || 'Unnamed',
+      u.email || '',
+      u.role || '',
+      u.isBlocked ? 'Blocked' : 'Active',
+      u.isEmailVerified ? 'Yes' : 'No'
+    ]);
+    autoTable(doc, {
+      head: [['Name', 'Email', 'Role', 'Status', 'Verified']],
+      body: tableData,
+      startY: 20,
+    });
+    doc.save('users_export.pdf');
+    setShowExportMenu(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -197,9 +243,35 @@ export function UserManager() {
             {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
+        <div className="relative">
+          <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+          <select
+            value={filterVerification}
+            onChange={e => setFilterVerification(e.target.value)}
+            className="pl-9 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 outline-none appearance-none"
+          >
+            <option value="all">All Verification</option>
+            <option value="verified">Verified Emails</option>
+            <option value="unverified">Unverified Emails</option>
+          </select>
+        </div>
         <button onClick={fetchUsers} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
-          <RefreshCw size={15} /> Refresh
+          <RefreshCw size={15} />
         </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors text-slate-700"
+          >
+            <Download size={15} /> Export
+          </button>
+          {showExportMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
+              <button onClick={exportCSV} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 font-medium text-slate-700 border-b border-slate-100">Export as CSV</button>
+              <button onClick={exportPDF} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 font-medium text-slate-700">Export as PDF</button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -239,7 +311,18 @@ export function UserManager() {
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-slate-500 flex items-center gap-1"><Mail size={11} />{user.email}</div>
+                          <div className="text-xs text-slate-500 flex items-center gap-1">
+                            <Mail size={11} />{user.email}
+                            {user.isEmailVerified ? (
+                              <span className="inline-flex items-center gap-0.5 text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ml-1">
+                                <ShieldCheck size={10} /> Verified
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ml-1">
+                                <ShieldAlert size={10} /> Unverified
+                              </span>
+                            )}
+                          </div>
                           {user.organization && <div className="text-xs text-slate-400 mt-0.5">{user.organization}</div>}
                         </div>
                       </div>
