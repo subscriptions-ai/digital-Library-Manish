@@ -7,6 +7,7 @@ import { OTPVerifier } from "./OTPVerifier";
 
 export function Signup() {
   const navigate = useNavigate();
+  const { signup } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
