@@ -3,7 +3,7 @@ import { ShieldCheck, Zap, BarChart3, Users, Globe, Check, ArrowRight, BookOpen,
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { motion } from "motion/react";
-import { OTPVerifier } from "./OTPVerifier";
+import { EmailVerificationInput } from "./EmailVerificationInput";
 
 import { DOMAINS } from "../constants";
 
@@ -26,6 +26,8 @@ export function RequestDemo() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [pincodeLoading, setPincodeLoading] = useState(false);
 
   // Pincode auto-fetch logic
@@ -72,21 +74,8 @@ export function RequestDemo() {
       });
 
       if (response.ok) {
+        setSuccess(true);
         toast.success("Demo Request Received! Our team will contact you shortly.");
-        setFormData({
-          fullName: "",
-          institutionalEmail: "",
-          institutionName: "",
-          designation: "",
-          whatsappNumber: "",
-          pincode: "",
-          city: "",
-          state: "",
-          country: "",
-          fullAddress: "",
-          department: "",
-          requestType: "Institution"
-        });
       } else {
         throw new Error("Failed to submit request");
       }
@@ -95,40 +84,41 @@ export function RequestDemo() {
       toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
-      setIsOTPModalOpen(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.fullName || !formData.institutionalEmail || !formData.institutionName || !formData.pincode || !formData.department) {
+    if (!isEmailVerified) {
+      toast.error("Please verify your email address first");
+      return;
+    }
+
+    if (!formData.fullName || !formData.institutionName || !formData.pincode || !formData.department) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    setLoading(true);
-    try {
-      const res = await fetch('/api/verify/check-or-send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.institutionalEmail })
-      });
-      const data = await res.json();
-      
-      if (res.ok && data.verified) {
-        await proceedWithSubmit();
-      } else if (res.ok && data.otpSent) {
-        setIsOTPModalOpen(true);
-      } else {
-        toast.error(data.error || 'Failed to initiate verification');
-      }
-    } catch (error: any) {
-      toast.error('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    await proceedWithSubmit();
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-lg border border-slate-100">
+          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Check size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Request Submitted!</h2>
+          <p className="text-slate-600 mb-6">Thank you for your interest. Our team will review your request and contact you within 24-48 hours.</p>
+          <Link to="/" className="inline-block bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors">
+            Return Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -326,33 +316,29 @@ export function RequestDemo() {
                     {/* Personal Details */}
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 bg-slate-50/50 p-4 rounded-xl border border-slate-100 md:col-span-2">
+                          <EmailVerificationInput
+                            label={formData.requestType === 'Student' ? 'Student / Personal Email *' : formData.requestType === 'Corporate' ? 'Work Email *' : 'Email Address *'}
+                            value={formData.institutionalEmail}
+                            onChange={(email) => setFormData({...formData, institutionalEmail: email})}
+                            onVerified={setIsEmailVerified}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                        <div className="space-y-1.5 md:col-span-2">
                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Full Name *</label>
                           <div className="relative group">
                             <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                             <input 
                               type="text" 
-                              required
+                              required={isEmailVerified}
+                              disabled={!isEmailVerified}
                               value={formData.fullName}
                               onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                               className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400" 
                               placeholder={formData.requestType === 'Institution' ? "Dr. John Doe" : "Your Name"}
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                            {formData.requestType === 'Student' ? 'Student / Personal Email *' : formData.requestType === 'Corporate' ? 'Work Email *' : 'Email Address *'}
-                          </label>
-                          <div className="relative group">
-                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
-                            <input 
-                              type="email" 
-                              required
-                              value={formData.institutionalEmail}
-                              onChange={(e) => setFormData({...formData, institutionalEmail: e.target.value})}
-                              className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400" 
-                              placeholder="email@example.com"
                             />
                           </div>
                         </div>
@@ -367,6 +353,7 @@ export function RequestDemo() {
                             <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                             <input 
                               type="text" 
+                              disabled={!isEmailVerified}
                               value={formData.designation}
                               onChange={(e) => setFormData({...formData, designation: e.target.value})}
                               className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400" 
@@ -380,6 +367,7 @@ export function RequestDemo() {
                             <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                             <input 
                               type="tel" 
+                              disabled={!isEmailVerified}
                               value={formData.whatsappNumber}
                               onChange={(e) => setFormData({...formData, whatsappNumber: e.target.value})}
                               className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400" 
@@ -400,7 +388,8 @@ export function RequestDemo() {
                           <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                           <input 
                             type="text" 
-                            required
+                            required={isEmailVerified}
+                            disabled={!isEmailVerified}
                             value={formData.institutionName}
                             onChange={(e) => setFormData({...formData, institutionName: e.target.value})}
                             className="w-full rounded-xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400" 
@@ -416,7 +405,8 @@ export function RequestDemo() {
                         Primary Department *
                       </label>
                       <select 
-                        required
+                        required={isEmailVerified}
+                        disabled={!isEmailVerified}
                         value={formData.department}
                         onChange={(e) => setFormData({...formData, department: e.target.value})}
                         className="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none"
@@ -437,7 +427,8 @@ export function RequestDemo() {
                             <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                             <input 
                               type="text" 
-                              required
+                              required={isEmailVerified}
+                              disabled={!isEmailVerified}
                               maxLength={6}
                               value={formData.pincode}
                               onChange={(e) => setFormData({...formData, pincode: e.target.value})}
@@ -467,6 +458,7 @@ export function RequestDemo() {
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Full Address</label>
                         <textarea
                           value={formData.fullAddress}
+                          disabled={!isEmailVerified}
                           onChange={(e) => setFormData({...formData, fullAddress: e.target.value})}
                           rows={3}
                           className="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400 resize-none"
@@ -477,7 +469,7 @@ export function RequestDemo() {
 
                     <button 
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || !isEmailVerified}
                       className="w-full rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] transition-all mt-4 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 disabled:opacity-50"
                     >
                       {loading ? (
@@ -536,13 +528,6 @@ export function RequestDemo() {
           </div>
         </div>
       </section>
-
-      <OTPVerifier 
-        email={formData.institutionalEmail}
-        isOpen={isOTPModalOpen}
-        onClose={() => setIsOTPModalOpen(false)}
-        onSuccess={proceedWithSubmit}
-      />
     </div>
   );
 }

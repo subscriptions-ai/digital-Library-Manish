@@ -31,6 +31,7 @@ import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { STM_LOGO_BASE64 } from '../logoBase64';
+import { EmailVerificationInput } from './EmailVerificationInput';
 
 type Step = 1 | 2 | 3;
 
@@ -64,6 +65,7 @@ export function QuotationWizard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>(1);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [quotationNumber, setQuotationNumber] = useState<string>('');
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -134,6 +136,10 @@ export function QuotationWizard() {
   };
 
   const validateStep1 = () => {
+    if (!isEmailVerified) {
+      toast.error('Please verify your email address first');
+      return false;
+    }
     const { fullName, mobile, email, organization, address, pincode, city, state } = formData;
     if (!organization || !fullName || !mobile || !email || !address || !pincode || !city || !state) {
       toast.error('Please fill all required fields');
@@ -812,7 +818,16 @@ export function QuotationWizard() {
                 <p className="text-slate-500 mt-1">Tell us about yourself and your organization.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="mb-6 space-y-1.5 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                <EmailVerificationInput
+                  label="Email ID *"
+                  value={formData.email}
+                  onChange={(email) => setFormData(prev => ({ ...prev, email }))}
+                  onVerified={setIsEmailVerified}
+                />
+              </div>
+
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
                 {/* Row 1: Organization Name – full width */}
                 <div className="md:col-span-2 space-y-2">
                   <label className="text-sm font-bold text-slate-700">Organization Name *</label>
@@ -821,6 +836,8 @@ export function QuotationWizard() {
                     <input
                       type="text"
                       name="organization"
+                      required={isEmailVerified}
+                      disabled={!isEmailVerified}
                       value={formData.organization}
                       onChange={handleInputChange}
                       placeholder="University / College / Company"
@@ -837,6 +854,8 @@ export function QuotationWizard() {
                     <input
                       type="text"
                       name="fullName"
+                      required={isEmailVerified}
+                      disabled={!isEmailVerified}
                       value={formData.fullName}
                       onChange={handleInputChange}
                       placeholder="Enter your full name"
@@ -852,6 +871,7 @@ export function QuotationWizard() {
                     <input
                       type="text"
                       name="designation"
+                      disabled={!isEmailVerified}
                       value={formData.designation}
                       onChange={handleInputChange}
                       placeholder="e.g. Librarian, HOD, Director"
@@ -868,6 +888,8 @@ export function QuotationWizard() {
                     <input
                       type="tel"
                       name="mobile"
+                      required={isEmailVerified}
+                      disabled={!isEmailVerified}
                       value={formData.mobile}
                       onChange={handleInputChange}
                       placeholder="10-digit mobile number"
@@ -875,27 +897,14 @@ export function QuotationWizard() {
                     />
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Email ID *</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="your@email.com"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
-
+                
                 {/* Row 4: Full Address – full width */}
                 <div className="md:col-span-2 space-y-2">
                   <label className="text-sm font-bold text-slate-700">Full Address *</label>
                   <textarea
                     name="address"
+                    required={isEmailVerified}
+                    disabled={!isEmailVerified}
                     value={formData.address}
                     onChange={handleInputChange}
                     placeholder="Street, Building, Area details"
@@ -912,6 +921,8 @@ export function QuotationWizard() {
                     <input
                       type="text"
                       name="pincode"
+                      required={isEmailVerified}
+                      disabled={!isEmailVerified}
                       value={formData.pincode}
                       onChange={handleInputChange}
                       maxLength={6}
@@ -974,6 +985,7 @@ export function QuotationWizard() {
                     <input
                       type="text"
                       name="gstNumber"
+                      disabled={!isEmailVerified}
                       value={formData.gstNumber}
                       onChange={handleInputChange}
                       placeholder="ENTER GSTIN IF APPLICABLE"

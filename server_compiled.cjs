@@ -7118,6 +7118,71 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch domain counts" });
     }
   });
+  app.post("/api/verify/check-or-send", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: "Email is required" });
+      let record = await prisma2.emailVerification.findUnique({ where: { email } });
+      if (record && record.isVerified) {
+        return res.json({ verified: true });
+      }
+      const otp = Math.floor(1e5 + Math.random() * 9e5).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1e3);
+      if (record) {
+        await prisma2.emailVerification.update({
+          where: { email },
+          data: { otp, otpExpiry }
+        });
+      } else {
+        await prisma2.emailVerification.create({
+          data: { email, otp, otpExpiry, isVerified: false }
+        });
+      }
+      const mailOptions = {
+        from: '"STM Digital Library" <info@celnet.in>',
+        to: email,
+        subject: "Your Email Verification OTP",
+        html: buildEmail(`
+          <h2 style="color: #1e3a6e;">Email Verification</h2>
+          <p>Please use the following OTP to verify your email address. It is valid for 10 minutes.</p>
+          <h1 style="letter-spacing: 4px; color: #2563eb; background: #f1f5f9; padding: 10px 20px; text-align: center; border-radius: 8px; width: max-content; margin: 20px auto;">${otp}</h1>
+        `)
+      };
+      await sendMail(mailOptions);
+      console.log(`
+=========================================`);
+      console.log(`\u{1F511} OTP FOR VERIFICATION (TESTING):`);
+      console.log(`\u{1F4E7} Email: ${email}`);
+      console.log(`\u{1F522} OTP: ${otp}`);
+      console.log(`=========================================
+`);
+      res.json({ otpSent: true });
+    } catch (err) {
+      console.error("OTP send error:", err);
+      res.status(500).json({ error: "Failed to send OTP" });
+    }
+  });
+  app.post("/api/verify/confirm", async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp) return res.status(400).json({ error: "Email and OTP required" });
+      const record = await prisma2.emailVerification.findUnique({ where: { email } });
+      if (!record || record.isVerified) {
+        return res.status(400).json({ error: "Invalid request or already verified" });
+      }
+      if (record.otp !== otp || !record.otpExpiry || record.otpExpiry < /* @__PURE__ */ new Date()) {
+        return res.status(400).json({ error: "Invalid or expired OTP" });
+      }
+      await prisma2.emailVerification.update({
+        where: { email },
+        data: { isVerified: true, otp: null, otpExpiry: null }
+      });
+      res.json({ success: true });
+    } catch (err) {
+      console.error("OTP verify error:", err);
+      res.status(500).json({ error: "Failed to verify OTP" });
+    }
+  });
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, name, organization, contact, designation } = req.body;
@@ -8365,7 +8430,12 @@ async function startServer() {
         },
         orderBy: { createdAt: "desc" }
       });
-      const sanitized = users.map(({ password: _, ...u }) => u);
+      const verifications = await prisma2.emailVerification.findMany();
+      const verifiedEmails = new Set(verifications.filter((v) => v.isVerified).map((v) => v.email));
+      const sanitized = users.map(({ password: _, ...u }) => ({
+        ...u,
+        isEmailVerified: verifiedEmails.has(u.email)
+      }));
       res.json(sanitized);
     } catch (err) {
       console.error("GET /api/admin/users error:", err);
@@ -9654,7 +9724,13 @@ async function startServer() {
       const requests = await prisma2.demoRequest.findMany({
         orderBy: { createdAt: "desc" }
       });
-      res.json(requests);
+      const verifications = await prisma2.emailVerification.findMany();
+      const verifiedEmails = new Set(verifications.filter((v) => v.isVerified).map((v) => v.email));
+      const enhancedRequests = requests.map((req2) => ({
+        ...req2,
+        isEmailVerified: verifiedEmails.has(req2.institutionalEmail)
+      }));
+      res.json(enhancedRequests);
     } catch (error) {
       console.error("Failed to fetch demo requests:", error);
       res.status(500).json({ error: "Failed to fetch demo requests" });
@@ -11518,6 +11594,16 @@ async function startServer() {
   app.use((err, req, res, next) => {
     console.error("Unhandled Error:", err);
     res.status(500).json({ error: "Internal server error" });
+  });
+  app.get("/api/admin/verifications", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const verifications = await prisma2.emailVerification.findMany({
+        orderBy: { updatedAt: "desc" }
+      });
+      res.json(verifications);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch verifications" });
+    }
   });
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || "development"})`);

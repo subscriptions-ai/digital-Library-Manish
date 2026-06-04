@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Mail, Lock, User, Building, ArrowRight } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
-import { OTPVerifier } from "./OTPVerifier";
+
+import { EmailVerificationInput } from "./EmailVerificationInput";
 
 export function Signup() {
   const navigate = useNavigate();
@@ -17,8 +18,7 @@ export function Signup() {
     password: ''
   });
   const [loading, setLoading] = useState(false);
-
-  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   const proceedWithSignup = async () => {
     setLoading(true);
@@ -43,20 +43,7 @@ export function Signup() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/verify/check-or-send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email })
-      });
-      const data = await res.json();
-      
-      if (res.ok && data.verified) {
-        await proceedWithSignup();
-      } else if (res.ok && data.otpSent) {
-        setIsOTPModalOpen(true);
-      } else {
-        toast.error(data.error || 'Failed to initiate verification');
-      }
+      await proceedWithSignup();
     } catch (error: any) {
       toast.error('Network error. Please try again.');
     } finally {
@@ -81,34 +68,30 @@ export function Signup() {
 
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50">
           <form className="space-y-5" onSubmit={handleSignup}>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Full Name</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="text" 
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Dr. John Doe"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                />
-              </div>
+            <div className="space-y-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+              <EmailVerificationInput
+                value={formData.email}
+                onChange={(email) => setFormData({ ...formData, email })}
+                onVerified={setIsEmailVerified}
+              />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="email" 
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="name@university.edu"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                />
+            
+            <div className={`space-y-5 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Full Name</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="text" 
+                    required={isEmailVerified}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Dr. John Doe"
+                    disabled={!isEmailVerified}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
               </div>
-            </div>
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700">Organization / University</label>
               <div className="relative">
@@ -118,6 +101,7 @@ export function Signup() {
                   value={formData.organization}
                   onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
                   placeholder="Harvard University"
+                  disabled={!isEmailVerified}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
               </div>
@@ -130,6 +114,7 @@ export function Signup() {
                   value={formData.contact}
                   onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
                   placeholder="+1 (555) 000-0000"
+                  disabled={!isEmailVerified}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
               </div>
@@ -142,22 +127,25 @@ export function Signup() {
                   value={formData.designation}
                   onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                   placeholder="e.g. Researcher, Student, Professor"
+                  disabled={!isEmailVerified}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="password" 
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                />
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="password" 
+                    required={isEmailVerified}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="••••••••"
+                    disabled={!isEmailVerified}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
               </div>
             </div>
             
@@ -167,7 +155,7 @@ export function Signup() {
               </p>
               <button 
                 type="submit"
-                disabled={loading}
+                disabled={loading || !isEmailVerified}
                 className="w-full rounded-xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50"
               >
                 {loading ? 'Creating Account...' : 'Create Account'} <ArrowRight size={16} />
@@ -182,13 +170,6 @@ export function Signup() {
           </div>
         </div>
       </div>
-
-      <OTPVerifier 
-        email={formData.email}
-        isOpen={isOTPModalOpen}
-        onClose={() => setIsOTPModalOpen(false)}
-        onSuccess={proceedWithSignup}
-      />
     </div>
   );
 }
