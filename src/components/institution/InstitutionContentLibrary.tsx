@@ -34,26 +34,42 @@ export function InstitutionContentLibrary() {
   const [loading, setLoading]             = useState(true);
   const [subsLoading, setSubsLoading]     = useState(true);
 
-  // Filters
-  const [search, setSearch]           = useState('');
-  const [debouncedSearch, setDebounced] = useState('');
-  const [filterDomain, setFilterDomain] = useState('');
-  const [filterType, setFilterType]   = useState('');
-  const [filterSubject, setFilterSubject] = useState('');
-  const [filterTag, setFilterTag] = useState('');
+  // Filters (Persisted via sessionStorage)
+  const [search, setSearch]           = useState(() => sessionStorage.getItem('lib_search') || '');
+  const [debouncedSearch, setDebounced] = useState(search);
+  const [filterDomain, setFilterDomain] = useState(() => sessionStorage.getItem('lib_domain') || '');
+  const [filterType, setFilterType]   = useState(() => sessionStorage.getItem('lib_type') || '');
+  const [filterSubject, setFilterSubject] = useState(() => sessionStorage.getItem('lib_subject') || '');
+  const [filterTag, setFilterTag] = useState(() => sessionStorage.getItem('lib_tag') || '');
   const [availableFilters, setAvailableFilters] = useState<{ subjects: string[], tags: string[] }>({ subjects: [], tags: [] });
-  const [viewMode, setViewMode]       = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode]       = useState<'grouped' | 'grid' | 'list'>(() => (sessionStorage.getItem('lib_view') as any) || 'grouped');
 
   // Pagination
   const PER_PAGE = 24;
-  const [page, setPage]         = useState(1);
+  const [page, setPage]         = useState(() => Number(sessionStorage.getItem('lib_page')) || 1);
   const [totalItems, setTotalItems] = useState(0);
+
+  // Persist state changes
+  useEffect(() => {
+    sessionStorage.setItem('lib_search', search);
+    sessionStorage.setItem('lib_domain', filterDomain);
+    sessionStorage.setItem('lib_type', filterType);
+    sessionStorage.setItem('lib_subject', filterSubject);
+    sessionStorage.setItem('lib_tag', filterTag);
+    sessionStorage.setItem('lib_view', viewMode);
+    sessionStorage.setItem('lib_page', String(page));
+  }, [search, filterDomain, filterType, filterSubject, filterTag, viewMode, page]);
 
   // Debounce search
   useEffect(() => {
-    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 350);
+    const t = setTimeout(() => { 
+      if (debouncedSearch !== search) {
+        setDebounced(search); 
+        setPage(1); 
+      }
+    }, 350);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   // Fetch subscriptions to show what domains are active
   useEffect(() => {
@@ -121,6 +137,13 @@ export function InstitutionContentLibrary() {
   const subscribedTypes   = Array.from(new Set(subscriptions.flatMap(s => Array.isArray(s.contentTypes) ? s.contentTypes : [])));
   const totalPages = Math.ceil(totalItems / PER_PAGE);
 
+  const groupedContents = contents.reduce((acc, item) => {
+    const domain = item.domain || 'General';
+    if (!acc[domain]) acc[domain] = [];
+    acc[domain].push(item);
+    return acc;
+  }, {} as Record<string, any[]>);
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
@@ -130,6 +153,9 @@ export function InstitutionContentLibrary() {
           <p className="text-sm text-slate-500 mt-1">Browse all content your institution has access to.</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setViewMode('grouped')} className={`px-3 py-1.5 rounded-xl border transition-all text-xs font-bold ${viewMode === 'grouped' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`}>
+            Grouped
+          </button>
           <button onClick={() => setViewMode('grid')} className={`p-2 rounded-xl border transition-all ${viewMode === 'grid' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`}>
             <LayoutGrid size={16} />
           </button>
@@ -249,6 +275,55 @@ export function InstitutionContentLibrary() {
           <BookOpen className="mx-auto mb-3 text-slate-300" size={40} />
           <p className="text-slate-500 font-semibold">No content found.</p>
           <p className="text-slate-400 text-sm mt-1">Try adjusting your filters or search query.</p>
+        </div>
+      ) : viewMode === 'grouped' ? (
+        <div className="space-y-10">
+          {Object.entries(groupedContents).map(([domain, items]: [string, any]) => (
+            <div key={domain}>
+              <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-2">
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold text-slate-800">{domain}</h2>
+                  <p className="text-xs text-slate-500">{items.length} items accessible</p>
+                </div>
+                <button onClick={() => { setFilterDomain(domain); setViewMode('grid'); setPage(1); }} className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1">
+                  See all <ChevronRight size={13} />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {items.map((item, idx) => (
+                  <motion.div key={item.id} layout
+                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    onClick={() => handleOpen(item)}
+                    className={`relative p-5 rounded-2xl border cursor-pointer group transition-all duration-200 ${
+                      item.locked
+                        ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
+                        : 'bg-white border-slate-100 hover:shadow-xl hover:shadow-indigo-100/40 hover:-translate-y-1 hover:border-indigo-200'
+                    }`}
+                  >
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center mb-4 ${item.locked ? 'bg-slate-200 text-slate-400' : (CONTENT_TYPE_COLORS[item.contentType] || 'bg-indigo-50 text-indigo-600')}`}>
+                      {item.locked ? <Lock size={18} /> : (CONTENT_TYPE_ICONS[item.contentType] || <FileText size={18} />)}
+                    </div>
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className={`font-bold text-sm leading-snug line-clamp-2 ${item.locked ? 'text-slate-400' : 'text-slate-900'}`}>{item.title}</h3>
+                      {!item.locked && <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 shrink-0 mt-0.5 transition-colors" />}
+                    </div>
+                    <p className="text-xs text-slate-500 line-clamp-1 mb-3">{item.authors || 'Unknown Author'}</p>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${CONTENT_TYPE_COLORS[item.contentType] || 'bg-slate-100 text-slate-500'}`}>
+                        {item.contentType}
+                      </span>
+                      {item.locked ? (
+                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Lock size={10}/> Locked</span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full group-hover:bg-indigo-600 group-hover:text-white transition-colors">Read Now →</span>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : viewMode === 'grid' ? (
         <AnimatePresence mode="popLayout">

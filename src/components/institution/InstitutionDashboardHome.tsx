@@ -142,7 +142,9 @@ export function InstitutionDashboardHome() {
           <div className="relative z-10 flex-1 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
               <Clock className="text-indigo-300" size={18} />
-              <span className="text-indigo-200 font-bold uppercase tracking-wider text-xs">Subscription Countdown</span>
+              <span className="text-indigo-200 font-bold uppercase tracking-wider text-xs">
+                {nearestSub ? `${nearestSub.planName || 'Plan'} (${nearestSub.planType || 'Subscription'})` : 'Subscription Countdown'}
+              </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1">
               {isExpired ? 'Your subscription has expired.' : 'Your active plan is running.'}

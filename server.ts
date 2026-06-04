@@ -658,7 +658,9 @@ async function startServer() {
         nearestExpiry,
         totalSpent,
         allowedDomains,
-        recentActivity: mappedRecent
+        recentActivity: mappedRecent,
+        planType: activeSubs[0]?.planType || 'Free/Demo',
+        planName: activeSubs[0]?.planName || 'Basic Plan'
       });
     } catch (error) {
       console.error("User dashboard error:", error);

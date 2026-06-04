@@ -33,6 +33,8 @@ interface DashboardData {
   allowedDomains?: string[];
   activeSubscriptions?: number;
   recentActivity?: { id: string; title: string; type: string; date: string; lastPage: number; domain: string }[];
+  planType?: string;
+  planName?: string;
 }
 
 // ─── Content type icon helper ─────────────────────────────────────────────────
@@ -164,20 +166,32 @@ export function LMSDashboard() {
   const [loadingDash, setLoadingDash] = useState(true);
   const [loadingContent, setLoadingContent] = useState(true);
 
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [domainFilter, setDomainFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [subjectFilter, setSubjectFilter] = useState('');
-  const [tagFilter, setTagFilter] = useState('');
+  const [search, setSearch] = useState(() => sessionStorage.getItem('lms_search') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  const [domainFilter, setDomainFilter] = useState(() => sessionStorage.getItem('lms_domain') || '');
+  const [typeFilter, setTypeFilter] = useState(() => sessionStorage.getItem('lms_type') || '');
+  const [subjectFilter, setSubjectFilter] = useState(() => sessionStorage.getItem('lms_subject') || '');
+  const [tagFilter, setTagFilter] = useState(() => sessionStorage.getItem('lms_tag') || '');
   const [availableFilters, setAvailableFilters] = useState<{ subjects: string[], tags: string[] }>({ subjects: [], tags: [] });
-  const [viewMode, setViewMode] = useState<'grid' | 'grouped'>('grouped');
-  const [showLocked, setShowLocked] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'grouped'>(() => (sessionStorage.getItem('lms_view') as any) || 'grouped');
+  const [showLocked, setShowLocked] = useState(() => sessionStorage.getItem('lms_locked') === '1');
 
   // pagination
   const ITEMS_PER_PAGE = 20;
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => Number(sessionStorage.getItem('lms_page')) || 1);
   const [totalItems, setTotalItems] = useState(0);
+
+  // persist state changes
+  useEffect(() => {
+    sessionStorage.setItem('lms_search', search);
+    sessionStorage.setItem('lms_domain', domainFilter);
+    sessionStorage.setItem('lms_type', typeFilter);
+    sessionStorage.setItem('lms_subject', subjectFilter);
+    sessionStorage.setItem('lms_tag', tagFilter);
+    sessionStorage.setItem('lms_view', viewMode);
+    sessionStorage.setItem('lms_locked', showLocked ? '1' : '0');
+    sessionStorage.setItem('lms_page', String(page));
+  }, [search, domainFilter, typeFilter, subjectFilter, tagFilter, viewMode, showLocked, page]);
 
   // dark mode
   const [dark, setDark] = useState(() => localStorage.getItem('lms-dark') === '1');
@@ -190,9 +204,14 @@ export function LMSDashboard() {
 
   // debounce search
   useEffect(() => {
-    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 350);
+    const t = setTimeout(() => { 
+      if (debouncedSearch !== search) {
+        setDebouncedSearch(search); 
+        setPage(1); 
+      }
+    }, 350);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
 
   const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -347,7 +366,9 @@ export function LMSDashboard() {
             <div className="relative z-10 flex-1 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
                 <Clock className="text-blue-300" size={18} />
-                <span className="text-blue-200 font-bold uppercase tracking-wider text-xs">Subscription Countdown</span>
+                <span className="text-blue-200 font-bold uppercase tracking-wider text-xs">
+                  {dashData?.planName ? `${dashData.planName} (${dashData.planType})` : 'Subscription Countdown'}
+                </span>
               </div>
               <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1">
                 {isExpired ? 'Your access has expired.' : 'Your digital library access is active.'}
