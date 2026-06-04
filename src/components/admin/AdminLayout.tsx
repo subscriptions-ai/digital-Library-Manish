@@ -176,6 +176,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             highlight
           />
 
+          {/* Email Verifications */}
+          <NavButton
+            icon={<Mail size={17} />}
+            label="Email Verifications"
+            active={location.pathname === '/admin/email-verifications'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/email-verifications')}
+          />
+
           {/* Subscriptions */}
           <div>
             <button
@@ -340,6 +349,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/drafts' ? 'Drafts & Cleanup'
               : location.pathname === '/admin/agency-inquiries' ? 'Agency Inquiries'
               : location.pathname === '/admin/contact-inquiries' ? 'Contact Inquiries'
+              : location.pathname === '/admin/email-verifications' ? 'Email Verifications'
               : location.pathname === '/admin/payments' ? 'Payments'
               : location.pathname.startsWith('/admin/extraction') ? 'AI Extraction Engine'
               : location.pathname.startsWith('/admin/coupons') ? 'Coupons'

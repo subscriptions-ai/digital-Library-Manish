@@ -3,6 +3,7 @@ import { ShieldCheck, Zap, BarChart3, Users, Globe, Check, ArrowRight, BookOpen,
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { motion } from "motion/react";
+import { OTPVerifier } from "./OTPVerifier";
 
 import { DOMAINS } from "../constants";
 
@@ -59,14 +60,9 @@ export function RequestDemo() {
     fetchPincodeDetails();
   }, [formData.pincode]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.fullName || !formData.institutionalEmail || !formData.institutionName || !formData.pincode || !formData.department) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
+  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
 
+  const proceedWithSubmit = async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/demo-request", {
@@ -97,6 +93,38 @@ export function RequestDemo() {
     } catch (error) {
       console.error("Submission error:", error);
       toast.error("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+      setIsOTPModalOpen(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.fullName || !formData.institutionalEmail || !formData.institutionName || !formData.pincode || !formData.department) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/verify/check-or-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.institutionalEmail })
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.verified) {
+        await proceedWithSubmit();
+      } else if (res.ok && data.otpSent) {
+        setIsOTPModalOpen(true);
+      } else {
+        toast.error(data.error || 'Failed to initiate verification');
+      }
+    } catch (error: any) {
+      toast.error('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -508,7 +536,13 @@ export function RequestDemo() {
           </div>
         </div>
       </section>
+
+      <OTPVerifier 
+        email={formData.institutionalEmail}
+        isOpen={isOTPModalOpen}
+        onClose={() => setIsOTPModalOpen(false)}
+        onSuccess={proceedWithSubmit}
+      />
     </div>
   );
 }
-
