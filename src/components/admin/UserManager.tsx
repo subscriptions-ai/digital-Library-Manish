@@ -165,12 +165,25 @@ export function UserManager() {
   });
 
   const exportCSV = () => {
-    const headers = ['Name', 'Email', 'Role', 'Status', 'Email Verified'];
+    const headers = [
+      'ID', 'Name', 'Email', 'Role', 'Organization', 'Contact', 
+      'Designation', 'State', 'Status', 'Blocked', 'Demo Account', 
+      'Demo Expires', 'Created At', 'Email Verified'
+    ];
     const rows = filtered.map(u => [
+      `"${u.id || ''}"`,
       `"${u.displayName || ''}"`,
       `"${u.email || ''}"`,
       `"${u.role || ''}"`,
-      `"${u.isBlocked ? 'Blocked' : 'Active'}"`,
+      `"${u.organization || ''}"`,
+      `"${u.contact || ''}"`,
+      `"${u.designation || ''}"`,
+      `"${u.state || ''}"`,
+      `"${u.status || ''}"`,
+      `"${u.isBlocked ? 'Yes' : 'No'}"`,
+      `"${u.isDemoAccount ? 'Yes' : 'No'}"`,
+      `"${u.demoExpiresAt ? new Date(u.demoExpiresAt).toLocaleDateString() : ''}"`,
+      `"${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ''}"`,
       `"${u.isEmailVerified ? 'Yes' : 'No'}"`
     ]);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -185,19 +198,26 @@ export function UserManager() {
   };
 
   const exportPDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF('landscape');
     doc.text('User Management Export', 14, 15);
+    const headers = [
+      'Name', 'Email', 'Role', 'Organization', 'Contact', 'State', 'Blocked', 'Verified'
+    ];
     const tableData = filtered.map(u => [
       u.displayName || 'Unnamed',
       u.email || '',
       u.role || '',
-      u.isBlocked ? 'Blocked' : 'Active',
+      u.organization || '',
+      u.contact || '',
+      u.state || '',
+      u.isBlocked ? 'Yes' : 'No',
       u.isEmailVerified ? 'Yes' : 'No'
     ]);
     autoTable(doc, {
-      head: [['Name', 'Email', 'Role', 'Status', 'Verified']],
+      head: [headers],
       body: tableData,
       startY: 20,
+      styles: { fontSize: 8 },
     });
     doc.save('users_export.pdf');
     setShowExportMenu(false);

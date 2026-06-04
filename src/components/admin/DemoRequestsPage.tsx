@@ -129,15 +129,25 @@ export function DemoRequestsPage() {
   });
 
   const exportCSV = () => {
-    const headers = ['Date', 'Institution', 'Type', 'Contact Person', 'Email', 'Department', 'Status', 'Verified'];
+    const headers = [
+      'ID', 'Date', 'Institution Name', 'Request Type', 'Contact Person',
+      'Institutional Email', 'Designation', 'WhatsApp Number', 'City', 
+      'State', 'Department', 'Status', 'Admin Notes', 'Email Verified'
+    ];
     const rows = filteredRequests.map(req => [
+      `"${req.id || ''}"`,
       `"${format(new Date(req.createdAt), 'MMM dd yyyy')}"`,
       `"${req.institutionName || ''}"`,
       `"${req.requestType || 'Institution'}"`,
       `"${req.fullName || ''}"`,
       `"${req.institutionalEmail || ''}"`,
+      `"${req.designation || ''}"`,
+      `"${req.whatsappNumber || ''}"`,
+      `"${req.city || ''}"`,
+      `"${req.state || ''}"`,
       `"${req.department || ''}"`,
       `"${req.status || ''}"`,
+      `"${(req.adminNotes || '').replace(/"/g, '""')}"`,
       `"${req.isEmailVerified ? 'Yes' : 'No'}"`
     ]);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -152,20 +162,29 @@ export function DemoRequestsPage() {
   };
 
   const exportPDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF('landscape');
     doc.text('Demo Requests Export', 14, 15);
+    const headers = [
+      'Date', 'Institution', 'Type', 'Contact', 'Email', 'Phone', 'City', 'State', 'Dept', 'Status', 'Verified'
+    ];
     const tableData = filteredRequests.map(req => [
       format(new Date(req.createdAt), 'MMM dd, yyyy'),
       req.institutionName || '',
+      req.requestType || 'Institution',
       req.fullName || '',
       req.institutionalEmail || '',
+      req.whatsappNumber || '',
+      req.city || '',
+      req.state || '',
+      req.department || '',
       req.status || '',
       req.isEmailVerified ? 'Yes' : 'No'
     ]);
     autoTable(doc, {
-      head: [['Date', 'Institution', 'Contact', 'Email', 'Status', 'Verified']],
+      head: [headers],
       body: tableData,
       startY: 20,
+      styles: { fontSize: 7 },
     });
     doc.save('demo_requests_export.pdf');
     setShowExportMenu(false);
