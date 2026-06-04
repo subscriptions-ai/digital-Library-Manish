@@ -418,7 +418,7 @@ export function LMSDashboard() {
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Pick up right where you left off</p>
                 </div>
               </div>
-              <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+              <button onClick={() => navigate('/dashboard/history')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
                 View History <ChevronRight size={14} />
               </button>
             </div>
