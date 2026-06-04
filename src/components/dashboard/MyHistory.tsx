@@ -10,12 +10,12 @@ export default function MyHistory() {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch('/api/user/dashboard', {
+      const res = await fetch('/api/user/history', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setHistory(data.recentActivity || []);
+        setHistory(Array.isArray(data) ? data : []);
       } else {
         toast.error("Failed to load history");
       }
@@ -99,9 +99,9 @@ export default function MyHistory() {
                     <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md truncate max-w-[140px]">
                       {item.domain || 'General'}
                     </span>
-                    <span className="flex items-center gap-1 text-slate-400" title={`Viewed on ${new Date(activity.timestamp).toLocaleDateString()}`}>
+                    <span className="flex items-center gap-1 text-slate-400" title={`Viewed on ${new Date(activity.accessedAt).toLocaleDateString()}`}>
                       <Clock size={12} />
-                      {new Date(activity.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {new Date(activity.accessedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 </div>

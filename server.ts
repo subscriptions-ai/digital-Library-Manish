@@ -668,6 +668,22 @@ async function startServer() {
     }
   });
 
+  // GET /api/user/history — Get full reading history
+  app.get("/api/user/history", authenticateJWT, async (req: any, res) => {
+    try {
+      const recentViews = await prisma.studentActivity.findMany({
+        where: { userId: req.user.uid },
+        orderBy: { accessedAt: 'desc' },
+        take: 100,
+        include: { content: true }
+      });
+      res.json(recentViews);
+    } catch (error) {
+      console.error("User history error:", error);
+      res.status(500).json({ error: "Failed to load history" });
+    }
+  });
+
   // ── PATCH /api/user/reading-progress — save current page ────────────────────
   app.patch("/api/user/reading-progress", authenticateJWT, async (req: any, res) => {
     try {

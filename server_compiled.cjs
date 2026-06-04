@@ -7463,6 +7463,20 @@ async function startServer() {
       res.status(500).json({ error: "Failed to load dashboard" });
     }
   });
+  app.get("/api/user/history", authenticateJWT, async (req, res) => {
+    try {
+      const recentViews = await prisma2.studentActivity.findMany({
+        where: { userId: req.user.uid },
+        orderBy: { accessedAt: "desc" },
+        take: 100,
+        include: { content: true }
+      });
+      res.json(recentViews);
+    } catch (error) {
+      console.error("User history error:", error);
+      res.status(500).json({ error: "Failed to load history" });
+    }
+  });
   app.patch("/api/user/reading-progress", authenticateJWT, async (req, res) => {
     try {
       const { contentId, lastPage, timeSpent } = req.body;
