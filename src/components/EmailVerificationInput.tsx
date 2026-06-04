@@ -114,7 +114,7 @@ export function EmailVerificationInput({
         )}
         {isVerified && (
           <div className="px-4 py-3 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-bold flex items-center gap-2 shrink-0 h-[46px]">
-            <CheckCircle size={18} /> Verified
+            <CheckCircle size={18} /> Already Verified
           </div>
         )}
       </div>
