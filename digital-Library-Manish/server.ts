@@ -242,6 +242,89 @@ async function startServer() {
     }
   });
 
+  // --- Email Verification OTP System ---
+  app.post("/api/verify/check-or-send", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: "Email is required" });
+
+      let record = await (prisma as any).emailVerification.findUnique({ where: { email } });
+      
+      if (record && record.isVerified) {
+        return res.json({ verified: true });
+      }
+
+      // Generate 6 digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+      if (record) {
+        await (prisma as any).emailVerification.update({
+          where: { email },
+          data: { otp, otpExpiry }
+        });
+      } else {
+        await (prisma as any).emailVerification.create({
+          data: { email, otp, otpExpiry, isVerified: false }
+        });
+      }
+
+      const mailOptions = {
+        from: '"STM Digital Library" <info@celnet.in>',
+        to: email,
+        subject: "Your Email Verification OTP",
+        html: buildEmail(`
+          <h2 style="color: #1e3a6e;">Email Verification</h2>
+          <p>Please use the following OTP to verify your email address. It is valid for 10 minutes.</p>
+          <h1 style="letter-spacing: 4px; color: #2563eb; background: #f1f5f9; padding: 10px 20px; text-align: center; border-radius: 8px; width: max-content; margin: 20px auto;">${otp}</h1>
+        `)
+      };
+      await sendMail(mailOptions);
+
+      res.json({ otpSent: true });
+    } catch (err) {
+      console.error("OTP send error:", err);
+      res.status(500).json({ error: "Failed to send OTP" });
+    }
+  });
+
+  app.post("/api/verify/confirm", async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp) return res.status(400).json({ error: "Email and OTP required" });
+
+      const record = await (prisma as any).emailVerification.findUnique({ where: { email } });
+      if (!record || record.isVerified) {
+        return res.status(400).json({ error: "Invalid request or already verified" });
+      }
+
+      if (record.otp !== otp || !record.otpExpiry || record.otpExpiry < new Date()) {
+        return res.status(400).json({ error: "Invalid or expired OTP" });
+      }
+
+      await (prisma as any).emailVerification.update({
+        where: { email },
+        data: { isVerified: true, otp: null, otpExpiry: null }
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error("OTP verify error:", err);
+      res.status(500).json({ error: "Failed to verify OTP" });
+    }
+  });
+
+  app.get("/api/admin/verifications", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const verifications = await (prisma as any).emailVerification.findMany({
+        orderBy: { updatedAt: 'desc' }
+      });
+      res.json(verifications);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch verifications" });
+    }
+  });
+
   // Auth: Signup
   app.post("/api/auth/signup", async (req, res) => {
     try {

@@ -166,6 +166,8 @@ export function ProtectedContentViewer() {
   const [darkMode, setDarkMode] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [iframeFallback, setIframeFallback] = useState(false);
+
+  // Reading progress
   const [savedPage, setSavedPage] = useState(1);
   const [resumeToastShown, setResumeToastShown] = useState(false);
   const saveProgressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -344,7 +346,7 @@ export function ProtectedContentViewer() {
       isMounted = false;
       try { loadingTask.destroy(); } catch {}
     };
-  }, [content, id, savedPage, iframeFallback]);
+  }, [content, id, savedPage]);
 
   // ── Fetch saved progress on mount ─────────────────────────────────────────
   useEffect(() => {
@@ -607,16 +609,6 @@ export function ProtectedContentViewer() {
           </div>
         )}
 
-        {/* Iframe Fallback Viewer for web content */}
-        {iframeFallback && !isVideo && (
-          <iframe 
-            src={`/api/content/${id}/proxy-frame?token=${localStorage.getItem('token')}`} 
-            className="w-full h-[85vh] border-0 bg-white" 
-            title={content.title}
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-          />
-        )}
-
         {/* Video viewer */}
         {isVideo && (
           <div className="flex items-center justify-center min-h-[70vh] p-8">
@@ -630,14 +622,14 @@ export function ProtectedContentViewer() {
           </div>
         )}
 
-        {/* Unknown format */}
-        {!isPdf && !isVideo && !loadingPdf && (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 space-y-4">
-            <BookOpen size={56} className="text-slate-600" />
-            <p className="text-slate-400 max-w-sm">
-              This content format is not supported for in-browser preview. Please contact support.
-            </p>
-          </div>
+        {/* Iframe Fallback Viewer for web content */}
+        {iframeFallback && !isVideo && (
+          <iframe 
+            src={`/api/content/${id}/proxy-frame?token=${localStorage.getItem('token')}`} 
+            className="w-full h-[85vh] border-0 bg-white" 
+            title={content.title}
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+          />
         )}
       </div>
 

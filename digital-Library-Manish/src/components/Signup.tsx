@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Mail, Lock, User, Building, ArrowRight } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
+import { OTPVerifier } from "./OTPVerifier";
 
 export function Signup() {
   const navigate = useNavigate();
@@ -16,7 +17,21 @@ export function Signup() {
   });
   const [loading, setLoading] = useState(false);
 
-  const { signup } = useAuth();
+  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
+
+  const proceedWithSignup = async () => {
+    setLoading(true);
+    try {
+      await signup(formData.email, formData.password, formData.name, formData.organization, formData.contact, formData.designation);
+      toast.success('Account created successfully!');
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create account');
+    } finally {
+      setLoading(false);
+      setIsOTPModalOpen(false);
+    }
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,11 +42,22 @@ export function Signup() {
 
     setLoading(true);
     try {
-      await signup(formData.email, formData.password, formData.name, formData.organization, formData.contact, formData.designation);
-      toast.success('Account created successfully!');
-      navigate('/dashboard');
+      const res = await fetch('/api/verify/check-or-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email })
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.verified) {
+        await proceedWithSignup();
+      } else if (res.ok && data.otpSent) {
+        setIsOTPModalOpen(true);
+      } else {
+        toast.error(data.error || 'Failed to initiate verification');
+      }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create account');
+      toast.error('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -155,6 +181,13 @@ export function Signup() {
           </div>
         </div>
       </div>
+
+      <OTPVerifier 
+        email={formData.email}
+        isOpen={isOTPModalOpen}
+        onClose={() => setIsOTPModalOpen(false)}
+        onSuccess={proceedWithSignup}
+      />
     </div>
   );
 }
