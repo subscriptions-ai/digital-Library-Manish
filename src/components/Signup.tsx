@@ -78,7 +78,7 @@ export function Signup() {
             
             <div className={`space-y-5 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Full Name</label>
+                <label className="text-sm font-bold text-slate-700">Full Name *</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input 
@@ -93,11 +93,12 @@ export function Signup() {
                 </div>
               </div>
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Organization / University</label>
+              <label className="text-sm font-bold text-slate-700">Organization / University *</label>
               <div className="relative">
                 <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input 
                   type="text" 
+                  required={isEmailVerified}
                   value={formData.organization}
                   onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
                   placeholder="Harvard University"
@@ -107,10 +108,11 @@ export function Signup() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Contact Number</label>
+              <label className="text-sm font-bold text-slate-700">Contact Number *</label>
               <div className="relative">
                 <input 
                   type="tel" 
+                  required={isEmailVerified}
                   value={formData.contact}
                   onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
                   placeholder="+1 (555) 000-0000"
@@ -120,10 +122,11 @@ export function Signup() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Designation / Role</label>
+              <label className="text-sm font-bold text-slate-700">Designation / Role *</label>
               <div className="relative">
                 <input 
                   type="text" 
+                  required={isEmailVerified}
                   value={formData.designation}
                   onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                   placeholder="e.g. Researcher, Student, Professor"
@@ -133,7 +136,7 @@ export function Signup() {
               </div>
             </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Password</label>
+                <label className="text-sm font-bold text-slate-700">Password *</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input 

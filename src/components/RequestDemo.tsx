@@ -347,12 +347,13 @@ export function RequestDemo() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                            {formData.requestType === 'Student' ? 'Degree / Subject' : 'Designation'}
+                            {formData.requestType === 'Student' ? 'Degree / Subject *' : 'Designation *'}
                           </label>
                           <div className="relative group">
                             <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                             <input 
                               type="text" 
+                              required={isEmailVerified}
                               disabled={!isEmailVerified}
                               value={formData.designation}
                               onChange={(e) => setFormData({...formData, designation: e.target.value})}
@@ -362,11 +363,12 @@ export function RequestDemo() {
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Mobile / WhatsApp</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Mobile / WhatsApp *</label>
                           <div className="relative group">
                             <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
                             <input 
                               type="tel" 
+                              required={isEmailVerified}
                               disabled={!isEmailVerified}
                               value={formData.whatsappNumber}
                               onChange={(e) => setFormData({...formData, whatsappNumber: e.target.value})}
@@ -455,9 +457,10 @@ export function RequestDemo() {
                       </div>
                       
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Full Address</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Full Address *</label>
                         <textarea
                           value={formData.fullAddress}
+                          required={isEmailVerified}
                           disabled={!isEmailVerified}
                           onChange={(e) => setFormData({...formData, fullAddress: e.target.value})}
                           rows={3}

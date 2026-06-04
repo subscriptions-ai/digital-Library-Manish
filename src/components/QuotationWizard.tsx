@@ -865,12 +865,13 @@ export function QuotationWizard() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Designation</label>
+                  <label className="text-sm font-bold text-slate-700">Designation *</label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                       type="text"
                       name="designation"
+                      required={isEmailVerified}
                       disabled={!isEmailVerified}
                       value={formData.designation}
                       onChange={handleInputChange}
@@ -942,6 +943,8 @@ export function QuotationWizard() {
                   <input
                     type="text"
                     name="city"
+                    required={isEmailVerified}
+                    disabled={!isEmailVerified}
                     value={formData.city}
                     onChange={handleInputChange}
                     placeholder="City"
@@ -954,6 +957,8 @@ export function QuotationWizard() {
                   <label className="text-sm font-bold text-slate-700">State *</label>
                   <select
                     name="state"
+                    required={isEmailVerified}
+                    disabled={!isEmailVerified}
                     value={formData.state}
                     onChange={handleInputChange}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none"
@@ -970,6 +975,8 @@ export function QuotationWizard() {
                   <input
                     type="text"
                     name="country"
+                    required={isEmailVerified}
+                    disabled={!isEmailVerified}
                     value={formData.country}
                     onChange={handleInputChange}
                     placeholder="Country"
