@@ -7641,9 +7641,19 @@ async function startServer() {
   });
   app.get("/api/content/filters", async (req, res) => {
     try {
-      const { domain, subjectArea } = req.query;
+      const { domain, subjectArea, contentType, search } = req.query;
       const where = { status: "Published" };
       if (domain) where.domain = String(domain);
+      if (contentType) where.contentType = String(contentType);
+      if (search) {
+        const query = String(search);
+        where.OR = [
+          { title: { contains: query, mode: "insensitive" } },
+          { authors: { contains: query, mode: "insensitive" } },
+          { description: { contains: query, mode: "insensitive" } },
+          { subjectArea: { contains: query, mode: "insensitive" } }
+        ];
+      }
       const contents = await prisma2.content.findMany({
         where,
         select: { domain: true, subjectArea: true, tags: true }

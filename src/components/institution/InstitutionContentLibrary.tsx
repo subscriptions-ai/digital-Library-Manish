@@ -83,17 +83,20 @@ export function InstitutionContentLibrary() {
       .finally(() => setSubsLoading(false));
   }, []);
 
-  // Fetch dynamic filters when domain changes (fetches all if empty)
+  // Fetch dynamic filters based on selections
   useEffect(() => {
-    fetch(`/api/content/filters?domain=${encodeURIComponent(filterDomain)}`, {
+    let url = `/api/content/filters?1=1`;
+    if (filterDomain) url += `&domain=${encodeURIComponent(filterDomain)}`;
+    if (filterType) url += `&contentType=${encodeURIComponent(filterType)}`;
+    if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
+
+    fetch(url, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     })
       .then(r => r.json())
       .then(data => setAvailableFilters(data))
       .catch(() => {});
-    setFilterSubject('');
-    setFilterTag('');
-  }, [filterDomain]);
+  }, [filterDomain, filterType, debouncedSearch]);
 
   // Fetch content based on filters
   const fetchContent = useCallback(() => {
@@ -169,7 +172,7 @@ export function InstitutionContentLibrary() {
       {!subsLoading && subscribedDomains.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {subscribedDomains.map(d => (
-            <button key={d} onClick={() => { setFilterDomain(filterDomain === d ? '' : d); setPage(1); }}
+            <button key={d} onClick={() => { setFilterDomain(filterDomain === d ? '' : d); setFilterSubject(''); setFilterTag(''); setPage(1); }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${filterDomain === d ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-700 border-indigo-200 hover:border-indigo-400'}`}>
               <Tag size={11} /> {d}
             </button>
@@ -185,12 +188,12 @@ export function InstitutionContentLibrary() {
             className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 outline-none bg-white transition-all" />
         </div>
         <div className="flex gap-2">
-          <select value={filterDomain} onChange={e => { setFilterDomain(e.target.value); setPage(1); }}
+          <select value={filterDomain} onChange={e => { setFilterDomain(e.target.value); setFilterSubject(''); setFilterTag(''); setPage(1); }}
             className="border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm focus:border-indigo-400 outline-none">
             <option value="">All Domains</option>
             {subscribedDomains.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
-          <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1); }}
+          <select value={filterType} onChange={e => { setFilterType(e.target.value); setFilterSubject(''); setFilterTag(''); setPage(1); }}
             className="border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm focus:border-indigo-400 outline-none">
             <option value="">All Types</option>
             {(subscribedTypes.length > 0 ? subscribedTypes : ['Books','Periodicals','Magazines','Theses','Educational Videos']).map(t => (

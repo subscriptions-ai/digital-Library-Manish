@@ -224,19 +224,18 @@ export function LMSDashboard() {
       .finally(() => setLoadingDash(false));
   }, []);
 
-  // Fetch dynamic filters when domain changes
+  // Fetch dynamic filters
   useEffect(() => {
-    if (domainFilter) {
-      fetch(`/api/content/filters?domain=${encodeURIComponent(domainFilter)}`, { headers: authHeader() })
-        .then(r => r.json())
-        .then(data => setAvailableFilters(data))
-        .catch(err => console.error("Failed to fetch filters", err));
-    } else {
-      setAvailableFilters({ subjects: [], tags: [] });
-    }
-    setSubjectFilter('');
-    setTagFilter('');
-  }, [domainFilter]);
+    let url = `/api/content/filters?1=1`;
+    if (domainFilter) url += `&domain=${encodeURIComponent(domainFilter)}`;
+    if (typeFilter) url += `&contentType=${encodeURIComponent(typeFilter)}`;
+    if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
+
+    fetch(url, { headers: authHeader() })
+      .then(r => r.json())
+      .then(data => setAvailableFilters(data))
+      .catch(err => console.error("Failed to fetch filters", err));
+  }, [domainFilter, typeFilter, debouncedSearch]);
 
   // Fetch content list
   const fetchContent = useCallback(async () => {
@@ -491,13 +490,13 @@ export function LMSDashboard() {
               />
             </div>
             {/* Domain Filter */}
-            <select value={domainFilter} onChange={e => setDomainFilter(e.target.value)}
+            <select value={domainFilter} onChange={e => { setDomainFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
               className="min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
               <option value="">All Domains</option>
               {(dashData?.allowedDomains || domains).map(d => <option key={d} value={d}>{d}</option>)}
             </select>
             {/* Content Type Filter */}
-            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+            <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
               className="min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
               <option value="">All Types</option>
               {CONTENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}

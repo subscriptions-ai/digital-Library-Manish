@@ -13,29 +13,45 @@ export function MyContentLibrary() {
   const [contents, setContents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Search & Pagination State
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Search & Pagination State (Persisted)
+  const [search, setSearch] = useState(() => sessionStorage.getItem('my_lib_search') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   
-  const [selectedDomain, setSelectedDomain] = useState(domain);
-  const [filterSubjects, setFilterSubjects] = useState<string[]>([]);
-  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [selectedDomain, setSelectedDomain] = useState(() => domain || sessionStorage.getItem('my_lib_domain') || '');
+  const [filterSubjects, setFilterSubjects] = useState<string[]>(() => JSON.parse(sessionStorage.getItem('my_lib_subjects') || '[]'));
+  const [filterTags, setFilterTags] = useState<string[]>(() => JSON.parse(sessionStorage.getItem('my_lib_tags') || '[]'));
   
   const [availableFilters, setAvailableFilters] = useState<{ domains: string[], subjects: string[], tags: string[] }>({ domains: [], subjects: [], tags: [] });
   const ITEMS_PER_PAGE = 24;
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => Number(sessionStorage.getItem('my_lib_page')) || 1);
   const [totalItems, setTotalItems] = useState(0);
+
+  // Sync to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('my_lib_search', search);
+    sessionStorage.setItem('my_lib_domain', selectedDomain);
+    sessionStorage.setItem('my_lib_subjects', JSON.stringify(filterSubjects));
+    sessionStorage.setItem('my_lib_tags', JSON.stringify(filterTags));
+    sessionStorage.setItem('my_lib_page', String(page));
+  }, [search, selectedDomain, filterSubjects, filterTags, page]);
 
   // Debounce search
   useEffect(() => {
-    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 350);
+    const t = setTimeout(() => { 
+      if (debouncedSearch !== search) {
+        setDebouncedSearch(search); 
+        setPage(1); 
+      }
+    }, 350);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   // Fetch dynamic filters based on selections
   useEffect(() => {
     let url = `/api/content/filters?1=1`;
     if (selectedDomain) url += `&domain=${encodeURIComponent(selectedDomain)}`;
+    if (type) url += `&contentType=${encodeURIComponent(type)}`;
+    if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
     if (filterSubjects.length > 0) url += `&subjectArea=${encodeURIComponent(filterSubjects.join(','))}`;
 
     fetch(url, {
@@ -50,7 +66,7 @@ export function MyContentLibrary() {
         }));
       })
       .catch(() => {});
-  }, [selectedDomain, filterSubjects]);
+  }, [selectedDomain, filterSubjects, type, debouncedSearch]);
 
   useEffect(() => {
     setLoading(true);
