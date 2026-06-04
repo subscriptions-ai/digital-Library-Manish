@@ -3,6 +3,7 @@ import { Search, Filter, Plus, Edit, Trash2, Eye, EyeOff, ExternalLink } from 'l
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import Papa from 'papaparse';
 
 import { DOMAINS } from '../../../constants';
 
@@ -114,6 +115,57 @@ export function ContentListView({ contentType }: ContentListViewProps) {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      toast.loading('Exporting data...', { id: 'export' });
+      const query = new URLSearchParams({
+        contentType,
+        page: '1',
+        limit: '100000', // Fetch practically all matching records
+        ...(debouncedSearch && { search: debouncedSearch }),
+        ...(domainFilter && { domain: domainFilter }),
+        ...(statusFilter && { status: statusFilter }),
+      });
+      const res = await fetch(`/api/admin/content?${query}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const { data } = await res.json();
+      
+      if (!data || data.length === 0) {
+        toast.error('No data to export', { id: 'export' });
+        return;
+      }
+
+      // Map data for clean CSV
+      const csvData = data.map((item: any) => ({
+        Title: item.title,
+        Authors: item.authors,
+        Domain: item.domain,
+        SubjectArea: item.subjectArea,
+        ContentType: item.contentType,
+        AccessType: item.accessType,
+        Status: item.status,
+        PublishedAt: item.publishedAt ? format(new Date(item.publishedAt), 'yyyy-MM-dd HH:mm:ss') : '',
+        URL: item.fileUrl
+      }));
+
+      const csv = Papa.unparse(csvData);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${contentType.replace(/\s+/g, '_')}_Export_${format(new Date(), 'yyyyMMdd')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Export successful', { id: 'export' });
+    } catch (err) {
+      toast.error('Export failed', { id: 'export' });
+    }
+  };
+
   const totalPages = Math.ceil(total / limit) || 1;
 
   return (
@@ -151,12 +203,20 @@ export function ContentListView({ contentType }: ContentListViewProps) {
             <Filter size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
         </div>
-        <button
-          onClick={() => navigate(`/admin/${slug}/new`)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shrink-0 transition-colors"
-        >
-          <Plus size={16} /> Add {contentType.replace(/s$/, '')}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-xl text-sm font-semibold shrink-0 transition-colors"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => navigate(`/admin/${slug}/new`)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shrink-0 transition-colors"
+          >
+            <Plus size={16} /> Add {contentType.replace(/s$/, '')}
+          </button>
+        </div>
       </div>
 
       {/* Bulk Action Bar */}
