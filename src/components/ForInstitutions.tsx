@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Users, PieChart, ShieldCheck, Database, Layers, ArrowRight, Zap, CheckCircle2 } from 'lucide-react';
+import { Building2, Users, PieChart, ShieldCheck, Database, Layers, ArrowRight, Zap, CheckCircle2, Cloud, Clock, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const features = [
@@ -112,8 +112,8 @@ export function ForInstitutions() {
                 <Users size={24} />
               </div>
               <div>
-                <div className="text-sm text-slate-500 font-medium">Active Students</div>
-                <div className="text-xl font-bold text-slate-900">10,000+</div>
+                <div className="text-sm text-slate-500 font-medium">Platform Management</div>
+                <div className="text-xl font-bold text-slate-900">Centralized</div>
               </div>
             </motion.div>
           </div>
@@ -173,14 +173,14 @@ export function ForInstitutions() {
           </div>
           <div className="lg:w-1/2 grid grid-cols-2 gap-6 w-full">
             {[
-              { label: 'Journals & Articles', value: '500K+' },
-              { label: 'E-Books', value: '10,000+' },
-              { label: 'Video Lectures', value: '5,000+' },
-              { label: 'Uptime', value: '99.9%' }
+              { label: 'Secure Access', icon: <ShieldCheck className="mx-auto mb-4 text-blue-200" size={40} /> },
+              { label: 'Cloud Infrastructure', icon: <Cloud className="mx-auto mb-4 text-blue-200" size={40} /> },
+              { label: '24/7 Availability', icon: <Clock className="mx-auto mb-4 text-blue-200" size={40} /> },
+              { label: 'Multi-device Support', icon: <Smartphone className="mx-auto mb-4 text-blue-200" size={40} /> }
             ].map((stat, i) => (
               <div key={i} className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 text-center">
-                <div className="text-4xl md:text-5xl font-extrabold mb-2">{stat.value}</div>
-                <div className="text-blue-100 font-medium">{stat.label}</div>
+                {stat.icon}
+                <div className="text-blue-100 font-medium text-lg">{stat.label}</div>
               </div>
             ))}
           </div>

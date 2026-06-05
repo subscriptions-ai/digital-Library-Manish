@@ -116,7 +116,7 @@ export function ForStudents() {
                 </div>
                 <div>
                   <div className="text-sm font-bold text-slate-800">Saved to Wish List</div>
-                  <div className="text-xs text-slate-500 mt-1">Quantum Physics Vol 3</div>
+                  <div className="text-xs text-slate-500 mt-1">Research Materials</div>
                 </div>
               </motion.div>
             </div>
@@ -154,7 +154,7 @@ export function ForStudents() {
       {/* CTA */}
       <div className="py-20 bg-white border-t border-slate-100 text-center px-6">
         <h2 className="text-3xl font-bold text-slate-900 mb-4">Ready to accelerate your research?</h2>
-        <p className="text-slate-600 mb-8 max-w-2xl mx-auto">Join thousands of students and researchers who are already using our platform to discover and manage academic content.</p>
+        <p className="text-slate-600 mb-8 max-w-2xl mx-auto">Join students and researchers who are using our platform to discover and manage academic content.</p>
         <button onClick={() => navigate('/login')} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">
           Start Your Journey
         </button>
