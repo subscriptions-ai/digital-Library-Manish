@@ -44,8 +44,8 @@ export function ForInstitutions() {
       {/* Hero Section */}
       <div className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-50 via-white to-white" />
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="max-w-3xl">
+        <div className="max-w-7xl mx-auto px-6 relative z-10 flex flex-col lg:flex-row items-center gap-12">
+          <div className="lg:w-1/2">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -60,7 +60,7 @@ export function ForInstitutions() {
               transition={{ delay: 0.1 }}
               className="text-4xl md:text-6xl font-extrabold text-slate-900 leading-tight mb-6 tracking-tight"
             >
-              The Next-Generation <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Digital Library</span> For Universities
+              The Next-Generation <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Digital Library</span> For Colleges and Universities
             </motion.h1>
             
             <motion.p 
@@ -81,9 +81,40 @@ export function ForInstitutions() {
               <button onClick={() => navigate('/demo-request')} className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5">
                 Request a Demo <ArrowRight size={20} />
               </button>
-              <button onClick={() => navigate('/quotation')} className="px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2">
+              <button onClick={() => navigate('/create-quotation')} className="px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2">
                 Get a Quotation
               </button>
+            </motion.div>
+          </div>
+
+          <div className="lg:w-1/2 relative">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="relative rounded-2xl overflow-hidden shadow-2xl border border-slate-200"
+            >
+              <img 
+                src="https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?auto=format&fit=crop&q=80" 
+                alt="University Library" 
+                className="w-full h-auto object-cover rounded-2xl"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            </motion.div>
+            
+            {/* Floating Elements */}
+            <motion.div 
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -bottom-6 -left-6 bg-white p-4 rounded-xl shadow-xl border border-slate-100 flex items-center gap-4 z-20"
+            >
+              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                <Users size={24} />
+              </div>
+              <div>
+                <div className="text-sm text-slate-500 font-medium">Active Students</div>
+                <div className="text-xl font-bold text-slate-900">10,000+</div>
+              </div>
             </motion.div>
           </div>
         </div>
