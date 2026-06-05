@@ -166,7 +166,8 @@ export function Navbar() {
             <nav className="flex items-center gap-8">
               <Link to="/" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Home</Link>
               <Link to="/about" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">About Us</Link>
-              <Link to="/digital-library" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Library Info</Link>
+              <Link to="/for-institutions" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">For Institutions</Link>
+              <Link to="/for-students" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">For Students & Researchers</Link>
               
               <div className="relative group">
                 <button 
@@ -259,7 +260,8 @@ export function Navbar() {
               <div className="grid grid-cols-1 gap-4">
                 <Link to="/" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Home</Link>
                 <Link to="/about" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>About Us</Link>
-                <Link to="/digital-library" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Library Info</Link>
+                <Link to="/for-institutions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>For Institutions</Link>
+                <Link to="/for-students" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>For Students & Researchers</Link>
                 <Link to="/subscriptions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Subscription Plans</Link>
                 <Link to="/agency-listing" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Agency Info</Link>
                 <Link to="/faq" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>FAQ</Link>

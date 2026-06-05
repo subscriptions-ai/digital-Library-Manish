@@ -80,6 +80,8 @@ import { VideoLibrary } from "./components/dashboard/VideoLibrary";
 import { LmsVideoPlayer } from "./components/dashboard/LmsVideoPlayer";
 import MyHistory from "./components/dashboard/MyHistory";
 import { FAQ } from "./components/FAQ";
+import { ForInstitutions } from "./components/ForInstitutions";
+import { ForStudents } from "./components/ForStudents";
 import { DomainLandingPage } from "./components/DomainLandingPage";
 import { SearchResults } from "./components/SearchResults";
 import { Toaster } from "react-hot-toast";
@@ -216,6 +218,8 @@ export default function App() {
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/digital-library" element={<DigitalLibrary />} />
+                      <Route path="/for-institutions" element={<ForInstitutions />} />
+                      <Route path="/for-students" element={<ForStudents />} />
 
                       <Route path="/journals" element={<DigitalLibrary />} />
                       <Route path="/journal/:journalId" element={<JournalDetail />} />
