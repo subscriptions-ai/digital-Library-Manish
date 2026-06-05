@@ -30,7 +30,6 @@ export function Signup() {
       toast.error(error.message || 'Failed to create account');
     } finally {
       setLoading(false);
-      setIsOTPModalOpen(false);
     }
   };
 
