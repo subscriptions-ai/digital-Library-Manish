@@ -924,7 +924,14 @@ async function startServer() {
     try {
       const { domain, subjectArea, contentType, search } = req.query;
       const where: any = { status: "Published" };
-      if (domain) where.domain = String(domain);
+      if (domain) {
+        const domainList = String(domain).split(',').map(d => d.trim()).filter(Boolean);
+        if (domainList.length > 1) {
+          where.domain = { in: domainList };
+        } else if (domainList.length === 1) {
+          where.domain = domainList[0];
+        }
+      }
       if (contentType) where.contentType = String(contentType);
       
       if (search) {
@@ -4312,6 +4319,7 @@ async function startServer() {
       // Star Reader
       const userActivityMap = new Map();
       activities.forEach(a => {
+        if (!a.user) return; // Skip if user is deleted
         const current = userActivityMap.get(a.userId) || { count: 0, timeSpent: 0, user: a.user };
         current.count += 1;
         current.timeSpent += a.timeSpent || 0;
@@ -4379,13 +4387,14 @@ async function startServer() {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      const OR_clauses: any[] = [{ userId: req.user.uid }];
+      const userId = req.user.uid || req.user.id || req.user.userId;
+      const OR_clauses: any[] = [{ userId: userId }];
       
       // institutionId is stored on the User record and embedded in JWT at login
       let instId = req.user.institutionId;
       if (!instId) {
         // Fallback: load from DB for older tokens
-        const u = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        const u = await prisma.user.findUnique({ where: { id: userId }, select: { institutionId: true } });
         instId = u?.institutionId;
       }
       if (instId) {
@@ -4408,7 +4417,8 @@ async function startServer() {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const user = await prisma.user.findUnique({ where: { id: req.user.uid } });
+      const userId = req.user.uid || req.user.id || req.user.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
       if (!user) return res.status(404).json({ error: "User not found" });
       const prof = (user as any).institutionProfile || {};
       res.json({
@@ -4438,9 +4448,9 @@ async function startServer() {
       }
       const { contactName, city, contactPhone, address, website, logoUrl, coursesOffered, totalCourses, studentBodySize } = req.body;
       // institutionName (organization) is intentionally EXCLUDED from updates here
-
+      const userId = req.user.uid || req.user.id || req.user.userId;
       await prisma.user.update({
-        where: { id: req.user.uid },
+        where: { id: userId },
         data: {
           ...(contactName ? { displayName: contactName } : {}),
           ...(city ? { state: city } : {}),
@@ -4463,7 +4473,8 @@ async function startServer() {
       
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === 'Institution') {
-         const authUser = await (prisma as any).user.findUnique({ where: { id: req.user.uid } });
+         const userId = req.user.uid || req.user.id || req.user.userId;
+         const authUser = await (prisma as any).user.findUnique({ where: { id: userId } });
          targetInstitutionId = authUser?.institutionId;
       }
 

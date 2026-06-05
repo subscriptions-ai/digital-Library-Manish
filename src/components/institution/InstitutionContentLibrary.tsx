@@ -63,7 +63,14 @@ export function InstitutionContentLibrary() {
   // Fetch dynamic filters based on selections
   useEffect(() => {
     let url = `/api/content/filters?1=1`;
-    if (filterDomain) url += `&domain=${encodeURIComponent(filterDomain)}`;
+    if (filterDomain) {
+      url += `&domain=${encodeURIComponent(filterDomain)}`;
+    } else if (subscriptions.length > 0) {
+      const subDomains = Array.from(new Set(subscriptions.flatMap(s => Array.isArray(s.domains) ? s.domains : [])));
+      if (subDomains.length > 0) {
+        url += `&domain=${encodeURIComponent(subDomains.join(','))}`;
+      }
+    }
     if (filterType) url += `&contentType=${encodeURIComponent(filterType)}`;
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
     if (filterSubjects.length > 0) url += `&subjectArea=${encodeURIComponent(filterSubjects.join(','))}`;
@@ -86,7 +93,14 @@ export function InstitutionContentLibrary() {
   const fetchContent = useCallback(() => {
     setLoading(true);
     let url = `/api/content/list?onlyUnlocked=true&page=${page}&limit=${PER_PAGE}`;
-    if (filterDomain) url += `&domain=${encodeURIComponent(filterDomain)}`;
+    if (filterDomain) {
+      url += `&domain=${encodeURIComponent(filterDomain)}`;
+    } else {
+      const subDomains = Array.from(new Set(subscriptions.flatMap(s => Array.isArray(s.domains) ? s.domains : [])));
+      if (subDomains.length > 0) {
+        url += `&domain=${encodeURIComponent(subDomains.join(','))}`;
+      }
+    }
     if (filterType)   url += `&contentType=${encodeURIComponent(filterType)}`;
     if (filterSubjects.length > 0) url += `&subjectArea=${encodeURIComponent(filterSubjects.join(','))}`;
     if (filterTags.length > 0) url += `&tag=${encodeURIComponent(filterTags.join(','))}`;
@@ -180,8 +194,10 @@ export function InstitutionContentLibrary() {
                     setPage(1); 
                   }}
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 outline-none text-slate-800 transition-all cursor-pointer appearance-none">
-                  <option value="">All Domains</option>
-                  {availableFilters.domains.map(d => <option key={d} value={d}>{d}</option>)}
+                  <option value="">All Subscribed Domains</option>
+                  {availableFilters.domains
+                    .filter(d => subscribedDomains.length === 0 || subscribedDomains.includes(d))
+                    .map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
             )}

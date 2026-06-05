@@ -7657,7 +7657,14 @@ async function startServer() {
     try {
       const { domain, subjectArea, contentType, search } = req.query;
       const where = { status: "Published" };
-      if (domain) where.domain = String(domain);
+      if (domain) {
+        const domainList = String(domain).split(",").map((d) => d.trim()).filter(Boolean);
+        if (domainList.length > 1) {
+          where.domain = { in: domainList };
+        } else if (domainList.length === 1) {
+          where.domain = domainList[0];
+        }
+      }
       if (contentType) where.contentType = String(contentType);
       if (search) {
         const query = String(search);
@@ -10486,6 +10493,7 @@ async function startServer() {
       });
       const userActivityMap = /* @__PURE__ */ new Map();
       activities.forEach((a) => {
+        if (!a.user) return;
         const current = userActivityMap.get(a.userId) || { count: 0, timeSpent: 0, user: a.user };
         current.count += 1;
         current.timeSpent += a.timeSpent || 0;
@@ -10542,10 +10550,11 @@ async function startServer() {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const OR_clauses = [{ userId: req.user.uid }];
+      const userId = req.user.uid || req.user.id || req.user.userId;
+      const OR_clauses = [{ userId }];
       let instId = req.user.institutionId;
       if (!instId) {
-        const u = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        const u = await prisma2.user.findUnique({ where: { id: userId }, select: { institutionId: true } });
         instId = u?.institutionId;
       }
       if (instId) {
@@ -10565,7 +10574,8 @@ async function startServer() {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const user = await prisma2.user.findUnique({ where: { id: req.user.uid } });
+      const userId = req.user.uid || req.user.id || req.user.userId;
+      const user = await prisma2.user.findUnique({ where: { id: userId } });
       if (!user) return res.status(404).json({ error: "User not found" });
       const prof = user.institutionProfile || {};
       res.json({
@@ -10594,8 +10604,9 @@ async function startServer() {
         return res.status(403).json({ error: "Unauthorized" });
       }
       const { contactName, city, contactPhone, address, website, logoUrl, coursesOffered, totalCourses, studentBodySize } = req.body;
+      const userId = req.user.uid || req.user.id || req.user.userId;
       await prisma2.user.update({
-        where: { id: req.user.uid },
+        where: { id: userId },
         data: {
           ...contactName ? { displayName: contactName } : {},
           ...city ? { state: city } : {},
@@ -10621,7 +10632,8 @@ async function startServer() {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
-        const authUser = await prisma2.user.findUnique({ where: { id: req.user.uid } });
+        const userId = req.user.uid || req.user.id || req.user.userId;
+        const authUser = await prisma2.user.findUnique({ where: { id: userId } });
         targetInstitutionId = authUser?.institutionId;
       }
       if (!targetInstitutionId) {
