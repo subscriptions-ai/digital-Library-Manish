@@ -37,7 +37,7 @@ COPY --from=builder /app/server_compiled.cjs ./
 COPY seed-admin.ts ./
 COPY prisma/ ./prisma/
 COPY public/ ./public/
-RUN npx prisma@6.19.3 generate
+RUN npx -y prisma@6.19.3 generate
 
 # Cache buster to bypass BuildKit mount locks on Coolify
 ENV CACHE_BUSTER="2026-05-23T10-59-00-REDEPLOY"
