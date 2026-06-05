@@ -2071,9 +2071,24 @@ async function startServer() {
     try {
       const { id } = req.params;
       if (id === req.user.uid) return res.status(400).json({ error: "Cannot delete your own account" });
-      await prisma.user.delete({ where: { id } });
+      
+      // Delete user and all related records to avoid foreign key constraints
+      await prisma.$transaction([
+        (prisma as any).payment.deleteMany({ where: { userId: id } }),
+        (prisma as any).subscription.deleteMany({ where: { userId: id } }),
+        (prisma as any).subscriptionRequest.deleteMany({ where: { userId: id } }),
+        (prisma as any).quotation.deleteMany({ where: { userId: id } }),
+        (prisma as any).submission.deleteMany({ where: { userId: id } }),
+        (prisma as any).usageLog.deleteMany({ where: { userId: id } }),
+        (prisma as any).studentActivity.deleteMany({ where: { userId: id } }),
+        (prisma as any).couponUsage.deleteMany({ where: { userId: id } }),
+        (prisma as any).favorite.deleteMany({ where: { userId: id } }),
+        prisma.user.delete({ where: { id } })
+      ]);
+      
       res.json({ message: "User deleted" });
     } catch (err) {
+      console.error("Delete user error:", err);
       res.status(500).json({ error: "Failed to delete user" });
     }
   });
