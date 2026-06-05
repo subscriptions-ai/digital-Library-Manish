@@ -1,30 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Search, Filter, Lock, FileText, PlayCircle, Tag, ChevronRight, LayoutGrid, List, RefreshCw } from 'lucide-react';
+import { BookOpen, Search, Filter, Lock, FileText, PlayCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-
-const CONTENT_TYPE_ICONS: Record<string, React.ReactNode> = {
-  'Books':                   <BookOpen size={18} />,
-  'Periodicals':             <FileText size={18} />,
-  'Magazines':               <FileText size={18} />,
-  'Case Reports':            <FileText size={18} />,
-  'Theses':                  <FileText size={18} />,
-  'Conference Proceedings':  <FileText size={18} />,
-  'Educational Videos':      <PlayCircle size={18} />,
-  'Newsletters':             <FileText size={18} />,
-};
-
-const CONTENT_TYPE_COLORS: Record<string, string> = {
-  'Books':                  'bg-blue-50 text-blue-600',
-  'Periodicals':            'bg-indigo-50 text-indigo-600',
-  'Magazines':              'bg-purple-50 text-purple-600',
-  'Case Reports':           'bg-amber-50 text-amber-600',
-  'Theses':                 'bg-emerald-50 text-emerald-600',
-  'Conference Proceedings': 'bg-teal-50 text-teal-600',
-  'Educational Videos':     'bg-red-50 text-red-600',
-  'Newsletters':            'bg-orange-50 text-orange-600',
-};
 
 export function InstitutionContentLibrary() {
   const navigate = useNavigate();
@@ -35,30 +13,29 @@ export function InstitutionContentLibrary() {
   const [subsLoading, setSubsLoading]     = useState(true);
 
   // Filters (Persisted via sessionStorage)
-  const [search, setSearch]           = useState(() => sessionStorage.getItem('lib_search') || '');
+  const [search, setSearch]           = useState(() => sessionStorage.getItem('inst_lib_search') || '');
   const [debouncedSearch, setDebounced] = useState(search);
-  const [filterDomain, setFilterDomain] = useState(() => sessionStorage.getItem('lib_domain') || '');
-  const [filterType, setFilterType]   = useState(() => sessionStorage.getItem('lib_type') || '');
-  const [filterSubject, setFilterSubject] = useState(() => sessionStorage.getItem('lib_subject') || '');
-  const [filterTag, setFilterTag] = useState(() => sessionStorage.getItem('lib_tag') || '');
-  const [availableFilters, setAvailableFilters] = useState<{ subjects: string[], tags: string[] }>({ subjects: [], tags: [] });
-  const [viewMode, setViewMode]       = useState<'grouped' | 'grid' | 'list'>(() => (sessionStorage.getItem('lib_view') as any) || 'grouped');
+  const [filterDomain, setFilterDomain] = useState(() => sessionStorage.getItem('inst_lib_domain') || '');
+  const [filterType, setFilterType]   = useState(() => sessionStorage.getItem('inst_lib_type') || '');
+  const [filterSubjects, setFilterSubjects] = useState<string[]>(() => JSON.parse(sessionStorage.getItem('inst_lib_subjects') || '[]'));
+  const [filterTags, setFilterTags] = useState<string[]>(() => JSON.parse(sessionStorage.getItem('inst_lib_tags') || '[]'));
+  
+  const [availableFilters, setAvailableFilters] = useState<{ domains: string[], subjects: string[], tags: string[] }>({ domains: [], subjects: [], tags: [] });
 
   // Pagination
   const PER_PAGE = 24;
-  const [page, setPage]         = useState(() => Number(sessionStorage.getItem('lib_page')) || 1);
+  const [page, setPage]         = useState(() => Number(sessionStorage.getItem('inst_lib_page')) || 1);
   const [totalItems, setTotalItems] = useState(0);
 
   // Persist state changes
   useEffect(() => {
-    sessionStorage.setItem('lib_search', search);
-    sessionStorage.setItem('lib_domain', filterDomain);
-    sessionStorage.setItem('lib_type', filterType);
-    sessionStorage.setItem('lib_subject', filterSubject);
-    sessionStorage.setItem('lib_tag', filterTag);
-    sessionStorage.setItem('lib_view', viewMode);
-    sessionStorage.setItem('lib_page', String(page));
-  }, [search, filterDomain, filterType, filterSubject, filterTag, viewMode, page]);
+    sessionStorage.setItem('inst_lib_search', search);
+    sessionStorage.setItem('inst_lib_domain', filterDomain);
+    sessionStorage.setItem('inst_lib_type', filterType);
+    sessionStorage.setItem('inst_lib_subjects', JSON.stringify(filterSubjects));
+    sessionStorage.setItem('inst_lib_tags', JSON.stringify(filterTags));
+    sessionStorage.setItem('inst_lib_page', String(page));
+  }, [search, filterDomain, filterType, filterSubjects, filterTags, page]);
 
   // Debounce search
   useEffect(() => {
@@ -89,14 +66,21 @@ export function InstitutionContentLibrary() {
     if (filterDomain) url += `&domain=${encodeURIComponent(filterDomain)}`;
     if (filterType) url += `&contentType=${encodeURIComponent(filterType)}`;
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
+    if (filterSubjects.length > 0) url += `&subjectArea=${encodeURIComponent(filterSubjects.join(','))}`;
 
     fetch(url, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     })
       .then(r => r.json())
-      .then(data => setAvailableFilters(data))
+      .then(data => {
+        setAvailableFilters(prev => ({
+          domains: data.domains?.length > 0 ? data.domains : prev.domains,
+          subjects: data.subjects || [],
+          tags: data.tags || []
+        }));
+      })
       .catch(() => {});
-  }, [filterDomain, filterType, debouncedSearch]);
+  }, [filterDomain, filterType, debouncedSearch, filterSubjects]);
 
   // Fetch content based on filters
   const fetchContent = useCallback(() => {
@@ -104,8 +88,8 @@ export function InstitutionContentLibrary() {
     let url = `/api/content/list?onlyUnlocked=true&page=${page}&limit=${PER_PAGE}`;
     if (filterDomain) url += `&domain=${encodeURIComponent(filterDomain)}`;
     if (filterType)   url += `&contentType=${encodeURIComponent(filterType)}`;
-    if (filterSubject) url += `&subjectArea=${encodeURIComponent(filterSubject)}`;
-    if (filterTag)   url += `&tag=${encodeURIComponent(filterTag)}`;
+    if (filterSubjects.length > 0) url += `&subjectArea=${encodeURIComponent(filterSubjects.join(','))}`;
+    if (filterTags.length > 0) url += `&tag=${encodeURIComponent(filterTags.join(','))}`;
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
 
     fetch(url, {
@@ -119,7 +103,7 @@ export function InstitutionContentLibrary() {
       })
       .catch(() => toast.error('Failed to load content'))
       .finally(() => setLoading(false));
-  }, [page, filterDomain, filterType, filterSubject, filterTag, debouncedSearch]);
+  }, [page, filterDomain, filterType, filterSubjects, filterTags, debouncedSearch]);
 
   useEffect(() => { fetchContent(); }, [fetchContent]);
 
@@ -135,276 +119,244 @@ export function InstitutionContentLibrary() {
     }
   };
 
-  // Derive unique domains/types available from subscriptions
   const subscribedDomains = Array.from(new Set(subscriptions.flatMap(s => Array.isArray(s.domains) ? s.domains : [])));
   const subscribedTypes   = Array.from(new Set(subscriptions.flatMap(s => Array.isArray(s.contentTypes) ? s.contentTypes : [])));
   const totalPages = Math.ceil(totalItems / PER_PAGE);
 
-  const groupedContents = contents.reduce((acc, item) => {
-    const domain = item.domain || 'General';
-    if (!acc[domain]) acc[domain] = [];
-    acc[domain].push(item);
-    return acc;
-  }, {} as Record<string, any[]>);
-
   return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Content Library</h1>
-          <p className="text-sm text-slate-500 mt-1">Browse all content your institution has access to.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setViewMode('grouped')} className={`px-3 py-1.5 rounded-xl border transition-all text-xs font-bold ${viewMode === 'grouped' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`}>
-            Grouped
-          </button>
-          <button onClick={() => setViewMode('grid')} className={`p-2 rounded-xl border transition-all ${viewMode === 'grid' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`}>
-            <LayoutGrid size={16} />
-          </button>
-          <button onClick={() => setViewMode('list')} className={`p-2 rounded-xl border transition-all ${viewMode === 'list' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`}>
-            <List size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* Active Subscription Badges */}
-      {!subsLoading && subscribedDomains.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {subscribedDomains.map(d => (
-            <button key={d} onClick={() => { setFilterDomain(filterDomain === d ? '' : d); setFilterSubject(''); setFilterTag(''); setPage(1); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${filterDomain === d ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-700 border-indigo-200 hover:border-indigo-400'}`}>
-              <Tag size={11} /> {d}
+    <div className="flex flex-col md:flex-row gap-6 pb-12 items-start">
+      {/* Sidebar for Filters */}
+      <div className="w-full md:w-[280px] shrink-0 space-y-6 md:sticky md:top-24">
+        <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <button onClick={() => navigate('/institution')} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors shrink-0 border border-slate-200">
+              <ArrowLeft size={18} className="text-slate-600" />
             </button>
-          ))}
-        </div>
-      )}
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-tight">Content Library</h1>
+              <p className="text-xs font-semibold text-slate-500 mt-0.5">Advanced Filters</p>
+            </div>
+          </div>
 
-      {/* Search + Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input type="text" placeholder="Search by title, author, subject…" value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 outline-none bg-white transition-all" />
-        </div>
-        <div className="flex gap-2">
-          <select value={filterDomain} onChange={e => { setFilterDomain(e.target.value); setFilterSubject(''); setFilterTag(''); setPage(1); }}
-            className="border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm focus:border-indigo-400 outline-none">
-            <option value="">All Domains</option>
-            {subscribedDomains.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select value={filterType} onChange={e => { setFilterType(e.target.value); setFilterSubject(''); setFilterTag(''); setPage(1); }}
-            className="border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm focus:border-indigo-400 outline-none">
-            <option value="">All Types</option>
-            {(subscribedTypes.length > 0 ? subscribedTypes : ['Books','Periodicals','Magazines','Theses','Educational Videos']).map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          {availableFilters.subjects.length > 0 && (
-            <select value={filterSubject} onChange={e => { setFilterSubject(e.target.value); setPage(1); }}
-              className="border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm focus:border-indigo-400 outline-none">
-              <option value="">All Subjects</option>
-              {availableFilters.subjects.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          )}
-          <button onClick={fetchContent} className="p-2.5 border border-slate-200 bg-white rounded-xl text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition-all">
-            <RefreshCw size={16} />
-          </button>
+          <div className="space-y-5">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search resources..."
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 transition-all outline-none text-slate-800 placeholder:text-slate-400"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            
+            {/* Content Type Filter */}
+            <div className="pt-2">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Content Type</h3>
+              <select value={filterType} onChange={e => { 
+                  setFilterType(e.target.value); 
+                  setFilterSubjects([]);
+                  setFilterTags([]);
+                  setPage(1); 
+                }}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 outline-none text-slate-800 transition-all cursor-pointer appearance-none">
+                <option value="">All Types</option>
+                {(subscribedTypes.length > 0 ? subscribedTypes : ['Books','Periodicals','Magazines','Theses','Educational Videos']).map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Domain Filter */}
+            {availableFilters.domains.length > 0 && (
+              <div className="pt-4 border-t border-slate-100">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Domain</h3>
+                <select value={filterDomain} onChange={e => { 
+                    setFilterDomain(e.target.value); 
+                    setFilterSubjects([]);
+                    setFilterTags([]);
+                    setPage(1); 
+                  }}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 outline-none text-slate-800 transition-all cursor-pointer appearance-none">
+                  <option value="">All Domains</option>
+                  {availableFilters.domains.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            )}
+            
+            {/* Subject Filter */}
+            <AnimatePresence>
+              {availableFilters.subjects.length > 0 && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-slate-100">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Subject Area</h3>
+                  <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                    {availableFilters.subjects.map(s => (
+                      <label key={s} className="flex items-start gap-3 cursor-pointer group">
+                        <input 
+                          type="checkbox"
+                          checked={filterSubjects.includes(s)}
+                          onChange={(e) => {
+                            if (e.target.checked) setFilterSubjects([...filterSubjects, s]);
+                            else setFilterSubjects(filterSubjects.filter(sub => sub !== s));
+                            setPage(1);
+                          }}
+                          className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-100 border-slate-300 w-4 h-4 cursor-pointer"
+                        />
+                        <span className="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors leading-tight">{s}</span>
+                      </label>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Tags Filter */}
+            <AnimatePresence>
+              {availableFilters.tags.length > 0 && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-slate-100">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Topics & Tags</h3>
+                  <div className="flex flex-wrap gap-1.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
+                    {availableFilters.tags.map(t => {
+                      const isSelected = filterTags.includes(t);
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => {
+                            if (isSelected) setFilterTags(filterTags.filter(tag => tag !== t));
+                            else setFilterTags([...filterTags, t]);
+                            setPage(1);
+                          }}
+                          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${
+                            isSelected 
+                              ? 'bg-indigo-600 text-white border-indigo-600' 
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      <AnimatePresence>
-        {availableFilters.tags.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }} 
-            animate={{ opacity: 1, height: 'auto' }} 
-            exit={{ opacity: 0, height: 0 }}
-            className="flex flex-wrap gap-2 items-center bg-white rounded-xl border border-slate-100 p-3 shadow-sm mt-3"
-          >
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mr-1">Popular Tags:</span>
-            {availableFilters.tags.slice(0, 15).map(tag => (
-              <button
-                key={tag}
-                onClick={() => { setFilterTag(filterTag === tag ? '' : tag); setPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border
-                  ${filterTag === tag 
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20' 
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
-                  }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Main Content Grid */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-slate-500 text-sm font-medium">
+            Showing <span className="text-slate-900 font-bold">{totalItems}</span> results
+          </div>
+        </div>
 
-      {/* Content Grid / List */}
-      {loading ? (
-        <div className={`grid gap-5 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
-          {[...Array(6)].map((_, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.05, duration: 0.3 }}
-              className={`relative p-5 rounded-2xl bg-white border border-slate-100 overflow-hidden shadow-sm ${viewMode === 'grid' ? 'h-[200px] flex flex-col' : 'flex items-center gap-4 py-3.5 h-[68px]'}`}
-            >
-              {viewMode === 'grid' ? (
-                <>
-                  <div className="h-10 w-10 rounded-xl bg-slate-100 mb-4 animate-pulse" />
-                  <div className="h-4 w-3/4 rounded bg-slate-100 mb-2 animate-pulse" />
-                  <div className="h-4 w-1/2 rounded bg-slate-100 mb-6 animate-pulse" />
-                  <div className="flex justify-between items-center mt-auto">
-                    <div className="h-4 w-16 rounded-full bg-slate-100 animate-pulse" />
-                    <div className="h-5 w-20 rounded-full bg-slate-100 animate-pulse" />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="h-9 w-9 rounded-xl bg-slate-100 shrink-0 animate-pulse" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3.5 w-1/3 rounded bg-slate-100 animate-pulse" />
-                    <div className="h-2.5 w-1/4 rounded bg-slate-100 animate-pulse" />
-                  </div>
-                  <div className="h-4 w-16 rounded-full bg-slate-100 shrink-0 animate-pulse" />
-                </>
-              )}
-            </motion.div>
-          ))}
-        </div>
-      ) : contents.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl border border-slate-100">
-          <BookOpen className="mx-auto mb-3 text-slate-300" size={40} />
-          <p className="text-slate-500 font-semibold">No content found.</p>
-          <p className="text-slate-400 text-sm mt-1">Try adjusting your filters or search query.</p>
-        </div>
-      ) : viewMode === 'grouped' ? (
-        <div className="space-y-10">
-          {Object.entries(groupedContents).map(([domain, items]: [string, any]) => (
-            <div key={domain}>
-              <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-2">
-                <div className="flex-1">
-                  <h2 className="text-lg font-bold text-slate-800">{domain}</h2>
-                  <p className="text-xs text-slate-500">{items.length} items accessible</p>
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="animate-pulse flex flex-col h-[280px]">
+                <div className="bg-slate-200 rounded-xl aspect-[3/4] w-full" />
+                <div className="mt-3 space-y-2">
+                  <div className="h-4 bg-slate-200 rounded w-full" />
+                  <div className="h-3 bg-slate-200 rounded w-2/3" />
                 </div>
-                <button onClick={() => { setFilterDomain(domain); setViewMode('grid'); setPage(1); }} className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1">
-                  See all <ChevronRight size={13} />
-                </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {items.map((item, idx) => (
-                  <motion.div key={item.id} layout
-                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                    transition={{ delay: idx * 0.04 }}
-                    onClick={() => handleOpen(item)}
-                    className={`relative p-5 rounded-2xl border cursor-pointer group transition-all duration-200 ${
-                      item.locked
-                        ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
-                        : 'bg-white border-slate-100 hover:shadow-xl hover:shadow-indigo-100/40 hover:-translate-y-1 hover:border-indigo-200'
-                    }`}
-                  >
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center mb-4 ${item.locked ? 'bg-slate-200 text-slate-400' : (CONTENT_TYPE_COLORS[item.contentType] || 'bg-indigo-50 text-indigo-600')}`}>
-                      {item.locked ? <Lock size={18} /> : (CONTENT_TYPE_ICONS[item.contentType] || <FileText size={18} />)}
-                    </div>
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className={`font-bold text-sm leading-snug line-clamp-2 ${item.locked ? 'text-slate-400' : 'text-slate-900'}`}>{item.title}</h3>
-                      {!item.locked && <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 shrink-0 mt-0.5 transition-colors" />}
-                    </div>
-                    <p className="text-xs text-slate-500 line-clamp-1 mb-3">{item.authors || 'Unknown Author'}</p>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${CONTENT_TYPE_COLORS[item.contentType] || 'bg-slate-100 text-slate-500'}`}>
-                        {item.contentType}
-                      </span>
-                      {item.locked ? (
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Lock size={10}/> Locked</span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full group-hover:bg-indigo-600 group-hover:text-white transition-colors">Read Now →</span>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : viewMode === 'grid' ? (
-        <AnimatePresence mode="popLayout">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {contents.map((item, idx) => (
-              <motion.div key={item.id} layout
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                transition={{ delay: idx * 0.04 }}
-                onClick={() => handleOpen(item)}
-                className={`relative p-5 rounded-2xl border cursor-pointer group transition-all duration-200 ${
-                  item.locked
-                    ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
-                    : 'bg-white border-slate-100 hover:shadow-xl hover:shadow-indigo-100/40 hover:-translate-y-1 hover:border-indigo-200'
-                }`}
-              >
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center mb-4 ${item.locked ? 'bg-slate-200 text-slate-400' : (CONTENT_TYPE_COLORS[item.contentType] || 'bg-indigo-50 text-indigo-600')}`}>
-                  {item.locked ? <Lock size={18} /> : (CONTENT_TYPE_ICONS[item.contentType] || <FileText size={18} />)}
-                </div>
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <h3 className={`font-bold text-sm leading-snug line-clamp-2 ${item.locked ? 'text-slate-400' : 'text-slate-900'}`}>{item.title}</h3>
-                  {!item.locked && <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 shrink-0 mt-0.5 transition-colors" />}
-                </div>
-                <p className="text-xs text-slate-500 line-clamp-1 mb-3">{item.authors || 'Unknown Author'}</p>
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${CONTENT_TYPE_COLORS[item.contentType] || 'bg-slate-100 text-slate-500'}`}>
-                    {item.contentType}
-                  </span>
-                  {item.locked ? (
-                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Lock size={10}/> Locked</span>
-                  ) : (
-                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full group-hover:bg-indigo-600 group-hover:text-white transition-colors">Read Now →</span>
-                  )}
-                </div>
-              </motion.div>
             ))}
           </div>
-        </AnimatePresence>
-      ) : (
-        /* List view */
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden divide-y divide-slate-50">
-          {contents.map((item, idx) => (
-            <motion.div key={item.id}
-              initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.03 }}
-              onClick={() => handleOpen(item)}
-              className={`flex items-center gap-4 px-5 py-3.5 cursor-pointer group transition-colors ${item.locked ? 'opacity-60 cursor-not-allowed' : 'hover:bg-indigo-50/40'}`}
-            >
-              <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${item.locked ? 'bg-slate-100 text-slate-400' : (CONTENT_TYPE_COLORS[item.contentType] || 'bg-indigo-50 text-indigo-600')}`}>
-                {item.locked ? <Lock size={16}/> : (CONTENT_TYPE_ICONS[item.contentType] || <FileText size={16}/>)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-slate-800 truncate">{item.title}</div>
-                <div className="text-xs text-slate-400 truncate">{item.authors || 'Unknown'} · {item.domain}</div>
-              </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${CONTENT_TYPE_COLORS[item.contentType] || 'bg-slate-100 text-slate-500'}`}>
-                {item.contentType}
-              </span>
-              {!item.locked && <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 shrink-0 transition-colors" />}
-            </motion.div>
-          ))}
-        </div>
-      )}
+        ) : contents.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
+            <BookOpen className="mx-auto h-12 w-12 text-slate-300 mb-4" />
+            <h3 className="text-lg font-bold text-slate-900">No content found</h3>
+            <p className="text-slate-500 text-sm max-w-md mx-auto mt-2">Try adjusting your filters or search query to find what you're looking for.</p>
+            {(search || filterSubjects.length > 0 || filterTags.length > 0) && (
+              <button 
+                onClick={() => { setSearch(''); setFilterSubjects([]); setFilterTags([]); setFilterDomain(''); setFilterType(''); }}
+                className="mt-6 text-indigo-600 font-bold text-sm hover:text-indigo-700"
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            {contents.map((item, idx) => {
+              const isVideo = item.contentType === 'Educational Videos';
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  onClick={() => handleOpen(item)}
+                  className="group relative flex flex-col bg-white rounded-2xl overflow-hidden cursor-pointer border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                >
+                  <div className={`relative w-full ${isVideo ? 'aspect-video' : 'aspect-[3/4]'} bg-slate-50 overflow-hidden`}>
+                    {item.coverImage ? (
+                      <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {isVideo ? <PlayCircle size={48} className="text-slate-200" /> : <BookOpen size={48} className="text-slate-200" />}
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
+                    
+                    <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                      <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white bg-black/40 backdrop-blur-md rounded-md border border-white/10">
+                        {item.contentType}
+                      </span>
+                    </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 pt-6">
-          <button disabled={page <= 1} onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0 }); }}
-            className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-600 disabled:opacity-40 hover:border-indigo-400 transition-all">
-            ← Prev
-          </button>
-          <span className="text-sm font-medium text-slate-600 bg-white border border-slate-200 px-4 py-2 rounded-xl">
-            Page <strong className="text-indigo-600">{page}</strong> of <strong>{totalPages}</strong>
-          </span>
-          <button disabled={page >= totalPages} onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0 }); }}
-            className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-600 disabled:opacity-40 hover:border-indigo-400 transition-all">
-            Next →
-          </button>
-        </div>
-      )}
+                    {item.locked && (
+                      <div className="absolute top-3 right-3 bg-white/90 backdrop-blur text-slate-700 p-1.5 rounded-lg shadow-sm border border-slate-200">
+                        <Lock size={14} />
+                      </div>
+                    )}
+
+                    {isVideo && (
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="bg-blue-600 text-white rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                          <PlayCircle size={28} fill="currentColor" />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-3 left-3 right-3 text-white">
+                      <h3 className="font-bold text-sm leading-snug line-clamp-2 group-hover:text-blue-200 transition-colors">{item.title}</h3>
+                      <p className="text-[11px] text-white/70 line-clamp-1 mt-1 font-medium">{item.author}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-12 mb-8">
+            <button 
+              disabled={page === 1}
+              onClick={() => { setPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+            >
+              Previous
+            </button>
+            <div className="px-4 py-2 text-sm font-bold text-slate-800">
+              Page {page} of {totalPages}
+            </div>
+            <button 
+              disabled={page === totalPages}
+              onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

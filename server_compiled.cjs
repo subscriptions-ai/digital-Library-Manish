@@ -10443,7 +10443,8 @@ async function startServer() {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
-        const authUser = await prisma2.user.findUnique({ where: { id: req.user.uid } });
+        const userId = req.user.uid || req.user.id || req.user.userId;
+        const authUser = await prisma2.user.findUnique({ where: { id: userId } });
         targetInstitutionId = authUser?.institutionId;
       }
       const studentCount = await prisma2.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
@@ -10474,7 +10475,8 @@ async function startServer() {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
-        const authUser = await prisma2.user.findUnique({ where: { id: req.user.uid } });
+        const userId = req.user.uid || req.user.id || req.user.userId;
+        const authUser = await prisma2.user.findUnique({ where: { id: userId } });
         targetInstitutionId = authUser?.institutionId;
       }
       const students = await prisma2.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
