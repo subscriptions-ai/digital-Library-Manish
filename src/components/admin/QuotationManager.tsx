@@ -359,7 +359,7 @@ export function QuotationManager() {
                 {quotations.filter(q => q.userEmail === selectedCustomerEmail).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(q => (
                   <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-5 py-4">
-                      <div className="font-bold text-slate-900 font-mono text-xs mb-1">#{q.id.split('-')[0]}...</div>
+                      <div className="font-bold text-slate-900 font-mono text-xs mb-1">#{q.id}</div>
                       <div className="text-[11px] text-slate-500 font-medium">{q.createdAt ? format(new Date(q.createdAt), 'dd MMM yyyy, p') : '—'}</div>
                     </td>
                     <td className="px-5 py-4">
