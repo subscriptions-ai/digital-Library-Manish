@@ -61,11 +61,11 @@ const USER_CATEGORIES = [
 ];
 const DURATIONS = ['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
 
-export function QuotationWizard() {
+export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>(1);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(isAdminMode);
   const [quotationNumber, setQuotationNumber] = useState<string>('');
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -818,14 +818,32 @@ export function QuotationWizard() {
                 <p className="text-slate-500 mt-1">Tell us about yourself and your organization.</p>
               </div>
 
-              <div className="mb-6 space-y-1.5 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-                <EmailVerificationInput
-                  label="Email ID *"
-                  value={formData.email}
-                  onChange={(email) => setFormData(prev => ({ ...prev, email }))}
-                  onVerified={setIsEmailVerified}
-                />
-              </div>
+              {isAdminMode ? (
+                <div className="space-y-2 mb-6">
+                  <label className="text-sm font-bold text-slate-700">Client Email ID *</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="Enter client's email address"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-6 space-y-1.5 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                  <EmailVerificationInput
+                    label="Email ID *"
+                    value={formData.email}
+                    onChange={(email) => setFormData(prev => ({ ...prev, email }))}
+                    onVerified={setIsEmailVerified}
+                  />
+                </div>
+              )}
 
               <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
                 {/* Row 1: Organization Name – full width */}
@@ -1457,9 +1475,11 @@ export function QuotationWizard() {
                 <button onClick={handleSendEmail} className="flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-7 py-3.5 text-sm font-bold text-blue-700 hover:bg-blue-100 transition-all">
                   <Send size={16} /> Send Email
                 </button>
-                <button onClick={handlePayment} className="flex items-center gap-2 rounded-2xl bg-blue-600 px-7 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
-                  <CreditCard size={16} /> Pay Now
-                </button>
+                {!isAdminMode && (
+                  <button onClick={handlePayment} className="flex items-center gap-2 rounded-2xl bg-blue-600 px-7 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                    <CreditCard size={16} /> Pay Now
+                  </button>
+                )}
               </div>
 
               <div className="text-center">

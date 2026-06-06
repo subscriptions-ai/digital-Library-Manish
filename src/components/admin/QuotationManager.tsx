@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink, Mail, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink, Mail, FileText, Plus } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const STATUS_COLORS: Record<string, string> = {
   Pending:   'bg-amber-100 text-amber-700 border-amber-200',
@@ -42,6 +43,8 @@ export function QuotationManager() {
   const [converting, setConverting] = useState(false);
   const [convertForm, setConvertForm] = useState({ startDate: '', endDate: '' });
   const [viewEmailTemplate, setViewEmailTemplate] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
 
   const fetchData = async () => {
@@ -198,6 +201,12 @@ export function QuotationManager() {
             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
           >
             <ExternalLink size={14} /> Export
+          </button>
+          <button 
+            onClick={() => navigate(location.pathname + '/create')}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-xl text-xs font-bold text-white hover:bg-blue-700 shadow-sm transition-all"
+          >
+            <Plus size={14} /> Create Quotation
           </button>
         </div>
       </div>

@@ -140,6 +140,7 @@ export default function App() {
                 <Route path="/admin/subscription-requests" element={<AdminLayout><SubscriptionRequestsPage /></AdminLayout>} />
                 <Route path="/admin/pricing" element={<AdminLayout><ContentPricingModule /></AdminLayout>} />
                 <Route path="/admin/quotations" element={<AdminLayout><QuotationManager /></AdminLayout>} />
+                <Route path="/admin/quotations/create" element={<AdminLayout><QuotationWizard isAdminMode={true} /></AdminLayout>} />
                 <Route path="/admin/agency-inquiries" element={<AdminLayout><AgencyInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/contact-inquiries" element={<AdminLayout><ContactInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/demo-requests" element={<AdminLayout><DemoRequestsPage /></AdminLayout>} />
@@ -204,6 +205,7 @@ export default function App() {
                 <Route path="/manager/requests" element={<ManagerLayout><SubscriptionRequestsPage /></ManagerLayout>} />
                 <Route path="/manager/subscriptions" element={<ManagerLayout><SubscriptionListPage /></ManagerLayout>} />
                 <Route path="/manager/quotations" element={<ManagerLayout><QuotationManager /></ManagerLayout>} />
+                <Route path="/manager/quotations/create" element={<ManagerLayout><QuotationWizard isAdminMode={true} /></ManagerLayout>} />
                 <Route path="/manager/users/create" element={<ManagerLayout><UserCreationPanel /></ManagerLayout>} />
 
                 {/* Admin User Management */}
