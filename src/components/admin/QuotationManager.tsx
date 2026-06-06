@@ -44,7 +44,7 @@ export function QuotationManager() {
   const [selected, setSelected] = useState<any | null>(null);
   const [converting, setConverting] = useState(false);
   const [convertForm, setConvertForm] = useState({ startDate: '', endDate: '' });
-  const [viewEmailTemplate, setViewEmailTemplate] = useState<string | null>(null);
+  const [selectedCustomerEmail, setSelectedCustomerEmail] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -116,6 +116,40 @@ export function QuotationManager() {
       return 0;
     });
 
+  const groupedQuotations = Object.values(
+    filteredQuotations.reduce((acc: any, q: any) => {
+      const email = q.userEmail;
+      if (!acc[email]) {
+        acc[email] = {
+          userEmail: email,
+          userName: q.userName,
+          organization: q.organization,
+          latestDate: q.createdAt,
+          latestStatus: q.status,
+          totalQuotations: 1,
+          quotations: [q],
+          totalAmount: q.total
+        };
+      } else {
+        acc[email].totalQuotations += 1;
+        acc[email].quotations.push(q);
+        acc[email].totalAmount += q.total;
+        if (new Date(q.createdAt) > new Date(acc[email].latestDate)) {
+          acc[email].latestDate = q.createdAt;
+          acc[email].latestStatus = q.status;
+          acc[email].userName = q.userName;
+        }
+      }
+      return acc;
+    }, {})
+  ).sort((a: any, b: any) => {
+      const valA = a[sortBy === 'createdAt' ? 'latestDate' : sortBy] || a['latestDate'];
+      const valB = b[sortBy === 'createdAt' ? 'latestDate' : sortBy] || b['latestDate'];
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+  });
+
   const stats = {
     total: quotations.length,
     pending: quotations.filter(q => q.status === 'Pending' || q.status === 'Sent').length,
@@ -152,8 +186,10 @@ export function QuotationManager() {
 
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <>
+      {!selectedCustomerEmail ? (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Quotation Management</h1>
           <p className="text-sm text-slate-500">Review user quotations, approve, and convert to subscriptions.</p>
@@ -241,66 +277,140 @@ export function QuotationManager() {
               <tr><td colSpan={7} className="py-12 text-center">
                 <div className="flex justify-center"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
               </td></tr>
-            ) : filteredQuotations.length === 0 ? (
-              <tr><td colSpan={7} className="py-12 text-center text-slate-400">No quotations found.</td></tr>
-            ) : filteredQuotations.map(q => (
-              <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
+            ) : groupedQuotations.length === 0 ? (
+              <tr><td colSpan={7} className="py-12 text-center text-slate-400">No customers found matching criteria.</td></tr>
+            ) : groupedQuotations.map((g: any) => (
+              <tr key={g.userEmail} className="hover:bg-slate-50/50 transition-colors group">
                 <td className="px-5 py-4">
-                  <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{q.userName}</div>
-                  <div className="text-[11px] text-slate-500 font-medium">{q.userEmail}</div>
-                  <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                    <span className="font-semibold text-slate-500">By:</span> {q.createdBy || 'User'}
-                  </div>
+                  <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{g.userName}</div>
+                  <div className="text-[11px] text-slate-500 font-medium">{g.userEmail}</div>
+                  {g.organization && <div className="text-[10px] text-slate-400 mt-1">{g.organization}</div>}
                 </td>
                 <td className="px-5 py-4">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
-                    {q.planType || 'Monthly'}
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
+                    {g.totalQuotations} Quote{g.totalQuotations !== 1 && 's'}
                   </span>
                 </td>
                 <td className="px-5 py-4">
-                  <div className="text-slate-600 text-[11px] font-medium leading-tight max-w-[150px] truncate" title={getDomainList(q)}>{getDomainList(q)}</div>
+                  <div className="text-slate-600 text-[11px] font-medium leading-tight max-w-[150px] truncate" title={getDomainList(g.quotations[0])}>{getDomainList(g.quotations[0])}</div>
+                  {g.totalQuotations > 1 && <div className="text-[9px] text-slate-400 font-bold mt-1">+ {g.totalQuotations - 1} more</div>}
                 </td>
                 <td className="px-5 py-4">
-                  <div className="font-bold text-slate-900">{formatPrice(q.total)}</div>
-                  <div className="text-[10px] text-slate-400 font-medium">incl. GST</div>
+                  <div className="font-bold text-slate-900">{formatPrice(g.totalAmount)}</div>
+                  <div className="text-[10px] text-slate-400 font-medium">Total Volume</div>
                 </td>
                 <td className="px-5 py-4 text-slate-500 text-[11px] font-medium">
-                  {q.createdAt ? format(new Date(q.createdAt), 'dd MMM yyyy') : '—'}
+                  {g.latestDate ? format(new Date(g.latestDate), 'dd MMM yyyy') : '—'}
+                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Latest</div>
                 </td>
                 <td className="px-5 py-4">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide shadow-sm ${STATUS_COLORS[q.status] || ''}`}>
-                    {STATUS_ICONS[q.status]}
-                    {q.status}
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide shadow-sm ${STATUS_COLORS[g.latestStatus] || ''}`}>
+                    {STATUS_ICONS[g.latestStatus]}
+                    {g.latestStatus}
                   </span>
-                  <div className="mt-1.5 text-[10px] font-medium text-slate-400 flex items-center gap-1">
-                    {q.deliveryMethod === 'Download' ? <><Download size={10} /> Downloaded</> : <><Mail size={10} /> Emailed</>}
-                  </div>
+                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Latest Status</div>
                 </td>
                 <td className="px-5 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
-                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Details">
-                      <Eye size={16} />
-                    </button>
-                    {(q.status === 'Pending' || q.status === 'Sent') && (
-                      <button onClick={() => updateStatus(q.id, 'Approved')}
-                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Approve">
-                        <CheckCircle size={16} />
-                      </button>
-                    )}
-                    {q.status === 'Approved' && (
-                      <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Convert to Subscription">
-                        <ArrowRight size={16} />
-                      </button>
-                    )}
-                  </div>
+                  <button onClick={() => setSelectedCustomerEmail(g.userEmail)}
+                    className="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-sm transition-all shadow-slate-300">
+                    View History
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <button onClick={() => setSelectedCustomerEmail(null)} className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-800 mb-2 transition-colors">
+                <ArrowRight className="rotate-180" size={16} /> Back to All Customers
+              </button>
+              <h1 className="text-2xl font-bold text-slate-900">
+                {quotations.filter(q => q.userEmail === selectedCustomerEmail)[0]?.userName || 'Customer'}'s Quotations
+              </h1>
+              <p className="text-sm text-slate-500">{selectedCustomerEmail}</p>
+            </div>
+            <button 
+              onClick={() => navigate(location.pathname + '/create')}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-xl text-xs font-bold text-white hover:bg-blue-700 shadow-sm transition-all"
+            >
+              <Plus size={14} /> Create New Quote
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-5 py-3 font-semibold text-slate-600">ID / Date</th>
+                  <th className="px-5 py-3 font-semibold text-slate-600">Plan & Domain</th>
+                  <th className="px-5 py-3 font-semibold text-slate-600">Amount</th>
+                  <th className="px-5 py-3 font-semibold text-slate-600">Status & Delivery</th>
+                  <th className="px-5 py-3 font-semibold text-slate-600">Created By</th>
+                  <th className="px-5 py-3 font-semibold text-slate-600 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {quotations.filter(q => q.userEmail === selectedCustomerEmail).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(q => (
+                  <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-5 py-4">
+                      <div className="font-bold text-slate-900 font-mono text-xs mb-1">#{q.id.split('-')[0]}...</div>
+                      <div className="text-[11px] text-slate-500 font-medium">{q.createdAt ? format(new Date(q.createdAt), 'dd MMM yyyy, p') : '—'}</div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200 mb-1.5">
+                        {q.planType || 'Monthly'}
+                      </span>
+                      <div className="text-slate-600 text-[11px] font-medium leading-tight max-w-[200px] truncate" title={getDomainList(q)}>{getDomainList(q)}</div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="font-bold text-slate-900">{formatPrice(q.total)}</div>
+                      <div className="text-[10px] text-slate-400 font-medium">incl. GST</div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide shadow-sm ${STATUS_COLORS[q.status] || ''}`}>
+                        {STATUS_ICONS[q.status]}
+                        {q.status}
+                      </span>
+                      <div className="mt-1.5 text-[10px] font-medium text-slate-400 flex items-center gap-1">
+                        {q.deliveryMethod === 'Download' ? <><Download size={10} /> Downloaded</> : <><Mail size={10} /> Emailed</>}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="text-[11px] font-semibold text-slate-600">{q.createdBy || 'User'}</div>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Details">
+                          <Eye size={16} />
+                        </button>
+                        {(q.status === 'Pending' || q.status === 'Sent') && (
+                          <button onClick={() => updateStatus(q.id, 'Approved')}
+                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Approve">
+                            <CheckCircle size={16} />
+                          </button>
+                        )}
+                        {q.status === 'Approved' && (
+                          <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Convert to Subscription">
+                            <ArrowRight size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Detail / Convert Modal */}
       {selected && (
@@ -606,6 +716,6 @@ export function QuotationManager() {
         </div>
       )}
 
-    </div>
+    </>
   );
 }
