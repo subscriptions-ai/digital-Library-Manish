@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink, Mail, FileText, Plus } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink, Mail, FileText, Plus, Download } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const STATUS_COLORS: Record<string, string> = {
   Pending:   'bg-amber-100 text-amber-700 border-amber-200',
   Sent:      'bg-amber-100 text-amber-700 border-amber-200',
+  Downloaded:'bg-purple-100 text-purple-700 border-purple-200',
   Approved:  'bg-blue-100 text-blue-700 border-blue-200',
   Paid:      'bg-emerald-100 text-emerald-700 border-emerald-200',
   Cancelled: 'bg-slate-100 text-slate-500 border-slate-200',
@@ -15,6 +16,7 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_ICONS: Record<string, any> = {
   Pending:   <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />,
   Sent:      <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />,
+  Downloaded:<div className="w-1.5 h-1.5 rounded-full bg-purple-500" />,
   Approved:  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />,
   Paid:      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />,
   Cancelled: <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />,
@@ -122,7 +124,7 @@ export function QuotationManager() {
   };
 
   const exportToCSV = () => {
-    const headers = ['ID', 'User', 'Email', 'Organization', 'Plan', 'Domain', 'Amount', 'Date', 'Status'];
+    const headers = ['ID', 'User', 'Email', 'Organization', 'Plan', 'Domain', 'Amount', 'Date', 'Status', 'Delivery', 'Created By'];
     const rows = filteredQuotations.map(q => [
       q.id,
       q.userName,
@@ -132,7 +134,9 @@ export function QuotationManager() {
       getDomainList(q),
       q.total,
       q.createdAt ? format(new Date(q.createdAt), 'yyyy-MM-dd') : '',
-      q.status
+      q.status,
+      q.deliveryMethod || 'Email',
+      q.createdBy || 'User'
     ]);
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -176,8 +180,8 @@ export function QuotationManager() {
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Filter tabs */}
-        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
-          {(['', 'Pending', 'Approved', 'Paid', 'Cancelled'] as const).map(f => (
+        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm overflow-x-auto">
+          {(['', 'Pending', 'Downloaded', 'Approved', 'Paid', 'Cancelled'] as const).map(f => (
             <button key={f} onClick={() => setStatusFilter(f)}
               className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${statusFilter === f ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'}`}>
               {f || 'All'}
@@ -244,7 +248,9 @@ export function QuotationManager() {
                 <td className="px-5 py-4">
                   <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{q.userName}</div>
                   <div className="text-[11px] text-slate-500 font-medium">{q.userEmail}</div>
-                  {q.organization && <div className="text-[10px] text-slate-400 mt-0.5">{q.organization}</div>}
+                  <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                    <span className="font-semibold text-slate-500">By:</span> {q.createdBy || 'User'}
+                  </div>
                 </td>
                 <td className="px-5 py-4">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
@@ -266,6 +272,9 @@ export function QuotationManager() {
                     {STATUS_ICONS[q.status]}
                     {q.status}
                   </span>
+                  <div className="mt-1.5 text-[10px] font-medium text-slate-400 flex items-center gap-1">
+                    {q.deliveryMethod === 'Download' ? <><Download size={10} /> Downloaded</> : <><Mail size={10} /> Emailed</>}
+                  </div>
                 </td>
                 <td className="px-5 py-4 text-right">
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -438,14 +447,20 @@ export function QuotationManager() {
               <div className="lg:col-span-3 flex flex-col bg-slate-100 h-full min-h-0">
                 <div className="bg-slate-800 p-3 px-5 text-white flex justify-between items-center shrink-0">
                   <div className="flex items-center gap-2">
-                    <Mail size={16} className="text-slate-300" />
-                    <span className="text-sm font-bold tracking-wide">Email Template Preview</span>
+                    {selected.deliveryMethod === 'Download' ? <Download size={16} className="text-slate-300" /> : <Mail size={16} className="text-slate-300" />}
+                    <span className="text-sm font-bold tracking-wide">{selected.deliveryMethod === 'Download' ? 'PDF File Downloaded (Not Emailed)' : 'Email Template Preview'}</span>
                   </div>
-                  <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-slate-300 font-mono">Exactly as sent</span>
+                  {selected.deliveryMethod !== 'Download' && <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-slate-300 font-mono">Exactly as sent</span>}
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 md:p-8">
                   <div className="bg-white shadow-md mx-auto max-w-2xl min-h-full border border-slate-200 rounded-sm">
-                    {selected.sentEmailHtml ? (
+                    {selected.deliveryMethod === 'Download' ? (
+                      <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-400 p-8 text-center">
+                        <Download size={48} className="mb-4 text-slate-300" />
+                        <h3 className="text-lg font-bold text-slate-600 mb-2">Quotation Only Downloaded</h3>
+                        <p className="text-sm">This quotation was downloaded as a PDF file and was not sent via email. Therefore, there is no email template to preview.</p>
+                      </div>
+                    ) : selected.sentEmailHtml ? (
                       <div dangerouslySetInnerHTML={{ __html: selected.sentEmailHtml }} />
                     ) : (
                       <div style={{margin:0, padding:0, backgroundColor:"#eef2f7", fontFamily:"'Segoe UI',Arial,sans-serif"}}>

@@ -141,6 +141,16 @@ model Quotation {
   
   discountAmount    Float?   @default(0.0)
   couponCode        String?
+
+  mobile            String?
+  designation       String?
+  address           String?
+  pincode           String?
+  city              String?
+  country           String?
+  gstNumber         String?
+  userCategory      String?
+  deliveryMethod    String?  @default("Email") // Email | Download
 }
 
 model ContentModule {

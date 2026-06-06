@@ -85,6 +85,37 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
     userCategory: 'Student Scholar'
   });
 
+  useEffect(() => {
+    if (!isAdminMode || !formData.email || !formData.email.includes('@')) return;
+    
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/quotation/customer/${encodeURIComponent(formData.email)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setFormData(prev => ({
+            ...prev,
+            fullName: data.userName || prev.fullName,
+            organization: data.organization || prev.organization,
+            designation: data.designation || prev.designation,
+            address: data.address || prev.address,
+            pincode: data.pincode || prev.pincode,
+            city: data.city || prev.city,
+            state: data.state || prev.state,
+            country: data.country || prev.country,
+            mobile: data.mobile || prev.mobile,
+            gstNumber: data.gstNumber || prev.gstNumber,
+            userCategory: data.userCategory || prev.userCategory,
+          }));
+          toast.success("Customer details auto-filled from previous records.");
+        }
+      } catch (err) {
+        // ignore if not found
+      }
+    }, 800);
+    return () => clearTimeout(timeoutId);
+  }, [formData.email, isAdminMode]);
+
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ id: string, discount: number, code: string } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
@@ -663,6 +694,57 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
     try {
       const { doc, quotationNumber: qtn } = await createPdfDocument();
       doc.save(`Quotation_${qtn}.pdf`);
+      
+      const checkoutItems = formData.selectedDepartments.map(deptId => {
+        const dept = DOMAINS.find(d => d.id === deptId);
+        return {
+          id: `${deptId}-${formData.subscriptionPlanId}`,
+          domainId: deptId,
+          domainName: dept?.name || '',
+          planId: formData.subscriptionPlanId,
+          planName: selectedPlan?.name || '',
+          duration: formData.duration,
+          price: basePricePerDept
+        };
+      });
+
+      try {
+        await fetch('/api/quotation/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
+          },
+          body: JSON.stringify({
+            userEmail: formData.email,
+            userName: formData.fullName,
+            organization: formData.organization,
+            state: formData.state,
+            duration: formData.duration,
+            userId: user?.uid,
+            quotationData: {
+              quotationNumber: qtn,
+              items: checkoutItems,
+              subtotal: gstBreakdown.basePrice,
+              gstAmount: gstBreakdown.totalGst,
+              totalAmount: gstBreakdown.totalAmount,
+              discountAmount: appliedCoupon?.discount || 0,
+              couponCode: appliedCoupon?.code || null,
+              mobile: formData.mobile,
+              designation: formData.designation,
+              address: formData.address,
+              pincode: formData.pincode,
+              city: formData.city,
+              country: formData.country,
+              gstNumber: formData.gstNumber,
+              userCategory: formData.userCategory
+            }
+          })
+        });
+      } catch (e) {
+        console.warn('Failed to save quotation silently');
+      }
+
       toast.success('Quotation downloaded!', { id: toastId });
     } catch (error: any) {
       console.error('PDF Generation failed:', error);
@@ -711,7 +793,15 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
             gstAmount: gstBreakdown.totalGst,
             discountAmount: appliedCoupon?.discount || 0,
             couponCode: appliedCoupon?.code || null,
-            items: checkoutItems
+            items: checkoutItems,
+            mobile: formData.mobile,
+            designation: formData.designation,
+            address: formData.address,
+            pincode: formData.pincode,
+            city: formData.city,
+            country: formData.country,
+            gstNumber: formData.gstNumber,
+            userCategory: formData.userCategory
           },
           pdfBase64
         })

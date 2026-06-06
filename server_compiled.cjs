@@ -10100,6 +10100,89 @@ async function startServer() {
       res.status(500).json({ error: "Failed to delete inquiry" });
     }
   });
+  app.get("/api/quotation/customer/:email", async (req, res) => {
+    try {
+      const email = req.params.email;
+      const q = await prisma2.quotation.findFirst({
+        where: { userEmail: email },
+        orderBy: { createdAt: "desc" }
+      });
+      if (q) {
+        res.json(q);
+      } else {
+        res.status(404).json({ error: "Not found" });
+      }
+    } catch (err) {
+      res.status(500).json({ error: "Failed" });
+    }
+  });
+  app.post("/api/quotation/save", async (req, res) => {
+    try {
+      const { userEmail, userName, quotationData, userId, organization, state, duration } = req.body;
+      let creatorEmail = "User / System";
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        try {
+          const token = authHeader.split(" ")[1];
+          const JWT_SECRET2 = process.env.JWT_SECRET || "fallback_secret";
+          const decoded = import_jsonwebtoken.default.verify(token, JWT_SECRET2);
+          if (decoded && decoded.email) creatorEmail = decoded.email;
+        } catch (e2) {
+        }
+      }
+      const quotationNumber = quotationData.quotationNumber;
+      await prisma2.quotation.upsert({
+        where: { id: quotationNumber },
+        update: {
+          status: "Downloaded",
+          deliveryMethod: "Download",
+          planType: duration,
+          createdBy: creatorEmail,
+          mobile: quotationData.mobile || null,
+          designation: quotationData.designation || null,
+          address: quotationData.address || null,
+          pincode: quotationData.pincode || null,
+          city: quotationData.city || null,
+          country: quotationData.country || null,
+          gstNumber: quotationData.gstNumber || null,
+          userCategory: quotationData.userCategory || null,
+          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
+          couponCode: quotationData.couponCode || null
+        },
+        create: {
+          id: quotationNumber,
+          userEmail,
+          userName,
+          organization: organization || null,
+          state: state || null,
+          items: quotationData.items || [],
+          subtotal: parseFloat(quotationData.subtotal) || 0,
+          gstAmount: parseFloat(quotationData.gstAmount) || 0,
+          total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, "")) || 0,
+          status: "Downloaded",
+          deliveryMethod: "Download",
+          planType: duration,
+          userId: userId || null,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3),
+          createdBy: creatorEmail,
+          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
+          couponCode: quotationData.couponCode || null,
+          mobile: quotationData.mobile || null,
+          designation: quotationData.designation || null,
+          address: quotationData.address || null,
+          pincode: quotationData.pincode || null,
+          city: quotationData.city || null,
+          country: quotationData.country || null,
+          gstNumber: quotationData.gstNumber || null,
+          userCategory: quotationData.userCategory || null
+        }
+      });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Save Quotation Error:", error);
+      res.status(500).json({ error: "Failed to save quotation" });
+    }
+  });
   app.post("/api/quotation/send", async (req, res) => {
     try {
       const { userEmail, userName, quotationData, pdfBase64, userId, organization, state, duration, quotationDate } = req.body;
@@ -10383,11 +10466,20 @@ async function startServer() {
         where: { id: quotationNumber },
         update: {
           status: "Sent",
+          deliveryMethod: "Email",
           sentEmailHtml: htmlForDb,
           planType: subscriptionDuration,
           createdBy: creatorEmail,
           discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null
+          couponCode: quotationData.couponCode || null,
+          mobile: quotationData.mobile || null,
+          designation: quotationData.designation || null,
+          address: quotationData.address || null,
+          pincode: quotationData.pincode || null,
+          city: quotationData.city || null,
+          country: quotationData.country || null,
+          gstNumber: quotationData.gstNumber || null,
+          userCategory: quotationData.userCategory || null
         },
         create: {
           id: quotationNumber,
@@ -10400,13 +10492,22 @@ async function startServer() {
           gstAmount: parseFloat(quotationData.gstAmount) || 0,
           total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, "")) || 0,
           status: "Sent",
+          deliveryMethod: "Email",
           planType: subscriptionDuration,
           userId: userId || null,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3),
           sentEmailHtml: htmlForDb,
           createdBy: creatorEmail,
           discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null
+          couponCode: quotationData.couponCode || null,
+          mobile: quotationData.mobile || null,
+          designation: quotationData.designation || null,
+          address: quotationData.address || null,
+          pincode: quotationData.pincode || null,
+          city: quotationData.city || null,
+          country: quotationData.country || null,
+          gstNumber: quotationData.gstNumber || null,
+          userCategory: quotationData.userCategory || null
         }
       }).then(async (qtn) => {
         if (quotationData.couponCode && quotationData.discountAmount > 0) {
