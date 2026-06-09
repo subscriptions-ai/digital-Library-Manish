@@ -1208,16 +1208,9 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                       <ShieldCheck size={16} className="text-blue-600" />
                       Subscription Plan
                     </label>
-                    <select
-                      name="subscriptionPlanId"
-                      value={formData.subscriptionPlanId}
-                      onChange={handleInputChange}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none"
-                    >
-                      {SUBSCRIPTION_PLANS.map(plan => (
-                        <option key={plan.id} value={plan.id}>{plan.name}</option>
-                      ))}
-                    </select>
+                    <div className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-sm font-bold text-slate-700">
+                      {SUBSCRIPTION_PLANS.find(p => p.id === formData.subscriptionPlanId)?.name || 'Select User Type above'}
+                    </div>
                   </div>
 
                   <div className="space-y-4">
