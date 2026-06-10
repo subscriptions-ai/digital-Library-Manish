@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "crypto";
 
 if (!(crypto as any).hash) {
   (crypto as any).hash = function(algo: string, data: any, encoding: any) {
@@ -12,7 +13,6 @@ import dotenv from "dotenv";
 import Razorpay from "razorpay";
 import nodemailer from "nodemailer";
 import * as sesv2 from "@aws-sdk/client-sesv2";
-import crypto from "crypto";
 import helmet from "helmet";
 import compression from "compression";
 import bcrypt from "bcryptjs";
@@ -5967,14 +5967,17 @@ async function startServer() {
         where: { sessionId: { not: null } }
       });
 
-      const sessionsMap = new Map();
+      const sessionsMap = new Map<string, any>();
       const userIds = new Set<string>();
 
       for (const visit of visits) {
+        if (!visit.sessionId) continue;
+        const sId = visit.sessionId;
+        
         if (visit.userId) userIds.add(visit.userId);
-        if (!sessionsMap.has(visit.sessionId)) {
-          sessionsMap.set(visit.sessionId, {
-            sessionId: visit.sessionId,
+        if (!sessionsMap.has(sId)) {
+          sessionsMap.set(sId, {
+            sessionId: sId,
             userId: visit.userId,
             userRole: visit.userRole || 'Guest',
             ipAddress: visit.ipAddress,
@@ -5984,7 +5987,7 @@ async function startServer() {
             paths: []
           });
         }
-        const s = sessionsMap.get(visit.sessionId);
+        const s = sessionsMap.get(sId);
         s.endTime = visit.createdAt;
         s.paths.push({ path: visit.path, time: visit.createdAt });
       }
