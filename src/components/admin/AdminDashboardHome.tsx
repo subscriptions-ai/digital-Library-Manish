@@ -8,6 +8,7 @@ import { RecentActivityTable } from './dashboard/RecentActivityTable';
 // Lazy load heavy charting libraries to optimize performance
 const DashboardCharts = lazy(() => import('./dashboard/DashboardCharts').then(m => ({ default: m.DashboardCharts })));
 const IndiaStateHeatmap = lazy(() => import('./dashboard/IndiaStateHeatmap'));
+const TrafficAnalyticsChart = lazy(() => import('./dashboard/TrafficAnalyticsChart').then(m => ({ default: m.TrafficAnalyticsChart })));
 
 export function AdminDashboardHome() {
   const [stats, setStats] = useState<any>(null);
@@ -79,6 +80,13 @@ export function AdminDashboardHome() {
 
       {/* Top Value Cards */}
       <DashboardSummaryCards stats={stats} />
+
+      {/* Traffic Analytics */}
+      <motion.div variants={itemVariants as any}>
+        <Suspense fallback={<div className="bg-slate-50 animate-pulse border border-slate-100 rounded-3xl h-[400px] w-full" />}>
+          <TrafficAnalyticsChart />
+        </Suspense>
+      </motion.div>
 
       {/* Main Charts - Lazy Loaded to keep bundle size efficient */}
       <Suspense fallback={

@@ -53,6 +53,7 @@ import { RequestDemo } from './components/RequestDemo';
 import { ExtractionDashboard } from './components/admin/ExtractionDashboard';
 import { ExtractionJobDetails } from './components/admin/ExtractionJobDetails';
 import { EmailVerificationsPage } from './components/admin/EmailVerificationsPage';
+import { DetailedAnalyticsPage } from './components/admin/dashboard/DetailedAnalyticsPage';
 
 const CONTENT_MODULES = [
   { slug: 'books',                  contentType: 'Books'                   },
@@ -108,12 +109,15 @@ function FirstLoginGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+import { AnalyticsTracker } from "./components/AnalyticsTracker";
+
 export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <CartProvider>
           <Router>
+            <AnalyticsTracker />
             <ScrollToTop />
             <FirstLoginGate>
             <div className="flex min-h-screen flex-col font-sans text-slate-900 antialiased">
@@ -138,6 +142,7 @@ export default function App() {
                 <Route path="/admin/users" element={<AdminLayout><UserManager /></AdminLayout>} />
                 <Route path="/admin/subscriptions" element={<AdminLayout><SubscriptionListPage /></AdminLayout>} />
                 <Route path="/admin/subscription-requests" element={<AdminLayout><SubscriptionRequestsPage /></AdminLayout>} />
+                <Route path="/admin/analytics" element={<AdminLayout><DetailedAnalyticsPage /></AdminLayout>} />
                 <Route path="/admin/pricing" element={<AdminLayout><ContentPricingModule /></AdminLayout>} />
                 <Route path="/admin/quotations" element={<AdminLayout><QuotationManager /></AdminLayout>} />
                 <Route path="/admin/quotations/create" element={<AdminLayout><QuotationWizard isAdminMode={true} /></AdminLayout>} />

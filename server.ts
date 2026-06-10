@@ -5860,6 +5860,126 @@ async function startServer() {
     }
   });
 
+  app.post("/api/analytics/track", async (req, res) => {
+    try {
+      const { path, userRole, userId, sessionId } = req.body;
+      const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+      const userAgent = req.headers['user-agent'];
+
+      await prisma.pageVisit.create({
+        data: {
+          path,
+          userId,
+          userRole,
+          sessionId,
+          ipAddress: ipAddress ? String(ipAddress) : null,
+          userAgent: userAgent ? String(userAgent) : null
+        }
+      });
+      res.json({ success: true });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to track visit" });
+    }
+  });
+
+  app.get("/api/analytics/traffic", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      let dateFilter = {};
+      if (startDate && endDate) {
+        dateFilter = {
+          createdAt: {
+            gte: new Date(startDate as string),
+            lte: new Date(endDate as string)
+          }
+        };
+      } else {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        dateFilter = { createdAt: { gte: thirtyDaysAgo } };
+      }
+
+      const totalVisits = await prisma.pageVisit.count({ where: dateFilter });
+      
+      const topPagesRaw = await prisma.pageVisit.groupBy({
+        by: ['path'],
+        where: dateFilter,
+        _count: { path: true },
+        orderBy: { _count: { path: 'desc' } },
+        take: 10
+      });
+      
+      const topPages = topPagesRaw.map(p => ({
+        path: p.path,
+        count: p._count.path
+      }));
+
+      const allVisits = await prisma.pageVisit.findMany({
+        where: dateFilter,
+        select: { createdAt: true }
+      });
+      
+      const dailyDataMap = new Map();
+      allVisits.forEach(v => {
+        const dateStr = v.createdAt.toISOString().split('T')[0];
+        dailyDataMap.set(dateStr, (dailyDataMap.get(dateStr) || 0) + 1);
+      });
+      
+      const dailyData = Array.from(dailyDataMap.entries())
+        .map(([date, visitors]) => ({ date, visitors }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      res.json({ totalVisits, topPages, dailyData });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  app.get("/api/analytics/detailed", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const visits = await prisma.pageVisit.findMany({
+        orderBy: { createdAt: 'asc' },
+        where: { sessionId: { not: null } }
+      });
+
+      const sessionsMap = new Map();
+
+      for (const visit of visits) {
+        if (!sessionsMap.has(visit.sessionId)) {
+          sessionsMap.set(visit.sessionId, {
+            sessionId: visit.sessionId,
+            userRole: visit.userRole || 'Guest',
+            ipAddress: visit.ipAddress,
+            userAgent: visit.userAgent,
+            startTime: visit.createdAt,
+            endTime: visit.createdAt,
+            paths: []
+          });
+        }
+        const s = sessionsMap.get(visit.sessionId);
+        s.endTime = visit.createdAt;
+        s.paths.push({ path: visit.path, time: visit.createdAt });
+      }
+
+      const sessions = Array.from(sessionsMap.values()).map(s => {
+        const timeSpentSeconds = Math.max(0, Math.floor((new Date(s.endTime).getTime() - new Date(s.startTime).getTime()) / 1000));
+        return {
+          ...s,
+          timeSpentSeconds,
+          timeSpentFormatted: timeSpentSeconds > 60 ? `${Math.floor(timeSpentSeconds / 60)}m ${timeSpentSeconds % 60}s` : `${timeSpentSeconds}s`
+        };
+      }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+      res.json(sessions);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to fetch detailed analytics" });
+    }
+  });
+
   // Mount extraction routes BEFORE Vite/Static middleware
   setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
 

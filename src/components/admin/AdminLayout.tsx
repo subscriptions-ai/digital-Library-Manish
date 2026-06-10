@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, Tag, PlayCircle, Receipt, Trash2, Database
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, Tag, PlayCircle, Receipt, Trash2, Database, Activity
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -183,6 +183,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             active={location.pathname === '/admin/email-verifications'}
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/admin/email-verifications')}
+          />
+
+          <NavButton
+            icon={<Activity size={17} />}
+            label="Traffic Analytics"
+            active={location.pathname === '/admin/analytics'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/analytics')}
           />
 
           {/* Subscriptions */}
