@@ -6021,6 +6021,17 @@ async function startServer() {
     }
   });
 
+  app.get("/api/admin/verifications", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const verifications = await (prisma as any).emailVerification.findMany({
+        orderBy: { updatedAt: 'desc' }
+      });
+      res.json(verifications);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch verifications" });
+    }
+  });
+
   // Mount extraction routes BEFORE Vite/Static middleware
   setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
 
@@ -6041,17 +6052,6 @@ async function startServer() {
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error("Unhandled Error:", err);
     res.status(500).json({ error: "Internal server error" });
-  });
-
-  app.get("/api/admin/verifications", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
-    try {
-      const verifications = await (prisma as any).emailVerification.findMany({
-        orderBy: { updatedAt: 'desc' }
-      });
-      res.json(verifications);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to fetch verifications" });
-    }
   });
 
   app.listen(PORT, '0.0.0.0', () => {
