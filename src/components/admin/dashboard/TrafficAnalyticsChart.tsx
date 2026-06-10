@@ -41,7 +41,7 @@ export function TrafficAnalyticsChart() {
               <Activity className="text-blue-500" size={20} />
               Daily Traffic
             </h2>
-            <p className="text-sm text-slate-500">Website visitors over the last 30 days ({data.totalVisits} total)</p>
+            <p className="text-sm text-slate-500">Unique visitor sessions over the last 30 days ({data.totalUniqueSessions} total)</p>
           </div>
         </div>
         <div className="h-[300px]">
@@ -64,7 +64,7 @@ export function TrafficAnalyticsChart() {
               <Tooltip 
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
               />
-              <Area type="monotone" dataKey="visitors" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorVisits)" />
+              <Area type="monotone" dataKey="uniqueSessions" name="Sessions" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorVisits)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

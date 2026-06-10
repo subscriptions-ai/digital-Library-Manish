@@ -78,8 +78,8 @@ export function DetailedAnalyticsPage() {
                     <User size={20} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900">
-                      {session.userRole}
+                    <p className="text-sm font-bold text-slate-900 truncate max-w-[200px]" title={session.userName || session.userRole}>
+                      {session.userName || session.userRole}
                     </p>
                     <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                       <Monitor size={12} /> {session.userAgent?.split(' ')[0] || 'Unknown Browser'}

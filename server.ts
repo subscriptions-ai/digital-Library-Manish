@@ -5863,7 +5863,18 @@ async function startServer() {
   app.post("/api/analytics/track", async (req, res) => {
     try {
       const { path, userRole, userId, sessionId } = req.body;
-      const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+      const xForwardedFor = req.headers['x-forwarded-for'];
+      const cfIp = req.headers['cf-connecting-ip'];
+      let ipAddress = cfIp || (xForwardedFor ? (xForwardedFor as string).split(',')[0].trim() : req.socket.remoteAddress);
+      
+      const cfCountry = req.headers['cf-ipcountry'];
+      const cfCity = req.headers['cf-ipcity'];
+      let locationStr = null;
+      if (cfCountry) locationStr = cfCity ? `${cfCity}, ${cfCountry}` : cfCountry;
+
+      // Append location to userAgent field temporarily or we can just append to IP string
+      const finalIpStr = locationStr ? `${ipAddress} (${locationStr})` : String(ipAddress);
+
       const userAgent = req.headers['user-agent'];
 
       await prisma.pageVisit.create({
@@ -5872,7 +5883,7 @@ async function startServer() {
           userId,
           userRole,
           sessionId,
-          ipAddress: ipAddress ? String(ipAddress) : null,
+          ipAddress: finalIpStr,
           userAgent: userAgent ? String(userAgent) : null
         }
       });
@@ -5918,20 +5929,31 @@ async function startServer() {
 
       const allVisits = await prisma.pageVisit.findMany({
         where: dateFilter,
-        select: { createdAt: true }
+        select: { createdAt: true, sessionId: true }
       });
       
       const dailyDataMap = new Map();
+      const dailySessionSets = new Map();
+      
       allVisits.forEach(v => {
         const dateStr = v.createdAt.toISOString().split('T')[0];
+        if (!dailySessionSets.has(dateStr)) dailySessionSets.set(dateStr, new Set());
+        if (v.sessionId) dailySessionSets.get(dateStr).add(v.sessionId);
+        
         dailyDataMap.set(dateStr, (dailyDataMap.get(dateStr) || 0) + 1);
       });
       
       const dailyData = Array.from(dailyDataMap.entries())
-        .map(([date, visitors]) => ({ date, visitors }))
+        .map(([date, pageViews]) => ({ 
+          date, 
+          pageViews, 
+          uniqueSessions: dailySessionSets.get(date)?.size || 0 
+        }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+      const totalUniqueSessions = new Set(allVisits.map(v => v.sessionId).filter(Boolean)).size;
 
-      res.json({ totalVisits, topPages, dailyData });
+      res.json({ totalVisits, topPages, dailyData, totalUniqueSessions });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Failed to fetch analytics" });
@@ -5946,11 +5968,14 @@ async function startServer() {
       });
 
       const sessionsMap = new Map();
+      const userIds = new Set<string>();
 
       for (const visit of visits) {
+        if (visit.userId) userIds.add(visit.userId);
         if (!sessionsMap.has(visit.sessionId)) {
           sessionsMap.set(visit.sessionId, {
             sessionId: visit.sessionId,
+            userId: visit.userId,
             userRole: visit.userRole || 'Guest',
             ipAddress: visit.ipAddress,
             userAgent: visit.userAgent,
@@ -5964,10 +5989,23 @@ async function startServer() {
         s.paths.push({ path: visit.path, time: visit.createdAt });
       }
 
+      // Fetch user details for identified users
+      const users = await prisma.user.findMany({
+        where: { id: { in: Array.from(userIds) } },
+        select: { id: true, displayName: true, email: true }
+      });
+      const userMap = new Map(users.map((u: any) => [u.id, u]));
+
       const sessions = Array.from(sessionsMap.values()).map(s => {
         const timeSpentSeconds = Math.max(0, Math.floor((new Date(s.endTime).getTime() - new Date(s.startTime).getTime()) / 1000));
+        let userName = s.userRole;
+        if (s.userId && userMap.has(s.userId)) {
+          const u = userMap.get(s.userId);
+          userName = `${u.displayName || 'User'} (${u.email})`;
+        }
         return {
           ...s,
+          userName,
           timeSpentSeconds,
           timeSpentFormatted: timeSpentSeconds > 60 ? `${Math.floor(timeSpentSeconds / 60)}m ${timeSpentSeconds % 60}s` : `${timeSpentSeconds}s`
         };
