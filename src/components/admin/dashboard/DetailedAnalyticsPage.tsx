@@ -9,6 +9,11 @@ export function DetailedAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedHour, setSelectedHour] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSelectedHour(null);
+  }, [filterDate]);
 
   useEffect(() => {
     const fetchDetailedAnalytics = async () => {
@@ -44,8 +49,12 @@ export function DetailedAnalyticsPage() {
   const hourlyData = Array.from({ length: 24 }).map((_, hour) => {
     const count = sessions.filter(s => new Date(s.startTime).getHours() === hour).length;
     const hourLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
-    return { hourLabel, sessions: count };
+    return { hourLabel, rawHour: hour, sessions: count };
   });
+
+  const filteredSessions = selectedHour !== null 
+    ? sessions.filter(s => new Date(s.startTime).getHours() === selectedHour)
+    : sessions;
 
   return (
     <motion.div 
@@ -93,28 +102,56 @@ export function DetailedAnalyticsPage() {
                 cursor={{ fill: '#f8fafc' }}
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
               />
-              <Bar dataKey="sessions" name="Sessions" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+              <Bar 
+                dataKey="sessions" 
+                name="Sessions" 
+                fill="#3b82f6" 
+                radius={[4, 4, 0, 0]} 
+                barSize={20} 
+                onClick={(data) => setSelectedHour(data.rawHour === selectedHour ? null : data.rawHour)}
+                className="cursor-pointer hover:opacity-80 transition-opacity"
+              />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+        <div className="mt-4 text-center text-xs text-slate-400">
+          Tip: Click on any bar to filter sessions for that specific hour.
         </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800">Recent Visitor Sessions</h2>
-          <div className="flex gap-2 text-sm font-bold text-slate-500">
-            Total Sessions: <span className="text-blue-600">{sessions.length}</span>
+          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-3">
+            Recent Visitor Sessions
+            {selectedHour !== null && (
+              <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">
+                Filtered: {selectedHour === 0 ? '12 AM' : selectedHour < 12 ? `${selectedHour} AM` : selectedHour === 12 ? '12 PM' : `${selectedHour - 12} PM`}
+              </span>
+            )}
+          </h2>
+          <div className="flex gap-4 items-center">
+            {selectedHour !== null && (
+              <button 
+                onClick={() => setSelectedHour(null)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 underline"
+              >
+                Clear Filter
+              </button>
+            )}
+            <div className="flex gap-2 text-sm font-bold text-slate-500">
+              Total Sessions: <span className="text-blue-600">{filteredSessions.length}</span>
+            </div>
           </div>
         </div>
 
         <div className="divide-y divide-slate-100">
-          {sessions.length === 0 && (
+          {filteredSessions.length === 0 && (
             <div className="p-12 text-center text-slate-500">
-              No sessions recorded yet. Wait for visitors to browse the site.
+              No sessions found for this selection.
             </div>
           )}
           
-          {sessions.map((session, idx) => (
+          {filteredSessions.map((session, idx) => (
             <div key={session.sessionId} className="hover:bg-slate-50 transition-colors">
               <div 
                 className="p-6 cursor-pointer grid grid-cols-1 md:grid-cols-4 gap-4 items-center"
