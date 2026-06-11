@@ -86,9 +86,9 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           <NavButton
             icon={<BookOpen size={18} />}
             label="Content Library"
-            active={location.pathname === '/institution/library'}
+            active={location.pathname === '/institution/library' || location.pathname === '/institution/access'}
             collapsed={!isSidebarOpen}
-            onClick={() => navigate('/institution/library')}
+            onClick={() => navigate('/institution/access')}
           />
           <NavButton
             icon={<CreditCard size={18} />}

@@ -94,6 +94,7 @@ import { InstitutionDashboardHome } from "./components/institution/InstitutionDa
 import { InstitutionStudentManager } from "./components/institution/InstitutionStudentManager";
 import { InstitutionProfile } from "./components/institution/InstitutionProfile";
 import { InstitutionContentLibrary } from "./components/institution/InstitutionContentLibrary";
+import { InstitutionContentAccess } from "./components/institution/InstitutionContentAccess";
 import { InstitutionAnalytics } from "./components/institution/InstitutionAnalytics";
 import { InstitutionSubscriptions } from "./components/institution/InstitutionSubscriptions";
 
@@ -199,6 +200,7 @@ export default function App() {
                 <Route path="/institution" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
                 <Route path="/institution/students" element={<InstitutionLayout><InstitutionStudentManager /></InstitutionLayout>} />
                 <Route path="/institution/analytics" element={<InstitutionLayout><InstitutionAnalytics /></InstitutionLayout>} />
+                <Route path="/institution/access" element={<InstitutionLayout><InstitutionContentAccess /></InstitutionLayout>} />
                 <Route path="/institution/library" element={<InstitutionLayout><InstitutionContentLibrary /></InstitutionLayout>} />
                 <Route path="/institution/viewer/:id" element={<InstitutionLayout><ProtectedContentViewer /></InstitutionLayout>} />
                 <Route path="/institution/videos/player/:id" element={<InstitutionLayout><LmsVideoPlayer /></InstitutionLayout>} />

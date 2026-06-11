@@ -108,7 +108,7 @@ export function DetailedAnalyticsPage() {
                 fill="#3b82f6" 
                 radius={[4, 4, 0, 0]} 
                 barSize={20} 
-                onClick={(data) => setSelectedHour(data.rawHour === selectedHour ? null : data.rawHour)}
+                onClick={(data: any) => setSelectedHour(data.rawHour === selectedHour ? null : data.rawHour)}
                 className="cursor-pointer hover:opacity-80 transition-opacity"
               />
             </BarChart>

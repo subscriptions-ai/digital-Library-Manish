@@ -1,24 +1,33 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Search, Filter, Lock, FileText, PlayCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function InstitutionContentLibrary() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [contents, setContents]           = useState<any[]>([]);
   const [loading, setLoading]             = useState(true);
   const [subsLoading, setSubsLoading]     = useState(true);
 
-  // Filters (Persisted via sessionStorage)
-  const [search, setSearch]           = useState(() => sessionStorage.getItem('inst_lib_search') || '');
+  // Filters (Init from URL query OR sessionStorage)
+  const [search, setSearch]           = useState(() => searchParams.get('search') || sessionStorage.getItem('inst_lib_search') || '');
   const [debouncedSearch, setDebounced] = useState(search);
-  const [filterDomain, setFilterDomain] = useState(() => sessionStorage.getItem('inst_lib_domain') || '');
-  const [filterType, setFilterType]   = useState(() => sessionStorage.getItem('inst_lib_type') || '');
-  const [filterSubjects, setFilterSubjects] = useState<string[]>(() => JSON.parse(sessionStorage.getItem('inst_lib_subjects') || '[]'));
-  const [filterTags, setFilterTags] = useState<string[]>(() => JSON.parse(sessionStorage.getItem('inst_lib_tags') || '[]'));
+  const [filterDomain, setFilterDomain] = useState(() => searchParams.get('domain') || sessionStorage.getItem('inst_lib_domain') || '');
+  const [filterType, setFilterType]   = useState(() => searchParams.get('type') || sessionStorage.getItem('inst_lib_type') || '');
+  const [filterSubjects, setFilterSubjects] = useState<string[]>(() => {
+    const fromUrl = searchParams.get('subjectArea');
+    if (fromUrl) return fromUrl.split(',');
+    return JSON.parse(sessionStorage.getItem('inst_lib_subjects') || '[]');
+  });
+  const [filterTags, setFilterTags] = useState<string[]>(() => {
+    const fromUrl = searchParams.get('tag');
+    if (fromUrl) return fromUrl.split(',');
+    return JSON.parse(sessionStorage.getItem('inst_lib_tags') || '[]');
+  });
   
   const [availableFilters, setAvailableFilters] = useState<{ domains: string[], subjects: string[], tags: string[] }>({ domains: [], subjects: [], tags: [] });
 
@@ -144,7 +153,7 @@ export function InstitutionContentLibrary() {
         <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => navigate('/institution')} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors shrink-0 border border-slate-200">
+            <button onClick={() => navigate('/institution/access')} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors shrink-0 border border-slate-200">
               <ArrowLeft size={18} className="text-slate-600" />
             </button>
             <div>
