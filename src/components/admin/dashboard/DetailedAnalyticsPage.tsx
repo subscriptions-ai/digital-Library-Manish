@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, User, Monitor, Map, Globe, Search, ArrowRight, Activity } from 'lucide-react';
+import { Clock, User, Monitor, Map, Globe, Search, ArrowRight, Activity, Calendar } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function DetailedAnalyticsPage() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     const fetchDetailedAnalytics = async () => {
+      setLoading(true);
       try {
-        const response = await fetch('/api/analytics/detailed', {
+        const response = await fetch(`/api/analytics/detailed?date=${filterDate}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         if (!response.ok) throw new Error('Failed to fetch detailed analytics');
@@ -25,7 +27,7 @@ export function DetailedAnalyticsPage() {
       }
     };
     fetchDetailedAnalytics();
-  }, []);
+  }, [filterDate]);
 
   if (loading) {
     return (
@@ -44,12 +46,23 @@ export function DetailedAnalyticsPage() {
       animate={{ opacity: 1 }}
       className="pb-12"
     >
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-          <Activity className="text-blue-600" />
-          Detailed Visitor Tracking
-        </h1>
-        <p className="text-sm text-slate-500 mt-2">Analyze individual visitor journeys, time spent, and behavior across the platform.</p>
+      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+            <Activity className="text-blue-600" />
+            Detailed Visitor Tracking
+          </h1>
+          <p className="text-sm text-slate-500 mt-2">Analyze individual visitor journeys, time spent, and behavior across the platform.</p>
+        </div>
+        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+          <Calendar size={18} className="text-slate-400" />
+          <input 
+            type="date" 
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="bg-transparent text-sm font-bold text-slate-700 focus:outline-none cursor-pointer"
+          />
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">

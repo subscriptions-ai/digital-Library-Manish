@@ -5962,9 +5962,26 @@ async function startServer() {
 
   app.get("/api/analytics/detailed", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
+      const { date } = req.query;
+      
+      let dateFilter: any = { sessionId: { not: null } };
+      
+      if (date) {
+        const startOfDay = new Date(date as string);
+        startOfDay.setHours(0, 0, 0, 0);
+        
+        const endOfDay = new Date(date as string);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        dateFilter.createdAt = {
+          gte: startOfDay,
+          lte: endOfDay
+        };
+      }
+
       const visits = await prisma.pageVisit.findMany({
         orderBy: { createdAt: 'asc' },
-        where: { sessionId: { not: null } }
+        where: dateFilter
       });
 
       const sessionsMap = new Map<string, any>();
