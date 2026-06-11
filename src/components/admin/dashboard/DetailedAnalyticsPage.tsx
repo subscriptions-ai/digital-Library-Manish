@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, User, Monitor, Map, Globe, Search, ArrowRight, Activity, Calendar } from 'lucide-react';
+import { Clock, User, Monitor, Map, Globe, Search, ArrowRight, Activity, Calendar, BarChart3 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export function DetailedAnalyticsPage() {
   const [sessions, setSessions] = useState<any[]>([]);
@@ -40,6 +41,12 @@ export function DetailedAnalyticsPage() {
     );
   }
 
+  const hourlyData = Array.from({ length: 24 }).map((_, hour) => {
+    const count = sessions.filter(s => new Date(s.startTime).getHours() === hour).length;
+    const hourLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+    return { hourLabel, sessions: count };
+  });
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -62,6 +69,33 @@ export function DetailedAnalyticsPage() {
             onChange={(e) => setFilterDate(e.target.value)}
             className="bg-transparent text-sm font-bold text-slate-700 focus:outline-none cursor-pointer"
           />
+        </div>
+      </div>
+
+      {/* Hourly Traffic Chart */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-8 p-6">
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <BarChart3 className="text-blue-500" size={20} />
+              Hourly Traffic Breakdown
+            </h2>
+            <p className="text-sm text-slate-500">Visitor sessions distributed by time of day on {new Date(filterDate).toLocaleDateString()}</p>
+          </div>
+        </div>
+        <div className="h-[250px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="hourLabel" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickMargin={10} interval={1} />
+              <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickMargin={10} allowDecimals={false} />
+              <Tooltip 
+                cursor={{ fill: '#f8fafc' }}
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
+              />
+              <Bar dataKey="sessions" name="Sessions" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
