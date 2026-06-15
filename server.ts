@@ -4765,19 +4765,35 @@ async function startServer() {
         return res.status(403).json({ error: "Unauthorized" });
       }
       const { id } = req.params;
-      const { displayName, email } = req.body;
+      const { displayName, email, contact, designation, branch, department, password } = req.body;
 
       if (email) {
         const taken = await prisma.user.findFirst({ where: { email, id: { not: id } } });
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
 
+      const existing = await prisma.user.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: "User not found" });
+
+      let newInstitutionProfile = (existing.institutionProfile as any) || {};
+      if (branch !== undefined) newInstitutionProfile.branch = branch;
+      if (department !== undefined) newInstitutionProfile.department = department;
+
+      let dataToUpdate: any = {
+        ...(displayName ? { displayName } : {}),
+        ...(email ? { email } : {}),
+        ...(contact !== undefined ? { contact } : {}),
+        ...(designation !== undefined ? { designation } : {}),
+        institutionProfile: newInstitutionProfile
+      };
+
+      if (password && password.trim() !== '') {
+        dataToUpdate.password = await bcrypt.hash(password, 10);
+      }
+
       const updated = await prisma.user.update({
         where: { id },
-        data: {
-          ...(displayName ? { displayName } : {}),
-          ...(email ? { email } : {}),
-        }
+        data: dataToUpdate
       });
       const { password: _, ...profile } = updated;
       res.json({ user: profile });

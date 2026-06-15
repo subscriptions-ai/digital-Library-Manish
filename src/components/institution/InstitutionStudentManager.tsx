@@ -27,7 +27,7 @@ export function InstitutionStudentManager() {
 
   // Edit modal
   const [editStudent, setEditStudent] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', contact: '', designation: '', branch: '', department: '', password: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete confirm
@@ -77,7 +77,15 @@ export function InstitutionStudentManager() {
   /* ── EDIT STUDENT ── */
   const openEdit = (student: any) => {
     setEditStudent(student);
-    setEditForm({ displayName: student.displayName || '', email: student.email || '' });
+    setEditForm({ 
+      displayName: student.displayName || '', 
+      email: student.email || '',
+      contact: student.contact || '',
+      designation: student.designation || '',
+      branch: student.institutionProfile?.branch || '',
+      department: student.institutionProfile?.department || '',
+      password: '' // empty so they only reset it if they type something
+    });
   };
 
   const handleSaveEdit = async () => {
@@ -482,18 +490,65 @@ export function InstitutionStudentManager() {
                 <h2 className="text-white font-bold text-lg">Edit Student</h2>
                 <button onClick={() => setEditStudent(null)} className="text-indigo-200 hover:text-white"><X size={20} /></button>
               </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
-                  <input value={editForm.displayName} onChange={e => setEditForm(f => ({ ...f, displayName: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+              <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
+                    <input value={editForm.displayName} onChange={e => setEditForm(f => ({ ...f, displayName: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email</label>
+                    <input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email</label>
-                  <input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Mobile Number</label>
+                    <input type="text" value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact: e.target.value }))}
+                      placeholder="+91 9876543210"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Designation</label>
+                    <select value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none">
+                      <option value="">Select Role...</option>
+                      <option value="Student">Student</option>
+                      <option value="Professor">Professor</option>
+                      <option value="HOD">HOD</option>
+                      <option value="Librarian">Librarian</option>
+                      <option value="Staff">Staff</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Branch</label>
+                    <input type="text" value={editForm.branch} onChange={e => setEditForm(f => ({ ...f, branch: e.target.value }))}
+                      placeholder="e.g. Computer Science"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department</label>
+                    <input type="text" value={editForm.department} onChange={e => setEditForm(f => ({ ...f, department: e.target.value }))}
+                      placeholder="e.g. Engineering"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Reset Password</label>
+                  <input type="text" value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
+                    placeholder="Leave blank to keep current password"
+                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  <p className="text-[10px] text-slate-400 mt-1">Note: Passwords are encrypted for security so the old one cannot be displayed.</p>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                   <button onClick={() => setEditStudent(null)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
                   <button onClick={handleSaveEdit} disabled={editSaving}
                     className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50">
