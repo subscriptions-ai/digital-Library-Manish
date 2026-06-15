@@ -19,6 +19,8 @@ export function Signup() {
   });
   const [loading, setLoading] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
 
   const proceedWithSignup = async () => {
     setLoading(true);
@@ -37,6 +39,10 @@ export function Signup() {
     e.preventDefault();
     if (!formData.email || !formData.password || !formData.name) {
       toast.error('Please fill in all fields');
+      return;
+    }
+    if (!acceptedTerms || !acceptedPrivacy) {
+      toast.error('You must agree to the Terms of Service and Privacy Policy to continue');
       return;
     }
 
@@ -151,14 +157,40 @@ export function Signup() {
               </div>
             </div>
             
-            <div className="pt-2">
-              <p className="text-[10px] text-slate-400 leading-relaxed mb-4">
-                By creating an account, you agree to our <Link to="/terms" className="underline">Terms of Service</Link> and <Link to="/privacy" className="underline">Privacy Policy</Link>.
-              </p>
+            <div className={`pt-2 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+              <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="pt-0.5">
+                    <input 
+                      type="checkbox" 
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </div>
+                  <span className="text-xs text-slate-600 leading-snug">
+                    I explicitly consent and agree to the <Link to="/terms-and-conditions" className="font-bold text-blue-600 hover:underline">Terms of Service</Link>.
+                  </span>
+                </label>
+                
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="pt-0.5">
+                    <input 
+                      type="checkbox" 
+                      checked={acceptedPrivacy}
+                      onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </div>
+                  <span className="text-xs text-slate-600 leading-snug">
+                    I explicitly consent to the collection, processing, and storage of my personal data as described in the <Link to="/privacy-policy" className="font-bold text-blue-600 hover:underline">Privacy Policy</Link> (in compliance with GDPR and DPDP Act).
+                  </span>
+                </label>
+              </div>
               <button 
                 type="submit"
-                disabled={loading || !isEmailVerified}
-                className="w-full rounded-xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                disabled={loading || !isEmailVerified || !acceptedTerms || !acceptedPrivacy}
+                className="w-full rounded-xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Creating Account...' : 'Create Account'} <ArrowRight size={16} />
               </button>

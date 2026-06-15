@@ -6520,13 +6520,13 @@ var init_src = __esm({
 
 // server.ts
 var import_express = __toESM(require("express"), 1);
+var import_crypto2 = __toESM(require("crypto"), 1);
 var import_path2 = __toESM(require("path"), 1);
 var import_fs2 = __toESM(require("fs"), 1);
 var import_dotenv = __toESM(require("dotenv"), 1);
 var import_razorpay = __toESM(require("razorpay"), 1);
 var import_nodemailer = __toESM(require("nodemailer"), 1);
 var sesv2 = __toESM(require("@aws-sdk/client-sesv2"), 1);
-var import_crypto2 = __toESM(require("crypto"), 1);
 var import_helmet = __toESM(require("helmet"), 1);
 var import_compression = __toESM(require("compression"), 1);
 var import_bcryptjs = __toESM(require("bcryptjs"), 1);
@@ -8547,7 +8547,7 @@ async function startServer() {
   app.put("/api/admin/users/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const { displayName, email, role, organization } = req.body;
+      const { displayName, email, role, organization, contact, designation, branch, department } = req.body;
       if (role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
       }
@@ -8557,13 +8557,19 @@ async function startServer() {
         const taken = await prisma2.user.findUnique({ where: { email } });
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
+      let newInstitutionProfile = existing.institutionProfile || {};
+      if (branch !== void 0) newInstitutionProfile.branch = branch;
+      if (department !== void 0) newInstitutionProfile.department = department;
       const updated = await prisma2.user.update({
         where: { id },
         data: {
           ...displayName ? { displayName } : {},
           ...email ? { email } : {},
           ...role ? { role } : {},
-          ...organization !== void 0 ? { organization } : {}
+          ...organization !== void 0 ? { organization } : {},
+          ...contact !== void 0 ? { contact } : {},
+          ...designation !== void 0 ? { designation } : {},
+          institutionProfile: newInstitutionProfile
         }
       });
       const { password: _, ...profile } = updated;
@@ -10767,7 +10773,7 @@ async function startServer() {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const { name, email, password } = req.body;
+      const { name, email, password, mobile, designation, branch, department } = req.body;
       if (!name || !email || !password) {
         return res.status(400).json({ error: "Name, email and password are required" });
       }
@@ -10787,8 +10793,15 @@ async function startServer() {
           password: hashed,
           displayName: name,
           role: "Student",
+          // Preserve existing logic
+          contact: mobile || null,
+          designation: designation || "Student",
           organization: institutionName,
-          institutionId: targetInstitutionId
+          institutionId: targetInstitutionId,
+          institutionProfile: {
+            branch: branch || "",
+            department: department || ""
+          }
         }
       });
       const { password: _, ...safe } = student;
@@ -10796,6 +10809,68 @@ async function startServer() {
     } catch (err) {
       console.error("POST /api/institution/students error:", err?.message);
       res.status(500).json({ error: "Failed to create student", detail: err?.message });
+    }
+  });
+  app.post("/api/institution/students/bulk", authenticateJWT, async (req, res) => {
+    try {
+      if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const { users } = req.body;
+      if (!Array.isArray(users) || users.length === 0) {
+        return res.status(400).json({ error: "A valid array of users is required" });
+      }
+      let institutionName = "";
+      let targetInstitutionId = void 0;
+      if (req.user.role === "Institution") {
+        const institutionUser = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
+        institutionName = institutionUser?.organization || "";
+        targetInstitutionId = institutionUser?.institutionId;
+      }
+      let successCount = 0;
+      let errorCount = 0;
+      const errors = [];
+      for (const u of users) {
+        try {
+          if (!u.email || !u.name || !u.password) {
+            errorCount++;
+            errors.push({ email: u.email || "Unknown", error: "Missing required fields" });
+            continue;
+          }
+          const existing = await prisma2.user.findUnique({ where: { email: u.email } });
+          if (existing) {
+            errorCount++;
+            errors.push({ email: u.email, error: "Email already exists" });
+            continue;
+          }
+          const hashed = await import_bcryptjs.default.hash(u.password, 10);
+          await prisma2.user.create({
+            data: {
+              email: u.email,
+              password: hashed,
+              displayName: u.name,
+              role: "Student",
+              // Preserve existing logic
+              contact: u.mobile || null,
+              designation: u.designation || "Student",
+              organization: institutionName,
+              institutionId: targetInstitutionId,
+              institutionProfile: {
+                branch: u.branch || "",
+                department: u.department || ""
+              }
+            }
+          });
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          errors.push({ email: u.email, error: err.message });
+        }
+      }
+      res.json({ successCount, errorCount, errors });
+    } catch (err) {
+      console.error("POST /api/institution/students/bulk error:", err?.message);
+      res.status(500).json({ error: "Failed to process bulk import", detail: err?.message });
     }
   });
   app.post("/api/institution/students/:id/block", authenticateJWT, async (req, res) => {
@@ -10818,17 +10893,29 @@ async function startServer() {
         return res.status(403).json({ error: "Unauthorized" });
       }
       const { id } = req.params;
-      const { displayName, email } = req.body;
+      const { displayName, email, contact, designation, branch, department, password } = req.body;
       if (email) {
         const taken = await prisma2.user.findFirst({ where: { email, id: { not: id } } });
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
+      const existing = await prisma2.user.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: "User not found" });
+      let newInstitutionProfile = existing.institutionProfile || {};
+      if (branch !== void 0) newInstitutionProfile.branch = branch;
+      if (department !== void 0) newInstitutionProfile.department = department;
+      let dataToUpdate = {
+        ...displayName ? { displayName } : {},
+        ...email ? { email } : {},
+        ...contact !== void 0 ? { contact } : {},
+        ...designation !== void 0 ? { designation } : {},
+        institutionProfile: newInstitutionProfile
+      };
+      if (password && password.trim() !== "") {
+        dataToUpdate.password = await import_bcryptjs.default.hash(password, 10);
+      }
       const updated = await prisma2.user.update({
         where: { id },
-        data: {
-          ...displayName ? { displayName } : {},
-          ...email ? { email } : {}
-        }
+        data: dataToUpdate
       });
       const { password: _, ...profile } = updated;
       res.json({ user: profile });
@@ -11732,6 +11819,161 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch coupon details" });
     }
   });
+  app.post("/api/analytics/track", async (req, res) => {
+    try {
+      const { path: path3, userRole, userId, sessionId } = req.body;
+      const xForwardedFor = req.headers["x-forwarded-for"];
+      const cfIp = req.headers["cf-connecting-ip"];
+      let ipAddress = cfIp || (xForwardedFor ? xForwardedFor.split(",")[0].trim() : req.socket.remoteAddress);
+      const cfCountry = req.headers["cf-ipcountry"];
+      const cfCity = req.headers["cf-ipcity"];
+      let locationStr = null;
+      if (cfCountry) locationStr = cfCity ? `${cfCity}, ${cfCountry}` : cfCountry;
+      const finalIpStr = locationStr ? `${ipAddress} (${locationStr})` : String(ipAddress);
+      const userAgent = req.headers["user-agent"];
+      await prisma2.pageVisit.create({
+        data: {
+          path: path3,
+          userId,
+          userRole,
+          sessionId,
+          ipAddress: finalIpStr,
+          userAgent: userAgent ? String(userAgent) : null
+        }
+      });
+      res.json({ success: true });
+    } catch (e2) {
+      console.error(e2);
+      res.status(500).json({ error: "Failed to track visit" });
+    }
+  });
+  app.get("/api/analytics/traffic", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      let dateFilter = {};
+      if (startDate && endDate) {
+        dateFilter = {
+          createdAt: {
+            gte: new Date(startDate),
+            lte: new Date(endDate)
+          }
+        };
+      } else {
+        const thirtyDaysAgo = /* @__PURE__ */ new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        dateFilter = { createdAt: { gte: thirtyDaysAgo } };
+      }
+      const totalVisits = await prisma2.pageVisit.count({ where: dateFilter });
+      const topPagesRaw = await prisma2.pageVisit.groupBy({
+        by: ["path"],
+        where: dateFilter,
+        _count: { path: true },
+        orderBy: { _count: { path: "desc" } },
+        take: 10
+      });
+      const topPages = topPagesRaw.map((p) => ({
+        path: p.path,
+        count: p._count.path
+      }));
+      const allVisits = await prisma2.pageVisit.findMany({
+        where: dateFilter,
+        select: { createdAt: true, sessionId: true }
+      });
+      const dailyDataMap = /* @__PURE__ */ new Map();
+      const dailySessionSets = /* @__PURE__ */ new Map();
+      allVisits.forEach((v) => {
+        const dateStr = v.createdAt.toISOString().split("T")[0];
+        if (!dailySessionSets.has(dateStr)) dailySessionSets.set(dateStr, /* @__PURE__ */ new Set());
+        if (v.sessionId) dailySessionSets.get(dateStr).add(v.sessionId);
+        dailyDataMap.set(dateStr, (dailyDataMap.get(dateStr) || 0) + 1);
+      });
+      const dailyData = Array.from(dailyDataMap.entries()).map(([date, pageViews]) => ({
+        date,
+        pageViews,
+        uniqueSessions: dailySessionSets.get(date)?.size || 0
+      })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const totalUniqueSessions = new Set(allVisits.map((v) => v.sessionId).filter(Boolean)).size;
+      res.json({ totalVisits, topPages, dailyData, totalUniqueSessions });
+    } catch (e2) {
+      console.error(e2);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+  app.get("/api/analytics/detailed", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { date } = req.query;
+      let dateFilter = { sessionId: { not: null } };
+      if (date) {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        dateFilter.createdAt = {
+          gte: startOfDay,
+          lte: endOfDay
+        };
+      }
+      const visits = await prisma2.pageVisit.findMany({
+        orderBy: { createdAt: "asc" },
+        where: dateFilter
+      });
+      const sessionsMap = /* @__PURE__ */ new Map();
+      const userIds = /* @__PURE__ */ new Set();
+      for (const visit of visits) {
+        if (!visit.sessionId) continue;
+        const sId = visit.sessionId;
+        if (visit.userId) userIds.add(visit.userId);
+        if (!sessionsMap.has(sId)) {
+          sessionsMap.set(sId, {
+            sessionId: sId,
+            userId: visit.userId,
+            userRole: visit.userRole || "Guest",
+            ipAddress: visit.ipAddress,
+            userAgent: visit.userAgent,
+            startTime: visit.createdAt,
+            endTime: visit.createdAt,
+            paths: []
+          });
+        }
+        const s2 = sessionsMap.get(sId);
+        s2.endTime = visit.createdAt;
+        s2.paths.push({ path: visit.path, time: visit.createdAt });
+      }
+      const users = await prisma2.user.findMany({
+        where: { id: { in: Array.from(userIds) } },
+        select: { id: true, displayName: true, email: true }
+      });
+      const userMap = new Map(users.map((u) => [u.id, u]));
+      const sessions = Array.from(sessionsMap.values()).map((s2) => {
+        const timeSpentSeconds = Math.max(0, Math.floor((new Date(s2.endTime).getTime() - new Date(s2.startTime).getTime()) / 1e3));
+        let userName = s2.userRole;
+        if (s2.userId && userMap.has(s2.userId)) {
+          const u = userMap.get(s2.userId);
+          userName = `${u.displayName || "User"} (${u.email})`;
+        }
+        return {
+          ...s2,
+          userName,
+          timeSpentSeconds,
+          timeSpentFormatted: timeSpentSeconds > 60 ? `${Math.floor(timeSpentSeconds / 60)}m ${timeSpentSeconds % 60}s` : `${timeSpentSeconds}s`
+        };
+      }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+      res.json(sessions);
+    } catch (e2) {
+      console.error(e2);
+      res.status(500).json({ error: "Failed to fetch detailed analytics" });
+    }
+  });
+  app.get("/api/admin/verifications", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const verifications = await prisma2.emailVerification.findMany({
+        orderBy: { updatedAt: "desc" }
+      });
+      res.json(verifications);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch verifications" });
+    }
+  });
   setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
@@ -11747,16 +11989,6 @@ async function startServer() {
   app.use((err, req, res, next) => {
     console.error("Unhandled Error:", err);
     res.status(500).json({ error: "Internal server error" });
-  });
-  app.get("/api/admin/verifications", authenticateJWT, requireAdminOrManager, async (req, res) => {
-    try {
-      const verifications = await prisma2.emailVerification.findMany({
-        orderBy: { updatedAt: "desc" }
-      });
-      res.json(verifications);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to fetch verifications" });
-    }
   });
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || "development"})`);

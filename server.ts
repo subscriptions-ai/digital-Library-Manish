@@ -1441,6 +1441,20 @@ async function startServer() {
     }
   });
 
+  // DPDP / GDPR Right to Erasure
+  app.delete("/api/user/account", authenticateJWT, async (req: any, res) => {
+    try {
+      // Note: In Prisma, depending on cascade settings, this deletes the user and associated data.
+      await prisma.user.delete({
+        where: { id: req.user.uid }
+      });
+      res.json({ message: "Account deleted successfully" });
+    } catch (error) {
+      console.error("Failed to delete account", error);
+      res.status(500).json({ error: "Failed to delete account" });
+    }
+  });
+
   // ======================================================
   // USER MANAGEMENT — SuperAdmin + SubscriptionManager only
   // ======================================================

@@ -111,6 +111,7 @@ function FirstLoginGate({ children }: { children: React.ReactNode }) {
 }
 
 import { AnalyticsTracker } from "./components/AnalyticsTracker";
+import { CookieConsent } from "./components/CookieConsent";
 
 export default function App() {
   return (
@@ -123,6 +124,7 @@ export default function App() {
             <FirstLoginGate>
             <div className="flex min-h-screen flex-col font-sans text-slate-900 antialiased">
               <Toaster position="top-right" />
+              <CookieConsent />
               <Routes>
                 {/* Subscriber Dashboard routes with DashboardLayout */}
                 <Route path="/dashboard" element={<DashboardLayout><LMSDashboard /></DashboardLayout>} />
