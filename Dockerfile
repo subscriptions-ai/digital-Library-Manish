@@ -32,12 +32,15 @@ RUN npm ci --omit=dev --legacy-peer-deps
 # Copy built frontend from Stage 1
 COPY --from=builder /app/dist ./dist
 
-# Copy the built Express server, Prisma schema, generate client, and seeders
+# Copy the built Express server, Prisma schema, generated client, and seeders
 COPY --from=builder /app/server_compiled.cjs ./
 COPY seed-admin.ts ./
 COPY prisma/ ./prisma/
 COPY public/ ./public/
-RUN npx prisma generate
+
+# Copy the generated Prisma client from builder stage
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Cache buster to bypass BuildKit mount locks on Coolify
 ENV CACHE_BUSTER_2="2026-06-15T14-50-00-REDEPLOY"
