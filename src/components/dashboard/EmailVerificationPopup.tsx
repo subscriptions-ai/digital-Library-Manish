@@ -6,7 +6,7 @@ import { EmailVerificationInput } from '../EmailVerificationInput';
 import { toast } from 'react-hot-toast';
 
 export function EmailVerificationPopup() {
-  const { profile, checkAuth } = useAuth();
+  const { profile, fetchProfile } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
@@ -40,7 +40,7 @@ export function EmailVerificationPopup() {
   const handleVerified = async (verified: boolean) => {
     if (verified) {
       // Re-fetch profile to update context
-      await checkAuth();
+      await fetchProfile();
       toast.success('Thank you for verifying your email!');
       setIsVisible(false);
     }
