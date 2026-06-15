@@ -8,7 +8,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
 # Force Stage 1 cache bust
-ENV CACHE_BUSTER_STAGE1="2026-05-23T11-08-00"
+ENV CACHE_BUSTER_STAGE1="2026-06-15T14-50-00"
 
 # Copy source code
 COPY . .
@@ -22,7 +22,7 @@ FROM node:22-alpine AS production
 WORKDIR /app
 
 # Global Cache Buster to guarantee new layer mapping on broken Coolify machines
-ENV CACHE_BUSTER="2026-05-23T10-59-00-REBUILD"
+ENV CACHE_BUSTER="2026-06-15T14-50-00-REBUILD"
 ENV NODE_ENV=production
 
 # Copy package files and install PRODUCTION-only dependencies
@@ -37,10 +37,10 @@ COPY --from=builder /app/server_compiled.cjs ./
 COPY seed-admin.ts ./
 COPY prisma/ ./prisma/
 COPY public/ ./public/
-RUN npx -y prisma@6.19.3 generate
+RUN npx prisma generate
 
 # Cache buster to bypass BuildKit mount locks on Coolify
-ENV CACHE_BUSTER="2026-05-23T10-59-00-REDEPLOY"
+ENV CACHE_BUSTER_2="2026-06-15T14-50-00-REDEPLOY"
 
 # Expose the port (default 3000, overridable via PORT env var)
 EXPOSE 3000
