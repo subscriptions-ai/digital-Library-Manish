@@ -50,9 +50,15 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
         <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
             <div className="flex items-center gap-2.5 font-extrabold tracking-tight min-w-0">
-              <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
-                <LayoutDashboard size={18} />
-              </div>
+              {profile.institutionProfile?.logoUrl ? (
+                <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 bg-white shadow-sm border border-indigo-500/30">
+                  <img src={profile.institutionProfile.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
+                  <LayoutDashboard size={18} />
+                </div>
+              )}
               <span className="text-sm truncate">{profile.organization || 'INSTITUTION'}</span>
             </div>
           )}

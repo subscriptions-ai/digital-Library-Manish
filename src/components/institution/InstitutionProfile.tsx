@@ -184,11 +184,7 @@ export function InstitutionProfile() {
           </div>
         </div>
 
-        {/* Read-only alert */}
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-          <AlertCircle size={16} className="shrink-0 text-amber-500" />
-          <span>The <strong>Institution Name</strong> is locked and can only be changed by a Super Admin or Subscription Manager.</span>
-        </div>
+
 
         {/* Editable fields */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-6">

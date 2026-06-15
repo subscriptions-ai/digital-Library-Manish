@@ -323,8 +323,12 @@ export function UserManager() {
                   <tr className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shrink-0">
-                          {(user.displayName || user.email || '?').charAt(0).toUpperCase()}
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shrink-0 overflow-hidden shadow-sm">
+                          {user.institutionProfile?.logoUrl ? (
+                            <img src={user.institutionProfile.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                          ) : (
+                            (user.displayName || user.email || '?').charAt(0).toUpperCase()
+                          )}
                         </div>
                         <div>
                           <div className="font-bold text-slate-900 text-sm flex items-center gap-2">

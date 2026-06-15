@@ -17,6 +17,7 @@ export interface UserProfile {
   role: UserRole;
   displayName?: string;
   institutionId?: string;
+  institutionProfile?: any;
   subscriptionId?: string;
   organization?: string;
   isFirstLogin?: boolean;
