@@ -1966,7 +1966,7 @@ async function startServer() {
   app.put("/api/admin/users/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { displayName, email, role, organization } = req.body;
+      const { displayName, email, role, organization, contact, designation, branch, department } = req.body;
 
       if (role === 'SuperAdmin' && req.user.role !== 'SuperAdmin') {
         return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
@@ -1981,6 +1981,10 @@ async function startServer() {
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
 
+      let newInstitutionProfile = (existing.institutionProfile as any) || {};
+      if (branch !== undefined) newInstitutionProfile.branch = branch;
+      if (department !== undefined) newInstitutionProfile.department = department;
+
       const updated = await prisma.user.update({
         where: { id },
         data: {
@@ -1988,6 +1992,9 @@ async function startServer() {
           ...(email ? { email } : {}),
           ...(role ? { role } : {}),
           ...(organization !== undefined ? { organization } : {}),
+          ...(contact !== undefined ? { contact } : {}),
+          ...(designation !== undefined ? { designation } : {}),
+          institutionProfile: newInstitutionProfile
         }
       });
       const { password: _, ...profile } = updated;

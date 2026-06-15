@@ -36,7 +36,7 @@ export function UserManager() {
 
   // Edit modal
   const [editUser, setEditUser] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '', organization: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '', organization: '', contact: '', designation: '', branch: '', department: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete confirm
@@ -74,6 +74,10 @@ export function UserManager() {
       email: user.email || '',
       role: user.role || '',
       organization: user.organization || '',
+      contact: user.contact || '',
+      designation: user.designation || '',
+      branch: user.institutionProfile?.branch || '',
+      department: user.institutionProfile?.department || ''
     });
   };
 
@@ -344,6 +348,12 @@ export function UserManager() {
                             )}
                           </div>
                           {user.organization && <div className="text-xs text-slate-400 mt-0.5">{user.organization}</div>}
+                          {(user.designation || user.contact) && (
+                            <div className="text-xs text-slate-500 mt-0.5 flex gap-2">
+                              {user.designation && <span className="font-semibold text-slate-600">{user.designation}</span>}
+                              {user.contact && <span>• {user.contact}</span>}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -439,6 +449,30 @@ export function UserManager() {
                               </ul>
                             ) : <p className="text-sm text-slate-400 italic">No active subscriptions.</p>}
                           </div>
+
+                          {/* Extra Details (Branch, Dept) */}
+                          {(user.institutionProfile?.branch || user.institutionProfile?.department) && (
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <Building2 size={13} /> Academic Info
+                              </h4>
+                              <div className="bg-white p-3 rounded-xl border border-slate-200 grid grid-cols-2 gap-2">
+                                {user.institutionProfile.branch && (
+                                  <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase">Branch</div>
+                                    <div className="text-sm font-medium text-slate-800">{user.institutionProfile.branch}</div>
+                                  </div>
+                                )}
+                                {user.institutionProfile.department && (
+                                  <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase">Department</div>
+                                    <div className="text-sm font-medium text-slate-800">{user.institutionProfile.department}</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
                           <div>
                             <h4 className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3 flex items-center gap-2">
                               <CreditCard size={13} /> Recent Payments
@@ -546,6 +580,34 @@ export function UserManager() {
                   <input value={editForm.organization} onChange={e => setEditForm(f => ({ ...f, organization: e.target.value }))}
                     placeholder="Optional"
                     className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Mobile Number</label>
+                    <input value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact: e.target.value }))}
+                      placeholder="Optional"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Designation</label>
+                    <input value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
+                      placeholder="Optional"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Branch</label>
+                    <input value={editForm.branch} onChange={e => setEditForm(f => ({ ...f, branch: e.target.value }))}
+                      placeholder="Optional"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department</label>
+                    <input value={editForm.department} onChange={e => setEditForm(f => ({ ...f, department: e.target.value }))}
+                      placeholder="Optional"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none" />
+                  </div>
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button onClick={() => setEditUser(null)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
