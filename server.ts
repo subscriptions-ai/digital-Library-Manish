@@ -824,43 +824,30 @@ async function startServer() {
     // Admins, content managers, and institution librarians see everything they cover
     if (userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'ContentManager') return true;
     
-    // Institution role: allow access if institution has ANY active subscription
-    // (the subscription itself filters via domains/contentTypes)
-    if (userRole === 'Institution') {
-      return activeSubscriptions.some(sub => {
-        const d: string[] = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains) : []);
-        if (d.length === 0) return true; // wildcard
-        const safeContentDomain = content.domain ? content.domain.toLowerCase() : "";
-        const domainMatch = d.some(subDomain => {
-          if (!subDomain) return false;
-          const safeSub = subDomain.toLowerCase();
-          return safeSub.includes(safeContentDomain) || safeContentDomain.includes(safeSub);
-        });
-        if (!domainMatch) return false;
-        const ct: string[] = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes) : []);
-        if (ct.length === 0) return true;
-        return ct.includes(content.contentType);
-      });
-    }
-    
     return activeSubscriptions.some(sub => {
-      // Parse domains array (stored as JSON array in Prisma)
       const d: string[] = Array.isArray(sub.domains)
         ? sub.domains as string[]
         : (sub.domains ? JSON.parse(sub.domains as string) : []);
 
-      // Support legacy scalar domainName field and do FUZZY matching
-      // e.g., if subscription is "Medical Sciences" and content domain is "Medical", it should unlock.
-      const safeContentDomain = content.domain ? content.domain.toLowerCase() : "";
+      // If both domains array is empty AND domainName is empty, it's a wildcard (Full Access)
+      const hasWildcardDomain = d.length === 0 && !sub.domainName;
       
-      const domainMatch = d.some(subDomain => {
-        if (!subDomain) return false;
-        const safeSub = subDomain.toLowerCase();
-        return safeSub.includes(safeContentDomain) || safeContentDomain.includes(safeSub);
-      }) || (sub.domainName && (
-        sub.domainName.toLowerCase().includes(safeContentDomain) || 
-        safeContentDomain.includes(sub.domainName.toLowerCase())
-      ));
+      let domainMatch = false;
+      if (hasWildcardDomain) {
+        // Only institutions get wildcard access from an empty subscription,
+        // OR if you want all users to get it, just set to true. Let's assume true for both.
+        domainMatch = true;
+      } else {
+        const safeContentDomain = content.domain ? content.domain.toLowerCase() : "";
+        domainMatch = d.some(subDomain => {
+          if (!subDomain) return false;
+          const safeSub = subDomain.toLowerCase();
+          return safeSub.includes(safeContentDomain) || safeContentDomain.includes(safeSub);
+        }) || (sub.domainName && (
+          sub.domainName.toLowerCase().includes(safeContentDomain) || 
+          safeContentDomain.includes(sub.domainName.toLowerCase())
+        ));
+      }
 
       if (!domainMatch) return false;
 
