@@ -463,8 +463,14 @@ async function startServer() {
         return res.status(404).json({ error: "User not found" });
       }
 
+      // Fetch email verification status
+      const emailVerif = await prisma.emailVerification.findUnique({
+        where: { email: userObj.email },
+        select: { isVerified: true }
+      });
+
       const { password: _, ...profile } = userObj;
-      res.json(profile);
+      res.json({ ...profile, isEmailVerified: emailVerif?.isVerified || false });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
     }

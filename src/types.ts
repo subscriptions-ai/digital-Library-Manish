@@ -23,6 +23,7 @@ export interface UserProfile {
   isFirstLogin?: boolean;
   isDemoAccount?: boolean;
   demoExpiresAt?: any;
+  isEmailVerified?: boolean;
   status: 'Active' | 'Inactive';
   createdAt: any;
   updatedAt: any;

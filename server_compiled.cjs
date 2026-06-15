@@ -7272,8 +7272,12 @@ async function startServer() {
       if (!userObj) {
         return res.status(404).json({ error: "User not found" });
       }
+      const emailVerif = await prisma2.emailVerification.findUnique({
+        where: { email: userObj.email },
+        select: { isVerified: true }
+      });
       const { password: _, ...profile } = userObj;
-      res.json(profile);
+      res.json({ ...profile, isEmailVerified: emailVerif?.isVerified || false });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
     }
@@ -7592,30 +7596,20 @@ async function startServer() {
   };
   const checkContentAccess = (content, userRole, activeSubscriptions) => {
     if (userRole === "SuperAdmin" || userRole === "Admin" || userRole === "ContentManager") return true;
-    if (userRole === "Institution") {
-      return activeSubscriptions.some((sub) => {
-        const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
-        if (d.length === 0) return true;
+    return activeSubscriptions.some((sub) => {
+      const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
+      const hasWildcardDomain = d.length === 0 && !sub.domainName;
+      let domainMatch = false;
+      if (hasWildcardDomain) {
+        domainMatch = true;
+      } else {
         const safeContentDomain = content.domain ? content.domain.toLowerCase() : "";
-        const domainMatch = d.some((subDomain) => {
+        domainMatch = d.some((subDomain) => {
           if (!subDomain) return false;
           const safeSub = subDomain.toLowerCase();
           return safeSub.includes(safeContentDomain) || safeContentDomain.includes(safeSub);
-        });
-        if (!domainMatch) return false;
-        const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : sub.contentTypes ? JSON.parse(sub.contentTypes) : [];
-        if (ct.length === 0) return true;
-        return ct.includes(content.contentType);
-      });
-    }
-    return activeSubscriptions.some((sub) => {
-      const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
-      const safeContentDomain = content.domain ? content.domain.toLowerCase() : "";
-      const domainMatch = d.some((subDomain) => {
-        if (!subDomain) return false;
-        const safeSub = subDomain.toLowerCase();
-        return safeSub.includes(safeContentDomain) || safeContentDomain.includes(safeSub);
-      }) || sub.domainName && (sub.domainName.toLowerCase().includes(safeContentDomain) || safeContentDomain.includes(sub.domainName.toLowerCase()));
+        }) || sub.domainName && (sub.domainName.toLowerCase().includes(safeContentDomain) || safeContentDomain.includes(sub.domainName.toLowerCase()));
+      }
       if (!domainMatch) return false;
       const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : sub.contentTypes ? JSON.parse(sub.contentTypes) : [];
       if (ct.length === 0) return true;
@@ -8088,6 +8082,17 @@ async function startServer() {
       res.json({ message: "Profile updated successfully", user: profile });
     } catch (error) {
       res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+  app.delete("/api/user/account", authenticateJWT, async (req, res) => {
+    try {
+      await prisma2.user.delete({
+        where: { id: req.user.uid }
+      });
+      res.json({ message: "Account deleted successfully" });
+    } catch (error) {
+      console.error("Failed to delete account", error);
+      res.status(500).json({ error: "Failed to delete account" });
     }
   });
   const generatePassword = (length = 12) => {
