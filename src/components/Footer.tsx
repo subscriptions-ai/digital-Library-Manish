@@ -47,9 +47,9 @@ export function Footer() {
               A premier subscription-based digital library providing high-quality academic journals and research papers to institutions and researchers worldwide.
             </p>
             <div className="flex gap-5">
-              <a href="#" className="text-slate-500 hover:text-blue-400 transition-colors"><Facebook size={22} /></a>
+              <a href="https://www.facebook.com/STMDigitalLibrary" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-blue-400 transition-colors"><Facebook size={22} /></a>
               <a href="#" className="text-slate-500 hover:text-blue-400 transition-colors"><Twitter size={22} /></a>
-              <a href="#" className="text-slate-500 hover:text-blue-400 transition-colors"><Linkedin size={22} /></a>
+              <a href="https://linkedin.com/in/stmdigitallibrary" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-blue-400 transition-colors"><Linkedin size={22} /></a>
               <a href="#" className="text-slate-500 hover:text-blue-400 transition-colors"><Youtube size={22} /></a>
             </div>
           </div>
