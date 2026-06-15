@@ -163,7 +163,7 @@ export function ProtectedContentViewer() {
 
   // Viewer controls
   const [scale, setScale] = useState(1.4);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [iframeFallback, setIframeFallback] = useState(false);
 
