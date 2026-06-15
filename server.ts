@@ -4620,7 +4620,7 @@ async function startServer() {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const { name, email, password } = req.body;
+      const { name, email, password, mobile, designation, branch, department } = req.body;
       if (!name || !email || !password) {
         return res.status(400).json({ error: "Name, email and password are required" });
       }
@@ -4645,9 +4645,15 @@ async function startServer() {
           email,
           password: hashed,
           displayName: name,
-          role: 'Student',
+          role: 'Student', // Preserve existing logic
+          contact: mobile || null,
+          designation: designation || 'Student',
           organization: institutionName,
-          institutionId: targetInstitutionId
+          institutionId: targetInstitutionId,
+          institutionProfile: {
+            branch: branch || '',
+            department: department || ''
+          }
         }
       });
       const { password: _, ...safe } = student;
@@ -4658,6 +4664,76 @@ async function startServer() {
     }
   });
 
+  // POST /api/institution/students/bulk — Bulk import users via JSON array
+  app.post("/api/institution/students/bulk", authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      const { users } = req.body;
+      if (!Array.isArray(users) || users.length === 0) {
+        return res.status(400).json({ error: "A valid array of users is required" });
+      }
+
+      let institutionName = '';
+      let targetInstitutionId = undefined;
+      
+      if (req.user.role === 'Institution') {
+        const institutionUser = await (prisma as any).user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
+        institutionName = institutionUser?.organization || '';
+        targetInstitutionId = institutionUser?.institutionId;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+      const errors = [];
+
+      for (const u of users) {
+        try {
+          if (!u.email || !u.name || !u.password) {
+            errorCount++;
+            errors.push({ email: u.email || 'Unknown', error: 'Missing required fields' });
+            continue;
+          }
+
+          const existing = await prisma.user.findUnique({ where: { email: u.email } });
+          if (existing) {
+            errorCount++;
+            errors.push({ email: u.email, error: 'Email already exists' });
+            continue;
+          }
+
+          const hashed = await bcrypt.hash(u.password, 10);
+          await (prisma as any).user.create({
+            data: {
+              email: u.email,
+              password: hashed,
+              displayName: u.name,
+              role: 'Student', // Preserve existing logic
+              contact: u.mobile || null,
+              designation: u.designation || 'Student',
+              organization: institutionName,
+              institutionId: targetInstitutionId,
+              institutionProfile: {
+                branch: u.branch || '',
+                department: u.department || ''
+              }
+            }
+          });
+          successCount++;
+        } catch (err: any) {
+          errorCount++;
+          errors.push({ email: u.email, error: err.message });
+        }
+      }
+
+      res.json({ successCount, errorCount, errors });
+    } catch(err: any) {
+      console.error('POST /api/institution/students/bulk error:', err?.message);
+      res.status(500).json({ error: "Failed to process bulk import", detail: err?.message });
+    }
+  });
   app.post("/api/institution/students/:id/block", authenticateJWT, async (req: any, res) => {
     try {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });

@@ -18,8 +18,12 @@ export function InstitutionStudentManager() {
 
   // Add modal
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newStudent, setNewStudent] = useState({ name: '', email: '', password: '' });
+  const [newStudent, setNewStudent] = useState({ name: '', email: '', password: '', mobile: '', designation: '', branch: '', department: '' });
   const [addLoading, setAddLoading] = useState(false);
+
+  // Bulk import
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // Edit modal
   const [editStudent, setEditStudent] = useState<any | null>(null);
@@ -58,10 +62,10 @@ export function InstitutionStudentManager() {
       });
       let data: any = {};
       try { data = await res.json(); } catch {}
-      if (!res.ok) throw new Error(data?.error || 'Failed to add student');
-      toast.success('Student registered successfully');
+      if (!res.ok) throw new Error(data?.error || 'Failed to add user');
+      toast.success('User registered successfully');
       setShowAddModal(false);
-      setNewStudent({ name: '', email: '', password: '' });
+      setNewStudent({ name: '', email: '', password: '', mobile: '', designation: '', branch: '', department: '' });
       fetchStudents();
     } catch (err: any) {
       toast.error(err.message);
@@ -88,7 +92,7 @@ export function InstitutionStudentManager() {
       let data: any = {};
       try { data = await res.json(); } catch {}
       if (!res.ok) throw new Error(data?.error || 'Update failed');
-      toast.success('Student updated');
+      toast.success('User updated');
       setEditStudent(null);
       fetchStudents();
     } catch (err: any) {
@@ -144,8 +148,8 @@ export function InstitutionStudentManager() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Student Directory</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Manage, edit and remove enrolled students.</p>
+          <h1 className="text-2xl font-bold text-slate-900">User Directory</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Manage, edit and remove enrolled users.</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-60">
@@ -162,10 +166,16 @@ export function InstitutionStudentManager() {
             <RefreshCw size={15} />
           </button>
           <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors"
+          >
+            Import Users
+          </button>
+          <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md shadow-indigo-600/20"
           >
-            <Plus size={16} /> Add Student
+            <Plus size={16} /> Add User
           </button>
         </div>
       </div>
@@ -176,7 +186,8 @@ export function InstitutionStudentManager() {
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase">Student</th>
+                <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase">User</th>
+                <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase text-center">Designation</th>
                 <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase text-center">Status</th>
                 <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase text-right">Actions</th>
               </tr>
@@ -202,6 +213,11 @@ export function InstitutionStudentManager() {
                           <div className="text-xs text-slate-500">{student.email}</div>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                        {student.designation || 'Student'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
@@ -302,37 +318,153 @@ export function InstitutionStudentManager() {
               className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
             >
               <div className="bg-indigo-600 px-6 py-4 flex items-center justify-between">
-                <h2 className="text-white font-bold text-lg">Register Student</h2>
+                <h2 className="text-white font-bold text-lg">Register User</h2>
                 <button onClick={() => setShowAddModal(false)} className="text-indigo-200 hover:text-white"><X size={20} /></button>
               </div>
-              <form onSubmit={handleAddStudent} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
-                  <input required type="text" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })}
-                    placeholder="Student Name"
-                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+              <form onSubmit={handleAddStudent} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name *</label>
+                    <input required type="text" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })}
+                      placeholder="User Name"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email *</label>
+                    <input required type="email" value={newStudent.email} onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
+                      placeholder="user@university.edu"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email</label>
-                  <input required type="email" value={newStudent.email} onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
-                    placeholder="student@university.edu"
-                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Mobile Number</label>
+                    <input type="text" value={newStudent.mobile} onChange={e => setNewStudent({ ...newStudent, mobile: e.target.value })}
+                      placeholder="+91 9876543210"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Designation</label>
+                    <select value={newStudent.designation} onChange={e => setNewStudent({ ...newStudent, designation: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none">
+                      <option value="">Select Role...</option>
+                      <option value="Student">Student</option>
+                      <option value="Professor">Professor</option>
+                      <option value="HOD">HOD</option>
+                      <option value="Librarian">Librarian</option>
+                      <option value="Staff">Staff</option>
+                    </select>
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Branch</label>
+                    <input type="text" value={newStudent.branch} onChange={e => setNewStudent({ ...newStudent, branch: e.target.value })}
+                      placeholder="e.g. Computer Science"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department</label>
+                    <input type="text" value={newStudent.department} onChange={e => setNewStudent({ ...newStudent, department: e.target.value })}
+                      placeholder="e.g. Engineering"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Temporary Password</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Temporary Password *</label>
                   <input required type="password" value={newStudent.password} onChange={e => setNewStudent({ ...newStudent, password: e.target.value })}
                     placeholder="••••••••"
                     className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                   <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
                   <button type="submit" disabled={addLoading}
                     className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 shadow-md shadow-indigo-600/20">
                     {addLoading ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-                    {addLoading ? 'Registering…' : 'Register Student'}
+                    {addLoading ? 'Registering…' : 'Register User'}
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── IMPORT MODAL ── */}
+      <AnimatePresence>
+        {showImportModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+            >
+              <div className="bg-indigo-600 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-white font-bold text-lg">Import Users</h2>
+                <button onClick={() => setShowImportModal(false)} className="text-indigo-200 hover:text-white"><X size={20} /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-600">Upload a CSV file containing multiple users to register them all at once. The file must include the headers: <strong>name, email, password</strong>. Optional headers: <strong>mobile, designation, branch, department</strong>.</p>
+                
+                <div className="flex justify-center my-4">
+                  <a href="data:text/csv;charset=utf-8,name,email,password,mobile,designation,branch,department%0AJohn%20Doe,john@example.com,pass123,9876543210,Student,CSE,Engineering" 
+                     download="sample_users.csv"
+                     className="text-indigo-600 text-sm font-bold hover:underline">
+                    Download Sample CSV
+                  </a>
+                </div>
+
+                <input type="file" accept=".csv" className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" 
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setImporting(true);
+                    
+                    try {
+                      // Dynamically import papaparse for client-side parsing
+                      const Papa = (await import('papaparse')).default;
+                      
+                      Papa.parse(file, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: async (results) => {
+                          try {
+                            const res = await fetch('/api/institution/students/bulk', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', ...authHeader() },
+                              body: JSON.stringify({ users: results.data })
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || 'Failed to import users');
+                            
+                            toast.success(`Import complete! Successfully added ${data.successCount} users. ${data.errorCount > 0 ? `${data.errorCount} failed.` : ''}`);
+                            setShowImportModal(false);
+                            fetchStudents();
+                          } catch (err: any) {
+                            toast.error(err.message);
+                          } finally {
+                            setImporting(false);
+                          }
+                        },
+                        error: () => {
+                          toast.error('Failed to parse CSV file');
+                          setImporting(false);
+                        }
+                      });
+                    } catch (err) {
+                      setImporting(false);
+                      toast.error('Could not process the file');
+                    }
+                  }}
+                />
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button onClick={() => setShowImportModal(false)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Close</button>
+                </div>
+                {importing && <div className="text-center text-indigo-600 text-sm font-bold flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> Processing File...</div>}
+              </div>
             </motion.div>
           </div>
         )}

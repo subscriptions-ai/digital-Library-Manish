@@ -71,7 +71,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           />
           <NavButton
             icon={<Users size={18} />}
-            label="Student Management"
+            label="User Management"
             active={location.pathname.startsWith('/institution/students')}
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/institution/students')}
