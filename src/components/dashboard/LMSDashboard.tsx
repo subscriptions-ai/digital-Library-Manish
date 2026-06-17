@@ -408,28 +408,43 @@ export function LMSDashboard() {
           ))}
         </div>
 
-        {/* ── EXPIRED SUBSCRIPTIONS ALERT ── */}
+        {/* ── EXPIRED SUBSCRIPTION ALERT ── */}
         {dashData?.expiredSubscriptions && dashData.expiredSubscriptions.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-bold text-red-600 uppercase tracking-widest flex items-center gap-2">
-              <AlertCircle size={16} /> Expired Subscriptions
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {dashData.expiredSubscriptions.map((sub: any) => (
-                <div key={sub.id} className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-2xl p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between shadow-sm">
-                  <div>
-                    <h3 className="font-bold text-slate-900 dark:text-red-100">{sub.domainName}</h3>
-                    <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">
-                      Expired on: {new Date(sub.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
+          (() => {
+            const recentExpired = dashData.expiredSubscriptions[0];
+            let domainsArr: string[] = [];
+            try {
+              domainsArr = Array.isArray(recentExpired.domains) ? recentExpired.domains : (recentExpired.domains ? JSON.parse(recentExpired.domains as string) : []);
+            } catch (e) {}
+            const coveredDomainsStr = domainsArr.length > 0 ? domainsArr.join(', ') : 'All Domains';
+            const displayName = recentExpired.domainName || coveredDomainsStr;
+            
+            return (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                <div className="bg-gradient-to-r from-red-50 to-red-50/50 dark:from-red-900/20 dark:to-red-900/10 border border-red-200 dark:border-red-900/40 rounded-3xl p-6 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between shadow-sm relative overflow-hidden">
+                  <div className="absolute -top-10 -right-10 opacity-[0.03] dark:opacity-5 text-red-900 pointer-events-none">
+                    <AlertCircle size={200} />
                   </div>
-                  <button onClick={() => navigate('/dashboard/subscriptions')} className="shrink-0 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-sm shadow-red-600/20">
-                    Renew Plan
+                  <div className="flex items-start gap-4 relative z-10">
+                    <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/60 flex items-center justify-center flex-shrink-0 shadow-inner">
+                      <AlertCircle size={24} className="text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-red-800 dark:text-red-300">
+                        {recentExpired.planName || 'Subscription'} Expired
+                      </h2>
+                      <p className="text-sm text-red-600/90 dark:text-red-400/90 font-medium mt-1">
+                        Your access to <span className="font-bold text-red-700 dark:text-red-300">{displayName}</span> ended on {new Date(recentExpired.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => navigate('/dashboard/subscriptions')} className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-red-600/20 hover:shadow-red-600/40 hover:-translate-y-0.5 relative z-10">
+                    Renew Access Now
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
+              </motion.div>
+            );
+          })()
         )}
 
         {/* ── CONTINUE LEARNING (Netflix Style) ── */}
