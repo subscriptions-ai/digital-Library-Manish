@@ -6266,6 +6266,42 @@ async function startServer() {
     }
   });
 
+  // --- Feedback API ---
+  app.post("/api/feedback", authenticateJWT, async (req: any, res) => {
+    try {
+      const { rating, comment, type } = req.body;
+      const feedback = await prisma.feedback.create({
+        data: {
+          rating: Number(rating) || 5,
+          comment,
+          type: type || "General",
+          userId: req.user.id
+        }
+      });
+      res.json({ success: true, feedback });
+    } catch (error) {
+      console.error("Submit feedback error:", error);
+      res.status(500).json({ error: "Failed to submit feedback" });
+    }
+  });
+
+  app.get("/api/admin/feedbacks", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const feedbacks = await prisma.feedback.findMany({
+        include: {
+          user: {
+            select: { displayName: true, email: true, role: true, organization: true }
+          }
+        },
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(feedbacks);
+    } catch (error) {
+      console.error("Fetch feedbacks error:", error);
+      res.status(500).json({ error: "Failed to fetch feedbacks" });
+    }
+  });
+
   // Mount extraction routes BEFORE Vite/Static middleware
   setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
 

@@ -166,6 +166,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             onClick={() => navigate('/admin/users')}
           />
 
+          {/* User Feedbacks */}
+          <NavButton
+            icon={<MessageSquareHeart size={17} />}
+            label="User Feedbacks"
+            active={location.pathname === '/admin/feedbacks'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/feedbacks')}
+            highlight
+          />
+
           {/* Create User */}
           <NavButton
             icon={<UserPlus size={17} />}

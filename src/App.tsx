@@ -41,8 +41,10 @@ import { SubscriptionListPage } from "./components/admin/subscriptions/Subscript
 import { ContentPricingModule } from "./components/admin/ContentPricingModule";
 import { QuotationManager } from "./components/admin/QuotationManager";
 import { UserCreationPanel } from "./components/admin/UserCreationPanel";
+import { ContentValidatorModule } from './components/admin/content/ContentValidatorModule';
+import { DraftedContentManager } from './components/admin/DraftedContentManager';
+import { AdminFeedbackManager } from './components/admin/AdminFeedbackManager';
 import { ValidatorDashboard } from "./components/admin/ValidatorDashboard";
-import { DraftedContentManager } from "./components/admin/DraftedContentManager";
 import { AgencyInquiriesPage } from "./components/admin/AgencyInquiriesPage";
 import { ContactInquiriesPage } from "./components/admin/ContactInquiriesPage";
 import { DemoRequestsPage } from "./components/admin/DemoRequestsPage";
@@ -156,6 +158,7 @@ export default function App() {
                 <Route path="/admin/demo-requests" element={<AdminLayout><DemoRequestsPage /></AdminLayout>} />
                 <Route path="/admin/validator" element={<AdminLayout><ValidatorDashboard /></AdminLayout>} />
                 <Route path="/admin/drafts" element={<AdminLayout><DraftedContentManager /></AdminLayout>} />
+                <Route path="/admin/feedbacks" element={<AdminLayout><AdminFeedbackManager /></AdminLayout>} />
                 <Route path="/admin/coupons" element={<AdminLayout><CouponsManager /></AdminLayout>} />
                 <Route path="/admin/coupons/:id" element={<AdminLayout><CouponDetails /></AdminLayout>} />
                 <Route path="/admin/payments" element={<AdminLayout><AdminPayments /></AdminLayout>} />
