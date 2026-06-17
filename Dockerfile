@@ -8,12 +8,13 @@ COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
 # Force Stage 1 cache bust
-ENV CACHE_BUSTER_STAGE1="2026-06-15T14-50-00"
+ENV CACHE_BUSTER_STAGE1="2026-06-17T12-40-00"
 
 # Copy source code
 COPY . .
 
-# Build the Vite frontend
+# Build the Vite frontend with memory limits to prevent OOM kills on small VPS
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN npm run build
 
 # ─── Stage 2: Production ──────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ FROM node:22-alpine AS production
 WORKDIR /app
 
 # Global Cache Buster to guarantee new layer mapping on broken Coolify machines
-ENV CACHE_BUSTER="2026-06-15T14-50-00-REBUILD"
+ENV CACHE_BUSTER="2026-06-17T12-40-00-REBUILD"
 ENV NODE_ENV=production
 
 # Copy package files and install PRODUCTION-only dependencies
@@ -43,7 +44,7 @@ COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/clie
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Cache buster to bypass BuildKit mount locks on Coolify
-ENV CACHE_BUSTER_2="2026-06-15T14-50-00-REDEPLOY"
+ENV CACHE_BUSTER_2="2026-06-17T12-40-00-REDEPLOY"
 
 # Expose the port (default 3000, overridable via PORT env var)
 EXPOSE 3000
