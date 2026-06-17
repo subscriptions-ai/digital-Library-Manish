@@ -134,7 +134,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
       </aside>
 
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-slate-50">
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 z-10 sticky top-0 h-16 flex items-center px-8 shrink-0 shadow-sm">
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 z-10 sticky top-0 h-16 flex items-center justify-between px-8 shrink-0 shadow-sm">
           <h1 className="text-lg font-bold text-slate-800">
             {location.pathname === '/manager' ? 'Sales Revenue Analytics'
             : location.pathname.startsWith('/manager/requests') ? 'Incoming Requests'
@@ -142,6 +142,13 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
             : location.pathname.startsWith('/manager/subscriptions') ? 'Global Subscriptions'
             : 'Dashboard'}
           </h1>
+          <button 
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+          >
+            <LogOut size={16} />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
         </header>
         <div className="flex-1 overflow-y-auto p-6 md:p-8">
           {children}

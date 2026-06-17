@@ -346,7 +346,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        <header className="bg-white border-b border-slate-200 h-14 flex items-center px-8 shrink-0">
+        <header className="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-8 shrink-0">
           <h1 className="text-base font-bold text-slate-800">
             {CONTENT_MODULES.find(m => location.pathname.startsWith(`/admin/${m.slug}`))?.name
               || (location.pathname === '/admin/subscription-requests' ? 'Subscription Requests'
@@ -363,6 +363,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname.startsWith('/admin/coupons') ? 'Coupons'
               : 'Dashboard')}
           </h1>
+          <button 
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+          >
+            <LogOut size={16} />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
         </header>
         <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50">
           {children}

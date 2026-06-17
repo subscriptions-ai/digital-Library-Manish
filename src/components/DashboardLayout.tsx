@@ -160,6 +160,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
               {profile?.displayName?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase()}
             </div>
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-sm font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+              title="Sign Out"
+            >
+              <LogOut size={18} />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
           </div>
         </header>
 
