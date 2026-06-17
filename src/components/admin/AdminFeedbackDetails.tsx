@@ -119,7 +119,7 @@ export function AdminFeedbackDetails() {
               </div>
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                 <span className="flex items-center gap-1"><Calendar size={12} /> Joined: {new Date(user?.createdAt).toLocaleDateString()}</span>
-                <span className="flex items-center gap-1"><Clock size={12} /> Active: {new Date(user?.lastLogin || user?.createdAt).toLocaleDateString()}</span>
+                <span className="flex items-center gap-1"><Clock size={12} /> Active: {new Date(user?.updatedAt || user?.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
           </div>

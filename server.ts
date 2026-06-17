@@ -6326,7 +6326,7 @@ async function startServer() {
               organization: true,
               isDemoAccount: true,
               createdAt: true,
-              lastLogin: true,
+              updatedAt: true,
               subscriptions: {
                 select: { id: true, planName: true, domains: true, status: true, startDate: true, endDate: true }
               }
