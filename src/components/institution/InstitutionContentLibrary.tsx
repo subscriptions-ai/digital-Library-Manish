@@ -349,7 +349,7 @@ export function InstitutionContentLibrary() {
                     )}
 
                     <div className="absolute bottom-3 left-3 right-3 text-white">
-                      <h3 className="font-bold text-sm leading-snug line-clamp-2 group-hover:text-blue-200 transition-colors">{item.title}</h3>
+                      <h3 className="font-bold text-sm leading-snug group-hover:text-blue-200 transition-colors">{item.title}</h3>
                       <p className="text-[11px] text-white/70 line-clamp-1 mt-1 font-medium">{item.author}</p>
                     </div>
                   </div>

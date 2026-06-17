@@ -257,7 +257,7 @@ export function MyContentLibrary() {
               }`}>
                 {content.locked ? <Lock size={20} /> : isVideo ? <PlayCircle size={20} /> : <FileText size={20} />}
               </div>
-              <h3 className={`font-bold text-lg leading-tight mb-2 line-clamp-2 ${content.locked ? 'text-slate-500 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>
+              <h3 className={`font-bold text-lg leading-tight mb-2 ${content.locked ? 'text-slate-500 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>
                 {content.title}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-4">

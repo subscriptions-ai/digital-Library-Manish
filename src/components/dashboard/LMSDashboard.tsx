@@ -129,7 +129,7 @@ function ContentCard({ item, onOpen }: { item: ContentItem; onOpen: (item: Conte
 
       {/* Info */}
       <div className="p-4">
-        <h3 className={`font-semibold text-sm line-clamp-2 mb-1 leading-snug ${isLocked ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'}`}>
+        <h3 className={`font-semibold text-sm mb-1 leading-snug ${isLocked ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'}`}>
           {item.title}
         </h3>
         <p className={`text-xs line-clamp-1 mb-3 ${isLocked ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
