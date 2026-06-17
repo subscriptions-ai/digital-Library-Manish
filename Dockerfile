@@ -1,5 +1,5 @@
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:22-alpine3.19 AS builder
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN npm run build
 
 # ─── Stage 2: Production ──────────────────────────────────────────────────────
-FROM node:22-alpine AS production
+FROM node:22-alpine3.19 AS production
 
 WORKDIR /app
 
