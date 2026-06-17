@@ -6275,7 +6275,7 @@ async function startServer() {
           rating: Number(rating) || 5,
           comment,
           type: type || "General",
-          userId: req.user.id
+          userId: req.user.uid
         }
       });
       res.json({ success: true, feedback });
@@ -6290,7 +6290,17 @@ async function startServer() {
       const feedbacks = await prisma.feedback.findMany({
         include: {
           user: {
-            select: { displayName: true, email: true, role: true, organization: true }
+            select: { 
+              displayName: true, 
+              email: true, 
+              role: true, 
+              organization: true,
+              isDemoAccount: true,
+              subscriptions: {
+                where: { status: 'Active' },
+                select: { planName: true, domains: true }
+              }
+            }
           }
         },
         orderBy: { createdAt: "desc" }
@@ -6299,6 +6309,19 @@ async function startServer() {
     } catch (error) {
       console.error("Fetch feedbacks error:", error);
       res.status(500).json({ error: "Failed to fetch feedbacks" });
+    }
+  });
+
+  app.get("/api/user/feedbacks", authenticateJWT, async (req: any, res) => {
+    try {
+      const feedbacks = await prisma.feedback.findMany({
+        where: { userId: req.user.uid },
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(feedbacks);
+    } catch (error) {
+      console.error("Fetch user feedbacks error:", error);
+      res.status(500).json({ error: "Failed to fetch user feedbacks" });
     }
   });
 

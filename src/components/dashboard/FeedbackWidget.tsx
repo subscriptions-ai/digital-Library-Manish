@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquareHeart, Star, Send, X, CheckCircle2 } from 'lucide-react';
+import { MessageSquareHeart, Star, Send, X, CheckCircle2, History, ArrowLeft, Calendar } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function FeedbackWidget() {
@@ -10,6 +10,32 @@ export function FeedbackWidget() {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  const [viewingHistory, setViewingHistory] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && viewingHistory) {
+      fetchHistory();
+    }
+  }, [isOpen, viewingHistory]);
+
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch('/api/user/feedbacks', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) {
+        setHistory(await res.json());
+      }
+    } catch (e) {
+      toast.error('Failed to load feedback history');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +106,25 @@ export function FeedbackWidget() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden"
             >
-              <div className="absolute top-4 right-4 z-10">
+              <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                {!isSuccess && !viewingHistory && (
+                  <button
+                    onClick={() => setViewingHistory(true)}
+                    className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-full transition-colors tooltip-trigger"
+                    title="View Past Feedbacks"
+                  >
+                    <History size={18} />
+                  </button>
+                )}
+                {viewingHistory && (
+                  <button
+                    onClick={() => setViewingHistory(false)}
+                    className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-full transition-colors tooltip-trigger"
+                    title="Back to Form"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                )}
                 <button
                   onClick={() => setIsOpen(false)}
                   disabled={isSubmitting}
@@ -103,7 +147,7 @@ export function FeedbackWidget() {
                   <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Thank You!</h3>
                   <p className="text-slate-500 dark:text-slate-400">Your feedback helps us improve your digital library experience.</p>
                 </div>
-              ) : (
+              ) : !viewingHistory ? (
                 <div className="p-8">
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-12">
@@ -164,6 +208,45 @@ export function FeedbackWidget() {
                       )}
                     </button>
                   </form>
+                </div>
+              ) : (
+                <div className="p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                      <History size={20} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-800">Your Feedbacks</h2>
+                      <p className="text-xs text-slate-500">History of your past submissions</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {loadingHistory ? (
+                      <div className="flex justify-center py-10"><div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" /></div>
+                    ) : history.length === 0 ? (
+                      <div className="text-center py-10">
+                        <MessageSquareHeart size={32} className="mx-auto text-slate-200 mb-2" />
+                        <p className="text-slate-500 text-sm">No past feedbacks found.</p>
+                      </div>
+                    ) : (
+                      history.map((h, i) => (
+                        <div key={i} className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1">
+                              {[1,2,3,4,5].map(s => (
+                                <Star key={s} size={12} className={s <= h.rating ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"} />
+                              ))}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                              <Calendar size={10} /> {new Date(h.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          {h.comment && <p className="text-sm text-slate-600 italic">"{h.comment}"</p>}
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
             </motion.div>

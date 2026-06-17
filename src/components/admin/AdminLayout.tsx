@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, Tag, PlayCircle, Receipt, Trash2, Database, Activity
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, Trash2, Database, Activity
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';

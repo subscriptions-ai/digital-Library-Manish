@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquareHeart, Star, User, Calendar, Mail, Search, RefreshCw, AlertCircle } from 'lucide-react';
+import { MessageSquareHeart, Star, User, Calendar, Mail, Search, RefreshCw, AlertCircle, ShieldCheck, Tag, Box } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function AdminFeedbackManager() {
@@ -113,27 +113,66 @@ export function AdminFeedbackManager() {
                     <AlertCircle size={14} /> No written comment provided.
                   </p>
                 )}
-                <div className="absolute top-0 right-4 -translate-y-1/2">
-                  <span className="text-[10px] font-bold px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg">
+                <div className="absolute top-0 right-4 -translate-y-1/2 flex items-center gap-2">
+                  <span className="text-[10px] font-bold px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg shadow-sm border border-indigo-200">
                     {f.type}
                   </span>
+                  {f.user?.isDemoAccount && (
+                    <span className="text-[10px] font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-lg shadow-sm border border-amber-200">
+                      DEMO USER
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold shadow-sm">
-                  {(f.user?.displayName || f.user?.email || 'U')[0].toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1">
-                    <User size={14} className="text-slate-400 shrink-0" />
-                    {f.user?.displayName || 'Unknown User'}
+              <div className="flex flex-col gap-3 pt-4 border-t border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold shadow-sm">
+                    {(f.user?.displayName || f.user?.email || 'U')[0].toUpperCase()}
                   </div>
-                  <div className="text-xs text-slate-500 truncate flex items-center gap-1">
-                    <Mail size={14} className="text-slate-400 shrink-0" />
-                    {f.user?.email}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
+                      <User size={14} className="text-slate-400 shrink-0" />
+                      {f.user?.displayName || 'Unknown User'}
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded uppercase border border-slate-200">
+                        {f.user?.role || 'Subscriber'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 truncate flex items-center gap-1.5 mt-0.5">
+                      <Mail size={13} className="text-slate-400 shrink-0" />
+                      {f.user?.email}
+                    </div>
                   </div>
                 </div>
+
+                {f.user?.subscriptions && f.user.subscriptions.length > 0 && (
+                  <div className="mt-2 pl-13 text-xs border-l-2 border-indigo-100 ml-4 py-1">
+                    <div className="text-slate-500 font-semibold mb-1 flex items-center gap-1">
+                      <ShieldCheck size={12} className="text-emerald-500" /> Active Access:
+                    </div>
+                    <ul className="space-y-1.5">
+                      {f.user.subscriptions.map((sub: any, idx: number) => {
+                        const domains = Array.isArray(sub.domains) ? sub.domains : (typeof sub.domains === 'string' ? JSON.parse(sub.domains || '[]') : []);
+                        return (
+                          <li key={idx} className="bg-slate-50 rounded-md p-1.5 border border-slate-100">
+                            <div className="font-bold text-slate-700 flex items-center gap-1">
+                              <Box size={10} className="text-indigo-400" /> {sub.planName}
+                            </div>
+                            {domains.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {domains.map((d: string, dIdx: number) => (
+                                  <span key={dIdx} className="text-[9px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                    <Tag size={8} /> {d}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}
