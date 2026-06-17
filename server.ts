@@ -6312,6 +6312,36 @@ async function startServer() {
     }
   });
 
+  app.get("/api/admin/feedbacks/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const feedback = await prisma.feedback.findUnique({
+        where: { id: req.params.id },
+        include: {
+          user: {
+            select: { 
+              id: true,
+              displayName: true, 
+              email: true, 
+              role: true, 
+              organization: true,
+              isDemoAccount: true,
+              createdAt: true,
+              lastLogin: true,
+              subscriptions: {
+                select: { id: true, planName: true, domains: true, status: true, startDate: true, endDate: true }
+              }
+            }
+          }
+        }
+      });
+      if (!feedback) return res.status(404).json({ error: "Feedback not found" });
+      res.json(feedback);
+    } catch (error) {
+      console.error("Fetch feedback detail error:", error);
+      res.status(500).json({ error: "Failed to fetch feedback details" });
+    }
+  });
+
   app.get("/api/user/feedbacks", authenticateJWT, async (req: any, res) => {
     try {
       const feedbacks = await prisma.feedback.findMany({

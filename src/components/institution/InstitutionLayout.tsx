@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, Activity, UserCircle, CreditCard, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, Activity, UserCircle, CreditCard, BookOpen, MessageSquareHeart } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -110,6 +110,13 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/institution/profile')}
           />
+          <NavButton
+            icon={<MessageSquareHeart size={18} />}
+            label="My Feedbacks"
+            active={location.pathname === '/institution/feedbacks'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/institution/feedbacks')}
+          />
         </nav>
 
         <div className="pt-4 pb-5 px-3 border-t border-white/10 space-y-0.5">
@@ -138,6 +145,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             : location.pathname === '/institution/library' ? 'Content Library'
             : location.pathname === '/institution/subscriptions' ? 'Subscription Details'
             : location.pathname === '/institution/profile' ? 'Institution Profile'
+            : location.pathname === '/institution/feedbacks' ? 'My Feedbacks'
             : 'Dashboard'}
           </h1>
           <button 

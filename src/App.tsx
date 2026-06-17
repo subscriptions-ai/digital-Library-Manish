@@ -44,6 +44,7 @@ import { UserCreationPanel } from "./components/admin/UserCreationPanel";
 import { ContentValidatorModule } from './components/admin/content/ContentValidatorModule';
 import { DraftedContentManager } from './components/admin/DraftedContentManager';
 import { AdminFeedbackManager } from './components/admin/AdminFeedbackManager';
+import { AdminFeedbackDetails } from './components/admin/AdminFeedbackDetails';
 import { ValidatorDashboard } from "./components/admin/ValidatorDashboard";
 import { AgencyInquiriesPage } from "./components/admin/AgencyInquiriesPage";
 import { ContactInquiriesPage } from "./components/admin/ContactInquiriesPage";
@@ -82,6 +83,7 @@ import { ProtectedContentViewer } from "./components/dashboard/ProtectedContentV
 import { VideoLibrary } from "./components/dashboard/VideoLibrary";
 import { LmsVideoPlayer } from "./components/dashboard/LmsVideoPlayer";
 import MyHistory from "./components/dashboard/MyHistory";
+import { MyFeedbacksPage } from "./components/dashboard/MyFeedbacksPage";
 import { FAQ } from "./components/FAQ";
 import { ForInstitutions } from "./components/ForInstitutions";
 import { ForStudents } from "./components/ForStudents";
@@ -137,6 +139,7 @@ export default function App() {
                 <Route path="/dashboard/library" element={<DashboardLayout><MyContentLibrary /></DashboardLayout>} />
                 <Route path="/dashboard/favorites" element={<DashboardLayout><MyFavorites /></DashboardLayout>} />
                 <Route path="/dashboard/history" element={<DashboardLayout><MyHistory /></DashboardLayout>} />
+                <Route path="/dashboard/feedbacks" element={<DashboardLayout><MyFeedbacksPage /></DashboardLayout>} />
                 <Route path="/dashboard/videos" element={<DashboardLayout><VideoLibrary /></DashboardLayout>} />
                 <Route path="/dashboard/videos/player/:id" element={<DashboardLayout><LmsVideoPlayer /></DashboardLayout>} />
                 <Route path="/dashboard/viewer/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
@@ -159,6 +162,7 @@ export default function App() {
                 <Route path="/admin/validator" element={<AdminLayout><ValidatorDashboard /></AdminLayout>} />
                 <Route path="/admin/drafts" element={<AdminLayout><DraftedContentManager /></AdminLayout>} />
                 <Route path="/admin/feedbacks" element={<AdminLayout><AdminFeedbackManager /></AdminLayout>} />
+                <Route path="/admin/feedbacks/:id" element={<AdminLayout><AdminFeedbackDetails /></AdminLayout>} />
                 <Route path="/admin/coupons" element={<AdminLayout><CouponsManager /></AdminLayout>} />
                 <Route path="/admin/coupons/:id" element={<AdminLayout><CouponDetails /></AdminLayout>} />
                 <Route path="/admin/payments" element={<AdminLayout><AdminPayments /></AdminLayout>} />
@@ -213,6 +217,7 @@ export default function App() {
                 <Route path="/institution/videos/player/:id" element={<InstitutionLayout><LmsVideoPlayer /></InstitutionLayout>} />
                 <Route path="/institution/subscriptions" element={<InstitutionLayout><InstitutionSubscriptions /></InstitutionLayout>} />
                 <Route path="/institution/profile" element={<InstitutionLayout><InstitutionProfile /></InstitutionLayout>} />
+                <Route path="/institution/feedbacks" element={<InstitutionLayout><MyFeedbacksPage /></InstitutionLayout>} />
 
                 {/* Subscription Manager Routes */}
                 <Route path="/manager" element={<ManagerLayout><AdminDashboardHome /></ManagerLayout>} />

@@ -13,7 +13,8 @@ import {
   BookOpen,
   Receipt,
   PlaySquare,
-  Heart
+  Heart,
+  MessageSquareHeart
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,6 +33,7 @@ const sidebarItems: SidebarItem[] = [
   { label: 'My Wish List', icon: Heart, path: '/dashboard/favorites', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Video Library', icon: PlaySquare, path: '/dashboard/videos', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  { label: 'My Feedbacks', icon: MessageSquareHeart, path: '/dashboard/feedbacks', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Invoices & Payments', icon: Receipt, path: '/dashboard/invoices', roles: ['Subscriber', 'College', 'University', 'Corporate'] },
   { label: 'Profile Settings', icon: Settings, path: '/dashboard/settings', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
 ];

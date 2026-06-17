@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MessageSquareHeart, Star, User, Calendar, Mail, Search, RefreshCw, AlertCircle, ShieldCheck, Tag, Box } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function AdminFeedbackManager() {
+  const navigate = useNavigate();
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -87,7 +89,8 @@ export function AdminFeedbackManager() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-lg transition-all flex flex-col"
+              onClick={() => navigate(`/admin/feedbacks/${f.id}`)}
+              className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-lg hover:border-indigo-300 transition-all flex flex-col cursor-pointer"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1">
