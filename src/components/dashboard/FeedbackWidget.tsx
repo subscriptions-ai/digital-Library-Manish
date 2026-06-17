@@ -16,6 +16,12 @@ export function FeedbackWidget() {
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener('open-feedback', handleOpen);
+    return () => window.removeEventListener('open-feedback', handleOpen);
+  }, []);
+
+  useEffect(() => {
     if (isOpen && viewingHistory) {
       fetchHistory();
     }
@@ -80,11 +86,11 @@ export function FeedbackWidget() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-full shadow-2xl shadow-indigo-500/40 hover:shadow-indigo-500/60 transition-all flex items-center justify-center group"
+        className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-3.5 rounded-full shadow-2xl shadow-indigo-500/40 hover:shadow-indigo-500/60 transition-all flex items-center justify-center gap-2 hover:-translate-y-1 border border-white/10"
       >
-        <MessageSquareHeart size={24} className="group-hover:animate-pulse" />
-        <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs group-hover:ml-3 transition-all duration-300 ease-in-out font-bold text-sm">
-          Share Feedback
+        <MessageSquareHeart size={20} className="animate-pulse" />
+        <span className="whitespace-nowrap font-bold text-sm">
+          Feedback
         </span>
       </motion.button>
 

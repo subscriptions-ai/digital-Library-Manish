@@ -8,7 +8,7 @@ import {
   RefreshCw, Eye, AlertCircle, GraduationCap, Newspaper
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { FeedbackWidget } from './FeedbackWidget';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ContentItem {
@@ -695,8 +695,6 @@ export function LMSDashboard() {
           </motion.div>
         )}
       </div>
-
-      <FeedbackWidget />
     </div>
   );
 }

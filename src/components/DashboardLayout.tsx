@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FeedbackWidget } from './dashboard/FeedbackWidget';
 
 interface SidebarItem {
   label: string;
@@ -179,6 +180,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+      <FeedbackWidget />
     </div>
   );
 }

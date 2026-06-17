@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquareHeart, Star, Calendar, RefreshCw } from 'lucide-react';
+import { MessageSquareHeart, Star, Calendar, RefreshCw, Plus } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function MyFeedbacksPage() {
@@ -39,14 +39,23 @@ export function MyFeedbacksPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">A history of all the feedback and ratings you have submitted.</p>
         </div>
-        <button 
-          onClick={fetchHistory}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors shadow-sm text-sm font-bold disabled:opacity-50"
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => window.dispatchEvent(new Event('open-feedback'))}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm text-sm font-bold shadow-indigo-600/20"
+          >
+            <Plus size={16} />
+            Add New Feedback
+          </button>
+          <button 
+            onClick={fetchHistory}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors shadow-sm text-sm font-bold disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {loading ? (

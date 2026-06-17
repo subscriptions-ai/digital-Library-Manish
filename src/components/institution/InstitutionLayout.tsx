@@ -3,6 +3,7 @@ import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, Activity, UserCircle
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { FeedbackWidget } from '../dashboard/FeedbackWidget';
 
 interface InstitutionLayoutProps {
   children: React.ReactNode;
@@ -160,6 +161,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           {children}
         </div>
       </main>
+      <FeedbackWidget />
     </div>
   );
 }

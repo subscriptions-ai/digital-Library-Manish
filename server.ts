@@ -6328,7 +6328,16 @@ async function startServer() {
               createdAt: true,
               updatedAt: true,
               subscriptions: {
-                select: { id: true, planName: true, domains: true, status: true, startDate: true, endDate: true }
+                select: { id: true, planName: true, domains: true, status: true, startDate: true, endDate: true },
+                orderBy: { startDate: 'desc' }
+              },
+              institution: {
+                select: {
+                  subscriptions: {
+                    select: { id: true, planName: true, domains: true, status: true, startDate: true, endDate: true },
+                    orderBy: { startDate: 'desc' }
+                  }
+                }
               }
             }
           }

@@ -39,6 +39,24 @@ export function AdminFeedbackDetails() {
   if (!feedback) return null;
   const user = feedback.user;
 
+  // Combine user subscriptions and institution subscriptions
+  const allSubscriptions = [
+    ...(user?.subscriptions || []),
+    ...(user?.institution?.subscriptions || [])
+  ];
+
+  // Deduplicate by ID just in case
+  const uniqueSubsMap = new Map();
+  allSubscriptions.forEach(sub => uniqueSubsMap.set(sub.id, sub));
+  let uniqueSubscriptions = Array.from(uniqueSubsMap.values());
+
+  // Sort: Active first, then others, then by start date descending
+  uniqueSubscriptions.sort((a, b) => {
+    if (a.status === 'Active' && b.status !== 'Active') return -1;
+    if (a.status !== 'Active' && b.status === 'Active') return 1;
+    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+  });
+
   return (
     <div className="space-y-6 max-w-4xl">
       <button 
@@ -129,11 +147,11 @@ export function AdminFeedbackDetails() {
               <ShieldCheck size={16} className="text-emerald-500" /> Subscriptions
             </h2>
 
-            {!user?.subscriptions || user.subscriptions.length === 0 ? (
+            {uniqueSubscriptions.length === 0 ? (
               <p className="text-sm text-slate-400 italic text-center py-4">No active subscriptions</p>
             ) : (
               <div className="space-y-3">
-                {user.subscriptions.map((sub: any) => {
+                {uniqueSubscriptions.map((sub: any) => {
                   const domains = Array.isArray(sub.domains) ? sub.domains : (typeof sub.domains === 'string' ? JSON.parse(sub.domains || '[]') : []);
                   return (
                     <div key={sub.id} className="bg-slate-50 border border-slate-100 rounded-xl p-3">

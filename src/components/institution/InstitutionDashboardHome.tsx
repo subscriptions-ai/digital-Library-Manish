@@ -8,7 +8,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
-import { FeedbackWidget } from '../dashboard/FeedbackWidget';
+
 
 export function InstitutionDashboardHome() {
   const { profile } = useAuth();
@@ -369,7 +369,6 @@ export function InstitutionDashboardHome() {
           )}
         </div>
       </motion.div>
-      <FeedbackWidget />
     </div>
   );
 }
