@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Library, Clock, ArrowRight } from 'lucide-react';
+import { CreditCard, Library, Clock, ArrowRight, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -93,6 +93,30 @@ export function SubscriberOverview() {
           </div>
         </motion.div>
       </div>
+
+      {/* Expired Subscriptions Alert */}
+      {data?.expiredSubscriptions?.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold text-red-600 uppercase tracking-widest flex items-center gap-2">
+            <AlertCircle size={16} /> Expired Subscriptions
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.expiredSubscriptions.map((sub: any) => (
+              <div key={sub.id} className="bg-red-50 border border-red-100 rounded-2xl p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900">{sub.domainName}</h3>
+                  <p className="text-xs text-red-600 font-medium mt-1">
+                    Expired on: {new Date(sub.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <Link to="/subscriptions" className="shrink-0 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-sm shadow-red-600/20">
+                  Renew Plan
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Mini Activity & Allowed Domains */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

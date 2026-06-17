@@ -745,6 +745,22 @@ async function startServer() {
       const nearestExpiry = activeSubs.sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())[0]?.endDate || null;
       const totalSpent = payments.reduce((acc, p) => acc + p.amount, 0);
 
+      // Fetch all subscriptions to find expired ones
+      const OR_clauses: any[] = [{ userId: req.user.uid }];
+      if (req.user.institutionId) {
+        OR_clauses.push({ institutionId: req.user.institutionId });
+      } else {
+        const u = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        if (u?.institutionId) OR_clauses.push({ institutionId: u.institutionId });
+      }
+
+      const allSubscriptions = await prisma.subscription.findMany({
+        where: { OR: OR_clauses },
+        orderBy: { endDate: 'desc' }
+      });
+
+      const expiredSubs = allSubscriptions.filter(sub => sub.status !== 'Active' || new Date(sub.endDate) < new Date());
+
       // Unique domains user has access to — read from the `domains` JSON array field
       const allowedDomains: string[] = Array.from(new Set(
         activeSubs.flatMap(s => {
@@ -760,7 +776,8 @@ async function startServer() {
         allowedDomains,
         recentActivity: mappedRecent,
         planType: activeSubs[0]?.planType || 'Free/Demo',
-        planName: activeSubs[0]?.planName || 'Basic Plan'
+        planName: activeSubs[0]?.planName || 'Basic Plan',
+        expiredSubscriptions: expiredSubs
       });
     } catch (error) {
       console.error("User dashboard error:", error);
