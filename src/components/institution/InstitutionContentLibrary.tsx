@@ -318,15 +318,15 @@ export function InstitutionContentLibrary() {
                   onClick={() => handleOpen(item)}
                   className="group relative flex flex-col bg-white rounded-2xl overflow-hidden cursor-pointer border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                 >
-                  <div className={`relative w-full ${isVideo ? 'aspect-video' : 'aspect-[3/4]'} bg-slate-50 overflow-hidden`}>
+                  <div className={`relative w-full ${isVideo ? 'aspect-video' : 'aspect-[3/4]'} ${item.coverImage ? 'bg-slate-900' : 'bg-gradient-to-br from-slate-700 to-slate-900'} overflow-hidden`}>
                     {item.coverImage ? (
-                      <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                      <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90" loading="lazy" />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        {isVideo ? <PlayCircle size={48} className="text-slate-200" /> : <BookOpen size={48} className="text-slate-200" />}
+                        {isVideo ? <PlayCircle size={64} className="text-white/10" /> : <BookOpen size={64} className="text-white/10" />}
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
                     
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5">
                       <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white bg-black/40 backdrop-blur-md rounded-md border border-white/10">
