@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Search, Plus, ShieldCheck, ShieldAlert, BookOpen, Clock,
-  ChevronDown, Pencil, Trash2, X, Save, Loader2, Activity, RefreshCw
+  ChevronDown, Pencil, Trash2, X, Save, Loader2, Activity, RefreshCw, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,6 +24,8 @@ export function InstitutionStudentManager() {
   // Bulk import
   const [showImportModal, setShowImportModal] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Edit modal
   const [editStudent, setEditStudent] = useState<any | null>(null);
@@ -383,9 +385,18 @@ export function InstitutionStudentManager() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Temporary Password *</label>
-                  <input required type="password" value={newStudent.password} onChange={e => setNewStudent({ ...newStudent, password: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                  <div className="relative">
+                    <input required type={showPassword ? "text" : "password"} value={newStudent.password} onChange={e => setNewStudent({ ...newStudent, password: e.target.value })}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 pr-10 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                   <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Cancel</button>

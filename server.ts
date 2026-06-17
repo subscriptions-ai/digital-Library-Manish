@@ -447,6 +447,100 @@ async function startServer() {
     }
   });
 
+  // Auth: Forgot Password - Send OTP
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: "Email is required" });
+
+      const userObj = await prisma.user.findUnique({ where: { email } });
+      if (!userObj) {
+        // Return success even if user not found to prevent email enumeration attacks
+        return res.json({ message: "If your email is registered, an OTP has been sent." });
+      }
+
+      // Generate 6 digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+      const record = await (prisma as any).emailVerification.findUnique({ where: { email } });
+      if (record) {
+        await (prisma as any).emailVerification.update({
+          where: { email },
+          data: { otp, otpExpiry }
+        });
+      } else {
+        await (prisma as any).emailVerification.create({
+          data: { email, otp, otpExpiry, isVerified: false }
+        });
+      }
+
+      const mailOptions = {
+        from: '"STM Digital Library" <info@celnet.in>',
+        to: email,
+        subject: "Password Reset OTP",
+        html: buildEmail(`
+          <h2 style="color: #1e3a6e;">Password Reset Request</h2>
+          <p>We received a request to reset your password for your STM Digital Library account.</p>
+          <p>Please use the following OTP to reset your password. It is valid for 10 minutes.</p>
+          <h1 style="letter-spacing: 4px; color: #2563eb; background: #f1f5f9; padding: 10px 20px; text-align: center; border-radius: 8px; width: max-content; margin: 20px auto;">${otp}</h1>
+          <p>If you did not request a password reset, please ignore this email.</p>
+        `)
+      };
+      await sendMail(mailOptions);
+
+      res.json({ message: "If your email is registered, an OTP has been sent." });
+    } catch (error) {
+      console.error("Forgot Password Error:", error);
+      res.status(500).json({ error: "Failed to process request" });
+    }
+  });
+
+  // Auth: Reset Password - Verify OTP and update password
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { email, otp, newPassword } = req.body;
+      if (!email || !otp || !newPassword) {
+        return res.status(400).json({ error: "Email, OTP, and new password are required" });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters long" });
+      }
+
+      const record = await (prisma as any).emailVerification.findUnique({ where: { email } });
+      if (!record) {
+        return res.status(400).json({ error: "Invalid request" });
+      }
+
+      if (record.otp !== otp || !record.otpExpiry || record.otpExpiry < new Date()) {
+        return res.status(400).json({ error: "Invalid or expired OTP" });
+      }
+
+      const userObj = await prisma.user.findUnique({ where: { email } });
+      if (!userObj) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({
+        where: { email },
+        data: { password: hashedPassword }
+      });
+
+      // Clear the OTP
+      await (prisma as any).emailVerification.update({
+        where: { email },
+        data: { otp: null, otpExpiry: null }
+      });
+
+      res.json({ success: true, message: "Password has been successfully reset" });
+    } catch (error) {
+      console.error("Reset Password Error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
   // Auth: Get Current User
   app.get("/api/auth/me", authenticateJWT, async (req: any, res) => {
     try {
