@@ -10,10 +10,29 @@ export function AdminLeadManager() {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [assignTo, setAssignTo] = useState<string>('');
   const [assigning, setAssigning] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleSyncOldLeads = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/admin/leads/migrate', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to sync');
+      toast.success(data.message);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -79,6 +98,13 @@ export function AdminLeadManager() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Manage all incoming queries and assign them to executives.</p>
         </div>
+        <button
+          onClick={handleSyncOldLeads}
+          disabled={syncing}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-bold disabled:opacity-50"
+        >
+          {syncing ? 'Syncing...' : 'Sync Old Inquiries'}
+        </button>
       </div>
 
       {selectedLeads.length > 0 && (

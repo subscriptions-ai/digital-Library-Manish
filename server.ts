@@ -3512,6 +3512,23 @@ async function startServer() {
         }
       });
 
+      // Also create a Lead in the CRM Pipeline
+      try {
+        await prisma.lead.create({
+          data: {
+            name: fullName,
+            email: institutionalEmail,
+            phone: whatsappNumber,
+            organization: institutionName,
+            source: 'Demo Request',
+            status: 'New',
+            notes: `Requested Demo Type: ${requestType || "Institution"}`,
+          }
+        });
+      } catch (e) {
+        console.error("Failed to auto-create lead for demo request", e);
+      }
+
       // 1. Send Admin Notification Email
       const adminMailOptions = {
         from: emailFrom,
@@ -3838,6 +3855,19 @@ async function startServer() {
             organization: organization || null,
             message,
             status: 'New',
+          }
+        });
+
+        // Also create a Lead in the CRM Pipeline
+        await prisma.lead.create({
+          data: {
+            name: fullName,
+            email: email,
+            phone: mobile || whatsapp || null,
+            organization: organization || null,
+            source: 'Contact Inquiry',
+            status: 'New',
+            notes: message,
           }
         });
       } catch (dbErr) {
@@ -6408,6 +6438,60 @@ async function startServer() {
     } catch (error) {
       console.error("Assign leads error:", error);
       res.status(500).json({ error: "Failed to assign leads" });
+    }
+  });
+
+  app.post("/api/admin/leads/migrate", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      // 1. Migrate Demo Requests
+      const demos = await prisma.demoRequest.findMany();
+      let demoCount = 0;
+      for (const d of demos) {
+        const exists = await prisma.lead.findFirst({ where: { email: d.institutionalEmail, source: 'Demo Request' } });
+        if (!exists) {
+          await prisma.lead.create({
+            data: {
+              name: d.fullName,
+              email: d.institutionalEmail,
+              phone: d.whatsappNumber,
+              organization: d.institutionName,
+              source: 'Demo Request',
+              status: d.status === 'Completed' ? 'Converted' : 'New',
+              notes: d.adminNotes || "Requested Demo",
+              createdAt: d.createdAt,
+              updatedAt: d.updatedAt
+            }
+          });
+          demoCount++;
+        }
+      }
+
+      // 2. Migrate Contact Inquiries
+      const contacts = await prisma.contactInquiry.findMany();
+      let contactCount = 0;
+      for (const c of contacts) {
+        const exists = await prisma.lead.findFirst({ where: { email: c.email, source: 'Contact Inquiry' } });
+        if (!exists) {
+          await prisma.lead.create({
+            data: {
+              name: c.fullName,
+              email: c.email,
+              phone: c.mobile || c.whatsapp,
+              organization: c.organization,
+              source: 'Contact Inquiry',
+              status: c.status === 'Resolved' ? 'Converted' : 'New',
+              notes: c.message || "Contact Form Inquiry",
+              createdAt: c.createdAt || new Date(),
+              updatedAt: c.updatedAt || new Date()
+            }
+          });
+          contactCount++;
+        }
+      }
+      res.json({ message: `Migration successful. Added ${demoCount} Demos and ${contactCount} Contacts.` });
+    } catch (error) {
+      console.error("Migration error:", error);
+      res.status(500).json({ error: "Failed to migrate leads" });
     }
   });
 
