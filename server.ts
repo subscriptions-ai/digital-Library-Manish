@@ -6364,6 +6364,159 @@ async function startServer() {
     }
   });
 
+  // =========================================================================
+  // CRM & LEAD MANAGEMENT ROUTES
+  // =========================================================================
+
+  // 1. ADMIN/MANAGER ROUTES
+  app.get("/api/admin/leads", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const leads = await prisma.lead.findMany({
+        orderBy: { createdAt: "desc" },
+        include: { assignedTo: { select: { id: true, displayName: true, email: true } } }
+      });
+      res.json(leads);
+    } catch (error) {
+      console.error("Fetch leads error:", error);
+      res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  app.post("/api/admin/leads/assign", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { leadIds, assignedToId } = req.body;
+      if (!leadIds || !Array.isArray(leadIds) || !assignedToId) {
+        return res.status(400).json({ error: "Invalid data provided" });
+      }
+
+      await prisma.lead.updateMany({
+        where: { id: { in: leadIds } },
+        data: { assignedToId }
+      });
+
+      // Add a system interaction note
+      await prisma.leadInteraction.createMany({
+        data: leadIds.map(leadId => ({
+          leadId,
+          userId: req.user.uid,
+          type: "System",
+          notes: `Assigned to executive`
+        }))
+      });
+
+      res.json({ message: "Leads assigned successfully" });
+    } catch (error) {
+      console.error("Assign leads error:", error);
+      res.status(500).json({ error: "Failed to assign leads" });
+    }
+  });
+
+  app.get("/api/admin/sales-team", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const team = await prisma.user.findMany({
+        where: { role: { in: ["SalesExecutive", "SalesManager"] } },
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          role: true,
+          createdAt: true,
+          _count: {
+            select: { assignedLeads: true, leadInteractions: true }
+          }
+        }
+      });
+      res.json(team);
+    } catch (error) {
+      console.error("Fetch sales team error:", error);
+      res.status(500).json({ error: "Failed to fetch sales team" });
+    }
+  });
+
+  // 2. SALES EXECUTIVE ROUTES
+  const requireSalesRole = (req: any, res: any, next: any) => {
+    const r = req.user?.role;
+    if (r === "SuperAdmin" || r === "SubscriptionManager" || r === "SalesExecutive" || r === "SalesManager") {
+      next();
+    } else {
+      res.status(403).json({ error: "Access denied. Requires sales role." });
+    }
+  };
+
+  app.get("/api/sales/my-leads", authenticateJWT, requireSalesRole, async (req: any, res) => {
+    try {
+      const leads = await prisma.lead.findMany({
+        where: { assignedToId: req.user.uid },
+        orderBy: { updatedAt: "desc" }
+      });
+      res.json(leads);
+    } catch (error) {
+      console.error("Fetch my leads error:", error);
+      res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  app.get("/api/sales/leads/:id", authenticateJWT, requireSalesRole, async (req: any, res) => {
+    try {
+      const lead = await prisma.lead.findUnique({
+        where: { id: req.params.id },
+        include: {
+          interactions: {
+            orderBy: { createdAt: "desc" },
+            include: { user: { select: { displayName: true, email: true, role: true } } }
+          }
+        }
+      });
+      if (!lead) return res.status(404).json({ error: "Lead not found" });
+      res.json(lead);
+    } catch (error) {
+      console.error("Fetch lead detail error:", error);
+      res.status(500).json({ error: "Failed to fetch lead details" });
+    }
+  });
+
+  app.put("/api/sales/leads/:id/status", authenticateJWT, requireSalesRole, async (req: any, res) => {
+    try {
+      const { status } = req.body;
+      const lead = await prisma.lead.update({
+        where: { id: req.params.id },
+        data: { status }
+      });
+      res.json(lead);
+    } catch (error) {
+      console.error("Update lead status error:", error);
+      res.status(500).json({ error: "Failed to update lead status" });
+    }
+  });
+
+  app.post("/api/sales/leads/:id/interactions", authenticateJWT, requireSalesRole, async (req: any, res) => {
+    try {
+      const { type, notes } = req.body;
+      const interaction = await prisma.leadInteraction.create({
+        data: {
+          leadId: req.params.id,
+          userId: req.user.uid,
+          type: type || "Note",
+          notes
+        },
+        include: {
+          user: { select: { displayName: true, email: true, role: true } }
+        }
+      });
+      
+      // Update the lead's updatedAt
+      await prisma.lead.update({
+        where: { id: req.params.id },
+        data: { updatedAt: new Date() }
+      });
+
+      res.json(interaction);
+    } catch (error) {
+      console.error("Create interaction error:", error);
+      res.status(500).json({ error: "Failed to create interaction" });
+    }
+  });
+
   // Mount extraction routes BEFORE Vite/Static middleware
   setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
 

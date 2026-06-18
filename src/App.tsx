@@ -43,8 +43,14 @@ import { QuotationManager } from "./components/admin/QuotationManager";
 import { UserCreationPanel } from "./components/admin/UserCreationPanel";
 import { ContentValidatorModule } from './components/admin/content/ContentValidatorModule';
 import { DraftedContentManager } from './components/admin/DraftedContentManager';
-import { AdminFeedbackManager } from './components/admin/AdminFeedbackManager';
-import { AdminFeedbackDetails } from './components/admin/AdminFeedbackDetails';
+import { AdminFeedbackManager } from "./components/admin/AdminFeedbackManager";
+import { AdminFeedbackDetails } from "./components/admin/AdminFeedbackDetails";
+import { AdminSalesTeam } from "./components/admin/AdminSalesTeam";
+import { AdminExecutivePipeline } from "./components/admin/AdminExecutivePipeline";
+import { AdminLeadManager } from "./components/admin/AdminLeadManager";
+import { SalesLayout } from "./components/sales/SalesLayout";
+import { SalesPipeline } from "./components/sales/SalesPipeline";
+import { SalesLeadDetails } from "./components/sales/SalesLeadDetails";
 import { ValidatorDashboard } from "./components/admin/ValidatorDashboard";
 import { AgencyInquiriesPage } from "./components/admin/AgencyInquiriesPage";
 import { ContactInquiriesPage } from "./components/admin/ContactInquiriesPage";
@@ -163,6 +169,9 @@ export default function App() {
                 <Route path="/admin/drafts" element={<AdminLayout><DraftedContentManager /></AdminLayout>} />
                 <Route path="/admin/feedbacks" element={<AdminLayout><AdminFeedbackManager /></AdminLayout>} />
                 <Route path="/admin/feedbacks/:id" element={<AdminLayout><AdminFeedbackDetails /></AdminLayout>} />
+                <Route path="/admin/sales-team" element={<AdminLayout><AdminSalesTeam /></AdminLayout>} />
+                <Route path="/admin/sales-team/:id" element={<AdminLayout><AdminExecutivePipeline /></AdminLayout>} />
+                <Route path="/admin/leads" element={<AdminLayout><AdminLeadManager /></AdminLayout>} />
                 <Route path="/admin/coupons" element={<AdminLayout><CouponsManager /></AdminLayout>} />
                 <Route path="/admin/coupons/:id" element={<AdminLayout><CouponDetails /></AdminLayout>} />
                 <Route path="/admin/payments" element={<AdminLayout><AdminPayments /></AdminLayout>} />
@@ -230,7 +239,11 @@ export default function App() {
                 {/* Admin User Management */}
                 <Route path="/admin/users/create" element={<AdminLayout><UserCreationPanel /></AdminLayout>} />
 
-                
+                {/* Sales Executive Routes */}
+                <Route path="/sales" element={<SalesLayout><SalesPipeline /></SalesLayout>} />
+                <Route path="/sales/pipeline" element={<SalesLayout><SalesPipeline /></SalesLayout>} />
+                <Route path="/sales/leads/:id" element={<SalesLayout><SalesLeadDetails /></SalesLayout>} />
+
                 {/* Main Layout routes */}
               <Route path="*" element={
                 <>

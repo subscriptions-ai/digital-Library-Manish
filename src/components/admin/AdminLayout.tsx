@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell,
+  LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
   ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, Trash2, Database, Activity
 } from 'lucide-react';
@@ -164,6 +164,26 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             active={location.pathname === '/admin/users'}
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/admin/users')}
+          />
+
+          {/* Sales CRM */}
+          <div className="pt-2 pb-1">
+            <p className={`px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest ${!isSidebarOpen && 'hidden'}`}>Sales CRM</p>
+          </div>
+          <NavButton
+            icon={<Users2 size={17} />}
+            label="Lead Master"
+            active={location.pathname === '/admin/leads'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/leads')}
+            highlight
+          />
+          <NavButton
+            icon={<Briefcase size={17} />}
+            label="Sales Team"
+            active={location.pathname === '/admin/sales-team'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/sales-team')}
           />
 
           {/* User Feedbacks */}

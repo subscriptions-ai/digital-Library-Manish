@@ -45,6 +45,9 @@ model User {
   couponUsages          CouponUsage[]
   favorites             Favorite[]
   feedbacks             Feedback[]
+  
+  assignedLeads         Lead[]            @relation("AssignedLeads")
+  leadInteractions      LeadInteraction[] @relation("UserInteractions")
 }
 
 model Payment {
@@ -358,8 +361,42 @@ model ContactInquiry {
   replyText    String?
   repliedAt    DateTime?
 
+  isArchived    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Lead {
+  id           String   @id @default(uuid())
+  name         String
+  email        String
+  phone        String?
+  organization String?
+  source       String   @default("Manual") // Demo Request, Contact Inquiry, Manual
+  status       String   @default("New")    // New, Contacted, In Progress, Converted, Lost
+  notes        String?  @db.Text
+  
+  assignedToId String?
+  assignedTo   User?    @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  interactions LeadInteraction[]
+}
+
+model LeadInteraction {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  
+  userId    String
+  user      User     @relation("UserInteractions", fields: [userId], references: [id])
+  
+  type      String   @default("Note") // Call, Email, Meeting, Note, StatusChange
+  notes     String   @db.Text
+  
+  createdAt DateTime @default(now())
 }
 
 model Coupon {
