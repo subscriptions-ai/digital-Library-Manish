@@ -14,6 +14,7 @@ import Razorpay from "razorpay";
 import nodemailer from "nodemailer";
 import * as sesv2 from "@aws-sdk/client-sesv2";
 import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import compression from "compression";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -36,6 +37,25 @@ async function startServer() {
     contentSecurityPolicy: false, // Disable CSP if it interferes with Vite/External resources, or configure properly
   }));
   app.use(compression());
+  
+  // Rate Limiting Protection
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // 1000 requests per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests from this IP, please try again after 15 minutes" }
+  });
+  
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 15, // Max 15 login attempts per 15 minutes
+    message: { error: "Too many login attempts from this IP, please try again after 15 minutes" }
+  });
+
+  app.use("/api/", apiLimiter);
+  app.use("/api/auth/login", loginLimiter);
+  app.use("/api/auth/admin-login", loginLimiter);
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
