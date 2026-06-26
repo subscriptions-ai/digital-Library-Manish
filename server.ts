@@ -6650,12 +6650,21 @@ async function startServer() {
     }
   });
 
+  let cachedSitemap: string | null = null;
+  let sitemapCacheTime: number = 0;
+
   app.get("/sitemap.xml", async (req: any, res) => {
     try {
+      // Return cached sitemap if it's less than 12 hours old
+      if (cachedSitemap && (Date.now() - sitemapCacheTime < 1000 * 60 * 60 * 12)) {
+        res.type('application/xml');
+        return res.send(cachedSitemap);
+      }
+
       const allContent = await prisma.content.findMany({
         where: { status: "Published" },
         select: { id: true, updatedAt: true },
-        take: 50000
+        take: 20000 // Reduced to 20,000 to ensure fast generation and prevent memory spikes
       });
       
       const baseUrl = "https://journalslibrary.com";
@@ -6664,9 +6673,11 @@ async function startServer() {
       xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
       
       // Add static routes
-      const staticRoutes = ["", "/journals", "/contact", "/subscriptions", "/about", "/signup"];
+      const staticRoutes = ["/", "/journals", "/contact", "/subscriptions", "/about", "/signup"];
       for (const route of staticRoutes) {
-        xml += `  <url>\n    <loc>${baseUrl}${route}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
+        // Ensure route starts with slash, avoid double slash for root
+        const loc = route === "/" ? baseUrl : `${baseUrl}${route}`;
+        xml += `  <url>\n    <loc>${loc}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
       }
       
       // Add dynamic content routes
@@ -6676,10 +6687,14 @@ async function startServer() {
       
       xml += `</urlset>`;
       
-      res.header('Content-Type', 'application/xml');
+      // Update cache
+      cachedSitemap = xml;
+      sitemapCacheTime = Date.now();
+      
+      res.type('application/xml');
       res.send(xml);
     } catch (e) {
-      console.error(e);
+      console.error("Sitemap generation error:", e);
       res.status(500).send("Error generating sitemap");
     }
   });
