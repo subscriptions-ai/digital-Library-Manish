@@ -8,4 +8,4 @@ Disallow: /institution/
 Disallow: /validator/
 Disallow: /api/
 
-Sitemap: https://stmdigitallibrary.com/sitemap.xml
+Sitemap: https://journalslibrary.com/sitemap.xml

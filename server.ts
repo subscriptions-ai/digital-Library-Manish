@@ -6630,19 +6630,22 @@ async function startServer() {
           id: true,
           title: true,
           description: true,
-          author: true,
-          domainId: true,
+          authors: true,
+          domain: true,
           contentType: true,
-          coverImage: true,
-          publishedYear: true,
-          language: true,
-          publisher: true,
-          doi: true,
+          thumbnailUrl: true,
+          publishedAt: true,
         }
       });
       if (!content) return res.status(404).json({ error: "Content not found" });
-      res.json(content);
+      res.json({
+        ...content,
+        author: content.authors,
+        coverImage: content.thumbnailUrl,
+        publishedYear: new Date(content.publishedAt).getFullYear()
+      });
     } catch (e) {
+      console.error(e);
       res.status(500).json({ error: "Failed to fetch content" });
     }
   });
@@ -6650,18 +6653,18 @@ async function startServer() {
   app.get("/sitemap.xml", async (req: any, res) => {
     try {
       const allContent = await prisma.content.findMany({
-        where: { isPublished: true },
+        where: { status: "Published" },
         select: { id: true, updatedAt: true },
         take: 50000
       });
       
-      const baseUrl = "https://stmdigitallibrary.com";
+      const baseUrl = "https://journalslibrary.com";
       
       let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
       xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
       
       // Add static routes
-      const staticRoutes = ["", "/journals", "/contact", "/subscriptions", "/about-us", "/signup"];
+      const staticRoutes = ["", "/journals", "/contact", "/subscriptions", "/about", "/signup"];
       for (const route of staticRoutes) {
         xml += `  <url>\n    <loc>${baseUrl}${route}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
       }
@@ -6676,6 +6679,7 @@ async function startServer() {
       res.header('Content-Type', 'application/xml');
       res.send(xml);
     } catch (e) {
+      console.error(e);
       res.status(500).send("Error generating sitemap");
     }
   });

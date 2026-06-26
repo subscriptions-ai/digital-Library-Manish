@@ -46,8 +46,8 @@ export function Home() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "STM Digital Library",
-    "url": "https://stmdigitallibrary.com",
-    "logo": "https://stmdigitallibrary.com/logo.png",
+    "url": "https://journalslibrary.com",
+    "logo": "https://journalslibrary.com/logo.png",
     "description": "India's Premier Academic Hub providing proprietary publications and legally sourced open-access research.",
     "sameAs": []
   };

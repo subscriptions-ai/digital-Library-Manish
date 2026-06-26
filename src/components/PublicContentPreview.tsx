@@ -33,7 +33,7 @@ export function PublicContentPreview() {
       "name": content.author || "Unknown"
     },
     "datePublished": content.publishedYear ? `${content.publishedYear}` : undefined,
-    "image": content.coverImage || "https://stmdigitallibrary.com/logo.png",
+    "image": content.coverImage || "https://journalslibrary.com/logo.png",
     "description": content.description || `Read the full version of ${content.title} on STM Digital Library.`
   };
 
