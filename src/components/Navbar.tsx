@@ -262,6 +262,37 @@ export function Navbar() {
                 <Link to="/about" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>About Us</Link>
                 <Link to="/for-institutions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>For Institutions</Link>
                 <Link to="/for-students" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>For Students & Researchers</Link>
+                
+                {/* Mobile Departments Accordion */}
+                <div className="flex flex-col gap-2 my-1">
+                  <button 
+                    type="button"
+                    onClick={() => setIsDepartmentsOpen(!isDepartmentsOpen)}
+                    className="flex items-center justify-between text-base font-semibold text-slate-700 w-full"
+                  >
+                    Departments
+                    <ChevronDown size={18} className={cn("transition-transform duration-200", isDepartmentsOpen && "rotate-180")} />
+                  </button>
+                  {isDepartmentsOpen && (
+                    <div className="flex flex-col gap-3 pl-4 border-l-2 border-slate-100 py-2 mt-1">
+                      <Link to="/digital-library" className="text-sm font-bold text-blue-600" onClick={() => setIsMenuOpen(false)}>View All Departments</Link>
+                      {DOMAINS.map((domain) => (
+                        <Link 
+                          key={domain.id} 
+                          to={`/domain/${domain.id}`}
+                          className="text-sm font-medium text-slate-600"
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            setIsDepartmentsOpen(false);
+                          }}
+                        >
+                          {domain.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <Link to="/subscriptions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Subscription Plans</Link>
                 <Link to="/agency-listing" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Agency Info</Link>
                 <Link to="/faq" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>FAQ</Link>
