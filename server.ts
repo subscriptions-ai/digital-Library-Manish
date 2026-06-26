@@ -6650,52 +6650,115 @@ async function startServer() {
     }
   });
 
-  let cachedSitemap: string | null = null;
+  // Sitemap Cache
+  let cachedSitemapIndex: string | null = null;
+  let cachedStaticSitemap: string | null = null;
+  const cachedContentSitemaps = new Map<string, string>();
   let sitemapCacheTime: number = 0;
 
+  // 1. SITEMAP INDEX
   app.get("/sitemap.xml", async (req: any, res) => {
     try {
-      // Return cached sitemap if it's less than 12 hours old
-      if (cachedSitemap && (Date.now() - sitemapCacheTime < 1000 * 60 * 60 * 12)) {
+      if (cachedSitemapIndex && (Date.now() - sitemapCacheTime < 1000 * 60 * 60 * 12)) {
         res.type('application/xml');
-        return res.send(cachedSitemap);
+        return res.send(cachedSitemapIndex);
       }
 
-      const allContent = await prisma.content.findMany({
-        where: { status: "Published" },
-        select: { id: true, updatedAt: true },
-        take: 20000 // Reduced to 20,000 to ensure fast generation and prevent memory spikes
-      });
+      const totalContent = await prisma.content.count({ where: { status: "Published" } });
+      const limitPerPage = 40000;
+      const totalPages = Math.ceil(totalContent / limitPerPage);
       
       const baseUrl = "https://journalslibrary.com";
       
       let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-      xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+      xml += `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
       
-      // Add static routes
-      const staticRoutes = ["/", "/journals", "/contact", "/subscriptions", "/about", "/signup"];
-      for (const route of staticRoutes) {
-        // Ensure route starts with slash, avoid double slash for root
-        const loc = route === "/" ? baseUrl : `${baseUrl}${route}`;
-        xml += `  <url>\n    <loc>${loc}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
+      // Static sitemap
+      xml += `  <sitemap>\n    <loc>${baseUrl}/sitemap-static.xml</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </sitemap>\n`;
+      
+      // Dynamic content sitemaps
+      for (let i = 1; i <= totalPages; i++) {
+        xml += `  <sitemap>\n    <loc>${baseUrl}/sitemap-content-${i}.xml</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </sitemap>\n`;
       }
       
-      // Add dynamic content routes
+      xml += `</sitemapindex>`;
+      
+      cachedSitemapIndex = xml;
+      sitemapCacheTime = Date.now();
+      cachedContentSitemaps.clear(); // Clear content cache when index regenerates
+      
+      res.type('application/xml');
+      res.send(xml);
+    } catch (e) {
+      console.error("Sitemap index error:", e);
+      res.status(500).send("Error generating sitemap index");
+    }
+  });
+
+  // 2. STATIC SITEMAP
+  app.get("/sitemap-static.xml", (req: any, res) => {
+    if (cachedStaticSitemap) {
+      res.type('application/xml');
+      return res.send(cachedStaticSitemap);
+    }
+
+    const baseUrl = "https://journalslibrary.com";
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+    
+    const staticRoutes = ["/", "/journals", "/contact", "/subscriptions", "/about", "/signup"];
+    for (const route of staticRoutes) {
+      const loc = route === "/" ? baseUrl : `${baseUrl}${route}`;
+      xml += `  <url>\n    <loc>${loc}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
+    }
+    
+    xml += `</urlset>`;
+    cachedStaticSitemap = xml;
+    res.type('application/xml');
+    res.send(xml);
+  });
+
+  // 3. PAGINATED CONTENT SITEMAPS
+  app.get("/sitemap-content-:page.xml", async (req: any, res) => {
+    try {
+      const page = parseInt(req.params.page) || 1;
+      const cacheKey = `page-${page}`;
+
+      if (cachedContentSitemaps.has(cacheKey)) {
+        res.type('application/xml');
+        return res.send(cachedContentSitemaps.get(cacheKey));
+      }
+
+      const limitPerPage = 40000;
+      const skip = (page - 1) * limitPerPage;
+
+      const allContent = await prisma.content.findMany({
+        where: { status: "Published" },
+        select: { id: true, updatedAt: true },
+        skip,
+        take: limitPerPage,
+      });
+
+      if (allContent.length === 0) {
+        return res.status(404).send("Sitemap page not found");
+      }
+      
+      const baseUrl = "https://journalslibrary.com";
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+      
       for (const content of allContent) {
         xml += `  <url>\n    <loc>${baseUrl}/preview/${content.id}</loc>\n    <lastmod>${new Date(content.updatedAt).toISOString()}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
       }
       
       xml += `</urlset>`;
-      
-      // Update cache
-      cachedSitemap = xml;
-      sitemapCacheTime = Date.now();
+      cachedContentSitemaps.set(cacheKey, xml);
       
       res.type('application/xml');
       res.send(xml);
     } catch (e) {
-      console.error("Sitemap generation error:", e);
-      res.status(500).send("Error generating sitemap");
+      console.error("Content sitemap error:", e);
+      res.status(500).send("Error generating content sitemap");
     }
   });
 
