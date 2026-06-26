@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { DOMAINS, SUBSCRIPTION_PLANS } from "../constants";
+import { Helmet } from "react-helmet-async";
 import * as Icons from "lucide-react";
 import {
   BookOpen, ChevronRight, Loader2, Check, ShoppingCart,
@@ -225,8 +226,27 @@ export function DomainLandingPage() {
 
   const relatedDomains = DOMAINS.filter((d) => d.id !== domain.id).slice(0, 4);
 
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": `${domain.name} Digital Library Collection`,
+    "description": domain.description,
+    "publisher": {
+      "@type": "Organization",
+      "name": "STM Digital Library"
+    }
+  };
+
   return (
     <div className="flex flex-col bg-white">
+      <Helmet>
+        <title>{domain.name} Research Collection | STM Digital Library</title>
+        <meta name="description" content={`Explore comprehensive academic resources, journals, and books in ${domain.name}. ${domain.description}`} />
+        <meta name="keywords" content={`${domain.name}, digital library, research papers, journals, academic content, study material`} />
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
+      </Helmet>
 
       {/* ══ HERO ════════════════════════════════════════════════════════════════ */}
       <section className="bg-white pt-6 pb-16">

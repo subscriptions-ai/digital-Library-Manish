@@ -94,6 +94,7 @@ import { FAQ } from "./components/FAQ";
 import { ForInstitutions } from "./components/ForInstitutions";
 import { ForStudents } from "./components/ForStudents";
 import { DomainLandingPage } from "./components/DomainLandingPage";
+import { PublicContentPreview } from "./components/PublicContentPreview";
 import { SearchResults } from "./components/SearchResults";
 import { Toaster } from "react-hot-toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -120,24 +121,26 @@ function FirstLoginGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+import { HelmetProvider } from "react-helmet-async";
 import { AnalyticsTracker } from "./components/AnalyticsTracker";
 import { CookieConsent } from "./components/CookieConsent";
 import { EmailVerificationPopup } from "./components/dashboard/EmailVerificationPopup";
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <CartProvider>
-          <Router>
-            <AnalyticsTracker />
-            <ScrollToTop />
-            <FirstLoginGate>
-            <div className="flex min-h-screen flex-col font-sans text-slate-900 antialiased">
-              <Toaster position="top-right" />
-              <CookieConsent />
-              <EmailVerificationPopup />
-              <Routes>
+    <HelmetProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <CartProvider>
+            <Router>
+              <AnalyticsTracker />
+              <ScrollToTop />
+              <FirstLoginGate>
+              <div className="flex min-h-screen flex-col font-sans text-slate-900 antialiased">
+                <Toaster position="top-right" />
+                <CookieConsent />
+                <EmailVerificationPopup />
+                <Routes>
                 {/* Subscriber Dashboard routes with DashboardLayout */}
                 <Route path="/dashboard" element={<DashboardLayout><LMSDashboard /></DashboardLayout>} />
                 <Route path="/dashboard/content/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
@@ -275,6 +278,7 @@ export default function App() {
                       <Route path="/create-quotation" element={<QuotationWizard />} />
                       <Route path="/quotation-preview" element={<QuotationPreview />} />
                       <Route path="/domain/:domainId" element={<DomainLandingPage />} />
+                      <Route path="/preview/:id" element={<PublicContentPreview />} />
                       <Route path="/search" element={<SearchResults />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
@@ -289,6 +293,7 @@ export default function App() {
       </CartProvider>
       </AuthProvider>
     </ErrorBoundary>
+    </HelmetProvider>
   );
 }
 

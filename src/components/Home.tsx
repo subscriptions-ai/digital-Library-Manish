@@ -18,6 +18,8 @@ const contentTypeIconMap: Record<string, any> = {
   Mail,
 };
 
+import { Helmet } from "react-helmet-async";
+
 export function Home() {
   const [mousePosition, setMousePosition] = useState({ x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0 });
   const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
@@ -40,8 +42,26 @@ export function Home() {
     { label: "Years of Trust", value: "21+" }
   ];
 
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "STM Digital Library",
+    "url": "https://stmdigitallibrary.com",
+    "logo": "https://stmdigitallibrary.com/logo.png",
+    "description": "India's Premier Academic Hub providing proprietary publications and legally sourced open-access research.",
+    "sameAs": []
+  };
+
   return (
     <div className="flex flex-col">
+      <Helmet>
+        <title>STM Digital Library - India's Premier Academic Hub</title>
+        <meta name="description" content="Explore a curated academic platform combining proprietary publications and legally sourced open-access research. Designed for students, researchers, and institutions." />
+        <meta name="keywords" content="digital library, academic research, journals, case reports, educational videos, institution subscription" />
+        <script type="application/ld+json">
+          {JSON.stringify(organizationSchema)}
+        </script>
+      </Helmet>
       {/* Hero Section */}
       <section
         className="relative overflow-hidden bg-[#0a0f1c] min-h-[calc(100vh-80px)] flex items-center py-12 lg:py-0 text-white"

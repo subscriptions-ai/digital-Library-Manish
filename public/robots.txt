@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /sales/
+Disallow: /manager/
+Disallow: /institution/
+Disallow: /validator/
+Disallow: /api/
+
+Sitemap: https://stmdigitallibrary.com/sitemap.xml
