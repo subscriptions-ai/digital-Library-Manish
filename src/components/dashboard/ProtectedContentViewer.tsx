@@ -162,7 +162,7 @@ export function ProtectedContentViewer() {
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Viewer controls
-  const [scale, setScale] = useState(1.4);
+  const [scale, setScale] = useState(() => window.innerWidth < 640 ? 0.6 : 1.4);
   const [darkMode, setDarkMode] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [iframeFallback, setIframeFallback] = useState(false);
@@ -477,7 +477,7 @@ export function ProtectedContentViewer() {
           {/* Zoom out */}
           {isPdf && (
             <button
-              onClick={() => setScale(s => Math.max(0.6, s - 0.2))}
+              onClick={() => setScale(s => Math.max(0.4, s - 0.2))}
               title="Zoom Out"
               className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
             >
@@ -496,12 +496,12 @@ export function ProtectedContentViewer() {
             </button>
           )}
 
-          {/* Reset zoom */}
+          {/* Reset zoom (Hidden on mobile to save space) */}
           {isPdf && (
             <button
-              onClick={() => setScale(1.4)}
+              onClick={() => setScale(window.innerWidth < 640 ? 0.6 : 1.4)}
               title="Reset Zoom"
-              className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+              className={`hidden sm:block p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
             >
               <RotateCcw size={16} />
             </button>
@@ -526,11 +526,11 @@ export function ProtectedContentViewer() {
             {darkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
-          {/* Fullscreen */}
+          {/* Fullscreen (Hidden on mobile) */}
           <button
             onClick={toggleFullscreen}
             title="Fullscreen"
-            className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+            className={`hidden sm:block p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
           >
             <Maximize2 size={18} />
           </button>
