@@ -166,15 +166,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               {sidebarItems.find(i => location.pathname === i.path || (i.path !== '/dashboard' && location.pathname.startsWith(i.path)))?.label || 'Dashboard'}
             </h2>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right flex flex-col items-end">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="text-right hidden sm:flex flex-col items-end">
               <div className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 {profile?.isDemoAccount && (
                   <span className="bg-orange-100 text-orange-700 border border-orange-200 text-[9px] px-1.5 py-0.5 rounded-md uppercase tracking-wider font-extrabold shadow-sm">
                     Demo
                   </span>
                 )}
-                <span>{profile?.displayName || profile?.email}</span>
+                <span className="truncate max-w-[120px] lg:max-w-[200px]">{profile?.displayName || profile?.email}</span>
               </div>
               {profile?.role === 'Student' && profile?.organization ? (
                 <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{profile.organization}</p>
