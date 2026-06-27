@@ -65,18 +65,29 @@ export function LmsVideoPlayer() {
         </div>
 
         {/* Video Player Container */}
-        <div className="w-full bg-black rounded-[24px] overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-200">
-          <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+        <div className="w-full bg-black rounded-[24px] overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-200 relative">
+          <div className="relative w-full overflow-hidden" style={{ paddingTop: '56.25%' }}>
             {ytId ? (
-              <iframe
-                src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&controls=0&disablekb=1&iv_load_policy=3`}
-                className="absolute top-0 left-0 w-full h-full"
-                title={video.title}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
-              />
+              <>
+                {/* 
+                  CSS Cropping Trick:
+                  We make the iframe larger than its container (e.g. 115% width, 130% height) 
+                  and shift it up/left to crop out the YouTube title (top) and logo (bottom).
+                */}
+                <iframe
+                  src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&controls=0&disablekb=1&iv_load_policy=3&showinfo=0`}
+                  className="absolute"
+                  style={{ top: '-15%', left: '-5%', width: '110%', height: '130%' }}
+                  title={video.title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+                {/* Anti-click overlays to prevent clicking on hidden/partially visible YouTube links */}
+                <div className="absolute top-0 left-0 w-full h-16 z-10" /> {/* Protects Top Title */}
+                <div className="absolute bottom-0 right-0 w-40 h-20 z-10" /> {/* Protects Bottom Logo */}
+              </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-500 flex-col gap-2">
                 <PlayCircle size={48} className="opacity-50" />
