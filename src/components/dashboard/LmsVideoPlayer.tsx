@@ -69,7 +69,7 @@ export function LmsVideoPlayer() {
           <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
             {ytId ? (
               <iframe
-                src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&controls=0&disablekb=1&iv_load_policy=3`}
+                src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&controls=1&iv_load_policy=3`}
                 className="absolute top-0 left-0 w-full h-full"
                 title={video.title}
                 frameBorder="0"
