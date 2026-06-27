@@ -65,8 +65,14 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        // Support High-DPI (Retina) screens for crystal clear text on mobile
+        const dpr = window.devicePixelRatio || 1;
+        canvas.height = viewport.height * dpr;
+        canvas.width = viewport.width * dpr;
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+        
+        ctx.scale(dpr, dpr);
 
         const renderTask = page.render({
           canvasContext: ctx,
