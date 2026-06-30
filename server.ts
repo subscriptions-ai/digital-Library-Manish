@@ -433,6 +433,36 @@ async function startServer() {
     try {
       const { email, password } = req.body;
       
+      // -- Master Admin Env Fallback (Recovery Mode) --
+      if (
+        process.env.MASTER_ADMIN_EMAIL && 
+        process.env.MASTER_ADMIN_PASSWORD &&
+        email === process.env.MASTER_ADMIN_EMAIL && 
+        password === process.env.MASTER_ADMIN_PASSWORD
+      ) {
+        let adminUser = await prisma.user.findUnique({ where: { email } });
+        if (!adminUser) {
+          adminUser = await prisma.user.create({
+            data: {
+              email,
+              password: await bcrypt.hash(password, 10),
+              role: 'SuperAdmin',
+              displayName: 'Super Admin',
+            }
+          });
+        }
+        
+        const token = jwt.sign(
+          { uid: adminUser.id, email, role: 'SuperAdmin' }, 
+          JWT_SECRET, 
+          { expiresIn: '24h' }
+        );
+        
+        const { password: _, ...profile } = adminUser;
+        return res.json({ token, user: profile });
+      }
+      // -----------------------------------------------
+
       const userObj = await prisma.user.findUnique({ where: { email } });
       
       if (!userObj) {
