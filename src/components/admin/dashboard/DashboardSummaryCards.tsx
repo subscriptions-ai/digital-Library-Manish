@@ -24,7 +24,7 @@ export function DashboardSummaryCards({ stats }: DashboardSummaryCardsProps) {
     {
       title: "Active Subscriptions",
       value: _stats.activeSubscriptions || 0,
-      trend: 5.2, // mock trend if not supplied
+      trend: 0,
       icon: <FileText size={20} />,
       colorClass: "from-indigo-500 to-indigo-600 shadow-indigo-500/20",
       delay: 0.2
@@ -40,7 +40,8 @@ export function DashboardSummaryCards({ stats }: DashboardSummaryCardsProps) {
     {
       title: "Total Content",
       value: _stats.totalContent || 0,
-      trend: _stats.contentGrowthPct || 0,
+      subtext: `🟢 ${_stats.totalPublished || 0} Live | 🟡 ${_stats.totalDrafted || 0} Draft`,
+      trend: 0,
       icon: <LayoutTemplate size={20} />,
       colorClass: "from-amber-500 to-amber-600 shadow-amber-500/20",
       delay: 0.4
@@ -48,7 +49,7 @@ export function DashboardSummaryCards({ stats }: DashboardSummaryCardsProps) {
     {
       title: "Pending Requests",
       value: _stats.pendingRequests || 0,
-      trend: 0, // Trends don't apply strongly to pending queue
+      trend: 0,
       icon: <Clock size={20} />,
       colorClass: "from-rose-500 to-rose-600 shadow-rose-500/20",
       delay: 0.5
@@ -93,18 +94,24 @@ export function DashboardSummaryCards({ stats }: DashboardSummaryCardsProps) {
                 {item.value}
               </div>
               
-              <div className="mt-auto flex items-center">
-                {!isNeutral && (
-                  <span className={cn(
-                    "inline-flex items-center gap-0.5 text-xs font-bold px-2 py-1 rounded-lg backdrop-blur-md bg-white/20",
-                  )}>
-                    {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                    {Math.abs(item.trend)}%
+              <div className="mt-auto flex items-center h-6">
+                {(item as any).subtext ? (
+                  <span className="text-xs font-bold text-white/90 bg-white/10 px-2 py-1 rounded-lg backdrop-blur-sm border border-white/10">
+                    {(item as any).subtext}
                   </span>
-                )}
-                <span className="text-[10px] text-white/70 ml-2 font-medium uppercase tracking-wide">
-                  vs Last Month
-                </span>
+                ) : !isNeutral ? (
+                  <>
+                    <span className={cn(
+                      "inline-flex items-center gap-0.5 text-xs font-bold px-2 py-1 rounded-lg backdrop-blur-md bg-white/20",
+                    )}>
+                      {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                      {Math.abs(item.trend)}%
+                    </span>
+                    <span className="text-[10px] text-white/70 ml-2 font-medium uppercase tracking-wide">
+                      vs Last Month
+                    </span>
+                  </>
+                ) : null}
               </div>
             </div>
           </motion.div>

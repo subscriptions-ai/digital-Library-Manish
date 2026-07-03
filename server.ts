@@ -652,6 +652,23 @@ async function startServer() {
       ]);
 
       const totalUsers = await prisma.user.count();
+      const totalPublished = await prisma.content.count({ where: { status: 'Published' } });
+      const totalDrafted = await prisma.content.count({ where: { status: { not: 'Published' } } });
+
+      const now = new Date();
+      const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+      // Calculate real growth
+      const currentMonthPayments = await prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'Success', createdAt: { gte: startOfCurrentMonth } }});
+      const prevMonthPayments = await prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'Success', createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } }});
+      const currentRev = currentMonthPayments._sum.amount || 0;
+      const prevRev = prevMonthPayments._sum.amount || 0;
+      const revenueGrowthPct = prevRev === 0 ? (currentRev > 0 ? 100 : 0) : Number((((currentRev - prevRev) / prevRev) * 100).toFixed(1));
+
+      const currentUsers = await prisma.user.count({ where: { createdAt: { gte: startOfCurrentMonth } }});
+      const prevUsers = await prisma.user.count({ where: { createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } }});
+      const userGrowthPct = prevUsers === 0 ? (currentUsers > 0 ? 100 : 0) : Number((((currentUsers - prevUsers) / prevUsers) * 100).toFixed(1));
 
       // Aggregate domains for Bar Chart
       const domainGroups = await prisma.content.groupBy({
@@ -711,12 +728,14 @@ async function startServer() {
         _stats: {
           totalUsers,
           totalContent,
+          totalPublished,
+          totalDrafted,
           totalRevenue: payments.filter(p => p.status === 'Success').reduce((acc, p) => acc + p.amount, 0),
           activeSubscriptions: subscriptions.filter(s => s.status === 'Active').length,
           pendingRequests,
-          contentGrowthPct: 12.5,
-          revenueGrowthPct: 8.2,
-          userGrowthPct: 15.4
+          contentGrowthPct: 0, // Not highly relevant unless explicitly tracking creation dates
+          revenueGrowthPct,
+          userGrowthPct
         }
       });
     } catch (error) {
