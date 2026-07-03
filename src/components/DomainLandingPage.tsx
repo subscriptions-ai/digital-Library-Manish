@@ -419,7 +419,7 @@ export function DomainLandingPage() {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {contentCounts.filter(ct => apiLoading || ct.count > 0).map((ct, i) => {
+            {contentCounts.map((ct, i) => {
               const meta = CT_META[ct.type] || { icon: Icons.BookOpen, desc: "" };
               const CTIcon = meta.icon;
               const ctInfo = domain.contentTypes.find(c => c.type === ct.type);
@@ -437,11 +437,14 @@ export function DomainLandingPage() {
                     <CTIcon size={22} className="text-indigo-500" />
                   </div>
                   <div className="text-base font-bold text-slate-900">{ct.type}</div>
-                  <div className="text-sm font-semibold text-indigo-600 mt-1">
-                    {apiLoading
-                      ? <span className="inline-block h-4 w-20 bg-slate-200 rounded animate-pulse" />
-                      : `${ct.count.toLocaleString("en-IN")} Available`
-                    }
+                  <div className="text-sm font-semibold mt-1">
+                    {apiLoading ? (
+                      <span className="inline-block h-4 w-20 bg-slate-200 rounded animate-pulse" />
+                    ) : ct.count > 0 ? (
+                      <span className="text-indigo-600">{ct.count.toLocaleString("en-IN")} Available</span>
+                    ) : (
+                      <span className="text-amber-600">Launching Soon</span>
+                    )}
                   </div>
                   <p className="mt-3 text-xs text-slate-500 leading-relaxed">{desc}</p>
                 </motion.div>
