@@ -21,15 +21,33 @@ export function EmailVerificationInput({
   const [isChecking, setIsChecking] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
+  const [isVerificationRequired, setIsVerificationRequired] = useState(true);
+
+  // Fetch settings to check if email verification is enabled globally
+  useEffect(() => {
+    fetch('/api/public/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.emailVerificationEnabled === false) {
+          setIsVerificationRequired(false);
+          onVerified(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Whenever value changes, reset verification status if it was verified
   useEffect(() => {
+    if (!isVerificationRequired) {
+      onVerified(true);
+      return;
+    }
     if (isVerified) {
       setIsVerified(false);
       onVerified(false);
       setShowOtp(false);
     }
-  }, [value]);
+  }, [value, isVerificationRequired]);
 
   const checkEmail = async () => {
     if (!value || !value.includes('@')) {
@@ -97,25 +115,29 @@ export function EmailVerificationInput({
             required
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            disabled={isVerified || showOtp}
+            disabled={(isVerified && isVerificationRequired) || showOtp}
             placeholder={placeholder}
-            className={`w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 transition-all ${isVerified ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'focus:bg-white'}`}
+            className={`w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 transition-all ${(isVerified && isVerificationRequired) ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'focus:bg-white'}`}
           />
         </div>
-        {!isVerified && !showOtp && (
-          <button
-            type="button"
-            onClick={checkEmail}
-            disabled={isChecking || !value}
-            className="px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2 shrink-0 transition-all h-[46px]"
-          >
-            {isChecking ? <Loader2 className="animate-spin" size={16} /> : 'Verify'}
-          </button>
-        )}
-        {isVerified && (
-          <div className="px-4 py-3 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-bold flex items-center gap-2 shrink-0 h-[46px]">
-            <CheckCircle size={18} /> Already Verified
-          </div>
+        {isVerificationRequired && (
+          <>
+            {!isVerified && !showOtp && (
+              <button
+                type="button"
+                onClick={checkEmail}
+                disabled={isChecking || !value}
+                className="px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2 shrink-0 transition-all h-[46px]"
+              >
+                {isChecking ? <Loader2 className="animate-spin" size={16} /> : 'Verify'}
+              </button>
+            )}
+            {isVerified && (
+              <div className="px-4 py-3 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-bold flex items-center gap-2 shrink-0 h-[46px]">
+                <CheckCircle size={18} /> Already Verified
+              </div>
+            )}
+          </>
         )}
       </div>
 

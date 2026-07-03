@@ -275,6 +275,12 @@ async function startServer() {
     }
   });
 
+  // --- Public Settings API ---
+  app.get("/api/public/settings", (req, res) => {
+    const settings = getSystemSettings();
+    res.json({ emailVerificationEnabled: settings.emailVerificationEnabled });
+  });
+
   // --- Email Verification OTP System ---
   app.post("/api/verify/check-or-send", async (req, res) => {
     try {
