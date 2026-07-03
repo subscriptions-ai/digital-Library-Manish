@@ -17,8 +17,8 @@ const DEFAULT_CONTENT_TYPES: ContentTypeInfo[] = [
   { type: "Magazines", count: "200+", description: "Subject-focused academic issues." },
   { type: "Case Reports", count: "5,000+", description: "Real-world research applications." },
   { type: "Theses", count: "10,000+", description: "Original research repository." },
-  { type: "Proceedings", count: "3,000+", description: "Global conference insights." },
-  { type: "Videos", count: "1,500+", description: "Visual learning resources." },
+  { type: "Conference Proceedings", count: "3,000+", description: "Global conference insights." },
+  { type: "Educational Videos", count: "1,500+", description: "Visual learning resources." },
   { type: "Newsletters", count: "800+", description: "Departmental updates." },
 ];
 
