@@ -24,6 +24,19 @@ import { setupExtractionRoutes } from "./src/routes/extraction.js";
 
 const prisma = new PrismaClient();
 
+const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+function getSystemSettings() {
+  if (fs.existsSync(SETTINGS_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+    } catch { return { emailVerificationEnabled: true }; }
+  }
+  return { emailVerificationEnabled: true };
+}
+function setSystemSettings(settings: any) {
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+}
+
 dotenv.config();
 
 const currentDir = process.cwd();
@@ -267,6 +280,11 @@ async function startServer() {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: "Email is required" });
+
+      const settings = getSystemSettings();
+      if (!settings.emailVerificationEnabled) {
+        return res.json({ verified: true });
+      }
 
       let record = await (prisma as any).emailVerification.findUnique({ where: { email } });
       
@@ -742,6 +760,22 @@ async function startServer() {
       console.error("Admin stats error:", error);
       res.status(500).json({ error: "Failed to fetch stats" });
     }
+  });
+
+  // Admin: Get Settings
+  app.get("/api/admin/settings", authenticateJWT, requireSuperAdmin, (req, res) => {
+    res.json(getSystemSettings());
+  });
+
+  // Admin: Update Settings
+  app.post("/api/admin/settings", authenticateJWT, requireSuperAdmin, (req, res) => {
+    const { emailVerificationEnabled } = req.body;
+    const settings = getSystemSettings();
+    if (typeof emailVerificationEnabled !== 'undefined') {
+      settings.emailVerificationEnabled = Boolean(emailVerificationEnabled);
+    }
+    setSystemSettings(settings);
+    res.json(settings);
   });
 
   // India State-wise distribution — all sources + platform totals

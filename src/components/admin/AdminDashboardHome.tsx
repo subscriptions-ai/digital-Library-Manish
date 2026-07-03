@@ -13,6 +13,7 @@ const TrafficAnalyticsChart = lazy(() => import('./dashboard/TrafficAnalyticsCha
 export function AdminDashboardHome() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [emailVerificationEnabled, setEmailVerificationEnabled] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -23,6 +24,15 @@ export function AdminDashboardHome() {
         if (!response.ok) throw new Error("Failed to fetch stats");
         const data = await response.json();
         setStats(data);
+
+        // Fetch settings
+        const settingsRes = await fetch('/api/admin/settings', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (settingsRes.ok) {
+          const s = await settingsRes.json();
+          setEmailVerificationEnabled(s.emailVerificationEnabled);
+        }
       } catch (error) {
         console.error("Error fetching stats:", error);
         toast.error("Failed to load dashboard stats");
@@ -33,6 +43,28 @@ export function AdminDashboardHome() {
 
     fetchStats();
   }, []);
+
+  const toggleEmailVerification = async () => {
+    try {
+      const newVal = !emailVerificationEnabled;
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ emailVerificationEnabled: newVal })
+      });
+      if (res.ok) {
+        setEmailVerificationEnabled(newVal);
+        toast.success(`Email verification ${newVal ? 'Enabled' : 'Disabled (Bypassed)'}`);
+      } else {
+        throw new Error();
+      }
+    } catch {
+      toast.error('Failed to update settings');
+    }
+  };
 
   if (loading) {
     return (
@@ -75,6 +107,25 @@ export function AdminDashboardHome() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Analytics Dashboard</h1>
           <p className="text-sm text-slate-500 mt-1">Real-time overview of the library performance and user growth.</p>
+        </div>
+        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex flex-col text-right hidden sm:flex">
+            <span className="text-sm font-bold text-slate-800">Email Verification</span>
+            <span className="text-xs text-slate-500">{emailVerificationEnabled ? 'Active' : 'Bypassed (Off)'}</span>
+          </div>
+          <button
+            onClick={toggleEmailVerification}
+            title={emailVerificationEnabled ? "Disable verification to bypass OTPs" : "Enable email verification"}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+              emailVerificationEnabled ? 'bg-indigo-600' : 'bg-slate-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                emailVerificationEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
         </div>
       </div>
 
