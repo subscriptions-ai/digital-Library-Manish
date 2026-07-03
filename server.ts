@@ -167,20 +167,26 @@ async function startServer() {
   } : null;
 
   const sendMail = async (mailOptions: any) => {
-    const opts = { ...mailOptions };
-    if (_logoCidAttachment && opts.html && typeof opts.html === 'string' && opts.html.includes('cid:stm-logo-email')) {
-      opts.attachments = [...(opts.attachments || []), _logoCidAttachment];
+    try {
+      const opts = { ...mailOptions };
+      if (_logoCidAttachment && opts.html && typeof opts.html === 'string' && opts.html.includes('cid:stm-logo-email')) {
+        opts.attachments = [...(opts.attachments || []), _logoCidAttachment];
+      }
+      const info = await transporter.sendMail(opts);
+      if (isDevMode) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log('\n📨 ===== EMAIL SENT (DEV PREVIEW) =====');
+        console.log(`   To: ${opts.to}`);
+        console.log(`   Subject: ${opts.subject}`);
+        console.log(`   🔗 Preview URL: ${previewUrl}`);
+        console.log('=======================================\n');
+      }
+      return info;
+    } catch (error) {
+      console.error("❌ Email Sending Failed:", error);
+      // Swallow error so that main app flows (like form submissions) don't crash
+      return null;
     }
-    const info = await transporter.sendMail(opts);
-    if (isDevMode) {
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      console.log('\n📨 ===== EMAIL SENT (DEV PREVIEW) =====');
-      console.log(`   To: ${opts.to}`);
-      console.log(`   Subject: ${opts.subject}`);
-      console.log(`   🔗 Preview URL: ${previewUrl}`);
-      console.log('=======================================\n');
-    }
-    return info;
   };
 
   // ── Shared Email Layout ───────────────────────────────────────────────────
