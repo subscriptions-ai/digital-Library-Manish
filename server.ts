@@ -652,8 +652,8 @@ async function startServer() {
       ]);
 
       const totalUsers = await prisma.user.count();
-      const totalPublished = await prisma.content.count({ where: { status: 'Published' } });
-      const totalDrafted = await prisma.content.count({ where: { status: { not: 'Published' } } });
+      const totalPublished = await prisma.content.count({ where: { status: { in: ['Published', 'published'] } } });
+      const totalDrafted = await prisma.content.count({ where: { status: { notIn: ['Published', 'published'] } } });
 
       const now = new Date();
       const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1057,7 +1057,7 @@ async function startServer() {
       const realCounts = await prisma.content.groupBy({
         by: ['domain', 'contentType'],
         _count: { id: true },
-        where: { status: 'Published' }
+        where: { status: { in: ['Published', 'published'] } }
       });
 
       // 3. Deduplicate and map
@@ -2305,7 +2305,7 @@ async function startServer() {
   async function syncContentModuleCounts() {
     const groups = await prisma.content.groupBy({
       by: ['domain', 'contentType'],
-      where: { status: 'Published', domain: { not: null } },
+      where: { status: { in: ['Published', 'published'] }, domain: { not: null } },
       _count: { id: true }
     });
     for (const g of groups) {
@@ -2582,7 +2582,7 @@ async function startServer() {
       // 1. Content summary — count published content per type for this domain
       const contentGroups = await prisma.content.groupBy({
         by: ['contentType'],
-        where: { domain, status: 'Published' },
+        where: { domain, status: { in: ['Published', 'published'] } },
         _count: { id: true },
         orderBy: { contentType: 'asc' }
       });
