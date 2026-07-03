@@ -9,8 +9,20 @@ export function EmailVerificationPopup() {
   const { profile, fetchProfile } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerificationRequired, setIsVerificationRequired] = useState<boolean | null>(null);
 
   useEffect(() => {
+    fetch('/api/public/settings')
+      .then(res => res.json())
+      .then(data => {
+        setIsVerificationRequired(data.emailVerificationEnabled !== false);
+      })
+      .catch(() => setIsVerificationRequired(true));
+  }, []);
+
+  useEffect(() => {
+    if (isVerificationRequired === null || isVerificationRequired === false) return;
+
     // Only show if user is logged in and email is NOT verified
     if (!profile || profile.isEmailVerified === undefined || profile.isEmailVerified === true) {
       return;
@@ -28,7 +40,7 @@ export function EmailVerificationPopup() {
     // Small delay before showing popup
     const timer = setTimeout(() => setIsVisible(true), 2000);
     return () => clearTimeout(timer);
-  }, [profile]);
+  }, [profile, isVerificationRequired]);
 
   const snooze = (hours: number) => {
     const time = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();

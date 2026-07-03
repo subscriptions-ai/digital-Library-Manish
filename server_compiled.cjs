@@ -10024,6 +10024,10 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch domain counts" });
     }
   });
+  app.get("/api/public/settings", (req, res) => {
+    const settings = getSystemSettings();
+    res.json({ emailVerificationEnabled: settings.emailVerificationEnabled });
+  });
   app.post("/api/verify/check-or-send", async (req, res) => {
     try {
       const { email } = req.body;
