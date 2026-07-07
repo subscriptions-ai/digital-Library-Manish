@@ -9947,21 +9947,81 @@ async function startServer() {
     path: _logoPath,
     cid: "stm-logo-email"
   } : null;
-  const sendMail = async (mailOptions) => {
-    const opts = { ...mailOptions };
-    if (_logoCidAttachment && opts.html && typeof opts.html === "string" && opts.html.includes("cid:stm-logo-email")) {
-      opts.attachments = [...opts.attachments || [], _logoCidAttachment];
+  const createDynamicTransporter = () => {
+    const settings = getSystemSettings();
+    const accessKey = settings.awsAccessKeyId || process.env.AWS_ACCESS_KEY_ID;
+    const secretKey = settings.awsSecretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
+    const region = settings.awsRegion || process.env.AWS_REGION || "us-west-2";
+    if (!accessKey || !secretKey) {
+      return { transporter: null, isDev: true };
     }
-    const info = await transporter.sendMail(opts);
-    if (isDevMode) {
-      const previewUrl = import_nodemailer.default.getTestMessageUrl(info);
-      console.log("\n\u{1F4E8} ===== EMAIL SENT (DEV PREVIEW) =====");
-      console.log(`   To: ${opts.to}`);
-      console.log(`   Subject: ${opts.subject}`);
-      console.log(`   \u{1F517} Preview URL: ${previewUrl}`);
-      console.log("=======================================\n");
+    const dynamicSes = new sesv2.SESv2Client({
+      region: region.trim(),
+      credentials: { accessKeyId: accessKey.trim(), secretAccessKey: secretKey.trim() }
+    });
+    const dynamicTransporter = import_nodemailer.default.createTransport({
+      SES: { sesClient: dynamicSes, SendEmailCommand: sesv2.SendEmailCommand }
+    });
+    return { transporter: dynamicTransporter, isDev: false, emailFrom: settings.emailFrom || process.env.EMAIL_FROM || "info@celnet.in" };
+  };
+  const sendMail = async (mailOptions, logAsSent = true) => {
+    try {
+      const { transporter: dynTrans, isDev, emailFrom } = createDynamicTransporter();
+      const opts = { ...mailOptions };
+      if (opts.from && typeof opts.from === "string") {
+        if (opts.from.includes("<") && opts.from.includes(">")) {
+          const namePart = opts.from.split("<")[0];
+          opts.from = `${namePart}<${emailFrom}>`;
+        } else {
+          opts.from = emailFrom;
+        }
+      } else {
+        opts.from = `"STM Digital Library" <${emailFrom}>`;
+      }
+      if (_logoCidAttachment && opts.html && typeof opts.html === "string" && opts.html.includes("cid:stm-logo-email")) {
+        opts.attachments = [...opts.attachments || [], _logoCidAttachment];
+      }
+      let info;
+      if (isDev) {
+        info = await transporter.sendMail(opts);
+        const previewUrl = import_nodemailer.default.getTestMessageUrl(info);
+        console.log("\n\u{1F4E8} ===== EMAIL SENT (DEV PREVIEW) =====");
+        console.log(`   To: ${opts.to}`);
+        console.log(`   Subject: ${opts.subject}`);
+        console.log(`   \u{1F517} Preview URL: ${previewUrl}`);
+        console.log("=======================================\n");
+      } else {
+        info = await dynTrans.sendMail(opts);
+      }
+      if (logAsSent) {
+        await prisma2.emailLog.create({
+          data: {
+            to: typeof opts.to === "string" ? opts.to : JSON.stringify(opts.to),
+            subject: opts.subject,
+            status: "Sent",
+            htmlContent: opts.html || null
+          }
+        }).catch((e2) => console.error("Failed to log email success", e2));
+      }
+      return info;
+    } catch (error) {
+      console.error("\u274C Email Sending Failed:", error);
+      if (logAsSent) {
+        await prisma2.emailLog.create({
+          data: {
+            to: typeof mailOptions.to === "string" ? mailOptions.to : JSON.stringify(mailOptions.to),
+            subject: mailOptions.subject || "No Subject",
+            status: "Failed",
+            error: error?.message || String(error),
+            htmlContent: mailOptions.html || null
+          }
+        }).catch((e2) => console.error("Failed to log email error", e2));
+      }
+      if (mailOptions._isTestEmail) {
+        throw error;
+      }
+      return null;
     }
-    return info;
   };
   const buildEmail = (bodyRows) => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head><body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);"><tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/><h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2><p style="margin:0;font-size:12px;color:#64748b;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` + bodyRows + `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;"><p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">\u{1F3C6} 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p><p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p><p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p><p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;"><p style="margin:0;font-size:11px;color:#64748b;">\xA9 2026 STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr><tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr></table></td></tr></table></body></html>`;
   app.get("/api/health", (req, res) => {
@@ -10302,6 +10362,78 @@ async function startServer() {
     }
     next();
   };
+  app.get("/api/admin/settings/email", authenticateJWT, requireAdminOrManager, (req, res) => {
+    const settings = getSystemSettings();
+    res.json({
+      awsAccessKeyId: settings.awsAccessKeyId || "",
+      awsSecretAccessKey: settings.awsSecretAccessKey ? "********" : "",
+      // Masked
+      awsRegion: settings.awsRegion || "us-west-2",
+      emailFrom: settings.emailFrom || ""
+    });
+  });
+  app.post("/api/admin/settings/email", authenticateJWT, requireAdminOrManager, (req, res) => {
+    const settings = getSystemSettings();
+    const { awsAccessKeyId, awsSecretAccessKey, awsRegion, emailFrom } = req.body;
+    if (awsAccessKeyId) settings.awsAccessKeyId = awsAccessKeyId;
+    if (awsSecretAccessKey && awsSecretAccessKey !== "********") {
+      settings.awsSecretAccessKey = awsSecretAccessKey;
+    }
+    if (awsRegion) settings.awsRegion = awsRegion;
+    if (emailFrom) settings.emailFrom = emailFrom;
+    setSystemSettings(settings);
+    res.json({ success: true, message: "Email settings saved successfully" });
+  });
+  app.post("/api/admin/settings/email/test", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { to } = req.body;
+      if (!to) return res.status(400).json({ error: "Missing recipient email" });
+      await sendMail({
+        to,
+        subject: "Test Email from STM Digital Library",
+        html: `<p>This is a test email sent from the STM Digital Library Admin Dashboard.</p><p>If you received this, your email configuration is working perfectly!</p>`,
+        _isTestEmail: true
+        // Flag to throw error instead of swallowing
+      });
+      res.json({ success: true, message: "Test email sent successfully!" });
+    } catch (err) {
+      res.status(500).json({ error: err.message || "Failed to send test email" });
+    }
+  });
+  app.get("/api/admin/email-logs", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const logs = await prisma2.emailLog.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 100
+        // Limit to last 100 logs
+      });
+      res.json(logs);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch email logs" });
+    }
+  });
+  app.post("/api/admin/email-logs/:id/resend", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const logId = req.params.id;
+      const log = await prisma2.emailLog.findUnique({ where: { id: logId } });
+      if (!log) return res.status(404).json({ error: "Log not found" });
+      if (!log.htmlContent) return res.status(400).json({ error: "Email content not available for resending (older log without HTML stored)." });
+      await sendMail({
+        to: log.to,
+        subject: log.subject,
+        html: log.htmlContent,
+        _isTestEmail: true
+        // Throw error explicitly instead of silent catch
+      }, false);
+      await prisma2.emailLog.update({
+        where: { id: logId },
+        data: { status: "Sent", error: null, createdAt: /* @__PURE__ */ new Date() }
+      });
+      res.json({ success: true, message: "Email resent successfully!" });
+    } catch (err) {
+      res.status(500).json({ error: err.message || "Failed to resend email" });
+    }
+  });
   app.get("/api/admin/stats", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const CONTENT_TYPES = ["Books", "Periodicals", "Magazines", "Case Reports", "Theses", "Conference Proceedings", "Educational Videos", "Newsletters"];

@@ -62,6 +62,7 @@ import { RequestDemo } from './components/RequestDemo';
 import { ExtractionDashboard } from './components/admin/ExtractionDashboard';
 import { ExtractionJobDetails } from './components/admin/ExtractionJobDetails';
 import { EmailVerificationsPage } from './components/admin/EmailVerificationsPage';
+import { AdminEmailSettings } from './components/admin/settings/AdminEmailSettings';
 import { DetailedAnalyticsPage } from './components/admin/dashboard/DetailedAnalyticsPage';
 
 const CONTENT_MODULES = [
@@ -181,6 +182,7 @@ export default function App() {
                 <Route path="/admin/extraction" element={<AdminLayout><ExtractionDashboard /></AdminLayout>} />
                 <Route path="/admin/extraction/jobs/:id" element={<AdminLayout><ExtractionJobDetails /></AdminLayout>} />
                 <Route path="/admin/email-verifications" element={<AdminLayout><EmailVerificationsPage /></AdminLayout>} />
+                <Route path="/admin/email-settings" element={<AdminLayout><AdminEmailSettings /></AdminLayout>} />
 
                 {/* Per Content Type Module Routes (8 modules × 3 pages each) */}
                 {CONTENT_MODULES.map(({ slug, contentType }) => (

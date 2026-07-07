@@ -166,25 +166,96 @@ async function startServer() {
     cid: 'stm-logo-email'
   } : null;
 
-  const sendMail = async (mailOptions: any) => {
+  const createDynamicTransporter = () => {
+    const settings = getSystemSettings();
+    const accessKey = settings.awsAccessKeyId || process.env.AWS_ACCESS_KEY_ID;
+    const secretKey = settings.awsSecretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
+    const region = settings.awsRegion || process.env.AWS_REGION || "us-west-2";
+
+    if (!accessKey || !secretKey) {
+      // Fallback to dev mode if no keys
+      return { transporter: null, isDev: true };
+    }
+
+    const dynamicSes = new sesv2.SESv2Client({
+      region: region.trim(),
+      credentials: { accessKeyId: accessKey.trim(), secretAccessKey: secretKey.trim() }
+    });
+
+    const dynamicTransporter = nodemailer.createTransport({
+      SES: { sesClient: dynamicSes, SendEmailCommand: sesv2.SendEmailCommand },
+    });
+    
+    return { transporter: dynamicTransporter, isDev: false, emailFrom: settings.emailFrom || process.env.EMAIL_FROM || "info@celnet.in" };
+  };
+
+  const sendMail = async (mailOptions: any, logAsSent = true) => {
     try {
+      const { transporter: dynTrans, isDev, emailFrom } = createDynamicTransporter();
       const opts = { ...mailOptions };
+      
+      // Always enforce the configured dynamic emailFrom, even if hardcoded in the opts
+      if (opts.from && typeof opts.from === 'string') {
+        // If it's formatted like '"Name" <email>', preserve the name but replace the email
+        if (opts.from.includes('<') && opts.from.includes('>')) {
+          const namePart = opts.from.split('<')[0];
+          opts.from = `${namePart}<${emailFrom}>`;
+        } else {
+          opts.from = emailFrom;
+        }
+      } else {
+        opts.from = `"STM Digital Library" <${emailFrom}>`;
+      }
+
       if (_logoCidAttachment && opts.html && typeof opts.html === 'string' && opts.html.includes('cid:stm-logo-email')) {
         opts.attachments = [...(opts.attachments || []), _logoCidAttachment];
       }
-      const info = await transporter.sendMail(opts);
-      if (isDevMode) {
+      
+      let info;
+      if (isDev) {
+        // Use global ethereal transporter
+        info = await transporter.sendMail(opts);
         const previewUrl = nodemailer.getTestMessageUrl(info);
         console.log('\n📨 ===== EMAIL SENT (DEV PREVIEW) =====');
         console.log(`   To: ${opts.to}`);
         console.log(`   Subject: ${opts.subject}`);
         console.log(`   🔗 Preview URL: ${previewUrl}`);
         console.log('=======================================\n');
+      } else {
+        info = await dynTrans.sendMail(opts);
       }
+
+      if (logAsSent) {
+        await prisma.emailLog.create({
+          data: {
+            to: typeof opts.to === 'string' ? opts.to : JSON.stringify(opts.to),
+            subject: opts.subject,
+            status: "Sent",
+            htmlContent: opts.html || null
+          }
+        }).catch(e => console.error("Failed to log email success", e));
+      }
+      
       return info;
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Email Sending Failed:", error);
-      // Swallow error so that main app flows (like form submissions) don't crash
+      
+      if (logAsSent) {
+        await prisma.emailLog.create({
+          data: {
+            to: typeof mailOptions.to === 'string' ? mailOptions.to : JSON.stringify(mailOptions.to),
+            subject: mailOptions.subject || "No Subject",
+            status: "Failed",
+            error: error?.message || String(error),
+            htmlContent: mailOptions.html || null
+          }
+        }).catch(e => console.error("Failed to log email error", e));
+      }
+      
+      // Throw error if this is a test email, else swallow to avoid crashing forms
+      if (mailOptions._isTestEmail) {
+        throw error;
+      }
       return null;
     }
   };
@@ -286,6 +357,7 @@ async function startServer() {
     const settings = getSystemSettings();
     res.json({ emailVerificationEnabled: settings.emailVerificationEnabled });
   });
+
 
   // --- Email Verification OTP System ---
   app.post("/api/verify/check-or-send", async (req, res) => {
@@ -663,6 +735,88 @@ async function startServer() {
     }
     next();
   };
+
+  // --- Admin Email Settings API ---
+  app.get("/api/admin/settings/email", authenticateJWT, requireAdminOrManager, (req, res) => {
+    const settings = getSystemSettings();
+    res.json({
+      awsAccessKeyId: settings.awsAccessKeyId || "",
+      awsSecretAccessKey: settings.awsSecretAccessKey ? "********" : "", // Masked
+      awsRegion: settings.awsRegion || "us-west-2",
+      emailFrom: settings.emailFrom || ""
+    });
+  });
+
+  app.post("/api/admin/settings/email", authenticateJWT, requireAdminOrManager, (req, res) => {
+    const settings = getSystemSettings();
+    const { awsAccessKeyId, awsSecretAccessKey, awsRegion, emailFrom } = req.body;
+    
+    if (awsAccessKeyId) settings.awsAccessKeyId = awsAccessKeyId;
+    // Only update secret if a new one is provided (not the masked one)
+    if (awsSecretAccessKey && awsSecretAccessKey !== "********") {
+      settings.awsSecretAccessKey = awsSecretAccessKey;
+    }
+    if (awsRegion) settings.awsRegion = awsRegion;
+    if (emailFrom) settings.emailFrom = emailFrom;
+    
+    setSystemSettings(settings);
+    res.json({ success: true, message: "Email settings saved successfully" });
+  });
+
+  app.post("/api/admin/settings/email/test", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { to } = req.body;
+      if (!to) return res.status(400).json({ error: "Missing recipient email" });
+      
+      await sendMail({
+        to,
+        subject: "Test Email from STM Digital Library",
+        html: `<p>This is a test email sent from the STM Digital Library Admin Dashboard.</p><p>If you received this, your email configuration is working perfectly!</p>`,
+        _isTestEmail: true // Flag to throw error instead of swallowing
+      });
+      res.json({ success: true, message: "Test email sent successfully!" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to send test email" });
+    }
+  });
+
+  app.get("/api/admin/email-logs", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const logs = await prisma.emailLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 100 // Limit to last 100 logs
+      });
+      res.json(logs);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch email logs" });
+    }
+  });
+
+  app.post("/api/admin/email-logs/:id/resend", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const logId = req.params.id;
+      const log = await prisma.emailLog.findUnique({ where: { id: logId } });
+      if (!log) return res.status(404).json({ error: "Log not found" });
+      if (!log.htmlContent) return res.status(400).json({ error: "Email content not available for resending (older log without HTML stored)." });
+
+      await sendMail({
+        to: log.to,
+        subject: log.subject,
+        html: log.htmlContent,
+        _isTestEmail: true // Throw error explicitly instead of silent catch
+      }, false); // don't log this as a standard sent email initially since we do it below or it might spam
+
+      // Update original log status
+      await prisma.emailLog.update({
+        where: { id: logId },
+        data: { status: "Sent", error: null, createdAt: new Date() }
+      });
+
+      res.json({ success: true, message: "Email resent successfully!" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to resend email" });
+    }
+  });
 
   // Admin: Get all stats (enhanced)
   app.get("/api/admin/stats", authenticateJWT, requireAdminOrManager, async (req: any, res) => {

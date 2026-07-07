@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase,
+  LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
   ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, Trash2, Database, Activity
 } from 'lucide-react';
@@ -215,6 +215,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             onClick={() => navigate('/admin/email-verifications')}
           />
 
+          {/* Email Settings */}
+          <NavButton
+            icon={<Globe size={17} />}
+            label="Email & SMTP"
+            active={location.pathname === '/admin/email-settings'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/email-settings')}
+          />
+
           <NavButton
             icon={<Activity size={17} />}
             label="Traffic Analytics"
@@ -388,6 +397,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/agency-inquiries' ? 'Agency Inquiries'
               : location.pathname === '/admin/contact-inquiries' ? 'Contact Inquiries'
               : location.pathname === '/admin/email-verifications' ? 'Email Verifications'
+              : location.pathname === '/admin/email-settings' ? 'SMTP & Email Configuration'
               : location.pathname === '/admin/payments' ? 'Payments'
               : location.pathname.startsWith('/admin/extraction') ? 'AI Extraction Engine'
               : location.pathname.startsWith('/admin/coupons') ? 'Coupons'

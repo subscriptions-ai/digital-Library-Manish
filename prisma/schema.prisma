@@ -546,3 +546,13 @@ model PageVisit {
   sessionId String?
   createdAt DateTime @default(now())
 }
+
+model EmailLog {
+  id        String   @id @default(uuid())
+  to        String
+  subject   String
+  status    String   // "Sent" | "Failed"
+  error     String?  @db.Text
+  htmlContent String? @db.Text
+  createdAt DateTime @default(now())
+}
