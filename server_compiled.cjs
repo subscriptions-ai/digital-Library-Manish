@@ -15331,14 +15331,17 @@ async function startServer() {
               email: d.institutionalEmail,
               phone: d.whatsappNumber,
               organization: d.institutionName,
+              state: d.state || null,
               source: "Demo Request",
-              status: d.status === "Completed" ? "Converted" : "New",
+              status: d.status === "Completed" ? "Subscriber" : "All",
               notes: d.adminNotes || "Requested Demo",
               createdAt: d.createdAt,
               updatedAt: d.updatedAt
             }
           });
           demoCount++;
+        } else if (!exists.state && d.state) {
+          await prisma2.lead.update({ where: { id: exists.id }, data: { state: d.state } });
         }
       }
       const contacts = await prisma2.contactInquiry.findMany();
@@ -15352,17 +15355,24 @@ async function startServer() {
               email: c.email,
               phone: c.mobile || c.whatsapp,
               organization: c.organization,
+              state: c.state || null,
               source: "Contact Inquiry",
-              status: c.status === "Resolved" ? "Converted" : "New",
+              status: c.status === "Resolved" ? "Subscriber" : "All",
               notes: c.message || "Contact Form Inquiry",
               createdAt: c.createdAt || /* @__PURE__ */ new Date(),
               updatedAt: c.updatedAt || /* @__PURE__ */ new Date()
             }
           });
           contactCount++;
+        } else if (!exists.state && c.state) {
+          await prisma2.lead.update({ where: { id: exists.id }, data: { state: c.state } });
         }
       }
-      res.json({ message: `Migration successful. Added ${demoCount} Demos and ${contactCount} Contacts.` });
+      await prisma2.lead.updateMany({ where: { status: "New" }, data: { status: "All" } });
+      await prisma2.lead.updateMany({ where: { status: "Contacted" }, data: { status: "Positive" } });
+      await prisma2.lead.updateMany({ where: { status: "Converted" }, data: { status: "Subscriber" } });
+      await prisma2.lead.updateMany({ where: { status: "Lost" }, data: { status: "Negative" } });
+      res.json({ message: `Migration successful. Synced ${demoCount} Demos and ${contactCount} Contacts.` });
     } catch (error) {
       console.error("Migration error:", error);
       res.status(500).json({ error: "Failed to migrate leads" });

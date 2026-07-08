@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Mail, Clock, CheckCircle2, XCircle, MoreVertical } from 'lucide-react';
+import { Phone, Mail, Clock, CheckCircle2, XCircle, MoreVertical, MapPin, Building2, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -78,58 +78,111 @@ export function SalesPipeline() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-[1000px] h-full items-start">
-          {PIPELINE_STAGES.map(stage => {
-            const stageLeads = leads.filter(l => l.status === stage);
-            return (
-              <div key={stage} className="flex-1 w-64 bg-slate-50 rounded-2xl p-3 border border-slate-100 min-h-[400px]">
-                <div className="flex items-center justify-between mb-4 px-1">
-                  <h3 className="font-bold text-sm text-slate-700 uppercase tracking-wider">{stage}</h3>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${STAGE_COLORS[stage]}`}>
-                    {stageLeads.length}
-                  </span>
-                </div>
-                
-                <div className="space-y-3">
-                  {stageLeads.map(lead => (
-                    <motion.div
-                      layoutId={lead.id}
-                      key={lead.id}
-                      onClick={() => navigate(`/sales/leads/${lead.id}`)}
-                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer relative group"
-                    >
-                      <h4 className="font-bold text-slate-900 text-sm leading-tight">{lead.name}</h4>
-                      {lead.organization && <p className="text-xs text-slate-500 font-medium mt-0.5">{lead.organization}</p>}
-                      
-                      <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-                        <span className="flex items-center gap-1"><Clock size={12}/> {new Date(lead.createdAt).toLocaleDateString()}</span>
-                        <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold text-[9px] uppercase">{lead.source}</span>
-                      </div>
-
-                      {/* Quick Action Overlay (Hidden by default, shows on hover) */}
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <select 
-                          className="text-[10px] bg-slate-800 text-white border-none rounded py-1 px-2 font-bold cursor-pointer"
-                          value={stage}
-                          onClick={e => e.stopPropagation()}
-                          onChange={e => { e.stopPropagation(); updateStatus(lead.id, e.target.value); }}
-                        >
-                          {PIPELINE_STAGES.map(s => <option key={s} value={s}>Move to: {s}</option>)}
-                        </select>
-                      </div>
-                    </motion.div>
-                  ))}
-                  {stageLeads.length === 0 && (
-                    <div className="text-center p-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-semibold">
-                      Empty
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+      {/* Top Dashboard Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-500 uppercase">Total Leads</p>
+            <h3 className="text-2xl font-black text-slate-900">{leads.length}</h3>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+            <User size={20} />
+          </div>
         </div>
+        <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-emerald-600 uppercase">Subscribers</p>
+            <h3 className="text-2xl font-black text-emerald-900">{leads.filter(l => l.status === 'Subscriber').length}</h3>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+            <CheckCircle2 size={20} />
+          </div>
+        </div>
+        <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-blue-600 uppercase">Positive</p>
+            <h3 className="text-2xl font-black text-blue-900">{leads.filter(l => l.status === 'Positive').length}</h3>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+            <Phone size={20} />
+          </div>
+        </div>
+        <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-amber-600 uppercase">In Progress</p>
+            <h3 className="text-2xl font-black text-amber-900">{leads.filter(l => l.status === 'In Progress').length}</h3>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+            <Clock size={20} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start pb-12">
+        {PIPELINE_STAGES.map(stage => {
+          const stageLeads = leads.filter(l => l.status === stage);
+          return (
+            <div key={stage} className="bg-slate-50/50 rounded-3xl p-4 border border-slate-200">
+              <div className="flex items-center justify-between mb-4 px-2">
+                <h3 className="font-bold text-sm text-slate-800 uppercase tracking-wider">{stage}</h3>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${STAGE_COLORS[stage]}`}>
+                  {stageLeads.length}
+                </span>
+              </div>
+              
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                {stageLeads.map(lead => (
+                  <motion.div
+                    layoutId={lead.id}
+                    key={lead.id}
+                    onClick={() => navigate(`/sales/leads/${lead.id}`)}
+                    className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer relative group flex flex-col gap-3"
+                  >
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1">{lead.name}</h4>
+                      {lead.organization && (
+                        <p className="text-xs text-slate-600 font-semibold flex items-start gap-1.5">
+                          <Building2 size={12} className="shrink-0 mt-0.5 text-slate-400" />
+                          <span className="line-clamp-1">{lead.organization}</span>
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col gap-1.5">
+                      {lead.state && (
+                        <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md w-fit">
+                          <MapPin size={10} className="text-indigo-500" /> {lead.state}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+                        <span className="flex items-center gap-1 font-medium"><Clock size={12} className="text-slate-400" /> {new Date(lead.createdAt).toLocaleDateString()}</span>
+                        <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider border border-indigo-100">{lead.source}</span>
+                      </div>
+                    </div>
+
+                    {/* Quick Action Overlay (Hidden by default, shows on hover) */}
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <select 
+                        className="text-[10px] bg-slate-900/90 backdrop-blur-sm text-white border-none rounded-lg py-1.5 px-2 font-bold cursor-pointer shadow-lg outline-none"
+                        value={stage}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => { e.stopPropagation(); updateStatus(lead.id, e.target.value); }}
+                      >
+                        {PIPELINE_STAGES.map(s => <option key={s} value={s}>Move to: {s}</option>)}
+                      </select>
+                    </div>
+                  </motion.div>
+                ))}
+                {stageLeads.length === 0 && (
+                  <div className="text-center py-8 border-2 border-dashed border-slate-200 bg-white/50 rounded-2xl text-slate-400 text-xs font-semibold">
+                    No leads in this stage
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
