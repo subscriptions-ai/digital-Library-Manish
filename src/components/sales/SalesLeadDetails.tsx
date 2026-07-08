@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, Building2, User, Clock, CheckCircle2, AlertCircle, Plus, MessageSquare } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-const PIPELINE_STAGES = ['New', 'Contacted', 'In Progress', 'Converted', 'Lost'];
+const PIPELINE_STAGES = ['All', 'Positive', 'No Response', 'Subscriber', 'In Progress', 'Negative', 'Repeated'];
 
 export function SalesLeadDetails() {
   const { id } = useParams<{ id: string }>();
@@ -104,7 +104,7 @@ export function SalesLeadDetails() {
           >
             {PIPELINE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          {lead.status === 'Converted' && (
+          {lead.status === 'Subscriber' && (
             <button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl flex items-center gap-2 transition-colors">
               <CheckCircle2 size={16}/> Provision Account
             </button>

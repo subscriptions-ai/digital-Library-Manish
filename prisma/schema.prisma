@@ -372,8 +372,9 @@ model Lead {
   email        String
   phone        String?
   organization String?
+  state        String?
   source       String   @default("Manual") // Demo Request, Contact Inquiry, Manual
-  status       String   @default("New")    // New, Contacted, In Progress, Converted, Lost
+  status       String   @default("All")    // All, Positive, No Response, Subscriber, In Progress, Negative, Repeated
   notes        String?  @db.Text
   
   assignedToId String?

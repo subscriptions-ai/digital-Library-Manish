@@ -4,14 +4,16 @@ import { Phone, Mail, Clock, CheckCircle2, XCircle, MoreVertical } from 'lucide-
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
-const PIPELINE_STAGES = ['New', 'Contacted', 'In Progress', 'Converted', 'Lost'];
+const PIPELINE_STAGES = ['All', 'Positive', 'No Response', 'Subscriber', 'In Progress', 'Negative', 'Repeated'];
 
 const STAGE_COLORS: Record<string, string> = {
-  'New': 'bg-blue-100 border-blue-200 text-blue-800',
-  'Contacted': 'bg-amber-100 border-amber-200 text-amber-800',
+  'All': 'bg-slate-100 border-slate-200 text-slate-800',
+  'Positive': 'bg-blue-100 border-blue-200 text-blue-800',
+  'No Response': 'bg-amber-100 border-amber-200 text-amber-800',
+  'Subscriber': 'bg-emerald-100 border-emerald-200 text-emerald-800',
   'In Progress': 'bg-purple-100 border-purple-200 text-purple-800',
-  'Converted': 'bg-emerald-100 border-emerald-200 text-emerald-800',
-  'Lost': 'bg-rose-100 border-rose-200 text-rose-800',
+  'Negative': 'bg-rose-100 border-rose-200 text-rose-800',
+  'Repeated': 'bg-orange-100 border-orange-200 text-orange-800',
 };
 
 export function SalesPipeline() {

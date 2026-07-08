@@ -12940,8 +12940,9 @@ async function startServer() {
             email: institutionalEmail,
             phone: whatsappNumber,
             organization: institutionName,
+            state: state || null,
             source: "Demo Request",
-            status: "New",
+            status: "All",
             notes: `Requested Demo Type: ${requestType || "Institution"}`
           }
         });
@@ -13180,7 +13181,7 @@ async function startServer() {
             state: state || null,
             organization: organization || null,
             message,
-            status: "New"
+            status: "All"
           }
         });
         await prisma2.lead.create({
@@ -13189,8 +13190,9 @@ async function startServer() {
             email,
             phone: mobile || whatsapp || null,
             organization: organization || null,
+            state: state || null,
             source: "Contact Inquiry",
-            status: "New",
+            status: "All",
             notes: message
           }
         });

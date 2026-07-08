@@ -11,6 +11,7 @@ export function AdminLeadManager() {
   const [assignTo, setAssignTo] = useState<string>('');
   const [assigning, setAssigning] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [selectedState, setSelectedState] = useState<string>('All');
 
   useEffect(() => {
     fetchData();
@@ -79,14 +80,19 @@ export function AdminLeadManager() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'New': return <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-bold uppercase">New</span>;
-      case 'Contacted': return <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-xs font-bold uppercase">Contacted</span>;
+      case 'All': return <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-xs font-bold uppercase">All</span>;
+      case 'Positive': return <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-bold uppercase">Positive</span>;
+      case 'No Response': return <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-xs font-bold uppercase">No Response</span>;
+      case 'Subscriber': return <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-xs font-bold uppercase flex items-center gap-1"><CheckCircle2 size={12}/> Subscriber</span>;
       case 'In Progress': return <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-md text-xs font-bold uppercase">In Progress</span>;
-      case 'Converted': return <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-xs font-bold uppercase flex items-center gap-1"><CheckCircle2 size={12}/> Converted</span>;
-      case 'Lost': return <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-md text-xs font-bold uppercase">Lost</span>;
+      case 'Negative': return <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-md text-xs font-bold uppercase">Negative</span>;
+      case 'Repeated': return <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-md text-xs font-bold uppercase">Repeated</span>;
       default: return <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-xs font-bold uppercase">{status}</span>;
     }
   };
+
+  const uniqueStates = Array.from(new Set(leads.map(l => l.state).filter(Boolean))).sort();
+  const filteredLeads = selectedState === 'All' ? leads : leads.filter(l => l.state === selectedState);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -106,6 +112,27 @@ export function AdminLeadManager() {
           {syncing ? 'Syncing...' : 'Sync Old Inquiries'}
         </button>
       </div>
+
+      {/* State Filter */}
+      {!loading && leads.length > 0 && uniqueStates.length > 0 && (
+        <div className="flex items-center gap-2 mb-4">
+          <Filter size={16} className="text-slate-400" />
+          <span className="text-sm font-bold text-slate-700">Filter by State:</span>
+          <select
+            value={selectedState}
+            onChange={(e) => setSelectedState(e.target.value)}
+            className="ml-2 bg-white border border-slate-200 text-slate-700 text-sm font-semibold py-1.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="All">All States</option>
+            {uniqueStates.map(state => (
+              <option key={state as string} value={state as string}>{state as string}</option>
+            ))}
+          </select>
+          <span className="text-xs font-bold text-slate-400 ml-2">
+            Showing {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
 
       {selectedLeads.length > 0 && (
         <motion.div 
@@ -168,6 +195,7 @@ export function AdminLeadManager() {
                     />
                   </th>
                   <th className="p-4">Lead Details</th>
+                  <th className="p-4">State</th>
                   <th className="p-4">Contact</th>
                   <th className="p-4">Source</th>
                   <th className="p-4">Status</th>
@@ -176,7 +204,7 @@ export function AdminLeadManager() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {leads.map((lead) => (
+                {filteredLeads.map((lead) => (
                   <tr key={lead.id} className={`hover:bg-slate-50 transition-colors ${selectedLeads.includes(lead.id) ? 'bg-indigo-50/30' : ''}`}>
                     <td className="p-4 text-center">
                       <input 
@@ -192,6 +220,15 @@ export function AdminLeadManager() {
                     <td className="p-4">
                       <div className="font-bold text-slate-900">{lead.name}</div>
                       {lead.organization && <div className="text-xs text-slate-500 mt-0.5 font-medium">{lead.organization}</div>}
+                    </td>
+                    <td className="p-4">
+                      {lead.state ? (
+                        <span className="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-md text-xs font-bold whitespace-nowrap">
+                          {lead.state}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">N/A</span>
+                      )}
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col gap-1 text-xs text-slate-600">
