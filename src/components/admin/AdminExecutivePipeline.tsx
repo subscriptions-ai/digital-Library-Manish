@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, MapPin, Building2, Mail, Phone, Clock, Filter, Award, Users, CheckCircle2, TrendingUp, Zap, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Search, MapPin, Building2, Mail, Phone, Clock, Filter, Award, Users, CheckCircle2, TrendingUp, Zap, AlertCircle, X, MessageSquare, Calendar } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const PIPELINE_STAGES = ['All', 'Positive', 'No Response', 'Subscriber', 'In Progress', 'Negative', 'Repeated'];
 
@@ -22,6 +23,11 @@ export function AdminExecutivePipeline() {
   const [leads, setLeads] = useState<any[]>([]);
   const [executive, setExecutive] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Drawer state
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [leadDetails, setLeadDetails] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Filters
   const [activeStatus, setActiveStatus] = useState('All');
@@ -48,6 +54,25 @@ export function AdminExecutivePipeline() {
       }
     } catch { toast.error('Failed to load pipeline data'); }
     finally { setLoading(false); }
+  };
+
+  const handleRowClick = async (leadId: string) => {
+    setSelectedLeadId(leadId);
+    setLoadingDetails(true);
+    try {
+      const res = await fetch(`/api/sales/leads/${leadId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) {
+        setLeadDetails(await res.json());
+      } else {
+        toast.error('Failed to load lead details');
+      }
+    } catch {
+      toast.error('Failed to load lead details');
+    } finally {
+      setLoadingDetails(false);
+    }
   };
 
   if (loading) {
@@ -238,7 +263,11 @@ export function AdminExecutivePipeline() {
                     {filteredLeads.map(lead => {
                       const meta = STAGE_META[lead.status] || STAGE_META['All'];
                       return (
-                        <tr key={lead.id} className="hover:bg-slate-50/60 transition-colors">
+                        <tr 
+                          key={lead.id} 
+                          className="hover:bg-slate-50/60 transition-colors cursor-pointer"
+                          onClick={() => handleRowClick(lead.id)}
+                        >
                           <td className="py-3.5 px-5">
                             <div className="font-bold text-slate-800">{lead.name}</div>
                             {lead.organization && (
@@ -256,11 +285,11 @@ export function AdminExecutivePipeline() {
                           </td>
                           <td className="py-3.5 px-4 whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1.5">
-                              <a href={`mailto:${lead.email}`} className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all" title={lead.email}>
+                              <a href={`mailto:${lead.email}`} onClick={e => e.stopPropagation()} className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all" title={lead.email}>
                                 <Mail size={13} />
                               </a>
                               {lead.phone && (
-                                <a href={`tel:${lead.phone}`} className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all" title={lead.phone}>
+                                <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()} className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all" title={lead.phone}>
                                   <Phone size={13} />
                                 </a>
                               )}
@@ -378,6 +407,91 @@ export function AdminExecutivePipeline() {
           </div>
         </div>
       </div>
+
+      {/* ── Slide-out Drawer ─────────────────────────── */}
+      <AnimatePresence>
+        {selectedLeadId && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/20 backdrop-blur-sm">
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+              className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col border-l border-slate-200"
+            >
+              <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="font-black text-lg text-slate-800 flex items-center gap-2">
+                  <MessageSquare className="text-indigo-600" size={20} />
+                  Interaction History
+                </h2>
+                <button
+                  onClick={() => { setSelectedLeadId(null); setLeadDetails(null); }}
+                  className="p-2 hover:bg-slate-200 rounded-xl text-slate-500 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+                {loadingDetails ? (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+                    <p className="text-sm font-bold">Loading history...</p>
+                  </div>
+                ) : leadDetails ? (
+                  <div className="space-y-6">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                      <h3 className="font-bold text-slate-900">{leadDetails.name}</h3>
+                      <p className="text-xs text-slate-500 font-medium mt-1">{leadDetails.email} • {leadDetails.phone}</p>
+                      {leadDetails.organization && (
+                        <p className="text-xs text-slate-500 font-semibold mt-2 flex items-center gap-1.5">
+                          <Building2 size={12} className="text-slate-400" />
+                          {leadDetails.organization}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <Calendar size={14} /> Timeline
+                      </h4>
+                      {leadDetails.interactions && leadDetails.interactions.length > 0 ? (
+                        <div className="space-y-4">
+                          {leadDetails.interactions.map((interaction: any) => (
+                            <div key={interaction.id} className="relative pl-4 border-l-2 border-indigo-100 pb-2">
+                              <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500 ring-4 ring-indigo-50" />
+                              <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                    {interaction.type}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                    <Clock size={10} />
+                                    {new Date(interaction.createdAt).toLocaleString()}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-slate-700 whitespace-pre-wrap">{interaction.notes}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-10 bg-white border border-slate-200 border-dashed rounded-2xl">
+                          <p className="text-sm font-bold text-slate-400">No interactions recorded yet.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-10 text-rose-500 font-bold text-sm">
+                    Failed to load details.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
