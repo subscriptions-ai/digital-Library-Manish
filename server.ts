@@ -6794,12 +6794,34 @@ async function startServer() {
           }
         }
       });
-      res.json(team);
+
+      // Enhance each team member with subscriber count + last active
+      const enhanced = await Promise.all(team.map(async (member: any) => {
+        const subscriberCount = await prisma.lead.count({
+          where: { assignedToId: member.id, status: "Subscriber" }
+        });
+        const lastInteraction = await prisma.leadInteraction.findFirst({
+          where: { userId: member.id },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true }
+        });
+        return {
+          ...member,
+          subscriberCount,
+          lastActiveAt: lastInteraction?.createdAt || null,
+          conversionRate: member._count.assignedLeads > 0
+            ? parseFloat(((subscriberCount / member._count.assignedLeads) * 100).toFixed(1))
+            : 0
+        };
+      }));
+
+      res.json(enhanced);
     } catch (error) {
       console.error("Fetch sales team error:", error);
       res.status(500).json({ error: "Failed to fetch sales team" });
     }
   });
+
 
   // 2. SALES EXECUTIVE ROUTES
   const requireSalesRole = (req: any, res: any, next: any) => {

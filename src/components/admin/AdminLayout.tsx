@@ -401,6 +401,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/payments' ? 'Payments'
               : location.pathname.startsWith('/admin/extraction') ? 'AI Extraction Engine'
               : location.pathname.startsWith('/admin/coupons') ? 'Coupons'
+              : location.pathname === '/admin/sales-team' ? 'Sales Team'
+              : location.pathname === '/admin/leads' ? 'Lead Master'
+              : location.pathname.startsWith('/admin/sales-team/') ? 'Executive Pipeline'
               : 'Dashboard')}
           </h1>
           <button 
