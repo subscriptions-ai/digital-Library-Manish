@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { LogOut, LayoutDashboard, CheckSquare, Target } from 'lucide-react';
+import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -55,14 +55,47 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-6 flex-1 flex flex-col md:flex-row gap-6">
         <aside className="w-full md:w-64 shrink-0 space-y-2">
           <button
-            onClick={() => navigate('/sales/pipeline')}
+            onClick={() => navigate('/sales')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              location.pathname.includes('/sales/pipeline') || location.pathname === '/sales'
+              location.pathname === '/sales'
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                 : 'text-slate-600 hover:bg-white hover:shadow-sm'
             }`}
           >
-            <LayoutDashboard size={18} /> My Pipeline
+            <LayoutDashboard size={18} /> Dashboard
+          </button>
+
+          <button
+            onClick={() => navigate('/sales/leads')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
+              location.pathname.startsWith('/sales/leads')
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            <Users size={18} /> My Leads
+          </button>
+
+          <button
+            onClick={() => navigate('/sales/activity')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
+              location.pathname === '/sales/activity'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            <ClipboardList size={18} /> Activity Log
+          </button>
+
+          <button
+            onClick={() => navigate('/sales/performance')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
+              location.pathname === '/sales/performance'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            <BarChart3 size={18} /> Performance
           </button>
           
           {profile.role === 'SuperAdmin' && (

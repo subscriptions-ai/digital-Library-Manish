@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, Building2, User, Clock, CheckCircle2, AlertCircle, Plus, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Building2, User, Clock, CheckCircle2, AlertCircle, Plus, MessageSquare, MapPin } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const PIPELINE_STAGES = ['All', 'Positive', 'No Response', 'Subscriber', 'In Progress', 'Negative', 'Repeated'];
@@ -84,17 +84,42 @@ export function SalesLeadDetails() {
     <div className="flex flex-col h-full">
       <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/sales/pipeline')} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
             <ArrowLeft size={20} />
           </button>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{lead.name}</h1>
             <p className="text-sm text-slate-500 flex items-center gap-2">
               Source: <span className="font-bold text-slate-700">{lead.source}</span>
+              {lead.state && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span className="font-bold text-slate-500 flex items-center gap-0.5"><MapPin size={12} className="text-indigo-500" /> {lead.state}</span>
+                </>
+              )}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <a 
+              href={`mailto:${lead.email}`}
+              className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl transition-colors"
+              title="Send Email"
+            >
+              <Mail size={18} />
+            </a>
+            {lead.phone && (
+              <a 
+                href={`tel:${lead.phone}`}
+                className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-colors"
+                title="Call Lead"
+              >
+                <Phone size={18} />
+              </a>
+            )}
+          </div>
           <span className="text-sm font-bold text-slate-500 uppercase">Status:</span>
           <select 
             value={lead.status}
@@ -139,6 +164,15 @@ export function SalesLeadDetails() {
                   <div className="text-sm font-medium text-slate-700">{lead.organization || 'Not provided'}</div>
                 </div>
               </div>
+              {lead.state && (
+                <div className="flex items-start gap-3">
+                  <MapPin className="text-slate-400 mt-0.5" size={16} />
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">State</div>
+                    <div className="text-sm font-semibold text-slate-700">{lead.state}</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

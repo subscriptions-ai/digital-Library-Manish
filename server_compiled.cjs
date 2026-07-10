@@ -15419,6 +15419,27 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch leads" });
     }
   });
+  app.get("/api/sales/my-activity", authenticateJWT, requireSalesRole, async (req, res) => {
+    try {
+      const myLeads = await prisma2.lead.findMany({
+        where: { assignedToId: req.user.uid },
+        select: { id: true }
+      });
+      const interactions = await prisma2.leadInteraction.findMany({
+        where: { leadId: { in: myLeads.map((l) => l.id) } },
+        orderBy: { createdAt: "desc" },
+        include: {
+          lead: { select: { name: true, organization: true, source: true } },
+          user: { select: { displayName: true, email: true } }
+        },
+        take: 100
+      });
+      res.json(interactions);
+    } catch (error) {
+      console.error("Fetch my activity error:", error);
+      res.status(500).json({ error: "Failed to fetch activity logs" });
+    }
+  });
   app.get("/api/sales/leads/:id", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const lead = await prisma2.lead.findUnique({

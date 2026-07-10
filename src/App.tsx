@@ -49,7 +49,10 @@ import { AdminSalesTeam } from "./components/admin/AdminSalesTeam";
 import { AdminExecutivePipeline } from "./components/admin/AdminExecutivePipeline";
 import { AdminLeadManager } from "./components/admin/AdminLeadManager";
 import { SalesLayout } from "./components/sales/SalesLayout";
-import { SalesPipeline } from "./components/sales/SalesPipeline";
+import { SalesDashboard } from "./components/sales/SalesDashboard";
+import { SalesLeadTable } from "./components/sales/SalesLeadTable";
+import { SalesActivityLog } from "./components/sales/SalesActivityLog";
+import { SalesPerformance } from "./components/sales/SalesPerformance";
 import { SalesLeadDetails } from "./components/sales/SalesLeadDetails";
 import { ValidatorDashboard } from "./components/admin/ValidatorDashboard";
 import { AgencyInquiriesPage } from "./components/admin/AgencyInquiriesPage";
@@ -245,8 +248,10 @@ export default function App() {
                 <Route path="/admin/users/create" element={<AdminLayout><UserCreationPanel /></AdminLayout>} />
 
                 {/* Sales Executive Routes */}
-                <Route path="/sales" element={<SalesLayout><SalesPipeline /></SalesLayout>} />
-                <Route path="/sales/pipeline" element={<SalesLayout><SalesPipeline /></SalesLayout>} />
+                <Route path="/sales" element={<SalesLayout><SalesDashboard /></SalesLayout>} />
+                <Route path="/sales/leads" element={<SalesLayout><SalesLeadTable /></SalesLayout>} />
+                <Route path="/sales/activity" element={<SalesLayout><SalesActivityLog /></SalesLayout>} />
+                <Route path="/sales/performance" element={<SalesLayout><SalesPerformance /></SalesLayout>} />
                 <Route path="/sales/leads/:id" element={<SalesLayout><SalesLeadDetails /></SalesLayout>} />
 
                 {/* Main Layout routes */}
