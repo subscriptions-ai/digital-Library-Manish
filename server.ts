@@ -3077,6 +3077,18 @@ async function startServer() {
     }
   });
 
+  app.get("/api/admin/content/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const content = await prisma.content.findUnique({ where: { id } });
+      if (!content) return res.status(404).json({ error: "Content not found" });
+      res.json(content);
+    } catch (error) {
+      console.error("Admin Content GET Error:", error);
+      res.status(500).json({ error: "Failed to fetch content details" });
+    }
+  });
+
   app.put("/api/admin/content/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;

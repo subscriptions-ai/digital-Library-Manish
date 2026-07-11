@@ -29,12 +29,11 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
     if (!isEditing) return;
     (async () => {
       try {
-        const res = await fetch(`/api/admin/content?contentType=${encodeURIComponent(contentType)}&limit=1000`, {
+        const res = await fetch(`/api/admin/content/${id}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
-        const { data } = await res.json();
-        const item = data.find((d: any) => d.id === id);
-        if (!item) throw new Error('Not found');
+        const item = await res.json();
+        if (!res.ok || !item) throw new Error('Not found');
         setForm({
           title: item.title || '', description: item.description || '', authors: item.authors || '',
           domain: item.domain || DOMAINS[0]?.name || '', subjectArea: item.subjectArea || '',
