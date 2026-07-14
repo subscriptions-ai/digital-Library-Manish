@@ -235,7 +235,7 @@ export function QuotationManager() {
                 <td className="px-5 py-4">
                   <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{q.userName}</div>
                   <div className="text-[11px] text-slate-500 font-medium">{q.userEmail}</div>
-                  {q.mobile && <div className="text-[11px] text-slate-500 font-medium mt-0.5">📞 {q.mobile}</div>}
+                  {q.user?.contact && <div className="text-[11px] text-slate-500 font-medium mt-0.5">📞 {q.user.contact}</div>}
                   {q.organization && <div className="text-[10px] text-slate-400 mt-0.5">{q.organization}</div>}
                 </td>
                 <td className="px-5 py-4">
@@ -314,7 +314,7 @@ export function QuotationManager() {
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-wide mb-1">Customer</p>
                       <p className="font-bold text-slate-900">{selected.userName}</p>
                       <p className="text-sm text-slate-600">{selected.userEmail}</p>
-                      {selected.mobile && <p className="text-sm text-slate-600 mt-0.5">📞 {selected.mobile}</p>}
+                      {selected.user?.contact && <p className="text-sm text-slate-600 mt-0.5">📞 {selected.user.contact}</p>}
                       {selected.organization && <p className="text-xs text-slate-500 mt-1">{selected.organization}</p>}
                       {selected.state && <p className="text-xs text-slate-500">{selected.state}</p>}
                     </div>
