@@ -123,6 +123,7 @@ export function QuotationManager() {
         acc[email] = {
           userEmail: email,
           userName: q.userName,
+          mobile: q.mobile,
           organization: q.organization,
           latestDate: q.createdAt,
           latestStatus: q.status,
@@ -158,11 +159,12 @@ export function QuotationManager() {
   };
 
   const exportToCSV = () => {
-    const headers = ['ID', 'User', 'Email', 'Organization', 'Plan', 'Domain', 'Amount', 'Date', 'Status', 'Delivery', 'Created By'];
+    const headers = ['ID', 'User', 'Email', 'Mobile', 'Organization', 'Plan', 'Domain', 'Amount', 'Date', 'Status', 'Delivery', 'Created By'];
     const rows = filteredQuotations.map(q => [
       q.id,
       q.userName,
       q.userEmail,
+      q.mobile || '',
       q.organization || '',
       q.planType || 'Monthly',
       getDomainList(q),
@@ -283,7 +285,7 @@ export function QuotationManager() {
               <tr key={g.userEmail} className="hover:bg-slate-50/50 transition-colors group">
                 <td className="px-5 py-4">
                   <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{g.userName}</div>
-                  <div className="text-[11px] text-slate-500 font-medium">{g.userEmail}</div>
+                  <div className="text-[11px] text-slate-500 font-medium">{g.userEmail}{g.mobile ? ` • ${g.mobile}` : ''}</div>
                   {g.organization && <div className="text-[10px] text-slate-400 mt-1">{g.organization}</div>}
                 </td>
                 <td className="px-5 py-4">
@@ -441,7 +443,8 @@ export function QuotationManager() {
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-wide mb-1">Customer</p>
                       <p className="font-bold text-slate-900">{selected.userName}</p>
                       <p className="text-sm text-slate-600">{selected.userEmail}</p>
-                      {selected.organization && <p className="text-xs text-slate-500">{selected.organization}</p>}
+                      {selected.mobile && <p className="text-sm text-slate-600">{selected.mobile}</p>}
+                      {selected.organization && <p className="text-xs text-slate-500 mt-1">{selected.organization}</p>}
                       {selected.state && <p className="text-xs text-slate-500">{selected.state}</p>}
                     </div>
                     <div>
