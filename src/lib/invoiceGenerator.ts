@@ -124,9 +124,10 @@ export const generateInvoicePDF = (data: InvoiceData) => {
   doc.text("Sub Total:", pageWidth - margin - 60, currentY);
   doc.text(rawSubTotal.toFixed(2), pageWidth - margin, currentY, { align: "right" });
 
-  if (data.couponCode && discount > 0) {
+  if (discount > 0) {
     currentY += 5;
-    doc.text(`Discount (${data.couponCode}):`, pageWidth - margin - 60, currentY);
+    const discountLabel = data.couponCode ? `Discount (${data.couponCode}):` : "Discount:";
+    doc.text(discountLabel, pageWidth - margin - 60, currentY);
     doc.text(`-${discount.toFixed(2)}`, pageWidth - margin, currentY, { align: "right" });
   }
 

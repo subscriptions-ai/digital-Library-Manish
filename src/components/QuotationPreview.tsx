@@ -4,7 +4,7 @@ import { useCart } from '../contexts/CartContext';
 import { calculateGST, COMPANY_STATE } from '../lib/gstUtils';
 import { toast } from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { FileText, Download, Mail, Edit3, ChevronLeft, Printer, ShieldCheck, BookOpen } from 'lucide-react';
 import { COMPANY_DETAILS } from '../config';
@@ -67,7 +67,7 @@ const createQuotationPDF = (formData: any, items: any[], gstBreakdown: any, isIn
     `₹${item.price.toLocaleString()}`
   ]);
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: 95,
     head: [['#', 'Description', 'Qty', 'Rate', 'Amount']],
     body: tableData,

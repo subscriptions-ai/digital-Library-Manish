@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink, Mail, FileText, Plus, Download } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink, Mail, FileText, Plus, Download, Receipt } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { generateReceiptPDF } from '../../lib/receiptPdf';
 
 const STATUS_COLORS: Record<string, string> = {
   Pending:   'bg-amber-100 text-amber-700 border-amber-200',
@@ -45,6 +46,9 @@ export function QuotationManager() {
   const [converting, setConverting] = useState(false);
   const [convertForm, setConvertForm] = useState({ startDate: '', endDate: '' });
   const [selectedCustomerEmail, setSelectedCustomerEmail] = useState<string | null>(null);
+  const [payModal, setPayModal] = useState<any | null>(null);
+  const [payForm, setPayForm] = useState({ paymentMethod: 'Bank Transfer', paymentRef: '', paymentDate: new Date().toISOString().slice(0, 10) });
+  const [creatingReceipt, setCreatingReceipt] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -92,6 +96,38 @@ export function QuotationManager() {
       setSelected(null);
     } catch (e: any) { toast.error(e.message || 'Conversion failed'); }
     finally { setConverting(false); }
+  };
+
+  const openPaymentModal = (q: any) => {
+    setPayForm({ paymentMethod: 'Bank Transfer', paymentRef: '', paymentDate: new Date().toISOString().slice(0, 10) });
+    setPayModal(q);
+  };
+
+  // Mark payment received -> create a receipt (same template, "Receipt" labels) and download it
+  const createReceipt = async () => {
+    if (!payModal) return;
+    setCreatingReceipt(true);
+    try {
+      const res = await fetch(`/api/admin/quotations/${payModal.id}/receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify(payForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to record payment');
+      toast.success(`Payment recorded — Receipt ${data.receiptNumber} created`);
+      try {
+        const doc = generateReceiptPDF(data);
+        doc.save(`Receipt_${data.receiptNumber}.pdf`);
+      } catch (pdfErr) { console.error('Receipt PDF generation failed', pdfErr); }
+      setPayModal(null);
+      setSelected(null);
+      fetchData();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to record payment');
+    } finally {
+      setCreatingReceipt(false);
+    }
   };
 
   const formatPrice = (n: number) =>
@@ -144,8 +180,9 @@ export function QuotationManager() {
       return acc;
     }, {})
   ).sort((a: any, b: any) => {
-      const valA = a[sortBy === 'createdAt' ? 'latestDate' : sortBy] || a['latestDate'];
-      const valB = b[sortBy === 'createdAt' ? 'latestDate' : sortBy] || b['latestDate'];
+      const sortKey = sortBy === 'createdAt' ? 'latestDate' : sortBy === 'total' ? 'totalAmount' : sortBy;
+      const valA = a[sortKey] ?? a['latestDate'];
+      const valB = b[sortKey] ?? b['latestDate'];
       if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
       if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
       return 0;
@@ -387,23 +424,33 @@ export function QuotationManager() {
                       <div className="text-[11px] font-semibold text-slate-600">{q.createdBy || 'User'}</div>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
-                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Details">
-                          <Eye size={16} />
-                        </button>
-                        {(q.status === 'Pending' || q.status === 'Sent') && (
-                          <button onClick={() => updateStatus(q.id, 'Approved')}
-                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Approve">
-                            <CheckCircle size={16} />
-                          </button>
-                        )}
-                        {q.status === 'Approved' && (
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Always-available status selector */}
+                        <select value={q.status} onChange={(e) => updateStatus(q.id, e.target.value)}
+                          title="Change status anytime"
+                          className={`text-[11px] font-bold border rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-500 cursor-pointer ${STATUS_COLORS[q.status] || 'text-slate-700 border-slate-200'}`}>
+                          {['Pending', 'Sent', 'Downloaded', 'Approved', 'Paid', 'Cancelled'].map(s => (
+                            <option key={s} value={s} className="text-slate-700 bg-white font-medium">{s}</option>
+                          ))}
+                        </select>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Convert to Subscription">
-                            <ArrowRight size={16} />
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Details">
+                            <Eye size={16} />
                           </button>
-                        )}
+                          {q.status === 'Approved' && (
+                            <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Convert to Subscription">
+                              <ArrowRight size={16} />
+                            </button>
+                          )}
+                          {q.status !== 'Paid' && (
+                            <button onClick={() => openPaymentModal(q)}
+                              className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Payment Received — Create Receipt">
+                              <Receipt size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -534,23 +581,28 @@ export function QuotationManager() {
                 {/* Spacer to push actions to bottom if needed */}
                 <div className="flex-1"></div>
 
-                {/* Status Actions */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                  {(selected.status === 'Pending' || selected.status === 'Sent') && (
-                    <>
-                      <button onClick={() => updateStatus(selected.id, 'Cancelled')}
-                        className="px-4 py-2 text-sm font-bold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl">Cancel</button>
-                      <button onClick={() => updateStatus(selected.id, 'Approved')}
+                {/* Status Actions — always available */}
+                <div className="pt-4 border-t border-slate-100 space-y-3">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Change Status (anytime)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(['Pending', 'Approved', 'Paid', 'Cancelled'] as const).map(st => (
+                        <button key={st} onClick={() => updateStatus(selected.id, st)} disabled={selected.status === st}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${selected.status === st
+                            ? 'bg-slate-900 text-white border-slate-900 cursor-default'
+                            : 'text-slate-600 border-slate-200 hover:bg-slate-50 active:scale-95'}`}>
+                          {selected.status === st ? `✓ ${st}` : st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {selected.status !== 'Paid' && (
+                    <div className="flex justify-end">
+                      <button onClick={() => openPaymentModal(selected)}
                         className="px-5 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-200 transition-all active:scale-95">
-                        <CheckCircle size={14} /> Approve Quotation
+                        <Receipt size={14} /> Payment Received — Create Receipt
                       </button>
-                    </>
-                  )}
-                  {selected.status === 'Approved' && (
-                    <button onClick={() => updateStatus(selected.id, 'Paid')}
-                      className="px-5 py-2 text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center gap-2 shadow-lg shadow-slate-200 transition-all active:scale-95">
-                      Mark as Paid
-                    </button>
+                    </div>
                   )}
                 </div>
 
@@ -714,6 +766,55 @@ export function QuotationManager() {
                 </div>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Received / Create Receipt Modal */}
+      {payModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h2 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+                <Receipt size={20} className="text-emerald-600" /> Record Payment
+              </h2>
+              <button onClick={() => setPayModal(null)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm">
+                <div className="flex justify-between"><span className="text-slate-500">Customer</span><span className="font-bold text-slate-900">{payModal.userName}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-slate-500">Amount</span><span className="font-bold text-emerald-600">{formatPrice(payModal.total)}</span></div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Method</label>
+                <select value={payForm.paymentMethod} onChange={e => setPayForm(f => ({ ...f, paymentMethod: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 outline-none">
+                  {['Bank Transfer', 'UPI', 'Razorpay', 'Cheque', 'Cash'].map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Transaction / Reference No. <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input type="text" value={payForm.paymentRef} onChange={e => setPayForm(f => ({ ...f, paymentRef: e.target.value }))}
+                  placeholder="e.g. UTR / UPI ref / cheque no."
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Date</label>
+                <input type="date" value={payForm.paymentDate} onChange={e => setPayForm(f => ({ ...f, paymentDate: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 outline-none" />
+              </div>
+              <p className="text-xs text-slate-500">This marks the quotation as <b>Paid</b>, generates a receipt (same template), and downloads it. The receipt also appears in the <b>Receipts</b> module.</p>
+            </div>
+            <div className="flex justify-end gap-3 p-5 border-t border-slate-100">
+              <button onClick={() => setPayModal(null)} className="px-4 py-2 text-sm font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl">Cancel</button>
+              <button onClick={createReceipt} disabled={creatingReceipt}
+                className="px-5 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center gap-2 disabled:opacity-50">
+                {creatingReceipt ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Receipt size={15} />}
+                Create Receipt
+              </button>
             </div>
           </div>
         </div>

@@ -7,9 +7,11 @@ export type UserRole =
   | 'Subscriber'
   | 'ContentManager' 
   | 'Agency' 
-  | 'College' 
-  | 'University' 
-  | 'Corporate';
+  | 'College'
+  | 'University'
+  | 'Corporate'
+  | 'SalesExecutive'
+  | 'SalesManager';
 
 export interface UserProfile {
   uid: string;

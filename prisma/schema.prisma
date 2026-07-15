@@ -169,6 +169,45 @@ model Quotation {
   deliveryMethod    String?  @default("Email") // Email | Download
 }
 
+model Receipt {
+  id             String    @id @default(uuid())
+  receiptNumber  String    @unique                 // RCP-YYYY-MM-NN
+
+  // Soft links (scalar, no FK constraints) — a receipt is an immutable snapshot
+  quotationId    String?
+  userId         String?
+
+  // Bill-to snapshot (copied from the quotation at payment time)
+  userEmail      String
+  userName       String
+  organization   String?
+  state          String?
+  address        String?
+  pincode        String?
+  gstNumber      String?
+  mobile         String?
+  userCategory   String?
+
+  // Amount snapshot
+  items          Json
+  subtotal       Float
+  gstAmount      Float
+  total          Float
+  discountAmount Float?    @default(0.0)
+  couponCode     String?
+  planType       String?
+  allowedDomain  String?
+
+  // Payment details
+  paymentMethod  String    @default("Bank Transfer") // Bank Transfer | UPI | Razorpay | Cheque | Cash
+  paymentRef     String?                              // transaction / reference number
+  paymentDate    DateTime  @default(now())
+
+  createdBy      String?
+  emailSentAt    DateTime?
+  createdAt      DateTime  @default(now())
+}
+
 model ContentModule {
   id                String   @id @default(uuid())
   domain            String

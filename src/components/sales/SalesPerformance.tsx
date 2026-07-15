@@ -47,7 +47,7 @@ export function SalesPerformance() {
   const funnelStages = ['All', 'Positive', 'In Progress', 'Subscriber'];
   const funnelData = funnelStages.map(stage => ({
     name: stage,
-    count: leads.filter(l => l.status === stage).length
+    count: stage === 'All' ? leads.length : leads.filter(l => l.status === stage).length
   }));
 
   // State conversion breakdown

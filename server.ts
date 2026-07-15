@@ -24,7 +24,14 @@ import { setupExtractionRoutes } from "./src/routes/extraction.js";
 
 const prisma = new PrismaClient();
 
-const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+// Resolve the app directory in a way that works both when this file is loaded
+// as an ES module (tsx: package.json "type":"module", no __dirname) and when it
+// is bundled to CommonJS by esbuild (where __dirname is provided natively).
+const APP_DIR = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url));
+
+const SETTINGS_FILE = path.join(APP_DIR, 'settings.json');
 function getSystemSettings() {
   if (fs.existsSync(SETTINGS_FILE)) {
     try {
@@ -2953,7 +2960,7 @@ async function startServer() {
           total: parseFloat(total) || 0,
           allowedDomain: allowedDomain || null,
           notes: notes || null,
-          userId: req.user?.id || null,
+          userId: req.user?.uid || req.user?.id || null,
           expiresAt
         }
       });
@@ -3030,6 +3037,182 @@ async function startServer() {
     } catch (error: any) {
       console.error("Convert quotation error:", error);
       res.status(500).json({ error: "Conversion failed" });
+    }
+  });
+
+  // ==========================================
+  // RECEIPTS (Payment received -> receipt)
+  // ==========================================
+
+  // Generate the next sequential receipt number (RCP-YYYY-MM-NN)
+  const generateReceiptNumber = async () => {
+    const now = new Date();
+    const prefix = `RCP-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-`;
+    const count = await (prisma as any).receipt.count({ where: { receiptNumber: { startsWith: prefix } } });
+    return `${prefix}${String(count + 1).padStart(2, '0')}`;
+  };
+
+  // Mark a quotation as paid and create a receipt (immutable snapshot of the quotation)
+  app.post("/api/admin/quotations/:id/receipt", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { paymentMethod, paymentRef, paymentDate } = req.body || {};
+
+      const quotation = await (prisma as any).quotation.findUnique({ where: { id } });
+      if (!quotation) return res.status(404).json({ error: "Quotation not found" });
+
+      // Prevent duplicate receipts for the same quotation
+      const existing = await (prisma as any).receipt.findFirst({ where: { quotationId: id } });
+      if (existing) return res.status(409).json({ error: "A receipt already exists for this quotation", receipt: existing });
+
+      const receiptNumber = await generateReceiptNumber();
+
+      const receipt = await (prisma as any).receipt.create({
+        data: {
+          receiptNumber,
+          quotationId: quotation.id,
+          userId: quotation.userId || null,
+          userEmail: quotation.userEmail,
+          userName: quotation.userName,
+          organization: quotation.organization || null,
+          state: quotation.state || null,
+          address: quotation.address || null,
+          pincode: quotation.pincode || null,
+          gstNumber: quotation.gstNumber || null,
+          mobile: quotation.mobile || null,
+          userCategory: quotation.userCategory || null,
+          items: quotation.items || [],
+          subtotal: quotation.subtotal,
+          gstAmount: quotation.gstAmount,
+          total: quotation.total,
+          discountAmount: quotation.discountAmount || 0,
+          couponCode: quotation.couponCode || null,
+          planType: quotation.planType || 'Monthly',
+          allowedDomain: quotation.allowedDomain || null,
+          paymentMethod: paymentMethod || 'Bank Transfer',
+          paymentRef: paymentRef || null,
+          paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+          createdBy: req.user?.email || req.user?.uid || 'Admin',
+        }
+      });
+
+      // Reflect payment on the source quotation
+      await (prisma as any).quotation.update({ where: { id }, data: { status: 'Paid' } });
+
+      res.json(receipt);
+    } catch (error: any) {
+      console.error("Create receipt error:", error);
+      res.status(500).json({ error: "Failed to create receipt" });
+    }
+  });
+
+  // List all receipts (newest first, optional search)
+  app.get("/api/admin/receipts", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { search } = req.query;
+      const where: any = {};
+      if (search) {
+        where.OR = [
+          { receiptNumber: { contains: search as string, mode: 'insensitive' } },
+          { userName: { contains: search as string, mode: 'insensitive' } },
+          { userEmail: { contains: search as string, mode: 'insensitive' } },
+          { organization: { contains: search as string, mode: 'insensitive' } },
+        ];
+      }
+      const receipts = await (prisma as any).receipt.findMany({ where, orderBy: { createdAt: 'desc' } });
+      res.json(receipts);
+    } catch (error: any) {
+      console.error("List receipts error:", error);
+      res.status(500).json({ error: "Failed to fetch receipts" });
+    }
+  });
+
+  // Get one receipt
+  app.get("/api/admin/receipts/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const receipt = await (prisma as any).receipt.findUnique({ where: { id: req.params.id } });
+      if (!receipt) return res.status(404).json({ error: "Receipt not found" });
+      res.json(receipt);
+    } catch (error: any) {
+      console.error("Get receipt error:", error);
+      res.status(500).json({ error: "Failed to fetch receipt" });
+    }
+  });
+
+  // Email a receipt PDF (generated client-side, sent as base64) to the customer
+  app.post("/api/admin/receipts/:id/send", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { pdfBase64 } = req.body || {};
+      if (!pdfBase64) return res.status(400).json({ error: "Missing receipt PDF" });
+
+      const receipt = await (prisma as any).receipt.findUnique({ where: { id } });
+      if (!receipt) return res.status(404).json({ error: "Receipt not found" });
+
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "info@celnet.in").trim();
+      const logoPath = path.join(process.cwd(), 'public', 'assets', 'stm-logo.png');
+      const logoExists = fs.existsSync(logoPath);
+
+      const paidOn = new Date(receipt.paymentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const totalAmount = Number(receipt.total).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+      const htmlBody = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><title>Payment Receipt — STM Digital Library</title></head>
+<body style="margin:0;padding:0;background-color:#eef2f7;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f7;padding:32px 0;"><tr><td align="center">
+    <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);max-width:620px;">
+      <tr><td style="background:linear-gradient(135deg,#065f46 0%,#047857 100%);padding:32px 48px 28px;text-align:center;">
+        ${logoExists ? `<img src="cid:stm-logo" alt="STM Digital Library" width="96" height="96" style="display:block;margin:0 auto 14px;border-radius:12px;"/>` : ''}
+        <h1 style="color:#ffffff;margin:0 0 6px;font-size:24px;font-weight:900;letter-spacing:1px;">PAYMENT RECEIPT</h1>
+        <p style="color:#a7f3d0;margin:0;font-size:13px;font-weight:500;">STM Digital Library — Consortium eLearning Network Pvt. Ltd.</p>
+      </td></tr>
+      <tr><td style="padding:32px 48px 8px;">
+        <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${receipt.userName},</p>
+        <p style="font-size:14px;color:#475569;line-height:1.7;margin:0 0 20px;">
+          We gratefully acknowledge the receipt of your payment. Please find your official receipt attached for your records.
+        </p>
+      </td></tr>
+      <tr><td style="padding:0 48px 28px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#047857,#065f46);border-radius:14px;">
+          <tr><td style="padding:22px 28px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="color:#a7f3d0;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.15);width:55%;">Receipt Number</td>
+                  <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.15);">${receipt.receiptNumber}</td></tr>
+              <tr><td style="color:#a7f3d0;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.15);">Payment Date</td>
+                  <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.15);">${paidOn}</td></tr>
+              <tr><td style="color:#a7f3d0;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.15);">Payment Method</td>
+                  <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.15);">${receipt.paymentMethod}${receipt.paymentRef ? ` (${receipt.paymentRef})` : ''}</td></tr>
+              <tr><td style="color:#a7f3d0;font-size:13px;font-weight:600;padding-top:14px;">Amount Paid (Incl. 18% GST)</td>
+                  <td style="text-align:right;padding-top:14px;"><span style="color:#ffffff;font-size:22px;font-weight:900;">₹${totalAmount}</span></td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:0 48px 36px;">
+        <p style="font-size:13px;color:#64748b;line-height:1.7;margin:0;">This is a computer-generated receipt. For any queries, contact us at ${process.env.ADMIN_EMAIL || 'info@celnet.in'}.</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+      const attachments: any[] = [
+        { filename: `Receipt_${receipt.receiptNumber}.pdf`, content: pdfBase64, encoding: 'base64' }
+      ];
+      if (logoExists) attachments.push({ filename: 'stm-logo.png', path: logoPath, cid: 'stm-logo' });
+
+      await sendMail({
+        from: `"STM Digital Library" <${emailFrom}>`,
+        to: [receipt.userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
+        subject: `Payment Receipt ${receipt.receiptNumber} — STM Digital Library`,
+        html: htmlBody,
+        attachments
+      });
+
+      const updated = await (prisma as any).receipt.update({ where: { id }, data: { emailSentAt: new Date() } });
+      res.json({ status: "success", receipt: updated });
+    } catch (error: any) {
+      console.error("Send receipt error:", error);
+      if (!res.headersSent) res.status(500).json({ error: "Failed to send receipt" });
     }
   });
 
@@ -3752,7 +3935,10 @@ async function startServer() {
       }
     } catch (error) {
       console.error("Payment Verification Error:", error);
-}
+      if (!res.headersSent) {
+        res.status(500).json({ status: "error", message: "Payment verification failed" });
+      }
+    }
   });
 
   // Debug endpoint to verify deployment
@@ -4831,7 +5017,12 @@ async function startServer() {
          const authUser = await (prisma as any).user.findUnique({ where: { id: userId } });
          targetInstitutionId = authUser?.institutionId;
       }
-      
+
+      // Without a resolved institution, an undefined filter would match every institution's data.
+      if (!targetInstitutionId) {
+        return res.json({ studentCount: 0, activeGrants: 0, totalInteractions: 0, avgLearningTime: '0h 0m', recentActivity: [] });
+      }
+
       const studentCount = await prisma.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
       const recentActivity = await prisma.studentActivity.findMany({ 
         where: { user: { institutionId: targetInstitutionId } }, 
@@ -4868,6 +5059,11 @@ async function startServer() {
          const userId = req.user.uid || req.user.id || req.user.userId;
          const authUser = await (prisma as any).user.findUnique({ where: { id: userId } });
          targetInstitutionId = authUser?.institutionId;
+      }
+
+      // Without a resolved institution, an undefined filter would match every institution's data.
+      if (!targetInstitutionId) {
+        return res.json({ totalStudents: 0, starReader: null, readingTimeline: [], topContent: [], totalInteractions: 0 });
       }
 
       const students = await prisma.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
@@ -5175,10 +5371,21 @@ async function startServer() {
   app.post("/api/institution/students/:id/block", authenticateJWT, async (req: any, res) => {
     try {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });
-      
+
       const { id } = req.params;
       const { isBlocked } = req.body;
-      
+
+      // An Institution may only affect students belonging to its own institution.
+      if (req.user.role === 'Institution') {
+        const callerId = req.user.uid || req.user.id || req.user.userId;
+        const caller = await (prisma as any).user.findUnique({ where: { id: callerId } });
+        const target = await prisma.user.findUnique({ where: { id } });
+        if (!target) return res.status(404).json({ error: "Student not found" });
+        if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
+          return res.status(403).json({ error: "Not your student" });
+        }
+      }
+
       const student = await prisma.user.update({
         where: { id },
         data: { isBlocked }
@@ -5205,6 +5412,15 @@ async function startServer() {
 
       const existing = await prisma.user.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: "User not found" });
+
+      // An Institution may only modify students belonging to its own institution.
+      if (req.user.role === 'Institution') {
+        const callerId = req.user.uid || req.user.id || req.user.userId;
+        const caller = await (prisma as any).user.findUnique({ where: { id: callerId } });
+        if (!caller?.institutionId || existing.institutionId !== caller.institutionId) {
+          return res.status(403).json({ error: "Not your student" });
+        }
+      }
 
       let newInstitutionProfile = (existing.institutionProfile as any) || {};
       if (branch !== undefined) newInstitutionProfile.branch = branch;
@@ -5240,6 +5456,18 @@ async function startServer() {
         return res.status(403).json({ error: "Unauthorized" });
       }
       const { id } = req.params;
+
+      // An Institution may only delete students belonging to its own institution.
+      if (req.user.role === 'Institution') {
+        const callerId = req.user.uid || req.user.id || req.user.userId;
+        const caller = await (prisma as any).user.findUnique({ where: { id: callerId } });
+        const target = await prisma.user.findUnique({ where: { id } });
+        if (!target) return res.status(404).json({ error: "Student not found" });
+        if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
+          return res.status(403).json({ error: "Not your student" });
+        }
+      }
+
       await prisma.user.delete({ where: { id } });
       res.json({ message: "Student removed" });
     } catch (err) {

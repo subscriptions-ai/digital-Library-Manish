@@ -40,8 +40,8 @@ import { SubscriptionRequestsPage } from "./components/admin/subscriptions/Subsc
 import { SubscriptionListPage } from "./components/admin/subscriptions/SubscriptionListPage";
 import { ContentPricingModule } from "./components/admin/ContentPricingModule";
 import { QuotationManager } from "./components/admin/QuotationManager";
+import { ReceiptManager } from "./components/admin/ReceiptManager";
 import { UserCreationPanel } from "./components/admin/UserCreationPanel";
-import { ContentValidatorModule } from './components/admin/content/ContentValidatorModule';
 import { DraftedContentManager } from './components/admin/DraftedContentManager';
 import { AdminFeedbackManager } from "./components/admin/AdminFeedbackManager";
 import { AdminFeedbackDetails } from "./components/admin/AdminFeedbackDetails";
@@ -169,6 +169,7 @@ export default function App() {
                 <Route path="/admin/pricing" element={<AdminLayout><ContentPricingModule /></AdminLayout>} />
                 <Route path="/admin/quotations" element={<AdminLayout><QuotationManager /></AdminLayout>} />
                 <Route path="/admin/quotations/create" element={<AdminLayout><QuotationWizard isAdminMode={true} /></AdminLayout>} />
+                <Route path="/admin/receipts" element={<AdminLayout><ReceiptManager /></AdminLayout>} />
                 <Route path="/admin/agency-inquiries" element={<AdminLayout><AgencyInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/contact-inquiries" element={<AdminLayout><ContactInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/demo-requests" element={<AdminLayout><DemoRequestsPage /></AdminLayout>} />
