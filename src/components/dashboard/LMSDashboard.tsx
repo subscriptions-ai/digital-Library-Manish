@@ -175,6 +175,7 @@ export function LMSDashboard() {
   const [subjectFilter, setSubjectFilter] = useState(() => sessionStorage.getItem('lms_subject') || '');
   const [tagFilter, setTagFilter] = useState(() => sessionStorage.getItem('lms_tag') || '');
   const [availableFilters, setAvailableFilters] = useState<{ subjects: string[], tags: string[] }>({ subjects: [], tags: [] });
+  const [avail, setAvail] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'grouped'>(() => (sessionStorage.getItem('lms_view') as any) || 'grouped');
   const [showLocked, setShowLocked] = useState(() => sessionStorage.getItem('lms_locked') === '1');
 
@@ -226,9 +227,15 @@ export function LMSDashboard() {
       .finally(() => setLoadingDash(false));
   }, []);
 
-  // Fetch dynamic filters
+  // Access + availability scope (only depts/types the user can access AND that have content)
   useEffect(() => {
-    let url = `/api/content/filters?1=1`;
+    fetch('/api/user/available-facets', { headers: authHeader() })
+      .then(r => r.json()).then(d => { if (d && d.legacy) setAvail(d); }).catch(() => {});
+  }, []);
+
+  // Fetch dynamic filters — scoped to the user's UNLOCKED content so every tag/subject yields results
+  useEffect(() => {
+    let url = `/api/content/filters?1=1${showLocked ? '' : '&onlyUnlocked=true'}`;
     if (domainFilter) url += `&domain=${encodeURIComponent(domainFilter)}`;
     if (typeFilter) url += `&contentType=${encodeURIComponent(typeFilter)}`;
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
@@ -237,7 +244,7 @@ export function LMSDashboard() {
       .then(r => r.json())
       .then(data => setAvailableFilters(data))
       .catch(err => console.error("Failed to fetch filters", err));
-  }, [domainFilter, typeFilter, debouncedSearch]);
+  }, [domainFilter, typeFilter, debouncedSearch, showLocked]);
 
   // Fetch content list
   const fetchContent = useCallback(async () => {
@@ -534,13 +541,13 @@ export function LMSDashboard() {
             <select value={domainFilter} onChange={e => { setDomainFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
               className="w-full sm:w-auto min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
               <option value="">All Domains</option>
-              {(dashData?.allowedDomains || domains).map(d => <option key={d} value={d}>{d}</option>)}
+              {(avail?.legacy?.departments || dashData?.allowedDomains || domains).map((d: string) => <option key={d} value={d}>{d}</option>)}
             </select>
             {/* Content Type Filter */}
             <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
               className="w-full sm:w-auto min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
               <option value="">All Types</option>
-              {CONTENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              {(avail?.legacy?.contentTypes || CONTENT_TYPES).map((t: string) => <option key={t} value={t}>{t}</option>)}
             </select>
             {/* Subject Filter */}
             {availableFilters.subjects.length > 0 && (

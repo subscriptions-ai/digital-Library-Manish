@@ -14,6 +14,7 @@ import {
   Receipt,
   PlaySquare,
   Heart,
+  Sparkles,
   MessageSquareHeart
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,6 +31,7 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Library', icon: Library, path: '/dashboard/library', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  { label: 'Journals & Books', icon: Sparkles, path: '/dashboard/explore', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Content Access', icon: BookOpen, path: '/dashboard/access', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Wish List', icon: Heart, path: '/dashboard/favorites', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },

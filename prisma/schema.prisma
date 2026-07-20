@@ -10,6 +10,182 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =====================================================================
+// PUBLISHER MODULE + STRUCTURED "NEW" DATASET  (Phase 3 — additive)
+// ---------------------------------------------------------------------
+// These models are the brand-new, structured dataset for the publisher
+// tie-up program. They are completely separate from the legacy flat
+// `Content` model (which stays untouched as the "Archived" dataset).
+// Nothing here touches existing tables → zero risk to current data/users.
+// Publisher login reuses the User model with role = "Publisher".
+// =====================================================================
+
+model Publisher {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String?  @unique
+  email         String?
+  contactNumber String?
+  website       String?
+  country       String?
+  address       String?
+  logoUrl       String?
+
+  // Discovered = auto-found from ingestion, not yet contacted
+  // Invited     = tie-up invitation + credentials sent
+  // Active      = tie-up live (publisher can log in)
+  // Inactive    = disabled
+  tieUpStatus   String   @default("Discovered")
+  agreementNote String?  @db.Text            // partnership summary (no revenue terms)
+  allowedContentTypes Json? @default("[\"Journals\",\"Books\"]")
+
+  source        String?                       // where first discovered (DOAJ/DOAB/OpenAlex/Manual)
+  userId        String?  @unique              // linked Publisher-role User login (scalar, set on tie-up)
+
+  discoveredAt  DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  journals      Journal[]
+  articles      Article[]
+  books         Book[]
+
+  @@index([name])
+  @@index([tieUpStatus])
+}
+
+model Journal {
+  id            String   @id @default(uuid())
+  issn          String?  @unique             // canonical key — groups articles reliably
+  eissn         String?
+  title         String
+
+  publisher     Publisher? @relation(fields: [publisherId], references: [id])
+  publisherId   String?
+  publisherName String?                       // denormalized for display
+
+  subject       String?
+  domain        String?                       // department (from DOMAINS)
+  language      String?
+  country       String?
+  startYear     Int?                          // founding year — powers "new journals in last N years"
+  openAccess    Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  articles      Article[]
+
+  @@index([publisherId])
+  @@index([domain])
+  @@index([startYear])
+}
+
+model Article {
+  id            String   @id @default(uuid())
+  contentType   String?  @default("Periodicals") // Periodicals | Magazines | Case Reports | Theses | Conference Proceedings | Newsletters | Educational Videos
+  metadata      Json?    @default("{}")           // type-specific extras (hospital, specialty, university, degree, supervisor, location, sponsor, issueDate, releaseDate, speaker, duration, tags, thumbnailUrl...)
+  title         String
+  authors       String?
+  abstract      String?  @db.Text
+  doi           String?
+  pdfUrl        String?
+
+  journal       Journal? @relation(fields: [journalId], references: [id])
+  journalId     String?
+  journalName   String?                       // denormalized
+  journalIssn   String?                       // denormalized
+
+  publisher     Publisher? @relation(fields: [publisherId], references: [id])
+  publisherId   String?
+  publisherName String?
+
+  volume        String?
+  issue         String?
+  year          Int?                          // publication year of this article/volume
+  pages         String?
+
+  domain        String?                       // department (denormalized for filtering)
+  subject       String?
+  language      String?
+  country       String?
+
+  accessType    String   @default("OpenAccess")   // OpenAccess | Subscription
+  status        String   @default("Draft")         // Draft | Published | Rejected
+  rejectionNote String?                            // shown to publisher when rejected
+  source        String?                            // DOAJ | OpenAlex | Manual | ...
+  fingerprint   String?  @unique                    // dedup (doi or issn+title+vol+issue)
+
+  createdBy     String?                            // publisher id/email or admin
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([journalId])
+  @@index([publisherId])
+  @@index([domain])
+  @@index([year])
+  @@index([status])
+  @@index([contentType])
+}
+
+model Book {
+  id            String   @id @default(uuid())
+  title         String
+  authors       String?
+
+  publisher     Publisher? @relation(fields: [publisherId], references: [id])
+  publisherId   String?
+  publisherName String?
+
+  isbn          String?
+  doi           String?
+  year          Int?                          // publication / starting year
+  edition       String?
+  pages         String?
+  metadata      Json?    @default("{}")
+  subject       String?
+  domain        String?                       // department
+  language      String?
+  country       String?
+  description   String?  @db.Text
+  coverUrl      String?
+  pdfUrl        String?                        // whole-book PDF (optional; chapters below)
+
+  accessType    String   @default("OpenAccess")
+  status        String   @default("Draft")         // Draft | Published | Rejected
+  rejectionNote String?                            // shown to publisher when rejected
+  source        String?
+  fingerprint   String?  @unique
+
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  chapters      Chapter[]
+
+  @@index([publisherId])
+  @@index([domain])
+  @@index([status])
+}
+
+model Chapter {
+  id            String   @id @default(uuid())
+  book          Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  bookId        String
+  bookTitle     String?                        // denormalized
+  chapterNumber Int?
+  title         String
+  authors       String?
+  pdfUrl        String?
+  pages         String?
+  status        String   @default("Draft")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([bookId])
+}
+
 model User {
   id           String         @id @default(uuid())
   email        String         @unique

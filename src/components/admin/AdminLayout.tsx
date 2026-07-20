@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -297,6 +297,33 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             active={location.pathname === '/admin/quotations'}
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/admin/quotations')}
+          />
+
+          {/* Data Ingestion */}
+          <NavButton
+            icon={<Database size={17} />}
+            label="Data Ingestion"
+            active={location.pathname === '/admin/ingestion'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/ingestion')}
+          />
+
+          {/* Publishers */}
+          <NavButton
+            icon={<Building2 size={17} />}
+            label="Publishers"
+            active={location.pathname === '/admin/publishers'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/publishers')}
+          />
+
+          {/* Content Review */}
+          <NavButton
+            icon={<ClipboardCheck size={17} />}
+            label="Content Review"
+            active={location.pathname === '/admin/review'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/review')}
           />
 
           {/* Receipts */}

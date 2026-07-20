@@ -362,7 +362,10 @@ async function startServer() {
   // --- Public Settings API ---
   app.get("/api/public/settings", (req, res) => {
     const settings = getSystemSettings();
-    res.json({ emailVerificationEnabled: settings.emailVerificationEnabled });
+    res.json({
+      emailVerificationEnabled: settings.emailVerificationEnabled,
+      publisherSafeMode: Boolean(settings.publisherSafeMode),
+    });
   });
 
 
@@ -942,10 +945,13 @@ async function startServer() {
 
   // Admin: Update Settings
   app.post("/api/admin/settings", authenticateJWT, requireSuperAdmin, (req, res) => {
-    const { emailVerificationEnabled } = req.body;
+    const { emailVerificationEnabled, publisherSafeMode } = req.body;
     const settings = getSystemSettings();
     if (typeof emailVerificationEnabled !== 'undefined') {
       settings.emailVerificationEnabled = Boolean(emailVerificationEnabled);
+    }
+    if (typeof publisherSafeMode !== 'undefined') {
+      settings.publisherSafeMode = Boolean(publisherSafeMode);
     }
     setSystemSettings(settings);
     res.json(settings);
@@ -1299,6 +1305,94 @@ async function startServer() {
     }
   });
 
+  // GET /api/user/access-scope — the departments + content types the user can actually access
+  // (union of their active subscriptions). Admin/manager roles see everything (all:true).
+  app.get("/api/user/access-scope", authenticateJWT, async (req: any, res) => {
+    try {
+      const role = req.user.role;
+      if (['SuperAdmin', 'Admin', 'ContentManager'].includes(role)) {
+        return res.json({ all: true, domains: [], contentTypes: [] });
+      }
+      const subs = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId);
+      const domains = new Set<string>();
+      const contentTypes = new Set<string>();
+      for (const s of (subs || [])) {
+        const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
+        const c = Array.isArray(s.contentTypes) ? s.contentTypes : (s.contentTypes ? JSON.parse(s.contentTypes as string) : []);
+        d.forEach((x: string) => x && domains.add(x));
+        c.forEach((x: string) => x && contentTypes.add(x));
+        if (s.domainName) domains.add(s.domainName);
+      }
+      res.json({ all: false, domains: [...domains], contentTypes: [...contentTypes] });
+    } catch (e: any) {
+      console.error("access-scope error:", e);
+      res.status(500).json({ error: "Failed to load access scope" });
+    }
+  });
+
+  // GET /api/user/available-facets — departments + content types that the user can access
+  // AND that actually have content. Prevents "no content found" dead-ends in filter dropdowns.
+  app.get("/api/user/available-facets", authenticateJWT, async (req: any, res) => {
+    try {
+      const role = req.user.role;
+      const isAdmin = ['SuperAdmin', 'Admin', 'ContentManager'].includes(role);
+      const subs = isAdmin ? [] : ((await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId)) || []);
+
+      const scopeDomains = new Set<string>(); const scopeTypes = new Set<string>();
+      const subOr: any[] = [];
+      for (const sub of subs) {
+        const d = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains as string) : []);
+        const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
+        d.forEach((x: string) => x && scopeDomains.add(x));
+        ct.forEach((x: string) => x && scopeTypes.add(x));
+        if (sub.domainName) scopeDomains.add(sub.domainName);
+        const cond: any = {}; const dOr: any[] = [];
+        d.forEach((s: string) => s && dOr.push({ domain: { contains: s, mode: 'insensitive' } }));
+        if (sub.domainName) dOr.push({ domain: { contains: sub.domainName, mode: 'insensitive' } });
+        if (dOr.length) cond.OR = dOr;
+        if (ct.length) cond.contentType = { in: ct };
+        if (Object.keys(cond).length) subOr.push(cond);
+      }
+
+      // LEGACY unlocked content (My Library) — only depts/types the user actually has content for
+      let legacyDepts: string[] = []; let legacyTypes: string[] = [];
+      if (isAdmin || subs.length) {
+        const legacyWhere: any = { status: { not: 'Draft' } };
+        if (!isAdmin && subOr.length) legacyWhere.AND = [{ OR: subOr }];
+        const [dg, cg] = await Promise.all([
+          prisma.content.groupBy({ by: ['domain'], where: legacyWhere }),
+          prisma.content.groupBy({ by: ['contentType'], where: legacyWhere }),
+        ]);
+        legacyDepts = dg.map((x: any) => x.domain).filter(Boolean);
+        legacyTypes = cg.map((x: any) => x.contentType).filter(Boolean);
+      }
+
+      // NEW structured dataset (Journals & Books "New") — Article/Book within the user's scope
+      const domFilter = isAdmin ? {} : { domain: { in: [...scopeDomains] } };
+      const [aDepts, bDepts, aCount, bCount] = await Promise.all([
+        (prisma as any).article.groupBy({ by: ['domain'], where: { status: 'Published', ...domFilter } }),
+        (prisma as any).book.groupBy({ by: ['domain'], where: { status: 'Published', ...domFilter } }),
+        (prisma as any).article.count({ where: { status: 'Published', ...domFilter } }),
+        (prisma as any).book.count({ where: { status: 'Published', ...domFilter } }),
+      ]);
+      const newDepts = [...new Set([...aDepts.map((x: any) => x.domain), ...bDepts.map((x: any) => x.domain)].filter(Boolean))];
+
+      // ARCHIVED — all published legacy content (browse the whole archive)
+      const [adg, acg] = await Promise.all([
+        prisma.content.groupBy({ by: ['domain'], where: { status: { not: 'Draft' } } }),
+        prisma.content.groupBy({ by: ['contentType'], where: { status: { not: 'Draft' } } }),
+      ]);
+
+      res.json({
+        all: isAdmin,
+        scope: { domains: [...scopeDomains], contentTypes: [...scopeTypes] },
+        legacy: { departments: legacyDepts, contentTypes: legacyTypes },
+        neu: { departments: newDepts, hasArticles: aCount > 0, hasBooks: bCount > 0 && (isAdmin || scopeTypes.has('Books')) },
+        archived: { departments: adg.map((x: any) => x.domain).filter(Boolean), contentTypes: acg.map((x: any) => x.contentType).filter(Boolean) },
+      });
+    } catch (e: any) { console.error("available-facets error:", e); res.status(500).json({ error: "Failed to load facets" }); }
+  });
+
   // GET /api/content/filters - Get dynamic filters (subjectAreas and tags) for a specific domain
   app.get("/api/content/filters", async (req: any, res) => {
     try {
@@ -1322,6 +1416,30 @@ async function startServer() {
           { description: { contains: query, mode: 'insensitive' } },
           { subjectArea: { contains: query, mode: 'insensitive' } }
         ];
+      }
+
+      // Optional subscription scoping: return facets ONLY from the user's UNLOCKED content,
+      // so every subject/tag shown actually yields results when clicked.
+      if (String(req.query.onlyUnlocked) === 'true') {
+        const authHeader = req.headers.authorization;
+        let ud: any = null;
+        if (authHeader) { try { ud = jwt.verify(authHeader.split(' ')[1], JWT_SECRET); } catch { /* ignore */ } }
+        if (ud && !['SuperAdmin', 'Admin', 'ContentManager'].includes(ud.role)) {
+          const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
+          if (!subs.length) return res.json({ domains: [], subjects: [], tags: [] });
+          const subOr: any[] = [];
+          for (const sub of subs) {
+            const d = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains as string) : []);
+            const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
+            const cond: any = {}; const dOr: any[] = [];
+            d.forEach((s: string) => s && dOr.push({ domain: { contains: s, mode: 'insensitive' } }));
+            if (sub.domainName) dOr.push({ domain: { contains: sub.domainName, mode: 'insensitive' } });
+            if (dOr.length) cond.OR = dOr;
+            if (ct.length) cond.contentType = { in: ct };
+            if (Object.keys(cond).length) subOr.push(cond);
+          }
+          if (subOr.length) { where.AND = where.AND || []; where.AND.push({ OR: subOr }); }
+        }
       }
 
       const contents = await prisma.content.findMany({
@@ -1518,48 +1636,45 @@ async function startServer() {
     }
   });
 
+  // Resolve a viewable item by id from legacy Content OR the new structured dataset (Article/Book).
+  // Lets the existing protected viewer open new content transparently. New OA items are freely accessible.
+  const resolveViewable = async (id: string, isAdmin: boolean) => {
+    const c = await prisma.content.findFirst({ where: isAdmin ? { id } : { id, status: { not: 'Draft' } } });
+    if (c) return { kind: 'content' as const, item: c, fileUrl: c.fileUrl, title: c.title, contentType: c.contentType, accessType: c.accessType, status: c.status };
+    const a = await (prisma as any).article.findFirst({ where: isAdmin ? { id } : { id, status: 'Published' } });
+    if (a) return { kind: 'article' as const, item: a, fileUrl: a.pdfUrl, title: a.title, contentType: a.contentType || 'Periodicals', accessType: a.accessType || 'OpenAccess', status: a.status };
+    const b = await (prisma as any).book.findFirst({ where: isAdmin ? { id } : { id, status: 'Published' } });
+    if (b) return { kind: 'book' as const, item: b, fileUrl: b.pdfUrl, title: b.title, contentType: 'Books', accessType: b.accessType || 'OpenAccess', status: b.status };
+    return null;
+  };
+
   // GET /api/content/:id/view - Protected endpoint to securely view content and auto-track activity
   app.get("/api/content/:id/view", authenticateJWT, async (req: any, res) => {
     try {
       const contentId = req.params.id;
-      // Draft content is hidden from all non-admin users
       const isAdminRole = ['SuperAdmin', 'Admin', 'ContentManager'].includes(req.user.role);
-      const content = isAdminRole
-        ? await prisma.content.findUnique({ where: { id: contentId } })
-        : await prisma.content.findFirst({ where: { id: contentId, status: { not: "Draft" } } });
-      
-      if (!content) {
-        return res.status(404).json({ error: "Content not found" });
+      const resolved = await resolveViewable(contentId, isAdminRole);
+      if (!resolved) return res.status(404).json({ error: "Content not found" });
+
+      // New-dataset OA items are freely viewable; legacy content uses subscription checks.
+      const isOA = ['OpenAccess', 'Free'].includes(resolved.accessType || '');
+      let hasAccess = true;
+      if (resolved.kind === 'content' && !isOA) {
+        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+        hasAccess = checkContentAccess(resolved.item, req.user.role, activeSubs);
       }
+      if (!hasAccess) return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
 
-      const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
-
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
-      }
-
-      // Log activity (safe findFirst+update/create — avoids duplicate-row race conditions)
-      if (req.user.role === 'Student' || req.user.role === 'Subscriber') {
+      // Activity logging only for legacy content (StudentActivity.contentId FKs to Content)
+      if (resolved.kind === 'content' && (req.user.role === 'Student' || req.user.role === 'Subscriber')) {
         try {
-          const existing = await prisma.studentActivity.findFirst({
-            where: { userId: req.user.uid, contentId: content.id }
-          });
-          if (existing) {
-            await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: new Date() } });
-          } else {
-            await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
-          }
-        } catch(e) { console.error('Activity log failed', e); }
+          const existing = await prisma.studentActivity.findFirst({ where: { userId: req.user.uid, contentId: resolved.item.id } });
+          if (existing) await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: new Date() } });
+          else await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: resolved.item.id, timeSpent: 0, lastPage: 1 } });
+        } catch (e) { console.error('Activity log failed', e); }
       }
 
-      // Return the secure file URL (or binary in a real PDF streaming setup)
-      return res.json({ 
-        url: content.fileUrl,
-        title: content.title,
-        contentType: content.contentType 
-      });
-      
+      return res.json({ url: resolved.fileUrl, title: resolved.title, contentType: resolved.contentType });
     } catch (error) {
       res.status(500).json({ error: "Failed to view content" });
     }
@@ -1572,17 +1687,14 @@ async function startServer() {
       // Admins bypass subscription checks — they can preview any content for validation
       const isAdmin = req.user.role === 'SuperAdmin' || req.user.role === 'Admin';
       
-      const whereClause: any = { id: contentId };
-      if (!isAdmin) {
-        whereClause.status = { not: "Draft" }; // Only admins can proxy drafts
-      }
-
-      const content = await prisma.content.findFirst({ where: whereClause });
-      
-      if (!content || !content.fileUrl) {
+      const resolved = await resolveViewable(contentId, isAdmin);
+      if (!resolved || !resolved.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
-      if (!isAdmin) {
+      const content: any = resolved.item;
+      content.fileUrl = resolved.fileUrl;
+      const isOA = ['OpenAccess', 'Free'].includes(resolved.accessType || '');
+      if (!isAdmin && resolved.kind === 'content' && !isOA) {
         const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
         const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
         if (!hasAccess) {
@@ -1601,10 +1713,12 @@ async function startServer() {
           return res.sendFile(localPath);
         } else {
           console.warn(`[proxy-pdf] Auto-flagging missing local file: ${content.fileUrl}`);
-          await prisma.content.update({
-             where: { id: contentId },
-             data: { status: 'Draft', validationStatus: 'FLAGGED_CONTENT', isViewable: false, flaggedReason: 'Local file missing (404)' }
-          });
+          if (resolved.kind === 'content') {
+            await prisma.content.update({
+               where: { id: contentId },
+               data: { status: 'Draft', validationStatus: 'FLAGGED_CONTENT', isViewable: false, flaggedReason: 'Local file missing (404)' }
+            });
+          }
           return res.status(404).json({ error: "Local file not found" });
         }
       }
@@ -3214,6 +3328,733 @@ async function startServer() {
       console.error("Send receipt error:", error);
       if (!res.headersSent) res.status(500).json({ error: "Failed to send receipt" });
     }
+  });
+
+  // ==========================================
+  // PUBLISHER MODULE (Phase 3) — additive, uses new Publisher/Article/Book models
+  // ==========================================
+
+  function mapArticleInput(b: any, publisher: any, status: string, createdBy: string) {
+    return {
+      title: b.title || 'Untitled',
+      authors: b.authors || null,
+      abstract: b.abstract || null,
+      doi: b.doi || null,
+      pdfUrl: b.pdfUrl || null,
+      journalName: b.journalName || null,
+      journalIssn: b.journalIssn || b.issn || null,
+      publisherId: publisher.id,
+      publisherName: publisher.name,
+      volume: b.volume ? String(b.volume) : null,
+      issue: b.issue ? String(b.issue) : null,
+      year: b.year ? parseInt(b.year) : null,
+      pages: b.pages || null,
+      domain: b.domain || null,
+      subject: b.subject || null,
+      language: b.language || null,
+      country: b.country || publisher.country || null,
+      accessType: b.accessType || 'OpenAccess',
+      status,
+      source: b.source || 'Manual',
+      createdBy,
+    };
+  }
+  function mapBookInput(b: any, publisher: any, status: string, createdBy: string) {
+    return {
+      title: b.title || 'Untitled',
+      authors: b.authors || null,
+      publisherId: publisher.id,
+      publisherName: publisher.name,
+      isbn: b.isbn || null,
+      doi: b.doi || null,
+      year: b.year ? parseInt(b.year) : null,
+      subject: b.subject || null,
+      domain: b.domain || null,
+      language: b.language || null,
+      country: b.country || publisher.country || null,
+      description: b.description || null,
+      coverUrl: b.coverUrl || null,
+      pdfUrl: b.pdfUrl || null,
+      accessType: b.accessType || 'OpenAccess',
+      status,
+      source: b.source || 'Manual',
+      createdBy,
+    };
+  }
+
+  const getPublisherCounts = async (publisherId: string) => {
+    const [articles, books, articlesPublished, articlesPending, articlesRejected] = await Promise.all([
+      (prisma as any).article.count({ where: { publisherId } }),
+      (prisma as any).book.count({ where: { publisherId } }),
+      (prisma as any).article.count({ where: { publisherId, status: 'Published' } }),
+      (prisma as any).article.count({ where: { publisherId, status: 'Draft' } }),
+      (prisma as any).article.count({ where: { publisherId, status: 'Rejected' } }),
+    ]);
+    return { articles, books, articlesPublished, articlesPending, articlesRejected };
+  };
+
+  const resolvePublisherForUser = async (req: any) => {
+    const uid = req.user?.uid || req.user?.id;
+    if (!uid) return null;
+    return (prisma as any).publisher.findFirst({ where: { userId: uid } });
+  };
+
+  const requirePublisher = (req: any, res: any, next: any) => {
+    if (req.user?.role !== 'Publisher') return res.status(403).json({ error: "Publisher access only" });
+    next();
+  };
+
+  // --- Admin: list publishers with counts ---
+  app.get("/api/admin/publishers", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const { search, status } = req.query;
+      const where: any = {};
+      if (status) where.tieUpStatus = status;
+      if (search) where.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { email: { contains: search as string, mode: 'insensitive' } },
+        { country: { contains: search as string, mode: 'insensitive' } },
+      ];
+      const publishers = await (prisma as any).publisher.findMany({ where, orderBy: { createdAt: 'desc' } });
+      const withCounts = await Promise.all(publishers.map(async (p: any) => ({ ...p, counts: await getPublisherCounts(p.id) })));
+      res.json(withCounts);
+    } catch (e: any) { console.error("List publishers error:", e); res.status(500).json({ error: "Failed to fetch publishers" }); }
+  });
+
+  // --- Admin: create publisher manually ---
+  app.post("/api/admin/publishers", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { name, email, contactNumber, website, country, address, agreementNote, allowedContentTypes } = req.body;
+      if (!name) return res.status(400).json({ error: "Publisher name is required" });
+      const publisher = await (prisma as any).publisher.create({
+        data: {
+          name, email: email || null, contactNumber: contactNumber || null, website: website || null,
+          country: country || null, address: address || null, agreementNote: agreementNote || null,
+          allowedContentTypes: allowedContentTypes || ["Journals", "Books"],
+          tieUpStatus: 'Discovered', source: 'Manual',
+        }
+      });
+      res.json(publisher);
+    } catch (e: any) { console.error("Create publisher error:", e); res.status(500).json({ error: "Failed to create publisher" }); }
+  });
+
+  // --- Admin: publisher detail ---
+  app.get("/api/admin/publishers/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const publisher = await (prisma as any).publisher.findUnique({ where: { id: req.params.id } });
+      if (!publisher) return res.status(404).json({ error: "Publisher not found" });
+      res.json({ ...publisher, counts: await getPublisherCounts(publisher.id) });
+    } catch (e: any) { res.status(500).json({ error: "Failed to fetch publisher" }); }
+  });
+
+  // --- Admin: update publisher ---
+  app.put("/api/admin/publishers/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { name, email, contactNumber, website, country, address, agreementNote, allowedContentTypes, tieUpStatus } = req.body;
+      const data: any = {};
+      for (const [k, v] of Object.entries({ name, email, contactNumber, website, country, address, agreementNote, allowedContentTypes, tieUpStatus })) {
+        if (v !== undefined) data[k] = v;
+      }
+      const publisher = await (prisma as any).publisher.update({ where: { id: req.params.id }, data });
+      res.json(publisher);
+    } catch (e: any) { res.status(500).json({ error: "Failed to update publisher" }); }
+  });
+
+  // --- Admin: TIE UP — create publisher login + email credentials ---
+  app.post("/api/admin/publishers/:id/tieup", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const { email, contactNumber, website, country, address, agreementNote, allowedContentTypes } = req.body;
+      const publisher = await (prisma as any).publisher.findUnique({ where: { id } });
+      if (!publisher) return res.status(404).json({ error: "Publisher not found" });
+
+      const loginEmail = (email || publisher.email || "").trim().toLowerCase();
+      if (!loginEmail) return res.status(400).json({ error: "Email is required to create publisher login" });
+
+      let user = await prisma.user.findUnique({ where: { email: loginEmail } });
+      let generatedPassword = "";
+      if (!user) {
+        generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + "!";
+        const hashed = await bcrypt.hash(generatedPassword, 10);
+        user = await prisma.user.create({
+          data: { email: loginEmail, password: hashed, displayName: publisher.name, role: 'Publisher', status: 'Active', isFirstLogin: true }
+        });
+      } else {
+        await prisma.user.update({ where: { id: user.id }, data: { role: 'Publisher' } });
+      }
+
+      const updated = await (prisma as any).publisher.update({
+        where: { id },
+        data: {
+          email: loginEmail,
+          contactNumber: contactNumber ?? publisher.contactNumber,
+          website: website ?? publisher.website,
+          country: country ?? publisher.country,
+          address: address ?? publisher.address,
+          agreementNote: agreementNote ?? publisher.agreementNote,
+          allowedContentTypes: allowedContentTypes ?? publisher.allowedContentTypes,
+          tieUpStatus: 'Active',
+          userId: user.id,
+        }
+      });
+
+      try {
+        const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "info@celnet.in").trim();
+        const appUrl = (process.env.APP_URL || "").trim() || "the STM Digital Library portal";
+        const credsBlock = generatedPassword
+          ? `<p style="margin:0 0 6px;"><b>Login Email:</b> ${loginEmail}</p><p style="margin:0 0 6px;"><b>Temporary Password:</b> ${generatedPassword}</p>`
+          : `<p style="margin:0 0 6px;">Please log in with your existing account (${loginEmail}).</p>`;
+        const html = `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;color:#0f172a;">
+          <h2 style="color:#0f172a;">Partnership Invitation — STM Digital Library</h2>
+          <p>Dear ${publisher.name},</p>
+          <p>We are delighted to invite you to partner with STM Digital Library. By sharing your open-access content, your journals gain increased visibility, readership and citations.</p>
+          <div style="background:#f1f5f9;border-radius:10px;padding:16px;margin:16px 0;">${credsBlock}</div>
+          <p>Log in at ${appUrl} to manage your catalogue.</p>
+          <p style="color:#64748b;font-size:13px;">If you have any questions, simply reply to this email.</p>
+        </div>`;
+        await sendMail({
+          from: `"STM Digital Library" <${emailFrom}>`,
+          to: [loginEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
+          subject: "Partnership Invitation & Login — STM Digital Library",
+          html,
+        });
+      } catch (mailErr) { console.error("Tie-up email failed:", mailErr); }
+
+      res.json({ ...updated, credentialsSent: true });
+    } catch (e: any) { console.error("Tie-up error:", e); res.status(500).json({ error: "Failed to tie up publisher" }); }
+  });
+
+  // --- Admin: delete publisher ---
+  app.delete("/api/admin/publishers/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { await (prisma as any).publisher.delete({ where: { id: req.params.id } }); res.json({ message: "Publisher removed" }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to delete publisher (it may have linked content)" }); }
+  });
+
+  // --- Admin: create content on a publisher's behalf ---
+  app.post("/api/admin/publishers/:id/articles", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const publisher = await (prisma as any).publisher.findUnique({ where: { id: req.params.id } });
+      if (!publisher) return res.status(404).json({ error: "Publisher not found" });
+      const article = await (prisma as any).article.create({ data: mapArticleInput(req.body, publisher, req.body.status || 'Published', req.user?.email || 'Admin') });
+      res.json(article);
+    } catch (e: any) { console.error(e); res.status(500).json({ error: "Failed to create article" }); }
+  });
+  app.post("/api/admin/publishers/:id/books", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const publisher = await (prisma as any).publisher.findUnique({ where: { id: req.params.id } });
+      if (!publisher) return res.status(404).json({ error: "Publisher not found" });
+      const book = await (prisma as any).book.create({ data: mapBookInput(req.body, publisher, req.body.status || 'Published', req.user?.email || 'Admin') });
+      res.json(book);
+    } catch (e: any) { res.status(500).json({ error: "Failed to create book" }); }
+  });
+
+  // --- Admin/Manager: REVIEW queue + approve/reject ---
+  app.get("/api/admin/review/pending", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const [articles, books] = await Promise.all([
+        (prisma as any).article.findMany({ where: { status: 'Draft' }, orderBy: { createdAt: 'desc' }, take: 200 }),
+        (prisma as any).book.findMany({ where: { status: 'Draft' }, orderBy: { createdAt: 'desc' }, take: 200 }),
+      ]);
+      res.json({ articles, books });
+    } catch (e: any) { res.status(500).json({ error: "Failed to fetch review queue" }); }
+  });
+
+  const reviewAction = (model: 'article' | 'book') => async (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const { action, note } = req.body;
+      if (action === 'approve') {
+        const updated = await (prisma as any)[model].update({ where: { id }, data: { status: 'Published', rejectionNote: null } });
+        return res.json(updated);
+      } else if (action === 'reject') {
+        const updated = await (prisma as any)[model].update({ where: { id }, data: { status: 'Rejected', rejectionNote: note || 'Rejected by reviewer' } });
+        return res.json(updated);
+      }
+      res.status(400).json({ error: "Invalid action (use approve|reject)" });
+    } catch (e: any) { res.status(500).json({ error: "Review action failed" }); }
+  };
+  app.post("/api/admin/review/article/:id", authenticateJWT, requireAdminOrManager, reviewAction('article'));
+  app.post("/api/admin/review/book/:id", authenticateJWT, requireAdminOrManager, reviewAction('book'));
+
+  // ---- Publisher self endpoints (role: Publisher) ----
+  app.get("/api/publisher/me", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.status(404).json({ error: "No publisher profile linked to this account" });
+      res.json({ ...publisher, counts: await getPublisherCounts(publisher.id) });
+    } catch (e: any) { res.status(500).json({ error: "Failed to load profile" }); }
+  });
+
+  app.get("/api/publisher/content", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.json({ articles: [], books: [] });
+      const [articles, books] = await Promise.all([
+        (prisma as any).article.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: 'desc' } }),
+        (prisma as any).book.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: 'desc' }, include: { chapters: true } }),
+      ]);
+      res.json({ articles, books });
+    } catch (e: any) { res.status(500).json({ error: "Failed to load content" }); }
+  });
+
+  app.post("/api/publisher/articles", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.status(404).json({ error: "No publisher profile" });
+      const article = await (prisma as any).article.create({ data: mapArticleInput(req.body, publisher, 'Draft', publisher.name) });
+      res.json(article);
+    } catch (e: any) { console.error(e); res.status(500).json({ error: "Failed to submit article" }); }
+  });
+
+  app.post("/api/publisher/books", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.status(404).json({ error: "No publisher profile" });
+      const book = await (prisma as any).book.create({ data: mapBookInput(req.body, publisher, 'Draft', publisher.name) });
+      res.json(book);
+    } catch (e: any) { res.status(500).json({ error: "Failed to submit book" }); }
+  });
+
+  app.put("/api/publisher/articles/:id", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      const existing = await (prisma as any).article.findUnique({ where: { id: req.params.id } });
+      if (!existing || existing.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your article" });
+      const data: any = mapArticleInput(req.body, publisher, 'Draft', publisher.name);
+      delete data.publisherId; delete data.publisherName;
+      const article = await (prisma as any).article.update({ where: { id: req.params.id }, data: { ...data, status: 'Draft', rejectionNote: null } });
+      res.json(article);
+    } catch (e: any) { res.status(500).json({ error: "Failed to update article" }); }
+  });
+  app.put("/api/publisher/books/:id", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      const existing = await (prisma as any).book.findUnique({ where: { id: req.params.id } });
+      if (!existing || existing.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your book" });
+      const data: any = mapBookInput(req.body, publisher, 'Draft', publisher.name);
+      delete data.publisherId; delete data.publisherName;
+      const book = await (prisma as any).book.update({ where: { id: req.params.id }, data: { ...data, status: 'Draft', rejectionNote: null } });
+      res.json(book);
+    } catch (e: any) { res.status(500).json({ error: "Failed to update book" }); }
+  });
+
+  // ==========================================
+  // STRUCTURED INGESTION ENGINE (Phase 3C) — free/keyless open-access sources
+  // OpenAlex + DOAJ -> new Article/Journal tables + Publisher auto-discovery
+  // ==========================================
+
+  const articleFingerprint = (doi: string | null, title: string, authors: string) => {
+    if (doi) return `doi:${String(doi).toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, '')}`;
+    return `ta:${(title || '').toLowerCase().trim().slice(0, 180)}|${(authors || '').toLowerCase().trim().slice(0, 80)}`;
+  };
+
+  const upsertPublisherByName = async (name: string | null, source: string) => {
+    if (!name) return null;
+    const existing = await (prisma as any).publisher.findFirst({ where: { name } });
+    if (existing) return existing;
+    try { return await (prisma as any).publisher.create({ data: { name, tieUpStatus: 'Discovered', source } }); }
+    catch { return (prisma as any).publisher.findFirst({ where: { name } }); }
+  };
+
+  const upsertJournalByIssn = async (issn: string | null, data: any) => {
+    if (!issn) return null;
+    const existing = await (prisma as any).journal.findUnique({ where: { issn } });
+    if (existing) return existing;
+    try { return await (prisma as any).journal.create({ data: { ...data, issn } }); }
+    catch { return (prisma as any).journal.findUnique({ where: { issn } }); }
+  };
+
+  async function fetchOpenAlex(department: string, perDept: number) {
+    const out: any[] = [];
+    const perPage = 50;
+    const pages = Math.max(1, Math.ceil(perDept / perPage));
+    for (let page = 1; page <= pages; page++) {
+      const url = `https://api.openalex.org/works?search=${encodeURIComponent(department)}&filter=has_doi:true,open_access.is_oa:true&per-page=${perPage}&page=${page}`;
+      const r = await fetch(url); const d: any = await r.json();
+      if (!d?.results?.length) break;
+      out.push(...d.results);
+      if (out.length >= perDept) break;
+    }
+    return out.slice(0, perDept).map((w: any) => {
+      const src = w.primary_location?.source || {};
+      return {
+        title: w.title || w.display_name || 'Untitled',
+        authors: (w.authorships || []).map((a: any) => a.author?.display_name).filter(Boolean).join(', '),
+        doi: w.doi || null,
+        pdfUrl: w.best_oa_location?.pdf_url || w.open_access?.oa_url || null,
+        journalName: src.display_name || null,
+        issn: src.issn_l || (src.issn && src.issn[0]) || null,
+        publisherName: src.host_organization_name || null,
+        volume: w.biblio?.volume || null,
+        issue: w.biblio?.issue || null,
+        year: w.publication_year || null,
+        subject: (w.concepts || [])[0]?.display_name || null,
+        openAccess: !!w.open_access?.is_oa,
+        source: 'OpenAlex',
+      };
+    }).filter((x: any) => x.pdfUrl);
+  }
+
+  async function fetchDOAJ(department: string, perDept: number) {
+    const url = `https://doaj.org/api/search/articles/${encodeURIComponent(department)}?pageSize=${Math.min(perDept, 100)}`;
+    const r = await fetch(url); const d: any = await r.json();
+    const results = d?.results || [];
+    return results.slice(0, perDept).map((rec: any) => {
+      const b = rec.bibjson || {};
+      const ids = b.identifier || [];
+      const issnObj = ids.find((i: any) => i.type === 'eissn') || ids.find((i: any) => i.type === 'pissn');
+      const pdfLink = (b.link || []).find((l: any) => l.type === 'fulltext');
+      return {
+        title: b.title || 'Untitled',
+        authors: (b.author || []).map((a: any) => a.name).filter(Boolean).join(', '),
+        doi: (ids.find((i: any) => i.type === 'doi') || {}).id || null,
+        pdfUrl: pdfLink?.url || null,
+        journalName: b.journal?.title || null,
+        issn: issnObj?.id || null,
+        publisherName: b.journal?.publisher || null,
+        volume: b.journal?.volume || null,
+        issue: b.journal?.number || null,
+        year: b.year ? parseInt(b.year) : null,
+        subject: (b.subject || [])[0]?.term || null,
+        openAccess: true,
+        source: 'DOAJ',
+      };
+    }).filter((x: any) => x.pdfUrl || x.doi);
+  }
+
+  const fetchForDept = (source: string, dept: string, limit: number) =>
+    source === 'doaj' ? fetchDOAJ(dept, limit) : fetchOpenAlex(dept, limit);
+
+  // Preview (dry run) — fetch & map, NO insert (frontend can export CSV from this)
+  app.post("/api/admin/ingest/preview", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { source = 'openalex', departments = [], perDept = 10 } = req.body;
+      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department" });
+      const limit = Math.min(Math.max(parseInt(perDept) || 10, 1), 50);
+      const items: any[] = [];
+      for (const dept of departments) {
+        try { const got = await fetchForDept(source, dept, limit); items.push(...got.map((x: any) => ({ ...x, department: dept }))); }
+        catch (e) { console.error(`Preview fetch [${source}/${dept}]`, e); }
+      }
+      res.json({ source, count: items.length, items });
+    } catch (e: any) { console.error("Ingest preview error:", e); res.status(500).json({ error: "Preview failed" }); }
+  });
+
+  // Run — fetch, upsert publisher/journal, insert Articles (dedup skip), direct-publish
+  app.post("/api/admin/ingest/run", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { source = 'openalex', departments = [], perDept = 25 } = req.body;
+      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department" });
+      const limit = Math.min(Math.max(parseInt(perDept) || 25, 1), 100);
+      let fetched = 0, inserted = 0, duplicates = 0, failed = 0;
+      const publishersTouched = new Set<string>();
+
+      for (const dept of departments) {
+        let items: any[] = [];
+        try { items = await fetchForDept(source, dept, limit); }
+        catch (e) { console.error(`Ingest fetch [${source}/${dept}]`, e); continue; }
+        fetched += items.length;
+
+        for (const it of items) {
+          try {
+            const fp = articleFingerprint(it.doi, it.title, it.authors);
+            const exists = await (prisma as any).article.findUnique({ where: { fingerprint: fp } });
+            if (exists) { duplicates++; continue; }
+
+            const publisher = await upsertPublisherByName(it.publisherName, it.source);
+            if (publisher) publishersTouched.add(publisher.id);
+            const journal = await upsertJournalByIssn(it.issn, {
+              title: it.journalName || 'Unknown Journal',
+              publisherId: publisher?.id || null, publisherName: it.publisherName || null,
+              domain: dept, subject: it.subject || null, openAccess: !!it.openAccess, startYear: it.year || null,
+            });
+
+            await (prisma as any).article.create({
+              data: {
+                title: it.title, authors: it.authors || null, doi: it.doi || null, pdfUrl: it.pdfUrl || null,
+                journalId: journal?.id || null, journalName: it.journalName || null, journalIssn: it.issn || null,
+                publisherId: publisher?.id || null, publisherName: it.publisherName || null,
+                volume: it.volume ? String(it.volume) : null, issue: it.issue ? String(it.issue) : null,
+                year: it.year || null, domain: dept, subject: it.subject || null,
+                accessType: 'OpenAccess', status: 'Published', source: it.source, fingerprint: fp,
+                createdBy: req.user?.email || 'Ingestion',
+              }
+            });
+            inserted++;
+          } catch (e) { failed++; }
+        }
+      }
+      res.json({ source, departments, fetched, inserted, duplicates, failed, publishersDiscovered: publishersTouched.size });
+    } catch (e: any) { console.error("Ingest run error:", e); res.status(500).json({ error: "Ingestion failed" }); }
+  });
+
+  // ==========================================
+  // PUBLIC LIBRARY BROWSE — NEW structured dataset (published only)
+  // Cascading filters: department -> journal -> year -> volume -> issue -> article
+  // ==========================================
+
+  // Resolve the departments a request is allowed to see. null = all (admin or no user); [] = none.
+  const libraryScopeDomains = async (req: any): Promise<string[] | null> => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return null;
+    let ud: any = null;
+    try { ud = jwt.verify(authHeader.split(' ')[1], JWT_SECRET); } catch { return null; }
+    if (['SuperAdmin', 'Admin', 'ContentManager'].includes(ud.role)) return null;
+    const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
+    const domains = new Set<string>();
+    for (const s of subs) {
+      const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
+      d.forEach((x: string) => x && domains.add(x));
+      if (s.domainName) domains.add(s.domainName);
+    }
+    return [...domains];
+  };
+  const applyDomainScope = (where: any, requestedDomain: string | undefined, scope: string[] | null) => {
+    if (scope === null) { if (requestedDomain) where.domain = requestedDomain; return; }
+    const allowed = scope.length ? scope : ['__no_access__'];
+    if (requestedDomain) where.domain = allowed.includes(requestedDomain) ? requestedDomain : '__no_access__';
+    else where.domain = { in: allowed };
+  };
+
+  app.get("/api/library/journals", async (req: any, res: any) => {
+    try {
+      const { domain, recentYears, search } = req.query;
+      const where: any = {};
+      applyDomainScope(where, domain, await libraryScopeDomains(req));
+      if (recentYears) { where.startYear = { gte: new Date().getFullYear() - (parseInt(recentYears as string) || 0) }; }
+      if (search) where.title = { contains: search as string, mode: 'insensitive' };
+      const journals = await (prisma as any).journal.findMany({ where, orderBy: { title: 'asc' }, take: 500 });
+      const withCounts = await Promise.all(journals.map(async (j: any) => ({
+        id: j.id, title: j.title, issn: j.issn, publisherName: j.publisherName, domain: j.domain, startYear: j.startYear,
+        articleCount: await (prisma as any).article.count({ where: { journalId: j.id, status: 'Published' } }),
+      })));
+      res.json(withCounts.filter((j: any) => j.articleCount > 0));
+    } catch (e: any) { console.error("library journals:", e); res.status(500).json({ error: "Failed to load journals" }); }
+  });
+
+  app.get("/api/library/facets", async (req: any, res: any) => {
+    try {
+      const { journalId, journalIds, year, volume } = req.query;
+      const base: any = { status: 'Published' };
+      const jidList = journalIds ? String(journalIds).split(',').filter(Boolean) : [];
+      if (jidList.length) base.journalId = { in: jidList };
+      else if (journalId) base.journalId = journalId;
+      const years = await (prisma as any).article.findMany({ where: base, distinct: ['year'], select: { year: true }, orderBy: { year: 'desc' } });
+      const volWhere: any = { ...base }; if (year) volWhere.year = parseInt(year as string);
+      const volumes = await (prisma as any).article.findMany({ where: volWhere, distinct: ['volume'], select: { volume: true } });
+      const issWhere: any = { ...volWhere }; if (volume) issWhere.volume = String(volume);
+      const issues = await (prisma as any).article.findMany({ where: issWhere, distinct: ['issue'], select: { issue: true } });
+      res.json({
+        years: years.map((y: any) => y.year).filter((v: any) => v != null),
+        volumes: volumes.map((v: any) => v.volume).filter(Boolean),
+        issues: issues.map((i: any) => i.issue).filter(Boolean),
+      });
+    } catch (e: any) { res.status(500).json({ error: "Failed to load facets" }); }
+  });
+
+  app.get("/api/library/articles", async (req: any, res: any) => {
+    try {
+      const { domain, journalId, journalIds, journalIssn, year, volume, issue, search, page = '1', limit = '20' } = req.query;
+      const where: any = { status: 'Published' };
+      applyDomainScope(where, domain, await libraryScopeDomains(req));
+      const jidList = journalIds ? String(journalIds).split(',').filter(Boolean) : [];
+      if (jidList.length) where.journalId = { in: jidList };
+      else if (journalId) where.journalId = journalId;
+      if (journalIssn) where.journalIssn = journalIssn;
+      if (year) where.year = parseInt(year as string);
+      if (volume) where.volume = String(volume);
+      if (issue) where.issue = String(issue);
+      if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
+      const take = Math.min(parseInt(limit as string) || 20, 100);
+      const skip = ((parseInt(page as string) || 1) - 1) * take;
+      const [data, total] = await Promise.all([
+        (prisma as any).article.findMany({ where, orderBy: [{ year: 'desc' }, { createdAt: 'desc' }], skip, take }),
+        (prisma as any).article.count({ where }),
+      ]);
+      res.json({ data, total, page: parseInt(page as string) || 1, limit: take });
+    } catch (e: any) { console.error("library articles:", e); res.status(500).json({ error: "Failed to load articles" }); }
+  });
+
+  app.get("/api/library/books", async (req: any, res: any) => {
+    try {
+      const { domain, search, page = '1', limit = '20' } = req.query;
+      const where: any = { status: 'Published' };
+      applyDomainScope(where, domain, await libraryScopeDomains(req));
+      if (search) where.title = { contains: search as string, mode: 'insensitive' };
+      const take = Math.min(parseInt(limit as string) || 20, 100);
+      const skip = ((parseInt(page as string) || 1) - 1) * take;
+      const [data, total] = await Promise.all([
+        (prisma as any).book.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take, include: { chapters: true } }),
+        (prisma as any).book.count({ where }),
+      ]);
+      res.json({ data, total, page: parseInt(page as string) || 1, limit: take });
+    } catch (e: any) { res.status(500).json({ error: "Failed to load books" }); }
+  });
+
+  // ==========================================
+  // ADMIN: NEW STRUCTURED DATASET CRUD (Article/Book) — per content type
+  // kind = 'book' for Books, 'article' for all other content types
+  // ==========================================
+
+  const kindFor = (contentType: string) => (contentType === 'Books' ? 'book' : 'article');
+
+  const buildAdminArticle = (b: any, createdBy: string) => ({
+    contentType: b.contentType || 'Periodicals',
+    title: b.title || 'Untitled',
+    authors: b.authors || null,
+    abstract: b.description || null,
+    doi: b.doi || null,
+    pdfUrl: b.fileUrl || b.pdfUrl || null,
+    journalName: b.journalName || null,
+    journalIssn: b.journalIssn || b.issn || null,
+    publisherName: b.publisherName || null,
+    volume: b.volume ? String(b.volume) : null,
+    issue: b.issue ? String(b.issue) : null,
+    year: b.year ? parseInt(b.year) : null,
+    pages: b.pages || null,
+    domain: b.domain || null,
+    subject: b.subjectArea || b.subject || null,
+    accessType: b.accessType || 'OpenAccess',
+    status: b.status || 'Published',
+    source: 'Admin',
+    createdBy,
+    metadata: { ...(b.metadata || {}), tags: b.tags || [], thumbnailUrl: b.thumbnailUrl || null },
+  });
+
+  const buildAdminBook = (b: any, createdBy: string) => ({
+    title: b.title || 'Untitled',
+    authors: b.authors || null,
+    publisherName: b.publisherName || null,
+    isbn: b.isbn || null,
+    doi: b.doi || null,
+    year: b.year ? parseInt(b.year) : null,
+    edition: b.edition || null,
+    pages: b.pages || null,
+    subject: b.subjectArea || b.subject || null,
+    domain: b.domain || null,
+    description: b.description || null,
+    coverUrl: b.thumbnailUrl || null,
+    pdfUrl: b.fileUrl || b.pdfUrl || null,
+    accessType: b.accessType || 'OpenAccess',
+    status: b.status || 'Published',
+    source: 'Admin',
+    createdBy,
+    metadata: { ...(b.metadata || {}), tags: b.tags || [] },
+  });
+
+  // Present an Article/Book row with legacy-compatible aliases for the list UI
+  const aliasItem = (row: any) => ({
+    ...row,
+    fileUrl: row.pdfUrl || row.fileUrl || null,
+    thumbnailUrl: row.coverUrl || row.metadata?.thumbnailUrl || null,
+    publishedAt: row.createdAt,
+  });
+
+  app.get("/api/admin/library/items", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const { contentType, search, domain, status, page = '1', limit = '15' } = req.query;
+      const kind = kindFor(contentType);
+      const take = Math.min(parseInt(limit as string) || 15, 100000);
+      const skip = ((parseInt(page as string) || 1) - 1) * take;
+      const where: any = {};
+      if (kind === 'article') where.contentType = contentType;
+      if (domain) where.domain = domain;
+      if (status) where.status = status;
+      if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
+      const model = (prisma as any)[kind];
+      const [rows, total] = await Promise.all([
+        model.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+        model.count({ where }),
+      ]);
+      res.json({ data: rows.map(aliasItem), total, page: parseInt(page as string) || 1, limit: take });
+    } catch (e: any) { console.error("admin library list:", e); res.status(500).json({ error: "Failed to load items" }); }
+  });
+
+  app.get("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const kind = req.params.kind === 'book' ? 'book' : 'article';
+      const row = await (prisma as any)[kind].findUnique({ where: { id: req.params.id }, ...(kind === 'book' ? { include: { chapters: true } } : {}) });
+      if (!row) return res.status(404).json({ error: "Not found" });
+      res.json(aliasItem(row));
+    } catch (e: any) { res.status(500).json({ error: "Failed to load item" }); }
+  });
+
+  app.post("/api/admin/library/items", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const by = req.user?.email || 'Admin';
+      const kind = kindFor(req.body.contentType);
+      if (kind === 'book') {
+        const chapters = Array.isArray(req.body.chapters) ? req.body.chapters.filter((c: any) => c && c.title) : [];
+        const book = await (prisma as any).book.create({
+          data: {
+            ...buildAdminBook(req.body, by),
+            chapters: chapters.length ? { create: chapters.map((c: any, i: number) => ({ title: c.title, authors: c.authors || null, pdfUrl: c.pdfUrl || null, pages: c.pages || null, chapterNumber: c.chapterNumber ? parseInt(c.chapterNumber) : (i + 1), status: req.body.status || 'Published' })) } : undefined,
+          },
+        });
+        return res.json(book);
+      }
+      const data = buildAdminArticle(req.body, by);
+      // Link/create Publisher + Journal so the item is filterable in /explore (same as ingestion)
+      const publisher = await upsertPublisherByName(data.publisherName, 'Admin');
+      const journal = await upsertJournalByIssn(data.journalIssn, {
+        title: data.journalName || 'Unknown Journal',
+        publisherId: publisher?.id || null, publisherName: data.publisherName || null,
+        domain: data.domain, subject: data.subject, openAccess: data.accessType === 'OpenAccess', startYear: data.year || null,
+      });
+      const article = await (prisma as any).article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
+      res.json(article);
+    } catch (e: any) { console.error("admin library create:", e); res.status(500).json({ error: "Failed to create item" }); }
+  });
+
+  app.put("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const kind = req.params.kind === 'book' ? 'book' : 'article';
+      const by = req.user?.email || 'Admin';
+      // Partial status-only update (used by list toggle)
+      if (Object.keys(req.body).length === 1 && req.body.status) {
+        const updated = await (prisma as any)[kind].update({ where: { id: req.params.id }, data: { status: req.body.status } });
+        return res.json(aliasItem(updated));
+      }
+      const data: any = kind === 'book' ? buildAdminBook(req.body, by) : buildAdminArticle(req.body, by);
+      if (kind === 'article') {
+        const publisher = await upsertPublisherByName(data.publisherName, 'Admin');
+        const journal = await upsertJournalByIssn(data.journalIssn, {
+          title: data.journalName || 'Unknown Journal',
+          publisherId: publisher?.id || null, publisherName: data.publisherName || null,
+          domain: data.domain, subject: data.subject, openAccess: data.accessType === 'OpenAccess', startYear: data.year || null,
+        });
+        data.publisherId = publisher?.id || null;
+        data.journalId = journal?.id || null;
+      }
+      const updated = await (prisma as any)[kind].update({ where: { id: req.params.id }, data });
+      if (kind === 'book' && Array.isArray(req.body.chapters)) {
+        await (prisma as any).chapter.deleteMany({ where: { bookId: req.params.id } });
+        const chs = req.body.chapters.filter((c: any) => c && c.title);
+        if (chs.length) await (prisma as any).chapter.createMany({ data: chs.map((c: any, i: number) => ({ bookId: req.params.id, title: c.title, authors: c.authors || null, pdfUrl: c.pdfUrl || null, pages: c.pages || null, chapterNumber: c.chapterNumber ? parseInt(c.chapterNumber) : (i + 1), status: req.body.status || 'Published' })) });
+      }
+      res.json(aliasItem(updated));
+    } catch (e: any) { console.error("admin library update:", e); res.status(500).json({ error: "Failed to update item" }); }
+  });
+
+  app.delete("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const kind = req.params.kind === 'book' ? 'book' : 'article';
+      await (prisma as any)[kind].delete({ where: { id: req.params.id } });
+      res.json({ message: "Deleted" });
+    } catch (e: any) { res.status(500).json({ error: "Failed to delete item" }); }
+  });
+
+  app.post("/api/admin/library/bulk", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const { action, kind: k, ids } = req.body;
+      const kind = k === 'book' ? 'book' : 'article';
+      if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: "No items" });
+      const model = (prisma as any)[kind];
+      if (action === 'Delete') { await model.deleteMany({ where: { id: { in: ids } } }); return res.json({ message: `${ids.length} deleted` }); }
+      const status = action === 'Publish' ? 'Published' : 'Draft';
+      await model.updateMany({ where: { id: { in: ids } }, data: { status } });
+      res.json({ message: `${ids.length} set to ${status}` });
+    } catch (e: any) { res.status(500).json({ error: "Bulk action failed" }); }
   });
 
   // Admin: Content CRUD

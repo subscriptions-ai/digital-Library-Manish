@@ -11,7 +11,8 @@ export type UserRole =
   | 'University'
   | 'Corporate'
   | 'SalesExecutive'
-  | 'SalesManager';
+  | 'SalesManager'
+  | 'Publisher';
 
 export interface UserProfile {
   uid: string;

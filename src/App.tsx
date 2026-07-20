@@ -41,6 +41,12 @@ import { SubscriptionListPage } from "./components/admin/subscriptions/Subscript
 import { ContentPricingModule } from "./components/admin/ContentPricingModule";
 import { QuotationManager } from "./components/admin/QuotationManager";
 import { ReceiptManager } from "./components/admin/ReceiptManager";
+import { PublisherManager } from "./components/admin/PublisherManager";
+import { PublisherReviewQueue } from "./components/admin/PublisherReviewQueue";
+import { DataIngestion } from "./components/admin/DataIngestion";
+import { StructuredLibrary } from "./components/StructuredLibrary";
+import { PublisherLayout } from "./components/publisher/PublisherLayout";
+import { PublisherDashboard } from "./components/publisher/PublisherDashboard";
 import { UserCreationPanel } from "./components/admin/UserCreationPanel";
 import { DraftedContentManager } from './components/admin/DraftedContentManager';
 import { AdminFeedbackManager } from "./components/admin/AdminFeedbackManager";
@@ -170,6 +176,11 @@ export default function App() {
                 <Route path="/admin/quotations" element={<AdminLayout><QuotationManager /></AdminLayout>} />
                 <Route path="/admin/quotations/create" element={<AdminLayout><QuotationWizard isAdminMode={true} /></AdminLayout>} />
                 <Route path="/admin/receipts" element={<AdminLayout><ReceiptManager /></AdminLayout>} />
+                <Route path="/admin/publishers" element={<AdminLayout><PublisherManager /></AdminLayout>} />
+                <Route path="/admin/review" element={<AdminLayout><PublisherReviewQueue /></AdminLayout>} />
+                <Route path="/admin/ingestion" element={<AdminLayout><DataIngestion /></AdminLayout>} />
+                <Route path="/publisher" element={<PublisherLayout><PublisherDashboard /></PublisherLayout>} />
+                <Route path="/dashboard/explore" element={<DashboardLayout><StructuredLibrary /></DashboardLayout>} />
                 <Route path="/admin/agency-inquiries" element={<AdminLayout><AgencyInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/contact-inquiries" element={<AdminLayout><ContactInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/demo-requests" element={<AdminLayout><DemoRequestsPage /></AdminLayout>} />

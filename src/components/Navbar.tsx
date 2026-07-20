@@ -5,8 +5,10 @@ import { cn } from "../lib/utils";
 import { DOMAINS } from "../constants";
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
+import { usePublisherSafeMode } from "../lib/publicSettings";
 
 export function Navbar() {
+  const safeMode = usePublisherSafeMode();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDepartmentsOpen, setIsDepartmentsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,6 +60,7 @@ export function Navbar() {
         </div>
 
         {/* Search Bar - TOP CENTER */}
+        {!safeMode && (
         <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl mx-8">
           <div className="relative w-full group">
             <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
@@ -72,6 +75,7 @@ export function Navbar() {
             />
           </div>
         </form>
+        )}
 
         {/* Desktop Navigation & CTAs */}
         <div className="hidden lg:flex flex-col items-end gap-2">
@@ -124,6 +128,7 @@ export function Navbar() {
                     </div>
                   )}
                 </div>
+                {!safeMode && (
                 <a
                   href="https://journalslibrary.com/request-demo"
                   target="_blank"
@@ -132,11 +137,13 @@ export function Navbar() {
                 >
                   Request Demo
                 </a>
+                )}
               </>
             ) : (
               <>
                 <Link to="/login" className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors px-2">Login</Link>
                 <Link to="/signup" className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">Get Started</Link>
+                {!safeMode && (
                 <a
                   href="https://journalslibrary.com/request-demo"
                   target="_blank"
@@ -145,6 +152,7 @@ export function Navbar() {
                 >
                   Request Demo
                 </a>
+                )}
               </>
             )}
           </div>
@@ -222,19 +230,21 @@ export function Navbar() {
                 )}
               </div>
 
-              <Link to="/subscriptions" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Subscription Plans</Link>
-              <Link to="/agency-listing" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Agency Info</Link>
-              <Link to="/faq" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">FAQ</Link>
+              {!safeMode && <Link to="/subscriptions" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Subscription Plans</Link>}
+              {!safeMode && <Link to="/agency-listing" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Agency Info</Link>}
+              {!safeMode && <Link to="/faq" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">FAQ</Link>}
               <Link to="/contact" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Contact Us</Link>
             </nav>
 
-            <button 
+            {!safeMode && (
+            <button
               onClick={() => navigate('/create-quotation')}
               className="flex items-center gap-2 rounded-full bg-blue-600 px-5 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-200"
             >
               <FileText size={14} />
               Create Quotation
             </button>
+            )}
           </div>
         </div>
       </div>
@@ -243,6 +253,7 @@ export function Navbar() {
       {isMenuOpen && (
         <div className="lg:hidden border-t border-slate-100 bg-white px-4 py-8 space-y-6 max-h-[90vh] overflow-y-auto animate-in slide-in-from-top duration-300">
           {/* Mobile Search */}
+          {!safeMode && (
           <form onSubmit={handleSearch} className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
@@ -253,6 +264,7 @@ export function Navbar() {
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
             />
           </form>
+          )}
 
           <div className="flex flex-col gap-6">
             <div className="space-y-4">
@@ -293,9 +305,9 @@ export function Navbar() {
                   )}
                 </div>
 
-                <Link to="/subscriptions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Subscription Plans</Link>
-                <Link to="/agency-listing" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Agency Info</Link>
-                <Link to="/faq" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>FAQ</Link>
+                {!safeMode && <Link to="/subscriptions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Subscription Plans</Link>}
+                {!safeMode && <Link to="/agency-listing" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Agency Info</Link>}
+                {!safeMode && <Link to="/faq" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>FAQ</Link>}
                 <Link to="/contact" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Contact Us</Link>
               </div>
             </div>

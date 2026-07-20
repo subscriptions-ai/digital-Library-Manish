@@ -25,6 +25,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
   const limit = 15;
 
   const slug = contentType.toLowerCase().replace(/\s+/g, '-');
+  const kind = contentType === 'Books' ? 'book' : 'article';
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
@@ -42,7 +43,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         ...(domainFilter && { domain: domainFilter }),
         ...(statusFilter && { status: statusFilter }),
       });
-      const res = await fetch(`/api/admin/content?${query}`, {
+      const res = await fetch(`/api/admin/library/items?${query}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Failed to load');
@@ -62,7 +63,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this item permanently?')) return;
     try {
-      await fetch(`/api/admin/content/${id}`, {
+      await fetch(`/api/admin/library/items/${kind}/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
@@ -76,7 +77,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
   const handleTogglePublish = async (item: any) => {
     const newStatus = item.status === 'Published' ? 'Draft' : 'Published';
     try {
-      await fetch(`/api/admin/content/${item.id}`, {
+      await fetch(`/api/admin/library/items/${kind}/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ status: newStatus })
@@ -100,10 +101,10 @@ export function ContentListView({ contentType }: ContentListViewProps) {
   const handleBulkAction = async (action: 'Publish' | 'Draft' | 'Delete') => {
     if (!confirm(`Are you sure you want to ${action} ${selectedItems.length} items?`)) return;
     try {
-      const res = await fetch('/api/admin/content/bulk-action', {
+      const res = await fetch('/api/admin/library/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ action, contentIds: selectedItems })
+        body: JSON.stringify({ action, kind, ids: selectedItems })
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error);
@@ -126,7 +127,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         ...(domainFilter && { domain: domainFilter }),
         ...(statusFilter && { status: statusFilter }),
       });
-      const res = await fetch(`/api/admin/content?${query}`, {
+      const res = await fetch(`/api/admin/library/items?${query}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Export failed');

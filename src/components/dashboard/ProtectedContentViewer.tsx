@@ -165,6 +165,7 @@ export function ProtectedContentViewer() {
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingPdf, setLoadingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<{ loaded: number; total: number }>({ loaded: 0, total: 0 });
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Viewer controls
@@ -287,6 +288,7 @@ export function ProtectedContentViewer() {
     if (isVideo || iframeFallback) return;
 
     setLoadingPdf(true);
+    setPdfProgress({ loaded: 0, total: 0 });
     setPdfError(null);
 
     // Use server-side proxy endpoint to bypass CORS from third-party PDF hosts
@@ -300,6 +302,11 @@ export function ProtectedContentViewer() {
       disableRange: false,
       isEvalSupported: false,
     });
+
+    // Live download progress (pdf.js reports loaded/total bytes as the file streams in)
+    loadingTask.onProgress = (p: { loaded: number; total: number }) => {
+      if (isMounted) setPdfProgress({ loaded: p.loaded || 0, total: p.total || 0 });
+    };
 
     loadingTask.promise
       .then((doc) => {
@@ -588,16 +595,37 @@ export function ProtectedContentViewer() {
           </div>
         )}
 
-        {/* PDF Loading spinner */}
-        {loadingPdf && (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-            <div className="relative w-14 h-14">
-              <div className="absolute inset-0 rounded-full border-4 border-blue-500/20" />
-              <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+        {/* PDF Loading — circular download progress */}
+        {loadingPdf && (() => {
+          const { loaded, total } = pdfProgress;
+          const pct = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null;
+          const R = 26, CIRC = 2 * Math.PI * R;
+          const fmt = (b: number) => b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(0, Math.round(b / 1024))} KB`;
+          return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5">
+              <div className="relative w-24 h-24">
+                <svg className="w-24 h-24 -rotate-90" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r={R} className="stroke-blue-500/15 dark:stroke-blue-400/10" strokeWidth="5" fill="none" />
+                  <circle cx="32" cy="32" r={R} className={`stroke-blue-500 transition-[stroke-dashoffset] duration-200 ease-out ${pct === null ? 'animate-spin origin-center' : ''}`}
+                    strokeWidth="5" fill="none" strokeLinecap="round" strokeDasharray={CIRC}
+                    strokeDashoffset={pct === null ? CIRC * 0.7 : CIRC * (1 - pct / 100)} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {pct === null
+                    ? <BookOpen size={22} className="text-blue-500 animate-pulse" />
+                    : <span className="text-lg font-black text-blue-600 dark:text-blue-400 tabular-nums">{pct}%</span>}
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-slate-600 dark:text-slate-300 text-sm font-bold">Loading document…</p>
+                <p className="text-slate-400 text-xs mt-1 tabular-nums">
+                  {total > 0 ? `${fmt(loaded)} of ${fmt(total)}` : (loaded > 0 ? `${fmt(loaded)} downloaded` : 'Preparing secure stream…')}
+                </p>
+                {total > 1048576 * 8 && <p className="text-slate-300 dark:text-slate-500 text-[11px] mt-1">Large file — this may take a moment</p>}
+              </div>
             </div>
-            <p className="text-slate-400 text-sm">Loading PDF…</p>
-          </div>
-        )}
+          );
+        })()}
 
         {/* PDF Pages — one canvas per page */}
         {isPdf && pdfDoc && !loadingPdf && !pdfError && (

@@ -61,6 +61,8 @@ export function Login() {
         navigate('/institution');
       } else if (role === 'SalesExecutive' || role === 'SalesManager') {
         navigate('/sales');
+      } else if (role === 'Publisher') {
+        navigate('/publisher');
       } else {
         // Student, Subscriber, Normal User → shared dashboard
         navigate('/dashboard');

@@ -14,6 +14,7 @@ export function AdminDashboardHome() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [emailVerificationEnabled, setEmailVerificationEnabled] = useState<boolean>(true);
+  const [publisherSafeMode, setPublisherSafeMode] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -32,6 +33,7 @@ export function AdminDashboardHome() {
         if (settingsRes.ok) {
           const s = await settingsRes.json();
           setEmailVerificationEnabled(s.emailVerificationEnabled);
+          setPublisherSafeMode(Boolean(s.publisherSafeMode));
         }
       } catch (error) {
         console.error("Error fetching stats:", error);
@@ -63,6 +65,23 @@ export function AdminDashboardHome() {
       }
     } catch {
       toast.error('Failed to update settings');
+    }
+  };
+
+  const togglePublisherSafeMode = async () => {
+    try {
+      const newVal = !publisherSafeMode;
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ publisherSafeMode: newVal })
+      });
+      if (res.ok) {
+        setPublisherSafeMode(newVal);
+        toast.success(`Stealth Mode ${newVal ? 'ON — commercial UI hidden' : 'OFF'}`);
+      } else { throw new Error(); }
+    } catch {
+      toast.error('Failed to update stealth mode');
     }
   };
 
@@ -108,24 +127,45 @@ export function AdminDashboardHome() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Analytics Dashboard</h1>
           <p className="text-sm text-slate-500 mt-1">Real-time overview of the library performance and user growth.</p>
         </div>
-        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
-          <div className="flex flex-col text-right hidden sm:flex">
-            <span className="text-sm font-bold text-slate-800">Email Verification</span>
-            <span className="text-xs text-slate-500">{emailVerificationEnabled ? 'Active' : 'Bypassed (Off)'}</span>
-          </div>
-          <button
-            onClick={toggleEmailVerification}
-            title={emailVerificationEnabled ? "Disable verification to bypass OTPs" : "Enable email verification"}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-              emailVerificationEnabled ? 'bg-indigo-600' : 'bg-slate-300'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                emailVerificationEnabled ? 'translate-x-6' : 'translate-x-1'
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex flex-col text-right hidden sm:flex">
+              <span className="text-sm font-bold text-slate-800">Email Verification</span>
+              <span className="text-xs text-slate-500">{emailVerificationEnabled ? 'Active' : 'Bypassed (Off)'}</span>
+            </div>
+            <button
+              onClick={toggleEmailVerification}
+              title={emailVerificationEnabled ? "Disable verification to bypass OTPs" : "Enable email verification"}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                emailVerificationEnabled ? 'bg-indigo-600' : 'bg-slate-300'
               }`}
-            />
-          </button>
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  emailVerificationEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex flex-col text-right hidden sm:flex">
+              <span className="text-sm font-bold text-slate-800">Stealth Mode</span>
+              <span className="text-xs text-slate-500">{publisherSafeMode ? 'ON — commercial UI hidden' : 'Off'}</span>
+            </div>
+            <button
+              onClick={togglePublisherSafeMode}
+              title={publisherSafeMode ? "Disable stealth (show commercial UI)" : "Enable stealth mode (hide search, quotation, plans, FAQ, agency, demo)"}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
+                publisherSafeMode ? 'bg-amber-600' : 'bg-slate-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  publisherSafeMode ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
