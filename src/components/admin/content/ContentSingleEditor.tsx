@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Save, ArrowLeft, UploadCloud, Tag, Plus, Trash2, Layers } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -53,6 +53,8 @@ const inputCls = "w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm 
 export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isArchived = searchParams.get('src') === 'archived';   // editing a legacy Content record
   const isEditing = id && id !== 'new';
   const slug = contentType.toLowerCase().replace(/\s+/g, '-');
   const kind = contentType === 'Books' ? 'book' : 'article';
@@ -72,11 +74,24 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
     if (!isEditing) return;
     (async () => {
       try {
-        const res = await fetch(`/api/admin/library/items/${kind}/${id}`, {
+        const url = isArchived ? `/api/admin/content/${id}` : `/api/admin/library/items/${kind}/${id}`;
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         const item = await res.json();
         if (!res.ok || !item) throw new Error('Not found');
+        if (isArchived) {
+          // Legacy Content record — generic fields only
+          setForm({
+            title: item.title || '', description: item.description || '', authors: item.authors || '',
+            domain: item.domain || DOMAINS[0]?.name || '', subjectArea: item.subjectArea || '',
+            fileUrl: item.fileUrl || '', thumbnailUrl: item.thumbnailUrl || '',
+            tags: Array.isArray(item.tags) ? item.tags.join(', ') : '',
+            accessType: item.accessType || 'Subscription', status: item.status || 'Published',
+          });
+          setLoading(false);
+          return;
+        }
         const meta = item.metadata || {};
         const next: Record<string, any> = {
           title: item.title || '', description: item.abstract || item.description || '', authors: item.authors || '',
@@ -108,6 +123,25 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
     if (!form.title.trim() || !form.authors.trim()) { toast.error('Title and Author(s) are required'); return; }
     setSaving(true);
     try {
+      const tagsArr = form.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+
+      // Editing a legacy Content record → save via the legacy content endpoint (generic fields)
+      if (isArchived) {
+        const res = await fetch(`/api/admin/content/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({
+            contentType, title: form.title, authors: form.authors, description: form.description,
+            domain: form.domain, subjectArea: form.subjectArea, fileUrl: form.fileUrl, thumbnailUrl: form.thumbnailUrl,
+            accessType: form.accessType, status: form.status, tags: tagsArr,
+          }),
+        });
+        if (!res.ok) throw new Error('Save failed');
+        toast.success(`${contentType} updated`);
+        navigate(`/admin/${slug}`);
+        return;
+      }
+
       const metadata: Record<string, any> = {};
       const cols: Record<string, any> = {};
       typeFields.forEach(f => { if (f.meta) metadata[f.key] = form[f.key] || null; else cols[f.key] = form[f.key] || null; });
@@ -117,7 +151,7 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
         title: form.title, authors: form.authors, description: form.description,
         domain: form.domain, subjectArea: form.subjectArea, fileUrl: form.fileUrl, thumbnailUrl: form.thumbnailUrl,
         accessType: form.accessType, status: form.status,
-        tags: form.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+        tags: tagsArr,
         ...cols, metadata,
       };
       if (kind === 'book') payload.chapters = chapters.filter(c => c.title?.trim());
@@ -178,7 +212,8 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
           </div>
         </div>
 
-        {/* Type-specific metadata */}
+        {/* Type-specific metadata (new dataset only; legacy Content has no such fields) */}
+        {!isArchived && (
         <div className="p-6 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">{contentType} Details</h3>
           <div className="grid grid-cols-2 gap-4">
@@ -190,9 +225,10 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
             ))}
           </div>
         </div>
+        )}
 
         {/* Chapters (Books only) */}
-        {kind === 'book' && (
+        {!isArchived && kind === 'book' && (
           <div className="p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1"><Layers size={13} /> Chapters</h3>

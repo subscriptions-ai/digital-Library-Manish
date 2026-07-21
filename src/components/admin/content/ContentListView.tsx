@@ -27,10 +27,27 @@ export function ContentListView({ contentType }: ContentListViewProps) {
   const slug = contentType.toLowerCase().replace(/\s+/g, '-');
   const kind = contentType === 'Books' ? 'book' : 'article';
 
+  // 'new' = structured Article/Book dataset · 'archived' = legacy scraped Content
+  const [dataset, setDataset] = useState<'new' | 'archived'>(() => (sessionStorage.getItem(`clv_ds_${slug}`) as any) || 'new');
+  const [counts, setCounts] = useState<{ new: number; archived: number }>({ new: 0, archived: 0 });
+  useEffect(() => { sessionStorage.setItem(`clv_ds_${slug}`, dataset); setPage(1); setSelectedItems([]); }, [dataset, slug]);
+
+  const authHdr = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
+
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
     return () => clearTimeout(t);
   }, [search]);
+
+  // counts for both datasets (for the New/Archived toggle badges)
+  useEffect(() => {
+    const q = `contentType=${encodeURIComponent(contentType)}&limit=1`;
+    Promise.all([
+      fetch(`/api/admin/library/items?${q}`, authHdr).then(r => r.json()).then(d => d.total || 0).catch(() => 0),
+      fetch(`/api/admin/content?${q}`, authHdr).then(r => r.json()).then(d => d.total || 0).catch(() => 0),
+    ]).then(([n, a]) => setCounts({ new: n, archived: a }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentType]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -43,7 +60,8 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         ...(domainFilter && { domain: domainFilter }),
         ...(statusFilter && { status: statusFilter }),
       });
-      const res = await fetch(`/api/admin/library/items?${query}`, {
+      const base = dataset === 'archived' ? '/api/admin/content' : '/api/admin/library/items';
+      const res = await fetch(`${base}?${query}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Failed to load');
@@ -56,14 +74,15 @@ export function ContentListView({ contentType }: ContentListViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [contentType, debouncedSearch, domainFilter, statusFilter, page]);
+  }, [contentType, debouncedSearch, domainFilter, statusFilter, page, dataset]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this item permanently?')) return;
     try {
-      await fetch(`/api/admin/library/items/${kind}/${id}`, {
+      const url = dataset === 'archived' ? `/api/admin/content/${id}` : `/api/admin/library/items/${kind}/${id}`;
+      await fetch(url, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
@@ -77,7 +96,8 @@ export function ContentListView({ contentType }: ContentListViewProps) {
   const handleTogglePublish = async (item: any) => {
     const newStatus = item.status === 'Published' ? 'Draft' : 'Published';
     try {
-      await fetch(`/api/admin/library/items/${kind}/${item.id}`, {
+      const url = dataset === 'archived' ? `/api/admin/content/${item.id}` : `/api/admin/library/items/${kind}/${item.id}`;
+      await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ status: newStatus })
@@ -101,11 +121,17 @@ export function ContentListView({ contentType }: ContentListViewProps) {
   const handleBulkAction = async (action: 'Publish' | 'Draft' | 'Delete') => {
     if (!confirm(`Are you sure you want to ${action} ${selectedItems.length} items?`)) return;
     try {
-      const res = await fetch('/api/admin/library/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ action, kind, ids: selectedItems })
-      });
+      const res = dataset === 'archived'
+        ? await fetch('/api/admin/content/bulk-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+            body: JSON.stringify({ action, contentIds: selectedItems })
+          })
+        : await fetch('/api/admin/library/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+            body: JSON.stringify({ action, kind, ids: selectedItems })
+          });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error);
       toast.success(result.message);
@@ -127,7 +153,8 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         ...(domainFilter && { domain: domainFilter }),
         ...(statusFilter && { status: statusFilter }),
       });
-      const res = await fetch(`/api/admin/library/items?${query}`, {
+      const base = dataset === 'archived' ? '/api/admin/content' : '/api/admin/library/items';
+      const res = await fetch(`${base}?${query}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Export failed');
@@ -171,6 +198,18 @@ export function ContentListView({ contentType }: ContentListViewProps) {
 
   return (
     <div className="space-y-4">
+      {/* Dataset toggle: New (structured) vs Archived (legacy scraped) */}
+      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+        <button onClick={() => setDataset('new')}
+          className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${dataset === 'new' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          New <span className="ml-1 text-[10px] font-bold text-slate-400">{counts.new}</span>
+        </button>
+        <button onClick={() => setDataset('archived')}
+          className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${dataset === 'archived' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          Archived <span className="ml-1 text-[10px] font-bold text-slate-400">{counts.archived}</span>
+        </button>
+      </div>
+
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex flex-wrap gap-2 flex-1">
@@ -260,7 +299,12 @@ export function ContentListView({ contentType }: ContentListViewProps) {
               </td></tr>
             ) : items.length === 0 ? (
               <tr><td colSpan={7} className="py-16 text-center text-slate-400">
-                No {contentType} found. Add some using the button above.
+                No {contentType} in the {dataset === 'archived' ? 'archived library' : 'new collection'}.
+                {dataset === 'new' && counts.archived > 0 && (
+                  <button onClick={() => setDataset('archived')} className="text-blue-600 font-bold ml-1 hover:underline">
+                    View {counts.archived} archived {contentType} →
+                  </button>
+                )}
               </td></tr>
             ) : items.map(item => (
               <tr key={item.id} className={`transition-colors ${selectedItems.includes(item.id) ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}>
@@ -268,7 +312,12 @@ export function ContentListView({ contentType }: ContentListViewProps) {
                   <input type="checkbox" checked={selectedItems.includes(item.id)} onChange={() => handleSelectItem(item.id)} className="rounded text-blue-600 w-4 h-4 cursor-pointer" />
                 </td>
                 <td className="px-5 py-3">
-                  <div className="font-semibold text-slate-900 line-clamp-1">{item.title}</div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide shrink-0 ${dataset === 'archived' ? 'bg-slate-200 text-slate-600' : 'bg-blue-100 text-blue-700'}`}>
+                      {dataset === 'archived' ? 'Archived' : 'New'}
+                    </span>
+                    <div className="font-semibold text-slate-900 line-clamp-1">{item.title}</div>
+                  </div>
                   <div className="text-xs text-slate-500 mt-0.5">{item.authors}</div>
                 </td>
                 <td className="px-5 py-3 text-slate-600">{item.domain || '—'}</td>
@@ -295,7 +344,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
                       className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                       <ExternalLink size={15} />
                     </a>}
-                    <button onClick={() => navigate(`/admin/${slug}/${item.id}`)} title="Edit"
+                    <button onClick={() => navigate(`/admin/${slug}/${item.id}${dataset === 'archived' ? '?src=archived' : ''}`)} title="Edit"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
                       <Edit size={15} />
                     </button>
