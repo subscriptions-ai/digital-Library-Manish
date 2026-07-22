@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Building2, Plus, Search, X, Handshake, Mail, BookOpen, FileText, CheckCircle2, Globe } from 'lucide-react';
+import { Building2, Plus, Search, X, Handshake, Mail, BookOpen, FileText, CheckCircle2, Globe, Settings2, ShieldCheck, CornerDownRight } from 'lucide-react';
+import { PublisherDetail } from './PublisherDetail';
 
 const STATUS_COLORS: Record<string, string> = {
   Discovered: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -18,6 +19,7 @@ export function PublisherManager() {
   const [statusFilter, setStatusFilter] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [tieUp, setTieUp] = useState<any | null>(null);
+  const [manage, setManage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const token = () => localStorage.getItem('token');
@@ -103,7 +105,12 @@ export function PublisherManager() {
             ) : publishers.map(p => (
               <tr key={p.id} className="hover:bg-slate-50/50">
                 <td className="px-5 py-4">
-                  <div className="font-bold text-slate-900">{p.name}</div>
+                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                    {p.parentId && <CornerDownRight size={13} className="text-slate-300" />}
+                    {p.name}
+                    {p.verified && <ShieldCheck size={13} className="text-emerald-600" />}
+                    {p.orgType && p.orgType !== 'Publisher' && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{p.orgType}</span>}
+                  </div>
                   <div className="text-[11px] text-slate-500">{p.email || '—'}{p.country ? ` • ${p.country}` : ''}</div>
                 </td>
                 <td className="px-5 py-4">
@@ -115,15 +122,21 @@ export function PublisherManager() {
                 <td className="px-5 py-4">
                   <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase ${STATUS_COLORS[p.tieUpStatus] || ''}`}>{p.tieUpStatus}</span>
                 </td>
-                <td className="px-5 py-4 text-right">
-                  {p.tieUpStatus === 'Active' ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600"><CheckCircle2 size={13} /> Tied Up</span>
-                  ) : (
-                    <button onClick={() => setTieUp(p)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">
-                      <Handshake size={14} /> Tie Up
+                <td className="px-5 py-4">
+                  <div className="flex items-center justify-end gap-2">
+                    <button onClick={() => setManage(p.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg">
+                      <Settings2 size={14} /> Manage
                     </button>
-                  )}
+                    {p.tieUpStatus === 'Active' ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600"><CheckCircle2 size={13} /> Tied Up</span>
+                    ) : (
+                      <button onClick={() => setTieUp(p)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">
+                        <Handshake size={14} /> Tie Up
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -131,31 +144,54 @@ export function PublisherManager() {
         </table>
       </div>
 
-      {addOpen && <AddPublisherModal onClose={() => setAddOpen(false)} onSaved={() => { setAddOpen(false); fetchData(); }} />}
+      {addOpen && <AddPublisherModal publishers={publishers} onClose={() => setAddOpen(false)} onSaved={() => { setAddOpen(false); fetchData(); }} />}
       {tieUp && <TieUpModal publisher={tieUp} busy={busy} setBusy={setBusy} onClose={() => setTieUp(null)} onDone={() => { setTieUp(null); fetchData(); }} />}
+      {manage && <PublisherDetail id={manage} allPublishers={publishers} onClose={() => setManage(null)} onChanged={fetchData} />}
     </div>
   );
 }
 
-function AddPublisherModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState<any>({ name: '', email: '', country: '', website: '', address: '', contactNumber: '', agreementNote: '' });
+function AddPublisherModal({ publishers, onClose, onSaved }: { publishers: any[]; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState<any>({ name: '', legalName: '', orgType: 'Publisher', parentId: '', email: '', country: '', website: '' });
   const [busy, setBusy] = useState(false);
   const save = async () => {
     if (!form.name.trim()) { toast.error('Name is required'); return; }
     setBusy(true);
     try {
+      // create, then set hierarchy fields (create endpoint takes the basics; PUT sets orgType/parent/legalName)
       const res = await fetch('/api/admin/publishers', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ name: form.name, email: form.email, country: form.country, website: form.website }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+      const created = await res.json();
+      if (!res.ok) throw new Error(created.error || 'Failed');
+      if (form.orgType !== 'Publisher' || form.parentId || form.legalName) {
+        await fetch(`/api/admin/publishers/${created.id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ orgType: form.orgType, parentId: form.parentId || null, legalName: form.legalName || null }),
+        });
+      }
       toast.success('Publisher added'); onSaved();
     } catch (e: any) { toast.error(e.message || 'Failed to add'); } finally { setBusy(false); }
   };
   return (
     <Modal title="Add Publisher" onClose={onClose}>
       <div className="space-y-3">
-        <Field label="Publisher Name *"><input className={inputCls} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></Field>
+        <Field label="Publisher / Imprint Name *"><input className={inputCls} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></Field>
+        <Field label="Legal entity name"><input className={inputCls} value={form.legalName} onChange={e => setForm({ ...form, legalName: e.target.value })} placeholder="Registered legal name (optional)" /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Organisation type">
+            <select className={inputCls} value={form.orgType} onChange={e => setForm({ ...form, orgType: e.target.value })}>
+              {['Group', 'Publisher', 'Imprint'].map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </Field>
+          <Field label="Parent organisation">
+            <select className={inputCls} value={form.parentId} onChange={e => setForm({ ...form, parentId: e.target.value })}>
+              <option value="">— none (top level) —</option>
+              {publishers.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+          </Field>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Email"><input className={inputCls} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></Field>
           <Field label="Country"><input className={inputCls} value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} /></Field>
