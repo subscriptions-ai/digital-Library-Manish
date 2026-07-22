@@ -11157,6 +11157,10 @@ async function startServer() {
         hasAccess = checkContentAccess(resolved.item, req.user.role, activeSubs);
       }
       if (!hasAccess) return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
+      if ((resolved.kind === "article" || resolved.kind === "book") && !isAdminRole) {
+        prisma2[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {
+        });
+      }
       if (resolved.kind === "content" && (req.user.role === "Student" || req.user.role === "Subscriber")) {
         try {
           const existing = await prisma2.studentActivity.findFirst({ where: { userId: req.user.uid, contentId: resolved.item.id } });
@@ -12616,14 +12620,17 @@ async function startServer() {
   const getPublisherCounts = async (publisherId, facing = false) => {
     const base = { publisherId };
     if (facing) base.ownershipSource = { not: "Ingested" };
-    const [articles, books, articlesPublished, articlesPending, articlesRejected] = await Promise.all([
+    const [articles, books, articlesPublished, articlesPending, articlesRejected, artReads, bookReads] = await Promise.all([
       prisma2.article.count({ where: { ...base } }),
       prisma2.book.count({ where: { ...base } }),
       prisma2.article.count({ where: { ...base, status: "Published" } }),
       prisma2.article.count({ where: { ...base, status: "Draft" } }),
-      prisma2.article.count({ where: { ...base, status: "Rejected" } })
+      prisma2.article.count({ where: { ...base, status: "Rejected" } }),
+      prisma2.article.aggregate({ where: { ...base }, _sum: { views: true } }),
+      prisma2.book.aggregate({ where: { ...base }, _sum: { views: true } })
     ]);
-    return { articles, books, articlesPublished, articlesPending, articlesRejected };
+    const totalReads = (artReads._sum.views || 0) + (bookReads._sum.views || 0);
+    return { articles, books, articlesPublished, articlesPending, articlesRejected, totalReads };
   };
   const resolvePublisherForUser = async (req) => {
     const uid = req.user?.uid || req.user?.id;

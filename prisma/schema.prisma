@@ -222,6 +222,7 @@ model Article {
   // are never visible to a tied-up publisher.
   ownershipSource String @default("Ingested")       // Ingested | PublisherSubmitted | AdminEntered
   uploadId      String?                            // PublisherUpload batch, if bulk-submitted
+  views         Int      @default(0)               // read count (impact analytics)
 
   createdBy     String?                            // publisher id/email or admin
   createdAt     DateTime @default(now())
@@ -267,6 +268,7 @@ model Book {
 
   ownershipSource String @default("Ingested")       // Ingested | PublisherSubmitted | AdminEntered
   uploadId      String?
+  views         Int      @default(0)               // read count (impact analytics)
 
   createdBy     String?
   createdAt     DateTime @default(now())

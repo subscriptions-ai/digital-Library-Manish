@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Building2, Plus, Search, X, Handshake, Mail, BookOpen, FileText, CheckCircle2, Globe, Settings2, ShieldCheck, CornerDownRight } from 'lucide-react';
+import { Building2, Plus, Search, X, Handshake, Mail, BookOpen, FileText, CheckCircle2, Globe, Settings2, ShieldCheck, CornerDownRight, LayoutGrid, List, Eye } from 'lucide-react';
 import { PublisherDetail } from './PublisherDetail';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -20,9 +20,17 @@ export function PublisherManager() {
   const [addOpen, setAddOpen] = useState(false);
   const [tieUp, setTieUp] = useState<any | null>(null);
   const [manage, setManage] = useState<string | null>(null);
+  const [view, setView] = useState<'table' | 'pipeline'>('table');
   const [busy, setBusy] = useState(false);
 
   const token = () => localStorage.getItem('token');
+
+  const moveStage = async (id: string, tieUpStatus: string) => {
+    setPublishers(ps => ps.map(p => p.id === id ? { ...p, tieUpStatus } : p)); // optimistic
+    try {
+      await fetch(`/api/admin/publishers/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` }, body: JSON.stringify({ tieUpStatus }) });
+    } catch { toast.error('Could not update stage'); fetchData(); }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -80,13 +88,22 @@ export function PublisherManager() {
             </button>
           ))}
         </div>
-        <div className="relative w-full md:w-72">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchData()}
-            placeholder="Search name / email / country..." className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" />
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+            <button onClick={() => setView('table')} title="Table" className={`p-1.5 rounded-lg ${view === 'table' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-700'}`}><List size={15} /></button>
+            <button onClick={() => setView('pipeline')} title="Pipeline" className={`p-1.5 rounded-lg ${view === 'pipeline' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-700'}`}><LayoutGrid size={15} /></button>
+          </div>
+          <div className="relative w-full md:w-72">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchData()}
+              placeholder="Search name / email / country..." className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" />
+          </div>
         </div>
       </div>
 
+      {view === 'pipeline' ? (
+        <PipelineBoard publishers={publishers} loading={loading} onMove={moveStage} onManage={setManage} onTieUp={setTieUp} />
+      ) : (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-sm text-left">
           <thead>
@@ -143,6 +160,7 @@ export function PublisherManager() {
           </tbody>
         </table>
       </div>
+      )}
 
       {addOpen && <AddPublisherModal publishers={publishers} onClose={() => setAddOpen(false)} onSaved={() => { setAddOpen(false); fetchData(); }} />}
       {tieUp && <TieUpModal publisher={tieUp} busy={busy} setBusy={setBusy} onClose={() => setTieUp(null)} onDone={() => { setTieUp(null); fetchData(); }} />}
@@ -250,6 +268,63 @@ function TieUpModal({ publisher, busy, setBusy, onClose, onDone }: any) {
       </div>
       <ModalActions onClose={onClose} onSave={submit} busy={busy} label="Tie Up & Send Invite" />
     </Modal>
+  );
+}
+
+const PIPELINE_STAGES: { key: string; label: string; hint: string; accent: string }[] = [
+  { key: 'Discovered', label: 'Discovered', hint: 'Auto-found, not yet contacted', accent: 'border-t-amber-400' },
+  { key: 'Invited', label: 'Invited', hint: 'Invitation sent', accent: 'border-t-blue-400' },
+  { key: 'Active', label: 'Active', hint: 'Partnership live', accent: 'border-t-emerald-500' },
+  { key: 'Inactive', label: 'Inactive', hint: 'Paused / archived', accent: 'border-t-slate-400' },
+];
+
+function PipelineBoard({ publishers, loading, onMove, onManage, onTieUp }: any) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  if (loading) return <div className="py-16 flex justify-center"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      {PIPELINE_STAGES.map(stage => {
+        const cards = publishers.filter((p: any) => (p.tieUpStatus || 'Discovered') === stage.key);
+        return (
+          <div key={stage.key}
+            onDragOver={e => { e.preventDefault(); setOver(stage.key); }}
+            onDragLeave={() => setOver(o => (o === stage.key ? null : o))}
+            onDrop={() => { if (dragId) onMove(dragId, stage.key); setDragId(null); setOver(null); }}
+            className={`rounded-2xl border-t-4 ${stage.accent} border border-slate-200 bg-slate-50/70 p-3 min-h-[200px] transition-colors ${over === stage.key ? 'ring-2 ring-blue-400 bg-blue-50/50' : ''}`}>
+            <div className="flex items-center justify-between mb-1 px-1">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">{stage.label}</span>
+              <span className="text-[11px] font-bold text-slate-400 bg-white border border-slate-200 rounded-full px-2">{cards.length}</span>
+            </div>
+            <p className="text-[10px] text-slate-400 px-1 mb-3">{stage.hint}</p>
+            <div className="space-y-2">
+              {cards.map((p: any) => (
+                <div key={p.id} draggable onDragStart={() => setDragId(p.id)} onDragEnd={() => { setDragId(null); setOver(null); }}
+                  className="bg-white rounded-xl border border-slate-200 p-3 shadow-sm cursor-grab active:cursor-grabbing hover:border-blue-300">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm text-slate-900 truncate flex items-center gap-1">{p.verified && <ShieldCheck size={12} className="text-emerald-600 shrink-0" />}{p.name}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{p.email || p.country || (p.orgType && p.orgType !== 'Publisher' ? p.orgType : '—')}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 text-[10px] text-slate-500">
+                    <span className="inline-flex items-center gap-0.5"><FileText size={11} className="text-emerald-500" />{p.counts?.articles ?? 0}</span>
+                    <span className="inline-flex items-center gap-0.5"><BookOpen size={11} className="text-indigo-500" />{p.counts?.books ?? 0}</span>
+                    <span className="inline-flex items-center gap-0.5"><Eye size={11} className="text-rose-500" />{(p.counts?.totalReads ?? 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-slate-100">
+                    <button onClick={() => onManage(p.id)} className="flex-1 text-[11px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg py-1">Manage</button>
+                    {stage.key !== 'Active' && <button onClick={() => onTieUp(p)} className="flex-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg py-1">Tie Up</button>}
+                  </div>
+                </div>
+              ))}
+              {cards.length === 0 && <div className="text-center text-[11px] text-slate-300 py-6 border-2 border-dashed border-slate-200 rounded-xl">Drop here</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

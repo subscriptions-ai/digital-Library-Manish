@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   FileText, BookOpen, Plus, X, CheckCircle2, Clock, AlertCircle, Handshake,
-  ExternalLink, FileSignature, UploadCloud, ShieldCheck, PenLine, Layers, Loader2,
+  ExternalLink, FileSignature, UploadCloud, ShieldCheck, PenLine, Layers, Loader2, Eye, TrendingUp,
 } from 'lucide-react';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -93,8 +93,9 @@ export function PublisherDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
+          { label: 'Total Reads', value: (counts.totalReads ?? 0).toLocaleString(), icon: <Eye size={18} className="text-rose-600" />, bg: 'bg-rose-50' },
           { label: 'Articles', value: counts.articles ?? 0, icon: <FileText size={18} className="text-emerald-600" />, bg: 'bg-emerald-50' },
           { label: 'Books', value: counts.books ?? 0, icon: <BookOpen size={18} className="text-indigo-600" />, bg: 'bg-indigo-50' },
           { label: 'Published', value: counts.articlesPublished ?? 0, icon: <CheckCircle2 size={18} className="text-blue-600" />, bg: 'bg-blue-50' },
@@ -157,7 +158,10 @@ function ContentPanel({ articles, books, allowed, onChanged }: any) {
                   )}
                   {r.pdfUrl && <a href={r.pdfUrl} target="_blank" rel="noreferrer" className="text-[11px] text-blue-600 font-semibold inline-flex items-center gap-1 mt-1"><ExternalLink size={11} /> PDF</a>}
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase shrink-0 ${STATUS_BADGE[r.status] || 'bg-slate-100 text-slate-600'}`}>{r.status}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {r.status === 'Published' && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600" title="Reads"><Eye size={12} /> {(r.views ?? 0).toLocaleString()}</span>}
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${STATUS_BADGE[r.status] || 'bg-slate-100 text-slate-600'}`}>{r.status}</span>
+                </div>
               </div>
             ))}
           </div>

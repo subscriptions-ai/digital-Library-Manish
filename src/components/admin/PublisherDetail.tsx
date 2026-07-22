@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   X, Building2, MapPin, Users, FileSignature, Save, Trash2, Send, UploadCloud,
-  ShieldCheck, GitMerge, Plus, Loader2, CheckCircle2, BookOpen, FileText, KeyRound,
+  ShieldCheck, GitMerge, Plus, Loader2, CheckCircle2, BookOpen, FileText, KeyRound, Eye,
 } from 'lucide-react';
 
 const authJson = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -109,8 +109,8 @@ function Overview({ p, allPublishers, reload, onClose }: any) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-3">
-        {[['Articles', p.counts?.articles ?? 0, FileText, 'text-emerald-600'], ['Books', p.counts?.books ?? 0, BookOpen, 'text-indigo-600'], ['Published', p.counts?.articlesPublished ?? 0, CheckCircle2, 'text-blue-600'], ['Pending', p.counts?.articlesPending ?? 0, FileSignature, 'text-amber-600']].map(([l, v, Ic, c]: any) => (
+      <div className="grid grid-cols-5 gap-3">
+        {[['Reads', (p.counts?.totalReads ?? 0).toLocaleString(), Eye, 'text-rose-600'], ['Articles', p.counts?.articles ?? 0, FileText, 'text-emerald-600'], ['Books', p.counts?.books ?? 0, BookOpen, 'text-indigo-600'], ['Published', p.counts?.articlesPublished ?? 0, CheckCircle2, 'text-blue-600'], ['Pending', p.counts?.articlesPending ?? 0, FileSignature, 'text-amber-600']].map(([l, v, Ic, c]: any) => (
           <div key={l} className="bg-white rounded-xl border border-slate-200 p-3 text-center"><Ic size={15} className={`${c} mx-auto mb-1`} /><div className="text-lg font-black text-slate-900">{v}</div><div className="text-[10px] font-bold text-slate-400 uppercase">{l}</div></div>
         ))}
       </div>

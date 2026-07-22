@@ -1665,6 +1665,11 @@ async function startServer() {
       }
       if (!hasAccess) return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
 
+      // Impact analytics: count a read on new-dataset items (skip admin previews)
+      if ((resolved.kind === 'article' || resolved.kind === 'book') && !isAdminRole) {
+        (prisma as any)[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {});
+      }
+
       // Activity logging only for legacy content (StudentActivity.contentId FKs to Content)
       if (resolved.kind === 'content' && (req.user.role === 'Student' || req.user.role === 'Subscriber')) {
         try {
@@ -3390,14 +3395,17 @@ async function startServer() {
   const getPublisherCounts = async (publisherId: string, facing = false) => {
     const base: any = { publisherId };
     if (facing) base.ownershipSource = { not: 'Ingested' };
-    const [articles, books, articlesPublished, articlesPending, articlesRejected] = await Promise.all([
+    const [articles, books, articlesPublished, articlesPending, articlesRejected, artReads, bookReads] = await Promise.all([
       (prisma as any).article.count({ where: { ...base } }),
       (prisma as any).book.count({ where: { ...base } }),
       (prisma as any).article.count({ where: { ...base, status: 'Published' } }),
       (prisma as any).article.count({ where: { ...base, status: 'Draft' } }),
       (prisma as any).article.count({ where: { ...base, status: 'Rejected' } }),
+      (prisma as any).article.aggregate({ where: { ...base }, _sum: { views: true } }),
+      (prisma as any).book.aggregate({ where: { ...base }, _sum: { views: true } }),
     ]);
-    return { articles, books, articlesPublished, articlesPending, articlesRejected };
+    const totalReads = (artReads._sum.views || 0) + (bookReads._sum.views || 0);
+    return { articles, books, articlesPublished, articlesPending, articlesRejected, totalReads };
   };
 
   const resolvePublisherForUser = async (req: any) => {
