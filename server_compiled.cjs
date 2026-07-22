@@ -13275,6 +13275,44 @@ async function startServer() {
       res.status(500).json({ error: "Failed to load analytics" });
     }
   });
+  app.get("/api/admin/notifications", authenticateJWT, requireAdminOrManager, async (_req, res) => {
+    try {
+      const unread = await prisma2.publisherMessage.findMany({
+        where: { sender: "publisher", readAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        include: { publisher: { select: { id: true, name: true } } }
+      });
+      const byPub = {};
+      for (const m2 of unread) {
+        const k = m2.publisherId;
+        if (!byPub[k]) byPub[k] = { publisherId: k, publisherName: m2.publisher?.name || "Publisher", count: 0, preview: m2.body, at: m2.createdAt };
+        byPub[k].count++;
+      }
+      const messages = Object.values(byPub);
+      const [pa, pb] = await Promise.all([
+        prisma2.article.count({ where: { status: "Draft" } }),
+        prisma2.book.count({ where: { status: "Draft" } })
+      ]);
+      const reviewCount = pa + pb;
+      const recent = await prisma2.publisherAgreement.findMany({
+        where: { status: { in: ["Accepted", "Declined"] }, decidedAt: { gte: new Date(Date.now() - 7 * 864e5) } },
+        orderBy: { decidedAt: "desc" },
+        take: 10,
+        include: { publisher: { select: { name: true } } }
+      });
+      res.json({
+        total: unread.length + reviewCount,
+        unreadMessages: unread.length,
+        messages,
+        reviewCount,
+        recentAgreements: recent.map((a) => ({ title: a.title, status: a.status, publisherName: a.publisher?.name, at: a.decidedAt }))
+      });
+    } catch (e2) {
+      console.error("notifications:", e2);
+      res.status(500).json({ error: "Failed to load notifications" });
+    }
+  });
   const articleFingerprint = (doi, title, authors) => {
     if (doi) return `doi:${String(doi).toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, "")}`;
     return `ta:${(title || "").toLowerCase().trim().slice(0, 180)}|${(authors || "").toLowerCase().trim().slice(0, 80)}`;

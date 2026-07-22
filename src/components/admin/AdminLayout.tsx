@@ -442,13 +442,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname.startsWith('/admin/sales-team/') ? 'Executive Pipeline'
               : 'Dashboard')}
           </h1>
-          <button 
-            onClick={handleSignOut}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-          >
-            <LogOut size={16} />
-            <span className="hidden sm:inline">Sign Out</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+            >
+              <LogOut size={16} />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50">
           {children}
@@ -486,5 +489,84 @@ function NavButton({ icon, label, active, collapsed, onClick, danger = false, hi
         </span>
       )}
     </button>
+  );
+}
+
+function NotificationBell() {
+  const navigate = useNavigate();
+  const [data, setData] = useState<any>({ total: 0, messages: [], reviewCount: 0, recentAgreements: [] });
+  const [open, setOpen] = useState(false);
+
+  const load = async () => {
+    try {
+      const r = await fetch('/api/admin/notifications', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      if (r.ok) setData(await r.json());
+    } catch { /* ignore */ }
+  };
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 30000); // poll every 30s
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    const close = () => setOpen(false);
+    if (open) { window.addEventListener('click', close); return () => window.removeEventListener('click', close); }
+  }, [open]);
+
+  const go = (path: string) => { setOpen(false); navigate(path); };
+  const total = data.total || 0;
+
+  return (
+    <div className="relative" onClick={e => e.stopPropagation()}>
+      <button onClick={() => { setOpen(o => !o); load(); }}
+        className="relative p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors">
+        <Bell size={19} />
+        {total > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-[9px] text-white min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center font-bold">
+            {total > 9 ? '9+' : total}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[80] overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <span className="text-sm font-bold text-slate-800">Notifications</span>
+            {total > 0 && <span className="text-[11px] font-bold text-red-500">{total} new</span>}
+          </div>
+          <div className="max-h-96 overflow-y-auto divide-y divide-slate-50">
+            {total === 0 && (data.recentAgreements || []).length === 0 && (
+              <div className="px-4 py-8 text-center text-sm text-slate-400">You're all caught up 🎉</div>
+            )}
+
+            {(data.messages || []).map((m: any) => (
+              <button key={m.publisherId} onClick={() => go('/admin/publishers')} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start gap-3">
+                <MessageSquare size={16} className="text-emerald-600 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-slate-800">{m.publisherName} <span className="text-emerald-600">· {m.count} new message{m.count > 1 ? 's' : ''}</span></div>
+                  <div className="text-[12px] text-slate-500 truncate">{m.preview}</div>
+                </div>
+              </button>
+            ))}
+
+            {data.reviewCount > 0 && (
+              <button onClick={() => go('/admin/review')} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start gap-3">
+                <ClipboardCheck size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                <div><div className="text-sm font-semibold text-slate-800">{data.reviewCount} item{data.reviewCount > 1 ? 's' : ''} awaiting review</div>
+                  <div className="text-[12px] text-slate-500">Publisher submissions pending approval</div></div>
+              </button>
+            )}
+
+            {(data.recentAgreements || []).map((a: any, i: number) => (
+              <button key={i} onClick={() => go('/admin/publishers')} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start gap-3">
+                <Handshake size={16} className={`mt-0.5 shrink-0 ${a.status === 'Accepted' ? 'text-emerald-600' : 'text-red-500'}`} />
+                <div><div className="text-sm font-semibold text-slate-800">{a.publisherName} {a.status === 'Accepted' ? 'signed' : 'declined'} an agreement</div>
+                  <div className="text-[12px] text-slate-500 truncate">{a.title}</div></div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

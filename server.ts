@@ -3982,6 +3982,39 @@ async function startServer() {
     catch (e: any) { res.status(500).json({ error: "Failed to load analytics" }); }
   });
 
+  // --- Admin notifications: unread publisher messages, pending reviews, recent signings ---
+  app.get("/api/admin/notifications", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try {
+      const unread = await (prisma as any).publisherMessage.findMany({
+        where: { sender: 'publisher', readAt: null }, orderBy: { createdAt: 'desc' }, take: 30,
+        include: { publisher: { select: { id: true, name: true } } },
+      });
+      const byPub: Record<string, any> = {};
+      for (const m of unread) {
+        const k = m.publisherId;
+        if (!byPub[k]) byPub[k] = { publisherId: k, publisherName: m.publisher?.name || 'Publisher', count: 0, preview: m.body, at: m.createdAt };
+        byPub[k].count++;
+      }
+      const messages = Object.values(byPub);
+      const [pa, pb] = await Promise.all([
+        (prisma as any).article.count({ where: { status: 'Draft' } }),
+        (prisma as any).book.count({ where: { status: 'Draft' } }),
+      ]);
+      const reviewCount = pa + pb;
+      const recent = await (prisma as any).publisherAgreement.findMany({
+        where: { status: { in: ['Accepted', 'Declined'] }, decidedAt: { gte: new Date(Date.now() - 7 * 86400000) } },
+        orderBy: { decidedAt: 'desc' }, take: 10, include: { publisher: { select: { name: true } } },
+      });
+      res.json({
+        total: unread.length + reviewCount,
+        unreadMessages: unread.length,
+        messages,
+        reviewCount,
+        recentAgreements: recent.map((a: any) => ({ title: a.title, status: a.status, publisherName: a.publisher?.name, at: a.decidedAt })),
+      });
+    } catch (e: any) { console.error("notifications:", e); res.status(500).json({ error: "Failed to load notifications" }); }
+  });
+
   // ==========================================
   // STRUCTURED INGESTION ENGINE (Phase 3C) — free/keyless open-access sources
   // OpenAlex + DOAJ -> new Article/Journal tables + Publisher auto-discovery
