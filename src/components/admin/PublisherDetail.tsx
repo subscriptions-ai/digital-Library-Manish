@@ -3,7 +3,9 @@ import { toast } from 'react-hot-toast';
 import {
   X, Building2, MapPin, Users, FileSignature, Save, Trash2, Send, UploadCloud,
   ShieldCheck, GitMerge, Plus, Loader2, CheckCircle2, BookOpen, FileText, KeyRound, Eye,
+  MessageSquare, TrendingUp, BookmarkPlus,
 } from 'lucide-react';
+import { ReadsTrend, MessagesPanel } from '../publisher/PublisherDashboard';
 
 const authJson = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` });
 const api = async (url: string, method = 'GET', body?: any) => {
@@ -26,7 +28,7 @@ const AG_BADGE: Record<string, string> = {
   Accepted: 'bg-emerald-100 text-emerald-700', Declined: 'bg-red-100 text-red-700',
 };
 
-type Tab = 'overview' | 'locations' | 'contacts' | 'agreements';
+type Tab = 'overview' | 'locations' | 'contacts' | 'agreements' | 'messages';
 
 export function PublisherDetail({ id, allPublishers, onClose, onChanged }: { id: string; allPublishers: any[]; onClose: () => void; onChanged: () => void }) {
   const [p, setP] = useState<any>(null);
@@ -44,6 +46,7 @@ export function PublisherDetail({ id, allPublishers, onClose, onChanged }: { id:
     { k: 'locations', label: 'Locations', icon: MapPin, n: p?.locations?.length },
     { k: 'contacts', label: 'Contacts', icon: Users, n: p?.contacts?.length },
     { k: 'agreements', label: 'Agreements', icon: FileSignature, n: p?.agreements?.length },
+    { k: 'messages', label: 'Messages', icon: MessageSquare },
   ];
 
   return (
@@ -76,7 +79,8 @@ export function PublisherDetail({ id, allPublishers, onClose, onChanged }: { id:
           ) : tab === 'overview' ? <Overview p={p} allPublishers={allPublishers} reload={() => { load(); onChanged(); }} onClose={onClose} />
             : tab === 'locations' ? <Locations p={p} reload={load} />
               : tab === 'contacts' ? <Contacts p={p} reload={load} />
-                : <Agreements p={p} reload={load} />}
+                : tab === 'messages' ? <MessagesPanel side="admin" publisherId={p.id} />
+                  : <Agreements p={p} reload={load} />}
         </div>
       </div>
     </div>
@@ -91,6 +95,8 @@ function Overview({ p, allPublishers, reload, onClose }: any) {
   });
   const [busy, setBusy] = useState(false);
   const [mergeTo, setMergeTo] = useState('');
+  const [an, setAn] = useState<any>(null);
+  useEffect(() => { api(`/api/admin/publishers/${p.id}/analytics?days=30`).then(setAn).catch(() => { }); }, [p.id]);
   const set = (k: string, v: any) => setF((s: any) => ({ ...s, [k]: v }));
   const others = allPublishers.filter((x: any) => x.id !== p.id);
 
@@ -114,6 +120,16 @@ function Overview({ p, allPublishers, reload, onClose }: any) {
           <div key={l} className="bg-white rounded-xl border border-slate-200 p-3 text-center"><Ic size={15} className={`${c} mx-auto mb-1`} /><div className="text-lg font-black text-slate-900">{v}</div><div className="text-[10px] font-bold text-slate-400 uppercase">{l}</div></div>
         ))}
       </div>
+
+      {an && (an.totalReads > 0 || (an.series || []).length > 0) && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500 flex items-center gap-1.5"><TrendingUp size={14} className="text-rose-500" /> Reads · last 30 days</p>
+            <span className="text-sm font-bold text-slate-900">{(an.totalReads ?? 0).toLocaleString()}</span>
+          </div>
+          <ReadsTrend series={an.series || []} />
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
         <Field label="Publisher / Imprint Name"><input className={inputCls} value={f.name} onChange={e => set('name', e.target.value)} /></Field>
@@ -253,7 +269,20 @@ function Agreements({ p, reload }: any) {
   const [creating, setCreating] = useState(false);
   const [f, setF] = useState<any>({ title: '', version: '1.0', body: '', documentUrl: '' });
   const [busy, setBusy] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
   const set = (k: string, v: any) => setF((s: any) => ({ ...s, [k]: v }));
+  const loadTemplates = () => api('/api/admin/agreement-templates').then(setTemplates).catch(() => { });
+  useEffect(() => { loadTemplates(); }, []);
+
+  const applyTemplate = (id: string) => {
+    const t = templates.find(x => x.id === id); if (!t) return;
+    setF({ title: t.title, version: t.version || '1.0', body: t.body || '', documentUrl: '' });
+  };
+  const saveTemplate = async () => {
+    if (!f.title.trim()) { toast.error('Add a title first'); return; }
+    try { await api('/api/admin/agreement-templates', 'POST', { title: f.title, version: f.version, body: f.body }); toast.success('Saved as template'); loadTemplates(); }
+    catch (e: any) { toast.error(e.message); }
+  };
 
   const create = async () => {
     if (!f.title.trim()) { toast.error('Title required'); return; }
@@ -274,6 +303,14 @@ function Agreements({ p, reload }: any) {
 
       {creating && (
         <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+          {templates.length > 0 && (
+            <Field label="Start from template">
+              <select className={inputCls} defaultValue="" onChange={e => { applyTemplate(e.target.value); }}>
+                <option value="">— blank —</option>
+                {templates.map(t => <option key={t.id} value={t.id}>{t.title} (v{t.version})</option>)}
+              </select>
+            </Field>
+          )}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2"><Field label="Title"><input className={inputCls} value={f.title} onChange={e => set('title', e.target.value)} placeholder="Partnership Agreement 2026" /></Field></div>
             <Field label="Version"><input className={inputCls} value={f.version} onChange={e => set('version', e.target.value)} /></Field>
@@ -285,9 +322,12 @@ function Agreements({ p, reload }: any) {
             </label>
           </Field>
           <Field label="Or type the terms (used if no PDF)"><textarea rows={4} className={inputCls} value={f.body} onChange={e => set('body', e.target.value)} placeholder="Partnership terms…" /></Field>
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setCreating(false)} className="px-4 py-2 text-sm font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
-            <button onClick={create} disabled={busy} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50">{busy ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} Create</button>
+          <div className="flex justify-between gap-2">
+            <button onClick={saveTemplate} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50"><BookmarkPlus size={14} /> Save as template</button>
+            <div className="flex gap-2">
+              <button onClick={() => setCreating(false)} className="px-4 py-2 text-sm font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
+              <button onClick={create} disabled={busy} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50">{busy ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} Create</button>
+            </div>
           </div>
         </div>
       )}

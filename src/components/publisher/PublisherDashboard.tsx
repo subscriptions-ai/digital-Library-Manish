@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import {
   FileText, BookOpen, Plus, X, CheckCircle2, Clock, AlertCircle, Handshake,
   ExternalLink, FileSignature, UploadCloud, ShieldCheck, PenLine, Layers, Loader2, Eye, TrendingUp,
+  MessageSquare, Send,
 } from 'lucide-react';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -32,28 +33,31 @@ async function uploadFile(file: File): Promise<string> {
   return d.url;
 }
 
-type Tab = 'content' | 'agreements' | 'share';
+type Tab = 'content' | 'agreements' | 'share' | 'messages';
 
 export function PublisherDashboard() {
   const [me, setMe] = useState<any>(null);
   const [articles, setArticles] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
   const [agreements, setAgreements] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('content');
 
   const load = async () => {
     setLoading(true);
     try {
-      const [meRes, cRes, aRes] = await Promise.all([
+      const [meRes, cRes, aRes, anRes] = await Promise.all([
         fetch('/api/publisher/me', { headers: { Authorization: `Bearer ${token()}` } }),
         fetch('/api/publisher/content', { headers: { Authorization: `Bearer ${token()}` } }),
         fetch('/api/publisher/agreements', { headers: { Authorization: `Bearer ${token()}` } }),
+        fetch('/api/publisher/analytics?days=30', { headers: { Authorization: `Bearer ${token()}` } }),
       ]);
       setMe(await meRes.json());
       const c = await cRes.json();
       setArticles(c.articles || []); setBooks(c.books || []);
       setAgreements(await aRes.json());
+      setAnalytics(await anRes.json());
     } catch { toast.error('Failed to load your workspace'); }
     finally { setLoading(false); }
   };
@@ -66,6 +70,7 @@ export function PublisherDashboard() {
     { k: 'content', label: 'My Content', icon: FileText },
     { k: 'agreements', label: 'Agreements', icon: FileSignature, badge: pendingAgreements.length || undefined },
     { k: 'share', label: 'Share Data', icon: UploadCloud },
+    { k: 'messages', label: 'Messages', icon: MessageSquare },
   ];
 
   return (
@@ -108,6 +113,27 @@ export function PublisherDashboard() {
         ))}
       </div>
 
+      {/* Reads trend */}
+      {analytics && (analytics.totalReads > 0 || (analytics.series || []).length > 0) && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500 flex items-center gap-1.5"><TrendingUp size={14} className="text-rose-500" /> Reads · last 30 days</p>
+            <span className="text-sm font-bold text-slate-900">{(analytics.totalReads ?? 0).toLocaleString()} reads</span>
+          </div>
+          <ReadsTrend series={analytics.series || []} />
+          {(analytics.topArticles || []).length > 0 && (
+            <div className="mt-4 pt-3 border-t border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">Most read</p>
+              <div className="space-y-1">
+                {analytics.topArticles.map((t: any) => (
+                  <div key={t.id} className="flex items-center justify-between text-xs"><span className="text-slate-600 truncate pr-3">{t.title}</span><span className="font-bold text-rose-600 shrink-0 flex items-center gap-1"><Eye size={11} />{t.views}</span></div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
         {TABS.map(t => (
@@ -125,9 +151,80 @@ export function PublisherDashboard() {
         <ContentPanel articles={articles} books={books} allowed={me?.allowedContentTypes || ['Journals', 'Books']} onChanged={load} />
       ) : tab === 'agreements' ? (
         <AgreementsPanel agreements={agreements} me={me} onChanged={load} />
+      ) : tab === 'messages' ? (
+        <MessagesPanel side="publisher" />
       ) : (
         <SharePanel allowed={me?.allowedContentTypes || ['Journals', 'Books']} onChanged={load} />
       )}
+    </div>
+  );
+}
+
+/* ─────────── Reads trend (dependency-free bar chart) ─────────── */
+export function ReadsTrend({ series, days = 30 }: { series: { day: string; reads: number }[]; days?: number }) {
+  const map = new Map((series || []).map(s => [s.day, Number(s.reads)]));
+  const bars = Array.from({ length: days }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (days - 1 - i));
+    const key = d.toISOString().slice(0, 10);
+    return { key, reads: map.get(key) || 0 };
+  });
+  const max = Math.max(1, ...bars.map(b => b.reads));
+  return (
+    <div className="flex items-end gap-[3px] h-24">
+      {bars.map(b => (
+        <div key={b.key} title={`${b.key}: ${b.reads} read${b.reads === 1 ? '' : 's'}`}
+          className="flex-1 bg-rose-400/80 hover:bg-rose-500 rounded-t transition-colors"
+          style={{ height: `${(b.reads / max) * 100}%`, minHeight: b.reads ? '4px' : '2px', opacity: b.reads ? 1 : 0.25 }} />
+      ))}
+    </div>
+  );
+}
+
+/* ─────────── Messages (shared: publisher & admin) ─────────── */
+export function MessagesPanel({ side, publisherId }: { side: 'publisher' | 'admin'; publisherId?: string }) {
+  const [msgs, setMsgs] = useState<any[]>([]);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const base = side === 'publisher' ? '/api/publisher/messages' : `/api/admin/publishers/${publisherId}/messages`;
+  const load = async () => {
+    try { const r = await fetch(base, { headers: { Authorization: `Bearer ${token()}` } }); setMsgs(await r.json()); } catch { /* ignore */ }
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [publisherId]);
+  const send = async () => {
+    if (!text.trim()) return;
+    setBusy(true);
+    try {
+      const r = await fetch(base, { method: 'POST', headers: authJson(), body: JSON.stringify({ body: text.trim() }) });
+      if (!r.ok) throw new Error((await r.json()).error || 'Failed');
+      setText(''); load();
+    } catch (e: any) { toast.error(e.message || 'Failed to send'); } finally { setBusy(false); }
+  };
+  const mine = side; // messages I sent have sender === side
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[26rem]">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {msgs.length === 0 && <p className="text-center text-sm text-slate-400 py-10">No messages yet. Say hello 👋</p>}
+        {msgs.map(m => {
+          const isMine = m.sender === mine;
+          return (
+            <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${isMine ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800'}`}>
+                <div className="text-[10px] font-bold opacity-70 mb-0.5">{isMine ? 'You' : (m.senderName || (m.sender === 'admin' ? 'STM Team' : 'Publisher'))}</div>
+                <div className="text-sm whitespace-pre-wrap break-words">{m.body}</div>
+                <div className={`text-[9px] mt-1 flex items-center gap-1 ${isMine ? 'text-white/70 justify-end' : 'text-slate-400'}`}>
+                  {new Date(m.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {isMine && (m.readAt ? <CheckCircle2 size={10} /> : <Clock size={10} />)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="p-3 border-t border-slate-100 flex gap-2">
+        <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
+          placeholder="Type a message…" className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+        <button onClick={send} disabled={busy || !text.trim()} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl disabled:opacity-40"><Send size={15} /></button>
+      </div>
     </div>
   );
 }

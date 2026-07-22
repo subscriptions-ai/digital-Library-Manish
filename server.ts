@@ -1668,6 +1668,7 @@ async function startServer() {
       // Impact analytics: count a read on new-dataset items (skip admin previews)
       if ((resolved.kind === 'article' || resolved.kind === 'book') && !isAdminRole) {
         (prisma as any)[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {});
+        (prisma as any).readEvent.create({ data: { itemType: resolved.kind, itemId: resolved.item.id, publisherId: (resolved.item as any).publisherId || null, userId: req.user.uid } }).catch(() => {});
       }
 
       // Activity logging only for legacy content (StudentActivity.contentId FKs to Content)
@@ -3907,6 +3908,78 @@ async function startServer() {
       const r = await (prisma as any)[model].updateMany({ where: { id: { in: ids } }, data });
       res.json({ ok: true, count: r.count });
     } catch (e: any) { res.status(500).json({ error: "Bulk review failed" }); }
+  });
+
+  // --- Agreement templates (reuse) ---
+  app.get("/api/admin/agreement-templates", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try { res.json(await (prisma as any).agreementTemplate.findMany({ orderBy: { createdAt: 'desc' } })); }
+    catch (e: any) { res.status(500).json({ error: "Failed to load templates" }); }
+  });
+  app.post("/api/admin/agreement-templates", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { title, version, body } = req.body;
+      if (!title) return res.status(400).json({ error: "Template title required" });
+      res.json(await (prisma as any).agreementTemplate.create({ data: { title, version: version || '1.0', body: body || null, createdBy: req.user?.email || 'Admin' } }));
+    } catch (e: any) { res.status(500).json({ error: "Failed to save template" }); }
+  });
+  app.delete("/api/admin/agreement-templates/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { await (prisma as any).agreementTemplate.delete({ where: { id: req.params.id } }); res.json({ ok: true }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to delete template" }); }
+  });
+
+  // --- Messaging (admin ↔ publisher) with read receipts ---
+  app.get("/api/admin/publishers/:id/messages", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const msgs = await (prisma as any).publisherMessage.findMany({ where: { publisherId: req.params.id }, orderBy: { createdAt: 'asc' } });
+      // admin has now read the publisher's messages → receipt for the publisher
+      await (prisma as any).publisherMessage.updateMany({ where: { publisherId: req.params.id, sender: 'publisher', readAt: null }, data: { readAt: new Date() } });
+      res.json(msgs);
+    } catch (e: any) { res.status(500).json({ error: "Failed to load messages" }); }
+  });
+  app.post("/api/admin/publishers/:id/messages", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const { body, attachmentUrl } = req.body;
+      if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
+      res.json(await (prisma as any).publisherMessage.create({ data: { publisherId: req.params.id, sender: 'admin', senderName: req.user?.email || 'STM Team', body: body || '', attachmentUrl: attachmentUrl || null } }));
+    } catch (e: any) { res.status(500).json({ error: "Failed to send" }); }
+  });
+  app.get("/api/publisher/messages", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.json([]);
+      const msgs = await (prisma as any).publisherMessage.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: 'asc' } });
+      await (prisma as any).publisherMessage.updateMany({ where: { publisherId: publisher.id, sender: 'admin', readAt: null }, data: { readAt: new Date() } });
+      res.json(msgs);
+    } catch (e: any) { res.status(500).json({ error: "Failed to load messages" }); }
+  });
+  app.post("/api/publisher/messages", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.status(404).json({ error: "No publisher profile" });
+      const { body, attachmentUrl } = req.body;
+      if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
+      res.json(await (prisma as any).publisherMessage.create({ data: { publisherId: publisher.id, sender: 'publisher', senderName: publisher.name, body: body || '', attachmentUrl: attachmentUrl || null } }));
+    } catch (e: any) { res.status(500).json({ error: "Failed to send" }); }
+  });
+
+  // --- Reads analytics (time-series + top items) ---
+  const readAnalytics = async (publisherId: string, days = 30) => {
+    const since = new Date(Date.now() - days * 86400000);
+    const series: any[] = await (prisma as any).$queryRaw`SELECT to_char(date_trunc('day', "at"), 'YYYY-MM-DD') as day, count(*)::int as reads FROM "ReadEvent" WHERE "publisherId" = ${publisherId} AND "at" >= ${since} GROUP BY 1 ORDER BY 1`;
+    const topArticles = await (prisma as any).article.findMany({ where: { publisherId, ownershipSource: { not: 'Ingested' }, views: { gt: 0 } }, orderBy: { views: 'desc' }, take: 5, select: { id: true, title: true, views: true } });
+    const totalReads = series.reduce((s: number, r: any) => s + Number(r.reads), 0);
+    return { days, series, topArticles, totalReads };
+  };
+  app.get("/api/publisher/analytics", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.json({ series: [], topArticles: [], totalReads: 0 });
+      res.json(await readAnalytics(publisher.id, Math.min(parseInt(req.query.days) || 30, 120)));
+    } catch (e: any) { console.error("pub analytics:", e); res.status(500).json({ error: "Failed to load analytics" }); }
+  });
+  app.get("/api/admin/publishers/:id/analytics", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await readAnalytics(req.params.id, Math.min(parseInt(req.query.days) || 30, 120))); }
+    catch (e: any) { res.status(500).json({ error: "Failed to load analytics" }); }
   });
 
   // ==========================================

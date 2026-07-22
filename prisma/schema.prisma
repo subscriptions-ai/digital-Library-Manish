@@ -63,6 +63,7 @@ model Publisher {
   contacts      PublisherContact[]
   agreements    PublisherAgreement[]
   uploads       PublisherUpload[]
+  messages      PublisherMessage[]
 
   @@index([name])
   @@index([tieUpStatus])
@@ -134,6 +135,44 @@ model PublisherAgreement {
 
   @@index([publisherId])
   @@index([status])
+}
+
+// Reusable agreement templates the admin can start a new agreement from.
+model AgreementTemplate {
+  id        String   @id @default(uuid())
+  title     String
+  version   String?  @default("1.0")
+  body      String?  @db.Text
+  createdBy String?
+  createdAt DateTime @default(now())
+}
+
+// Two-way message thread between the STM team and a publisher (with read receipts).
+model PublisherMessage {
+  id            String   @id @default(uuid())
+  publisher     Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  publisherId   String
+  sender        String                             // 'admin' | 'publisher'
+  senderName    String?
+  body          String   @db.Text
+  attachmentUrl String?
+  readAt        DateTime?                           // when the other party read it (receipt)
+  createdAt     DateTime @default(now())
+
+  @@index([publisherId])
+}
+
+// One row per read of a new-dataset item — powers the reads time-series.
+model ReadEvent {
+  id          String   @id @default(uuid())
+  itemType    String                               // 'article' | 'book'
+  itemId      String
+  publisherId String?
+  userId      String?
+  at          DateTime @default(now())
+
+  @@index([publisherId, at])
+  @@index([at])
 }
 
 // Tracks each bulk data-sharing batch a publisher (or admin) submits.

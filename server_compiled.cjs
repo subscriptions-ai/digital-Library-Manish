@@ -11160,6 +11160,8 @@ async function startServer() {
       if ((resolved.kind === "article" || resolved.kind === "book") && !isAdminRole) {
         prisma2[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {
         });
+        prisma2.readEvent.create({ data: { itemType: resolved.kind, itemId: resolved.item.id, publisherId: resolved.item.publisherId || null, userId: req.user.uid } }).catch(() => {
+        });
       }
       if (resolved.kind === "content" && (req.user.role === "Student" || req.user.role === "Subscriber")) {
         try {
@@ -13183,6 +13185,94 @@ async function startServer() {
       res.json({ ok: true, count: r2.count });
     } catch (e2) {
       res.status(500).json({ error: "Bulk review failed" });
+    }
+  });
+  app.get("/api/admin/agreement-templates", authenticateJWT, requireAdminOrManager, async (_req, res) => {
+    try {
+      res.json(await prisma2.agreementTemplate.findMany({ orderBy: { createdAt: "desc" } }));
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to load templates" });
+    }
+  });
+  app.post("/api/admin/agreement-templates", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { title, version, body } = req.body;
+      if (!title) return res.status(400).json({ error: "Template title required" });
+      res.json(await prisma2.agreementTemplate.create({ data: { title, version: version || "1.0", body: body || null, createdBy: req.user?.email || "Admin" } }));
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to save template" });
+    }
+  });
+  app.delete("/api/admin/agreement-templates/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      await prisma2.agreementTemplate.delete({ where: { id: req.params.id } });
+      res.json({ ok: true });
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to delete template" });
+    }
+  });
+  app.get("/api/admin/publishers/:id/messages", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const msgs = await prisma2.publisherMessage.findMany({ where: { publisherId: req.params.id }, orderBy: { createdAt: "asc" } });
+      await prisma2.publisherMessage.updateMany({ where: { publisherId: req.params.id, sender: "publisher", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
+      res.json(msgs);
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to load messages" });
+    }
+  });
+  app.post("/api/admin/publishers/:id/messages", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { body, attachmentUrl } = req.body;
+      if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
+      res.json(await prisma2.publisherMessage.create({ data: { publisherId: req.params.id, sender: "admin", senderName: req.user?.email || "STM Team", body: body || "", attachmentUrl: attachmentUrl || null } }));
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to send" });
+    }
+  });
+  app.get("/api/publisher/messages", authenticateJWT, requirePublisher, async (req, res) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.json([]);
+      const msgs = await prisma2.publisherMessage.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "asc" } });
+      await prisma2.publisherMessage.updateMany({ where: { publisherId: publisher.id, sender: "admin", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
+      res.json(msgs);
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to load messages" });
+    }
+  });
+  app.post("/api/publisher/messages", authenticateJWT, requirePublisher, async (req, res) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.status(404).json({ error: "No publisher profile" });
+      const { body, attachmentUrl } = req.body;
+      if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
+      res.json(await prisma2.publisherMessage.create({ data: { publisherId: publisher.id, sender: "publisher", senderName: publisher.name, body: body || "", attachmentUrl: attachmentUrl || null } }));
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to send" });
+    }
+  });
+  const readAnalytics = async (publisherId, days = 30) => {
+    const since = new Date(Date.now() - days * 864e5);
+    const series = await prisma2.$queryRaw`SELECT to_char(date_trunc('day', "at"), 'YYYY-MM-DD') as day, count(*)::int as reads FROM "ReadEvent" WHERE "publisherId" = ${publisherId} AND "at" >= ${since} GROUP BY 1 ORDER BY 1`;
+    const topArticles = await prisma2.article.findMany({ where: { publisherId, ownershipSource: { not: "Ingested" }, views: { gt: 0 } }, orderBy: { views: "desc" }, take: 5, select: { id: true, title: true, views: true } });
+    const totalReads = series.reduce((s2, r2) => s2 + Number(r2.reads), 0);
+    return { days, series, topArticles, totalReads };
+  };
+  app.get("/api/publisher/analytics", authenticateJWT, requirePublisher, async (req, res) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.json({ series: [], topArticles: [], totalReads: 0 });
+      res.json(await readAnalytics(publisher.id, Math.min(parseInt(req.query.days) || 30, 120)));
+    } catch (e2) {
+      console.error("pub analytics:", e2);
+      res.status(500).json({ error: "Failed to load analytics" });
+    }
+  });
+  app.get("/api/admin/publishers/:id/analytics", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      res.json(await readAnalytics(req.params.id, Math.min(parseInt(req.query.days) || 30, 120)));
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to load analytics" });
     }
   });
   const articleFingerprint = (doi, title, authors) => {
