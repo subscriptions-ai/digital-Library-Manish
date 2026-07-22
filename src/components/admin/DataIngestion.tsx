@@ -4,14 +4,17 @@ import { DOMAINS } from '../../constants';
 import { Download, Play, Eye, Loader2, Database, CheckCircle2 } from 'lucide-react';
 
 const SOURCES = [
-  { id: 'openalex', label: 'OpenAlex', hint: 'Broad OA aggregator (journals, publisher & ISSN tagged)' },
-  { id: 'doaj', label: 'DOAJ', hint: 'Directory of Open Access Journals' },
+  { id: 'openalex', label: 'OpenAlex', hint: 'Broad — full journal, ISSN, volume & issue metadata' },
+  { id: 'doaj', label: 'DOAJ', hint: 'Open-access journals — journal, ISSN, volume & issue' },
+  { id: 'europepmc', label: 'Europe PMC', hint: 'Journal structure + OA full text (medical / life sciences strong)' },
+  { id: 'arxiv', label: 'arXiv', hint: 'Direct in-app PDFs, but preprints (no journal/ISSN/volume)' },
 ];
 
 export function DataIngestion() {
   const deptNames = DOMAINS.map((d: any) => d.name);
   const [selected, setSelected] = useState<string[]>([]);
   const [source, setSource] = useState('openalex');
+  const [validatePdf, setValidatePdf] = useState(true);
   const [perDept, setPerDept] = useState(25);
   const [running, setRunning] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -28,7 +31,7 @@ export function DataIngestion() {
     try {
       const res = await fetch('/api/admin/ingest/preview', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ source, departments: selected, perDept: Math.min(perDept, 10) }),
+        body: JSON.stringify({ source, departments: selected, perDept: Math.min(perDept, 10), trustedHostsOnly: validatePdf }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Preview failed');
@@ -44,13 +47,29 @@ export function DataIngestion() {
     try {
       const res = await fetch('/api/admin/ingest/run', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ source, departments: selected, perDept }),
+        body: JSON.stringify({ source, departments: selected, perDept, validatePdf, trustedHostsOnly: validatePdf }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Ingestion failed');
-      setSummary(data);
-      toast.success(`Ingested ${data.inserted} new articles (${data.duplicates} dupes skipped)`);
-    } catch (e: any) { toast.error(e.message || 'Ingestion failed'); } finally { setRunning(false); }
+      if (!data.jobId) { setSummary(data); setRunning(false); return; } // legacy sync fallback
+      setSummary({ ...data, status: 'running' });
+      toast.success('Ingestion started — running in the background');
+      // poll for live progress
+      const jobId = data.jobId;
+      const poll = async () => {
+        try {
+          const s = await fetch(`/api/admin/ingest/status/${jobId}`, { headers: { Authorization: `Bearer ${token()}` } });
+          const sd = await s.json();
+          if (!s.ok) throw new Error(sd.error || 'Lost job');
+          setSummary(sd);
+          if (sd.status === 'running') { setTimeout(poll, 2000); return; }
+          setRunning(false);
+          if (sd.status === 'done') toast.success(`Done: ${sd.inserted} new articles (${sd.duplicates} dupes, ${sd.skippedUnopenable} skipped)`);
+          else toast.error(sd.error || 'Ingestion failed');
+        } catch (e: any) { setRunning(false); toast.error(e.message || 'Lost track of job'); }
+      };
+      setTimeout(poll, 2000);
+    } catch (e: any) { toast.error(e.message || 'Ingestion failed'); setRunning(false); }
   };
 
   const exportCsv = () => {
@@ -104,9 +123,13 @@ export function DataIngestion() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-wrap items-end gap-4">
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Items / department</label>
-          <input type="number" min={1} max={100} value={perDept} onChange={e => setPerDept(parseInt(e.target.value) || 1)}
+          <input type="number" min={1} max={300} value={perDept} onChange={e => setPerDept(parseInt(e.target.value) || 1)}
             className="w-28 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
         </div>
+        <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
+          <input type="checkbox" checked={validatePdf} onChange={e => setValidatePdf(e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
+          Only trusted open-access publishers <span className="text-slate-400">(recommended — direct PDFs that open in the viewer; skips landing pages & Cloudflare-blocked sites)</span>
+        </label>
         <div className="flex gap-2 ml-auto">
           <button onClick={runPreview} disabled={previewing || running}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl disabled:opacity-50">
@@ -123,15 +146,22 @@ export function DataIngestion() {
         </div>
       </div>
 
-      {/* Summary */}
+      {/* Summary / live progress */}
       {summary && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
-          <p className="font-bold text-emerald-800 flex items-center gap-2 mb-3"><CheckCircle2 size={18} /> Ingestion Complete</p>
+        <div className={`border rounded-2xl p-5 ${summary.status === 'running' ? 'bg-blue-50 border-blue-200' : summary.status === 'error' ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+          <p className={`font-bold flex items-center gap-2 mb-3 ${summary.status === 'running' ? 'text-blue-800' : summary.status === 'error' ? 'text-red-800' : 'text-emerald-800'}`}>
+            {summary.status === 'running'
+              ? <><Loader2 size={18} className="animate-spin" /> Ingesting… {summary.currentDept ? `(${summary.currentDept})` : ''}</>
+              : summary.status === 'error'
+                ? <>Ingestion failed — {summary.error}</>
+                : <><CheckCircle2 size={18} /> Ingestion Complete</>}
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-            {[['Fetched', summary.fetched], ['Inserted', summary.inserted], ['Duplicates skipped', summary.duplicates], ['Failed', summary.failed], ['Publishers found', summary.publishersDiscovered]].map(([l, v]: any) => (
-              <div key={l}><div className="text-2xl font-black text-slate-900">{v}</div><div className="text-[11px] font-bold text-slate-500 uppercase">{l}</div></div>
+            {[['Fetched', summary.fetched], ['Inserted', summary.inserted], ['Duplicates', summary.duplicates], ['Skipped (unopenable)', summary.skippedUnopenable ?? 0], ['Publishers', summary.publishersDiscovered]].map(([l, v]: any) => (
+              <div key={l}><div className="text-2xl font-black text-slate-900">{v ?? 0}</div><div className="text-[11px] font-bold text-slate-500 uppercase">{l}</div></div>
             ))}
           </div>
+          {summary.status === 'running' && <p className="text-[11px] text-blue-600 mt-3">Running in the background — you can leave this page; numbers update live.</p>}
         </div>
       )}
 

@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
+  ExternalLink,
   ChevronLeft,
   ChevronRight,
   ZoomIn,
@@ -584,14 +585,20 @@ export function ProtectedContentViewer() {
         className="flex-1 overflow-y-auto overflow-x-auto"
         style={{ scrollBehavior: 'smooth' }}
       >
-        {/* PDF Error */}
+        {/* PDF Error — offer to read on the publisher's site (browser can open what our server can't) */}
         {pdfError && !iframeFallback && (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 space-y-4">
-            <AlertCircle size={56} className="text-rose-500 mb-2" />
-            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">Content Temporarily Unavailable</h2>
+            <AlertCircle size={56} className="text-amber-500 mb-2" />
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">This article opens on the publisher's site</h2>
             <p className="text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
-              {pdfError}
+              The full text is hosted externally and can't be embedded here. Open it directly to read.
             </p>
+            {content?.url && (
+              <a href={content.url} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-colors">
+                <ExternalLink size={17} /> Open Full Text
+              </a>
+            )}
           </div>
         )}
 
@@ -658,12 +665,23 @@ export function ProtectedContentViewer() {
 
         {/* Iframe Fallback Viewer for web content */}
         {iframeFallback && !isVideo && (
-          <iframe 
-            src={`/api/content/${id}/proxy-frame?token=${localStorage.getItem('token')}`} 
-            className="w-full h-[85vh] border-0 bg-white" 
-            title={content.title}
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-          />
+          <div>
+            {content?.url && (
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs">
+                <span className="text-slate-500 dark:text-slate-400">Can't see the document below?</span>
+                <a href={content.url} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold">
+                  <ExternalLink size={13} /> Open Full Text
+                </a>
+              </div>
+            )}
+            <iframe
+              src={`/api/content/${id}/proxy-frame?token=${localStorage.getItem('token')}`}
+              className="w-full h-[82vh] border-0 bg-white"
+              title={content.title}
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+            />
+          </div>
         )}
       </div>
 

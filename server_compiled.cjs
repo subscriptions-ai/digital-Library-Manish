@@ -12905,43 +12905,91 @@ async function startServer() {
       return prisma2.journal.findUnique({ where: { issn } });
     }
   };
-  async function fetchOpenAlex(department, perDept) {
+  const TRUSTED_PDF_HOSTS = [
+    "arxiv.org",
+    "biorxiv.org",
+    "medrxiv.org",
+    "biomedcentral.com",
+    // all BMC journals (*.biomedcentral.com) — verified
+    "journals.plos.org",
+    "plos.org",
+    "frontiersin.org",
+    "elifesciences.org",
+    "peerj.com",
+    "nature.com",
+    // OA articles — verified
+    "escholarship.org",
+    // UC repository — verified
+    "f1000research.com",
+    "wellcomeopenresearch.org",
+    "gatesopenresearch.org",
+    "dovepress.com",
+    "copernicus.org",
+    // *.copernicus.org (ACP, ESSD, etc.)
+    "mdpi-res.com",
+    // MDPI's asset CDN (mdpi.com itself is blocked)
+    "ojs.",
+    "jstage.jst.go.jp",
+    "scielo.br",
+    "scielo.org"
+  ];
+  function isTrustedPdfHost(url) {
+    if (!url) return false;
+    try {
+      const h2 = new URL(url).hostname.replace(/^www\./, "");
+      return TRUSTED_PDF_HOSTS.some((t2) => h2 === t2 || h2.endsWith("." + t2) || h2.endsWith(t2) || h2.includes(t2));
+    } catch {
+      return false;
+    }
+  }
+  const mapOpenAlexWork = (w) => {
+    const src = w.primary_location?.source || {};
+    return {
+      title: w.title || w.display_name || "Untitled",
+      authors: (w.authorships || []).map((a) => a.author?.display_name).filter(Boolean).join(", "),
+      doi: w.doi || null,
+      pdfUrl: w.best_oa_location?.pdf_url || w.open_access?.oa_url || null,
+      journalName: src.display_name || null,
+      issn: src.issn_l || src.issn && src.issn[0] || null,
+      publisherName: src.host_organization_name || null,
+      volume: w.biblio?.volume || null,
+      issue: w.biblio?.issue || null,
+      year: w.publication_year || null,
+      subject: (w.concepts || [])[0]?.display_name || null,
+      openAccess: !!w.open_access?.is_oa,
+      source: "OpenAlex"
+    };
+  };
+  async function fetchOpenAlex(department, perDept, trustedOnly = false) {
     const out = [];
-    const perPage = 50;
-    const pages = Math.max(1, Math.ceil(perDept / perPage));
-    for (let page = 1; page <= pages; page++) {
-      const url = `https://api.openalex.org/works?search=${encodeURIComponent(department)}&filter=has_doi:true,open_access.is_oa:true&per-page=${perPage}&page=${page}`;
+    const perPage = 200;
+    let cursor = "*";
+    const maxPages = trustedOnly ? 30 : Math.max(1, Math.ceil(perDept / perPage));
+    for (let page = 0; page < maxPages; page++) {
+      const url = `https://api.openalex.org/works?search=${encodeURIComponent(department)}&filter=has_doi:true,open_access.is_oa:true,primary_location.source.type:journal&per-page=${perPage}&cursor=${encodeURIComponent(cursor)}`;
       const r2 = await fetch(url);
       const d = await r2.json();
-      if (!d?.results?.length) break;
-      out.push(...d.results);
+      const results = d?.results || [];
+      if (!results.length) break;
+      for (const w of results) {
+        const m2 = mapOpenAlexWork(w);
+        if (!m2.pdfUrl) continue;
+        if (trustedOnly && !isTrustedPdfHost(m2.pdfUrl)) continue;
+        out.push(m2);
+        if (out.length >= perDept) break;
+      }
       if (out.length >= perDept) break;
+      cursor = d?.meta?.next_cursor;
+      if (!cursor) break;
     }
-    return out.slice(0, perDept).map((w) => {
-      const src = w.primary_location?.source || {};
-      return {
-        title: w.title || w.display_name || "Untitled",
-        authors: (w.authorships || []).map((a) => a.author?.display_name).filter(Boolean).join(", "),
-        doi: w.doi || null,
-        pdfUrl: w.best_oa_location?.pdf_url || w.open_access?.oa_url || null,
-        journalName: src.display_name || null,
-        issn: src.issn_l || src.issn && src.issn[0] || null,
-        publisherName: src.host_organization_name || null,
-        volume: w.biblio?.volume || null,
-        issue: w.biblio?.issue || null,
-        year: w.publication_year || null,
-        subject: (w.concepts || [])[0]?.display_name || null,
-        openAccess: !!w.open_access?.is_oa,
-        source: "OpenAlex"
-      };
-    }).filter((x2) => x2.pdfUrl);
+    return out.slice(0, perDept);
   }
-  async function fetchDOAJ(department, perDept) {
-    const url = `https://doaj.org/api/search/articles/${encodeURIComponent(department)}?pageSize=${Math.min(perDept, 100)}`;
+  async function fetchDOAJ(department, perDept, trustedOnly = false) {
+    const url = `https://doaj.org/api/search/articles/${encodeURIComponent(department)}?pageSize=${Math.min(perDept * (trustedOnly ? 5 : 1), 100)}`;
     const r2 = await fetch(url);
     const d = await r2.json();
     const results = d?.results || [];
-    return results.slice(0, perDept).map((rec) => {
+    const mapped = results.map((rec) => {
       const b = rec.bibjson || {};
       const ids = b.identifier || [];
       const issnObj = ids.find((i2) => i2.type === "eissn") || ids.find((i2) => i2.type === "pissn");
@@ -12962,50 +13010,150 @@ async function startServer() {
         source: "DOAJ"
       };
     }).filter((x2) => x2.pdfUrl || x2.doi);
+    return (trustedOnly ? mapped.filter((x2) => isTrustedPdfHost(x2.pdfUrl)) : mapped).slice(0, perDept);
   }
-  const fetchForDept = (source, dept, limit) => source === "doaj" ? fetchDOAJ(dept, limit) : fetchOpenAlex(dept, limit);
+  async function fetchArxiv(department, perDept) {
+    const q = encodeURIComponent(department);
+    const url = `http://export.arxiv.org/api/query?search_query=all:${q}&start=0&max_results=${Math.min(perDept, 50)}&sortBy=submittedDate&sortOrder=descending`;
+    const r2 = await fetch(url);
+    const xml = await r2.text();
+    const entries = xml.split("<entry>").slice(1);
+    return entries.map((e2) => {
+      const get = (tag) => {
+        const m2 = e2.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
+        return m2 ? m2[1].replace(/\s+/g, " ").trim() : "";
+      };
+      const arxivId = (get("id").split("/abs/")[1] || "").replace(/v\d+$/, "");
+      const published = get("published");
+      return {
+        title: get("title") || "Untitled",
+        authors: [...e2.matchAll(/<name>([\s\S]*?)<\/name>/g)].map((m2) => m2[1].trim()).join(", "),
+        doi: get("arxiv:doi") || null,
+        pdfUrl: arxivId ? `https://arxiv.org/pdf/${arxivId}` : null,
+        journalName: get("arxiv:journal_ref") || "arXiv",
+        issn: null,
+        publisherName: "arXiv",
+        volume: null,
+        issue: null,
+        year: published ? parseInt(published.slice(0, 4)) : null,
+        subject: null,
+        openAccess: true,
+        source: "arXiv"
+      };
+    }).filter((a) => a.pdfUrl);
+  }
+  const PDF_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  async function isFetchablePdf(url) {
+    if (!url) return false;
+    try {
+      const nodeFetch = (await Promise.resolve().then(() => (init_src(), src_exports))).default;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12e3);
+      const res = await nodeFetch(url, {
+        method: "GET",
+        headers: { "User-Agent": PDF_UA, "Accept": "application/pdf,*/*", "Range": "bytes=0-2047" },
+        redirect: "follow",
+        signal: ctrl.signal
+      });
+      clearTimeout(timer);
+      if (res.status >= 400) return false;
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      if (ct.includes("application/pdf")) return true;
+      if (ct.includes("text/html")) return false;
+      const buf = Buffer.from(await res.arrayBuffer());
+      return buf.slice(0, 5).toString("latin1").startsWith("%PDF");
+    } catch {
+      return false;
+    }
+  }
+  async function fetchEuropePMC(department, perDept) {
+    const q = encodeURIComponent(`${department} AND OPEN_ACCESS:Y`);
+    const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${q}&format=json&pageSize=${Math.min(perDept, 50)}&resultType=core`;
+    const r2 = await fetch(url);
+    const d = await r2.json();
+    const results = d?.resultList?.result || [];
+    return results.map((x2) => {
+      const ji = x2.journalInfo || {};
+      const j = ji.journal || {};
+      const urls = x2.fullTextUrlList?.fullTextUrl || [];
+      const pdf = urls.find((u) => u.documentStyle === "pdf");
+      const html = urls.find((u) => u.documentStyle === "html");
+      const readUrl = pdf?.url || html?.url || (x2.pmcid ? `https://europepmc.org/article/PMC/${x2.pmcid}` : x2.doi ? `https://doi.org/${x2.doi}` : null);
+      return {
+        title: x2.title || "Untitled",
+        authors: x2.authorString || null,
+        doi: x2.doi || null,
+        pdfUrl: readUrl,
+        journalName: j.title || null,
+        issn: j.issn || j.essn || null,
+        publisherName: null,
+        volume: ji.volume || null,
+        issue: ji.issue || null,
+        year: ji.yearOfPublication ? parseInt(ji.yearOfPublication) : x2.pubYear ? parseInt(x2.pubYear) : null,
+        subject: null,
+        openAccess: true,
+        source: "EuropePMC"
+      };
+    }).filter((a) => a.title && a.pdfUrl);
+  }
+  const fetchForDept = (source, dept, limit, trustedOnly = false) => source === "doaj" ? fetchDOAJ(dept, limit, trustedOnly) : source === "arxiv" ? fetchArxiv(dept, limit) : source === "europepmc" ? fetchEuropePMC(dept, limit) : fetchOpenAlex(dept, limit, trustedOnly);
+  async function keepOpenable(items, concurrency = 12) {
+    const kept = [];
+    let skipped = 0;
+    for (let i2 = 0; i2 < items.length; i2 += concurrency) {
+      const batch = items.slice(i2, i2 + concurrency);
+      const oks = await Promise.all(batch.map((it) => isFetchablePdf(it.pdfUrl)));
+      batch.forEach((it, j) => oks[j] ? kept.push(it) : skipped++);
+    }
+    return { kept, skipped };
+  }
   app.post("/api/admin/ingest/preview", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { source = "openalex", departments = [], perDept = 10 } = req.body;
       if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department" });
+      const trustedOnly = req.body.trustedHostsOnly !== false && (source === "openalex" || source === "doaj");
       const limit = Math.min(Math.max(parseInt(perDept) || 10, 1), 50);
       const items = [];
       for (const dept of departments) {
         try {
-          const got = await fetchForDept(source, dept, limit);
+          const got = await fetchForDept(source, dept, limit, trustedOnly);
           items.push(...got.map((x2) => ({ ...x2, department: dept })));
         } catch (e2) {
           console.error(`Preview fetch [${source}/${dept}]`, e2);
         }
       }
-      res.json({ source, count: items.length, items });
+      res.json({ source, trustedOnly, count: items.length, items });
     } catch (e2) {
       console.error("Ingest preview error:", e2);
       res.status(500).json({ error: "Preview failed" });
     }
   });
-  app.post("/api/admin/ingest/run", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  const ingestJobs = /* @__PURE__ */ new Map();
+  async function processIngestJob(job, req) {
+    const { source, departments, limit, validate, trustedOnly } = job.params;
+    const publishersTouched = /* @__PURE__ */ new Set();
     try {
-      const { source = "openalex", departments = [], perDept = 25 } = req.body;
-      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department" });
-      const limit = Math.min(Math.max(parseInt(perDept) || 25, 1), 100);
-      let fetched = 0, inserted = 0, duplicates = 0, failed = 0;
-      const publishersTouched = /* @__PURE__ */ new Set();
       for (const dept of departments) {
+        job.currentDept = dept;
         let items = [];
         try {
-          items = await fetchForDept(source, dept, limit);
+          items = await fetchForDept(source, dept, limit, trustedOnly);
         } catch (e2) {
           console.error(`Ingest fetch [${source}/${dept}]`, e2);
           continue;
         }
-        fetched += items.length;
+        job.fetched += items.length;
+        if (validate) {
+          const { kept, skipped } = await keepOpenable(items);
+          job.skippedUnopenable += skipped;
+          items = kept;
+        }
         for (const it of items) {
           try {
             const fp = articleFingerprint(it.doi, it.title, it.authors);
             const exists = await prisma2.article.findUnique({ where: { fingerprint: fp } });
             if (exists) {
-              duplicates++;
+              job.duplicates++;
               continue;
             }
             const publisher = await upsertPublisherByName(it.publisherName, it.source);
@@ -13042,17 +13190,79 @@ async function startServer() {
                 createdBy: req.user?.email || "Ingestion"
               }
             });
-            inserted++;
+            job.inserted++;
           } catch (e2) {
-            failed++;
+            job.failed++;
           }
         }
       }
-      res.json({ source, departments, fetched, inserted, duplicates, failed, publishersDiscovered: publishersTouched.size });
+      job.publishersDiscovered = publishersTouched.size;
+      job.status = "done";
+    } catch (e2) {
+      console.error("Ingest job error:", e2);
+      job.status = "error";
+      job.error = e2?.message || "Ingestion failed";
+    } finally {
+      job.currentDept = null;
+      job.finishedAt = Date.now();
+    }
+  }
+  app.post("/api/admin/ingest/run", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { source = "openalex", departments = [], perDept = 25 } = req.body;
+      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department" });
+      const limit = Math.min(Math.max(parseInt(perDept) || 25, 1), 300);
+      const validate = req.body.validatePdf !== false;
+      const trustedOnly = req.body.trustedHostsOnly !== false && (source === "openalex" || source === "doaj");
+      const jobId = `ing_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+      const job = {
+        id: jobId,
+        status: "running",
+        startedAt: Date.now(),
+        finishedAt: null,
+        currentDept: null,
+        params: { source, departments, limit, validate, trustedOnly },
+        source,
+        trustedOnly,
+        departments,
+        totalDepts: departments.length,
+        fetched: 0,
+        inserted: 0,
+        duplicates: 0,
+        failed: 0,
+        skippedUnopenable: 0,
+        publishersDiscovered: 0
+      };
+      ingestJobs.set(jobId, job);
+      processIngestJob(job, req).finally(() => {
+        setTimeout(() => ingestJobs.delete(jobId), 30 * 60 * 1e3);
+      });
+      res.json({ started: true, jobId, ...jobSummary(job) });
     } catch (e2) {
       console.error("Ingest run error:", e2);
       res.status(500).json({ error: "Ingestion failed" });
     }
+  });
+  const jobSummary = (job) => ({
+    jobId: job.id,
+    status: job.status,
+    source: job.source,
+    trustedOnly: job.trustedOnly,
+    departments: job.departments,
+    totalDepts: job.totalDepts,
+    currentDept: job.currentDept,
+    fetched: job.fetched,
+    inserted: job.inserted,
+    duplicates: job.duplicates,
+    failed: job.failed,
+    skippedUnopenable: job.skippedUnopenable,
+    publishersDiscovered: job.publishersDiscovered,
+    error: job.error || null
+  });
+  app.get("/api/admin/ingest/status/:jobId", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    const job = ingestJobs.get(req.params.jobId);
+    if (!job) return res.status(404).json({ error: "Job not found (may have finished & expired)" });
+    res.json(jobSummary(job));
   });
   const libraryScopeDomains = async (req) => {
     const authHeader = req.headers.authorization;
