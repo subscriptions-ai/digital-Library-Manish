@@ -3962,6 +3962,19 @@ async function startServer() {
     } catch (e: any) { res.status(500).json({ error: "Failed to send" }); }
   });
 
+  // Publisher notifications — unread messages from the STM team + agreements to sign (no mark-read)
+  app.get("/api/publisher/notifications", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.json({ total: 0, unreadMessages: 0, pendingAgreements: 0 });
+      const [unreadMessages, pendingAgreements] = await Promise.all([
+        (prisma as any).publisherMessage.count({ where: { publisherId: publisher.id, sender: 'admin', readAt: null } }),
+        (prisma as any).publisherAgreement.count({ where: { publisherId: publisher.id, status: { in: ['Sent', 'Viewed'] } } }),
+      ]);
+      res.json({ total: unreadMessages + pendingAgreements, unreadMessages, pendingAgreements });
+    } catch (e: any) { res.status(500).json({ error: "Failed to load notifications" }); }
+  });
+
   // --- Reads analytics (time-series + top items) ---
   const readAnalytics = async (publisherId: string, days = 30) => {
     const since = new Date(Date.now() - days * 86400000);
@@ -8351,7 +8364,7 @@ async function startServer() {
 
       await prisma.lead.updateMany({
         where: { id: { in: leadIds } },
-        data: { assignedToId }
+        data: { assignedToId, assignedAt: new Date(), assignmentSeen: false }
       });
 
       // Add a system interaction note
@@ -8498,10 +8511,26 @@ async function startServer() {
         where: { assignedToId: req.user.uid },
         orderBy: { updatedAt: "desc" }
       });
+      // Opening My Leads = the executive has now seen their new assignments → clear the badge
+      prisma.lead.updateMany({ where: { assignedToId: req.user.uid, assignmentSeen: false }, data: { assignmentSeen: true } }).catch(() => {});
       res.json(leads);
     } catch (error) {
       console.error("Fetch my leads error:", error);
       res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  // Sales executive notifications — newly assigned, not-yet-seen leads
+  app.get("/api/sales/notifications", authenticateJWT, requireSalesRole, async (req: any, res) => {
+    try {
+      const where = { assignedToId: req.user.uid, assignmentSeen: false };
+      const [newLeads, list] = await Promise.all([
+        prisma.lead.count({ where }),
+        prisma.lead.findMany({ where, orderBy: { assignedAt: "desc" }, take: 10, select: { id: true, name: true, organization: true, source: true, assignedAt: true } }),
+      ]);
+      res.json({ total: newLeads, newLeads, list });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load notifications" });
     }
   });
 

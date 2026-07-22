@@ -41,9 +41,13 @@ export function PublisherDashboard() {
   const [books, setBooks] = useState<any[]>([]);
   const [agreements, setAgreements] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [notif, setNotif] = useState<any>({ unreadMessages: 0 });
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('content');
 
+  const loadNotif = async () => {
+    try { const r = await fetch('/api/publisher/notifications', { headers: { Authorization: `Bearer ${token()}` } }); if (r.ok) setNotif(await r.json()); } catch { /* ignore */ }
+  };
   const load = async () => {
     setLoading(true);
     try {
@@ -58,10 +62,11 @@ export function PublisherDashboard() {
       setArticles(c.articles || []); setBooks(c.books || []);
       setAgreements(await aRes.json());
       setAnalytics(await anRes.json());
+      loadNotif();
     } catch { toast.error('Failed to load your workspace'); }
     finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); const t = setInterval(loadNotif, 30000); return () => clearInterval(t); }, []);
 
   const counts = me?.counts || {};
   const pendingAgreements = agreements.filter(a => ['Sent', 'Viewed'].includes(a.status));
@@ -70,7 +75,7 @@ export function PublisherDashboard() {
     { k: 'content', label: 'My Content', icon: FileText },
     { k: 'agreements', label: 'Agreements', icon: FileSignature, badge: pendingAgreements.length || undefined },
     { k: 'share', label: 'Share Data', icon: UploadCloud },
-    { k: 'messages', label: 'Messages', icon: MessageSquare },
+    { k: 'messages', label: 'Messages', icon: MessageSquare, badge: notif.unreadMessages || undefined },
   ];
 
   return (
@@ -79,6 +84,17 @@ export function PublisherDashboard() {
         <h1 className="text-2xl font-bold text-slate-900">Welcome{me?.name ? `, ${me.name}` : ''}</h1>
         <p className="text-sm text-slate-500">Your partnership workspace — share your catalogue and track its reach.</p>
       </div>
+
+      {/* New message from the STM team */}
+      {notif.unreadMessages > 0 && (
+        <button onClick={() => setTab('messages')} className="w-full text-left p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 hover:bg-emerald-100/60 transition-colors">
+          <MessageSquare size={18} className="text-emerald-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-emerald-800">{notif.unreadMessages} new message{notif.unreadMessages > 1 ? 's' : ''} from the STM team</p>
+            <p className="text-xs text-emerald-700">Click to open your conversation.</p>
+          </div>
+        </button>
+      )}
 
       {/* Action-required banner for unsigned agreements */}
       {pendingAgreements.length > 0 && (
@@ -137,7 +153,7 @@ export function PublisherDashboard() {
       {/* Tabs */}
       <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
         {TABS.map(t => (
-          <button key={t.k} onClick={() => setTab(t.k)}
+          <button key={t.k} onClick={() => { setTab(t.k); if (t.k === 'messages') setTimeout(loadNotif, 1200); }}
             className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg ${tab === t.k ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>
             <t.icon size={13} /> {t.label}
             {t.badge ? <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px]">{t.badge}</span> : null}
