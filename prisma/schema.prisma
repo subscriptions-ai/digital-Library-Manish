@@ -23,6 +23,7 @@ datasource db {
 model Publisher {
   id            String   @id @default(uuid())
   name          String
+  legalName     String?                       // registered legal entity name
   slug          String?  @unique
   email         String?
   contactNumber String?
@@ -30,6 +31,15 @@ model Publisher {
   country       String?
   address       String?
   logoUrl       String?
+  verified      Boolean  @default(false)      // "verified partner" badge
+
+  // Organisation hierarchy — a self-referencing tree of arbitrary depth.
+  // orgType: Group (parent/consortium) | Publisher | Imprint
+  // e.g. "Consortium e-Learning Network" (Group) -> "JournalsPub" (Imprint) -> journals
+  orgType       String   @default("Publisher")
+  parentId      String?
+  parent        Publisher?  @relation("PublisherTree", fields: [parentId], references: [id])
+  children      Publisher[] @relation("PublisherTree")
 
   // Discovered = auto-found from ingestion, not yet contacted
   // Invited     = tie-up invitation + credentials sent
@@ -49,9 +59,100 @@ model Publisher {
   journals      Journal[]
   articles      Article[]
   books         Book[]
+  locations     PublisherLocation[]
+  contacts      PublisherContact[]
+  agreements    PublisherAgreement[]
+  uploads       PublisherUpload[]
 
   @@index([name])
   @@index([tieUpStatus])
+  @@index([parentId])
+  @@index([orgType])
+}
+
+// A publisher's physical presence — supports multi-country / multi-office giants.
+model PublisherLocation {
+  id          String   @id @default(uuid())
+  publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  publisherId String
+  label       String?                          // e.g. "Global HQ", "APAC Office"
+  type        String   @default("Office")      // HQ | Regional | Editorial | Office
+  country     String?
+  city        String?
+  address     String?  @db.Text
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([publisherId])
+}
+
+// People at a publisher. Each contact can optionally be a login seat (multi-seat teams).
+model PublisherContact {
+  id          String   @id @default(uuid())
+  publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  publisherId String
+  name        String
+  email       String?
+  title       String?                          // job title / role
+  phone       String?
+  isPrimary   Boolean  @default(false)
+  userId      String?                          // linked User login if this contact is a seat
+  scopeNodeId String?                          // publisher node this seat may see (default: own subtree)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([publisherId])
+  @@index([userId])
+}
+
+// A partnership agreement + its in-app e-signature record and audit trail.
+model PublisherAgreement {
+  id            String   @id @default(uuid())
+  publisher     Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  publisherId   String
+  title         String
+  documentUrl   String?                        // uploaded contract PDF (S3)
+  version       String?  @default("1.0")
+  body          String?  @db.Text              // optional inline terms (if no PDF)
+  note          String?  @db.Text
+  // Draft | Sent | Viewed | Accepted | Declined
+  status        String   @default("Draft")
+  sentAt        DateTime?
+  viewedAt      DateTime?
+  decidedAt     DateTime?
+  acceptedByName  String?
+  acceptedByEmail String?
+  signatureType String?                         // typed | drawn
+  signatureData String?  @db.Text               // typed name or drawn-signature data URL
+  declineReason String?  @db.Text
+  ipAddress     String?
+  userAgent     String?
+  auditTrail    Json?    @default("[]")          // [{event, at, by, ip}]
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([publisherId])
+  @@index([status])
+}
+
+// Tracks each bulk data-sharing batch a publisher (or admin) submits.
+model PublisherUpload {
+  id          String   @id @default(uuid())
+  publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  publisherId String
+  kind        String   @default("article")     // article | book
+  fileName    String?
+  fileUrl     String?                            // stored CSV / manifest (S3)
+  rows        Int      @default(0)
+  accepted    Int      @default(0)
+  rejected    Int      @default(0)
+  status      String   @default("Pending")       // Pending | Processed | Failed
+  note        String?  @db.Text
+  createdBy   String?
+  createdAt   DateTime @default(now())
+
+  @@index([publisherId])
 }
 
 model Journal {
@@ -116,6 +217,12 @@ model Article {
   source        String?                            // DOAJ | OpenAlex | Manual | ...
   fingerprint   String?  @unique                    // dedup (doi or issn+title+vol+issue)
 
+  // Who this content originated from. CRITICAL for stealth: publisher-facing
+  // queries only ever return PublisherSubmitted — pre-scraped Ingested rows
+  // are never visible to a tied-up publisher.
+  ownershipSource String @default("Ingested")       // Ingested | PublisherSubmitted | AdminEntered
+  uploadId      String?                            // PublisherUpload batch, if bulk-submitted
+
   createdBy     String?                            // publisher id/email or admin
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -126,6 +233,7 @@ model Article {
   @@index([year])
   @@index([status])
   @@index([contentType])
+  @@index([ownershipSource])
 }
 
 model Book {
@@ -157,6 +265,9 @@ model Book {
   source        String?
   fingerprint   String?  @unique
 
+  ownershipSource String @default("Ingested")       // Ingested | PublisherSubmitted | AdminEntered
+  uploadId      String?
+
   createdBy     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -166,6 +277,7 @@ model Book {
   @@index([publisherId])
   @@index([domain])
   @@index([status])
+  @@index([ownershipSource])
 }
 
 model Chapter {

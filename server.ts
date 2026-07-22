@@ -3334,7 +3334,7 @@ async function startServer() {
   // PUBLISHER MODULE (Phase 3) — additive, uses new Publisher/Article/Book models
   // ==========================================
 
-  function mapArticleInput(b: any, publisher: any, status: string, createdBy: string) {
+  function mapArticleInput(b: any, publisher: any, status: string, createdBy: string, ownershipSource = 'PublisherSubmitted') {
     return {
       title: b.title || 'Untitled',
       authors: b.authors || null,
@@ -3356,10 +3356,12 @@ async function startServer() {
       accessType: b.accessType || 'OpenAccess',
       status,
       source: b.source || 'Manual',
+      ownershipSource,
+      uploadId: b.uploadId || null,
       createdBy,
     };
   }
-  function mapBookInput(b: any, publisher: any, status: string, createdBy: string) {
+  function mapBookInput(b: any, publisher: any, status: string, createdBy: string, ownershipSource = 'PublisherSubmitted') {
     return {
       title: b.title || 'Untitled',
       authors: b.authors || null,
@@ -3378,17 +3380,22 @@ async function startServer() {
       accessType: b.accessType || 'OpenAccess',
       status,
       source: b.source || 'Manual',
+      ownershipSource,
+      uploadId: b.uploadId || null,
       createdBy,
     };
   }
 
-  const getPublisherCounts = async (publisherId: string) => {
+  // facing=true → publisher-facing counts: NEVER count pre-scraped (Ingested) rows.
+  const getPublisherCounts = async (publisherId: string, facing = false) => {
+    const base: any = { publisherId };
+    if (facing) base.ownershipSource = { not: 'Ingested' };
     const [articles, books, articlesPublished, articlesPending, articlesRejected] = await Promise.all([
-      (prisma as any).article.count({ where: { publisherId } }),
-      (prisma as any).book.count({ where: { publisherId } }),
-      (prisma as any).article.count({ where: { publisherId, status: 'Published' } }),
-      (prisma as any).article.count({ where: { publisherId, status: 'Draft' } }),
-      (prisma as any).article.count({ where: { publisherId, status: 'Rejected' } }),
+      (prisma as any).article.count({ where: { ...base } }),
+      (prisma as any).book.count({ where: { ...base } }),
+      (prisma as any).article.count({ where: { ...base, status: 'Published' } }),
+      (prisma as any).article.count({ where: { ...base, status: 'Draft' } }),
+      (prisma as any).article.count({ where: { ...base, status: 'Rejected' } }),
     ]);
     return { articles, books, articlesPublished, articlesPending, articlesRejected };
   };
@@ -3396,7 +3403,11 @@ async function startServer() {
   const resolvePublisherForUser = async (req: any) => {
     const uid = req.user?.uid || req.user?.id;
     if (!uid) return null;
-    return (prisma as any).publisher.findFirst({ where: { userId: uid } });
+    // Primary tie-up login (publisher.userId) OR an additional team seat (contact.userId)
+    const direct = await (prisma as any).publisher.findFirst({ where: { userId: uid } });
+    if (direct) return direct;
+    const contact = await (prisma as any).publisherContact.findFirst({ where: { userId: uid }, include: { publisher: true } });
+    return contact?.publisher || null;
   };
 
   const requirePublisher = (req: any, res: any, next: any) => {
@@ -3438,23 +3449,34 @@ async function startServer() {
     } catch (e: any) { console.error("Create publisher error:", e); res.status(500).json({ error: "Failed to create publisher" }); }
   });
 
-  // --- Admin: publisher detail ---
+  // --- Admin: publisher detail (full profile: locations, contacts, agreements, tree) ---
   app.get("/api/admin/publishers/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
-      const publisher = await (prisma as any).publisher.findUnique({ where: { id: req.params.id } });
+      const publisher = await (prisma as any).publisher.findUnique({
+        where: { id: req.params.id },
+        include: {
+          locations: { orderBy: { isPrimary: 'desc' } },
+          contacts: { orderBy: { isPrimary: 'desc' } },
+          agreements: { orderBy: { createdAt: 'desc' } },
+          children: { orderBy: { name: 'asc' } },
+          parent: true,
+        },
+      });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
       res.json({ ...publisher, counts: await getPublisherCounts(publisher.id) });
-    } catch (e: any) { res.status(500).json({ error: "Failed to fetch publisher" }); }
+    } catch (e: any) { console.error("publisher detail:", e); res.status(500).json({ error: "Failed to fetch publisher" }); }
   });
 
   // --- Admin: update publisher ---
   app.put("/api/admin/publishers/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      const { name, email, contactNumber, website, country, address, agreementNote, allowedContentTypes, tieUpStatus } = req.body;
+      const { name, legalName, email, contactNumber, website, country, address, logoUrl, verified, orgType, parentId, agreementNote, allowedContentTypes, tieUpStatus } = req.body;
       const data: any = {};
-      for (const [k, v] of Object.entries({ name, email, contactNumber, website, country, address, agreementNote, allowedContentTypes, tieUpStatus })) {
+      for (const [k, v] of Object.entries({ name, legalName, email, contactNumber, website, country, address, logoUrl, verified, orgType, agreementNote, allowedContentTypes, tieUpStatus })) {
         if (v !== undefined) data[k] = v;
       }
+      // parentId: allow set/clear, but never let a node be its own parent
+      if (parentId !== undefined) data.parentId = (parentId && parentId !== req.params.id) ? parentId : null;
       const publisher = await (prisma as any).publisher.update({ where: { id: req.params.id }, data });
       res.json(publisher);
     } catch (e: any) { res.status(500).json({ error: "Failed to update publisher" }); }
@@ -3535,7 +3557,7 @@ async function startServer() {
     try {
       const publisher = await (prisma as any).publisher.findUnique({ where: { id: req.params.id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
-      const article = await (prisma as any).article.create({ data: mapArticleInput(req.body, publisher, req.body.status || 'Published', req.user?.email || 'Admin') });
+      const article = await (prisma as any).article.create({ data: mapArticleInput(req.body, publisher, req.body.status || 'Published', req.user?.email || 'Admin', 'AdminEntered') });
       res.json(article);
     } catch (e: any) { console.error(e); res.status(500).json({ error: "Failed to create article" }); }
   });
@@ -3543,7 +3565,7 @@ async function startServer() {
     try {
       const publisher = await (prisma as any).publisher.findUnique({ where: { id: req.params.id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
-      const book = await (prisma as any).book.create({ data: mapBookInput(req.body, publisher, req.body.status || 'Published', req.user?.email || 'Admin') });
+      const book = await (prisma as any).book.create({ data: mapBookInput(req.body, publisher, req.body.status || 'Published', req.user?.email || 'Admin', 'AdminEntered') });
       res.json(book);
     } catch (e: any) { res.status(500).json({ error: "Failed to create book" }); }
   });
@@ -3581,7 +3603,7 @@ async function startServer() {
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.status(404).json({ error: "No publisher profile linked to this account" });
-      res.json({ ...publisher, counts: await getPublisherCounts(publisher.id) });
+      res.json({ ...publisher, counts: await getPublisherCounts(publisher.id, true) });
     } catch (e: any) { res.status(500).json({ error: "Failed to load profile" }); }
   });
 
@@ -3589,9 +3611,12 @@ async function startServer() {
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.json({ articles: [], books: [] });
+      // STEALTH: a publisher only ever sees content THEY provided — never the
+      // pre-scraped (Ingested) rows we collected before any partnership existed.
+      const own = { publisherId: publisher.id, ownershipSource: { not: 'Ingested' } };
       const [articles, books] = await Promise.all([
-        (prisma as any).article.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: 'desc' } }),
-        (prisma as any).book.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: 'desc' }, include: { chapters: true } }),
+        (prisma as any).article.findMany({ where: own, orderBy: { createdAt: 'desc' } }),
+        (prisma as any).book.findMany({ where: own, orderBy: { createdAt: 'desc' }, include: { chapters: true } }),
       ]);
       res.json({ articles, books });
     } catch (e: any) { res.status(500).json({ error: "Failed to load content" }); }
@@ -3619,7 +3644,7 @@ async function startServer() {
     try {
       const publisher = await resolvePublisherForUser(req);
       const existing = await (prisma as any).article.findUnique({ where: { id: req.params.id } });
-      if (!existing || existing.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your article" });
+      if (!existing || existing.publisherId !== publisher?.id || existing.ownershipSource === 'Ingested') return res.status(403).json({ error: "Not your article" });
       const data: any = mapArticleInput(req.body, publisher, 'Draft', publisher.name);
       delete data.publisherId; delete data.publisherName;
       const article = await (prisma as any).article.update({ where: { id: req.params.id }, data: { ...data, status: 'Draft', rejectionNote: null } });
@@ -3630,12 +3655,250 @@ async function startServer() {
     try {
       const publisher = await resolvePublisherForUser(req);
       const existing = await (prisma as any).book.findUnique({ where: { id: req.params.id } });
-      if (!existing || existing.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your book" });
+      if (!existing || existing.publisherId !== publisher?.id || existing.ownershipSource === 'Ingested') return res.status(403).json({ error: "Not your book" });
       const data: any = mapBookInput(req.body, publisher, 'Draft', publisher.name);
       delete data.publisherId; delete data.publisherName;
       const book = await (prisma as any).book.update({ where: { id: req.params.id }, data: { ...data, status: 'Draft', rejectionNote: null } });
       res.json(book);
     } catch (e: any) { res.status(500).json({ error: "Failed to update book" }); }
+  });
+
+  // ==========================================
+  // PUBLISHER PARTNERSHIP PORTAL — hierarchy, locations, contacts,
+  // agreements + in-app e-signature, file uploads, bulk data-sharing.
+  // ==========================================
+
+  // --- File upload (base64 -> disk, served at /uploads). Swap for S3 when a bucket is provisioned. ---
+  const UPLOAD_DIR = path.join(APP_DIR, 'uploads');
+  app.use('/uploads', express.static(UPLOAD_DIR));
+  const saveDataUrl = async (dataUrl: string, filename: string) => {
+    const m = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl || '');
+    if (!m) throw new Error('Invalid file data');
+    const buf = Buffer.from(m[2], 'base64');
+    const fs = await import('node:fs');
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    const safe = (filename || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80);
+    const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, name), buf);
+    return `/uploads/${name}`;
+  };
+  app.post("/api/upload", authenticateJWT, async (req: any, res: any) => {
+    try {
+      const { dataUrl, filename } = req.body;
+      if (!dataUrl) return res.status(400).json({ error: "No file provided" });
+      res.json({ url: await saveDataUrl(dataUrl, filename || 'upload') });
+    } catch (e: any) { console.error("upload:", e); res.status(500).json({ error: "Upload failed" }); }
+  });
+
+  // --- Publisher hierarchy tree (Group -> Publisher -> Imprint), arbitrary depth ---
+  app.get("/api/admin/publisher-tree", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const all = await (prisma as any).publisher.findMany({ orderBy: { name: 'asc' } });
+      const counts: Record<string, any> = {};
+      await Promise.all(all.map(async (p: any) => { counts[p.id] = await getPublisherCounts(p.id); }));
+      const byId: Record<string, any> = {};
+      all.forEach((p: any) => { byId[p.id] = { ...p, counts: counts[p.id], children: [] }; });
+      const roots: any[] = [];
+      all.forEach((p: any) => {
+        if (p.parentId && byId[p.parentId]) byId[p.parentId].children.push(byId[p.id]);
+        else roots.push(byId[p.id]);
+      });
+      res.json(roots);
+    } catch (e: any) { console.error("publisher tree:", e); res.status(500).json({ error: "Failed to build tree" }); }
+  });
+
+  // --- Locations (multi-country / multi-office) ---
+  app.post("/api/admin/publishers/:id/locations", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { label, type, country, city, address, isPrimary } = req.body;
+      const loc = await (prisma as any).publisherLocation.create({ data: { publisherId: req.params.id, label: label || null, type: type || 'Office', country: country || null, city: city || null, address: address || null, isPrimary: !!isPrimary } });
+      res.json(loc);
+    } catch (e: any) { res.status(500).json({ error: "Failed to add location" }); }
+  });
+  app.put("/api/admin/locations/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const data: any = {};
+      for (const k of ['label', 'type', 'country', 'city', 'address', 'isPrimary']) if (req.body[k] !== undefined) data[k] = req.body[k];
+      res.json(await (prisma as any).publisherLocation.update({ where: { id: req.params.id }, data }));
+    } catch (e: any) { res.status(500).json({ error: "Failed to update location" }); }
+  });
+  app.delete("/api/admin/locations/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { await (prisma as any).publisherLocation.delete({ where: { id: req.params.id } }); res.json({ ok: true }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to delete location" }); }
+  });
+
+  // --- Contacts (+ optional login seat = multi-seat teams) ---
+  app.post("/api/admin/publishers/:id/contacts", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { name, email, title, phone, isPrimary } = req.body;
+      if (!name) return res.status(400).json({ error: "Contact name is required" });
+      const c = await (prisma as any).publisherContact.create({ data: { publisherId: req.params.id, name, email: email || null, title: title || null, phone: phone || null, isPrimary: !!isPrimary } });
+      res.json(c);
+    } catch (e: any) { res.status(500).json({ error: "Failed to add contact" }); }
+  });
+  app.put("/api/admin/contacts/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const data: any = {};
+      for (const k of ['name', 'email', 'title', 'phone', 'isPrimary']) if (req.body[k] !== undefined) data[k] = req.body[k];
+      res.json(await (prisma as any).publisherContact.update({ where: { id: req.params.id }, data }));
+    } catch (e: any) { res.status(500).json({ error: "Failed to update contact" }); }
+  });
+  app.delete("/api/admin/contacts/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { await (prisma as any).publisherContact.delete({ where: { id: req.params.id } }); res.json({ ok: true }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to delete contact" }); }
+  });
+  // Give a contact their own login seat (scoped to this publisher node)
+  app.post("/api/admin/contacts/:id/invite", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const contact = await (prisma as any).publisherContact.findUnique({ where: { id: req.params.id }, include: { publisher: true } });
+      if (!contact) return res.status(404).json({ error: "Contact not found" });
+      const loginEmail = (contact.email || '').trim().toLowerCase();
+      if (!loginEmail) return res.status(400).json({ error: "Contact needs an email to receive a login" });
+      let user = await prisma.user.findUnique({ where: { email: loginEmail } });
+      let tempPassword = '';
+      if (!user) {
+        tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + "!";
+        user = await prisma.user.create({ data: { displayName: contact.name, email: loginEmail, password: await bcrypt.hash(tempPassword, 10), role: 'Publisher', status: 'Active', isFirstLogin: true } });
+      } else if (user.role !== 'Publisher') {
+        user = await prisma.user.update({ where: { id: user.id }, data: { role: 'Publisher' } });
+      }
+      await (prisma as any).publisherContact.update({ where: { id: contact.id }, data: { userId: user.id, scopeNodeId: contact.publisherId } });
+      res.json({ ok: true, email: loginEmail, tempPassword: tempPassword || null, note: tempPassword ? 'Share these credentials securely.' : 'Existing account upgraded to a publisher seat.' });
+    } catch (e: any) { console.error("contact invite:", e); res.status(500).json({ error: "Failed to create seat" }); }
+  });
+
+  // --- Merge a duplicate publisher into a target (moves all content + relations) ---
+  app.post("/api/admin/publishers/:id/merge", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const from = req.params.id; const to = req.body.targetId;
+      if (!to || to === from) return res.status(400).json({ error: "Pick a different target publisher" });
+      const target = await (prisma as any).publisher.findUnique({ where: { id: to } });
+      if (!target) return res.status(404).json({ error: "Target publisher not found" });
+      await (prisma as any).journal.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
+      await (prisma as any).article.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
+      await (prisma as any).book.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
+      await (prisma as any).publisherLocation.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
+      await (prisma as any).publisherContact.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
+      await (prisma as any).publisherAgreement.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
+      await (prisma as any).publisher.updateMany({ where: { parentId: from }, data: { parentId: to } });
+      await (prisma as any).publisher.delete({ where: { id: from } });
+      res.json({ ok: true, mergedInto: to });
+    } catch (e: any) { console.error("merge:", e); res.status(500).json({ error: "Merge failed" }); }
+  });
+
+  // --- Agreements + in-app e-signature ---
+  const pushAudit = (agreement: any, event: string, by: string | null, req: any) => {
+    const trail = Array.isArray(agreement.auditTrail) ? agreement.auditTrail : [];
+    trail.push({ event, by: by || null, ip: req.ip || req.headers['x-forwarded-for'] || null, at: new Date().toISOString() });
+    return trail;
+  };
+  app.post("/api/admin/publishers/:id/agreements", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { title, documentUrl, body, version, note } = req.body;
+      if (!title) return res.status(400).json({ error: "Agreement title is required" });
+      const ag = await (prisma as any).publisherAgreement.create({
+        data: { publisherId: req.params.id, title, documentUrl: documentUrl || null, body: body || null, version: version || '1.0', note: note || null, status: 'Draft', createdBy: req.user?.email || 'Admin', auditTrail: [{ event: 'created', by: req.user?.email || 'Admin', at: new Date().toISOString() }] },
+      });
+      res.json(ag);
+    } catch (e: any) { console.error("create agreement:", e); res.status(500).json({ error: "Failed to create agreement" }); }
+  });
+  app.post("/api/admin/agreements/:id/send", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const ag = await (prisma as any).publisherAgreement.findUnique({ where: { id: req.params.id } });
+      if (!ag) return res.status(404).json({ error: "Agreement not found" });
+      const updated = await (prisma as any).publisherAgreement.update({ where: { id: ag.id }, data: { status: 'Sent', sentAt: new Date(), auditTrail: pushAudit(ag, 'sent', req.user?.email || 'Admin', req) } });
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: "Failed to send agreement" }); }
+  });
+  app.delete("/api/admin/agreements/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { await (prisma as any).publisherAgreement.delete({ where: { id: req.params.id } }); res.json({ ok: true }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to delete agreement" }); }
+  });
+
+  // Publisher-side agreement view + e-sign
+  app.get("/api/publisher/agreements", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.json([]);
+      const list = await (prisma as any).publisherAgreement.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: 'desc' } });
+      // First open of a Sent agreement -> Viewed
+      await Promise.all(list.filter((a: any) => a.status === 'Sent').map((a: any) =>
+        (prisma as any).publisherAgreement.update({ where: { id: a.id }, data: { status: 'Viewed', viewedAt: new Date(), auditTrail: pushAudit(a, 'viewed', publisher.name, req) } })
+      ));
+      res.json(list);
+    } catch (e: any) { res.status(500).json({ error: "Failed to load agreements" }); }
+  });
+  app.post("/api/publisher/agreements/:id/sign", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      const ag = await (prisma as any).publisherAgreement.findUnique({ where: { id: req.params.id } });
+      if (!ag || ag.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your agreement" });
+      if (ag.status === 'Accepted') return res.status(400).json({ error: "Already signed" });
+      const { signatureType, signatureData, name, email } = req.body;
+      if (!signatureData || !name) return res.status(400).json({ error: "A signature and signer name are required" });
+      const updated = await (prisma as any).publisherAgreement.update({
+        where: { id: ag.id },
+        data: {
+          status: 'Accepted', decidedAt: new Date(), acceptedByName: name, acceptedByEmail: email || null,
+          signatureType: signatureType || 'typed', signatureData, ipAddress: req.ip || null, userAgent: req.headers['user-agent'] || null,
+          auditTrail: pushAudit(ag, 'accepted', name, req),
+        },
+      });
+      res.json(updated);
+    } catch (e: any) { console.error("sign agreement:", e); res.status(500).json({ error: "Failed to sign" }); }
+  });
+  app.post("/api/publisher/agreements/:id/decline", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      const ag = await (prisma as any).publisherAgreement.findUnique({ where: { id: req.params.id } });
+      if (!ag || ag.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your agreement" });
+      const updated = await (prisma as any).publisherAgreement.update({ where: { id: ag.id }, data: { status: 'Declined', decidedAt: new Date(), declineReason: req.body.reason || null, auditTrail: pushAudit(ag, 'declined', publisher.name, req) } });
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: "Failed to decline" }); }
+  });
+
+  // --- Publisher bulk data-sharing: many rows -> a tracked batch -> Draft items ---
+  app.post("/api/publisher/uploads", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.status(404).json({ error: "No publisher profile" });
+      const { kind = 'article', fileName, items } = req.body;
+      if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: "No rows to import" });
+      const batch = await (prisma as any).publisherUpload.create({ data: { publisherId: publisher.id, kind, fileName: fileName || null, rows: items.length, status: 'Pending', createdBy: publisher.name } });
+      let accepted = 0, rejected = 0;
+      for (const row of items) {
+        try {
+          if (!row.title) { rejected++; continue; }
+          const data = kind === 'book'
+            ? mapBookInput({ ...row, uploadId: batch.id }, publisher, 'Draft', publisher.name)
+            : mapArticleInput({ ...row, uploadId: batch.id }, publisher, 'Draft', publisher.name);
+          await (prisma as any)[kind === 'book' ? 'book' : 'article'].create({ data });
+          accepted++;
+        } catch { rejected++; }
+      }
+      const done = await (prisma as any).publisherUpload.update({ where: { id: batch.id }, data: { accepted, rejected, status: 'Processed' } });
+      res.json({ ...done, accepted, rejected });
+    } catch (e: any) { console.error("publisher upload:", e); res.status(500).json({ error: "Bulk import failed" }); }
+  });
+  app.get("/api/publisher/uploads", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+    try {
+      const publisher = await resolvePublisherForUser(req);
+      if (!publisher) return res.json([]);
+      res.json(await (prisma as any).publisherUpload.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: 'desc' } }));
+    } catch (e: any) { res.status(500).json({ error: "Failed to load uploads" }); }
+  });
+
+  // --- Enhanced review: bulk approve/reject ---
+  app.post("/api/admin/review/bulk", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const { model, ids, action, note } = req.body;
+      if (!['article', 'book'].includes(model) || !Array.isArray(ids) || !ids.length) return res.status(400).json({ error: "Provide model + ids" });
+      const data = action === 'approve'
+        ? { status: 'Published', rejectionNote: null }
+        : { status: 'Rejected', rejectionNote: note || 'Rejected by reviewer' };
+      const r = await (prisma as any)[model].updateMany({ where: { id: { in: ids } }, data });
+      res.json({ ok: true, count: r.count });
+    } catch (e: any) { res.status(500).json({ error: "Bulk review failed" }); }
   });
 
   // ==========================================
@@ -4116,6 +4379,7 @@ async function startServer() {
     accessType: b.accessType || 'OpenAccess',
     status: b.status || 'Published',
     source: 'Admin',
+    ownershipSource: 'AdminEntered',
     createdBy,
     metadata: { ...(b.metadata || {}), tags: b.tags || [], thumbnailUrl: b.thumbnailUrl || null },
   });
@@ -4137,6 +4401,7 @@ async function startServer() {
     accessType: b.accessType || 'OpenAccess',
     status: b.status || 'Published',
     source: 'Admin',
+    ownershipSource: 'AdminEntered',
     createdBy,
     metadata: { ...(b.metadata || {}), tags: b.tags || [] },
   });
