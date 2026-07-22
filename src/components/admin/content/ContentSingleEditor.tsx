@@ -15,6 +15,7 @@ type FieldDef = { key: string; label: string; ph?: string; meta?: boolean; type?
 const TYPE_FIELDS: Record<string, FieldDef[]> = {
   'Periodicals': [
     { key: 'journalName', label: 'Journal Name' }, { key: 'issn', label: 'ISSN' },
+    { key: 'publisherName', label: 'Publisher' },
     { key: 'volume', label: 'Volume' }, { key: 'issue', label: 'Issue' },
     { key: 'year', label: 'Publication Year', type: 'number' }, { key: 'doi', label: 'DOI' },
   ],
@@ -23,16 +24,19 @@ const TYPE_FIELDS: Record<string, FieldDef[]> = {
     { key: 'issueDate', label: 'Issue Date (Month/Year)', meta: true }, { key: 'issue', label: 'Issue Number' },
   ],
   'Case Reports': [
+    { key: 'journalName', label: 'Journal Name' }, { key: 'publisherName', label: 'Publisher' },
     { key: 'hospital', label: 'Hospital / Institution', meta: true }, { key: 'specialty', label: 'Department / Specialty', meta: true },
     { key: 'year', label: 'Year of Publication', type: 'number' },
   ],
   'Theses': [
-    { key: 'university', label: 'University / Institution', meta: true }, { key: 'degree', label: 'Degree Level (PhD, MSc...)', meta: true },
+    { key: 'university', label: 'University / Institution', meta: true }, { key: 'publisherName', label: 'Publisher / Repository' },
+    { key: 'degree', label: 'Degree Level (PhD, MSc...)', meta: true },
     { key: 'year', label: 'Award Year', type: 'number' }, { key: 'supervisor', label: 'Supervisor / Guide', meta: true },
   ],
   'Conference Proceedings': [
-    { key: 'journalName', label: 'Conference Name' }, { key: 'location', label: 'Location (City / Country)', meta: true },
-    { key: 'year', label: 'Conference Year', type: 'number' }, { key: 'sponsor', label: 'Sponsoring Body / Publisher', meta: true },
+    { key: 'journalName', label: 'Conference Name' }, { key: 'publisherName', label: 'Publisher' },
+    { key: 'location', label: 'Location (City / Country)', meta: true },
+    { key: 'year', label: 'Conference Year', type: 'number' }, { key: 'sponsor', label: 'Sponsoring Body', meta: true },
   ],
   'Newsletters': [
     { key: 'publisherName', label: 'Organization / Publisher' }, { key: 'volume', label: 'Volume / Issue No.' },
@@ -43,6 +47,7 @@ const TYPE_FIELDS: Record<string, FieldDef[]> = {
     { key: 'year', label: 'Publication Year', type: 'number' }, { key: 'edition', label: 'Edition' }, { key: 'pages', label: 'Total Pages' },
   ],
   'Educational Videos': [
+    { key: 'publisherName', label: 'Publisher / Producer' },
     { key: 'speaker', label: 'Speaker / Instructor', meta: true }, { key: 'duration', label: 'Duration', meta: true },
     { key: 'year', label: 'Year', type: 'number' },
   ],
