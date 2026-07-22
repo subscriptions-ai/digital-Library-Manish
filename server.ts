@@ -3998,12 +3998,28 @@ async function startServer() {
     else where.domain = { in: allowed };
   };
 
+  // Distinct publishers that actually have published articles the user can see (domain-scoped)
+  app.get("/api/library/publishers", async (req: any, res: any) => {
+    try {
+      const { domain } = req.query;
+      const where: any = { status: 'Published' };
+      applyDomainScope(where, domain, await libraryScopeDomains(req));
+      const groups = await (prisma as any).article.groupBy({ by: ['publisherName'], where, _count: { _all: true } });
+      const list = groups
+        .filter((g: any) => g.publisherName)
+        .map((g: any) => ({ name: g.publisherName, count: g._count._all }))
+        .sort((a: any, b: any) => b.count - a.count);
+      res.json(list);
+    } catch (e: any) { console.error("library publishers:", e); res.status(500).json({ error: "Failed to load publishers" }); }
+  });
+
   app.get("/api/library/journals", async (req: any, res: any) => {
     try {
-      const { domain, recentYears, search } = req.query;
+      const { domain, recentYears, search, publisher } = req.query;
       const where: any = {};
       applyDomainScope(where, domain, await libraryScopeDomains(req));
       if (recentYears) { where.startYear = { gte: new Date().getFullYear() - (parseInt(recentYears as string) || 0) }; }
+      if (publisher) where.publisherName = publisher;
       if (search) where.title = { contains: search as string, mode: 'insensitive' };
       const journals = await (prisma as any).journal.findMany({ where, orderBy: { title: 'asc' }, take: 500 });
       const withCounts = await Promise.all(journals.map(async (j: any) => ({
@@ -4036,13 +4052,14 @@ async function startServer() {
 
   app.get("/api/library/articles", async (req: any, res: any) => {
     try {
-      const { domain, journalId, journalIds, journalIssn, year, volume, issue, search, page = '1', limit = '20' } = req.query;
+      const { domain, journalId, journalIds, journalIssn, publisher, year, volume, issue, search, page = '1', limit = '20' } = req.query;
       const where: any = { status: 'Published' };
       applyDomainScope(where, domain, await libraryScopeDomains(req));
       const jidList = journalIds ? String(journalIds).split(',').filter(Boolean) : [];
       if (jidList.length) where.journalId = { in: jidList };
       else if (journalId) where.journalId = journalId;
       if (journalIssn) where.journalIssn = journalIssn;
+      if (publisher) where.publisherName = publisher;
       if (year) where.year = parseInt(year as string);
       if (volume) where.volume = String(volume);
       if (issue) where.issue = String(issue);

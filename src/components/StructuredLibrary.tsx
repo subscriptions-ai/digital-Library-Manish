@@ -29,9 +29,12 @@ export function StructuredLibrary() {
   const [recentOnly, setRecentOnly] = useState(sp.get('recent') === '1');
   const [oaOnly, setOaOnly] = useState(sp.get('oa') === '1');
   const [search, setSearch] = useState(sp.get('q') || '');
+
   const [debounced, setDebounced] = useState(sp.get('q') || '');
   const [sort, setSort] = useState<Sort>((sp.get('sort') as Sort) || 'newest');
 
+  const [publisher, setPublisher] = useState(sp.get('pub') || '');
+  const [publishers, setPublishers] = useState<any[]>([]);
   const [journals, setJournals] = useState<any[]>([]);
   const [journalQuery, setJournalQuery] = useState('');
   const [selJournalIds, setSelJournalIds] = useState<string[]>(spList('jids'));
@@ -55,7 +58,7 @@ export function StructuredLibrary() {
   const [avail, setAvail] = useState<any>(null);
   useEffect(() => {
     fetch('/api/user/available-facets', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
-      .then(r => r.json()).then(d => { if (d && d.neu) setAvail(d); }).catch(() => {});
+      .then(r => r.json()).then(d => { if (d && d.neu) setAvail(d); }).catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -66,22 +69,31 @@ export function StructuredLibrary() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Publishers list (new collection) — scoped to department + access
+  useEffect(() => {
+    if (mode !== 'new') return;
+    const q = new URLSearchParams();
+    if (domain) q.set('domain', domain);
+    fetch(`/api/library/publishers?${q}`, authOpts()).then(r => r.json()).then(d => setPublishers(Array.isArray(d) ? d : [])).catch(() => setPublishers([]));
+  }, [mode, domain]);
+
   // Journals sidebar
   useEffect(() => {
     if (mode !== 'new' || kind !== 'articles') return;
     const q = new URLSearchParams();
     if (domain) q.set('domain', domain);
+    if (publisher) q.set('publisher', publisher);
     if (recentOnly) q.set('recentYears', '2');
     fetch(`/api/library/journals?${q}`, authOpts()).then(r => r.json()).then(d => setJournals(Array.isArray(d) ? d : [])).catch(() => setJournals([]));
-    // Clear the journal selection ONLY when dept/kind/mode/recent genuinely changes.
+    // Clear the journal selection ONLY when dept/kind/mode/recent/publisher genuinely changes.
     // Compare a value signature (not a mount flag) so StrictMode's double-invoke — which
     // re-runs this effect with identical deps — never wipes a restored selection.
-    const sig = `${mode}|${kind}|${domain}|${recentOnly}`;
+    const sig = `${mode}|${kind}|${domain}|${recentOnly}|${publisher}`;
     if (journalsSig.current !== null && journalsSig.current !== sig) {
       setSelJournalIds([]); setYear(''); setVolume(''); setIssue('');
     }
     journalsSig.current = sig;
-  }, [mode, kind, domain, recentOnly]);
+  }, [mode, kind, domain, recentOnly, publisher]);
 
   const jidsKey = selJournalIds.join(',');
 
@@ -92,6 +104,7 @@ export function StructuredLibrary() {
     if (mode !== 'new') p.set('mode', mode);
     if (kind !== 'articles') p.set('kind', kind);
     if (domain) p.set('domain', domain);
+    if (publisher) p.set('pub', publisher);
     if (oaOnly) p.set('oa', '1');
     if (recentOnly) p.set('recent', '1');
     if (search) p.set('q', search);
@@ -105,14 +118,14 @@ export function StructuredLibrary() {
     if (aTags.length) p.set('atag', aTags.join('~'));
     if (page > 1) p.set('page', String(page));
     setSp(p, { replace: true });
-  }, [mode, kind, domain, recentOnly, oaOnly, search, sort, jidsKey, year, volume, issue, aType, aSubjects, aTags, page]);
+  }, [mode, kind, domain, publisher, recentOnly, oaOnly, search, sort, jidsKey, year, volume, issue, aType, aSubjects, aTags, page]);
 
   // Cascading facets (across all selected journals; volume/issue only when exactly one)
   useEffect(() => {
     if (!selJournalIds.length) { setFacets({ years: [], volumes: [], issues: [] }); return; }
     const q = new URLSearchParams({ journalIds: jidsKey });
     if (selJournalIds.length === 1) { if (year) q.set('year', year); if (volume) q.set('volume', volume); }
-    fetch(`/api/library/facets?${q}`, authOpts()).then(r => r.json()).then(setFacets).catch(() => {});
+    fetch(`/api/library/facets?${q}`, authOpts()).then(r => r.json()).then(setFacets).catch(() => { });
   }, [jidsKey, year, volume]);
 
   // Available archived filters (legacy Content) — subjects & tags
@@ -123,7 +136,7 @@ export function StructuredLibrary() {
     if (aType) url += `&contentType=${encodeURIComponent(aType)}`;
     if (debounced) url += `&search=${encodeURIComponent(debounced)}`;
     if (aSubjects.length) url += `&subjectArea=${encodeURIComponent(aSubjects.join(','))}`;
-    fetch(url).then(r => r.json()).then(d => setAFilters({ subjects: d.subjects || [], tags: d.tags || [] })).catch(() => {});
+    fetch(url).then(r => r.json()).then(d => setAFilters({ subjects: d.subjects || [], tags: d.tags || [] })).catch(() => { });
   }, [mode, domain, aType, aSubjects, debounced]);
 
   // Results
@@ -142,6 +155,7 @@ export function StructuredLibrary() {
     } else if (kind === 'books') {
       url = `/api/library/books?${q}`;
     } else {
+      if (publisher) q.set('publisher', publisher);
       if (selJournalIds.length) q.set('journalIds', jidsKey);
       if (year) q.set('year', year);
       if (selJournalIds.length === 1) { if (volume) q.set('volume', volume); if (issue) q.set('issue', issue); }
@@ -150,7 +164,7 @@ export function StructuredLibrary() {
     fetch(url, authOpts()).then(r => r.json())
       .then(d => { setItems(d.data || []); setTotal(d.total || 0); })
       .catch(() => setItems([])).finally(() => setLoading(false));
-  }, [mode, kind, domain, jidsKey, year, volume, issue, debounced, page, aType, aSubjects, aTags]);
+  }, [mode, kind, domain, publisher, jidsKey, year, volume, issue, debounced, page, aType, aSubjects, aTags]);
 
   const displayed = useMemo(() => {
     let list = [...items];
@@ -178,6 +192,7 @@ export function StructuredLibrary() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const activeChips: { label: string; clear: () => void }[] = [];
   if (domain) activeChips.push({ label: domain, clear: () => setDomain('') });
+  if (publisher) activeChips.push({ label: publisher, clear: () => { setPublisher(''); setPage(1); } });
   if (selJournals.length) selJournals.forEach(j => activeChips.push({ label: j.title, clear: () => toggleJournal(j.id) }));
   else if (selJournalIds.length) activeChips.push({ label: `${selJournalIds.length} journal(s)`, clear: () => setSelJournalIds([]) });
   if (year) activeChips.push({ label: `Year ${year}`, clear: () => { setYear(''); setVolume(''); setIssue(''); } });
@@ -188,7 +203,7 @@ export function StructuredLibrary() {
   aSubjects.forEach(s => activeChips.push({ label: s, clear: () => setASubjects(p => p.filter(x => x !== s)) }));
   aTags.forEach(t => activeChips.push({ label: `#${t}`, clear: () => setATags(p => p.filter(x => x !== t)) }));
 
-  const clearAll = () => { setDomain(''); setSelJournalIds([]); setYear(''); setVolume(''); setIssue(''); setOaOnly(false); setRecentOnly(false); setSearch(''); setAType(''); setASubjects([]); setATags([]); };
+  const clearAll = () => { setDomain(''); setPublisher(''); setSelJournalIds([]); setYear(''); setVolume(''); setIssue(''); setOaOnly(false); setRecentOnly(false); setSearch(''); setAType(''); setASubjects([]); setATags([]); };
 
   return (
     <div className="text-slate-800 dark:text-slate-100 pb-28">
@@ -234,11 +249,20 @@ export function StructuredLibrary() {
               )}
 
               <Group label="Department">
-                <select value={domain} onChange={e => { setDomain(e.target.value); setPage(1); }} className={selCls}>
+                <select value={domain} onChange={e => { setDomain(e.target.value); setPublisher(''); setPage(1); }} className={selCls}>
                   <option value="">{isAll ? 'All Departments' : 'All My Departments'}</option>
                   {deptOptions.map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </Group>
+
+              {mode === 'new' && publishers.length > 0 && (
+                <Group label="Publisher">
+                  <select value={publisher} onChange={e => { setPublisher(e.target.value); setPage(1); }} className={selCls}>
+                    <option value="">All Publishers</option>
+                    {publishers.map((p: any) => <option key={p.name} value={p.name}>{p.name} ({p.count})</option>)}
+                  </select>
+                </Group>
+              )}
 
               {mode === 'new' && (
                 <Group label="Independent Filters">
