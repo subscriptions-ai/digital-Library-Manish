@@ -11019,7 +11019,11 @@ async function startServer() {
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const take = parseInt(limit);
       const where = { status: { not: "Draft" } };
-      if (domain) where.domain = String(domain);
+      if (domain) {
+        const doms = String(domain).split(",").map((s2) => s2.trim()).filter(Boolean);
+        if (doms.length === 1) where.domain = doms[0];
+        else if (doms.length > 1) where.domain = { in: doms };
+      }
       if (contentType) where.contentType = String(contentType);
       if (subjectArea) {
         const subjects = String(subjectArea).split(",").map((s2) => s2.trim()).filter(Boolean);

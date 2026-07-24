@@ -7,6 +7,10 @@ import { toast } from 'react-hot-toast';
 export function InstitutionContentLibrary() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  // Arriving via "Browse" (URL carries domain/type) starts a fresh context —
+  // don't inherit a stale subject/tag/search filter from a previous session,
+  // which would silently return "0 results" for content that actually exists.
+  const freshBrowse = !!(searchParams.get('domain') || searchParams.get('type'));
 
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [contents, setContents]           = useState<any[]>([]);
@@ -14,18 +18,20 @@ export function InstitutionContentLibrary() {
   const [subsLoading, setSubsLoading]     = useState(true);
 
   // Filters (Init from URL query OR sessionStorage)
-  const [search, setSearch]           = useState(() => searchParams.get('search') || sessionStorage.getItem('inst_lib_search') || '');
+  const [search, setSearch]           = useState(() => searchParams.get('search') || (freshBrowse ? '' : sessionStorage.getItem('inst_lib_search') || ''));
   const [debouncedSearch, setDebounced] = useState(search);
   const [filterDomain, setFilterDomain] = useState(() => searchParams.get('domain') || sessionStorage.getItem('inst_lib_domain') || '');
   const [filterType, setFilterType]   = useState(() => searchParams.get('type') || sessionStorage.getItem('inst_lib_type') || '');
   const [filterSubjects, setFilterSubjects] = useState<string[]>(() => {
     const fromUrl = searchParams.get('subjectArea');
     if (fromUrl) return fromUrl.split(',');
+    if (freshBrowse) return [];
     return JSON.parse(sessionStorage.getItem('inst_lib_subjects') || '[]');
   });
   const [filterTags, setFilterTags] = useState<string[]>(() => {
     const fromUrl = searchParams.get('tag');
     if (fromUrl) return fromUrl.split(',');
+    if (freshBrowse) return [];
     return JSON.parse(sessionStorage.getItem('inst_lib_tags') || '[]');
   });
   

@@ -1500,7 +1500,12 @@ async function startServer() {
 
       // Build prisma WHERE clause
       const where: any = { status: { not: "Draft" } };
-      if (domain) where.domain = String(domain);
+      // domain may be a single value or a comma-joined list ("All Subscribed Domains")
+      if (domain) {
+        const doms = String(domain).split(',').map(s => s.trim()).filter(Boolean);
+        if (doms.length === 1) where.domain = doms[0];
+        else if (doms.length > 1) where.domain = { in: doms };
+      }
       if (contentType) where.contentType = String(contentType);
       
       if (subjectArea) {
