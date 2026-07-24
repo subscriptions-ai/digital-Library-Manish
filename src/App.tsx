@@ -27,6 +27,7 @@ import { LegalDisclaimer } from "./components/LegalDisclaimer";
 import { ContentSources } from "./components/ContentSources";
 import { Cart } from "./components/Cart";
 import { Checkout } from "./components/Checkout";
+import { CommercialGate } from "./components/CommercialGate";
 import { QuotationPreview } from "./components/QuotationPreview";
 import { QuotationWizard } from "./components/QuotationWizard";
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -279,9 +280,9 @@ export default function App() {
 
                       <Route path="/journals" element={<DigitalLibrary />} />
                       <Route path="/journal/:journalId" element={<JournalDetail />} />
-                      <Route path="/subscriptions" element={<SubscriptionPlans isFullPage={true} showTitle={true} />} />
+                      <Route path="/subscriptions" element={<CommercialGate><SubscriptionPlans isFullPage={true} showTitle={true} /></CommercialGate>} />
                       <Route path="/institutional-access" element={<InstitutionalAccess />} />
-                      <Route path="/agency-listing" element={<AgencyListing />} />
+                      <Route path="/agency-listing" element={<CommercialGate><AgencyListing /></CommercialGate>} />
                       <Route path="/about" element={<AboutUs />} />
                       <Route path="/contact" element={<ContactUs />} />
                       <Route path="/faq" element={<FAQ />} />
@@ -292,10 +293,10 @@ export default function App() {
                       <Route path="/login" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
                       <Route path="/request-demo" element={<RequestDemo />} />
-                      <Route path="/cart" element={<Cart />} />
-                      <Route path="/checkout" element={<Checkout />} />
-                      <Route path="/create-quotation" element={<QuotationWizard />} />
-                      <Route path="/quotation-preview" element={<QuotationPreview />} />
+                      <Route path="/cart" element={<CommercialGate><Cart /></CommercialGate>} />
+                      <Route path="/checkout" element={<CommercialGate><Checkout /></CommercialGate>} />
+                      <Route path="/create-quotation" element={<CommercialGate><QuotationWizard /></CommercialGate>} />
+                      <Route path="/quotation-preview" element={<CommercialGate><QuotationPreview /></CommercialGate>} />
                       <Route path="/domain/:domainId" element={<DomainLandingPage />} />
                       <Route path="/preview/:id" element={<PublicContentPreview />} />
                       <Route path="/search" element={<SearchResults />} />

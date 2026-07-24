@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 export interface PublicSettings {
   emailVerificationEnabled?: boolean;
   publisherSafeMode?: boolean;
+  hidePricing?: boolean;
 }
 
 let cache: PublicSettings | null = null;
@@ -28,4 +29,20 @@ export function usePublisherSafeMode(): boolean {
     return () => { mounted = false; };
   }, []);
   return safe;
+}
+
+/**
+ * Returns true when "Hide pricing" is ON — every commercial element (prices,
+ * cart, checkout, subscribe/upgrade CTAs) must be hidden from the public site,
+ * while search, journals and browsing stay fully visible. Also true whenever
+ * stealth (publisherSafeMode) is on, since that hides commercial UI too.
+ */
+export function useHidePricing(): boolean {
+  const [hide, setHide] = useState<boolean>(Boolean(cache?.hidePricing || cache?.publisherSafeMode));
+  useEffect(() => {
+    let mounted = true;
+    fetchPublicSettings().then(s => { if (mounted) setHide(Boolean(s.hidePricing || s.publisherSafeMode)); });
+    return () => { mounted = false; };
+  }, []);
+  return hide;
 }

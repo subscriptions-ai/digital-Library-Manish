@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { DOMAINS } from "../constants";
 import { HERO_IMAGES } from "./DomainLandingPage";
+import { useHidePricing } from "../lib/publicSettings";
 import { 
   BookOpen, 
   ShieldCheck, 
@@ -77,6 +78,7 @@ const FUNCTIONALITIES = [
 ];
 
 export function DigitalLibrary() {
+  const hidePricing = useHidePricing();
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [domainCounts, setDomainCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -399,12 +401,14 @@ export function DigitalLibrary() {
             >
               Request a Guided Demo
             </Link>
-            <Link 
-              to="/institutional-access" 
+            {!hidePricing && (
+            <Link
+              to="/institutional-access"
               className="rounded-full border-2 border-slate-200 bg-white px-10 py-4 text-base font-bold text-slate-700 hover:border-blue-600 hover:text-blue-600 transition-all"
             >
               Get Custom Pricing
             </Link>
+            )}
           </div>
         </div>
       </section>

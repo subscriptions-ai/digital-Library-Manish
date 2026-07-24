@@ -365,6 +365,7 @@ async function startServer() {
     res.json({
       emailVerificationEnabled: settings.emailVerificationEnabled,
       publisherSafeMode: Boolean(settings.publisherSafeMode),
+      hidePricing: Boolean(settings.hidePricing),   // hide all commercial UI on the public site
     });
   });
 
@@ -945,13 +946,16 @@ async function startServer() {
 
   // Admin: Update Settings
   app.post("/api/admin/settings", authenticateJWT, requireSuperAdmin, (req, res) => {
-    const { emailVerificationEnabled, publisherSafeMode } = req.body;
+    const { emailVerificationEnabled, publisherSafeMode, hidePricing } = req.body;
     const settings = getSystemSettings();
     if (typeof emailVerificationEnabled !== 'undefined') {
       settings.emailVerificationEnabled = Boolean(emailVerificationEnabled);
     }
     if (typeof publisherSafeMode !== 'undefined') {
       settings.publisherSafeMode = Boolean(publisherSafeMode);
+    }
+    if (typeof hidePricing !== 'undefined') {
+      settings.hidePricing = Boolean(hidePricing);
     }
     setSystemSettings(settings);
     res.json(settings);

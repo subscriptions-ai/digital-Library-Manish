@@ -6,6 +6,7 @@ import { ArrowRight, BookOpen, ShieldCheck, Zap, Globe, Users, BarChart3, CheckC
 import * as Icons from "lucide-react";
 import { cn } from "../lib/utils";
 import { KnowledgeCore3D } from "./KnowledgeCore3D";
+import { useHidePricing } from "../lib/publicSettings";
 
 const contentTypeIconMap: Record<string, any> = {
   Book,
@@ -21,6 +22,7 @@ const contentTypeIconMap: Record<string, any> = {
 import { Helmet } from "react-helmet-async";
 
 export function Home() {
+  const hidePricing = useHidePricing();
   const [mousePosition, setMousePosition] = useState({ x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0 });
   const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
 
@@ -57,7 +59,7 @@ export function Home() {
       <Helmet>
         <title>STM Digital Library - India's Premier Academic Hub</title>
         <meta name="description" content="Explore a curated academic platform combining proprietary publications and legally sourced open-access research. Designed for students, researchers, and institutions." />
-        <meta name="keywords" content="digital library, academic research, journals, case reports, educational videos, institution subscription" />
+        <meta name="keywords" content="digital library, academic research, journals, case reports, educational videos, open access" />
         <script type="application/ld+json">
           {JSON.stringify(organizationSchema)}
         </script>
@@ -201,8 +203,8 @@ export function Home() {
                 </div>
                 <div className="space-y-4">
                   <div className="rounded-2xl bg-slate-100 p-6">
-                    <h4 className="font-bold text-slate-900">Cost Effective</h4>
-                    <p className="text-sm text-slate-600 mt-2">Save thousands on physical books and journal subscriptions.</p>
+                    <h4 className="font-bold text-slate-900">{hidePricing ? 'Always Accessible' : 'Cost Effective'}</h4>
+                    <p className="text-sm text-slate-600 mt-2">{hidePricing ? 'Instant access to books and journals — anytime, anywhere.' : 'Save thousands on physical books and journal subscriptions.'}</p>
                   </div>
                   <div className="rounded-2xl bg-blue-600 p-6 text-white">
                     <h4 className="font-bold">Eco-Friendly</h4>
@@ -323,11 +325,13 @@ export function Home() {
                 ))}
               </div>
 
+              {!hidePricing && (
               <div className="rounded-2xl bg-emerald-50/50 p-5 border border-emerald-100">
                 <p className="text-[10px] font-bold text-emerald-700 leading-normal uppercase tracking-wider text-center">
                   Subscription fees cover software services, indexing, platform maintenance, and integrated academic tools—not the ownership of open-access materials.
                 </p>
               </div>
+              )}
             </div>
           </div>
         </div>
@@ -485,16 +489,24 @@ export function Home() {
             Join thousands of researchers and students who trust STM Digital Library for their academic needs.
           </p>
           <div className="mt-12 flex flex-wrap justify-center gap-4">
-            <Link to="/subscriptions" className="rounded-full bg-white px-10 py-4 text-sm font-bold text-slate-900 hover:bg-slate-100 transition-all shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:scale-105 hover:shadow-[0_0_60px_rgba(59,130,246,0.5)]">
-              View Subscription Plans
-            </Link>
+            {hidePricing ? (
+              <Link to="/contact" className="rounded-full bg-white px-10 py-4 text-sm font-bold text-slate-900 hover:bg-slate-100 transition-all shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:scale-105 hover:shadow-[0_0_60px_rgba(59,130,246,0.5)]">
+                Request Access
+              </Link>
+            ) : (
+              <Link to="/subscriptions" className="rounded-full bg-white px-10 py-4 text-sm font-bold text-slate-900 hover:bg-slate-100 transition-all shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:scale-105 hover:shadow-[0_0_60px_rgba(59,130,246,0.5)]">
+                View Subscription Plans
+              </Link>
+            )}
             <Link to="/signup" className="rounded-full border border-white/20 bg-white/5 backdrop-blur-md px-10 py-4 text-sm font-bold text-white hover:bg-white/10 transition-all hover:scale-105">
               Create Free Account
             </Link>
+            {!hidePricing && (
             <Link to="/create-quotation" className="rounded-full border border-white/10 bg-transparent px-10 py-4 text-sm font-bold text-white/70 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 hover:scale-105">
               <FileText size={18} />
               Create Quotation
             </Link>
+            )}
           </div>
         </div>
       </section>

@@ -4,11 +4,13 @@ import { BookOpen, Calendar, Award, Globe, FileText, Download, Share2, Bookmark,
 import { cn } from "../lib/utils";
 import { useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useHidePricing } from "../lib/publicSettings";
 import { logUsage } from "../lib/usageTracker";
 
 export function JournalDetail() {
   const { journalId } = useParams();
   const { profile } = useAuth();
+  const hidePricing = useHidePricing();
   const journal = FEATURED_JOURNALS.find(j => j.id === journalId);
   const domain = DOMAINS.find(d => d.id === journal?.domainId);
 
@@ -61,9 +63,15 @@ export function JournalDetail() {
                 <img src={journal.coverImage} alt={journal.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
               </div>
               <div className="mt-8 space-y-4">
-                <button className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 transition-all">
-                  Subscribe to Journal
-                </button>
+                {hidePricing ? (
+                  <Link to="/contact" className="block text-center w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 transition-all">
+                    Request Access
+                  </Link>
+                ) : (
+                  <button className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 transition-all">
+                    Subscribe to Journal
+                  </button>
+                )}
                 <button 
                   onClick={handleDownload}
                   className="w-full rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-900 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"

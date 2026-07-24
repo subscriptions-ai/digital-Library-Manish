@@ -5,10 +5,11 @@ import { cn } from "../lib/utils";
 import { DOMAINS } from "../constants";
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
-import { usePublisherSafeMode } from "../lib/publicSettings";
+import { usePublisherSafeMode, useHidePricing } from "../lib/publicSettings";
 
 export function Navbar() {
   const safeMode = usePublisherSafeMode();
+  const hidePricing = useHidePricing();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDepartmentsOpen, setIsDepartmentsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -80,6 +81,7 @@ export function Navbar() {
         {/* Desktop Navigation & CTAs */}
         <div className="hidden lg:flex flex-col items-end gap-2">
           <div className="flex items-center gap-6">
+            {!hidePricing && (
             <Link to="/cart" className="relative p-2 text-slate-600 hover:text-blue-600 transition-colors">
               <ShoppingCart size={22} />
               {items.length > 0 && (
@@ -88,6 +90,7 @@ export function Navbar() {
                 </span>
               )}
             </Link>
+            )}
             {user ? (
               <>
                 {/* Profile Dropdown */}
@@ -230,13 +233,13 @@ export function Navbar() {
                 )}
               </div>
 
-              {!safeMode && <Link to="/subscriptions" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Subscription Plans</Link>}
-              {!safeMode && <Link to="/agency-listing" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Agency Info</Link>}
+              {!hidePricing && <Link to="/subscriptions" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Subscription Plans</Link>}
+              {!hidePricing && <Link to="/agency-listing" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Agency Info</Link>}
               {!safeMode && <Link to="/faq" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">FAQ</Link>}
               <Link to="/contact" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Contact Us</Link>
             </nav>
 
-            {!safeMode && (
+            {!hidePricing && (
             <button
               onClick={() => navigate('/create-quotation')}
               className="flex items-center gap-2 rounded-full bg-blue-600 px-5 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-200"
@@ -305,13 +308,14 @@ export function Navbar() {
                   )}
                 </div>
 
-                {!safeMode && <Link to="/subscriptions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Subscription Plans</Link>}
-                {!safeMode && <Link to="/agency-listing" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Agency Info</Link>}
+                {!hidePricing && <Link to="/subscriptions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Subscription Plans</Link>}
+                {!hidePricing && <Link to="/agency-listing" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Agency Info</Link>}
                 {!safeMode && <Link to="/faq" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>FAQ</Link>}
                 <Link to="/contact" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Contact Us</Link>
               </div>
             </div>
 
+            {!hidePricing && (
             <Link to="/cart" className="flex items-center justify-between text-lg font-bold text-slate-900" onClick={() => setIsMenuOpen(false)}>
               <div className="flex items-center gap-3">
                 <ShoppingCart size={22} className="text-blue-600" />
@@ -323,17 +327,20 @@ export function Navbar() {
                 </span>
               )}
             </Link>
+            )}
 
-            <button 
+            {!hidePricing && (
+            <button
               onClick={() => {
                 setIsMenuOpen(false);
                 navigate('/create-quotation');
               }}
-              className="flex items-center gap-3 text-lg font-bold text-blue-600" 
+              className="flex items-center gap-3 text-lg font-bold text-blue-600"
             >
               <FileText size={22} />
               Create Quotation
             </button>
+            )}
           </div>
 
           <div className="pt-6 border-t border-slate-100 flex flex-col gap-4">

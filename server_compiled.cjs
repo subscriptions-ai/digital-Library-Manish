@@ -10091,7 +10091,9 @@ async function startServer() {
     const settings = getSystemSettings();
     res.json({
       emailVerificationEnabled: settings.emailVerificationEnabled,
-      publisherSafeMode: Boolean(settings.publisherSafeMode)
+      publisherSafeMode: Boolean(settings.publisherSafeMode),
+      hidePricing: Boolean(settings.hidePricing)
+      // hide all commercial UI on the public site
     });
   });
   app.post("/api/verify/check-or-send", async (req, res) => {
@@ -10554,13 +10556,16 @@ async function startServer() {
     res.json(getSystemSettings());
   });
   app.post("/api/admin/settings", authenticateJWT, requireSuperAdmin, (req, res) => {
-    const { emailVerificationEnabled, publisherSafeMode } = req.body;
+    const { emailVerificationEnabled, publisherSafeMode, hidePricing } = req.body;
     const settings = getSystemSettings();
     if (typeof emailVerificationEnabled !== "undefined") {
       settings.emailVerificationEnabled = Boolean(emailVerificationEnabled);
     }
     if (typeof publisherSafeMode !== "undefined") {
       settings.publisherSafeMode = Boolean(publisherSafeMode);
+    }
+    if (typeof hidePricing !== "undefined") {
+      settings.hidePricing = Boolean(hidePricing);
     }
     setSystemSettings(settings);
     res.json(settings);

@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { BookOpen, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Youtube, GraduationCap, Library, Globe, FileText } from "lucide-react";
 import { COMPANY_DETAILS } from "../config";
+import { useHidePricing } from "../lib/publicSettings";
 
 export function Footer() {
+  const hidePricing = useHidePricing();
   return (
     <footer className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 pt-20 pb-10 border-t border-blue-900/30">
       {/* Eye-Catching Animated Library Doodles Background */}
@@ -60,7 +62,7 @@ export function Footer() {
             <ul className="space-y-4">
               <li><Link to="/" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Home</Link></li>
               <li><Link to="/digital-library" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Journals</Link></li>
-              <li><Link to="/subscriptions" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Subscriptions</Link></li>
+              {!hidePricing && <li><Link to="/subscriptions" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Subscriptions</Link></li>}
               <li><Link to="/about" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> About Us</Link></li>
               <li><Link to="/contact" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Contact Us</Link></li>
             </ul>
@@ -73,7 +75,7 @@ export function Footer() {
               <li><Link to="/privacy-policy" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Privacy Policy</Link></li>
               <li><Link to="/terms-and-conditions" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Terms & Conditions</Link></li>
               <li><Link to="/faq" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> FAQs</Link></li>
-              <li><Link to="/agency-listing" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Agency Listing</Link></li>
+              {!hidePricing && <li><Link to="/agency-listing" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Agency Listing</Link></li>}
               <li><Link to="/admin" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"><span className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-blue-500 transition-colors"></span> Admin Login</Link></li>
             </ul>
           </div>

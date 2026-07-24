@@ -15,6 +15,7 @@ export function AdminDashboardHome() {
   const [loading, setLoading] = useState(true);
   const [emailVerificationEnabled, setEmailVerificationEnabled] = useState<boolean>(true);
   const [publisherSafeMode, setPublisherSafeMode] = useState<boolean>(false);
+  const [hidePricing, setHidePricing] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -34,6 +35,7 @@ export function AdminDashboardHome() {
           const s = await settingsRes.json();
           setEmailVerificationEnabled(s.emailVerificationEnabled);
           setPublisherSafeMode(Boolean(s.publisherSafeMode));
+          setHidePricing(Boolean(s.hidePricing));
         }
       } catch (error) {
         console.error("Error fetching stats:", error);
@@ -82,6 +84,23 @@ export function AdminDashboardHome() {
       } else { throw new Error(); }
     } catch {
       toast.error('Failed to update stealth mode');
+    }
+  };
+
+  const toggleHidePricing = async () => {
+    try {
+      const newVal = !hidePricing;
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ hidePricing: newVal })
+      });
+      if (res.ok) {
+        setHidePricing(newVal);
+        toast.success(`Public pricing ${newVal ? 'HIDDEN — visitors see “Request Access”' : 'visible'}`);
+      } else { throw new Error(); }
+    } catch {
+      toast.error('Failed to update pricing visibility');
     }
   };
 
@@ -162,6 +181,25 @@ export function AdminDashboardHome() {
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                   publisherSafeMode ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex flex-col text-right hidden sm:flex">
+              <span className="text-sm font-bold text-slate-800">Hide Public Pricing</span>
+              <span className="text-xs text-slate-500">{hidePricing ? 'ON — visitors see “Request Access”' : 'Off'}</span>
+            </div>
+            <button
+              onClick={toggleHidePricing}
+              title={hidePricing ? "Show pricing / cart / checkout again" : "Hide all pricing publicly (cart, checkout, plans, quotations) — search & journals stay visible"}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                hidePricing ? 'bg-emerald-600' : 'bg-slate-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  hidePricing ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>
