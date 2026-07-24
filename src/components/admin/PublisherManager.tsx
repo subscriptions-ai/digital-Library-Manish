@@ -227,21 +227,53 @@ function TieUpModal({ publisher, busy, setBusy, onClose, onDone }: any) {
     country: publisher.country || '', address: publisher.address || '', agreementNote: publisher.agreementNote || '',
     allowedContentTypes: publisher.allowedContentTypes || ['Journals', 'Books'],
   });
+  const [creds, setCreds] = useState<{ email: string; password: string | null } | null>(null);
   const toggleType = (t: string) => setForm((f: any) => ({
     ...f, allowedContentTypes: f.allowedContentTypes.includes(t) ? f.allowedContentTypes.filter((x: string) => x !== t) : [...f.allowedContentTypes, t],
   }));
   const submit = async () => {
-    if (!form.email.trim()) { toast.error('Email is required to send credentials'); return; }
+    if (!form.email.trim()) { toast.error('Email is required to create a login'); return; }
     setBusy(true);
     try {
       const res = await fetch(`/api/admin/publishers/${publisher.id}/tieup`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
-      toast.success('Tied up! Invitation + login credentials emailed.'); onDone();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setCreds({ email: data.loginEmail || form.email, password: data.tempPassword });
+      toast.success('Publisher tied up — credentials ready below');
     } catch (e: any) { toast.error(e.message || 'Tie-up failed'); } finally { setBusy(false); }
   };
+
+  // Credentials view — shown after a successful tie-up (does not rely on email)
+  if (creds) {
+    const copy = () => {
+      navigator.clipboard?.writeText(creds.password ? `Login: ${creds.email}\nPassword: ${creds.password}` : creds.email);
+      toast.success('Copied');
+    };
+    return (
+      <Modal title="Login credentials" onClose={onDone} icon={<Handshake size={20} className="text-emerald-600" />}>
+        <div className="space-y-4">
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-2">Share these with {publisher.name}</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between gap-3"><span className="text-slate-500">Login email</span><span className="font-mono font-bold text-slate-900 break-all">{creds.email}</span></div>
+              {creds.password
+                ? <div className="flex justify-between gap-3"><span className="text-slate-500">Temporary password</span><span className="font-mono font-bold text-slate-900">{creds.password}</span></div>
+                : <p className="text-xs text-slate-500">This person already had an account — they log in with their existing password (now upgraded to a Publisher login).</p>}
+            </div>
+          </div>
+          <p className="text-xs text-slate-500">We also emailed these, but email can land in spam — copy and share them directly to be safe. The publisher signs in at <b>/login</b> and lands on their portal.</p>
+          <div className="flex justify-end gap-2">
+            <button onClick={copy} className="px-4 py-2 text-sm font-bold text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-xl">Copy</button>
+            <button onClick={onDone} className="px-5 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">Done</button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
   return (
     <Modal title={`Tie Up — ${publisher.name}`} onClose={onClose} icon={<Handshake size={20} className="text-emerald-600" />}>
       <div className="space-y-3">
@@ -264,9 +296,9 @@ function TieUpModal({ publisher, busy, setBusy, onClose, onDone }: any) {
           <textarea rows={3} className={inputCls} value={form.agreementNote} onChange={e => setForm({ ...form, agreementNote: e.target.value })}
             placeholder="e.g. Open-access content sharing partnership — increased visibility & citations." />
         </Field>
-        <p className="text-xs text-slate-500 flex items-center gap-1"><Mail size={13} /> A login account will be created and credentials emailed to the publisher.</p>
+        <p className="text-xs text-slate-500 flex items-center gap-1"><Mail size={13} /> A login is created and the credentials are shown to you here (and emailed to the publisher).</p>
       </div>
-      <ModalActions onClose={onClose} onSave={submit} busy={busy} label="Tie Up & Send Invite" />
+      <ModalActions onClose={onClose} onSave={submit} busy={busy} label="Tie Up & Create Login" />
     </Modal>
   );
 }

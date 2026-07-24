@@ -12780,7 +12780,7 @@ async function startServer() {
       } catch (mailErr) {
         console.error("Tie-up email failed:", mailErr);
       }
-      res.json({ ...updated, credentialsSent: true });
+      res.json({ ...updated, credentialsSent: true, loginEmail, tempPassword: generatedPassword || null });
     } catch (e2) {
       console.error("Tie-up error:", e2);
       res.status(500).json({ error: "Failed to tie up publisher" });

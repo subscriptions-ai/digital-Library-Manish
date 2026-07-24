@@ -3555,7 +3555,9 @@ async function startServer() {
         });
       } catch (mailErr) { console.error("Tie-up email failed:", mailErr); }
 
-      res.json({ ...updated, credentialsSent: true });
+      // Return the credentials so the admin can copy/share them directly —
+      // never depend on email delivery (which may land in spam).
+      res.json({ ...updated, credentialsSent: true, loginEmail, tempPassword: generatedPassword || null });
     } catch (e: any) { console.error("Tie-up error:", e); res.status(500).json({ error: "Failed to tie up publisher" }); }
   });
 
