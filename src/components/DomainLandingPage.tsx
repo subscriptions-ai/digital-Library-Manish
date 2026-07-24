@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useHidePricing } from "../lib/publicSettings";
 import { motion, AnimatePresence } from "framer-motion";
 import { DOMAINS, SUBSCRIPTION_PLANS } from "../constants";
 import { Helmet } from "react-helmet-async";
@@ -116,6 +117,7 @@ const PLAN_BADGE: Record<string, string> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function DomainLandingPage() {
+  const hidePricing = useHidePricing();
   const { domainId } = useParams<{ domainId: string }>();
   const domain = DOMAINS.find((d) => d.id === domainId);
   const DomainIcon = (Icons as any)[domain?.icon || "BookOpen"] || Icons.BookOpen;
@@ -278,13 +280,22 @@ export function DomainLandingPage() {
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <a
-                  href="#subscription"
-                  className="rounded-full bg-indigo-600 hover:bg-indigo-700 px-7 py-3.5 text-sm font-bold text-white shadow-md transition-all"
-                  onClick={(e) => { e.preventDefault(); document.getElementById('subscription')?.scrollIntoView({ behavior: 'smooth' }); }}
-                >
-                  View Subscription Plans
-                </a>
+                {hidePricing ? (
+                  <Link
+                    to="/contact"
+                    className="rounded-full bg-indigo-600 hover:bg-indigo-700 px-7 py-3.5 text-sm font-bold text-white shadow-md transition-all"
+                  >
+                    Request Access
+                  </Link>
+                ) : (
+                  <a
+                    href="#subscription"
+                    className="rounded-full bg-indigo-600 hover:bg-indigo-700 px-7 py-3.5 text-sm font-bold text-white shadow-md transition-all"
+                    onClick={(e) => { e.preventDefault(); document.getElementById('subscription')?.scrollIntoView({ behavior: 'smooth' }); }}
+                  >
+                    View Subscription Plans
+                  </a>
+                )}
                 <a
                   href="#content-types"
                   className="rounded-full border border-slate-300 bg-white hover:bg-slate-50 px-7 py-3.5 text-sm font-bold text-slate-700 transition-all"
@@ -407,7 +418,7 @@ export function DomainLandingPage() {
               What You Get in this Department
             </h2>
             <p className="mt-4 text-slate-500 max-w-2xl mx-auto">
-              Subscribers gain full access to a diverse range of academic materials specifically curated for the{" "}
+              {hidePricing ? 'Get' : 'Subscribers gain'} full access to a diverse range of academic materials specifically curated for the{" "}
               <span className="text-indigo-600 font-semibold">{domain.name}</span> domain.
             </p>
           </div>
@@ -461,7 +472,7 @@ export function DomainLandingPage() {
             {/* Left */}
             <div>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-snug">
-                Why Subscribe to this Department?
+                {hidePricing ? 'Why this Department?' : 'Why Subscribe to this Department?'}
               </h2>
               <p className="mt-5 text-slate-400 leading-relaxed">
                 {domain.whySubscribe}
@@ -498,7 +509,7 @@ export function DomainLandingPage() {
               </div>
 
               <div className="border-t border-slate-700 pt-6">
-                <h3 className="text-base font-bold text-white mb-4">Subscription Benefits</h3>
+                <h3 className="text-base font-bold text-white mb-4">{hidePricing ? 'What You Get' : 'Subscription Benefits'}</h3>
                 <ul className="space-y-2.5">
                   {SUBSCRIPTION_BENEFITS.map((benefit, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm text-slate-300">
@@ -515,7 +526,21 @@ export function DomainLandingPage() {
         </div>
       </section>
 
-      {/* ══ SUBSCRIPTION PLANS ═══════════════════════════════════════════════════ */}
+      {/* ══ ACCESS / SUBSCRIPTION ════════════════════════════════════════════════ */}
+      {hidePricing ? (
+      <section id="subscription" className="bg-white py-20 scroll-mt-8">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900">Access {domain.name} content</h2>
+          <p className="mt-3 text-slate-500 max-w-xl mx-auto">
+            Get full access to this department's journals, articles and resources.
+            Tell us what you need and our team will set you up.
+          </p>
+          <Link to="/contact" className="mt-8 inline-block rounded-full bg-indigo-600 hover:bg-indigo-700 px-8 py-3.5 text-sm font-bold text-white shadow-md transition-all">
+            Request Access
+          </Link>
+        </div>
+      </section>
+      ) : (
       <section id="subscription" className="bg-white py-20 scroll-mt-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Heading */}
@@ -552,6 +577,7 @@ export function DomainLandingPage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ══ RELATED DOMAINS ══════════════════════════════════════════════════════ */}
       <section className="bg-slate-50 py-16">
