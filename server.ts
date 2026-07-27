@@ -50,6 +50,10 @@ const currentDir = process.cwd();
 
 async function startServer() {
   const app = express();
+  // Behind Coolify/Traefik (and Cloudflare) the app receives X-Forwarded-For.
+  // Trust the reverse proxy so req.ip is the real client and express-rate-limit
+  // stops throwing ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+  app.set('trust proxy', 1);
   const PORT = Number(process.env.PORT) || 3000;
 
   // Production Middleware

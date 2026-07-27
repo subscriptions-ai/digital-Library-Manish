@@ -9845,6 +9845,7 @@ import_dotenv.default.config();
 var currentDir = process.cwd();
 async function startServer() {
   const app = (0, import_express.default)();
+  app.set("trust proxy", 1);
   const PORT = Number(process.env.PORT) || 3e3;
   app.use((0, import_helmet.default)({
     contentSecurityPolicy: false
