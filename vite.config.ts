@@ -21,25 +21,12 @@ export default defineConfig(({mode}) => {
       hmr: process.env.DISABLE_HMR !== 'true',
     },
     build: {
-      // Split the (previously ~4.8MB) single bundle into vendor chunks. This lowers
-      // peak memory during the rollup render/minify phase, which was OOM-killing the
-      // deploy build ("transforming..." -> exit 255) on the memory-limited container.
+      // NOTE: manual vendor-chunk splitting was tried to cut build memory, but it
+      // split React across chunks and blank-screened the app at runtime. The deploy
+      // OOM is instead solved with server swap, so we keep Vite's safe default
+      // chunking. Only skip the gzip-size report pass (harmless build speedup).
       chunkSizeWarningLimit: 1500,
-      // Skip the gzip-size report pass — saves build time & a little memory.
       reportCompressedSize: false,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (!id.includes('node_modules')) return;
-            if (id.includes('three')) return 'three';
-            if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('dompurify')) return 'pdf';
-            if (id.includes('framer-motion') || id.includes('/motion/')) return 'motion';
-            if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) return 'charts';
-            if (id.includes('react-router') || id.includes('react-dom') || id.includes('/scheduler/')) return 'react-vendor';
-            return 'vendor';
-          },
-        },
-      },
     },
   };
 });
