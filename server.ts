@@ -4620,6 +4620,20 @@ async function startServer() {
       const rows: any[] = Array.isArray(req.body.items) ? req.body.items : [];
       if (!rows.length) return res.status(400).json({ error: "No rows to import" });
       let success = 0, failed = 0; const errors: any[] = [];
+      // Cache within the request: OJS-style feeds have thousands of articles per
+      // journal/publisher — avoid re-querying the same ones on every row.
+      const pubCache = new Map<string, any>();
+      const jrnCache = new Map<string, any>();
+      const getPub = async (name: string | null) => {
+        if (!name) return null;
+        if (pubCache.has(name)) return pubCache.get(name);
+        const p = await upsertPublisherByName(name, 'Admin'); pubCache.set(name, p); return p;
+      };
+      const getJrn = async (issn: string | null, data: any) => {
+        if (!issn) return await upsertJournalByIssn(issn, data);
+        if (jrnCache.has(issn)) return jrnCache.get(issn);
+        const j = await upsertJournalByIssn(issn, data); jrnCache.set(issn, j); return j;
+      };
       for (let i = 0; i < rows.length; i++) {
         const b = { ...rows[i], contentType: req.body.contentType };
         try {
@@ -4628,8 +4642,8 @@ async function startServer() {
             await (prisma as any).book.create({ data: buildAdminBook(b, by) });
           } else {
             const data = buildAdminArticle(b, by);
-            const publisher = await upsertPublisherByName(data.publisherName, 'Admin');
-            const journal = await upsertJournalByIssn(data.journalIssn, {
+            const publisher = await getPub(data.publisherName);
+            const journal = await getJrn(data.journalIssn, {
               title: data.journalName || 'Unknown Journal',
               publisherId: publisher?.id || null, publisherName: data.publisherName || null,
               domain: data.domain, subject: data.subject, openAccess: data.accessType === 'OpenAccess', startYear: data.year || null,

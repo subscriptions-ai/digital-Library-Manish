@@ -40,6 +40,7 @@ export function ContentBulkImport({ contentType }: ContentBulkImportProps) {
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: any[] } | null>(null);
 
   // Fields for THIS content type = base + type-specific (from the single editor, always in sync).
@@ -109,21 +110,36 @@ export function ContentBulkImport({ contentType }: ContentBulkImportProps) {
       return item;
     });
 
+    // Send in batches so a 28k-row file doesn't overload one request (which times out → 500).
+    const CHUNK = 300;
+    let success = 0, failed = 0; const errors: any[] = [];
     try {
-      const res = await fetch('/api/admin/library/items/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ contentType, items })
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Import failed');
-      setImportResult(result);
+      for (let i = 0; i < items.length; i += CHUNK) {
+        const batch = items.slice(i, i + CHUNK);
+        setProgress({ done: i, total: items.length });
+        const res = await fetch('/api/admin/library/items/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ contentType, items: batch })
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || `Import failed at row ${i + 1}`);
+        success += result.success || 0;
+        failed += result.failed || 0;
+        if (Array.isArray(result.errors)) errors.push(...result.errors.map((e: any) => ({ ...e, row: (e.row || 0) + i })));
+      }
+      setProgress({ done: items.length, total: items.length });
+      setImportResult({ success, failed, errors: errors.slice(0, 200) });
       setStep(3);
-      result.failed > 0 ? toast.error(`Imported ${result.success}, ${result.failed} failed`) : toast.success(`${result.success} records imported!`);
+      failed > 0 ? toast.error(`Imported ${success}, ${failed} failed`) : toast.success(`${success} records imported!`);
     } catch (err: any) {
+      // keep whatever succeeded so far, surface the error
+      setImportResult({ success, failed, errors: [...errors.slice(0, 199), { row: '-', item: {}, error: err.message || 'Import failed' }] });
+      setStep(3);
       toast.error(err.message || 'Import failed');
     } finally {
       setUploading(false);
+      setProgress(null);
     }
   };
 
@@ -209,7 +225,9 @@ export function ContentBulkImport({ contentType }: ContentBulkImportProps) {
           <div className="flex justify-end">
             <button onClick={processImport} disabled={uploading}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-7 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition-colors">
-              {uploading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Importing...</> : <>Run Import <ChevronRight size={16} /></>}
+              {uploading
+                ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {progress ? `Importing ${progress.done.toLocaleString()} / ${progress.total.toLocaleString()}…` : 'Importing…'}</>
+                : <>Run Import <ChevronRight size={16} /></>}
             </button>
           </div>
         </div>

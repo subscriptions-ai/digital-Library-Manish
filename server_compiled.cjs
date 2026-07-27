@@ -13975,6 +13975,22 @@ async function startServer() {
       if (!rows.length) return res.status(400).json({ error: "No rows to import" });
       let success = 0, failed = 0;
       const errors = [];
+      const pubCache = /* @__PURE__ */ new Map();
+      const jrnCache = /* @__PURE__ */ new Map();
+      const getPub = async (name) => {
+        if (!name) return null;
+        if (pubCache.has(name)) return pubCache.get(name);
+        const p = await upsertPublisherByName(name, "Admin");
+        pubCache.set(name, p);
+        return p;
+      };
+      const getJrn = async (issn, data) => {
+        if (!issn) return await upsertJournalByIssn(issn, data);
+        if (jrnCache.has(issn)) return jrnCache.get(issn);
+        const j = await upsertJournalByIssn(issn, data);
+        jrnCache.set(issn, j);
+        return j;
+      };
       for (let i2 = 0; i2 < rows.length; i2++) {
         const b = { ...rows[i2], contentType: req.body.contentType };
         try {
@@ -13983,8 +13999,8 @@ async function startServer() {
             await prisma2.book.create({ data: buildAdminBook(b, by) });
           } else {
             const data = buildAdminArticle(b, by);
-            const publisher = await upsertPublisherByName(data.publisherName, "Admin");
-            const journal = await upsertJournalByIssn(data.journalIssn, {
+            const publisher = await getPub(data.publisherName);
+            const journal = await getJrn(data.journalIssn, {
               title: data.journalName || "Unknown Journal",
               publisherId: publisher?.id || null,
               publisherName: data.publisherName || null,
