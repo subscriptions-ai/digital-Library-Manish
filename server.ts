@@ -4608,6 +4608,40 @@ async function startServer() {
     } catch (e: any) { console.error("admin library create:", e); res.status(500).json({ error: "Failed to create item" }); }
   });
 
+  // Bulk import into the NEW structured dataset (Article/Book) — mirrors the single create above.
+  app.post("/api/admin/library/items/bulk", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const by = req.user?.email || 'Admin';
+      const kind = kindFor(req.body.contentType);
+      const rows: any[] = Array.isArray(req.body.items) ? req.body.items : [];
+      if (!rows.length) return res.status(400).json({ error: "No rows to import" });
+      let success = 0, failed = 0; const errors: any[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const b = { ...rows[i], contentType: req.body.contentType };
+        try {
+          if (!b.title || !String(b.title).trim()) throw new Error('Title is required');
+          if (kind === 'book') {
+            await (prisma as any).book.create({ data: buildAdminBook(b, by) });
+          } else {
+            const data = buildAdminArticle(b, by);
+            const publisher = await upsertPublisherByName(data.publisherName, 'Admin');
+            const journal = await upsertJournalByIssn(data.journalIssn, {
+              title: data.journalName || 'Unknown Journal',
+              publisherId: publisher?.id || null, publisherName: data.publisherName || null,
+              domain: data.domain, subject: data.subject, openAccess: data.accessType === 'OpenAccess', startYear: data.year || null,
+            });
+            await (prisma as any).article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
+          }
+          success++;
+        } catch (e: any) {
+          failed++;
+          errors.push({ row: i + 2, item: { title: b.title }, error: e?.message || 'Failed' });
+        }
+      }
+      res.json({ success, failed, errors: errors.slice(0, 100) });
+    } catch (e: any) { console.error("admin library bulk:", e); res.status(500).json({ error: "Bulk import failed" }); }
+  });
+
   app.put("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
       const kind = req.params.kind === 'book' ? 'book' : 'article';

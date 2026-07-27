@@ -11,8 +11,8 @@ interface ContentSingleEditorProps {
 
 // Type-specific metadata fields per content type (master plan Section 3).
 // meta:true  -> stored in the JSON metadata blob; otherwise a real column.
-type FieldDef = { key: string; label: string; ph?: string; meta?: boolean; type?: string };
-const TYPE_FIELDS: Record<string, FieldDef[]> = {
+export type FieldDef = { key: string; label: string; ph?: string; meta?: boolean; type?: string; required?: boolean };
+export const TYPE_FIELDS: Record<string, FieldDef[]> = {
   'Periodicals': [
     { key: 'journalName', label: 'Journal Name' }, { key: 'issn', label: 'ISSN' },
     { key: 'publisherName', label: 'Publisher' },

@@ -13966,6 +13966,46 @@ async function startServer() {
       res.status(500).json({ error: "Failed to create item" });
     }
   });
+  app.post("/api/admin/library/items/bulk", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const by = req.user?.email || "Admin";
+      const kind = kindFor(req.body.contentType);
+      const rows = Array.isArray(req.body.items) ? req.body.items : [];
+      if (!rows.length) return res.status(400).json({ error: "No rows to import" });
+      let success = 0, failed = 0;
+      const errors = [];
+      for (let i2 = 0; i2 < rows.length; i2++) {
+        const b = { ...rows[i2], contentType: req.body.contentType };
+        try {
+          if (!b.title || !String(b.title).trim()) throw new Error("Title is required");
+          if (kind === "book") {
+            await prisma2.book.create({ data: buildAdminBook(b, by) });
+          } else {
+            const data = buildAdminArticle(b, by);
+            const publisher = await upsertPublisherByName(data.publisherName, "Admin");
+            const journal = await upsertJournalByIssn(data.journalIssn, {
+              title: data.journalName || "Unknown Journal",
+              publisherId: publisher?.id || null,
+              publisherName: data.publisherName || null,
+              domain: data.domain,
+              subject: data.subject,
+              openAccess: data.accessType === "OpenAccess",
+              startYear: data.year || null
+            });
+            await prisma2.article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
+          }
+          success++;
+        } catch (e2) {
+          failed++;
+          errors.push({ row: i2 + 2, item: { title: b.title }, error: e2?.message || "Failed" });
+        }
+      }
+      res.json({ success, failed, errors: errors.slice(0, 100) });
+    } catch (e2) {
+      console.error("admin library bulk:", e2);
+      res.status(500).json({ error: "Bulk import failed" });
+    }
+  });
   app.put("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const kind = req.params.kind === "book" ? "book" : "article";
