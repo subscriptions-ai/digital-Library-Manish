@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DOMAINS, CONTENT_TYPES } from '../constants';
 import { SmartPagination } from './SmartPagination';
+import { MetadataModal } from './MetadataModal';
 import {
   BookOpen, FileText, Search, Archive, Sparkles, ChevronRight, ChevronDown,
-  Unlock, Copy, ArrowRight, SlidersHorizontal, X, BookMarked, Check,
+  Unlock, Copy, ArrowRight, SlidersHorizontal, X, BookMarked, Check, Info,
 } from 'lucide-react';
 
 type Mode = 'new' | 'archived';
@@ -405,6 +406,11 @@ function ResultCard({ it, kind, mode, onOpen }: { it: any; kind: Kind; mode: Mod
   const isBook = kind === 'books' || it.contentType === 'Books';
   const isOA = ['OpenAccess', 'Free'].includes(it.accessType);
   const hasPdf = !!(it.pdfUrl || it.fileUrl);
+  // Legacy archived rows come back with fileUrl stripped when the user lacks access —
+  // those still route to the viewer so the upgrade prompt shows. Only genuinely
+  // file-less records ("metadata only") get the Read More popup.
+  const metaOnly = !hasPdf && !it.locked;
+  const [showMeta, setShowMeta] = useState(false);
   const authors = (it.authors || '').split(',').map((s: string) => s.trim()).filter(Boolean);
   const shown = authors.slice(0, 3);
   const citation = isBook
@@ -413,18 +419,21 @@ function ResultCard({ it, kind, mode, onOpen }: { it: any; kind: Kind; mode: Mod
 
   const copyDoi = (e: React.MouseEvent) => { e.stopPropagation(); if (it.doi) navigator.clipboard?.writeText(it.doi); };
 
+  const open = metaOnly ? () => setShowMeta(true) : onOpen;
+
   return (
     <div className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all p-4">
       {/* pills */}
       <div className="flex flex-wrap items-center gap-1.5 mb-2">
         <Pill className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">{isBook ? 'Book' : (mode === 'archived' ? (it.contentType || 'Content') : (it.contentType || 'Journal Article'))}</Pill>
         {hasPdf && <Pill className="bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">Full Text</Pill>}
+        {metaOnly && <Pill className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">Metadata Only</Pill>}
         {isOA && <Pill className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"><Unlock size={9} className="inline -mt-0.5 mr-0.5" />Open Access</Pill>}
         {it.domain && <Pill className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">{it.domain}</Pill>}
       </div>
 
       {/* title */}
-      <button onClick={onOpen} className="text-left w-full">
+      <button onClick={open} className="text-left w-full">
         <h3 className="font-bold text-[15px] leading-snug text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
           {isBook ? <BookOpen size={14} className="inline -mt-0.5 mr-1 text-indigo-500" /> : <FileText size={14} className="inline -mt-0.5 mr-1 text-emerald-500" />}
           {it.title}
@@ -452,10 +461,18 @@ function ResultCard({ it, kind, mode, onOpen }: { it: any; kind: Kind; mode: Mod
           )}
           {it.publisherName && !isBook && <span className="text-[11px] text-slate-400 truncate max-w-[180px]">{it.publisherName}</span>}
         </div>
-        <button onClick={onOpen} className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 rounded-lg shadow-sm transition-colors">
-          {hasPdf ? 'Read Full Text' : 'Open'} <ArrowRight size={13} />
-        </button>
+        {metaOnly ? (
+          <button onClick={() => setShowMeta(true)} className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-lg transition-colors">
+            <Info size={13} /> Read More
+          </button>
+        ) : (
+          <button onClick={onOpen} className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 rounded-lg shadow-sm transition-colors">
+            {hasPdf ? 'Read Full Text' : 'Open'} <ArrowRight size={13} />
+          </button>
+        )}
       </div>
+
+      {showMeta && <MetadataModal item={it} isBook={isBook} onClose={() => setShowMeta(false)} />}
     </div>
   );
 }

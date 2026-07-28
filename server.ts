@@ -4471,8 +4471,13 @@ async function startServer() {
       if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
       const take = Math.min(parseInt(limit as string) || 20, 100);
       const skip = ((parseInt(page as string) || 1) - 1) * take;
+      // Join the journal so the metadata popup can show ISSN/eISSN even when the
+      // denormalized copy on the article is missing (older ingests didn't set it).
       const [data, total] = await Promise.all([
-        (prisma as any).article.findMany({ where, orderBy: [{ year: 'desc' }, { createdAt: 'desc' }], skip, take }),
+        (prisma as any).article.findMany({
+          where, orderBy: [{ year: 'desc' }, { createdAt: 'desc' }], skip, take,
+          include: { journal: { select: { title: true, issn: true, eissn: true, subject: true, publisherName: true } } },
+        }),
         (prisma as any).article.count({ where }),
       ]);
       res.json({ data, total, page: parseInt(page as string) || 1, limit: take });
