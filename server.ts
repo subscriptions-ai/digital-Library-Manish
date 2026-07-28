@@ -3422,6 +3422,38 @@ async function startServer() {
     return { articles, books, articlesPublished, articlesPending, articlesRejected, totalReads };
   };
 
+  // Batched counterpart of getPublisherCounts, for endpoints that need counts for
+  // EVERY publisher. The per-publisher version costs 7 queries; running it in a
+  // Promise.all over ~145 publishers fired ~1k concurrent queries and exhausted the
+  // connection pool (P2024) — the list endpoint 500'd and the admin UI rendered an
+  // empty "no publishers yet" state. Two groupBy queries replace all of it.
+  const emptyPublisherCounts = () => ({ articles: 0, books: 0, articlesPublished: 0, articlesPending: 0, articlesRejected: 0, totalReads: 0 });
+  const getPublisherCountsMap = async () => {
+    const map: Record<string, ReturnType<typeof emptyPublisherCounts>> = {};
+    const at = (id: string) => (map[id] ||= emptyPublisherCounts());
+    const [artGroups, bookGroups] = await Promise.all([
+      (prisma as any).article.groupBy({ by: ['publisherId', 'status'], _count: { _all: true }, _sum: { views: true } }),
+      (prisma as any).book.groupBy({ by: ['publisherId'], _count: { _all: true }, _sum: { views: true } }),
+    ]);
+    for (const g of artGroups) {
+      if (!g.publisherId) continue;
+      const c = at(g.publisherId);
+      const n = g._count._all;
+      c.articles += n;
+      c.totalReads += g._sum?.views || 0;
+      if (g.status === 'Published') c.articlesPublished += n;
+      else if (g.status === 'Draft') c.articlesPending += n;
+      else if (g.status === 'Rejected') c.articlesRejected += n;
+    }
+    for (const g of bookGroups) {
+      if (!g.publisherId) continue;
+      const c = at(g.publisherId);
+      c.books += g._count._all;
+      c.totalReads += g._sum?.views || 0;
+    }
+    return (id: string) => map[id] || emptyPublisherCounts();
+  };
+
   const resolvePublisherForUser = async (req: any) => {
     const uid = req.user?.uid || req.user?.id;
     if (!uid) return null;
@@ -3449,8 +3481,8 @@ async function startServer() {
         { country: { contains: search as string, mode: 'insensitive' } },
       ];
       const publishers = await (prisma as any).publisher.findMany({ where, orderBy: { createdAt: 'desc' } });
-      const withCounts = await Promise.all(publishers.map(async (p: any) => ({ ...p, counts: await getPublisherCounts(p.id) })));
-      res.json(withCounts);
+      const countsFor = await getPublisherCountsMap();
+      res.json(publishers.map((p: any) => ({ ...p, counts: countsFor(p.id) })));
     } catch (e: any) { console.error("List publishers error:", e); res.status(500).json({ error: "Failed to fetch publishers" }); }
   });
 
@@ -3718,10 +3750,9 @@ async function startServer() {
   app.get("/api/admin/publisher-tree", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
       const all = await (prisma as any).publisher.findMany({ orderBy: { name: 'asc' } });
-      const counts: Record<string, any> = {};
-      await Promise.all(all.map(async (p: any) => { counts[p.id] = await getPublisherCounts(p.id); }));
+      const countsFor = await getPublisherCountsMap();
       const byId: Record<string, any> = {};
-      all.forEach((p: any) => { byId[p.id] = { ...p, counts: counts[p.id], children: [] }; });
+      all.forEach((p: any) => { byId[p.id] = { ...p, counts: countsFor(p.id), children: [] }; });
       const roots: any[] = [];
       all.forEach((p: any) => {
         if (p.parentId && byId[p.parentId]) byId[p.parentId].children.push(byId[p.id]);
@@ -4427,10 +4458,21 @@ async function startServer() {
       if (publisher) where.publisherName = publisher;
       if (search) where.title = { contains: search as string, mode: 'insensitive' };
       const journals = await (prisma as any).journal.findMany({ where, orderBy: { title: 'asc' }, take: 500 });
-      const withCounts = await Promise.all(journals.map(async (j: any) => ({
+      // One grouped count for the whole page. Counting per journal in a Promise.all
+      // meant up to 500 concurrent queries, which exhausted the connection pool and
+      // 500'd this endpoint (the /explore journals sidebar came back empty).
+      const groups = journals.length
+        ? await (prisma as any).article.groupBy({
+          by: ['journalId'],
+          where: { status: 'Published', journalId: { in: journals.map((j: any) => j.id) } },
+          _count: { _all: true },
+        })
+        : [];
+      const countBy = new Map(groups.map((g: any) => [g.journalId, g._count._all]));
+      const withCounts = journals.map((j: any) => ({
         id: j.id, title: j.title, issn: j.issn, publisherName: j.publisherName, domain: j.domain, startYear: j.startYear,
-        articleCount: await (prisma as any).article.count({ where: { journalId: j.id, status: 'Published' } }),
-      })));
+        articleCount: countBy.get(j.id) || 0,
+      }));
       res.json(withCounts.filter((j: any) => j.articleCount > 0));
     } catch (e: any) { console.error("library journals:", e); res.status(500).json({ error: "Failed to load journals" }); }
   });

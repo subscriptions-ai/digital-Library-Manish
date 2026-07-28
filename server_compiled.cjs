@@ -12644,6 +12644,32 @@ async function startServer() {
     const totalReads = (artReads._sum.views || 0) + (bookReads._sum.views || 0);
     return { articles, books, articlesPublished, articlesPending, articlesRejected, totalReads };
   };
+  const emptyPublisherCounts = () => ({ articles: 0, books: 0, articlesPublished: 0, articlesPending: 0, articlesRejected: 0, totalReads: 0 });
+  const getPublisherCountsMap = async () => {
+    const map = {};
+    const at = (id) => map[id] ||= emptyPublisherCounts();
+    const [artGroups, bookGroups] = await Promise.all([
+      prisma2.article.groupBy({ by: ["publisherId", "status"], _count: { _all: true }, _sum: { views: true } }),
+      prisma2.book.groupBy({ by: ["publisherId"], _count: { _all: true }, _sum: { views: true } })
+    ]);
+    for (const g of artGroups) {
+      if (!g.publisherId) continue;
+      const c = at(g.publisherId);
+      const n = g._count._all;
+      c.articles += n;
+      c.totalReads += g._sum?.views || 0;
+      if (g.status === "Published") c.articlesPublished += n;
+      else if (g.status === "Draft") c.articlesPending += n;
+      else if (g.status === "Rejected") c.articlesRejected += n;
+    }
+    for (const g of bookGroups) {
+      if (!g.publisherId) continue;
+      const c = at(g.publisherId);
+      c.books += g._count._all;
+      c.totalReads += g._sum?.views || 0;
+    }
+    return (id) => map[id] || emptyPublisherCounts();
+  };
   const resolvePublisherForUser = async (req) => {
     const uid = req.user?.uid || req.user?.id;
     if (!uid) return null;
@@ -12667,8 +12693,8 @@ async function startServer() {
         { country: { contains: search, mode: "insensitive" } }
       ];
       const publishers = await prisma2.publisher.findMany({ where, orderBy: { createdAt: "desc" } });
-      const withCounts = await Promise.all(publishers.map(async (p) => ({ ...p, counts: await getPublisherCounts(p.id) })));
-      res.json(withCounts);
+      const countsFor = await getPublisherCountsMap();
+      res.json(publishers.map((p) => ({ ...p, counts: countsFor(p.id) })));
     } catch (e2) {
       console.error("List publishers error:", e2);
       res.status(500).json({ error: "Failed to fetch publishers" });
@@ -12947,13 +12973,10 @@ async function startServer() {
   app.get("/api/admin/publisher-tree", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const all = await prisma2.publisher.findMany({ orderBy: { name: "asc" } });
-      const counts = {};
-      await Promise.all(all.map(async (p) => {
-        counts[p.id] = await getPublisherCounts(p.id);
-      }));
+      const countsFor = await getPublisherCountsMap();
       const byId = {};
       all.forEach((p) => {
-        byId[p.id] = { ...p, counts: counts[p.id], children: [] };
+        byId[p.id] = { ...p, counts: countsFor(p.id), children: [] };
       });
       const roots = [];
       all.forEach((p) => {
@@ -13771,15 +13794,21 @@ async function startServer() {
       if (publisher) where.publisherName = publisher;
       if (search) where.title = { contains: search, mode: "insensitive" };
       const journals = await prisma2.journal.findMany({ where, orderBy: { title: "asc" }, take: 500 });
-      const withCounts = await Promise.all(journals.map(async (j) => ({
+      const groups = journals.length ? await prisma2.article.groupBy({
+        by: ["journalId"],
+        where: { status: "Published", journalId: { in: journals.map((j) => j.id) } },
+        _count: { _all: true }
+      }) : [];
+      const countBy = new Map(groups.map((g) => [g.journalId, g._count._all]));
+      const withCounts = journals.map((j) => ({
         id: j.id,
         title: j.title,
         issn: j.issn,
         publisherName: j.publisherName,
         domain: j.domain,
         startYear: j.startYear,
-        articleCount: await prisma2.article.count({ where: { journalId: j.id, status: "Published" } })
-      })));
+        articleCount: countBy.get(j.id) || 0
+      }));
       res.json(withCounts.filter((j) => j.articleCount > 0));
     } catch (e2) {
       console.error("library journals:", e2);
@@ -13826,7 +13855,13 @@ async function startServer() {
       const take = Math.min(parseInt(limit) || 20, 100);
       const skip = ((parseInt(page) || 1) - 1) * take;
       const [data, total] = await Promise.all([
-        prisma2.article.findMany({ where, orderBy: [{ year: "desc" }, { createdAt: "desc" }], skip, take }),
+        prisma2.article.findMany({
+          where,
+          orderBy: [{ year: "desc" }, { createdAt: "desc" }],
+          skip,
+          take,
+          include: { journal: { select: { title: true, issn: true, eissn: true, subject: true, publisherName: true } } }
+        }),
         prisma2.article.count({ where })
       ]);
       res.json({ data, total, page: parseInt(page) || 1, limit: take });

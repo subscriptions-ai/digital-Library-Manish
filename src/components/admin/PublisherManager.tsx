@@ -40,8 +40,11 @@ export function PublisherManager() {
       if (search) q.set('search', search);
       const res = await fetch(`/api/admin/publishers?${q}`, { headers: { Authorization: `Bearer ${token()}` } });
       const data = await res.json();
-      setPublishers(Array.isArray(data) ? data : []);
-    } catch { toast.error('Failed to load publishers'); }
+      // A failed request still parses as JSON ({ error: ... }), so without this check
+      // an error rendered as a silent "no publishers yet" empty state.
+      if (!res.ok || !Array.isArray(data)) throw new Error(data?.error || `Request failed (${res.status})`);
+      setPublishers(data);
+    } catch (e: any) { toast.error(e?.message || 'Failed to load publishers'); }
     finally { setLoading(false); }
   };
 
