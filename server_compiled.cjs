@@ -12947,7 +12947,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to update book" });
     }
   });
-  const UPLOAD_DIR = import_path2.default.join(APP_DIR, "uploads");
+  const UPLOAD_DIR = process.env.UPLOAD_DIR || import_path2.default.join(APP_DIR, "uploads");
   app.use("/uploads", import_express.default.static(UPLOAD_DIR));
   const saveDataUrl = async (dataUrl, filename) => {
     const m2 = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl || "");
@@ -12968,6 +12968,187 @@ async function startServer() {
     } catch (e2) {
       console.error("upload:", e2);
       res.status(500).json({ error: "Upload failed" });
+    }
+  });
+  const MEDIA_DIR = import_path2.default.join(UPLOAD_DIR, "media");
+  const MEDIA_MAX_BYTES = 25 * 1024 * 1024;
+  const MEDIA_TYPES = {
+    jpg: { mime: "image/jpeg", kind: "image" },
+    jpeg: { mime: "image/jpeg", kind: "image" },
+    png: { mime: "image/png", kind: "image" },
+    gif: { mime: "image/gif", kind: "image" },
+    webp: { mime: "image/webp", kind: "image" },
+    avif: { mime: "image/avif", kind: "image" },
+    bmp: { mime: "image/bmp", kind: "image" },
+    ico: { mime: "image/x-icon", kind: "image" },
+    pdf: { mime: "application/pdf", kind: "pdf" },
+    doc: { mime: "application/msword", kind: "document" },
+    docx: { mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", kind: "document" },
+    rtf: { mime: "application/rtf", kind: "document" },
+    txt: { mime: "text/plain", kind: "document" },
+    md: { mime: "text/markdown", kind: "document" },
+    xls: { mime: "application/vnd.ms-excel", kind: "spreadsheet" },
+    xlsx: { mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", kind: "spreadsheet" },
+    csv: { mime: "text/csv", kind: "spreadsheet" },
+    ppt: { mime: "application/vnd.ms-powerpoint", kind: "presentation" },
+    pptx: { mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation", kind: "presentation" },
+    mp4: { mime: "video/mp4", kind: "video" },
+    webm: { mime: "video/webm", kind: "video" },
+    mp3: { mime: "audio/mpeg", kind: "audio" },
+    wav: { mime: "audio/wav", kind: "audio" },
+    zip: { mime: "application/zip", kind: "archive" }
+  };
+  const MEDIA_ALLOWED_EXT = Object.keys(MEDIA_TYPES);
+  const absoluteUrl = (req, p) => {
+    const base = (process.env.APP_URL || "").replace(/\/+$/, "") || `${req.headers["x-forwarded-proto"] || req.protocol}://${req.get("host")}`;
+    return `${base}${p}`;
+  };
+  const withAbsolute = (req, a) => ({ ...a, absoluteUrl: absoluteUrl(req, a.url) });
+  const readImageSize = (buf, ext) => {
+    try {
+      if (ext === "png" && buf.length > 24 && buf.toString("ascii", 12, 16) === "IHDR") {
+        return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+      }
+      if (ext === "gif" && buf.length > 10) {
+        return { width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) };
+      }
+      if ((ext === "jpg" || ext === "jpeg") && buf.length > 4) {
+        let i2 = 2;
+        while (i2 < buf.length - 9) {
+          if (buf[i2] !== 255) {
+            i2++;
+            continue;
+          }
+          const marker = buf[i2 + 1];
+          if (marker >= 192 && marker <= 207 && ![196, 200, 204].includes(marker)) {
+            return { height: buf.readUInt16BE(i2 + 5), width: buf.readUInt16BE(i2 + 7) };
+          }
+          i2 += 2 + buf.readUInt16BE(i2 + 2);
+        }
+      }
+    } catch {
+    }
+    return {};
+  };
+  app.post("/api/admin/media", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { dataUrl, filename, title, altText, caption, folder } = req.body || {};
+      if (!dataUrl || typeof dataUrl !== "string") return res.status(400).json({ error: "No file provided" });
+      const m2 = /^data:([^;]*);base64,(.*)$/s.exec(dataUrl);
+      if (!m2) return res.status(400).json({ error: "Invalid file data" });
+      const original = String(filename || "file");
+      const ext = (original.split(".").pop() || "").toLowerCase();
+      const type = MEDIA_TYPES[ext];
+      if (!type) {
+        return res.status(400).json({ error: `File type ".${ext}" is not allowed. Allowed: ${MEDIA_ALLOWED_EXT.join(", ")}` });
+      }
+      const buf = Buffer.from(m2[2], "base64");
+      if (!buf.length) return res.status(400).json({ error: "File is empty" });
+      if (buf.length > MEDIA_MAX_BYTES) {
+        return res.status(413).json({ error: `File is too large (${(buf.length / 1048576).toFixed(1)} MB). Maximum is 25 MB.` });
+      }
+      const fsm = await import("node:fs");
+      fsm.mkdirSync(MEDIA_DIR, { recursive: true });
+      const base = original.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-").slice(0, 60) || "file";
+      const stored = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${ext}`;
+      fsm.writeFileSync(import_path2.default.join(MEDIA_DIR, stored), buf);
+      const dims = type.kind === "image" ? readImageSize(buf, ext) : {};
+      const asset = await prisma2.mediaAsset.create({
+        data: {
+          fileName: stored,
+          originalName: original,
+          url: `/uploads/media/${stored}`,
+          mimeType: type.mime,
+          ext,
+          kind: type.kind,
+          size: buf.length,
+          width: dims.width ?? null,
+          height: dims.height ?? null,
+          title: title || original.replace(/\.[^.]*$/, ""),
+          altText: altText || null,
+          caption: caption || null,
+          folder: folder || null,
+          uploadedBy: req.user?.email || null,
+          uploadedById: req.user?.uid || null
+        }
+      });
+      res.json(withAbsolute(req, asset));
+    } catch (e2) {
+      console.error("media upload:", e2);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  });
+  app.get("/api/admin/media", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const page = Math.max(1, parseInt(req.query.page) || 1);
+      const take = Math.min(100, Math.max(1, parseInt(req.query.limit) || 40));
+      const q = (req.query.q || "").trim();
+      const kind = (req.query.kind || "").trim();
+      const where = {};
+      if (kind && kind !== "all") where.kind = kind;
+      if (q) {
+        where.OR = [
+          { originalName: { contains: q, mode: "insensitive" } },
+          { title: { contains: q, mode: "insensitive" } },
+          { altText: { contains: q, mode: "insensitive" } },
+          { caption: { contains: q, mode: "insensitive" } }
+        ];
+      }
+      const [items, total, grouped] = await Promise.all([
+        prisma2.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }),
+        prisma2.mediaAsset.count({ where }),
+        prisma2.mediaAsset.groupBy({ by: ["kind"], _count: { _all: true }, _sum: { size: true } })
+      ]);
+      const counts = {};
+      let totalSize = 0;
+      grouped.forEach((g) => {
+        counts[g.kind] = g._count._all;
+        totalSize += g._sum.size || 0;
+      });
+      res.json({
+        data: items.map((a) => withAbsolute(req, a)),
+        total,
+        page,
+        limit: take,
+        counts,
+        totalSize
+      });
+    } catch (e2) {
+      console.error("media list:", e2);
+      res.status(500).json({ error: "Failed to load media" });
+    }
+  });
+  app.put("/api/admin/media/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { title, altText, caption, folder } = req.body || {};
+      const data = {};
+      if (title !== void 0) data.title = title || null;
+      if (altText !== void 0) data.altText = altText || null;
+      if (caption !== void 0) data.caption = caption || null;
+      if (folder !== void 0) data.folder = folder || null;
+      const asset = await prisma2.mediaAsset.update({ where: { id: req.params.id }, data });
+      res.json(withAbsolute(req, asset));
+    } catch (e2) {
+      console.error("media update:", e2);
+      res.status(500).json({ error: "Failed to update media" });
+    }
+  });
+  app.delete("/api/admin/media/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const asset = await prisma2.mediaAsset.findUnique({ where: { id: req.params.id } });
+      if (!asset) return res.status(404).json({ error: "Not found" });
+      try {
+        const fsm = await import("node:fs");
+        const onDisk = import_path2.default.join(MEDIA_DIR, import_path2.default.basename(asset.fileName));
+        if (fsm.existsSync(onDisk)) fsm.unlinkSync(onDisk);
+      } catch (fileErr) {
+        console.error("media delete (file):", fileErr);
+      }
+      await prisma2.mediaAsset.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (e2) {
+      console.error("media delete:", e2);
+      res.status(500).json({ error: "Failed to delete media" });
     }
   });
   app.get("/api/admin/publisher-tree", authenticateJWT, requireAdminOrManager, async (req, res) => {

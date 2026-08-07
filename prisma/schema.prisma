@@ -929,3 +929,32 @@ model EmailLog {
   htmlContent String? @db.Text
   createdAt DateTime @default(now())
 }
+
+// =====================================================================
+// MEDIA LIBRARY (additive) — WordPress-style asset store for the admin.
+// Files land on disk under <UPLOAD_DIR>/media and are served at
+// /uploads/media/<storedName>; this table only holds the metadata.
+// =====================================================================
+model MediaAsset {
+  id           String   @id @default(uuid())
+  fileName     String                          // stored (sanitised, unique) name on disk
+  originalName String                          // name the admin uploaded it as
+  url          String                          // public path, e.g. /uploads/media/1712-abc-report.pdf
+  mimeType     String
+  ext          String?
+  kind         String   @default("other")      // image | pdf | document | spreadsheet | presentation | video | audio | archive | other
+  size         Int      @default(0)            // bytes
+  width        Int?                            // images only (best effort)
+  height       Int?
+  title        String?
+  altText      String?
+  caption      String?  @db.Text
+  folder       String?                         // optional grouping label
+  uploadedBy   String?                         // admin display name
+  uploadedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([kind])
+  @@index([createdAt])
+}

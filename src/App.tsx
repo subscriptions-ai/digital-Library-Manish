@@ -43,6 +43,7 @@ import { ContentPricingModule } from "./components/admin/ContentPricingModule";
 import { QuotationManager } from "./components/admin/QuotationManager";
 import { ReceiptManager } from "./components/admin/ReceiptManager";
 import { PublisherManager } from "./components/admin/PublisherManager";
+import { MediaLibrary } from "./components/admin/MediaLibrary";
 import { PublisherReviewQueue } from "./components/admin/PublisherReviewQueue";
 import { DataIngestion } from "./components/admin/DataIngestion";
 import { StructuredLibrary } from "./components/StructuredLibrary";
@@ -178,6 +179,7 @@ export default function App() {
                 <Route path="/admin/quotations/create" element={<AdminLayout><QuotationWizard isAdminMode={true} /></AdminLayout>} />
                 <Route path="/admin/receipts" element={<AdminLayout><ReceiptManager /></AdminLayout>} />
                 <Route path="/admin/publishers" element={<AdminLayout><PublisherManager /></AdminLayout>} />
+                <Route path="/admin/media" element={<AdminLayout><MediaLibrary /></AdminLayout>} />
                 <Route path="/admin/review" element={<AdminLayout><PublisherReviewQueue /></AdminLayout>} />
                 <Route path="/admin/ingestion" element={<AdminLayout><DataIngestion /></AdminLayout>} />
                 <Route path="/publisher" element={<PublisherLayout><PublisherDashboard /></PublisherLayout>} />

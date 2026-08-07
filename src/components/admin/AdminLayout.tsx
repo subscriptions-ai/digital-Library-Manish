@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -146,6 +146,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </div>
             )}
           </div>
+
+          {/* Media Library */}
+          <NavButton
+            icon={<ImageIcon size={17} />}
+            label="Media"
+            active={location.pathname.startsWith('/admin/media')}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/media')}
+            highlight
+          />
 
           {/* AI Extractor */}
           <NavButton
@@ -428,6 +438,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/subscriptions' ? 'Subscriptions'
               : location.pathname === '/admin/users/create' ? 'Create User'
               : location.pathname === '/admin/users' ? 'Users'
+              : location.pathname.startsWith('/admin/media') ? 'Media Library'
               : location.pathname === '/admin/validator' ? 'System Validator'
               : location.pathname === '/admin/drafts' ? 'Drafts & Cleanup'
               : location.pathname === '/admin/agency-inquiries' ? 'Agency Inquiries'

@@ -3725,7 +3725,9 @@ async function startServer() {
   // ==========================================
 
   // --- File upload (base64 -> disk, served at /uploads). Swap for S3 when a bucket is provisioned. ---
-  const UPLOAD_DIR = path.join(APP_DIR, 'uploads');
+  // UPLOAD_DIR is env-overridable so a persistent volume can be mounted in Docker/Coolify
+  // (the container filesystem is wiped on every redeploy — uploads must live on a volume).
+  const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(APP_DIR, 'uploads');
   app.use('/uploads', express.static(UPLOAD_DIR));
   const saveDataUrl = async (dataUrl: string, filename: string) => {
     const m = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl || '');
@@ -3744,6 +3746,217 @@ async function startServer() {
       if (!dataUrl) return res.status(400).json({ error: "No file provided" });
       res.json({ url: await saveDataUrl(dataUrl, filename || 'upload') });
     } catch (e: any) { console.error("upload:", e); res.status(500).json({ error: "Upload failed" }); }
+  });
+
+  // ==========================================
+  // MEDIA LIBRARY — WordPress-style asset manager for the SuperAdmin.
+  // Upload once, get a permanent public URL, reuse it anywhere.
+  // Files: <UPLOAD_DIR>/media/<stored-name>  →  served at /uploads/media/<stored-name>
+  // ==========================================
+  const MEDIA_DIR = path.join(UPLOAD_DIR, 'media');
+
+  // Body arrives as a base64 data URL inside JSON, which inflates the payload ~33%.
+  // express.json is capped at 50mb, so keep the real-file ceiling comfortably under that.
+  const MEDIA_MAX_BYTES = 25 * 1024 * 1024; // 25 MB per file
+
+  // Extension -> { mime, kind }. Whitelist only: anything not listed is rejected,
+  // which keeps .html/.svg/.js (stored-XSS carriers) and executables out of a
+  // directory we serve statically.
+  const MEDIA_TYPES: Record<string, { mime: string; kind: string }> = {
+    jpg:  { mime: 'image/jpeg', kind: 'image' },
+    jpeg: { mime: 'image/jpeg', kind: 'image' },
+    png:  { mime: 'image/png',  kind: 'image' },
+    gif:  { mime: 'image/gif',  kind: 'image' },
+    webp: { mime: 'image/webp', kind: 'image' },
+    avif: { mime: 'image/avif', kind: 'image' },
+    bmp:  { mime: 'image/bmp',  kind: 'image' },
+    ico:  { mime: 'image/x-icon', kind: 'image' },
+    pdf:  { mime: 'application/pdf', kind: 'pdf' },
+    doc:  { mime: 'application/msword', kind: 'document' },
+    docx: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', kind: 'document' },
+    rtf:  { mime: 'application/rtf', kind: 'document' },
+    txt:  { mime: 'text/plain', kind: 'document' },
+    md:   { mime: 'text/markdown', kind: 'document' },
+    xls:  { mime: 'application/vnd.ms-excel', kind: 'spreadsheet' },
+    xlsx: { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', kind: 'spreadsheet' },
+    csv:  { mime: 'text/csv', kind: 'spreadsheet' },
+    ppt:  { mime: 'application/vnd.ms-powerpoint', kind: 'presentation' },
+    pptx: { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', kind: 'presentation' },
+    mp4:  { mime: 'video/mp4', kind: 'video' },
+    webm: { mime: 'video/webm', kind: 'video' },
+    mp3:  { mime: 'audio/mpeg', kind: 'audio' },
+    wav:  { mime: 'audio/wav', kind: 'audio' },
+    zip:  { mime: 'application/zip', kind: 'archive' },
+  };
+  const MEDIA_ALLOWED_EXT = Object.keys(MEDIA_TYPES);
+
+  // Absolute URL so "Copy URL" in the UI yields a link that works when pasted anywhere.
+  const absoluteUrl = (req: any, p: string) => {
+    const base = (process.env.APP_URL || '').replace(/\/+$/, '')
+      || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
+    return `${base}${p}`;
+  };
+  const withAbsolute = (req: any, a: any) => ({ ...a, absoluteUrl: absoluteUrl(req, a.url) });
+
+  // PNG / GIF / JPEG dimensions straight from the header bytes — no image lib needed.
+  const readImageSize = (buf: Buffer, ext: string): { width?: number; height?: number } => {
+    try {
+      if (ext === 'png' && buf.length > 24 && buf.toString('ascii', 12, 16) === 'IHDR') {
+        return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+      }
+      if (ext === 'gif' && buf.length > 10) {
+        return { width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) };
+      }
+      if ((ext === 'jpg' || ext === 'jpeg') && buf.length > 4) {
+        let i = 2;
+        while (i < buf.length - 9) {
+          if (buf[i] !== 0xff) { i++; continue; }
+          const marker = buf[i + 1];
+          // SOF0..SOF15, excluding the non-frame markers DHT (c4), JPG (c8), DAC (cc)
+          if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+            return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+          }
+          i += 2 + buf.readUInt16BE(i + 2);
+        }
+      }
+    } catch { /* dimensions are cosmetic — never fail an upload over them */ }
+    return {};
+  };
+
+  // POST /api/admin/media — upload one file (base64 data URL) and get its public link back
+  app.post("/api/admin/media", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { dataUrl, filename, title, altText, caption, folder } = req.body || {};
+      if (!dataUrl || typeof dataUrl !== 'string') return res.status(400).json({ error: "No file provided" });
+
+      const m = /^data:([^;]*);base64,(.*)$/s.exec(dataUrl);
+      if (!m) return res.status(400).json({ error: "Invalid file data" });
+
+      const original = String(filename || 'file');
+      const ext = (original.split('.').pop() || '').toLowerCase();
+      const type = MEDIA_TYPES[ext];
+      if (!type) {
+        return res.status(400).json({ error: `File type ".${ext}" is not allowed. Allowed: ${MEDIA_ALLOWED_EXT.join(', ')}` });
+      }
+
+      const buf = Buffer.from(m[2], 'base64');
+      if (!buf.length) return res.status(400).json({ error: "File is empty" });
+      if (buf.length > MEDIA_MAX_BYTES) {
+        return res.status(413).json({ error: `File is too large (${(buf.length / 1048576).toFixed(1)} MB). Maximum is 25 MB.` });
+      }
+
+      const fsm = await import('node:fs');
+      fsm.mkdirSync(MEDIA_DIR, { recursive: true });
+      // Sanitise + uniquify: the stored name never contains path separators, and a
+      // re-upload of "logo.png" can never overwrite the existing one.
+      const base = original.replace(/\.[^.]*$/, '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-').slice(0, 60) || 'file';
+      const stored = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${ext}`;
+      fsm.writeFileSync(path.join(MEDIA_DIR, stored), buf);
+
+      const dims = type.kind === 'image' ? readImageSize(buf, ext) : {};
+      const asset = await (prisma as any).mediaAsset.create({
+        data: {
+          fileName: stored,
+          originalName: original,
+          url: `/uploads/media/${stored}`,
+          mimeType: type.mime,
+          ext,
+          kind: type.kind,
+          size: buf.length,
+          width: dims.width ?? null,
+          height: dims.height ?? null,
+          title: title || original.replace(/\.[^.]*$/, ''),
+          altText: altText || null,
+          caption: caption || null,
+          folder: folder || null,
+          uploadedBy: req.user?.email || null,
+          uploadedById: req.user?.uid || null,
+        },
+      });
+      res.json(withAbsolute(req, asset));
+    } catch (e: any) {
+      console.error("media upload:", e);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  });
+
+  // GET /api/admin/media — paginated list with search + kind filter
+  app.get("/api/admin/media", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const take = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 40));
+      const q = (req.query.q as string || '').trim();
+      const kind = (req.query.kind as string || '').trim();
+
+      const where: any = {};
+      if (kind && kind !== 'all') where.kind = kind;
+      if (q) {
+        where.OR = [
+          { originalName: { contains: q, mode: 'insensitive' } },
+          { title: { contains: q, mode: 'insensitive' } },
+          { altText: { contains: q, mode: 'insensitive' } },
+          { caption: { contains: q, mode: 'insensitive' } },
+        ];
+      }
+
+      const [items, total, grouped] = await Promise.all([
+        (prisma as any).mediaAsset.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * take, take }),
+        (prisma as any).mediaAsset.count({ where }),
+        (prisma as any).mediaAsset.groupBy({ by: ['kind'], _count: { _all: true }, _sum: { size: true } }),
+      ]);
+
+      const counts: Record<string, number> = {};
+      let totalSize = 0;
+      grouped.forEach((g: any) => { counts[g.kind] = g._count._all; totalSize += g._sum.size || 0; });
+
+      res.json({
+        data: items.map((a: any) => withAbsolute(req, a)),
+        total, page, limit: take,
+        counts, totalSize,
+      });
+    } catch (e: any) {
+      console.error("media list:", e);
+      res.status(500).json({ error: "Failed to load media" });
+    }
+  });
+
+  // PUT /api/admin/media/:id — edit metadata (title / alt / caption / folder)
+  app.put("/api/admin/media/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { title, altText, caption, folder } = req.body || {};
+      const data: any = {};
+      if (title !== undefined) data.title = title || null;
+      if (altText !== undefined) data.altText = altText || null;
+      if (caption !== undefined) data.caption = caption || null;
+      if (folder !== undefined) data.folder = folder || null;
+      const asset = await (prisma as any).mediaAsset.update({ where: { id: req.params.id }, data });
+      res.json(withAbsolute(req, asset));
+    } catch (e: any) {
+      console.error("media update:", e);
+      res.status(500).json({ error: "Failed to update media" });
+    }
+  });
+
+  // DELETE /api/admin/media/:id — remove the row and the file on disk
+  app.delete("/api/admin/media/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const asset = await (prisma as any).mediaAsset.findUnique({ where: { id: req.params.id } });
+      if (!asset) return res.status(404).json({ error: "Not found" });
+      try {
+        const fsm = await import('node:fs');
+        // basename() guards against a crafted fileName escaping MEDIA_DIR
+        const onDisk = path.join(MEDIA_DIR, path.basename(asset.fileName));
+        if (fsm.existsSync(onDisk)) fsm.unlinkSync(onDisk);
+      } catch (fileErr) {
+        // A missing file shouldn't block removing the record it points at.
+        console.error("media delete (file):", fileErr);
+      }
+      await (prisma as any).mediaAsset.delete({ where: { id: req.params.id } });
+      res.json({ success: true });
+    } catch (e: any) {
+      console.error("media delete:", e);
+      res.status(500).json({ error: "Failed to delete media" });
+    }
   });
 
   // --- Publisher hierarchy tree (Group -> Publisher -> Imprint), arbitrary depth ---
