@@ -6,6 +6,7 @@ import {
   MessageSquare, TrendingUp, BookmarkPlus,
 } from 'lucide-react';
 import { ReadsTrend, MessagesPanel } from '../publisher/PublisherDashboard';
+import { BUILT_IN_AGREEMENT_TEMPLATES, fillPlaceholders, PLACEHOLDER_HELP } from './agreementTemplates';
 
 const authJson = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` });
 const api = async (url: string, method = 'GET', body?: any) => {
@@ -270,13 +271,24 @@ function Agreements({ p, reload }: any) {
   const [f, setF] = useState<any>({ title: '', version: '1.0', body: '', documentUrl: '' });
   const [busy, setBusy] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [picked, setPicked] = useState('');
+  const pickedBuiltIn = BUILT_IN_AGREEMENT_TEMPLATES.find(t => t.id === picked);
   const set = (k: string, v: any) => setF((s: any) => ({ ...s, [k]: v }));
   const loadTemplates = () => api('/api/admin/agreement-templates').then(setTemplates).catch(() => { });
   useEffect(() => { loadTemplates(); }, []);
 
+  // Built-in templates and saved ones share a picker, so resolve across both.
+  // Placeholders are filled at apply time — what lands in the form is already
+  // this publisher's copy, editable before it goes out.
   const applyTemplate = (id: string) => {
-    const t = templates.find(x => x.id === id); if (!t) return;
-    setF({ title: t.title, version: t.version || '1.0', body: t.body || '', documentUrl: '' });
+    const t = BUILT_IN_AGREEMENT_TEMPLATES.find(x => x.id === id) || templates.find(x => x.id === id);
+    if (!t) return;
+    setF({
+      title: fillPlaceholders(t.title, p),
+      version: t.version || '1.0',
+      body: fillPlaceholders(t.body || '', p),
+      documentUrl: '',
+    });
   };
   const saveTemplate = async () => {
     if (!f.title.trim()) { toast.error('Add a title first'); return; }
@@ -287,7 +299,7 @@ function Agreements({ p, reload }: any) {
   const create = async () => {
     if (!f.title.trim()) { toast.error('Title required'); return; }
     setBusy(true);
-    try { await api(`/api/admin/publishers/${p.id}/agreements`, 'POST', f); setF({ title: '', version: '1.0', body: '', documentUrl: '' }); setCreating(false); reload(); toast.success('Agreement created'); }
+    try { await api(`/api/admin/publishers/${p.id}/agreements`, 'POST', f); setF({ title: '', version: '1.0', body: '', documentUrl: '' }); setPicked(''); setCreating(false); reload(); toast.success('Agreement created'); }
     catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
   const send = async (id: string) => { try { await api(`/api/admin/agreements/${id}/send`, 'POST'); toast.success('Sent to publisher'); reload(); } catch (e: any) { toast.error(e.message); } };
@@ -303,14 +315,22 @@ function Agreements({ p, reload }: any) {
 
       {creating && (
         <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-          {templates.length > 0 && (
-            <Field label="Start from template">
-              <select className={inputCls} defaultValue="" onChange={e => { applyTemplate(e.target.value); }}>
-                <option value="">— blank —</option>
-                {templates.map(t => <option key={t.id} value={t.id}>{t.title} (v{t.version})</option>)}
-              </select>
-            </Field>
-          )}
+          <Field label="Start from template">
+            <select className={inputCls} defaultValue="" onChange={e => { setPicked(e.target.value); applyTemplate(e.target.value); }}>
+              <option value="">— blank —</option>
+              <optgroup label="Ready-made">
+                {BUILT_IN_AGREEMENT_TEMPLATES.map(t => (
+                  <option key={t.id} value={t.id}>{fillPlaceholders(t.title, p)}</option>
+                ))}
+              </optgroup>
+              {templates.length > 0 && (
+                <optgroup label="Saved by you">
+                  {templates.map(t => <option key={t.id} value={t.id}>{t.title} (v{t.version})</option>)}
+                </optgroup>
+              )}
+            </select>
+            {pickedBuiltIn && <p className="mt-1 text-[11px] text-slate-500">{pickedBuiltIn.description}</p>}
+          </Field>
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2"><Field label="Title"><input className={inputCls} value={f.title} onChange={e => set('title', e.target.value)} placeholder="Partnership Agreement 2026" /></Field></div>
             <Field label="Version"><input className={inputCls} value={f.version} onChange={e => set('version', e.target.value)} /></Field>
@@ -321,11 +341,16 @@ function Agreements({ p, reload }: any) {
               <input type="file" accept="application/pdf" onChange={pickPdf} className="hidden" />
             </label>
           </Field>
-          <Field label="Or type the terms (used if no PDF)"><textarea rows={4} className={inputCls} value={f.body} onChange={e => set('body', e.target.value)} placeholder="Partnership terms…" /></Field>
+          <Field label="Or type the terms (used if no PDF)">
+            <textarea rows={f.body ? 16 : 4} className={`${inputCls} font-mono text-xs leading-relaxed`} value={f.body} onChange={e => set('body', e.target.value)} placeholder="Partnership terms…" />
+            <p className="mt-1 text-[11px] text-slate-400">
+              Edit freely before sending. Placeholders you can type: {PLACEHOLDER_HELP.join(' ')} — they fill in when a template is applied.
+            </p>
+          </Field>
           <div className="flex justify-between gap-2">
             <button onClick={saveTemplate} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50"><BookmarkPlus size={14} /> Save as template</button>
             <div className="flex gap-2">
-              <button onClick={() => setCreating(false)} className="px-4 py-2 text-sm font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
+              <button onClick={() => { setCreating(false); setPicked(''); }} className="px-4 py-2 text-sm font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
               <button onClick={create} disabled={busy} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50">{busy ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} Create</button>
             </div>
           </div>
