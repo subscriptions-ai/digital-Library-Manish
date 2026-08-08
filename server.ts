@@ -21,6 +21,10 @@ import jwt from "jsonwebtoken";
 import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
+import {
+  MAIL_BASE, esc, escLines, buildEmail,
+  eBody, eH1, eP, eMuted, eBtn, eCard, eRows, eQuote,
+} from "./src/lib/emailTemplates.js";
 
 const prisma = new PrismaClient();
 
@@ -271,28 +275,9 @@ async function startServer() {
     }
   };
 
-  // ── Shared Email Layout ───────────────────────────────────────────────────
-  const buildEmail = (bodyRows: string) =>
-    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>` +
-    `<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">` +
-    `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center">` +
-    `<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">` +
-    `<tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/>` +
-    `<h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2>` +
-    `<p style="margin:0;font-size:12px;color:#64748b;">A Division of Consortium eLearning Network Pvt. Ltd.</p>` +
-    `<div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` +
-    bodyRows +
-    `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;">` +
-    `<p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">🏆 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>` +
-    `<p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p>` +
-    `<p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p>` +
-    `<p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">A Division of Consortium eLearning Network Pvt. Ltd.</p>` +
-    `<div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;">` +
-    `<p style="margin:0;font-size:11px;color:#64748b;">© 2026 STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;` +
-    `<a href="#" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;` +
-    `<a href="#" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr>` +
-    `<tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr>` +
-    `</table></td></tr></table></body></html>`;
+  // Email layout + content kit live in src/lib/emailTemplates.ts (imported at the
+  // top of this file) so the templates can be rendered without booting the server.
+  const ADMIN_INBOX = process.env.ADMIN_EMAIL || 'info@celnet.in';
 
   // API Routes
   app.get("/api/health", (req, res) => {
@@ -3576,23 +3561,38 @@ async function startServer() {
 
       try {
         const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "info@celnet.in").trim();
-        const appUrl = (process.env.APP_URL || "").trim() || "the STM Digital Library portal";
         const credsBlock = generatedPassword
-          ? `<p style="margin:0 0 6px;"><b>Login Email:</b> ${loginEmail}</p><p style="margin:0 0 6px;"><b>Temporary Password:</b> ${generatedPassword}</p>`
-          : `<p style="margin:0 0 6px;">Please log in with your existing account (${loginEmail}).</p>`;
-        const html = `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;color:#0f172a;">
-          <h2 style="color:#0f172a;">Partnership Invitation — STM Digital Library</h2>
-          <p>Dear ${publisher.name},</p>
-          <p>We are delighted to invite you to partner with STM Digital Library. By sharing your open-access content, your journals gain increased visibility, readership and citations.</p>
-          <div style="background:#f1f5f9;border-radius:10px;padding:16px;margin:16px 0;">${credsBlock}</div>
-          <p>Log in at ${appUrl} to manage your catalogue.</p>
-          <p style="color:#64748b;font-size:13px;">If you have any questions, simply reply to this email.</p>
-        </div>`;
+          ? eRows([
+              ['Login email', esc(loginEmail)],
+              ['Temporary password', `<span style="font-family:Consolas,Menlo,monospace;font-size:15px;font-weight:700;letter-spacing:0.5px;color:#1e3a6e;">${esc(generatedPassword)}</span>`],
+            ]) + eCard(`Please change this password the first time you sign in.`, 'warning')
+          : eCard(`Sign in with your existing account — <b>${esc(loginEmail)}</b>.`, 'info');
+
+        const html = buildEmail(eBody(
+          eH1(`You're invited to partner with STM Digital Library`) +
+          eP(`Dear ${esc(publisher.name)},`) +
+          eP(`We would be glad to have ${esc(publisher.name)} on STM Digital Library. Sharing your open-access content puts your journals in front of the institutions and researchers already searching our platform — which means more readership, and more citations.`) +
+          eP(`Your publisher account is ready:`) +
+          credsBlock +
+          eBtn('Sign in to your dashboard', `${MAIL_BASE}/publisher`) +
+          eP(`From your dashboard you can submit and manage your catalogue, correct metadata, see readership analytics for your own titles, and withdraw any item at any time without going through us.`) +
+          eMuted(`Have a question before you begin? Simply reply to this email — it reaches our team directly.`)
+        ), `Your publisher account for ${publisher.name} is ready`);
+
         await sendMail({
           from: `"STM Digital Library" <${emailFrom}>`,
-          to: [loginEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
+          to: [loginEmail, ADMIN_INBOX],
           subject: "Partnership Invitation & Login — STM Digital Library",
           html,
+          text:
+            `Dear ${publisher.name},\n\n` +
+            `You're invited to partner with STM Digital Library.\n\n` +
+            (generatedPassword
+              ? `Login email: ${loginEmail}\nTemporary password: ${generatedPassword}\n(Please change it on first sign-in.)\n\n`
+              : `Sign in with your existing account: ${loginEmail}\n\n`) +
+            `Dashboard: ${MAIL_BASE}/publisher\n\n` +
+            `From your dashboard you can manage your catalogue, correct metadata, see analytics for your own titles, and withdraw any item at any time.\n\n` +
+            `— STM Digital Library Team`,
         });
       } catch (mailErr) { console.error("Tie-up email failed:", mailErr); }
 
@@ -4055,6 +4055,13 @@ async function startServer() {
   });
 
   // --- Agreements + in-app e-signature ---
+  /** Everyone on the publisher's side worth notifying: the account, then its contacts. */
+  const publisherRecipients = (publisher: any): string[] => {
+    const list = [publisher?.email, ...(publisher?.contacts || []).map((c: any) => c.email)]
+      .filter((e: any) => typeof e === 'string' && e.includes('@'));
+    return Array.from(new Set(list.map((e: string) => e.trim())));
+  };
+
   const pushAudit = (agreement: any, event: string, by: string | null, req: any) => {
     const trail = Array.isArray(agreement.auditTrail) ? agreement.auditTrail : [];
     trail.push({ event, by: by || null, ip: req.ip || req.headers['x-forwarded-for'] || null, at: new Date().toISOString() });
@@ -4072,11 +4079,46 @@ async function startServer() {
   });
   app.post("/api/admin/agreements/:id/send", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      const ag = await (prisma as any).publisherAgreement.findUnique({ where: { id: req.params.id } });
+      const ag = await (prisma as any).publisherAgreement.findUnique({
+        where: { id: req.params.id },
+        include: { publisher: { include: { contacts: true } } },
+      });
       if (!ag) return res.status(404).json({ error: "Agreement not found" });
       const updated = await (prisma as any).publisherAgreement.update({ where: { id: ag.id }, data: { status: 'Sent', sentAt: new Date(), auditTrail: pushAudit(ag, 'sent', req.user?.email || 'Admin', req) } });
+
+      // Notify the publisher. Delivery must never fail the send — the agreement
+      // is already marked Sent and is waiting in their portal either way.
+      const to = publisherRecipients(ag.publisher);
+      if (to.length) {
+        const name = ag.publisher?.name || 'there';
+        sendMail({
+          to,
+          subject: `Agreement for your signature — ${ag.title}`,
+          html: buildEmail(eBody(
+            eH1(`An agreement is ready for your signature`) +
+            eP(`Dear ${esc(name)},`) +
+            eP(`We have prepared the agreement below for your review. You can read it in full, and sign or decline it, from your publisher dashboard — no printing, scanning or posting required.`) +
+            eRows([
+              ['Agreement', esc(ag.title)],
+              ['Version', esc(ag.version || '1.0')],
+              ['Prepared for', esc(name)],
+            ]) +
+            eBtn('Review &amp; sign the agreement', `${MAIL_BASE}/publisher`) +
+            (ag.documentUrl ? eCard(`A signed copy of the contract PDF is attached to this agreement in your dashboard.`, 'info') : '') +
+            eCard(`Signing is entirely your choice. If anything in the agreement does not suit you, decline it and tell us why — we will revise it. You may also simply reply to this email.`, 'neutral') +
+            eMuted(`This link opens your publisher dashboard. If you cannot sign in, reply to this email and we will help.`)
+          ), `${ag.title} — ready for your review and signature`),
+          text:
+            `Dear ${name},\n\n` +
+            `An agreement is ready for your signature.\n\n` +
+            `Agreement: ${ag.title}\nVersion: ${ag.version || '1.0'}\n\n` +
+            `Review and sign it here: ${MAIL_BASE}/publisher\n\n` +
+            `Signing is your choice. If anything does not suit you, decline it and tell us why, or simply reply to this email.\n\n` +
+            `— STM Digital Library Team`,
+        }).catch(e => console.error("agreement send mail:", e));
+      }
       res.json(updated);
-    } catch (e: any) { res.status(500).json({ error: "Failed to send agreement" }); }
+    } catch (e: any) { console.error("send agreement:", e); res.status(500).json({ error: "Failed to send agreement" }); }
   });
   app.delete("/api/admin/agreements/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try { await (prisma as any).publisherAgreement.delete({ where: { id: req.params.id } }); res.json({ ok: true }); }
@@ -4112,6 +4154,33 @@ async function startServer() {
           auditTrail: pushAudit(ag, 'accepted', name, req),
         },
       });
+
+      sendMail({
+        to: ADMIN_INBOX,
+        subject: `✅ Agreement signed — ${publisher.name}`,
+        html: buildEmail(eBody(
+          eH1(`${esc(publisher.name)} signed the agreement`) +
+          eCard(`<b>${esc(ag.title)}</b> was accepted and is now legally on record with a full audit trail.`, 'success') +
+          eRows([
+            ['Publisher', esc(publisher.name)],
+            ['Agreement', esc(ag.title)],
+            ['Version', esc(ag.version || '1.0')],
+            ['Signed by', esc(name)],
+            ['Signer email', esc(email || '—')],
+            ['Signature', esc(signatureType === 'drawn' ? 'Drawn' : 'Typed')],
+            ['Signed at', esc(new Date().toLocaleString('en-IN'))],
+            ['IP address', esc(req.ip || '—')],
+          ]) +
+          eBtn('Open the publisher record', `${MAIL_BASE}/admin/publishers`)
+        ), `${publisher.name} accepted ${ag.title}`),
+        text:
+          `${publisher.name} signed the agreement "${ag.title}" (v${ag.version || '1.0'}).\n\n` +
+          `Signed by: ${name}${email ? ` <${email}>` : ''}\n` +
+          `Signature: ${signatureType === 'drawn' ? 'Drawn' : 'Typed'}\n` +
+          `Signed at: ${new Date().toLocaleString('en-IN')}\nIP: ${req.ip || '—'}\n\n` +
+          `${MAIL_BASE}/admin/publishers`,
+      }).catch(e => console.error("agreement signed mail:", e));
+
       res.json(updated);
     } catch (e: any) { console.error("sign agreement:", e); res.status(500).json({ error: "Failed to sign" }); }
   });
@@ -4121,8 +4190,33 @@ async function startServer() {
       const ag = await (prisma as any).publisherAgreement.findUnique({ where: { id: req.params.id } });
       if (!ag || ag.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your agreement" });
       const updated = await (prisma as any).publisherAgreement.update({ where: { id: ag.id }, data: { status: 'Declined', decidedAt: new Date(), declineReason: req.body.reason || null, auditTrail: pushAudit(ag, 'declined', publisher.name, req) } });
+
+      sendMail({
+        to: ADMIN_INBOX,
+        subject: `Agreement declined — ${publisher.name}`,
+        html: buildEmail(eBody(
+          eH1(`${esc(publisher.name)} declined the agreement`) +
+          eRows([
+            ['Publisher', esc(publisher.name)],
+            ['Agreement', esc(ag.title)],
+            ['Version', esc(ag.version || '1.0')],
+            ['Declined at', esc(new Date().toLocaleString('en-IN'))],
+          ]) +
+          (req.body.reason
+            ? eCard(`<b>Reason given</b><br/>${escLines(req.body.reason)}`, 'warning')
+            : eCard(`No reason was given. It may be worth asking what would need to change.`, 'neutral')) +
+          eP(`Nothing further happens automatically. You can revise the terms and send a fresh agreement whenever you are ready.`) +
+          eBtn('Open the publisher record', `${MAIL_BASE}/admin/publishers`)
+        ), `${publisher.name} declined ${ag.title}`),
+        text:
+          `${publisher.name} declined the agreement "${ag.title}" (v${ag.version || '1.0'}).\n\n` +
+          `Reason: ${req.body.reason || 'none given'}\n` +
+          `Declined at: ${new Date().toLocaleString('en-IN')}\n\n` +
+          `${MAIL_BASE}/admin/publishers`,
+      }).catch(e => console.error("agreement declined mail:", e));
+
       res.json(updated);
-    } catch (e: any) { res.status(500).json({ error: "Failed to decline" }); }
+    } catch (e: any) { console.error("decline agreement:", e); res.status(500).json({ error: "Failed to decline" }); }
   });
 
   // --- Publisher bulk data-sharing: many rows -> a tracked batch -> Draft items ---
@@ -4199,8 +4293,32 @@ async function startServer() {
     try {
       const { body, attachmentUrl } = req.body;
       if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
-      res.json(await (prisma as any).publisherMessage.create({ data: { publisherId: req.params.id, sender: 'admin', senderName: req.user?.email || 'STM Team', body: body || '', attachmentUrl: attachmentUrl || null } }));
-    } catch (e: any) { res.status(500).json({ error: "Failed to send" }); }
+      const msg = await (prisma as any).publisherMessage.create({ data: { publisherId: req.params.id, sender: 'admin', senderName: req.user?.email || 'STM Team', body: body || '', attachmentUrl: attachmentUrl || null } });
+
+      // Nudge the publisher by email — they will not be sitting in the portal.
+      const publisher = await (prisma as any).publisher.findUnique({ where: { id: req.params.id }, include: { contacts: true } });
+      const to = publisherRecipients(publisher);
+      if (to.length) {
+        sendMail({
+          to,
+          subject: `New message from STM Digital Library`,
+          html: buildEmail(eBody(
+            eH1(`You have a new message`) +
+            eP(`Dear ${esc(publisher?.name || 'there')},`) +
+            eP(`The STM Digital Library team has sent you a message on your publisher dashboard:`) +
+            eQuote('STM Digital Library Team', body || '(attachment only)') +
+            (attachmentUrl ? eCard(`📎 A file is attached to this message in your dashboard.`, 'info') : '') +
+            eBtn('Read and reply', `${MAIL_BASE}/publisher`) +
+            eMuted(`Replying in the dashboard keeps the whole conversation in one place.`)
+          ), (body || 'New message from STM Digital Library').slice(0, 120)),
+          text:
+            `Dear ${publisher?.name || 'there'},\n\n` +
+            `New message from the STM Digital Library team:\n\n${body || '(attachment only)'}\n\n` +
+            `Read and reply: ${MAIL_BASE}/publisher`,
+        }).catch(e => console.error("publisher message mail:", e));
+      }
+      res.json(msg);
+    } catch (e: any) { console.error("admin message:", e); res.status(500).json({ error: "Failed to send" }); }
   });
   app.get("/api/publisher/messages", authenticateJWT, requirePublisher, async (req: any, res: any) => {
     try {
@@ -4217,8 +4335,24 @@ async function startServer() {
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
       const { body, attachmentUrl } = req.body;
       if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
-      res.json(await (prisma as any).publisherMessage.create({ data: { publisherId: publisher.id, sender: 'publisher', senderName: publisher.name, body: body || '', attachmentUrl: attachmentUrl || null } }));
-    } catch (e: any) { res.status(500).json({ error: "Failed to send" }); }
+      const msg = await (prisma as any).publisherMessage.create({ data: { publisherId: publisher.id, sender: 'publisher', senderName: publisher.name, body: body || '', attachmentUrl: attachmentUrl || null } });
+
+      sendMail({
+        to: ADMIN_INBOX,
+        subject: `New message from ${publisher.name}`,
+        html: buildEmail(eBody(
+          eH1(`${esc(publisher.name)} sent you a message`) +
+          eQuote(publisher.name, body || '(attachment only)') +
+          (attachmentUrl ? eCard(`📎 They attached a file — open the thread to download it.`, 'info') : '') +
+          eBtn('Open the conversation', `${MAIL_BASE}/admin/publishers`)
+        ), `${publisher.name}: ${(body || 'sent an attachment').slice(0, 100)}`),
+        text:
+          `${publisher.name} sent a message:\n\n${body || '(attachment only)'}\n\n` +
+          `Open the conversation: ${MAIL_BASE}/admin/publishers`,
+      }).catch(e => console.error("admin notify mail:", e));
+
+      res.json(msg);
+    } catch (e: any) { console.error("publisher message:", e); res.status(500).json({ error: "Failed to send" }); }
   });
 
   // Publisher notifications — unread messages from the STM team + agreements to sign (no mark-read)

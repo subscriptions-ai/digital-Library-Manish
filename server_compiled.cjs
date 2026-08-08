@@ -9818,6 +9818,32 @@ async function runOjsExtraction(job) {
   });
 }
 
+// src/lib/emailTemplates.ts
+var MAIL_BASE = (process.env.APP_URL || "https://journalslibrary.com").replace(/\/+$/, "");
+var esc = (s2) => String(s2 ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+var escLines = (s2) => esc(s2).replace(/\r?\n/g, "<br/>");
+var buildEmail = (bodyRows, preheader = "") => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><meta name="color-scheme" content="light"/></head><body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">` + (preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(preheader)}</div>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);"><tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/><h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2><p style="margin:0;font-size:12px;color:#64748b;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` + bodyRows + `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;"><p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">\u{1F3C6} 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p><p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p><p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p><p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;"><p style="margin:0;font-size:11px;color:#94a3b8;">\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/privacy-policy" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/terms-and-conditions" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr><tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr></table></td></tr></table></body></html>`;
+var eBody = (inner) => `<tr><td style="padding:30px 40px 34px;">${inner}</td></tr>`;
+var eH1 = (t2) => `<h1 style="margin:0 0 14px;font-size:19px;line-height:1.35;font-weight:800;color:#0f172a;">${t2}</h1>`;
+var eP = (t2) => `<p style="margin:0 0 14px;font-size:14px;line-height:1.65;color:#334155;">${t2}</p>`;
+var eMuted = (t2) => `<p style="margin:0 0 12px;font-size:12px;line-height:1.6;color:#94a3b8;">${t2}</p>`;
+var eBtn = (label, href) => `<table cellpadding="0" cellspacing="0" style="margin:6px 0 18px;"><tr><td style="background:#1e3a6e;border-radius:10px;"><a href="${href}" style="display:inline-block;padding:13px 30px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">${label}</a></td></tr></table>`;
+var TONES = {
+  neutral: { bg: "#f8fafc", bar: "#cbd5e1" },
+  info: { bg: "#eff6ff", bar: "#2563eb" },
+  success: { bg: "#ecfdf5", bar: "#059669" },
+  warning: { bg: "#fffbeb", bar: "#d97706" },
+  danger: { bg: "#fef2f2", bar: "#dc2626" }
+};
+var eCard = (inner, tone = "neutral") => {
+  const t2 = TONES[tone] || TONES.neutral;
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;background:${t2.bg};border-left:4px solid ${t2.bar};border-radius:8px;"><tr><td style="padding:16px 18px;font-size:14px;line-height:1.6;color:#334155;">${inner}</td></tr></table>`;
+};
+var eRows = (pairs) => `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:1px solid #e2e8f0;border-radius:8px;">` + pairs.map(
+  ([k, v], i2) => `<tr><td style="padding:11px 16px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.4px;width:38%;${i2 ? "border-top:1px solid #f1f5f9;" : ""}">${esc(k)}</td><td style="padding:11px 16px;font-size:14px;color:#0f172a;${i2 ? "border-top:1px solid #f1f5f9;" : ""}">${v}</td></tr>`
+).join("") + `</table>`;
+var eQuote = (author, text) => `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"><tr><td style="padding:16px 18px;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#1e3a6e;">${esc(author)}</p><div style="font-size:14px;line-height:1.65;color:#334155;">${escLines(text)}</div></td></tr></table>`;
+
 // server.ts
 var import_meta = {};
 if (!import_crypto2.default.hash) {
@@ -10027,7 +10053,7 @@ async function startServer() {
       return null;
     }
   };
-  const buildEmail = (bodyRows) => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head><body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);"><tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/><h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2><p style="margin:0;font-size:12px;color:#64748b;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` + bodyRows + `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;"><p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">\u{1F3C6} 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p><p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p><p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p><p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;"><p style="margin:0;font-size:11px;color:#64748b;">\xA9 2026 STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="#" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr><tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr></table></td></tr></table></body></html>`;
+  const ADMIN_INBOX = process.env.ADMIN_EMAIL || "info@celnet.in";
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
@@ -12792,21 +12818,33 @@ async function startServer() {
       });
       try {
         const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "info@celnet.in").trim();
-        const appUrl = (process.env.APP_URL || "").trim() || "the STM Digital Library portal";
-        const credsBlock = generatedPassword ? `<p style="margin:0 0 6px;"><b>Login Email:</b> ${loginEmail}</p><p style="margin:0 0 6px;"><b>Temporary Password:</b> ${generatedPassword}</p>` : `<p style="margin:0 0 6px;">Please log in with your existing account (${loginEmail}).</p>`;
-        const html = `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:auto;color:#0f172a;">
-          <h2 style="color:#0f172a;">Partnership Invitation \u2014 STM Digital Library</h2>
-          <p>Dear ${publisher.name},</p>
-          <p>We are delighted to invite you to partner with STM Digital Library. By sharing your open-access content, your journals gain increased visibility, readership and citations.</p>
-          <div style="background:#f1f5f9;border-radius:10px;padding:16px;margin:16px 0;">${credsBlock}</div>
-          <p>Log in at ${appUrl} to manage your catalogue.</p>
-          <p style="color:#64748b;font-size:13px;">If you have any questions, simply reply to this email.</p>
-        </div>`;
+        const credsBlock = generatedPassword ? eRows([
+          ["Login email", esc(loginEmail)],
+          ["Temporary password", `<span style="font-family:Consolas,Menlo,monospace;font-size:15px;font-weight:700;letter-spacing:0.5px;color:#1e3a6e;">${esc(generatedPassword)}</span>`]
+        ]) + eCard(`Please change this password the first time you sign in.`, "warning") : eCard(`Sign in with your existing account \u2014 <b>${esc(loginEmail)}</b>.`, "info");
+        const html = buildEmail(eBody(
+          eH1(`You're invited to partner with STM Digital Library`) + eP(`Dear ${esc(publisher.name)},`) + eP(`We would be glad to have ${esc(publisher.name)} on STM Digital Library. Sharing your open-access content puts your journals in front of the institutions and researchers already searching our platform \u2014 which means more readership, and more citations.`) + eP(`Your publisher account is ready:`) + credsBlock + eBtn("Sign in to your dashboard", `${MAIL_BASE}/publisher`) + eP(`From your dashboard you can submit and manage your catalogue, correct metadata, see readership analytics for your own titles, and withdraw any item at any time without going through us.`) + eMuted(`Have a question before you begin? Simply reply to this email \u2014 it reaches our team directly.`)
+        ), `Your publisher account for ${publisher.name} is ready`);
         await sendMail({
           from: `"STM Digital Library" <${emailFrom}>`,
-          to: [loginEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
+          to: [loginEmail, ADMIN_INBOX],
           subject: "Partnership Invitation & Login \u2014 STM Digital Library",
-          html
+          html,
+          text: `Dear ${publisher.name},
+
+You're invited to partner with STM Digital Library.
+
+` + (generatedPassword ? `Login email: ${loginEmail}
+Temporary password: ${generatedPassword}
+(Please change it on first sign-in.)
+
+` : `Sign in with your existing account: ${loginEmail}
+
+`) + `Dashboard: ${MAIL_BASE}/publisher
+
+From your dashboard you can manage your catalogue, correct metadata, see analytics for your own titles, and withdraw any item at any time.
+
+\u2014 STM Digital Library Team`
         });
       } catch (mailErr) {
         console.error("Tie-up email failed:", mailErr);
@@ -13265,6 +13303,10 @@ async function startServer() {
       res.status(500).json({ error: "Merge failed" });
     }
   });
+  const publisherRecipients = (publisher) => {
+    const list = [publisher?.email, ...(publisher?.contacts || []).map((c) => c.email)].filter((e2) => typeof e2 === "string" && e2.includes("@"));
+    return Array.from(new Set(list.map((e2) => e2.trim())));
+  };
   const pushAudit = (agreement, event, by, req) => {
     const trail = Array.isArray(agreement.auditTrail) ? agreement.auditTrail : [];
     trail.push({ event, by: by || null, ip: req.ip || req.headers["x-forwarded-for"] || null, at: (/* @__PURE__ */ new Date()).toISOString() });
@@ -13285,11 +13327,42 @@ async function startServer() {
   });
   app.post("/api/admin/agreements/:id/send", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const ag = await prisma2.publisherAgreement.findUnique({ where: { id: req.params.id } });
+      const ag = await prisma2.publisherAgreement.findUnique({
+        where: { id: req.params.id },
+        include: { publisher: { include: { contacts: true } } }
+      });
       if (!ag) return res.status(404).json({ error: "Agreement not found" });
       const updated = await prisma2.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Sent", sentAt: /* @__PURE__ */ new Date(), auditTrail: pushAudit(ag, "sent", req.user?.email || "Admin", req) } });
+      const to = publisherRecipients(ag.publisher);
+      if (to.length) {
+        const name = ag.publisher?.name || "there";
+        sendMail({
+          to,
+          subject: `Agreement for your signature \u2014 ${ag.title}`,
+          html: buildEmail(eBody(
+            eH1(`An agreement is ready for your signature`) + eP(`Dear ${esc(name)},`) + eP(`We have prepared the agreement below for your review. You can read it in full, and sign or decline it, from your publisher dashboard \u2014 no printing, scanning or posting required.`) + eRows([
+              ["Agreement", esc(ag.title)],
+              ["Version", esc(ag.version || "1.0")],
+              ["Prepared for", esc(name)]
+            ]) + eBtn("Review &amp; sign the agreement", `${MAIL_BASE}/publisher`) + (ag.documentUrl ? eCard(`A signed copy of the contract PDF is attached to this agreement in your dashboard.`, "info") : "") + eCard(`Signing is entirely your choice. If anything in the agreement does not suit you, decline it and tell us why \u2014 we will revise it. You may also simply reply to this email.`, "neutral") + eMuted(`This link opens your publisher dashboard. If you cannot sign in, reply to this email and we will help.`)
+          ), `${ag.title} \u2014 ready for your review and signature`),
+          text: `Dear ${name},
+
+An agreement is ready for your signature.
+
+Agreement: ${ag.title}
+Version: ${ag.version || "1.0"}
+
+Review and sign it here: ${MAIL_BASE}/publisher
+
+Signing is your choice. If anything does not suit you, decline it and tell us why, or simply reply to this email.
+
+\u2014 STM Digital Library Team`
+        }).catch((e2) => console.error("agreement send mail:", e2));
+      }
       res.json(updated);
     } catch (e2) {
+      console.error("send agreement:", e2);
       res.status(500).json({ error: "Failed to send agreement" });
     }
   });
@@ -13336,6 +13409,30 @@ async function startServer() {
           auditTrail: pushAudit(ag, "accepted", name, req)
         }
       });
+      sendMail({
+        to: ADMIN_INBOX,
+        subject: `\u2705 Agreement signed \u2014 ${publisher.name}`,
+        html: buildEmail(eBody(
+          eH1(`${esc(publisher.name)} signed the agreement`) + eCard(`<b>${esc(ag.title)}</b> was accepted and is now legally on record with a full audit trail.`, "success") + eRows([
+            ["Publisher", esc(publisher.name)],
+            ["Agreement", esc(ag.title)],
+            ["Version", esc(ag.version || "1.0")],
+            ["Signed by", esc(name)],
+            ["Signer email", esc(email || "\u2014")],
+            ["Signature", esc(signatureType === "drawn" ? "Drawn" : "Typed")],
+            ["Signed at", esc((/* @__PURE__ */ new Date()).toLocaleString("en-IN"))],
+            ["IP address", esc(req.ip || "\u2014")]
+          ]) + eBtn("Open the publisher record", `${MAIL_BASE}/admin/publishers`)
+        ), `${publisher.name} accepted ${ag.title}`),
+        text: `${publisher.name} signed the agreement "${ag.title}" (v${ag.version || "1.0"}).
+
+Signed by: ${name}${email ? ` <${email}>` : ""}
+Signature: ${signatureType === "drawn" ? "Drawn" : "Typed"}
+Signed at: ${(/* @__PURE__ */ new Date()).toLocaleString("en-IN")}
+IP: ${req.ip || "\u2014"}
+
+${MAIL_BASE}/admin/publishers`
+      }).catch((e2) => console.error("agreement signed mail:", e2));
       res.json(updated);
     } catch (e2) {
       console.error("sign agreement:", e2);
@@ -13348,8 +13445,27 @@ async function startServer() {
       const ag = await prisma2.publisherAgreement.findUnique({ where: { id: req.params.id } });
       if (!ag || ag.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your agreement" });
       const updated = await prisma2.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Declined", decidedAt: /* @__PURE__ */ new Date(), declineReason: req.body.reason || null, auditTrail: pushAudit(ag, "declined", publisher.name, req) } });
+      sendMail({
+        to: ADMIN_INBOX,
+        subject: `Agreement declined \u2014 ${publisher.name}`,
+        html: buildEmail(eBody(
+          eH1(`${esc(publisher.name)} declined the agreement`) + eRows([
+            ["Publisher", esc(publisher.name)],
+            ["Agreement", esc(ag.title)],
+            ["Version", esc(ag.version || "1.0")],
+            ["Declined at", esc((/* @__PURE__ */ new Date()).toLocaleString("en-IN"))]
+          ]) + (req.body.reason ? eCard(`<b>Reason given</b><br/>${escLines(req.body.reason)}`, "warning") : eCard(`No reason was given. It may be worth asking what would need to change.`, "neutral")) + eP(`Nothing further happens automatically. You can revise the terms and send a fresh agreement whenever you are ready.`) + eBtn("Open the publisher record", `${MAIL_BASE}/admin/publishers`)
+        ), `${publisher.name} declined ${ag.title}`),
+        text: `${publisher.name} declined the agreement "${ag.title}" (v${ag.version || "1.0"}).
+
+Reason: ${req.body.reason || "none given"}
+Declined at: ${(/* @__PURE__ */ new Date()).toLocaleString("en-IN")}
+
+${MAIL_BASE}/admin/publishers`
+      }).catch((e2) => console.error("agreement declined mail:", e2));
       res.json(updated);
     } catch (e2) {
+      console.error("decline agreement:", e2);
       res.status(500).json({ error: "Failed to decline" });
     }
   });
@@ -13438,8 +13554,28 @@ async function startServer() {
     try {
       const { body, attachmentUrl } = req.body;
       if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
-      res.json(await prisma2.publisherMessage.create({ data: { publisherId: req.params.id, sender: "admin", senderName: req.user?.email || "STM Team", body: body || "", attachmentUrl: attachmentUrl || null } }));
+      const msg = await prisma2.publisherMessage.create({ data: { publisherId: req.params.id, sender: "admin", senderName: req.user?.email || "STM Team", body: body || "", attachmentUrl: attachmentUrl || null } });
+      const publisher = await prisma2.publisher.findUnique({ where: { id: req.params.id }, include: { contacts: true } });
+      const to = publisherRecipients(publisher);
+      if (to.length) {
+        sendMail({
+          to,
+          subject: `New message from STM Digital Library`,
+          html: buildEmail(eBody(
+            eH1(`You have a new message`) + eP(`Dear ${esc(publisher?.name || "there")},`) + eP(`The STM Digital Library team has sent you a message on your publisher dashboard:`) + eQuote("STM Digital Library Team", body || "(attachment only)") + (attachmentUrl ? eCard(`\u{1F4CE} A file is attached to this message in your dashboard.`, "info") : "") + eBtn("Read and reply", `${MAIL_BASE}/publisher`) + eMuted(`Replying in the dashboard keeps the whole conversation in one place.`)
+          ), (body || "New message from STM Digital Library").slice(0, 120)),
+          text: `Dear ${publisher?.name || "there"},
+
+New message from the STM Digital Library team:
+
+${body || "(attachment only)"}
+
+Read and reply: ${MAIL_BASE}/publisher`
+        }).catch((e2) => console.error("publisher message mail:", e2));
+      }
+      res.json(msg);
     } catch (e2) {
+      console.error("admin message:", e2);
       res.status(500).json({ error: "Failed to send" });
     }
   });
@@ -13460,8 +13596,22 @@ async function startServer() {
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
       const { body, attachmentUrl } = req.body;
       if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
-      res.json(await prisma2.publisherMessage.create({ data: { publisherId: publisher.id, sender: "publisher", senderName: publisher.name, body: body || "", attachmentUrl: attachmentUrl || null } }));
+      const msg = await prisma2.publisherMessage.create({ data: { publisherId: publisher.id, sender: "publisher", senderName: publisher.name, body: body || "", attachmentUrl: attachmentUrl || null } });
+      sendMail({
+        to: ADMIN_INBOX,
+        subject: `New message from ${publisher.name}`,
+        html: buildEmail(eBody(
+          eH1(`${esc(publisher.name)} sent you a message`) + eQuote(publisher.name, body || "(attachment only)") + (attachmentUrl ? eCard(`\u{1F4CE} They attached a file \u2014 open the thread to download it.`, "info") : "") + eBtn("Open the conversation", `${MAIL_BASE}/admin/publishers`)
+        ), `${publisher.name}: ${(body || "sent an attachment").slice(0, 100)}`),
+        text: `${publisher.name} sent a message:
+
+${body || "(attachment only)"}
+
+Open the conversation: ${MAIL_BASE}/admin/publishers`
+      }).catch((e2) => console.error("admin notify mail:", e2));
+      res.json(msg);
     } catch (e2) {
+      console.error("publisher message:", e2);
       res.status(500).json({ error: "Failed to send" });
     }
   });
