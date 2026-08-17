@@ -101,15 +101,15 @@ export function PublicContentPreview() {
                   <Lock className="w-8 h-8 text-blue-500" />
                   <div>
                     <h3 className="font-bold text-sm">Full Content is Protected</h3>
-                    <p className="text-xs text-blue-700">Login or subscribe to access the complete document.</p>
+                    <p className="text-xs text-blue-700">Login or request access to read the complete document.</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <Link to="/login" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-colors shadow-lg shadow-blue-500/30 whitespace-nowrap">
                     Login
                   </Link>
-                  <Link to="/subscriptions" className="px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-bold text-sm transition-colors border border-slate-200 whitespace-nowrap">
-                    View Plans
+                  <Link to="/contact" className="px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-bold text-sm transition-colors border border-slate-200 whitespace-nowrap">
+                    Request Access
                   </Link>
                 </div>
               </div>

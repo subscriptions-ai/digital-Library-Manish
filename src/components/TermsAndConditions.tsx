@@ -1,6 +1,6 @@
 import React from "react";
 import { COMPANY_DETAILS } from "../config";
-import { FileText, UserCheck, CreditCard, ShieldAlert, Scale, MapPin } from "lucide-react";
+import { FileText, UserCheck, KeyRound, ShieldAlert, Scale, MapPin } from "lucide-react";
 
 export const TermsAndConditions: React.FC = () => {
   return (
@@ -54,7 +54,7 @@ export const TermsAndConditions: React.FC = () => {
             <ul className="list-disc pl-6 space-y-2 mt-2">
               <li>Open access content is used in accordance with applicable licenses (e.g., Creative Commons).</li>
               <li>Proper attribution is provided wherever required.</li>
-              <li>The Platform does not sell third-party content directly, but charges for access, curation, and platform services.</li>
+              <li>The Platform provides curation, indexing, hosting and related software services; it does not claim ownership of third-party content.</li>
             </ul>
           </section>
 
@@ -65,7 +65,7 @@ export const TermsAndConditions: React.FC = () => {
             </div>
             <p>Users agree to:</p>
             <ul className="list-disc pl-6 space-y-2 mt-2">
-              <li>Access and use the Platform and its content only in accordance with these Terms, applicable law, and any subscription or license restrictions;</li>
+              <li>Access and use the Platform and its content only in accordance with these Terms, applicable law, and any licence restrictions applicable to your account;</li>
               <li>Not to copy, reproduce, download, distribute, transmit, publish, display, sell, sublicense, or commercially exploit any content, in whole or in part, without prior written authorization from the Platform or the relevant rights holder, as applicable;</li>
               <li>Not to share login credentials, circumvent access controls, scrape, harvest, or otherwise misuse the Platform or its content;</li>
               <li>Not to modify, reverse engineer, decompile, or create derivative works from the Platform or its content except where expressly permitted by law;</li>
@@ -75,13 +75,13 @@ export const TermsAndConditions: React.FC = () => {
 
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-4 text-slate-900">
-              <CreditCard className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold m-0">6. Subscription & Payments</h2>
+              <KeyRound className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold m-0">6. Access &amp; Commercial Terms</h2>
             </div>
             <ul className="list-disc pl-6 space-y-2 mt-2">
-              <li>Access to certain features is subscription-based.</li>
-              <li>Pricing may vary based on the subscription plan selected, the duration of access, and the level of features included in each subscription.</li>
-              <li><strong>Refund policy:</strong> Refunds may be requested within 7 days of purchase only if the subscription has not been substantially used and no downloadable content has been accessed. Any approved refund will be limited to 50% of the amount paid and will be processed to the original payment method within 7–10 business days. No refunds will be issued after the refund window expires, except where required by law.</li>
+              <li>Access to the Platform is provided under a written service agreement executed separately with each individual or institution.</li>
+              <li>The scope of access, its duration, and all commercial terms are set out in that agreement and not on this website.</li>
+              <li><strong>Refunds and cancellation:</strong> Any refund or cancellation entitlement is governed exclusively by the terms of your executed service agreement. Please contact us for a copy of the terms applicable to your account.</li>
             </ul>
           </section>
 

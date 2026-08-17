@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import { ForcePasswordChange } from "./components/ForcePasswordChange";
@@ -15,21 +15,19 @@ import { NotFound } from "./components/NotFound";
 import { DigitalLibrary } from "./components/DigitalLibrary";
 import { AboutUs } from "./components/AboutUs";
 import { ContactUs } from "./components/ContactUs";
-import { SubscriptionPlans } from "./components/SubscriptionPlans";
 import { InstitutionalAccess } from "./components/InstitutionalAccess";
 import { Login } from "./components/Login";
 import { Signup } from "./components/Signup";
 import { JournalDetail } from "./components/JournalDetail";
-import { AgencyListing } from "./components/AgencyListing";
 import { PrivacyPolicy } from "./components/PrivacyPolicy";
 import { TermsAndConditions } from "./components/TermsAndConditions";
 import { LegalDisclaimer } from "./components/LegalDisclaimer";
 import { ContentSources } from "./components/ContentSources";
-import { Cart } from "./components/Cart";
-import { Checkout } from "./components/Checkout";
-import { CommercialGate } from "./components/CommercialGate";
-import { QuotationPreview } from "./components/QuotationPreview";
-import { QuotationWizard } from "./components/QuotationWizard";
+// Lazy-loaded so the plan/price data it imports lands in its own chunk and is
+// never downloaded by public visitors — only by admins/managers who open it.
+const QuotationWizard = lazy(() =>
+  import("./components/QuotationWizard").then(m => ({ default: m.QuotationWizard }))
+);
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { AdminDashboardHome } from "./components/admin/AdminDashboardHome";
 import { UserManager } from "./components/admin/UserManager";
@@ -87,7 +85,6 @@ const CONTENT_MODULES = [
   { slug: 'newsletters',            contentType: 'Newsletters'             },
 ];
 
-import { CartProvider } from "./contexts/CartContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { DashboardLayout } from "./components/DashboardLayout";
 import { LMSDashboard } from "./components/dashboard/LMSDashboard";
@@ -143,7 +140,6 @@ export default function App() {
     <HelmetProvider>
       <ErrorBoundary>
         <AuthProvider>
-          <CartProvider>
             <Router>
               <AnalyticsTracker />
               <ScrollToTop />
@@ -176,7 +172,7 @@ export default function App() {
                 <Route path="/admin/analytics" element={<AdminLayout><DetailedAnalyticsPage /></AdminLayout>} />
                 <Route path="/admin/pricing" element={<AdminLayout><ContentPricingModule /></AdminLayout>} />
                 <Route path="/admin/quotations" element={<AdminLayout><QuotationManager /></AdminLayout>} />
-                <Route path="/admin/quotations/create" element={<AdminLayout><QuotationWizard isAdminMode={true} /></AdminLayout>} />
+                <Route path="/admin/quotations/create" element={<AdminLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></AdminLayout>} />
                 <Route path="/admin/receipts" element={<AdminLayout><ReceiptManager /></AdminLayout>} />
                 <Route path="/admin/publishers" element={<AdminLayout><PublisherManager /></AdminLayout>} />
                 <Route path="/admin/media" element={<AdminLayout><MediaLibrary /></AdminLayout>} />
@@ -256,7 +252,7 @@ export default function App() {
                 <Route path="/manager/requests" element={<ManagerLayout><SubscriptionRequestsPage /></ManagerLayout>} />
                 <Route path="/manager/subscriptions" element={<ManagerLayout><SubscriptionListPage /></ManagerLayout>} />
                 <Route path="/manager/quotations" element={<ManagerLayout><QuotationManager /></ManagerLayout>} />
-                <Route path="/manager/quotations/create" element={<ManagerLayout><QuotationWizard isAdminMode={true} /></ManagerLayout>} />
+                <Route path="/manager/quotations/create" element={<ManagerLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></ManagerLayout>} />
                 <Route path="/manager/users/create" element={<ManagerLayout><UserCreationPanel /></ManagerLayout>} />
 
                 {/* Admin User Management */}
@@ -282,9 +278,7 @@ export default function App() {
 
                       <Route path="/journals" element={<DigitalLibrary />} />
                       <Route path="/journal/:journalId" element={<JournalDetail />} />
-                      <Route path="/subscriptions" element={<CommercialGate><SubscriptionPlans isFullPage={true} showTitle={true} /></CommercialGate>} />
                       <Route path="/institutional-access" element={<InstitutionalAccess />} />
-                      <Route path="/agency-listing" element={<CommercialGate><AgencyListing /></CommercialGate>} />
                       <Route path="/about" element={<AboutUs />} />
                       <Route path="/contact" element={<ContactUs />} />
                       <Route path="/faq" element={<FAQ />} />
@@ -295,10 +289,6 @@ export default function App() {
                       <Route path="/login" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
                       <Route path="/request-demo" element={<RequestDemo />} />
-                      <Route path="/cart" element={<CommercialGate><Cart /></CommercialGate>} />
-                      <Route path="/checkout" element={<CommercialGate><Checkout /></CommercialGate>} />
-                      <Route path="/create-quotation" element={<CommercialGate><QuotationWizard /></CommercialGate>} />
-                      <Route path="/quotation-preview" element={<CommercialGate><QuotationPreview /></CommercialGate>} />
                       <Route path="/domain/:domainId" element={<DomainLandingPage />} />
                       <Route path="/preview/:id" element={<PublicContentPreview />} />
                       <Route path="/search" element={<SearchResults />} />
@@ -312,7 +302,6 @@ export default function App() {
           </div>
           </FirstLoginGate>
         </Router>
-      </CartProvider>
       </AuthProvider>
     </ErrorBoundary>
     </HelmetProvider>

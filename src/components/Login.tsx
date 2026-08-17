@@ -203,7 +203,7 @@ export function Login() {
 
           <div className="mt-8 pt-8 border-t border-slate-100 text-center">
             <p className="text-sm text-slate-500">
-              Don't have an account? <Link to="/signup" className="font-bold text-blue-600 hover:text-blue-700">Sign up for free</Link>
+              Don't have an account? <Link to="/signup" className="font-bold text-blue-600 hover:text-blue-700">Create an account</Link>
             </p>
           </div>
         </div>

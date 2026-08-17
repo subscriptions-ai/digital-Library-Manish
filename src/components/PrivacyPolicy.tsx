@@ -24,7 +24,7 @@ export const PrivacyPolicy: React.FC = () => {
             <ul className="list-disc pl-6 space-y-2 mt-2">
               <li>Full name, email address, mobile number, and institution/organization details</li>
               <li>Usage data (IP address, device, browser)</li>
-              <li>Subscription and transaction data</li>
+              <li>Account and access records</li>
             </ul>
           </section>
 
@@ -35,8 +35,8 @@ export const PrivacyPolicy: React.FC = () => {
             </div>
             <p>We process data based on:</p>
             <ul className="list-disc pl-6 space-y-2 mt-2">
-              <li><strong>User consent</strong>, obtained through clear affirmative action when users create an account, subscribe to our services, or voluntarily provide information, and which may be withdrawn at any time where applicable</li>
-              <li><strong>Contractual necessity</strong>, where processing is required to create and manage user accounts, process subscriptions and payments, provide access to subscribed services and content, and fulfill our obligations under the applicable service agreement</li>
+              <li><strong>User consent</strong>, obtained through clear affirmative action when users create an account, register for our services, or voluntarily provide information, and which may be withdrawn at any time where applicable</li>
+              <li><strong>Contractual necessity</strong>, where processing is required to create and manage user accounts, administer access rights, provide access to services and content, and fulfil our obligations under the applicable service agreement</li>
               <li><strong>Legitimate interests</strong>, where we process limited personal data to improve the performance, security, usability, and reliability of the Platform; analyze usage patterns and service trends; detect, prevent, and investigate fraud, abuse, or unauthorized activity; troubleshoot technical issues; and develop or refine our features and services, provided that such processing does not override your rights, interests, or freedoms</li>
             </ul>
           </section>
@@ -48,9 +48,9 @@ export const PrivacyPolicy: React.FC = () => {
             </div>
             <ul className="list-disc pl-6 space-y-2 mt-2">
               <li><strong>Creating, verifying, and managing user accounts:</strong> including user registration, login authentication, profile updates, password recovery, account preferences, and other account-related communications</li>
-              <li><strong>Providing access to content:</strong> including enabling users to search, browse, view, download, and interact with the academic materials, resources, and services available on the Platform in accordance with their subscription level, access permissions, and applicable licensing terms</li>
+              <li><strong>Providing access to content:</strong> including enabling users to search, browse, view, download, and interact with the academic materials, resources, and services available on the Platform in accordance with their access permissions and applicable licensing terms</li>
               <li><strong>Improving the overall platform experience:</strong> by analyzing user behavior, monitoring system performance, identifying technical issues, optimizing navigation and search functionality, enhancing usability, personalizing content recommendations where applicable, and developing new features or improvements that make the Platform more efficient, reliable, and user-friendly</li>
-              <li><strong>Communication and support:</strong> including responding to user inquiries, providing assistance with account access, subscription issues, technical problems, content-related questions, service notifications, feedback handling, and other customer support communications through email or other available support channels</li>
+              <li><strong>Communication and support:</strong> including responding to user inquiries, providing assistance with account access, access issues, technical problems, content-related questions, service notifications, feedback handling, and other customer support communications through email or other available support channels</li>
             </ul>
           </section>
 
@@ -90,7 +90,7 @@ export const PrivacyPolicy: React.FC = () => {
             </div>
             <p>Data is retained for:</p>
             <ul className="list-disc pl-6 space-y-2 mt-2">
-              <li><strong>Active accounts:</strong> for the entire duration of the subscription and for a reasonable period thereafter, as necessary to manage account administration, billing, customer support, legal compliance, and service continuity.</li>
+              <li><strong>Active accounts:</strong> for the entire duration of the account's access period and for a reasonable period thereafter, as necessary to manage account administration, customer support, legal compliance, and service continuity.</li>
               <li><strong>Inactive accounts:</strong> up to 5 years after the account becomes inactive, is closed, or has had no meaningful user activity, unless a longer retention period is required by applicable law, regulatory obligations, dispute resolution, fraud prevention, or other legitimate business purposes. After this period, the data will be securely deleted or anonymized, wherever feasible.</li>
             </ul>
           </section>

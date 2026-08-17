@@ -21,7 +21,8 @@ import {
   BookOpen,
   ArrowRight
 } from 'lucide-react';
-import { DOMAINS, SUBSCRIPTION_PLANS } from '../constants';
+import { DOMAINS } from '../constants';
+import { SUBSCRIPTION_PLANS } from '../lib/adminPricingData';
 import { COMPANY_DETAILS } from '../config';
 import { calculateGST, COMPANY_STATE, INDIAN_STATES } from '../lib/gstUtils';
 import { cn } from '../lib/utils';
@@ -821,45 +822,6 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
     }
   };
 
-  const handlePayment = () => {
-    if (gstBreakdown.totalAmount <= 0) {
-      toast.error("Invalid amount. Please check quotation.");
-      return;
-    }
-    // Navigate to checkout with the wizard data
-    const checkoutItems = formData.selectedDepartments.map(deptId => {
-      const dept = DOMAINS.find(d => d.id === deptId);
-      return {
-        id: `${deptId}-${formData.subscriptionPlanId}`,
-        domainId: deptId,
-        domainName: dept?.name || '',
-        planId: formData.subscriptionPlanId,
-        planName: selectedPlan?.name || '',
-        duration: formData.duration,
-        price: basePricePerDept
-      };
-    });
-
-    navigate('/checkout', { 
-      state: { 
-        type: 'payment',
-        formData: {
-          name: formData.fullName,
-          email: formData.email,
-          mobile: formData.mobile,
-          organization: formData.organization,
-          address: formData.address,
-          pincode: formData.pincode,
-          state: formData.state,
-          userCategory: formData.userCategory,
-          couponCode: appliedCoupon?.code || null,
-          discountAmount: appliedCoupon?.discount || 0
-        },
-        items: checkoutItems
-      } 
-    });
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 py-12">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
@@ -1558,11 +1520,6 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                 <button onClick={handleSendEmail} className="flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-7 py-3.5 text-sm font-bold text-blue-700 hover:bg-blue-100 transition-all">
                   <Send size={16} /> Send Email
                 </button>
-                {!isAdminMode && (
-                  <button onClick={handlePayment} className="flex items-center gap-2 rounded-2xl bg-blue-600 px-7 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
-                    <CreditCard size={16} /> Pay Now
-                  </button>
-                )}
               </div>
 
               <div className="text-center">

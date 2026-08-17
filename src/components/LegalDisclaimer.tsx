@@ -37,7 +37,7 @@ export const LegalDisclaimer: React.FC = () => {
               <Info className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">Service Model</h2>
             </div>
-            <p>The Platform operates as a value-added academic discovery and access service. Subscription fees apply to platform services, including aggregation, indexing, search, curation, and access tools, and do not represent a sale of third-party content.</p>
+            <p>The Platform operates as a value-added academic discovery and access service. What the Platform provides is aggregation, indexing, search, curation, and access tools — not a sale of third-party content.</p>
             <p className="mt-4">Users are responsible for ensuring that their use of any content complies with applicable copyright laws, license terms, and other legal requirements.</p>
           </section>
 

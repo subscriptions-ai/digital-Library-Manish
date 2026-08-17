@@ -18,7 +18,6 @@ interface ContentItem {
   subjectArea: string;
   thumbnailUrl: string;
   accessType: string;
-  price: number;
   publishedAt: string;
 }
 
@@ -267,7 +266,7 @@ export function SearchResults() {
                         <span className={`ml-auto shrink-0 text-xs font-bold px-2.5 py-0.5 rounded-full ${
                           item.accessType === "Open" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
                         }`}>
-                          {item.accessType === "Open" ? "Open Access" : "Subscription"}
+                          {item.accessType === "Open" ? "Open Access" : "Licensed Access"}
                         </span>
                       </div>
 

@@ -245,7 +245,7 @@ export function ContactUs() {
           <div className="max-w-3xl">
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl">Get in Touch</h1>
             <p className="mt-6 text-xl text-slate-600 leading-relaxed">
-              Have questions about our journals, subscriptions, or institutional access? Our dedicated team is here to provide you with the support you need.
+              Have questions about our journals or institutional access? Our dedicated team is here to provide you with the support you need.
             </p>
           </div>
         </div>
@@ -295,7 +295,7 @@ export function ContactUs() {
               <div className="p-8 rounded-[2rem] bg-blue-50 border border-blue-100">
                 <h4 className="font-bold text-blue-900 mb-2">Institutional Support</h4>
                 <p className="text-sm text-blue-700 leading-relaxed">
-                  Looking for bulk subscriptions or library access? Mention your institution name and department for a tailored proposal.
+                  Looking for campus-wide library access? Mention your institution name and department and our team will get back to you.
                 </p>
               </div>
             </div>

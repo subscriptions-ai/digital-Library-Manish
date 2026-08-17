@@ -1,20 +1,17 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Menu, X, BookOpen, ChevronDown, LayoutGrid, ShoppingCart, FileText, User, LogOut } from "lucide-react";
+import { Search, Menu, X, BookOpen, ChevronDown, LayoutGrid, User, LogOut } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "../lib/utils";
 import { DOMAINS } from "../constants";
-import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
-import { usePublisherSafeMode, useHidePricing } from "../lib/publicSettings";
+import { usePublisherSafeMode } from "../lib/publicSettings";
 
 export function Navbar() {
   const safeMode = usePublisherSafeMode();
-  const hidePricing = useHidePricing();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDepartmentsOpen, setIsDepartmentsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [domainCounts, setDomainCounts] = useState<Record<string, number> | null>(null);
-  const { items } = useCart();
   const { user, logout, isAdmin, isInstitutionAdmin, isSubscriptionManager } = useAuth();
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -81,16 +78,6 @@ export function Navbar() {
         {/* Desktop Navigation & CTAs */}
         <div className="hidden lg:flex flex-col items-end gap-2">
           <div className="flex items-center gap-6">
-            {!hidePricing && (
-            <Link to="/cart" className="relative p-2 text-slate-600 hover:text-blue-600 transition-colors">
-              <ShoppingCart size={22} />
-              {items.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white ring-2 ring-white">
-                  {items.length}
-                </span>
-              )}
-            </Link>
-            )}
             {user ? (
               <>
                 {/* Profile Dropdown */}
@@ -233,21 +220,17 @@ export function Navbar() {
                 )}
               </div>
 
-              {!hidePricing && <Link to="/subscriptions" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Subscription Plans</Link>}
-              {!hidePricing && <Link to="/agency-listing" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Agency Info</Link>}
               {!safeMode && <Link to="/faq" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">FAQ</Link>}
               <Link to="/contact" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Contact Us</Link>
             </nav>
 
-            {!hidePricing && (
             <button
-              onClick={() => navigate('/create-quotation')}
+              onClick={() => navigate('/contact')}
               className="flex items-center gap-2 rounded-full bg-blue-600 px-5 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-200"
             >
-              <FileText size={14} />
-              Create Quotation
+              <BookOpen size={14} />
+              Request Access
             </button>
-            )}
           </div>
         </div>
       </div>
@@ -308,39 +291,21 @@ export function Navbar() {
                   )}
                 </div>
 
-                {!hidePricing && <Link to="/subscriptions" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Subscription Plans</Link>}
-                {!hidePricing && <Link to="/agency-listing" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Agency Info</Link>}
                 {!safeMode && <Link to="/faq" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>FAQ</Link>}
                 <Link to="/contact" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Contact Us</Link>
               </div>
             </div>
 
-            {!hidePricing && (
-            <Link to="/cart" className="flex items-center justify-between text-lg font-bold text-slate-900" onClick={() => setIsMenuOpen(false)}>
-              <div className="flex items-center gap-3">
-                <ShoppingCart size={22} className="text-blue-600" />
-                Your Cart
-              </div>
-              {items.length > 0 && (
-                <span className="rounded-full bg-blue-600 px-3 py-1 text-xs text-white">
-                  {items.length} Items
-                </span>
-              )}
-            </Link>
-            )}
-
-            {!hidePricing && (
             <button
               onClick={() => {
                 setIsMenuOpen(false);
-                navigate('/create-quotation');
+                navigate('/contact');
               }}
               className="flex items-center gap-3 text-lg font-bold text-blue-600"
             >
-              <FileText size={22} />
-              Create Quotation
+              <BookOpen size={22} />
+              Request Access
             </button>
-            )}
           </div>
 
           <div className="pt-6 border-t border-slate-100 flex flex-col gap-4">

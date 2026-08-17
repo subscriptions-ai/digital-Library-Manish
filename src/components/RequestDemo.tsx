@@ -507,14 +507,14 @@ export function RequestDemo() {
               </span>
             </Link>
             
-            <Link to="/subscriptions" className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+            <Link to="/institutional-access" className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col items-center text-center hover:shadow-md transition-shadow">
               <div className="p-4 bg-emerald-50 rounded-2xl text-emerald-600 mb-6">
                 <BarChart3 size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">View Subscription Plans</h3>
-              <p className="text-slate-600 mb-6">Explore premium plans for individuals and institutions.</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Institutional Access</h3>
+              <p className="text-slate-600 mb-6">See how campus-wide access works for universities and research centres.</p>
               <span className="text-emerald-600 font-bold text-sm tracking-wider flex items-center gap-2 mt-auto uppercase">
-                VIEW PLANS <ArrowRight size={16} />
+                LEARN MORE <ArrowRight size={16} />
               </span>
             </Link>
 

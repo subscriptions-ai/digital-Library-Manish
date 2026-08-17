@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { DOMAINS } from "../constants";
 import { HERO_IMAGES } from "./DomainLandingPage";
-import { useHidePricing } from "../lib/publicSettings";
 import { 
   BookOpen, 
   ShieldCheck, 
@@ -57,7 +56,7 @@ const ADVANCED_FEATURES = [
 const FUNCTIONALITIES = [
   {
     title: "Fully Functional Librarian Dashboard",
-    desc: "Manage all your students, monitor institutional usage, and control subscriptions easily from a centralized and powerful admin panel.",
+    desc: "Manage all your students, monitor institutional usage, and control access easily from a centralized and powerful admin panel.",
     icon: <ShieldCheck size={20} className="text-white" />
   },
   {
@@ -78,7 +77,6 @@ const FUNCTIONALITIES = [
 ];
 
 export function DigitalLibrary() {
-  const hidePricing = useHidePricing();
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [domainCounts, setDomainCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -373,7 +371,7 @@ export function DigitalLibrary() {
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="text-indigo-300" size={20} />
-                    <span className="font-semibold">Automated Invoice Generation</span>
+                    <span className="font-semibold">Automated Usage Reports</span>
                   </li>
                 </ul>
               </div>
@@ -389,7 +387,7 @@ export function DigitalLibrary() {
             <Library size={40} />
           </div>
           <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-900 mb-6">
-            Ready to Upgrade Your Institution?
+            Ready to Modernise Your Institution?
           </h2>
           <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
             Join the hundreds of forward-thinking universities and corporate R&D centers that trust our next-generation digital library platform.
@@ -401,14 +399,12 @@ export function DigitalLibrary() {
             >
               Request a Guided Demo
             </Link>
-            {!hidePricing && (
             <Link
               to="/institutional-access"
               className="rounded-full border-2 border-slate-200 bg-white px-10 py-4 text-base font-bold text-slate-700 hover:border-blue-600 hover:text-blue-600 transition-all"
             >
-              Get Custom Pricing
+              Request Institutional Access
             </Link>
-            )}
           </div>
         </div>
       </section>

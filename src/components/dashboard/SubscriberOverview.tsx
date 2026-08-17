@@ -109,8 +109,8 @@ export function SubscriberOverview() {
                     Expired on: {new Date(sub.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                 </div>
-                <Link to="/subscriptions" className="shrink-0 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-sm shadow-red-600/20">
-                  Renew Plan
+                <Link to="/contact" className="shrink-0 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-sm shadow-red-600/20">
+                  Request Renewal
                 </Link>
               </div>
             ))}

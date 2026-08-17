@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronDown, Search, BookOpen, CreditCard, Download, Upload, School, User, HelpCircle } from "lucide-react";
+import { ChevronDown, Search, BookOpen, Key, Download, Upload, School, User, HelpCircle } from "lucide-react";
 import { cn } from "../lib/utils";
 
 interface FAQItem {
@@ -23,7 +23,7 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "What is STM Digital Library?",
-        answer: "STM Digital Library is a premier subscription-based platform providing high-quality academic journals, research papers, and books across various scientific, technical, and medical domains. We bridge the gap between researchers and quality content."
+        answer: "STM Digital Library is a platform providing high-quality academic journals, research papers, and books across various scientific, technical, and medical domains. We bridge the gap between researchers and quality content."
       },
       {
         question: "Who can use this platform?",
@@ -32,21 +32,21 @@ const FAQ_DATA: FAQCategory[] = [
     ]
   },
   {
-    id: "subscription",
-    title: "Subscription & Payment",
-    icon: <CreditCard className="text-emerald-600" size={20} />,
+    id: "getting-access",
+    title: "Access & Institutional Licensing",
+    icon: <Key className="text-emerald-600" size={20} />,
     items: [
       {
-        question: "How can I subscribe?",
-        answer: "You can subscribe by choosing a plan from our 'Subscription Plans' page. We offer individual and institutional plans. Once you select a plan, you can complete the payment securely via our integrated payment gateway."
+        question: "How do I get access?",
+        answer: "Get in touch through our Contact page or request a demo. Our team will understand your requirements and set up access for you or your institution."
       },
       {
-        question: "What are the subscription plans?",
-        answer: "We offer tailored plans including Student Scholar, College Excellence, University Global, and Corporate Innovator. Plans are available in Monthly, Quarterly, Half-Yearly, and Yearly durations."
+        question: "What kinds of access are available?",
+        answer: "We support individual researcher access as well as institution-wide access for colleges, universities, and corporate R&D centres. Access can be scoped to specific departments and content categories."
       },
       {
-        question: "Is there a refund policy?",
-        answer: "Refunds may be requested within 7 days of purchase if the subscription has not been substantially used. Any approved refund is limited to 50% of the amount paid. Please refer to our Terms & Conditions for detailed information."
+        question: "How is access arranged?",
+        answer: "Access is arranged directly with our team under a written service agreement with each individual or institution. Please refer to our Terms & Conditions for details."
       }
     ]
   },
@@ -57,15 +57,15 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "How can I access journals/books?",
-        answer: "Once subscribed, you can log in to your dashboard and navigate to the 'My Subscriptions' section. From there, you can view and read all content included in your plan directly in your browser."
+        answer: "Once your access is set up, you can log in to your dashboard and view and read all content included in your access directly in your browser."
       },
       {
         question: "Can I download content?",
         answer: "No, content is not available for download. All journals, books, and resources must be read directly online through your browser on the platform."
       },
       {
-        question: "Is access limited by subscription?",
-        answer: "Yes, each subscription plan is valid for one department only, and access is limited to the content categories available under your selected plan."
+        question: "Is access limited?",
+        answer: "Yes. Access is scoped to the departments and content categories agreed for your account."
       }
     ]
   },
@@ -94,8 +94,8 @@ const FAQ_DATA: FAQCategory[] = [
     icon: <School className="text-indigo-600" size={20} />,
     items: [
       {
-        question: "How can colleges/universities subscribe?",
-        answer: "Institutions can contact our sales team or use the 'Institutional Access' page to request a quote. We offer IP-based access and bulk user accounts for large organizations."
+        question: "How can colleges/universities get access?",
+        answer: "Institutions can contact our team or use the 'Institutional Access' page to get in touch. We offer IP-based access and bulk user accounts for large organizations."
       },
       {
         question: "Can institutions track user activity?",
@@ -200,7 +200,7 @@ export function FAQ() {
             transition={{ delay: 0.2 }}
             className="text-lg text-slate-600 max-w-2xl mx-auto mb-10"
           >
-            Find answers to common queries about our platform, subscriptions, and content access.
+            Find answers to common queries about our platform and content access.
           </motion.p>
 
           {/* Search Bar */}

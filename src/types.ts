@@ -93,8 +93,8 @@ export type Domain = {
   importance: string;
   contentAvailable: string[];
   contentTypes: ContentTypeInfo[];
-  whySubscribe: string;
-  whoShouldSubscribe: string[];
+  whyAccess: string;
+  whoShouldAccess: string[];
   features: string[];
   icon: string;
   themeColor: string;

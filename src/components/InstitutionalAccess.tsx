@@ -55,7 +55,7 @@ export function InstitutionalAccess() {
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link to="/request-demo" className="rounded-full bg-white px-8 py-4 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all">
-                  Request a Free Trial
+                  Request Trial Access
                 </Link>
                 <button 
                   onClick={handleDownloadBrochure}
@@ -108,9 +108,9 @@ export function InstitutionalAccess() {
               { icon: Zap, title: "IP-Based Authentication", desc: "No individual logins required. Seamless access for anyone on your campus network." },
               { icon: Globe, title: "Remote Access", desc: "Enable access for students and faculty working from home via proxy or Shibboleth." },
               { icon: BarChart3, title: "Usage Statistics", desc: "COUNTER-compliant reports to help you understand resource utilization." },
-              { icon: ShieldCheck, title: "Librarian Dashboard", desc: "Centralized control panel to manage subscriptions and view analytics." },
+              { icon: ShieldCheck, title: "Librarian Dashboard", desc: "Centralized control panel to manage access and view analytics." },
               { icon: Users, title: "Unlimited Users", desc: "No caps on the number of simultaneous users from your institution." },
-              { icon: BookOpen, title: "Archival Rights", desc: "Permanent access to content published during your subscription period." }
+              { icon: BookOpen, title: "Archival Rights", desc: "Permanent access to content published during your access period." }
             ].map((feature, i) => (
               <div key={i} className="rounded-2xl bg-white p-8 border border-slate-200 shadow-sm">
                 <div className="h-12 w-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-6">

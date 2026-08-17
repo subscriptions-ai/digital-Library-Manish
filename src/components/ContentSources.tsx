@@ -26,7 +26,7 @@ export const ContentSources: React.FC = () => {
               <li>Educational videos and digital learning resources</li>
               <li>Books, case studies, and other academic materials produced by the Company or its affiliated entities</li>
             </ul>
-            <p className="mt-4">Access to certain proprietary content may be provided on a subscription or fee basis, as applicable under the Platform’s policies.</p>
+            <p className="mt-4">Access to certain proprietary content may be restricted, as applicable under the Platform’s policies and the terms agreed with each institution.</p>
           </section>
 
           <section className="mb-10">
@@ -51,7 +51,7 @@ export const ContentSources: React.FC = () => {
             <ul className="list-disc pl-6 space-y-2">
               <li>We are in the process of reviewing and confirming the applicable licenses for all third-party content included on the Platform.</li>
               <li>Where required, appropriate attribution will be provided in accordance with the relevant license terms.</li>
-              <li>Content with non-commercial restrictions (such as CC-BY-NC) will not be used in paid services unless expressly permitted by the applicable license or rights holder.</li>
+              <li>Content with non-commercial restrictions (such as CC-BY-NC) is handled strictly in accordance with the applicable licence and the rights holder’s permission.</li>
             </ul>
           </section>
 
@@ -75,7 +75,7 @@ export const ContentSources: React.FC = () => {
               <li><strong>Discovery Tools:</strong> Advanced search, subject categorization, filters, and recommendation features.</li>
               <li><strong>Integrated Access:</strong> Bringing together proprietary and legally sourced open-access content in one place.</li>
             </ul>
-            <p className="mt-4">Subscription fees apply to platform services, not to individual third-party content. Consortium eLearning Network Pvt. Ltd., along with its various divisions and sister concern companies, provides the platform services, and not the individual third-party content.</p>
+            <p className="mt-4">What we provide is the platform service, not the individual third-party content. Consortium eLearning Network Pvt. Ltd., along with its various divisions and sister concern companies, provides the platform services, and not the individual third-party content.</p>
           </section>
 
           <section className="mb-10">

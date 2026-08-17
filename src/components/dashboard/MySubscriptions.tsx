@@ -146,8 +146,8 @@ export function MySubscriptions() {
                       <p className="text-xs font-bold mt-2 text-red-500 dark:text-red-400">Subscription Expired</p>
                     )}
                     {isExpired && (
-                      <a href="/subscriptions" className="mt-2 inline-block text-[10px] font-bold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
-                        Renew Plan
+                      <a href="/contact" className="mt-2 inline-block text-[10px] font-bold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+                        Request Renewal
                       </a>
                     )}
                   </div>
@@ -181,8 +181,8 @@ export function MySubscriptions() {
             <CreditCard size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No subscriptions found</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">You don't have any {filter.toLowerCase()} subscriptions at the moment.</p>
-            <a href="/subscriptions" className="mt-4 inline-block px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors">
-              Browse Plans
+            <a href="/contact" className="mt-4 inline-block px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors">
+              Request Access
             </a>
           </div>
         )}
