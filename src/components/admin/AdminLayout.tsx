@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon, ShieldAlert
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -32,6 +32,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [subsExpanded, setSubsExpanded] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [newInquiriesCount, setNewInquiriesCount] = useState(0);
+  const [openTakedownCount, setOpenTakedownCount] = useState(0);
   const [newDemoRequestsCount, setNewDemoRequestsCount] = useState(0);
 
   useEffect(() => {
@@ -57,6 +58,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         }).then(r => r.json()).then(data => {
           if (Array.isArray(data)) setNewDemoRequestsCount(data.filter((d: any) => d.status === 'Pending').length);
+        }).catch(() => {});
+        fetch('/api/admin/takedown-requests', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        }).then(r => r.json()).then(data => {
+          if (data && typeof data.openCount === 'number') setOpenTakedownCount(data.openCount);
         }).catch(() => {});
       }
     } else if (!loading && !profile) {
@@ -391,6 +397,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             badge={newInquiriesCount > 0 ? newInquiriesCount : undefined}
           />
 
+          {/* Content Removal */}
+          <NavButton
+            icon={<ShieldAlert size={17} />}
+            label="Content Removal"
+            active={location.pathname === '/admin/takedown'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/takedown')}
+            badge={openTakedownCount > 0 ? openTakedownCount : undefined}
+          />
+
           {/* Demo Requests */}
           <NavButton
             icon={<PlayCircle size={17} />}
@@ -443,6 +459,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/drafts' ? 'Drafts & Cleanup'
               : location.pathname === '/admin/agency-inquiries' ? 'Agency Inquiries'
               : location.pathname === '/admin/contact-inquiries' ? 'Contact Inquiries'
+              : location.pathname === '/admin/takedown' ? 'Content Removal Requests'
               : location.pathname === '/admin/email-verifications' ? 'Email Verifications'
               : location.pathname === '/admin/email-settings' ? 'SMTP & Email Configuration'
               : location.pathname === '/admin/payments' ? 'Payments'

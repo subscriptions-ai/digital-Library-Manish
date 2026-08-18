@@ -23,6 +23,7 @@ import { PrivacyPolicy } from "./components/PrivacyPolicy";
 import { TermsAndConditions } from "./components/TermsAndConditions";
 import { LegalDisclaimer } from "./components/LegalDisclaimer";
 import { ContentSources } from "./components/ContentSources";
+import { ContentRemoval } from "./components/ContentRemoval";
 // Lazy-loaded so the plan/price data it imports lands in its own chunk and is
 // never downloaded by public visitors — only by admins/managers who open it.
 const QuotationWizard = lazy(() =>
@@ -63,6 +64,7 @@ import { SalesLeadDetails } from "./components/sales/SalesLeadDetails";
 import { ValidatorDashboard } from "./components/admin/ValidatorDashboard";
 import { AgencyInquiriesPage } from "./components/admin/AgencyInquiriesPage";
 import { ContactInquiriesPage } from "./components/admin/ContactInquiriesPage";
+import { TakedownRequests } from "./components/admin/TakedownRequests";
 import { DemoRequestsPage } from "./components/admin/DemoRequestsPage";
 import { CouponsManager } from './components/admin/CouponsManager';
 import { CouponDetails } from './components/admin/CouponDetails';
@@ -182,6 +184,7 @@ export default function App() {
                 <Route path="/dashboard/explore" element={<DashboardLayout><StructuredLibrary /></DashboardLayout>} />
                 <Route path="/admin/agency-inquiries" element={<AdminLayout><AgencyInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/contact-inquiries" element={<AdminLayout><ContactInquiriesPage /></AdminLayout>} />
+                <Route path="/admin/takedown" element={<AdminLayout><TakedownRequests /></AdminLayout>} />
                 <Route path="/admin/demo-requests" element={<AdminLayout><DemoRequestsPage /></AdminLayout>} />
                 <Route path="/admin/validator" element={<AdminLayout><ValidatorDashboard /></AdminLayout>} />
                 <Route path="/admin/drafts" element={<AdminLayout><DraftedContentManager /></AdminLayout>} />
@@ -286,6 +289,7 @@ export default function App() {
                       <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                       <Route path="/legal-disclaimer" element={<LegalDisclaimer />} />
                       <Route path="/content-sources" element={<ContentSources />} />
+                      <Route path="/content-removal" element={<ContentRemoval />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
                       <Route path="/request-demo" element={<RequestDemo />} />

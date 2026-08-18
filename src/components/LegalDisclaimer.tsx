@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { ShieldAlert, Scale, Info, Mail } from "lucide-react";
 
 export const LegalDisclaimer: React.FC = () => {
@@ -54,7 +55,7 @@ export const LegalDisclaimer: React.FC = () => {
               <Mail className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">Rights Holders & Takedowns</h2>
             </div>
-            <p>If you are a rights holder and believe that any content available on the Platform infringes your rights, please contact us at <strong>info@celnet.in</strong> with relevant details. We will review the matter and take appropriate action in accordance with applicable laws.</p>
+            <p>If you are a rights holder and believe that any content available on the Platform infringes your rights, please use our <Link to="/content-removal" className="font-bold text-blue-600 hover:underline">content removal form</Link> or write to <strong>info@celnet.in</strong>. Every request receives a reference number and is reviewed within 7 days, in accordance with applicable laws.</p>
           </section>
 
           <section className="mb-10 border-t border-slate-100 pt-10">

@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { BookOpen, FileText, CheckCircle, Info, Mail, ShieldAlert } from "lucide-react";
 
 export const ContentSources: React.FC = () => {
@@ -83,7 +84,7 @@ export const ContentSources: React.FC = () => {
               <Mail className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">6. Copyright & Takedown</h2>
             </div>
-            <p>If you are a copyright holder and believe that any content available on the Platform infringes your intellectual property rights, please contact us at <strong>info@celnet.in</strong> with the following details:</p>
+            <p>If you are a copyright holder and believe that any content available on the Platform infringes your intellectual property rights, please use our <Link to="/content-removal" className="font-bold text-blue-600 hover:underline">content removal form</Link>, which creates a tracked reference and a dated response commitment. You may also write to <strong>info@celnet.in</strong>. In either case, please include:</p>
             <ul className="list-disc pl-6 space-y-2 mt-4">
               <li>Your full name and organization name</li>
               <li>Proof of ownership or authorization to act on behalf of the copyright holder</li>
@@ -91,7 +92,7 @@ export const ContentSources: React.FC = () => {
               <li>The exact URL or location of the content on the Platform</li>
               <li>A statement explaining why you believe the content should be removed</li>
             </ul>
-            <p className="mt-4">Once we receive a valid request, we will review it promptly and take appropriate action in accordance with applicable copyright laws and our internal takedown procedures.</p>
+            <p className="mt-4">Once we receive a valid request, we will acknowledge it, review it within <strong>7 days</strong>, and take appropriate action in accordance with applicable copyright laws and our internal takedown procedures.</p>
           </section>
         </div>
       </div>

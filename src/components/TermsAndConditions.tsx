@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { COMPANY_DETAILS } from "../config";
 import { FileText, UserCheck, KeyRound, ShieldAlert, Scale, MapPin } from "lucide-react";
 
@@ -98,9 +99,8 @@ export const TermsAndConditions: React.FC = () => {
               <ShieldAlert className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">8. Content Removal (Takedown Policy)</h2>
             </div>
-            <p>If any content violates copyright:</p>
-            <p className="mt-2">Contact: <strong>info@celnet.in</strong></p>
-            <p className="mt-2">Upon receiving a verified request, we will promptly remove the data/content in question.</p>
+            <p>If you believe any content on the Platform infringes your rights, you may submit a request through our <Link to="/content-removal" className="font-bold text-blue-600 hover:underline">content removal form</Link>, or by writing to <strong>info@celnet.in</strong>.</p>
+            <p className="mt-2">Each request is logged with a reference number and acknowledged. We aim to review every request and respond within <strong>7 days</strong> of receipt, and will remove or restrict the content in question where the request is verified.</p>
           </section>
 
           <section className="mb-10">

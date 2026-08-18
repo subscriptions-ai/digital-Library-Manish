@@ -6402,6 +6402,240 @@ async function startServer() {
     }
   });
 
+  // ── Content Removal / Takedown ──────────────────────────────────────────────
+  // A rights complaint is a legal event, so every notice becomes a durable record
+  // with a reference, an SLA clock and an append-only audit trail — we must be able
+  // to show when a notice arrived and what we did about it.
+
+  const TAKEDOWN_SLA_DAYS = 7;
+
+  const TAKEDOWN_CAPACITIES = ['RightsHolder', 'AuthorisedAgent', 'Author', 'Other'];
+  const TAKEDOWN_ACTIONS    = ['RemoveEntirely', 'RemoveFileKeepMetadata', 'AddAttribution', 'Other'];
+  const TAKEDOWN_STATUSES   = ['New', 'UnderReview', 'ActionTaken', 'Rejected', 'Withdrawn'];
+
+  /** TDN-<year>-<zero-padded sequence within that year> */
+  async function nextTakedownReference(): Promise<string> {
+    const year = new Date().getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const countThisYear = await (prisma as any).takedownRequest.count({
+      where: { createdAt: { gte: startOfYear } },
+    });
+    return `TDN-${year}-${String(countThisYear + 1).padStart(4, '0')}`;
+  }
+
+  /** Best-effort: pull an id out of a /preview/:id or /dashboard/content/:id URL and see what it is. */
+  async function resolveReportedContent(url: string) {
+    const out: { matchedContentId?: string; matchedKind?: string; ownershipSource?: string } = {};
+    try {
+      const uuid = (url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || [])[0];
+      if (!uuid) return out;
+
+      const content = await prisma.content.findUnique({ where: { id: uuid }, select: { id: true } });
+      if (content) return { matchedContentId: content.id, matchedKind: 'content' };
+
+      const article = await (prisma as any).article.findUnique({
+        where: { id: uuid }, select: { id: true, ownershipSource: true },
+      });
+      if (article) return { matchedContentId: article.id, matchedKind: 'article', ownershipSource: article.ownershipSource };
+
+      const book = await (prisma as any).book.findUnique({
+        where: { id: uuid }, select: { id: true, ownershipSource: true },
+      });
+      if (book) return { matchedContentId: book.id, matchedKind: 'book', ownershipSource: book.ownershipSource };
+    } catch {
+      // Resolution is a convenience for the reviewer — never fail intake over it.
+    }
+    return out;
+  }
+
+  // Public intake. Deliberately unauthenticated: a rights holder is not our user.
+  app.post("/api/takedown", async (req: any, res) => {
+    try {
+      const {
+        requesterName, requesterEmail, requesterPhone, organization,
+        capacity, capacityOther,
+        contentUrl, contentTitle, identifier,
+        ownershipBasis, requestedAction, requestedActionOther, additionalInfo,
+        goodFaithDeclared, accuracyDeclared,
+      } = req.body || {};
+
+      const missing = ['requesterName', 'requesterEmail', 'contentUrl', 'ownershipBasis']
+        .filter(f => !String(req.body?.[f] || '').trim());
+      if (missing.length) {
+        return res.status(400).json({ error: `Missing required field(s): ${missing.join(', ')}` });
+      }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(requesterEmail).trim())) {
+        return res.status(400).json({ error: 'Please enter a valid email address.' });
+      }
+      if (!goodFaithDeclared || !accuracyDeclared) {
+        return res.status(400).json({ error: 'Both declarations must be confirmed before submitting.' });
+      }
+
+      const safeCapacity = TAKEDOWN_CAPACITIES.includes(capacity) ? capacity : 'Other';
+      const safeAction   = TAKEDOWN_ACTIONS.includes(requestedAction) ? requestedAction : 'RemoveEntirely';
+
+      const resolved  = await resolveReportedContent(String(contentUrl));
+      const reference = await nextTakedownReference();
+      const now       = new Date();
+      const dueAt     = new Date(now.getTime() + TAKEDOWN_SLA_DAYS * 24 * 60 * 60 * 1000);
+
+      const created = await (prisma as any).takedownRequest.create({
+        data: {
+          reference,
+          requesterName:  String(requesterName).trim(),
+          requesterEmail: String(requesterEmail).trim(),
+          requesterPhone: requesterPhone?.trim() || null,
+          organization:   organization?.trim() || null,
+          capacity:       safeCapacity,
+          capacityOther:  safeCapacity === 'Other' ? (capacityOther?.trim() || null) : null,
+          contentUrl:     String(contentUrl).trim(),
+          contentTitle:   contentTitle?.trim() || null,
+          identifier:     identifier?.trim() || null,
+          matchedContentId: resolved.matchedContentId || null,
+          matchedKind:      resolved.matchedKind || null,
+          ownershipSource:  resolved.ownershipSource || null,
+          ownershipBasis:   String(ownershipBasis).trim(),
+          requestedAction:  safeAction,
+          requestedActionOther: safeAction === 'Other' ? (requestedActionOther?.trim() || null) : null,
+          additionalInfo:   additionalInfo?.trim() || null,
+          goodFaithDeclared: true,
+          accuracyDeclared:  true,
+          status: 'New',
+          dueAt,
+          ipAddress: req.ip || req.headers['x-forwarded-for'] || null,
+          userAgent: req.headers['user-agent'] || null,
+          auditTrail: [{ event: 'Received', at: now.toISOString(), by: 'public form' }],
+        },
+      });
+
+      // Notify the rights inbox. Never block the acknowledgement on mail delivery.
+      const emailFrom  = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const rightsInbox = process.env.RIGHTS_EMAIL || process.env.ADMIN_EMAIL || "info@celnet.in";
+      const actionLabels: Record<string, string> = {
+        RemoveEntirely:         'Remove the listing entirely',
+        RemoveFileKeepMetadata: 'Remove the file, keep citation metadata',
+        AddAttribution:         'Correct or add attribution',
+        Other:                  requestedActionOther || 'Other',
+      };
+
+      transporter?.sendMail?.({
+        from: emailFrom,
+        to: rightsInbox,
+        replyTo: created.requesterEmail,
+        subject: `[${reference}] Content removal request — due ${dueAt.toDateString()}`,
+        html: `
+          <h2>Content removal request ${reference}</h2>
+          <p><strong>Respond by ${dueAt.toDateString()}</strong> (${TAKEDOWN_SLA_DAYS}-day published SLA).</p>
+          <table cellpadding="6" style="border-collapse:collapse">
+            <tr><td><strong>From</strong></td><td>${created.requesterName} &lt;${created.requesterEmail}&gt;</td></tr>
+            <tr><td><strong>Organisation</strong></td><td>${created.organization || '—'}</td></tr>
+            <tr><td><strong>Acting as</strong></td><td>${created.capacityOther || safeCapacity}</td></tr>
+            <tr><td><strong>URL</strong></td><td>${created.contentUrl}</td></tr>
+            <tr><td><strong>Identifier</strong></td><td>${created.identifier || '—'}</td></tr>
+            <tr><td><strong>Origin</strong></td><td>${created.ownershipSource || 'not resolved'}</td></tr>
+            <tr><td><strong>Requested</strong></td><td>${actionLabels[safeAction]}</td></tr>
+          </table>
+          <h3>Basis of claim</h3>
+          <p>${String(created.ownershipBasis).replace(/</g, '&lt;')}</p>
+          ${created.additionalInfo ? `<h3>Additional information</h3><p>${String(created.additionalInfo).replace(/</g, '&lt;')}</p>` : ''}
+        `,
+      }).catch?.((e: any) => console.error('[takedown] admin notification failed:', e));
+
+      transporter?.sendMail?.({
+        from: emailFrom,
+        to: created.requesterEmail,
+        subject: `We have received your content removal request (${reference})`,
+        html: `
+          <p>Dear ${created.requesterName},</p>
+          <p>Thank you for contacting us. Your request has been logged as
+             <strong>${reference}</strong> and will be reviewed by
+             ${dueAt.toDateString()}.</p>
+          <p>Reported URL: ${created.contentUrl}</p>
+          <p>If you need to add anything, reply to this email quoting the reference above.</p>
+          <p>— ${process.env.COMPANY_NAME || 'STM Digital Library'}</p>
+        `,
+      }).catch?.((e: any) => console.error('[takedown] acknowledgement failed:', e));
+
+      res.status(201).json({ success: true, reference, dueAt });
+    } catch (error) {
+      console.error('POST /api/takedown error:', error);
+      res.status(500).json({ error: 'Could not submit your request. Please email us directly.' });
+    }
+  });
+
+  app.get("/api/admin/takedown-requests", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { status, search } = req.query;
+      const where: any = {};
+      if (status && status !== 'All') where.status = status as string;
+      if (search) {
+        where.OR = [
+          { reference:      { contains: search as string, mode: 'insensitive' } },
+          { requesterName:  { contains: search as string, mode: 'insensitive' } },
+          { requesterEmail: { contains: search as string, mode: 'insensitive' } },
+          { organization:   { contains: search as string, mode: 'insensitive' } },
+          { contentUrl:     { contains: search as string, mode: 'insensitive' } },
+          { contentTitle:   { contains: search as string, mode: 'insensitive' } },
+        ];
+      }
+      const [requests, openCount, overdueCount] = await Promise.all([
+        (prisma as any).takedownRequest.findMany({ where, orderBy: { createdAt: 'desc' } }),
+        (prisma as any).takedownRequest.count({ where: { status: { in: ['New', 'UnderReview'] } } }),
+        (prisma as any).takedownRequest.count({
+          where: { status: { in: ['New', 'UnderReview'] }, dueAt: { lt: new Date() } },
+        }),
+      ]);
+      res.json({ requests, openCount, overdueCount });
+    } catch (error) {
+      console.error('GET takedown-requests error:', error);
+      res.status(500).json({ error: 'Failed to fetch takedown requests' });
+    }
+  });
+
+  app.get("/api/admin/takedown-requests/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const request = await (prisma as any).takedownRequest.findUnique({ where: { id: req.params.id } });
+      if (!request) return res.status(404).json({ error: 'Not found' });
+      res.json(request);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch takedown request' });
+    }
+  });
+
+  app.put("/api/admin/takedown-requests/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { status, actionTaken, adminNotes } = req.body || {};
+      const existing = await (prisma as any).takedownRequest.findUnique({ where: { id: req.params.id } });
+      if (!existing) return res.status(404).json({ error: 'Not found' });
+
+      const data: any = {};
+      const now  = new Date();
+      const who  = req.user?.email || req.user?.name || 'admin';
+      const trail = Array.isArray(existing.auditTrail) ? [...existing.auditTrail] : [];
+
+      if (status && TAKEDOWN_STATUSES.includes(status) && status !== existing.status) {
+        data.status = status;
+        trail.push({ event: `Status → ${status}`, at: now.toISOString(), by: who });
+        if (status === 'UnderReview' && !existing.acknowledgedAt) data.acknowledgedAt = now;
+        if (['ActionTaken', 'Rejected', 'Withdrawn'].includes(status)) data.resolvedAt = now;
+      }
+      if (actionTaken !== undefined && actionTaken !== existing.actionTaken) {
+        data.actionTaken = actionTaken;
+        trail.push({ event: 'Action recorded', at: now.toISOString(), by: who, detail: actionTaken });
+      }
+      if (adminNotes !== undefined) data.adminNotes = adminNotes;
+
+      if (trail.length !== (existing.auditTrail?.length || 0)) data.auditTrail = trail;
+      data.handledBy = who;
+
+      const updated = await (prisma as any).takedownRequest.update({ where: { id: req.params.id }, data });
+      res.json(updated);
+    } catch (error) {
+      console.error('PUT takedown-request error:', error);
+      res.status(500).json({ error: 'Failed to update takedown request' });
+    }
+  });
+
   // Get recent quotation for autofill
   app.get("/api/quotation/customer/:email", async (req, res) => {
     try {

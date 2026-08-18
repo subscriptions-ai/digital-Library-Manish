@@ -958,3 +958,58 @@ model MediaAsset {
   @@index([kind])
   @@index([createdAt])
 }
+
+/// A copyright / rights complaint raised from the public "Content Removal" form.
+/// Kept as a first-class record (not just an email) so that we can evidence
+/// *when* a notice arrived and *what* we did about it, within a stated SLA.
+model TakedownRequest {
+  id                   String   @id @default(uuid())
+  reference            String   @unique                 // human-facing ticket ref, e.g. TDN-2026-0007
+
+  // ── Who is complaining ────────────────────────────────
+  requesterName        String
+  requesterEmail       String
+  requesterPhone       String?
+  organization         String?
+  capacity             String                            // RightsHolder | AuthorisedAgent | Author | Other
+  capacityOther        String?
+
+  // ── What they are complaining about ───────────────────
+  contentUrl           String                            // exact URL on our platform
+  contentTitle         String?
+  identifier           String?                           // DOI / ISSN / ISBN
+  matchedContentId     String?                           // internal id, if we can resolve it
+  matchedKind          String?                           // content | article | book
+  ownershipSource      String?                           // Ingested | PublisherSubmitted | AdminEntered (snapshot at intake)
+
+  // ── The claim ─────────────────────────────────────────
+  ownershipBasis       String   @db.Text                 // why they hold the rights
+  requestedAction      String                            // RemoveEntirely | RemoveFileKeepMetadata | AddAttribution | Other
+  requestedActionOther String?
+  additionalInfo       String?  @db.Text
+
+  // ── Declarations made at submission ───────────────────
+  goodFaithDeclared    Boolean  @default(false)
+  accuracyDeclared     Boolean  @default(false)
+
+  // ── Handling ──────────────────────────────────────────
+  status               String   @default("New")          // New | UnderReview | ActionTaken | Rejected | Withdrawn
+  dueAt                DateTime                          // intake + SLA window
+  acknowledgedAt       DateTime?
+  resolvedAt           DateTime?
+  actionTaken          String?  @db.Text
+  adminNotes           String?  @db.Text
+  handledBy            String?
+
+  // ── Evidence ──────────────────────────────────────────
+  ipAddress            String?
+  userAgent            String?
+  auditTrail           Json?    @default("[]")            // [{event, at, by, detail}]
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([dueAt])
+}

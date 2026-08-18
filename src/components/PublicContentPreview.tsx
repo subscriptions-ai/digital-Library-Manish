@@ -114,6 +114,13 @@ export function PublicContentPreview() {
                 </div>
               </div>
 
+              <p className="mt-6 text-center text-[11px] text-slate-400">
+                Rights holder?{" "}
+                <Link to="/content-removal" className="font-semibold text-slate-500 underline hover:text-slate-700">
+                  Request removal of this content
+                </Link>
+              </p>
+
             </div>
           </div>
         </div>
