@@ -69,6 +69,13 @@ export function QuotationManager() {
   useEffect(() => { fetchData(); }, [statusFilter]);
 
   const updateStatus = async (id: string, status: string) => {
+    // "Paid" is not just a label — it should produce a receipt and a ledger
+    // entry. Send it through the payment modal instead of silently flipping
+    // the field, which used to leave Payments and Receipts empty.
+    if (status === 'Paid') {
+      const q = quotations.find((x: any) => x.id === id) || selected;
+      if (q) { openPaymentModal(q); return; }
+    }
     try {
       await fetch(`/api/admin/quotations/${id}`, {
         method: 'PUT',

@@ -3108,11 +3108,18 @@ async function startServer() {
   app.put("/api/admin/quotations/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { status, notes } = req.body;
+      const { status, notes, paymentMethod } = req.body;
       const data: any = {};
       if (status) data.status = status;
       if (notes !== undefined) data.notes = notes;
       const updated = await (prisma as any).quotation.update({ where: { id }, data });
+
+      // Marking a quotation Paid is a statement that money arrived, so it belongs
+      // in the payments ledger even when no receipt has been issued yet.
+      if (status === 'Paid') {
+        await recordQuotationPayment(updated, { method: paymentMethod });
+      }
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update quotation" });
@@ -3170,6 +3177,41 @@ async function startServer() {
     return `${prefix}${String(count + 1).padStart(2, '0')}`;
   };
 
+  /**
+   * Record money received against a quotation.
+   *
+   * Payment rows used to be created only by the Razorpay verify webhook, so
+   * anything collected offline (bank transfer, cheque, UPI) never appeared in
+   * /admin/payments at all. Both "mark as paid" paths now come through here.
+   *
+   * Idempotent: orderId is the quotation id and is unique, so re-marking a
+   * quotation paid updates the existing row instead of creating a duplicate.
+   */
+  const recordQuotationPayment = async (
+    quotation: any,
+    opts: { method?: string; receiptNumber?: string | null; paidAt?: Date } = {}
+  ) => {
+    try {
+      const data = {
+        amount: quotation.total,
+        status: 'Success',
+        method: opts.method || 'Bank Transfer',
+        userId: quotation.userId || null,
+        items: quotation.items || [],
+        paymentId: opts.receiptNumber || null,
+      };
+      return await (prisma as any).payment.upsert({
+        where:  { orderId: quotation.id },
+        update: data,
+        create: { orderId: quotation.id, ...data, createdAt: opts.paidAt || new Date() },
+      });
+    } catch (e) {
+      // Never fail the caller over bookkeeping — the receipt/status is the record of truth.
+      console.error('[payments] failed to record payment for quotation', quotation?.id, e);
+      return null;
+    }
+  };
+
   // Mark a quotation as paid and create a receipt (immutable snapshot of the quotation)
   app.post("/api/admin/quotations/:id/receipt", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
@@ -3216,6 +3258,13 @@ async function startServer() {
 
       // Reflect payment on the source quotation
       await (prisma as any).quotation.update({ where: { id }, data: { status: 'Paid' } });
+
+      // ...and in the payments ledger, so /admin/payments shows offline payments too
+      await recordQuotationPayment(quotation, {
+        method: receipt.paymentMethod,
+        receiptNumber: receipt.receiptNumber,
+        paidAt: receipt.paymentDate,
+      });
 
       res.json(receipt);
     } catch (error: any) {
