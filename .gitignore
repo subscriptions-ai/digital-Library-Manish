@@ -12,3 +12,6 @@ Digital Library (1).pdf
 test_content.ts
 uploads/
 dist-email-preview/
+
+# database dumps — real user data, never commit
+backups/
