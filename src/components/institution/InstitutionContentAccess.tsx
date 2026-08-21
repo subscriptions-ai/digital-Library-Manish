@@ -103,7 +103,13 @@ export function InstitutionContentAccess() {
                   
                   {mod.hasAccess ? (
                     <button 
-                      onClick={() => navigate(`/institution/library?domain=${encodeURIComponent(selectedDomain)}&type=${encodeURIComponent(mod.contentType)}`)}
+                      onClick={() => navigate(
+                        // One library for both datasets. Periodicals are mostly in the
+                        // ingested collection; every other type lives in the archive.
+                        mod.contentType === 'Periodicals'
+                          ? `/institution/explore?domain=${encodeURIComponent(selectedDomain)}&mode=new`
+                          : `/institution/explore?domain=${encodeURIComponent(selectedDomain)}&mode=archived&atype=${encodeURIComponent(mod.contentType)}`
+                      )}
                       className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 text-sm font-bold"
                     >
                       Browse <ArrowRight size={16} />

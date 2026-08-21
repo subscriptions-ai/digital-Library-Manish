@@ -1259,22 +1259,49 @@ async function startServer() {
       // 1. Get all active subscriptions for the user (including institution inheritance)
       const activeSubscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
 
-      // 2. Fetch real counts grouped by domain and contentType
-      const realCounts = await prisma.content.groupBy({
-        by: ['domain', 'contentType'],
-        _count: { id: true },
-        where: { status: { in: ['Published', 'published'] } }
-      });
+      // 2. Count what actually exists, across BOTH content datasets.
+      //    Content holds the original library; Article/Book hold everything
+      //    ingested since. Counting only Content made a department look nearly
+      //    empty while the admin side showed hundreds of items.
+      const [contentCounts, articleCounts, bookCounts] = await Promise.all([
+        prisma.content.groupBy({
+          by: ['domain', 'contentType'],
+          _count: { id: true },
+          where: { status: { in: ['Published', 'published'] } }
+        }),
+        (prisma as any).article.groupBy({
+          by: ['domain', 'contentType'],
+          _count: { id: true },
+          where: { status: 'Published' }
+        }),
+        (prisma as any).book.groupBy({
+          by: ['domain'],
+          _count: { id: true },
+          where: { status: 'Published' }
+        }),
+      ]);
 
-      // 3. Deduplicate and map
-      const uniqueModules = realCounts
-        .filter(rc => rc.domain && rc.contentType)
-        .map(rc => ({
-          id: `${rc.domain}_${rc.contentType}`,
-          domain: rc.domain as string,
-          contentType: rc.contentType as string,
-          totalCount: rc._count.id
-        }));
+      // 3. Merge into one count per (domain, contentType)
+      const totals = new Map<string, { domain: string; contentType: string; totalCount: number }>();
+      const addTo = (domain: any, contentType: any, n: number) => {
+        if (!domain || !contentType || !n) return;
+        const key = `${domain}_${contentType}`;
+        const row = totals.get(key);
+        if (row) row.totalCount += n;
+        else totals.set(key, { domain: String(domain), contentType: String(contentType), totalCount: n });
+      };
+
+      for (const rc of contentCounts) addTo(rc.domain, rc.contentType, rc._count.id);
+      for (const rc of articleCounts) addTo(rc.domain, rc.contentType, rc._count.id);
+      // Book rows carry no contentType — they are all Books by definition.
+      for (const rc of bookCounts)    addTo(rc.domain, 'Books', rc._count.id);
+
+      const uniqueModules = Array.from(totals.values()).map(t => ({
+        id: `${t.domain}_${t.contentType}`,
+        domain: t.domain,
+        contentType: t.contentType,
+        totalCount: t.totalCount,
+      }));
 
       // 4. Map status for each module to "locked" vs "unlocked"
       const accessMap = uniqueModules.map(mod => {

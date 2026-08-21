@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, Activity, UserCircle, CreditCard, BookOpen, MessageSquareHeart, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, Activity, UserCircle, CreditCard, BookOpen, MessageSquareHeart } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -93,16 +93,9 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           <NavButton
             icon={<BookOpen size={18} />}
             label="Content Library"
-            active={location.pathname === '/institution/library' || location.pathname === '/institution/access'}
+            active={['/institution/library', '/institution/access', '/institution/explore'].includes(location.pathname)}
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/institution/access')}
-          />
-          <NavButton
-            icon={<Sparkles size={18} />}
-            label="Journals & Books"
-            active={location.pathname === '/institution/explore'}
-            collapsed={!isSidebarOpen}
-            onClick={() => navigate('/institution/explore')}
           />
           <NavButton
             icon={<CreditCard size={18} />}
@@ -151,7 +144,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             : location.pathname.startsWith('/institution/students') ? 'Student Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
             : location.pathname === '/institution/library' ? 'Content Library'
-            : location.pathname === '/institution/explore' ? 'Journals & Books'
+            : location.pathname === '/institution/explore' ? 'Content Library'
             : location.pathname === '/institution/subscriptions' ? 'Subscription Details'
             : location.pathname === '/institution/profile' ? 'Institution Profile'
             : location.pathname === '/institution/feedbacks' ? 'My Feedbacks'
