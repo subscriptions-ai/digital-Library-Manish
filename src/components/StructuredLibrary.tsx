@@ -14,7 +14,12 @@ type Sort = 'newest' | 'oldest' | 'title';
 
 const PAGE_SIZE = 12;
 
-export function StructuredLibrary() {
+/**
+ * Shared structured-content browser over the ingested Article/Journal/Book
+ * dataset. Mounted in both the subscriber dashboard and the institution portal,
+ * which have separate viewer routes — hence viewerBasePath.
+ */
+export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { viewerBasePath?: string } = {}) {
   const navigate = useNavigate();
   const authOpts = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
   // Filters live in the URL query string → survive back/forward/refresh/remount, and are shareable.
@@ -389,7 +394,7 @@ export function StructuredLibrary() {
             </div>
           ) : (
             <div className="space-y-3">
-              {displayed.map((it, i) => <ResultCard key={it.id || i} it={it} kind={kind} mode={mode} onOpen={() => navigate(`/dashboard/viewer/${it.id}`)} />)}
+              {displayed.map((it, i) => <ResultCard key={it.id || i} it={it} kind={kind} mode={mode} onOpen={() => navigate(`${viewerBasePath}/${it.id}`)} />)}
             </div>
           )}
 

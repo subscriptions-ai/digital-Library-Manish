@@ -244,6 +244,7 @@ export default function App() {
                 <Route path="/institution/analytics" element={<InstitutionLayout><InstitutionAnalytics /></InstitutionLayout>} />
                 <Route path="/institution/access" element={<InstitutionLayout><InstitutionContentAccess /></InstitutionLayout>} />
                 <Route path="/institution/library" element={<InstitutionLayout><InstitutionContentLibrary /></InstitutionLayout>} />
+                <Route path="/institution/explore" element={<InstitutionLayout><StructuredLibrary viewerBasePath="/institution/viewer" /></InstitutionLayout>} />
                 <Route path="/institution/viewer/:id" element={<InstitutionLayout><ProtectedContentViewer /></InstitutionLayout>} />
                 <Route path="/institution/videos/player/:id" element={<InstitutionLayout><LmsVideoPlayer /></InstitutionLayout>} />
                 <Route path="/institution/subscriptions" element={<InstitutionLayout><InstitutionSubscriptions /></InstitutionLayout>} />

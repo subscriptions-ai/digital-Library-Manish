@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, Activity, UserCircle, CreditCard, BookOpen, MessageSquareHeart } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, Activity, UserCircle, CreditCard, BookOpen, MessageSquareHeart, Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -98,6 +98,13 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             onClick={() => navigate('/institution/access')}
           />
           <NavButton
+            icon={<Sparkles size={18} />}
+            label="Journals & Books"
+            active={location.pathname === '/institution/explore'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/institution/explore')}
+          />
+          <NavButton
             icon={<CreditCard size={18} />}
             label="Subscriptions"
             active={location.pathname === '/institution/subscriptions'}
@@ -144,6 +151,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             : location.pathname.startsWith('/institution/students') ? 'Student Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
             : location.pathname === '/institution/library' ? 'Content Library'
+            : location.pathname === '/institution/explore' ? 'Journals & Books'
             : location.pathname === '/institution/subscriptions' ? 'Subscription Details'
             : location.pathname === '/institution/profile' ? 'Institution Profile'
             : location.pathname === '/institution/feedbacks' ? 'My Feedbacks'
