@@ -142,14 +142,14 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
           </button>
 
           <button
-            onClick={() => navigate('/sales/quotations/create')}
+            onClick={() => navigate('/sales/quotations')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
               location.pathname.startsWith('/sales/quotations')
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                 : 'text-slate-600 hover:bg-white hover:shadow-sm'
             }`}
           >
-            <FileText size={18} /> Create Quotation
+            <FileText size={18} /> My Quotations
           </button>
 
           <button

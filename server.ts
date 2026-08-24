@@ -1931,6 +1931,52 @@ async function startServer() {
     }
   });
 
+  // Quotations *raised by* the signed-in staff member, as opposed to
+  // /api/user/quotations, which returns quotations addressed *to* a customer.
+  // Scoped to the caller's own email, so it is safe for any signed-in role:
+  // you can only ever see what you produced.
+  app.get("/api/my/quotations", authenticateJWT, async (req: any, res) => {
+    try {
+      const email = req.user?.email;
+      if (!email) return res.json({ quotations: [], stats: { total: 0, paid: 0, pending: 0, value: 0 } });
+
+      const { status, search } = req.query;
+      const where: any = { createdBy: email };
+      if (status && status !== 'All') where.status = status as string;
+      if (search) {
+        where.OR = [
+          { id:           { contains: search as string, mode: 'insensitive' } },
+          { userName:     { contains: search as string, mode: 'insensitive' } },
+          { userEmail:    { contains: search as string, mode: 'insensitive' } },
+          { organization: { contains: search as string, mode: 'insensitive' } },
+        ];
+      }
+
+      const quotations = await (prisma as any).quotation.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Totals are over everything this person raised, not the filtered view,
+      // so the header numbers do not move around while searching.
+      const all = await (prisma as any).quotation.findMany({
+        where: { createdBy: email },
+        select: { status: true, total: true },
+      });
+      const stats = {
+        total:   all.length,
+        paid:    all.filter((q: any) => q.status === 'Paid').length,
+        pending: all.filter((q: any) => !['Paid', 'Cancelled'].includes(q.status)).length,
+        value:   all.filter((q: any) => q.status === 'Paid').reduce((n: number, q: any) => n + (q.total || 0), 0),
+      };
+
+      res.json({ quotations, stats });
+    } catch (error) {
+      console.error('GET /api/my/quotations error:', error);
+      res.status(500).json({ error: 'Failed to fetch your quotations' });
+    }
+  });
+
   app.get("/api/user/invoices", authenticateJWT, async (req: any, res) => {
     try {
       const payments = await prisma.payment.findMany({

@@ -61,6 +61,7 @@ import { SalesLeadTable } from "./components/sales/SalesLeadTable";
 import { SalesActivityLog } from "./components/sales/SalesActivityLog";
 import { SalesPerformance } from "./components/sales/SalesPerformance";
 import { SalesLeadDetails } from "./components/sales/SalesLeadDetails";
+import { MyQuotations } from "./components/sales/MyQuotations";
 import { ValidatorDashboard } from "./components/admin/ValidatorDashboard";
 import { AgencyInquiriesPage } from "./components/admin/AgencyInquiriesPage";
 import { ContactInquiriesPage } from "./components/admin/ContactInquiriesPage";
@@ -268,6 +269,7 @@ export default function App() {
                 <Route path="/sales/activity" element={<SalesLayout><SalesActivityLog /></SalesLayout>} />
                 <Route path="/sales/performance" element={<SalesLayout><SalesPerformance /></SalesLayout>} />
                 <Route path="/sales/leads/:id" element={<SalesLayout><SalesLeadDetails /></SalesLayout>} />
+                <Route path="/sales/quotations" element={<SalesLayout><MyQuotations /></SalesLayout>} />
                 <Route path="/sales/quotations/create" element={<SalesLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></SalesLayout>} />
 
                 {/* Main Layout routes */}
