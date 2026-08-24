@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell } from 'lucide-react';
+import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell, FileText } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -139,6 +139,17 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
             }`}
           >
             <ClipboardList size={18} /> Activity Log
+          </button>
+
+          <button
+            onClick={() => navigate('/sales/quotations/create')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
+              location.pathname.startsWith('/sales/quotations')
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            <FileText size={18} /> Create Quotation
           </button>
 
           <button

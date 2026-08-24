@@ -268,6 +268,7 @@ export default function App() {
                 <Route path="/sales/activity" element={<SalesLayout><SalesActivityLog /></SalesLayout>} />
                 <Route path="/sales/performance" element={<SalesLayout><SalesPerformance /></SalesLayout>} />
                 <Route path="/sales/leads/:id" element={<SalesLayout><SalesLeadDetails /></SalesLayout>} />
+                <Route path="/sales/quotations/create" element={<SalesLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></SalesLayout>} />
 
                 {/* Main Layout routes */}
               <Route path="*" element={
