@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown, Search, BookOpen, Key, Download, Upload, School, User, HelpCircle } from "lucide-react";
 import { cn } from "../lib/utils";
+import { COMPANY_DETAILS } from "../config";
 
 interface FAQItem {
   question: string;
@@ -279,7 +280,7 @@ export function FAQ() {
               Contact Support
             </a>
             <a
-              href="mailto:info@celnet.in"
+              href={`mailto:${COMPANY_DETAILS.email}`}
               className="rounded-full bg-blue-700 px-8 py-3 text-sm font-bold text-white hover:bg-blue-800 transition-all"
             >
               Email Us

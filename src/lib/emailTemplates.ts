@@ -1,3 +1,4 @@
+import { COMPANY_DETAILS } from '../config';
 /**
  * Transactional email layout and content kit.
  *
@@ -39,14 +40,14 @@ export const buildEmail = (bodyRows: string, preheader = '') =>
   `<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">` +
   `<tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/>` +
   `<h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2>` +
-  `<p style="margin:0;font-size:12px;color:#64748b;">A Division of Consortium eLearning Network Pvt. Ltd.</p>` +
+  `<p style="margin:0;font-size:12px;color:#64748b;">${COMPANY_DETAILS.positioning}</p>` +
   `<div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` +
   bodyRows +
   `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;">` +
   `<p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">🏆 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>` +
   `<p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p>` +
   `<p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p>` +
-  `<p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">A Division of Consortium eLearning Network Pvt. Ltd.</p>` +
+  `<p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">${COMPANY_DETAILS.positioning}</p>` +
   `<div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;">` +
   `<p style="margin:0;font-size:11px;color:#94a3b8;">© ${new Date().getFullYear()} STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;` +
   `<a href="${MAIL_BASE}/privacy-policy" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;` +

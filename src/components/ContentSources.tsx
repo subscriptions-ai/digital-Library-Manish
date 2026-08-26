@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, FileText, CheckCircle, Info, Mail, ShieldAlert } from "lucide-react";
+import { COMPANY_DETAILS } from "../config";
 
 export const ContentSources: React.FC = () => {
   return (
@@ -20,7 +21,7 @@ export const ContentSources: React.FC = () => {
               <FileText className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">1. Proprietary Content</h2>
             </div>
-            <p>The Platform includes original, proprietary content developed, published, or made available by <strong>Consortium eLearning Network Pvt. Ltd.</strong> and its various divisions and sister concern companies. Such content may include, without limitation:</p>
+            <p>The Platform includes original, proprietary content developed, published, or made available by <strong>{COMPANY_DETAILS.legalName}</strong> and its various divisions and sister concern companies. Such content may include, without limitation:</p>
             <ul className="list-disc pl-6 space-y-2 mt-4">
               <li>Journals published under STM Journals and other affiliated divisions</li>
               <li>Conference proceedings organized by the Company or its affiliated entities</li>
@@ -76,7 +77,7 @@ export const ContentSources: React.FC = () => {
               <li><strong>Discovery Tools:</strong> Advanced search, subject categorization, filters, and recommendation features.</li>
               <li><strong>Integrated Access:</strong> Bringing together proprietary and legally sourced open-access content in one place.</li>
             </ul>
-            <p className="mt-4">What we provide is the platform service, not the individual third-party content. Consortium eLearning Network Pvt. Ltd., along with its various divisions and sister concern companies, provides the platform services, and not the individual third-party content.</p>
+            <p className="mt-4">What we provide is the platform service, not the individual third-party content. {COMPANY_DETAILS.legalName}, along with its various divisions and sister concern companies, provides the platform services, and not the individual third-party content.</p>
           </section>
 
           <section className="mb-10">
@@ -84,7 +85,7 @@ export const ContentSources: React.FC = () => {
               <Mail className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">6. Copyright & Takedown</h2>
             </div>
-            <p>If you are a copyright holder and believe that any content available on the Platform infringes your intellectual property rights, please use our <Link to="/content-removal" className="font-bold text-blue-600 hover:underline">content removal form</Link>, which creates a tracked reference and a dated response commitment. You may also write to <strong>info@celnet.in</strong>. In either case, please include:</p>
+            <p>If you are a copyright holder and believe that any content available on the Platform infringes your intellectual property rights, please use our <Link to="/content-removal" className="font-bold text-blue-600 hover:underline">content removal form</Link>, which creates a tracked reference and a dated response commitment. You may also write to <strong>{COMPANY_DETAILS.email}</strong>. In either case, please include:</p>
             <ul className="list-disc pl-6 space-y-2 mt-4">
               <li>Your full name and organization name</li>
               <li>Proof of ownership or authorization to act on behalf of the copyright holder</li>

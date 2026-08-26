@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ShieldAlert, Scale, Info, Mail } from "lucide-react";
+import { COMPANY_DETAILS } from "../config";
 
 export const LegalDisclaimer: React.FC = () => {
   return (
@@ -20,8 +21,8 @@ export const LegalDisclaimer: React.FC = () => {
               <Info className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">Nature of Content</h2>
             </div>
-            <p>The Platform provides access to a combination of proprietary content owned by <strong>Consortium eLearning Network Pvt. Ltd.</strong> and its various divisions and sister concern companies, as well as third-party content sourced from publicly available or open-access repositories.</p>
-            <p className="mt-4">For the purposes of this Platform, content published by the various divisions and sister concern companies of Consortium eLearning Network Pvt. Ltd. shall be treated as the Company’s own content or affiliated proprietary content, as applicable. Any content beyond such divisions and sister concern companies, including content sourced from third-party websites, repositories, publishers, or external platforms, shall not be regarded as owned by the Company unless expressly stated otherwise.</p>
+            <p>The Platform provides access to a combination of proprietary content owned by <strong>{COMPANY_DETAILS.legalName}</strong> and its various divisions and sister concern companies, as well as third-party content sourced from publicly available or open-access repositories.</p>
+            <p className="mt-4">For the purposes of this Platform, content published by the various divisions and sister concern companies of {COMPANY_DETAILS.legalName} shall be treated as the Company’s own content or affiliated proprietary content, as applicable. Any content beyond such divisions and sister concern companies, including content sourced from third-party websites, repositories, publishers, or external platforms, shall not be regarded as owned by the Company unless expressly stated otherwise.</p>
           </section>
 
           <section className="mb-10">
@@ -55,7 +56,7 @@ export const LegalDisclaimer: React.FC = () => {
               <Mail className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">Rights Holders & Takedowns</h2>
             </div>
-            <p>If you are a rights holder and believe that any content available on the Platform infringes your rights, please use our <Link to="/content-removal" className="font-bold text-blue-600 hover:underline">content removal form</Link> or write to <strong>info@celnet.in</strong>. Every request receives a reference number and is reviewed within 7 days, in accordance with applicable laws.</p>
+            <p>If you are a rights holder and believe that any content available on the Platform infringes your rights, please use our <Link to="/content-removal" className="font-bold text-blue-600 hover:underline">content removal form</Link> or write to <strong>{COMPANY_DETAILS.email}</strong>. Every request receives a reference number and is reviewed within 7 days, in accordance with applicable laws.</p>
           </section>
 
           <section className="mb-10 border-t border-slate-100 pt-10">

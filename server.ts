@@ -21,6 +21,7 @@ import jwt from "jsonwebtoken";
 import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
+import { COMPANY_DETAILS } from "./src/config.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
   eBody, eH1, eP, eMuted, eBtn, eCard, eRows, eQuote,
@@ -201,7 +202,7 @@ async function startServer() {
       SES: { sesClient: dynamicSes, SendEmailCommand: sesv2.SendEmailCommand },
     });
     
-    return { transporter: dynamicTransporter, isDev: false, emailFrom: settings.emailFrom || process.env.EMAIL_FROM || "info@celnet.in" };
+    return { transporter: dynamicTransporter, isDev: false, emailFrom: settings.emailFrom || process.env.EMAIL_FROM || COMPANY_DETAILS.email };
   };
 
   const sendMail = async (mailOptions: any, logAsSent = true) => {
@@ -277,7 +278,7 @@ async function startServer() {
 
   // Email layout + content kit live in src/lib/emailTemplates.ts (imported at the
   // top of this file) so the templates can be rendered without booting the server.
-  const ADMIN_INBOX = process.env.ADMIN_EMAIL || 'info@celnet.in';
+  const ADMIN_INBOX = process.env.ADMIN_EMAIL || COMPANY_DETAILS.email;
 
   // API Routes
   app.get("/api/health", (req, res) => {
@@ -392,7 +393,7 @@ async function startServer() {
       }
 
       const mailOptions = {
-        from: '"STM Digital Library" <info@celnet.in>',
+        from: `"${COMPANY_DETAILS.name}" <${COMPANY_DETAILS.email}>`,
         to: email,
         subject: "Your Email Verification OTP",
         html: buildEmail(`
@@ -474,7 +475,7 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `🆕 New User Registration — ${name}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">` +
@@ -514,7 +515,7 @@ async function startServer() {
           `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Browse domains &amp; subscribe to your field</p>` +
           `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Access full-text content instantly</p>` +
           `</div>` +
-          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p>` +
+          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p>` +
           `</td></tr>`)
       };
 
@@ -628,7 +629,7 @@ async function startServer() {
       }
 
       const mailOptions = {
-        from: '"STM Digital Library" <info@celnet.in>',
+        from: `"${COMPANY_DETAILS.name}" <${COMPANY_DETAILS.email}>`,
         to: email,
         subject: "Password Reset OTP",
         html: buildEmail(`
@@ -2080,7 +2081,7 @@ async function startServer() {
           <td style="padding:32px 40px 24px;text-align:center;border-bottom:1px solid #E8EDF4;">
             <img src="https://journalslibrary.com/logo.png" alt="STM Logo" width="60" height="60" style="display:inline-block;margin-bottom:14px;" onerror="this.style.display='none'"/>
             <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:#1A3A6B;letter-spacing:-0.3px;">STM Digital Library</h1>
-            <p style="margin:0;font-size:12px;color:#6B7A99;font-weight:400;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <p style="margin:0;font-size:12px;color:#6B7A99;font-weight:400;">${COMPANY_DETAILS.positioning}</p>
           </td>
         </tr>
 
@@ -2201,7 +2202,7 @@ async function startServer() {
                 <td style="padding:16px 20px;">
                   <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1E40AF;">&#128295; Need Assistance?</p>
                   <p style="margin:0 0 10px;font-size:12px;color:#3B5FBF;line-height:1.6;">If you face any issues related to login, access, or subscription, please contact us:</p>
-                  <p style="margin:0 0 4px;font-size:13px;color:#1E40AF;">&#128231;&nbsp;<a href="mailto:info@celnet.in" style="color:#2563EB;font-weight:700;text-decoration:none;">info@celnet.in</a></p>
+                  <p style="margin:0 0 4px;font-size:13px;color:#1E40AF;">&#128231;&nbsp;<a href="mailto:${COMPANY_DETAILS.email}" style="color:#2563EB;font-weight:700;text-decoration:none;">${COMPANY_DETAILS.email}</a></p>
                   <p style="margin:0;font-size:13px;color:#1E40AF;">&#128222;&nbsp;<a href="tel:+919810078958" style="color:#2563EB;font-weight:700;text-decoration:none;">+91-9810078958</a></p>
                 </td>
               </tr>
@@ -2215,7 +2216,7 @@ async function startServer() {
             <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#FCD34D;letter-spacing:0.5px;text-transform:uppercase;">&#127942; 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
             <p style="margin:0 0 4px;font-size:13px;color:#CBD5E1;">Regards,</p>
             <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#FFFFFF;">STM Digital Library Team</p>
-            <p style="margin:0 0 16px;font-size:12px;color:#94A3B8;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <p style="margin:0 0 16px;font-size:12px;color:#94A3B8;">${COMPANY_DETAILS.positioning}</p>
             <div style="height:1px;background:#2D5299;margin-bottom:14px;"></div>
             <p style="margin:0;font-size:11px;color:#64748B;">
               &copy; ${new Date().getFullYear()} STM Digital Library. All rights reserved.&nbsp;|&nbsp;
@@ -2254,7 +2255,7 @@ async function startServer() {
     pdfBase64?: string
   ) => {
     const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-    const adminEmail = process.env.ADMIN_EMAIL || "info@celnet.in";
+    const adminEmail = process.env.ADMIN_EMAIL || COMPANY_DETAILS.email;
     const year = new Date().getFullYear();
 
     const itemsHtml = Array.isArray(items) ? items.map((item: any) => `
@@ -2274,7 +2275,7 @@ async function startServer() {
   <!-- Header -->
   <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
     <h1 style="color:#ffffff;margin:0 0 4px;font-size:24px;font-weight:900;letter-spacing:1px;">STM DIGITAL LIBRARY</h1>
-    <p style="color:#93c5fd;margin:0 0 16px;font-size:12px;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+    <p style="color:#93c5fd;margin:0 0 16px;font-size:12px;">${COMPANY_DETAILS.positioning}</p>
     <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;">✅ &nbsp;Payment Confirmed</span>
   </td></tr>
   <!-- Success Banner -->
@@ -2347,15 +2348,15 @@ async function startServer() {
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
     <tr><td style="padding:16px 22px;">
       <p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">📞 Need Help?</p>
-      <p style="margin:2px 0;font-size:13px;color:#1e293b;">📧 <a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:600;">info@celnet.in</a></p>
+      <p style="margin:2px 0;font-size:13px;color:#1e293b;">📧 <a href="mailto:${COMPANY_DETAILS.email}" style="color:#2563eb;text-decoration:none;font-weight:600;">${COMPANY_DETAILS.email}</a></p>
       <p style="margin:2px 0;font-size:13px;color:#1e293b;">📞 +91-9810078958</p>
     </td></tr></table>
   </td></tr>
   <!-- Footer -->
   <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:24px 48px;text-align:center;">
     <p style="color:#f8fafc;font-size:12px;margin:0 0 4px;font-weight:700;">STM Digital Library — 21 Years of Trusted Excellence</p>
-    <p style="color:#64748b;font-size:11px;margin:0;">© ${year} Consortium eLearning Network Pvt. Ltd. All rights reserved.</p>
-    <p style="color:#475569;font-size:10px;margin:4px 0 0;">GSTIN: 09AACCC6494M1Z1 &nbsp;|&nbsp; PAN: AACCC6494M</p>
+    <p style="color:#64748b;font-size:11px;margin:0;">© ${year} ${COMPANY_DETAILS.legalName}. All rights reserved.</p>
+    <p style="color:#475569;font-size:10px;margin:4px 0 0;">GSTIN: ${COMPANY_DETAILS.gstin} &nbsp;|&nbsp; PAN: ${COMPANY_DETAILS.pan}</p>
   </td></tr>
 </table>
 </td></tr></table>
@@ -3047,7 +3048,7 @@ async function startServer() {
       const durationMonths = planType === 'Yearly' ? 12 : planType === 'Quarterly' ? 3 : 1;
       const adminMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `🔥 New Domain Access Lead: ${domain} — ${userName}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">`+
@@ -3090,7 +3091,7 @@ async function startServer() {
           `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We confirm subscription &amp; payment details</p>`+
           `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Full-text access is activated instantly</p>`+
           `</td></tr></table>`+
-          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p>`+
+          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p>`+
           `</td></tr>`
         )
       };
@@ -3389,7 +3390,7 @@ async function startServer() {
       const receipt = await (prisma as any).receipt.findUnique({ where: { id } });
       if (!receipt) return res.status(404).json({ error: "Receipt not found" });
 
-      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "info@celnet.in").trim();
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || COMPANY_DETAILS.email).trim();
       const logoPath = path.join(process.cwd(), 'public', 'assets', 'stm-logo.png');
       const logoExists = fs.existsSync(logoPath);
 
@@ -3404,7 +3405,7 @@ async function startServer() {
       <tr><td style="background:linear-gradient(135deg,#065f46 0%,#047857 100%);padding:32px 48px 28px;text-align:center;">
         ${logoExists ? `<img src="cid:stm-logo" alt="STM Digital Library" width="96" height="96" style="display:block;margin:0 auto 14px;border-radius:12px;"/>` : ''}
         <h1 style="color:#ffffff;margin:0 0 6px;font-size:24px;font-weight:900;letter-spacing:1px;">PAYMENT RECEIPT</h1>
-        <p style="color:#a7f3d0;margin:0;font-size:13px;font-weight:500;">STM Digital Library — Consortium eLearning Network Pvt. Ltd.</p>
+        <p style="color:#a7f3d0;margin:0;font-size:13px;font-weight:500;">${COMPANY_DETAILS.name} — ${COMPANY_DETAILS.legalName}</p>
       </td></tr>
       <tr><td style="padding:32px 48px 8px;">
         <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${receipt.userName},</p>
@@ -3429,7 +3430,7 @@ async function startServer() {
         </table>
       </td></tr>
       <tr><td style="padding:0 48px 36px;">
-        <p style="font-size:13px;color:#64748b;line-height:1.7;margin:0;">This is a computer-generated receipt. For any queries, contact us at ${process.env.ADMIN_EMAIL || 'info@celnet.in'}.</p>
+        <p style="font-size:13px;color:#64748b;line-height:1.7;margin:0;">This is a computer-generated receipt. For any queries, contact us at ${process.env.ADMIN_EMAIL || COMPANY_DETAILS.email}.</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -3442,7 +3443,7 @@ async function startServer() {
 
       await sendMail({
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: [receipt.userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
+        to: [receipt.userEmail, process.env.ADMIN_EMAIL || COMPANY_DETAILS.email],
         subject: `Payment Receipt ${receipt.receiptNumber} — STM Digital Library`,
         html: htmlBody,
         attachments
@@ -3682,7 +3683,7 @@ async function startServer() {
       });
 
       try {
-        const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "info@celnet.in").trim();
+        const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || COMPANY_DETAILS.email).trim();
         const credsBlock = generatedPassword
           ? eRows([
               ['Login email', esc(loginEmail)],
@@ -6011,7 +6012,7 @@ async function startServer() {
       // 1. Send Admin Notification Email
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `New ${requestType||'Demo'} Session Request: ${institutionName}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">`+
@@ -6046,7 +6047,7 @@ async function startServer() {
           `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We reach out via email/WhatsApp to fix a slot</p>`+
           `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; A guided platform tour tailored for your needs</p>`+
           `</td></tr></table>`+
-          `<p style="font-size:12px;color:#64748b;margin:0;">Need immediate assistance? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a></p>`+
+          `<p style="font-size:12px;color:#64748b;margin:0;">Need immediate assistance? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a></p>`+
           `</td></tr>`
         )
       };
@@ -6253,7 +6254,7 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `New Institutional Trial Request: ${institutionName}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">`+
@@ -6289,7 +6290,7 @@ async function startServer() {
           `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We discuss IP-based or remote access setup</p>`+
           `<p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Your institution gets seamless trial access</p>`+
           `</td></tr></table>`+
-          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p>`+
+          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p>`+
           `</td></tr>`
         )
       };
@@ -6358,7 +6359,7 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: "New Contact Inquiry from Website",
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">`+
@@ -6404,7 +6405,7 @@ async function startServer() {
           `</td></tr></table>` : '') +
           `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:18px;"><tr><td style="padding:18px 20px;">`+
           `<p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">📞 Reach Us Directly</p>`+
-          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;">📧 <a href="mailto:info@celnet.in" style="color:#93c5fd;">info@celnet.in</a></p>`+
+          `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;">📧 <a href="mailto:${COMPANY_DETAILS.email}" style="color:#93c5fd;">${COMPANY_DETAILS.email}</a></p>`+
           `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;">📞 +91-120-4781200</p>`+
           `<p style="margin:3px 0;font-size:13px;color:#e2e8f0;">🌐 <a href="https://journalslibrary.com" style="color:#93c5fd;">journalslibrary.com</a></p>`+
           `</td></tr></table>`+
@@ -6497,7 +6498,7 @@ async function startServer() {
               <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px;">
                 <p style="margin: 0; font-size: 13px; color: #64748b;">
                   For further assistance, please reply to this email or call us at <strong>+91-120-4781200</strong>.<br/>
-                  <strong>STM Digital Library</strong> | info@celnet.in
+                  <strong>${COMPANY_DETAILS.name}</strong> | ${COMPANY_DETAILS.email}
                 </p>
               </div>
             </div>
@@ -6632,7 +6633,7 @@ async function startServer() {
 
       // Notify the rights inbox. Never block the acknowledgement on mail delivery.
       const emailFrom  = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      const rightsInbox = process.env.RIGHTS_EMAIL || process.env.ADMIN_EMAIL || "info@celnet.in";
+      const rightsInbox = process.env.RIGHTS_EMAIL || process.env.ADMIN_EMAIL || COMPANY_DETAILS.email;
       const actionLabels: Record<string, string> = {
         RemoveEntirely:         'Remove the listing entirely',
         RemoveFileKeepMetadata: 'Remove the file, keep citation metadata',
@@ -6674,7 +6675,7 @@ async function startServer() {
              ${dueAt.toDateString()}.</p>
           <p>Reported URL: ${created.contentUrl}</p>
           <p>If you need to add anything, reply to this email quoting the reference above.</p>
-          <p>— ${process.env.COMPANY_NAME || 'STM Digital Library'}</p>
+          <p>— ${process.env.COMPANY_NAME || COMPANY_DETAILS.name}</p>
         `,
       }).catch?.((e: any) => console.error('[takedown] acknowledgement failed:', e));
 
@@ -6893,7 +6894,7 @@ async function startServer() {
               : `<div style="display:inline-block;background:#2563eb;border-radius:12px;padding:10px 22px;margin-bottom:16px;"><span style="color:#ffffff;font-size:18px;font-weight:900;letter-spacing:3px;">STM</span></div>`
             }
             <h1 style="color:#ffffff;margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:1px;line-height:1.2;">STM DIGITAL LIBRARY</h1>
-            <p style="color:#93c5fd;margin:0 0 16px;font-size:13px;font-weight:500;letter-spacing:0.5px;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <p style="color:#93c5fd;margin:0 0 16px;font-size:13px;font-weight:500;letter-spacing:0.5px;">${COMPANY_DETAILS.positioning}</p>
             <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;letter-spacing:1px;">
               🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
             </span>
@@ -7003,23 +7004,23 @@ async function startServer() {
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;width:45%;">Account Name</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">Consortium eLearning Network Pvt. Ltd.</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.legalName}</td>
                     </tr>
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Account Number</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">03942000001153</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.accountNumber}</td>
                     </tr>
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Bank Name</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">HDFC Bank</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.bankName}</td>
                     </tr>
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Branch</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:600;padding:5px 0;border-bottom:1px solid #fde68a;">Sector-62, Noida, U.P., India</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:600;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.branch}</td>
                     </tr>
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;">IFSC Code</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;">HDFC0002649</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;">${COMPANY_DETAILS.bank.ifscCode}</td>
                     </tr>
                   </table>
                 </td>
@@ -7039,7 +7040,7 @@ async function startServer() {
                   <table cellpadding="0" cellspacing="4">
                     <tr>
                       <td style="padding:4px 0;font-size:13px;color:#1e293b;">
-                        📧 &nbsp;<a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:600;">info@celnet.in</a>
+                        📧 &nbsp;<a href="mailto:${COMPANY_DETAILS.email}" style="color:#2563eb;text-decoration:none;font-weight:600;">${COMPANY_DETAILS.email}</a>
                       </td>
                     </tr>
                     <tr>
@@ -7067,7 +7068,7 @@ async function startServer() {
                 <td style="padding-top:20px;">
                   <p style="color:#475569;font-size:14px;margin:0 0 4px;">Warm regards,</p>
                   <p style="color:#1e293b;font-size:15px;font-weight:700;margin:0 0 2px;">STM Digital Library Team</p>
-                  <p style="color:#64748b;font-size:12px;margin:0;">Consortium eLearning Network Pvt. Ltd.</p>
+                  <p style="color:#64748b;font-size:12px;margin:0;">${COMPANY_DETAILS.legalName}</p>
                   <p style="color:#64748b;font-size:12px;margin:4px 0 0;">A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India</p>
                 </td>
                 <td style="text-align:right;vertical-align:bottom;padding-top:20px;">
@@ -7087,10 +7088,10 @@ async function startServer() {
               🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
             </p>
             <p style="color:#64748b;font-size:11px;margin:0 0 4px;">
-              © ${new Date().getFullYear()} Consortium eLearning Network Pvt. Ltd. All rights reserved.
+              © ${new Date().getFullYear()} ${COMPANY_DETAILS.legalName} All rights reserved.
             </p>
             <p style="color:#475569;font-size:11px;margin:0;">
-              GSTIN: 09AACCC6494M1Z1 &nbsp;|&nbsp; PAN: AACCC6494M &nbsp;|&nbsp; CIN: U80302DL2005PTC138759
+              GSTIN: ${COMPANY_DETAILS.gstin} &nbsp;|&nbsp; PAN: ${COMPANY_DETAILS.pan} &nbsp;|&nbsp; CIN: ${COMPANY_DETAILS.cin}
             </p>
           </td>
         </tr>
@@ -7118,7 +7119,7 @@ async function startServer() {
 
       const mailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
+        to: [userEmail, process.env.ADMIN_EMAIL || COMPANY_DETAILS.email],
         subject: `Quotation ${quotationNumber} — STM Digital Library`,
         html: htmlBody,
         attachments: inlineAttachments
@@ -8622,7 +8623,7 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `🤝 New Agency Partner Application: ${agencyName}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">`+
@@ -8668,7 +8669,7 @@ async function startServer() {
           `<p style="margin:4px 0;font-size:13px;color:#1e293b;">✦ Co-branded marketing materials</p>`+
           `<p style="margin:4px 0;font-size:13px;color:#1e293b;">✦ Access to 50,000+ academic journals &amp; content</p>`+
           `</td></tr></table>`+
-          `<p style="font-size:12px;color:#64748b;margin:0;">We'll respond within <strong>2–3 business days</strong> at <strong>${email}</strong>. For urgent queries: <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a></p>`+
+          `<p style="font-size:12px;color:#64748b;margin:0;">We'll respond within <strong>2–3 business days</strong> at <strong>${email}</strong>. For urgent queries: <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a></p>`+
           `</td></tr>`
         )
       };

@@ -42,8 +42,8 @@ export const TermsAndConditions: React.FC = () => {
               <ShieldAlert className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">3. Content Ownership</h2>
             </div>
-            <p>All proprietary content published by the Company, including content sourced from the various divisions and sister concern companies of Consortium eLearning Network Pvt. Ltd., remains the intellectual property of the Company.</p>
-            <p className="mt-2">Content sourced from the various divisions and sister concern companies of Consortium eLearning Network Pvt. Ltd. is regarded as our own content for the purposes of this Platform.</p>
+            <p>All proprietary content published by the Company, including content sourced from the various divisions and sister concern companies of {COMPANY_DETAILS.legalName}, remains the intellectual property of the Company.</p>
+            <p className="mt-2">Content sourced from the various divisions and sister concern companies of {COMPANY_DETAILS.legalName} is regarded as our own content for the purposes of this Platform.</p>
             <p className="mt-2">Third-party content available on the Platform remains the property of its respective authors/publishers, and the Platform does not claim ownership of any content beyond the content expressly identified above as owned by the Company.</p>
           </section>
 
@@ -99,7 +99,7 @@ export const TermsAndConditions: React.FC = () => {
               <ShieldAlert className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">8. Content Removal (Takedown Policy)</h2>
             </div>
-            <p>If you believe any content on the Platform infringes your rights, you may submit a request through our <Link to="/content-removal" className="font-bold text-blue-600 hover:underline">content removal form</Link>, or by writing to <strong>info@celnet.in</strong>.</p>
+            <p>If you believe any content on the Platform infringes your rights, you may submit a request through our <Link to="/content-removal" className="font-bold text-blue-600 hover:underline">content removal form</Link>, or by writing to <strong>{COMPANY_DETAILS.email}</strong>.</p>
             <p className="mt-2">Each request is logged with a reference number and acknowledged. We aim to review every request and respond within <strong>7 days</strong> of receipt, and will remove or restrict the content in question where the request is verified.</p>
           </section>
 
@@ -118,7 +118,7 @@ export const TermsAndConditions: React.FC = () => {
               <MapPin className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">10. Governing Law</h2>
             </div>
-            <p className="mb-4">These Terms shall be governed by and construed in accordance with the laws of India. The Platform is owned and operated by <strong>Consortium eLearning Network Pvt. Ltd.</strong>, having its registered office in New Delhi.</p>
+            <p className="mb-4">These Terms shall be governed by and construed in accordance with the laws of India. The Platform is owned and operated by <strong>{COMPANY_DETAILS.legalName}</strong>, having its registered office in New Delhi.</p>
             <p className="mb-4">Any disputes, claims, or legal proceedings arising out of or in connection with the use of the Platform shall be subject to the exclusive jurisdiction of the competent courts located in <strong>Delhi, India</strong>. Users expressly agree that any such dispute shall be resolved exclusively before the competent courts in Delhi and waive any objection to such jurisdiction.</p>
           </section>
         </div>

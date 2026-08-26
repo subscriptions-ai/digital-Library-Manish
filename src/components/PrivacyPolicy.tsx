@@ -80,7 +80,7 @@ export const PrivacyPolicy: React.FC = () => {
               <li>Request deletion of their personal data, subject to applicable legal, regulatory, contractual, or legitimate business retention obligations, and ask us to erase, anonymize, or otherwise remove such data from our systems where deletion is permitted</li>
               <li>Withdraw consent at any time for any processing activities that rely on consent, with the understanding that such withdrawal will not affect the lawfulness of processing carried out before the withdrawal was received, and may limit our ability to continue providing certain services or features that depend on that consent</li>
             </ul>
-            <p>For any questions regarding content licensing, copyright concerns, takedown requests, or general support related to the Platform, please contact us at info@celnet.in. We encourage copyright holders, authors, publishers, and users to share complete details of the issue, including the content title, URL, ownership claim, and any supporting documentation, so that we can review the matter carefully and respond in a timely and appropriate manner.</p>
+            <p>For any questions regarding content licensing, copyright concerns, takedown requests, or general support related to the Platform, please contact us at {COMPANY_DETAILS.email}. We encourage copyright holders, authors, publishers, and users to share complete details of the issue, including the content title, URL, ownership claim, and any supporting documentation, so that we can review the matter carefully and respond in a timely and appropriate manner.</p>
           </section>
 
           <section className="mb-10">

@@ -1,3 +1,4 @@
+import { COMPANY_DETAILS } from '../../config';
 /**
  * Ready-made agreement templates for the publisher tie-up desk.
  *
@@ -25,15 +26,15 @@ export interface BuiltInTemplate {
 
 /** The company side of every agreement — from the corporate record. */
 const COMPANY = {
-  NAME: 'Consortium eLearning Network Pvt. Ltd.',
+  NAME: COMPANY_DETAILS.legalName,
   SHORT: 'CELNET',
   PLATFORM: 'STM Digital Library',
   PLATFORM_URL: 'https://journalslibrary.com',
   ADDRESS: 'A-118, 1st Floor, Sector 63, Noida, Uttar Pradesh — 201301, India',
   REGISTERED_OFFICE: 'New Delhi, India',
-  EMAIL: 'info@celnet.in',
+  EMAIL: COMPANY_DETAILS.email,
   PHONE: '+91-9810078958 / 0120-4781200',
-  GSTIN: '09AACCC6494M1Z1',
+  GSTIN: COMPANY_DETAILS.gstin,
 };
 
 /** Shown under the template picker so the admin knows what they can type. */

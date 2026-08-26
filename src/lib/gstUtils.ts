@@ -1,3 +1,5 @@
+import { COMPANY_DETAILS } from "../config";
+
 export const GST_RATE = 0.18;
 export const CGST_RATE = 0.09;
 export const SGST_RATE = 0.09;
@@ -50,4 +52,9 @@ export const INDIAN_STATES = [
   "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
-export const COMPANY_STATE = "Uttar Pradesh";
+/**
+ * The state we are registered in. Customers in this state are billed
+ * CGST + SGST; everyone else is billed IGST. Read from the company config
+ * so the entity and its tax treatment can never disagree.
+ */
+export const COMPANY_STATE: string = COMPANY_DETAILS.state;

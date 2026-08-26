@@ -75,8 +75,8 @@ export function generateReceiptPDF(receipt: ReceiptRecord): jsPDF {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100);
   doc.text(COMPANY_DETAILS.address, 105, 26, { align: 'center' });
-  doc.text('CIN No.: U80302DL2005PTC138759 | IEC Code: AACCC6494M | PAN No.: AACCC6494M', 105, 31, { align: 'center' });
-  doc.text('GSTIN: 09AACCC6494M1Z1', 105, 36, { align: 'center' });
+  doc.text(`CIN No.: ${COMPANY_DETAILS.cin} | IEC Code: ${COMPANY_DETAILS.iec} | PAN No.: ${COMPANY_DETAILS.pan}`, 105, 31, { align: 'center' });
+  doc.text(`GSTIN: ${COMPANY_DETAILS.gstin}`, 105, 36, { align: 'center' });
 
   doc.setDrawColor(226, 232, 240);
   doc.line(20, 42, 190, 42);

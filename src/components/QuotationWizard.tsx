@@ -299,7 +299,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
     doc.setTextColor(37, 99, 235);
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'bold');
-    doc.text('DIVISION OF CONSORTIUM ELEARNING NETWORK PVT. LTD.', pageW / 2, 44, { align: 'center' });
+    doc.text(COMPANY_DETAILS.positioning.toUpperCase(), pageW / 2, 44, { align: 'center' });
 
     // Green badge
     doc.setFillColor(22, 163, 74);
@@ -363,7 +363,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
     // Col 3
     doc.setFontSize(5.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(148, 163, 184);
     doc.text('LEGAL IDENTIFIERS', col3X + 3, gridY + 5);
-    [['GSTIN', '09AACCC6494M1Z1'], ['PAN NUMBER', 'AACCC6494M'], ['CIN NUMBER', 'U80302DL2005PTC138759']].forEach(([lbl, val], i) => {
+    [['GSTIN', COMPANY_DETAILS.gstin], ['PAN NUMBER', COMPANY_DETAILS.pan], ['CIN NUMBER', COMPANY_DETAILS.cin]].forEach(([lbl, val], i) => {
       const ry = gridY + 9 + i * 7;
       doc.setFontSize(5); doc.setTextColor(148, 163, 184); doc.text(lbl, col3X + 3, ry);
       doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 41, 59); doc.text(val, col3X + 3, ry + 3.5);
@@ -568,7 +568,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
     doc.setFontSize(5.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(37, 99, 235);
-    doc.text('DIVISION OF CONSORTIUM ELEARNING NETWORK PVT. LTD.', pageW / 2, 32, { align: 'center' });
+    doc.text(COMPANY_DETAILS.positioning.toUpperCase(), pageW / 2, 32, { align: 'center' });
 
     // Divider
     doc.setDrawColor(220, 220, 230);
@@ -586,7 +586,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
     const fullTerms = [
       {
         title: '1. Applicability:',
-        text: 'These terms and conditions shall apply to all offers, proposals and agreements made between Consortium eLearning Network Pvt. Ltd. (herein referred as CELNET) and any third party or its agent ("the Client") relating to the products and/or services of CELNET ("the Products and/or Services"), whether such products and services are provided within or outside the country, unless otherwise agreed in writing and signed by an authorized signatory of CELNET. Failing this, they will supersede any other terms and conditions, including those contained in any of the Client\'s documentation.',
+        text: `These terms and conditions shall apply to all offers, proposals and agreements made between ${COMPANY_DETAILS.legalName} (herein referred as ${COMPANY_DETAILS.shortName}) and any third party or its agent ("the Client") relating to the products and/or services of ${COMPANY_DETAILS.shortName} ("the Products and/or Services"), whether such products and services are provided within or outside the country, unless otherwise agreed in writing and signed by an authorized signatory of CELNET. Failing this, they will supersede any other terms and conditions, including those contained in any of the Client's documentation.`,
       },
       {
         title: '2. Offer and acceptance; Description:',
@@ -1244,7 +1244,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                     </div>
                     <div>
                       <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">{COMPANY_DETAILS.name}</h1>
-                      <p className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">Division of Consortium eLearning Network Pvt. Ltd.</p>
+                      <p className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">{COMPANY_DETAILS.positioning.replace(/^A /, "")}</p>
                     </div>
                     <span className="inline-flex items-center gap-1.5 bg-green-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wide">
                       <CheckCircle2 size={11} /> 21 Years of Trusted Excellence in Education &amp; Academic Publishing
@@ -1299,15 +1299,15 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                       <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Legal Identifiers</p>
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">GSTIN</p>
-                        <p className="font-bold text-slate-800">09AACCC6494M1Z1</p>
+                        <p className="font-bold text-slate-800">{COMPANY_DETAILS.gstin}</p>
                       </div>
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Pan Number</p>
-                        <p className="font-bold text-slate-800">AACCC6494M</p>
+                        <p className="font-bold text-slate-800">{COMPANY_DETAILS.pan}</p>
                       </div>
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">CIN Number</p>
-                        <p className="font-bold text-slate-800">U80302DL2005PTC138759</p>
+                        <p className="font-bold text-slate-800">{COMPANY_DETAILS.cin}</p>
                       </div>
                     </div>
 
