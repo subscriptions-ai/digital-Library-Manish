@@ -21,7 +21,7 @@ export const TermsAndConditions: React.FC = () => {
               <FileText className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">1. Introduction</h2>
             </div>
-            <p>This platform (“Platform”) is operated by <strong>Consortium e-Learning Network Pvt. Ltd.</strong> By accessing or using our services, you agree to comply with these Terms.</p>
+            <p>This platform (“Platform”) is operated by <strong>{COMPANY_DETAILS.legalName}</strong> By accessing or using our services, you agree to comply with these Terms.</p>
           </section>
 
           <section className="mb-10">
@@ -31,7 +31,7 @@ export const TermsAndConditions: React.FC = () => {
             </div>
             <p>The Platform provides:</p>
             <ul className="list-disc pl-6 space-y-2 mt-2">
-              <li>Access to proprietary content owned by the Company (Books, Periodicals, Theses, Conference Proceedings, Educational Videos, etc.)</li>
+              <li>Discovery of and access to academic material — books, periodicals, theses, conference proceedings, educational videos and similar</li>
               <li>Aggregated access to selected open-access academic content from third-party sources</li>
             </ul>
             <p className="mt-4">The Platform offers value-added services including search, indexing, categorization, and discovery tools.</p>
@@ -42,8 +42,8 @@ export const TermsAndConditions: React.FC = () => {
               <ShieldAlert className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">3. Content Ownership</h2>
             </div>
-            <p>All proprietary content published by the Company, including content sourced from the various divisions and sister concern companies of {COMPANY_DETAILS.legalName}, remains the intellectual property of the Company.</p>
-            <p className="mt-2">Content sourced from the various divisions and sister concern companies of {COMPANY_DETAILS.legalName} is regarded as our own content for the purposes of this Platform.</p>
+            <p>The Platform — its software, interface, indexing, categorisation and discovery tools — is the intellectual property of the Company.</p>
+            <p className="mt-2">The Company does not claim ownership of the academic material made available through the Platform. Where a publisher lists content here, it does so under an agreement and retains its rights.</p>
             <p className="mt-2">Third-party content available on the Platform remains the property of its respective authors/publishers, and the Platform does not claim ownership of any content beyond the content expressly identified above as owned by the Company.</p>
           </section>
 

@@ -586,35 +586,35 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
     const fullTerms = [
       {
         title: '1. Applicability:',
-        text: `These terms and conditions shall apply to all offers, proposals and agreements made between ${COMPANY_DETAILS.legalName} (herein referred as ${COMPANY_DETAILS.shortName}) and any third party or its agent ("the Client") relating to the products and/or services of ${COMPANY_DETAILS.shortName} ("the Products and/or Services"), whether such products and services are provided within or outside the country, unless otherwise agreed in writing and signed by an authorized signatory of CELNET. Failing this, they will supersede any other terms and conditions, including those contained in any of the Client's documentation.`,
+        text: `These terms and conditions shall apply to all offers, proposals and agreements made between ${COMPANY_DETAILS.legalName} (herein referred as ${COMPANY_DETAILS.shortName}) and any third party or its agent ("the Client") relating to the products and/or services of ${COMPANY_DETAILS.shortName} ("the Products and/or Services"), whether such products and services are provided within or outside the country, unless otherwise agreed in writing and signed by an authorized signatory of ${COMPANY_DETAILS.shortName}. Failing this, they will supersede any other terms and conditions, including those contained in any of the Client's documentation.`,
       },
       {
         title: '2. Offer and acceptance; Description:',
-        text: 'Each order for the Products and Services by the Client from CELNET shall be deemed to be an offer by the Client to purchase the Products and Services subject to this T&C. No order placed by the Client shall be deemed to be accepted by CELNET until CELNET issues a written order confirmation to the Client or (if earlier) CELNET delivers the Products or Services to the Client. Client represents and warrants that it has the legal right to use any information, data or other materials with which the Products or Services are used.',
+        text: `Each order for the Products and Services by the Client from ${COMPANY_DETAILS.shortName} shall be deemed to be an offer by the Client to purchase the Products and Services subject to this T&C. No order placed by the Client shall be deemed to be accepted by ${COMPANY_DETAILS.shortName} until ${COMPANY_DETAILS.shortName} issues a written order confirmation to the Client or (if earlier) ${COMPANY_DETAILS.shortName} delivers the Products or Services to the Client. Client represents and warrants that it has the legal right to use any information, data or other materials with which the Products or Services are used.`,
       },
       {
         title: '3. Execution and modification of the order:',
-        text: 'Any modification to the agreed product or service description, budget or schedule, as set out in the order acknowledgement, may result in an adjustment to the final price and/or to the delivery schedule by CELNET. No modification shall take effect unless it has been acknowledged in writing by CELNET. CELNET shall not be liable for any delay or failure to perform its obligations under this T&C to the extent that such delay or failure results from a modification requested by the Client.',
+        text: `Any modification to the agreed product or service description, budget or schedule, as set out in the order acknowledgement, may result in an adjustment to the final price and/or to the delivery schedule by ${COMPANY_DETAILS.shortName}. No modification shall take effect unless it has been acknowledged in writing by ${COMPANY_DETAILS.shortName}. ${COMPANY_DETAILS.shortName} shall not be liable for any delay or failure to perform its obligations under this T&C to the extent that such delay or failure results from a modification requested by the Client.`,
       },
       {
         title: '4. Rates and prices:',
-        text: 'Unless otherwise agreed by CELNET in writing the prices/rates for the Products shall be those set out in CELNET\'s current pricelists. All such prices/rates shall be exclusive of any handling, packing, loading, freight, transport and insurance charges. All quotations are exclusive of GST. CELNET reserves the right to revise prices at any time. The prices mentioned in this quotation are valid for 30 days from the date of issue.',
+        text: `Unless otherwise agreed by ${COMPANY_DETAILS.shortName} in writing the prices/rates for the Products shall be those set out in ${COMPANY_DETAILS.shortName}'s current pricelists. All such prices/rates shall be exclusive of any handling, packing, loading, freight, transport and insurance charges. All quotations are exclusive of GST. ${COMPANY_DETAILS.shortName} reserves the right to revise prices at any time. The prices mentioned in this quotation are valid for 30 days from the date of issue.`,
       },
       {
         title: '5. Payment:',
-        text: 'Unless otherwise agreed in writing, payments shall be effected within thirty (30) days of the invoice date in the currency invoiced. The Client shall make all payments due under the T&C without any deduction whether by way of set-off, counterclaim, discount, abatement or otherwise. Subscription services will only be activated upon receipt of full payment. CELNET reserves the right to suspend access to services in case of delayed or incomplete payment.',
+        text: `Unless otherwise agreed in writing, payments shall be effected within thirty (30) days of the invoice date in the currency invoiced. The Client shall make all payments due under the T&C without any deduction whether by way of set-off, counterclaim, discount, abatement or otherwise. Subscription services will only be activated upon receipt of full payment. ${COMPANY_DETAILS.shortName} reserves the right to suspend access to services in case of delayed or incomplete payment.`,
       },
       {
         title: '6. Distribution:',
-        text: 'The Client shall not engage in piracy, reproduction, or plagiarism of the Products or any other products of CELNET or its affiliates, nor shall it directly or indirectly facilitate any other party to engage in those activities. The Products and Services are licensed only for the Client\'s own internal use. The Client shall not resell, sublicense, or otherwise transfer the Products or Services to any third party without the prior written consent of CELNET.',
+        text: `The Client shall not engage in piracy, reproduction, or plagiarism of the Products or any other products of ${COMPANY_DETAILS.shortName} or its affiliates, nor shall it directly or indirectly facilitate any other party to engage in those activities. The Products and Services are licensed only for the Client's own internal use. The Client shall not resell, sublicense, or otherwise transfer the Products or Services to any third party without the prior written consent of ${COMPANY_DETAILS.shortName}.`,
       },
       {
         title: '7. Intellectual property:',
-        text: 'Copyright and other intellectual property rights to all CELNET proposals, publications and other Products and/or Services shall remain with CELNET unless agreed otherwise in writing. The rights granted by CELNET are restricted to use solely by the Client and may not be assigned, transferred or sub-licensed. All trademarks, service marks, trade names, logos and other designations of CELNET and its affiliates are the property of CELNET or its affiliates.',
+        text: `Copyright and other intellectual property rights to all ${COMPANY_DETAILS.shortName} proposals, publications and other Products and/or Services shall remain with ${COMPANY_DETAILS.shortName} unless agreed otherwise in writing. The rights granted by ${COMPANY_DETAILS.shortName} are restricted to use solely by the Client and may not be assigned, transferred or sub-licensed. All trademarks, service marks, trade names, logos and other designations of ${COMPANY_DETAILS.shortName} and its affiliates are the property of ${COMPANY_DETAILS.shortName} or its affiliates.`,
       },
       {
         title: '8. Liability and claims:',
-        text: 'TO THE MAXIMUM EXTENT PERMITTED BY RELEVANT LAWS, CELNET shall not be liable for any indirect, incidental, punitive or consequential losses which may arise by reason of any breach of this T&C or any implied warranty, condition or other term. CELNET\'s total liability in connection with any single claim shall not exceed the amount paid by the Client for the relevant Products or Services in the twelve (12) months preceding the event giving rise to liability.',
+        text: `TO THE MAXIMUM EXTENT PERMITTED BY RELEVANT LAWS, ${COMPANY_DETAILS.shortName} shall not be liable for any indirect, incidental, punitive or consequential losses which may arise by reason of any breach of this T&C or any implied warranty, condition or other term. ${COMPANY_DETAILS.shortName}'s total liability in connection with any single claim shall not exceed the amount paid by the Client for the relevant Products or Services in the twelve (12) months preceding the event giving rise to liability.`,
       },
       {
         title: '9. Force majeure:',
@@ -622,7 +622,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
       },
       {
         title: '10. Audit:',
-        text: 'If Client is an agent, Client shall allow Publisher\'s authorized representative at any reasonable time to have access to Client\'s premises for the purpose of inspecting Client\'s activities, books and records relating to the Products and Services. Client shall maintain accurate records of all uses of the Products and Services and shall provide copies of such records to CELNET upon request. Such audit rights shall survive the termination of this T&C.',
+        text: `If Client is an agent, Client shall allow Publisher's authorized representative at any reasonable time to have access to Client's premises for the purpose of inspecting Client's activities, books and records relating to the Products and Services. Client shall maintain accurate records of all uses of the Products and Services and shall provide copies of such records to ${COMPANY_DETAILS.shortName} upon request. Such audit rights shall survive the termination of this T&C.`,
       },
       {
         title: '11. Compliance with laws:',
@@ -630,7 +630,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
       },
       {
         title: '12. Cancellations & Returns:',
-        text: 'Without prejudice to any rights the Client may have under statute as a consumer, if the Client cancels an order, a cancellation fee may be charged. All cancellations must be made in writing. Due to the digital nature of the subscription services, no refunds will be issued once a subscription has been activated and access has been granted. Cancellation requests made within 24 hours of order placement may be considered at CELNET\'s discretion.',
+        text: `Without prejudice to any rights the Client may have under statute as a consumer, if the Client cancels an order, a cancellation fee may be charged. All cancellations must be made in writing. Due to the digital nature of the subscription services, no refunds will be issued once a subscription has been activated and access has been granted. Cancellation requests made within 24 hours of order placement may be considered at ${COMPANY_DETAILS.shortName}'s discretion.`,
       },
       {
         title: '13. General:',

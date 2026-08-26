@@ -36,7 +36,7 @@ export function Home() {
   };
 
   const statsData = [
-    { label: "Proprietary Journals", value: "250+" },
+    { label: "Journals Indexed", value: "250+" },
     { label: "Resources", value: "Curated" },
     { label: "Institutions", value: "1,200+" },
     { label: "Years of Trust", value: "21+" }
@@ -48,7 +48,7 @@ export function Home() {
     "name": "STM Digital Library",
     "url": "https://journalslibrary.com",
     "logo": "https://journalslibrary.com/logo.png",
-    "description": "India's Premier Academic Hub providing proprietary publications and legally sourced open-access research.",
+    "description": "An academic discovery platform providing curated access to legally sourced open-access research, organised by department for Indian institutions.",
     "sameAs": []
   };
 
@@ -56,7 +56,7 @@ export function Home() {
     <div className="flex flex-col">
       <Helmet>
         <title>STM Digital Library - India's Premier Academic Hub</title>
-        <meta name="description" content="Explore a curated academic platform combining proprietary publications and legally sourced open-access research. Designed for students, researchers, and institutions." />
+        <meta name="description" content="A curated academic platform for discovering legally sourced open-access journals, books and research — organised by department for students, researchers and institutions." />
         <meta name="keywords" content="digital library, academic research, journals, case reports, educational videos, open access" />
         <script type="application/ld+json">
           {JSON.stringify(organizationSchema)}
@@ -148,7 +148,7 @@ export function Home() {
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="mt-6 text-lg leading-relaxed text-slate-300 max-w-[480px] drop-shadow-md"
               >
-                A curated academic platform combining proprietary publications and legally sourced open-access research. Designed for students, researchers, and world-class institutions.
+                An academic platform bringing legally sourced open-access research together in one place, organised by department. Built for students, researchers and institutions.
               </motion.p>
 
               <motion.div
@@ -174,7 +174,7 @@ export function Home() {
                 className="mt-6 rounded-xl border border-white/10 bg-slate-900/40 backdrop-blur-sm p-4 max-w-[480px]"
               >
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 leading-relaxed">
-                  Content includes proprietary publications and legally sourced open-access materials from trusted repositories.
+                  Content includes legally sourced open-access materials from trusted repositories.
                 </p>
               </motion.div>
             </div>
@@ -254,24 +254,24 @@ export function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Proprietary Content */}
+            {/* Curated collections */}
             <div className="rounded-[40px] bg-slate-800/50 p-10 border border-white/5 backdrop-blur-sm">
               <div className="flex items-center gap-4 mb-8">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
                   <ShieldCheck size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">Proprietary Content</h3>
+                  <h3 className="text-xl font-bold text-white">Curated Collections</h3>
                   <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">STM Digital Library</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 {[
-                  { title: "STM Journals", desc: "Our own published peer-reviewed journals." },
-                  { title: "Conference Proceedings", desc: "Exclusive materials from partner academic conferences." },
-                  { title: "Academic Books", desc: "Curated collection of proprietary educational titles." },
-                  { title: "Educational Videos", desc: "In-house produced technical and academic lectures." }
+                  { title: "Journals", desc: "Peer-reviewed journals, indexed and organised by department." },
+                  { title: "Conference Proceedings", desc: "Proceedings from academic conferences, catalogued for search." },
+                  { title: "Academic Books", desc: "Educational titles selected for institutional syllabi." },
+                  { title: "Educational Videos", desc: "Technical and academic lectures, organised alongside the literature." }
                 ].map((item, i) => (
                   <div key={i} className="group rounded-2xl bg-white/5 p-5 border border-white/5 hover:bg-white/10 transition-all">
                     <div className="flex items-center gap-4">
@@ -422,7 +422,7 @@ export function Home() {
 
               <div className="mt-12 space-y-6">
                 {[
-                  { icon: ShieldCheck, title: "Quality Benchmarks", desc: "Standardized review processes for our proprietary collections." },
+                  { icon: ShieldCheck, title: "Quality Benchmarks", desc: "Consistent validation and metadata checks across every collection." },
                   { icon: Search, title: "Discovery Tools", desc: "Advanced indexing and search across all content sources." },
                   { icon: BarChart3, title: "Usage Analytics", desc: "Detailed insights into how your institution consumes research data." },
                   { icon: Zap, title: "Integrated Features", desc: "Access platform tools for citation, bookmarking, and discovery." }

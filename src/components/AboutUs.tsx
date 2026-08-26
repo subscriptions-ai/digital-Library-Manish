@@ -23,7 +23,7 @@ export function AboutUs() {
             <div className="space-y-8">
               <div className="prose prose-slate lg:prose-lg">
                 <p className="text-lg text-slate-600 leading-relaxed">
-                  We are an academic knowledge platform dedicated to making high-quality research, learning, and reference material easier to discover, access, and use. Our platform brings together proprietary publications created by our organization and legally sourced open-access materials from trusted academic repositories and publishers.
+                  We are an academic knowledge platform dedicated to making high-quality research, learning, and reference material easier to discover, access, and use. Our platform brings together legally sourced open-access materials from trusted academic repositories and publishers, organised so that a researcher can find what they need without hunting across a dozen sites.
                 </p>
                 <p className="text-lg text-slate-600 leading-relaxed mt-4">
                   Our goal is to support students, researchers, librarians, faculty members, and institutions by offering a single, organized environment where academic content can be searched, filtered, and explored efficiently. Instead of spending time across multiple disconnected sources, users can rely on our platform to find relevant material in a structured and user-friendly way.

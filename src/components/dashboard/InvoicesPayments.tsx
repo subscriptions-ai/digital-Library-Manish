@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { COMPANY_DETAILS, BANK_ROWS, STATUTORY_LINE } from '../../config';
+import { issuerOf, bankRowsOf, statutoryLineOf } from '../../config';
 
 export function InvoicesPayments() {
   const [payments, setPayments] = useState<any[]>([]);
@@ -267,7 +267,7 @@ export function InvoicesPayments() {
                                 <td style={{background:"linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%)", padding:"32px 48px 28px", textAlign:"center"}}>
                                   <img src="/assets/stm-logo.png" alt="STM Digital Library" width="90" height="90" style={{display:"block", margin:"0 auto 16px", borderRadius:"12px"}} onError={(e:any)=>e.target.style.display="none"} />
                                   <h1 style={{color:"#ffffff", margin:"0 0 6px", fontSize:"26px", fontWeight:900, letterSpacing:"1px"}}>STM DIGITAL LIBRARY</h1>
-                                  <p style={{color:"#93c5fd", margin:"0 0 16px", fontSize:"13px", fontWeight:500}}>{COMPANY_DETAILS.positioning}</p>
+                                  <p style={{color:"#93c5fd", margin:"0 0 16px", fontSize:"13px", fontWeight:500}}>{issuerOf(selectedQuotation).positioning}</p>
                                   <span style={{display:"inline-block", background:"#15803d", color:"#ffffff", fontSize:"11px", fontWeight:700, borderRadius:"30px", padding:"6px 20px", letterSpacing:"1px"}}>
                                     🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
                                   </span>
@@ -336,7 +336,7 @@ export function InvoicesPayments() {
                                       <p style={{color:"#92400e", fontSize:"11px", fontWeight:700, letterSpacing:"2px", textTransform:"uppercase", margin:"0 0 14px"}}>💳 &nbsp;Payment Information</p>
                                       <p style={{color:"#78350f", fontSize:"13px", fontWeight:600, margin:"0 0 12px"}}>Payments must be made only to:</p>
                                       <table width="100%" cellPadding={0} cellSpacing={0}><tbody>
-                                        {BANK_ROWS.map(([label,val])=>(
+                                        {bankRowsOf(issuerOf(selectedQuotation)).map(([label,val])=>(
                                           <tr key={label}>
                                             <td style={{color:"#92400e", fontSize:"12px", padding:"5px 0", borderBottom:"1px solid #fde68a", width:"45%"}}>{label}</td>
                                             <td style={{color:"#1e293b", fontSize:"13px", fontWeight:700, padding:"5px 0", borderBottom:"1px solid #fde68a"}}>{val}</td>
@@ -353,7 +353,7 @@ export function InvoicesPayments() {
                                     <tbody><tr><td style={{padding:"22px 28px"}}>
                                       <p style={{color:"#15803d", fontSize:"11px", fontWeight:700, letterSpacing:"2px", textTransform:"uppercase", margin:"0 0 14px"}}>📞 &nbsp;Contact Information</p>
                                       <p style={{color:"#166534", fontSize:"13px", fontWeight:500, margin:"0 0 10px"}}>For any assistance regarding subscription, quotation, or payment:</p>
-                                      <p style={{fontSize:"13px", color:"#1e293b", margin:"4px 0"}}>📧 &nbsp;<a href={`mailto:${COMPANY_DETAILS.email}`} style={{color:"#2563eb", textDecoration:"none", fontWeight:600}}>{COMPANY_DETAILS.email}</a></p>
+                                      <p style={{fontSize:"13px", color:"#1e293b", margin:"4px 0"}}>📧 &nbsp;<a href={`mailto:${issuerOf(selectedQuotation).email}`} style={{color:"#2563eb", textDecoration:"none", fontWeight:600}}>{issuerOf(selectedQuotation).email}</a></p>
                                       <p style={{fontSize:"13px", color:"#1e293b", margin:"4px 0"}}>📞 &nbsp;+91-9810078958</p>
                                       <p style={{fontSize:"13px", color:"#1e293b", margin:"4px 0"}}>🌐 &nbsp;<a href="https://journalslibrary.com/" style={{color:"#2563eb", textDecoration:"none", fontWeight:600}}>journalslibrary.com</a></p>
                                     </td></tr></tbody>
@@ -367,8 +367,8 @@ export function InvoicesPayments() {
                                       <td style={{paddingTop:"20px"}}>
                                         <p style={{color:"#475569", fontSize:"14px", margin:"0 0 4px"}}>Warm regards,</p>
                                         <p style={{color:"#1e293b", fontSize:"15px", fontWeight:700, margin:"0 0 2px"}}>STM Digital Library Team</p>
-                                        <p style={{color:"#64748b", fontSize:"12px", margin:"0"}}>{COMPANY_DETAILS.legalName}</p>
-                                        <p style={{color:"#64748b", fontSize:"12px", margin:"4px 0 0"}}>{COMPANY_DETAILS.registeredOffice}</p>
+                                        <p style={{color:"#64748b", fontSize:"12px", margin:"0"}}>{issuerOf(selectedQuotation).legalName}</p>
+                                        <p style={{color:"#64748b", fontSize:"12px", margin:"4px 0 0"}}>{issuerOf(selectedQuotation).registeredOffice}</p>
                                       </td>
                                       <td style={{textAlign:"right", verticalAlign:"bottom", paddingTop:"20px"}}>
                                         <p style={{color:"#94a3b8", fontSize:"10px", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", margin:"0 0 4px"}}>For Publisher</p>
@@ -382,8 +382,8 @@ export function InvoicesPayments() {
                               <tr>
                                 <td style={{background:"linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%)", padding:"28px 48px", textAlign:"center"}}>
                                   <p style={{color:"#f8fafc", fontSize:"13px", fontWeight:700, margin:"0 0 6px", letterSpacing:"0.5px"}}>🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
-                                  <p style={{color:"#64748b", fontSize:"11px", margin:"0 0 4px"}}>© {new Date().getFullYear()} {COMPANY_DETAILS.legalName}. All rights reserved.</p>
-                                  <p style={{color:"#475569", fontSize:"11px", margin:"0"}}>{STATUTORY_LINE}</p>
+                                  <p style={{color:"#64748b", fontSize:"11px", margin:"0 0 4px"}}>© {new Date().getFullYear()} {issuerOf(selectedQuotation).legalName}. All rights reserved.</p>
+                                  <p style={{color:"#475569", fontSize:"11px", margin:"0"}}>{statutoryLineOf(issuerOf(selectedQuotation))}</p>
                                 </td>
                               </tr>
                               </tbody>

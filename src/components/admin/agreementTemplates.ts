@@ -27,7 +27,7 @@ export interface BuiltInTemplate {
 /** The company side of every agreement — from the corporate record. */
 const COMPANY = {
   NAME: COMPANY_DETAILS.legalName,
-  SHORT: 'CELNET',
+  SHORT: COMPANY_DETAILS.shortName,
   PLATFORM: 'STM Digital Library',
   PLATFORM_URL: 'https://journalslibrary.com',
   ADDRESS: 'A-118, 1st Floor, Sector 63, Noida, Uttar Pradesh — 201301, India',

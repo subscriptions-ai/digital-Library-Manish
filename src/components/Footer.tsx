@@ -41,7 +41,7 @@ export function Footer() {
                   <span className="text-[0.65rem] font-bold uppercase tracking-widest text-blue-600 leading-none">Digital Library</span>
                 </div>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">BY CONSORTIUM ELEARNING NETWORK PVT. LTD.</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">{COMPANY_DETAILS.positioning.toUpperCase()}</span>
             </Link>
             <p className="text-sm leading-relaxed text-slate-400 max-w-xs">
               A digital library providing curated academic journals and research papers to institutions and researchers worldwide.

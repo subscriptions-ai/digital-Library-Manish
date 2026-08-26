@@ -1,8 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
-import { COMPANY_DETAILS } from '../config';
-import { COMPANY_STATE } from './gstUtils';
+import { COMPANY_DETAILS, issuerOf } from '../config';
 import { STM_LOGO_BASE64 } from '../logoBase64';
 
 /**
@@ -57,8 +56,10 @@ const itemDescription = (item: ReceiptItem) => {
 export function generateReceiptPDF(receipt: ReceiptRecord): jsPDF {
   const doc = new jsPDF();
 
+  // Render from the issuer stamped on this receipt, not from today's entity.
+  const issuer = issuerOf(receipt);
   const items: ReceiptItem[] = Array.isArray(receipt.items) ? receipt.items : [];
-  const isInterState = (receipt.state || '') !== COMPANY_STATE;
+  const isInterState = (receipt.state || '') !== issuer.state;
   const discount = receipt.discountAmount || 0;
   const gst = receipt.gstAmount || 0;
   const paymentDate = receipt.paymentDate ? new Date(receipt.paymentDate) : new Date();
@@ -74,9 +75,9 @@ export function generateReceiptPDF(receipt: ReceiptRecord): jsPDF {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100);
-  doc.text(COMPANY_DETAILS.address, 105, 26, { align: 'center' });
-  doc.text(`CIN No.: ${COMPANY_DETAILS.cin} | IEC Code: ${COMPANY_DETAILS.iec} | PAN No.: ${COMPANY_DETAILS.pan}`, 105, 31, { align: 'center' });
-  doc.text(`GSTIN: ${COMPANY_DETAILS.gstin}`, 105, 36, { align: 'center' });
+  doc.text(issuer.address, 105, 26, { align: 'center' });
+  doc.text(`CIN No.: ${issuer.cin} | IEC Code: ${issuer.iec} | PAN No.: ${issuer.pan}`, 105, 31, { align: 'center' });
+  doc.text(`GSTIN: ${issuer.gstin}`, 105, 36, { align: 'center' });
 
   doc.setDrawColor(226, 232, 240);
   doc.line(20, 42, 190, 42);
@@ -186,7 +187,7 @@ export function generateReceiptPDF(receipt: ReceiptRecord): jsPDF {
   doc.text(`Payment Method: ${receipt.paymentMethod || 'Bank Transfer'}`, 20, payY + 6);
   if (receipt.paymentRef) doc.text(`Transaction / Reference: ${receipt.paymentRef}`, 20, payY + 11);
   doc.text(`Payment Date: ${pdfDate}`, 20, payY + 16);
-  doc.text(`Received By: ${COMPANY_DETAILS.bank.accountName}`, 20, payY + 21);
+  doc.text(`Received By: ${issuer.bank.accountName}`, 20, payY + 21);
 
   // ── Note ──────────────────────────────────────────────────────────
   const noteY = payY + 34;
@@ -202,7 +203,7 @@ export function generateReceiptPDF(receipt: ReceiptRecord): jsPDF {
   doc.setFontSize(8);
   doc.setTextColor(100);
   doc.text(
-    `For any queries: Landline: ${COMPANY_DETAILS.tel[1]} | Mobile: ${COMPANY_DETAILS.mobile} | Email: ${COMPANY_DETAILS.email}`,
+    `For any queries: Landline: ${issuer.tel[1]} | Mobile: ${COMPANY_DETAILS.mobile} | Email: ${issuer.email}`,
     105,
     280,
     { align: 'center' }

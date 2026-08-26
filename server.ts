@@ -21,7 +21,7 @@ import jwt from "jsonwebtoken";
 import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
-import { COMPANY_DETAILS } from "./src/config.js";
+import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
   eBody, eH1, eP, eMuted, eBtn, eCard, eRows, eQuote,
@@ -3142,6 +3142,7 @@ async function startServer() {
 
       const quotation = await (prisma as any).quotation.create({
         data: {
+          issuer: currentIssuer(),
           userName, userEmail, organization, state,
           planType: planType || 'Monthly',
           selectedModules: moduleIds || [],
@@ -3303,6 +3304,7 @@ async function startServer() {
 
       const receipt = await (prisma as any).receipt.create({
         data: {
+          issuer: currentIssuer(),
           receiptNumber,
           quotationId: quotation.id,
           userId: quotation.userId || null,
@@ -6814,6 +6816,7 @@ async function startServer() {
           couponCode: quotationData.couponCode || null
         },
         create: {
+          issuer: currentIssuer(),
           id: quotationNumber,
           userEmail,
           userName,
@@ -7169,6 +7172,7 @@ async function startServer() {
           userCategory: quotationData.userCategory || null
         },
         create: {
+          issuer: currentIssuer(),
           id: quotationNumber,
           userEmail,
           userName,

@@ -19,16 +19,17 @@ export const ContentSources: React.FC = () => {
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-4 text-slate-900">
               <FileText className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold m-0">1. Proprietary Content</h2>
+              <h2 className="text-xl font-bold m-0">1. What the Platform Provides</h2>
             </div>
-            <p>The Platform includes original, proprietary content developed, published, or made available by <strong>{COMPANY_DETAILS.legalName}</strong> and its various divisions and sister concern companies. Such content may include, without limitation:</p>
+            <p><strong>{COMPANY_DETAILS.legalName}</strong> operates the Platform. What it provides is the service — aggregation, indexing, search, curation, hosting of the interface, and the tools built around them. It does not claim ownership of the academic material made discoverable through it.</p>
+            <p className="mt-4">The material listed here may include, without limitation:</p>
             <ul className="list-disc pl-6 space-y-2 mt-4">
-              <li>Journals published under STM Journals and other affiliated divisions</li>
-              <li>Conference proceedings organized by the Company or its affiliated entities</li>
+              <li>Journals and articles indexed from open-access sources</li>
+              <li>Conference proceedings and case studies</li>
+              <li>Academic books and reference titles</li>
               <li>Educational videos and digital learning resources</li>
-              <li>Books, case studies, and other academic materials produced by the Company or its affiliated entities</li>
             </ul>
-            <p className="mt-4">Access to certain proprietary content may be restricted, as applicable under the Platform’s policies and the terms agreed with each institution.</p>
+            <p className="mt-4">Copyright in each item remains with its author, publisher or other rights holder. Where content is contributed by a publisher, it is listed under an agreement with them and remains theirs. Access to particular collections may be restricted under the Platform’s policies and the terms agreed with each institution.</p>
           </section>
 
           <section className="mb-10">

@@ -496,6 +496,11 @@ model Quotation {
   gstNumber         String?
   userCategory      String?
   deliveryMethod    String?  @default("Email") // Email | Download
+
+  /// Who issued this document, snapshotted at creation. Documents render from
+  /// this rather than from live config, so changing the operating entity never
+  /// rewrites the history of who actually issued what.
+  issuer         Json?
 }
 
 model Receipt {
@@ -535,6 +540,12 @@ model Receipt {
   createdBy      String?
   emailSentAt    DateTime?
   createdAt      DateTime  @default(now())
+
+  /// Who issued this document, snapshotted at creation. Documents render from
+  /// this rather than from live config, so changing the operating entity never
+  /// rewrites the history of who actually issued what.
+  issuer         Json?
+
 }
 
 model ContentModule {

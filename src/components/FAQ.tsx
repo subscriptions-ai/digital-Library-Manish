@@ -72,20 +72,20 @@ const FAQ_DATA: FAQCategory[] = [
   },
   {
     id: "contribution",
-    title: "Content Contribution",
+    title: "Listing Content",
     icon: <Upload className="text-orange-600" size={20} />,
     items: [
       {
-        question: "Who can upload content?",
-        answer: "Registered authors and researchers can submit their papers for review. We have a strict peer-review process to maintain the quality of our library."
+        question: "Who can list content here?",
+        answer: "Publishers and institutions we have an agreement with can submit their catalogue for listing. We index and present the material; we do not peer-review it or act as its publisher."
       },
       {
-        question: "What types of content are accepted?",
-        answer: "We accept original research papers, review articles, case studies, and academic books in the fields of Science, Technology, and Medicine."
+        question: "What types of content can be listed?",
+        answer: "Research papers, review articles, case studies, conference proceedings and academic books across Science, Technology and Medicine — provided the rights holder has agreed to the listing."
       },
       {
-        question: "What happens after submission?",
-        answer: "After submission, your content goes through a double-blind peer-review process. If accepted, it will be formatted and published in the relevant journal or section of our library."
+        question: "What happens after a submission?",
+        answer: "We check the metadata, confirm the licence and the rights position, and then index the material into the relevant department so it becomes discoverable. Copyright stays with the rights holder throughout."
       }
     ]
   },

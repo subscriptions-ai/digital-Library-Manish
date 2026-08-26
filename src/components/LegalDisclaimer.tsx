@@ -21,8 +21,8 @@ export const LegalDisclaimer: React.FC = () => {
               <Info className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">Nature of Content</h2>
             </div>
-            <p>The Platform provides access to a combination of proprietary content owned by <strong>{COMPANY_DETAILS.legalName}</strong> and its various divisions and sister concern companies, as well as third-party content sourced from publicly available or open-access repositories.</p>
-            <p className="mt-4">For the purposes of this Platform, content published by the various divisions and sister concern companies of {COMPANY_DETAILS.legalName} shall be treated as the Company’s own content or affiliated proprietary content, as applicable. Any content beyond such divisions and sister concern companies, including content sourced from third-party websites, repositories, publishers, or external platforms, shall not be regarded as owned by the Company unless expressly stated otherwise.</p>
+            <p>The Platform provides access to academic material sourced from open-access repositories and from publishers who have agreed to be listed. Rights in that material belong to its authors, publishers and other rights holders.</p>
+            <p className="mt-4">What <strong>{COMPANY_DETAILS.legalName}</strong> owns is the Platform itself — the software, the interface, the indexing and the tools built around the material. It does not own the material.</p>
           </section>
 
           <section className="mb-10">
