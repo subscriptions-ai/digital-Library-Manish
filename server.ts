@@ -7473,6 +7473,36 @@ async function startServer() {
 
 
 
+  /**
+   * Which institution a student is being created into.
+   *
+   * This used to be left undefined whenever it could not be resolved, so the
+   * student was created with no institution link and then never appeared in the
+   * list — which filters by institutionId. Silent orphaning is worse than a
+   * refusal, so this returns an error string instead of a blank.
+   */
+  const resolveTargetInstitution = async (req: any): Promise<{ id?: string; name: string; error?: string }> => {
+    if (req.user.role === 'Institution') {
+      const me = await (prisma as any).user.findUnique({
+        where: { id: req.user.uid || req.user.id || req.user.userId },
+        select: { organization: true, institutionId: true },
+      });
+      if (!me?.institutionId) {
+        return { name: '', error: 'Your account is not linked to an institution yet. Ask an administrator to link it before adding students.' };
+      }
+      return { id: me.institutionId, name: me.organization || '' };
+    }
+
+    // SuperAdmin must say which institution they are adding into.
+    const explicit = req.body?.institutionId || req.query?.institutionId;
+    if (!explicit) {
+      return { name: '', error: 'institutionId is required when adding students as an administrator.' };
+    }
+    const inst = await (prisma as any).institution.findUnique({ where: { id: explicit }, select: { name: true } });
+    if (!inst) return { name: '', error: 'That institution does not exist.' };
+    return { id: explicit, name: inst.name || '' };
+  };
+
   app.get("/api/institution/students", authenticateJWT, async (req: any, res) => {
     try {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });
@@ -7514,15 +7544,10 @@ async function startServer() {
 
       const hashed = await bcrypt.hash(password, 10);
 
-      // Carry the institution's name and properly link relational institutionId
-      let institutionName = '';
-      let targetInstitutionId = undefined;
-      
-      if (req.user.role === 'Institution') {
-        const institutionUser = await (prisma as any).user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
-        institutionName = institutionUser?.organization || '';
-        targetInstitutionId = institutionUser?.institutionId;
-      }
+      const target = await resolveTargetInstitution(req);
+      if (target.error) return res.status(400).json({ error: target.error });
+      const institutionName = target.name;
+      const targetInstitutionId = target.id;
 
       const student = await (prisma as any).user.create({
         data: {
@@ -7560,14 +7585,10 @@ async function startServer() {
         return res.status(400).json({ error: "A valid array of users is required" });
       }
 
-      let institutionName = '';
-      let targetInstitutionId = undefined;
-      
-      if (req.user.role === 'Institution') {
-        const institutionUser = await (prisma as any).user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
-        institutionName = institutionUser?.organization || '';
-        targetInstitutionId = institutionUser?.institutionId;
-      }
+      const target = await resolveTargetInstitution(req);
+      if (target.error) return res.status(400).json({ error: target.error });
+      const institutionName = target.name;
+      const targetInstitutionId = target.id;
 
       let successCount = 0;
       let errorCount = 0;
