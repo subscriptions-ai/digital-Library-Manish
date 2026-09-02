@@ -23,7 +23,7 @@ import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { DOMAINS } from "./src/constants.js";
-import { runIngestionPass, getState as getIngestionState } from "./src/lib/ingestionWorker.js";
+import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
   eBody, eH1, eP, eMuted, eBtn, eCard, eRows, eQuote,
@@ -5040,6 +5040,149 @@ async function startServer() {
       ]);
       res.json({ data, total, page: parseInt(page as string) || 1, limit: take });
     } catch (e: any) { console.error("library articles:", e); res.status(500).json({ error: "Failed to load articles" }); }
+  });
+
+  // ── The shelf ───────────────────────────────────────────────────────────
+  // One journal, its run of volumes, and what sits inside an issue. This is the
+  // back-run a reader expects to find beside whatever they are reading, and it
+  // is grouped from fields the articles already carry rather than stored twice.
+
+  app.get("/api/library/journal/:issn", async (req: any, res: any) => {
+    try {
+      const key = decodeURIComponent(req.params.issn);
+      // Accept whichever spelling the caller has; ours are stored inconsistently.
+      const norm = normaliseIssn(key);
+      const journal = await (prisma as any).journal.findFirst({
+        where: { OR: [{ issn: key }, { eissn: key }, { id: key },
+                      ...(norm ? [{ issn: norm }, { eissn: norm }] : [])] },
+      });
+      if (!journal) return res.status(404).json({ error: "Journal not found" });
+
+      // Respect what the reader is entitled to see, exactly as the lists do.
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && journal.domain && !scope.includes(journal.domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+
+      const volumes = await (prisma as any).$queryRawUnsafe(`
+        select volume, max(year)::int as year,
+               count(distinct issue)::int as issues, count(*)::int as articles
+        from "Article"
+        where "journalId" = $1 and status = 'Published' and volume is not null
+        group by volume order by max(year) desc nulls last, volume desc`, journal.id);
+
+      res.json({ ...journal, volumes });
+    } catch (e: any) {
+      console.error('GET library/journal error:', e?.message);
+      res.status(500).json({ error: "Failed to load journal" });
+    }
+  });
+
+  app.get("/api/library/journal/:issn/volume/:volume", async (req: any, res: any) => {
+    try {
+      const key = decodeURIComponent(req.params.issn);
+      const volume = decodeURIComponent(req.params.volume);
+      const norm = normaliseIssn(key);
+      const journal = await (prisma as any).journal.findFirst({
+        where: { OR: [{ issn: key }, { eissn: key }, { id: key },
+                      ...(norm ? [{ issn: norm }, { eissn: norm }] : [])] },
+        select: { id: true, title: true, domain: true, issn: true, licence: true },
+      });
+      if (!journal) return res.status(404).json({ error: "Journal not found" });
+
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && journal.domain && !scope.includes(journal.domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+
+      const articles = await (prisma as any).article.findMany({
+        where: { journalId: journal.id, volume, status: 'Published' },
+        select: {
+          id: true, title: true, authors: true, issue: true, year: true, pages: true,
+          doi: true, accessStatus: true, licence: true, originalUrl: true, pdfUrl: true,
+        },
+        orderBy: [{ issue: 'asc' }, { title: 'asc' }],
+        take: 500,
+      });
+
+      // Group into issues, the way an issue actually reads.
+      const issues: Record<string, any[]> = {};
+      for (const a of articles) {
+        const k = a.issue || '—';
+        (issues[k] = issues[k] || []).push(a);
+      }
+      res.json({
+        journal, volume,
+        issues: Object.entries(issues).map(([issue, items]) => ({ issue, articles: items })),
+      });
+    } catch (e: any) {
+      console.error('GET library/volume error:', e?.message);
+      res.status(500).json({ error: "Failed to load volume" });
+    }
+  });
+
+  // ── People ──────────────────────────────────────────────────────────────
+
+  app.get("/api/library/author/:id", async (req: any, res: any) => {
+    try {
+      const author = await (prisma as any).author.findUnique({ where: { id: req.params.id } });
+      if (!author) return res.status(404).json({ error: "Author not found" });
+
+      const links = await (prisma as any).articleAuthor.findMany({
+        where: { authorId: author.id },
+        select: { position: true, article: { select: {
+          id: true, title: true, year: true, journalName: true, journalIssn: true,
+          domain: true, accessStatus: true, doi: true, originalUrl: true,
+        } } },
+        take: 500,
+      });
+
+      const articles = links
+        .map((l: any) => ({ ...l.article, position: l.position }))
+        .filter((a: any) => a)
+        .sort((a: any, b: any) => (b.year || 0) - (a.year || 0));
+
+      // Where this person publishes, and in which subjects — the two things that
+      // make an author page worth opening rather than just a list.
+      const byJournal = new Map<string, number>();
+      const byDomain = new Map<string, number>();
+      for (const a of articles) {
+        if (a.journalName) byJournal.set(a.journalName, (byJournal.get(a.journalName) || 0) + 1);
+        if (a.domain) byDomain.set(a.domain, (byDomain.get(a.domain) || 0) + 1);
+      }
+      const top = (m: Map<string, number>) =>
+        [...m.entries()].sort((x, y) => y[1] - x[1]).map(([name, count]) => ({ name, count }));
+
+      res.json({ ...author, articles, journals: top(byJournal), domains: top(byDomain) });
+    } catch (e: any) {
+      console.error('GET library/author error:', e?.message);
+      res.status(500).json({ error: "Failed to load author" });
+    }
+  });
+
+  // ── One query behind every count on the site ────────────────────────────
+  // The homepage figure and the department figure have to agree, which they
+  // cannot if each screen counts for itself.
+  app.get("/api/library/stats", async (_req: any, res: any) => {
+    try {
+      const [journals, byDomain, articles, books, authors] = await Promise.all([
+        (prisma as any).journal.count({ where: { articleCount: { gt: 0 } } }),
+        (prisma as any).$queryRawUnsafe(`
+          select domain,
+                 count(*)::int as journals,
+                 coalesce(sum("articleCount"),0)::int as articles,
+                 min("firstYear") as from_year, max("lastYear") as to_year
+          from "Journal" where domain is not null and "articleCount" > 0
+          group by domain order by journals desc`),
+        (prisma as any).article.count({ where: { status: 'Published' } }),
+        (prisma as any).book.count({ where: { status: 'Published' } }),
+        (prisma as any).author.count(),
+      ]);
+      res.json({ journals, articles, books, authors, departments: byDomain });
+    } catch (e: any) {
+      console.error('GET library/stats error:', e?.message);
+      res.status(500).json({ error: "Failed to load stats" });
+    }
   });
 
   app.get("/api/library/books", async (req: any, res: any) => {

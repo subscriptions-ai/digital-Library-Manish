@@ -65,6 +65,20 @@ export function searchTermsFor(department: string): string[] {
   return DEPARTMENT_TERMS[department] || [department];
 }
 
+/**
+ * An ISSN is eight characters, NNNN-NNNC. In practice ours arrive with spaces
+ * around the hyphen, with an en-dash instead of a hyphen, or with none at all —
+ * three spellings of the same identifier, which silently breaks every lookup,
+ * every deduplication and every attempt to match an incoming journal to one we
+ * already hold. Everything that reads or writes an ISSN goes through here.
+ */
+export function normaliseIssn(raw?: string | null): string | null {
+  if (!raw) return null;
+  const t = String(raw).replace(/[\u2010-\u2015]/g, '-').replace(/\s+/g, '').toUpperCase();
+  const m = t.match(/^(\d{4})-?(\d{3}[\dX])$/);
+  return m ? `${m[1]}-${m[2]}` : null;
+}
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function getJson(url: string): Promise<any | null> {
@@ -102,12 +116,12 @@ async function discoverJournals(department: string, state: any) {
     const lic = (b.license || [])[0];
     const ok = licenceAllowsCommercialUse(lic?.type, lic?.NC);
     // DOAJ exposes these as pissn/eissn, not inside an identifier array.
-    const issn = b.pissn || b.eissn || null;
+    const issn = normaliseIssn(b.pissn) || normaliseIssn(b.eissn);
 
     const data = {
       title,
       issn: issn || undefined,
-      eissn: b.eissn || null,
+      eissn: normaliseIssn(b.eissn),
       publisherName: b.publisher?.name || null,
       country: b.publisher?.country || null,
       domain: department,
