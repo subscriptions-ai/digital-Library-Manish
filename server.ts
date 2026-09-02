@@ -9543,7 +9543,10 @@ async function startServer() {
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
     
-    const staticRoutes = ["/", "/journals", "/contact", "/subscriptions", "/about", "/signup"];
+    // "/subscriptions" was removed from the site when public pricing came down.
+    // Leaving it here advertised a URL that renders a not-found screen, which is
+    // the soft-404 the external audit flagged (COM-02 / SEO-01).
+    const staticRoutes = ["/", "/journals", "/contact", "/about", "/signup"];
     for (const route of staticRoutes) {
       const loc = route === "/" ? baseUrl : `${baseUrl}${route}`;
       xml += `  <url>\n    <loc>${loc}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
