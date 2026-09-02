@@ -211,6 +211,36 @@ model Journal {
   startYear     Int?                          // founding year — powers "new journals in last N years"
   openAccess    Boolean  @default(true)
 
+  // ── Rights ────────────────────────────────────────────────
+  // Decided once, at the journal, before any article is fetched. DOAJ declares
+  // the licence at this level with an explicit non-commercial flag, so a whole
+  // title can be accepted or refused without judging its articles one by one.
+  licence          String?                    // "CC BY", "CC BY-NC", "Publisher's own"
+  licenceIsNC      Boolean?                   // true → never serve full text
+  rightsBasis      String?                    // DOAJ declaration | publisher agreement | our own
+  rightsVerifiedAt DateTime?
+  rightsVerifiedBy String?
+  /// Accepted → full text may be served. MetadataOnly → catalogue entry and a
+  /// link to the publisher, nothing more. Rejected → not shown at all.
+  status           String   @default("MetadataOnly")
+
+  // ── Catalogue identity ────────────────────────────────────
+  description   String?  @db.Text
+  homepage      String?
+  coverUrl      String?
+  subjects      Json?    @default("[]")
+
+  // ── Coverage, denormalised ────────────────────────────────
+  // A librarian filtering 29 departments cannot wait on a live aggregate over
+  // hundreds of thousands of rows, and the homepage figure has to come from the
+  // same place as the department figure. The ingest job refreshes these.
+  firstYear      Int?
+  lastYear       Int?
+  articleCount   Int      @default(0)
+  volumeCount    Int      @default(0)
+  issueCount     Int      @default(0)
+  lastIngestedAt DateTime?
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -219,6 +249,8 @@ model Journal {
   @@index([publisherId])
   @@index([domain])
   @@index([startYear])
+  @@index([status])
+  @@index([licenceIsNC])
 }
 
 model Article {
@@ -260,6 +292,31 @@ model Article {
   // queries only ever return PublisherSubmitted — pre-scraped Ingested rows
   // are never visible to a tied-up publisher.
   ownershipSource String @default("Ingested")       // Ingested | PublisherSubmitted | AdminEntered
+
+  // ── Rights, inherited from the parent but overridable ─────
+  licence       String?
+  licenceIsNC   Boolean?
+  rightsHolder  String?                            // the publisher, never us
+
+  /// ViewableHere | LinkOnly | MetadataOnly.
+  ///
+  /// Deliberately nullable with NO default: adding this column with a default
+  /// of MetadataOnly would stop every PDF that opens today. Null means "behave
+  /// as before" — if there is a file, it opens — so a failed or half-finished
+  /// backfill breaks nothing. Fail towards the old behaviour, never towards a
+  /// locked library.
+  accessStatus  String?
+
+  originalUrl   String?                            // the publisher's page for this work
+  originalDate  DateTime?                          // real publication date, never ingestion time
+
+  /// What this item hangs from. A journal article belongs to a journal, a
+  /// thesis to an institution, a conference paper to its conference — forcing
+  /// them all under journals would be wrong for most of the collection.
+  parentKind    String?                            // Journal | Book | Conference | Institution | None
+  parentId      String?
+
+  authorLinks   ArticleAuthor[]
   uploadId      String?                            // PublisherUpload batch, if bulk-submitted
   views         Int      @default(0)               // read count (impact analytics)
 
@@ -274,6 +331,8 @@ model Article {
   @@index([status])
   @@index([contentType])
   @@index([ownershipSource])
+  @@index([accessStatus])
+  @@index([parentKind, parentId])
 }
 
 model Book {
@@ -301,6 +360,24 @@ model Book {
 
   accessType    String   @default("OpenAccess")
   status        String   @default("Draft")         // Draft | Published | Rejected
+
+  // ── Rights, same gate as journals ─────────────────────────
+  // A book carrying a non-commercial licence is catalogued and linked to its
+  // publisher, never hosted. Decided once, at the title.
+  licence          String?
+  licenceIsNC      Boolean?
+  rightsBasis      String?
+  rightsVerifiedAt DateTime?
+  rightsVerifiedBy String?
+  /// Accepted | MetadataOnly | Rejected
+  rightsStatus     String   @default("MetadataOnly")
+
+  accessStatus     String?                        // ViewableHere | LinkOnly | MetadataOnly — nullable, see Article
+  originalUrl      String?
+  originalDate     DateTime?
+  rightsHolder     String?
+  chapterCount     Int      @default(0)
+  lastIngestedAt   DateTime?
   rejectionNote String?                            // shown to publisher when rejected
   source        String?
   fingerprint   String?  @unique
@@ -318,6 +395,8 @@ model Book {
   @@index([publisherId])
   @@index([domain])
   @@index([status])
+  @@index([rightsStatus])
+  @@index([licenceIsNC])
   @@index([ownershipSource])
 }
 
@@ -1023,4 +1102,51 @@ model TakedownRequest {
   @@index([status])
   @@index([createdAt])
   @@index([dueAt])
+}
+
+/// A person, so that an author's name is a door rather than plain text.
+///
+/// Identity comes from three places and they are not equally reliable, which is
+/// what `identitySource` records. OpenAlex supplies stable ids and ORCIDs for
+/// ingested work; our own articles store authors as one comma-separated string,
+/// so those are grouped by normalised name — good enough to browse by, and
+/// occasionally wrong in both directions.
+///
+/// Every name is clickable regardless of how certain we are. Half-interactive
+/// reads as broken software, and consistency matters more here than precision.
+model Author {
+  id             String   @id @default(uuid())
+  name           String                          // as printed
+  nameNormalised String                          // lowercased, punctuation stripped — the grouping key
+  orcid          String?  @unique
+  openAlexId     String?  @unique
+
+  /// ORCID | OpenAlex | NameMatch — how confident we are this is one person
+  identitySource String   @default("NameMatch")
+
+  affiliation    String?                         // most recent seen, for display
+  articleCount   Int      @default(0)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  articleLinks   ArticleAuthor[]
+
+  @@index([nameNormalised])
+  @@index([identitySource])
+}
+
+/// Joins an article to its authors, preserving the order they are credited in.
+/// First author and fifth author are not interchangeable, so position is stored
+/// rather than inferred.
+model ArticleAuthor {
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String
+  author    Author  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String
+  position  Int                                  // 0-based, as credited
+
+  @@id([articleId, authorId])
+  @@index([authorId])
+  @@index([articleId, position])
 }
