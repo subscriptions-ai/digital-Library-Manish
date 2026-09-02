@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { DOMAINS, CONTENT_TYPES } from '../constants';
 import { SmartPagination } from './SmartPagination';
 import { MetadataModal } from './MetadataModal';
@@ -408,7 +408,7 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
             </div>
           ) : (
             <div className="space-y-3">
-              {displayed.map((it, i) => <ResultCard key={it.id || i} it={it} kind={kind} mode={mode} onOpen={() => navigate(`${viewerBasePath}/${it.id}`)} />)}
+              {displayed.map((it, i) => <ResultCard key={it.id || i} it={it} kind={kind} mode={mode} journalBase={journalBase} onOpen={() => navigate(`${viewerBasePath}/${it.id}`)} />)}
             </div>
           )}
 
@@ -421,7 +421,7 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
 }
 
 // ───────── card ─────────
-function ResultCard({ it, kind, mode, onOpen }: { it: any; kind: Kind; mode: Mode; onOpen: () => void }) {
+function ResultCard({ it, kind, mode, onOpen, journalBase }: { it: any; kind: Kind; mode: Mode; onOpen: () => void; journalBase: string }) {
   const isBook = kind === 'books' || it.contentType === 'Books';
   const isOA = ['OpenAccess', 'Free'].includes(it.accessType);
   const hasPdf = !!(it.pdfUrl || it.fileUrl);
@@ -434,7 +434,10 @@ function ResultCard({ it, kind, mode, onOpen }: { it: any; kind: Kind; mode: Mod
   const shown = authors.slice(0, 3);
   const citation = isBook
     ? [it.publisherName, it.isbn ? `ISBN ${it.isbn}` : '', it.edition ? `${it.edition} ed.` : '', it.year].filter(Boolean).join(' · ')
-    : [it.journalName, it.volume ? `Vol. ${it.volume}` : '', it.issue ? `No. ${it.issue}` : '', it.pages ? `pp. ${it.pages}` : '', it.year].filter(Boolean).join(' · ');
+    : [it.volume ? `Vol. ${it.volume}` : '', it.issue ? `No. ${it.issue}` : '', it.pages ? `pp. ${it.pages}` : '', it.year].filter(Boolean).join(' · ');
+  // The journal name is the thing a reader's eye lands on, so it is the thing
+  // that should open the journal — not a chevron tucked inside a filter panel.
+  const journalKey = it.journalIssn || it.journalId;
 
   const copyDoi = (e: React.MouseEvent) => { e.stopPropagation(); if (it.doi) navigator.clipboard?.writeText(it.doi); };
 
@@ -468,7 +471,21 @@ function ResultCard({ it, kind, mode, onOpen }: { it: any; kind: Kind; mode: Mod
       )}
 
       {/* citation */}
-      {citation && <p className="text-[12px] italic text-slate-500 dark:text-slate-400 mt-0.5">{citation}</p>}
+      {(it.journalName || citation) && (
+        <p className="mt-0.5 text-[12px] italic text-slate-500 dark:text-slate-400">
+          {!isBook && it.journalName && (journalKey ? (
+            <Link
+              to={`${journalBase}/${encodeURIComponent(journalKey)}`}
+              onClick={e => e.stopPropagation()}
+              className="font-medium not-italic text-blue-600 hover:underline dark:text-blue-400"
+            >
+              {it.journalName}
+            </Link>
+          ) : <span>{it.journalName}</span>)}
+          {!isBook && it.journalName && citation && ' · '}
+          {citation}
+        </p>
+      )}
 
       {/* footer */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
