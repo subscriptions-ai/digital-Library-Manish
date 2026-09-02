@@ -21,6 +21,8 @@ const PAGE_SIZE = 12;
  */
 export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { viewerBasePath?: string } = {}) {
   const navigate = useNavigate();
+  // The journal page lives beside the viewer in whichever portal we are in.
+  const journalBase = viewerBasePath.replace(/\/viewer$/, '/journal');
   const authOpts = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
   // Filters live in the URL query string → survive back/forward/refresh/remount, and are shareable.
   const [sp, setSp] = useSearchParams();
@@ -345,7 +347,19 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                           <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${on ? 'bg-blue-600 border-blue-600' : 'border-slate-300 dark:border-slate-600'}`}>{on && <Check size={11} className="text-white" />}</span>
                           <span className="truncate">{j.title}</span>
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 shrink-0">{j.articleCount}</span>
+                        <span className="flex items-center gap-1 shrink-0">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">{j.articleCount}</span>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            title="Open this journal and its volumes"
+                            onClick={e => { e.stopPropagation(); navigate(`${journalBase}/${encodeURIComponent(j.issn || j.id)}`); }}
+                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); navigate(`${journalBase}/${encodeURIComponent(j.issn || j.id)}`); } }}
+                            className="p-0.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer"
+                          >
+                            <ChevronRight size={13} />
+                          </span>
+                        </span>
                       </button>
                     );
                   })}
