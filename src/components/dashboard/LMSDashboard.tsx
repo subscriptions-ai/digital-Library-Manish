@@ -89,6 +89,7 @@ const domainGradient = (domainName: string) => {
 
 // ─── Content Card ─────────────────────────────────────────────────────────────
 function ContentCard({ item, onOpen }: { item: ContentItem; onOpen: (item: ContentItem) => void }) {
+  const navigate = useNavigate();
   const isLocked = item.locked;
   return (
     <motion.div
@@ -144,8 +145,8 @@ function ContentCard({ item, onOpen }: { item: ContentItem; onOpen: (item: Conte
           )}
           <div className="flex-1" />
           {isLocked ? (
-            <button className="text-[10px] font-bold text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 px-3 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
-              Upgrade
+            <button onClick={() => navigate('/contact')} className="text-[10px] font-bold text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 px-3 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+              Request Access
             </button>
           ) : (
             <button className="text-[10px] font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 px-3 py-1 rounded-lg group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all flex items-center gap-1">
@@ -694,10 +695,10 @@ export function LMSDashboard() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-rose-800 dark:text-rose-300">{lockedCount} items are locked</p>
-              <p className="text-xs text-rose-600 dark:text-rose-400 mt-0.5">Upgrade your subscription to access more content and domains.</p>
+              <p className="text-xs text-rose-600 dark:text-rose-400 mt-0.5">Ask your administrator to extend your access</p>
             </div>
-            <button onClick={() => navigate('/pricing')} className="shrink-0 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors">
-              Upgrade Plan
+            <button onClick={() => navigate('/contact')} className="shrink-0 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors">
+              Request Access
             </button>
           </motion.div>
         )}

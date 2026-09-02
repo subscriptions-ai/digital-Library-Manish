@@ -47,8 +47,8 @@ export function SubscriberOverview() {
               This demo account is valid for 30 days and will expire on {profile.demoExpiresAt ? new Date(profile.demoExpiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its expiry date'}.
             </p>
           </div>
-          <Link to="/pricing" className="bg-white text-orange-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-orange-50 transition-colors">
-            Upgrade Now
+          <Link to="/contact" className="bg-white text-orange-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-orange-50 transition-colors">
+            Request Access
           </Link>
         </div>
       )}

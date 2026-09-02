@@ -30,7 +30,7 @@ export function SalesLeadDetails() {
       setLead(await res.json());
     } catch {
       toast.error('Failed to load lead details');
-      navigate('/sales/pipeline');
+      navigate('/sales/leads');
     } finally {
       setLoading(false);
     }

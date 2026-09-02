@@ -1524,7 +1524,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
 
               <div className="text-center">
                 <p className="text-xs text-slate-400">
-                  By proceeding, you agree to our <Link to="/terms" className="underline">Terms of Service</Link> and <Link to="/privacy" className="underline">Privacy Policy</Link>.
+                  By proceeding, you agree to our <Link to="/terms-and-conditions" className="underline">Terms of Service</Link> and <Link to="/privacy-policy" className="underline">Privacy Policy</Link>.
                 </p>
               </div>
             </motion.div>
