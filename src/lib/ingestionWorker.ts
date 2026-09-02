@@ -32,6 +32,39 @@ export function licenceAllowsCommercialUse(raw?: string | null, ncFlag?: boolean
   return COMMERCIAL_OK.test(t.replace(/\s+/g, ' '));
 }
 
+/**
+ * What to ask DOAJ for, per department.
+ *
+ * Searching DOAJ with our own department label goes wrong in both directions.
+ * "Computer / IT" returns 12 journals because the slash breaks the query, when
+ * "information technology" alone returns 779. "Science" returns 5,018 because it
+ * matches almost everything. These are the terms that actually find the right
+ * journals; several departments need more than one, and the results are merged.
+ */
+const DEPARTMENT_TERMS: Record<string, string[]> = {
+  'Computer / IT':                               ['computer science', 'information technology', 'informatics'],
+  'Civil / Construction Engineering':            ['civil engineering', 'construction'],
+  'Electronics & Telecommunication Engineering': ['electronics', 'telecommunication'],
+  'Ayurveda':                                    ['ayurveda', 'traditional medicine', 'pharmacognosy', 'herbal medicine'],
+  'Applied Mechanics':                           ['applied mechanics', 'mechanics'],
+  'Material Science':                            ['materials science', 'materials'],
+  'Nano Technology':                             ['nanotechnology', 'nanoscience'],
+  'Bio Technology':                              ['biotechnology'],
+  'Education and Social Sciences':               ['education', 'social sciences'],
+  // Deliberately narrowed: as a bare term "science" matches almost every journal
+  // in DOAJ and would swamp every other department.
+  'Science':                                     ['natural sciences', 'general science'],
+  'Applied Sciences':                            ['applied sciences'],
+  'Arts':                                        ['arts', 'humanities'],
+  'Commerce':                                    ['commerce', 'business'],
+  'Multidisciplinary':                           ['multidisciplinary'],
+};
+
+/** The terms to search for a department — its own name unless mapped above. */
+export function searchTermsFor(department: string): string[] {
+  return DEPARTMENT_TERMS[department] || [department];
+}
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function getJson(url: string): Promise<any | null> {
@@ -50,12 +83,17 @@ export async function getState() {
 
 /** Pull one page of journals for a department and decide each one's licence. */
 async function discoverJournals(department: string, state: any) {
-  const d = await getJson(
-    `https://doaj.org/api/search/journals/${encodeURIComponent(department)}?pageSize=100`);
-  if (!d?.results?.length) return { seen: 0, accepted: 0, rejected: 0 };
+  const records: any[] = [];
+  for (const term of searchTermsFor(department)) {
+    const d = await getJson(
+      `https://doaj.org/api/search/journals/${encodeURIComponent(term)}?pageSize=100`);
+    if (d?.results?.length) records.push(...d.results);
+    await sleep(400);                       // stay well inside DOAJ's limits
+  }
+  if (!records.length) return { seen: 0, accepted: 0, rejected: 0 };
 
   let seen = 0, accepted = 0, rejected = 0;
-  for (const rec of d.results) {
+  for (const rec of records) {
     const b = rec.bibjson || {};
     const title = b.title;
     if (!title) continue;
@@ -192,24 +230,28 @@ export async function runIngestionPass(departments: string[]) {
     const wanted: string[] = (state.departments as string[])?.length
       ? (state.departments as string[]) : departments;
 
-    // Journals first, always. Only once every department has been swept does
-    // the worker move on to filling them with articles.
-    const undiscovered = wanted.find(dep => !state.currentDepartment || state.currentDepartment === dep);
-    const sweptAll = await p.journal.count({ where: { rightsBasis: 'DOAJ declaration' } });
+    // Journals first, always — but only for departments not yet swept. The
+    // earlier version compared a global journal count against a threshold, which
+    // meant one busy department satisfied the check and the rest were never
+    // discovered at all. Asking per department is self-correcting: a department
+    // with no discovered journals is simply the next one to sweep.
+    for (const dep of wanted) {
+      const found = await p.journal.count({
+        where: { domain: dep, rightsBasis: 'DOAJ declaration' },
+      });
+      if (found > 0) continue;
 
-    if (sweptAll < wanted.length * 5 && undiscovered) {
-      const next = wanted[(wanted.indexOf(state.currentDepartment || wanted[0]) + 1) % wanted.length];
-      const r = await discoverJournals(next, state);
+      const r = await discoverJournals(dep, state);
       await p.ingestionState.update({
         where: { id: 'singleton' },
         data: {
-          phase: 'Journals', currentDepartment: next, lastRunAt: new Date(), lastError: null,
+          phase: 'Journals', currentDepartment: dep, lastRunAt: new Date(), lastError: null,
           journalsSeen: { increment: r.seen },
           journalsAccepted: { increment: r.accepted },
           journalsRejected: { increment: r.rejected },
         },
       });
-      return { phase: 'Journals', department: next, ...r };
+      return { phase: 'Journals', department: dep, ...r };
     }
 
     const r = await fetchArticlesForOneJournal(state);
