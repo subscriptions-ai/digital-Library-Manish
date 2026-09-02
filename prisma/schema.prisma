@@ -1150,3 +1150,39 @@ model ArticleAuthor {
   @@index([authorId])
   @@index([articleId, position])
 }
+
+/// The ingestion switch and its progress, kept in the database rather than the
+/// settings file so that turning it on survives a container restart or a
+/// redeploy — the whole point of "switch it on and leave it running".
+///
+/// There is no separate queue: the journals themselves are the queue. The
+/// worker takes whichever accepted journal was refreshed longest ago, fetches
+/// its next slice, and stamps `lastIngestedAt`. That is self-balancing, needs
+/// no extra bookkeeping, and resumes correctly after any interruption.
+model IngestionState {
+  id          String  @id @default("singleton")
+  enabled     Boolean @default(false)
+
+  /// Only material published within this many years is worth holding — older
+  /// runs have little value to a college library and cost the most to fetch.
+  yearsBack   Int     @default(7)
+  /// Departments to cover; empty means all of them.
+  departments Json    @default("[]")
+  /// How many articles to pull per journal per pass, so one big journal cannot
+  /// starve the rest.
+  batchSize   Int     @default(200)
+
+  // ── Progress, cumulative ────────────────────────────────
+  phase            String @default("Idle")   // Idle | Journals | Articles
+  journalsSeen     Int    @default(0)
+  journalsAccepted Int    @default(0)
+  journalsRejected Int    @default(0)        // non-commercial or unusable licence
+  articlesAdded    Int    @default(0)
+  articlesSkipped  Int    @default(0)        // duplicates and out-of-window
+
+  currentDepartment String?
+  currentJournal    String?
+  lastRunAt         DateTime?
+  lastError         String?  @db.Text
+  updatedAt         DateTime @updatedAt
+}

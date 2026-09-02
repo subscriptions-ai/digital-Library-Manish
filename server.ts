@@ -22,6 +22,8 @@ import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
+import { DOMAINS } from "./src/constants.js";
+import { runIngestionPass, getState as getIngestionState } from "./src/lib/ingestionWorker.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
   eBody, eH1, eP, eMuted, eBtn, eCard, eRows, eQuote,
@@ -4839,6 +4841,48 @@ async function startServer() {
   }
 
   // Run — starts a background job, returns jobId immediately (poll /ingest/status/:id for live progress)
+  // ── Continuous ingestion ────────────────────────────────────────────────
+  // Switched on once and left alone. The timer does one small slice per tick and
+  // records where it reached, so a restart costs at most a single slice — which
+  // is the difference between "leave it running" and "babysit a four-hour job".
+
+  const ALL_DEPARTMENTS = DOMAINS.map((d: any) => d.name);
+
+  app.get("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json(await getIngestionState()); }
+    catch { res.status(500).json({ error: "Failed to read ingestion state" }); }
+  });
+
+  app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { enabled, yearsBack, departments, batchSize } = req.body || {};
+      const data: any = {};
+      if (typeof enabled === 'boolean') data.enabled = enabled;
+      if (Number.isInteger(yearsBack) && yearsBack > 0 && yearsBack <= 50) data.yearsBack = yearsBack;
+      if (Array.isArray(departments)) data.departments = departments;
+      if (Number.isInteger(batchSize) && batchSize > 0 && batchSize <= 200) data.batchSize = batchSize;
+      await getIngestionState();
+      res.json(await (prisma as any).ingestionState.update({ where: { id: 'singleton' }, data }));
+    } catch { res.status(500).json({ error: "Failed to update ingestion state" }); }
+  });
+
+  /** Run one slice now, so the switch can be tested without waiting for the timer. */
+  app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json(await runIngestionPass(ALL_DEPARTMENTS)); }
+    catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+  });
+
+  // The timer. One slice a minute is deliberately unhurried: it stays well
+  // inside the API's polite limits and never competes with live traffic.
+  let ingestBusy = false;
+  setInterval(async () => {
+    if (ingestBusy) return;
+    ingestBusy = true;
+    try { await runIngestionPass(ALL_DEPARTMENTS); }
+    catch (e) { console.error('[ingest] pass failed:', e); }
+    finally { ingestBusy = false; }
+  }, 60_000);
+
   app.post("/api/admin/ingest/run", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const { source = 'openalex', departments = [], perDept = 25 } = req.body;
