@@ -739,6 +739,15 @@ async function startServer() {
     next();
   };
 
+  const requireSalesRole = (req: any, res: any, next: any) => {
+    const r = req.user?.role;
+    if (r === "SuperAdmin" || r === "SubscriptionManager" || r === "SalesExecutive" || r === "SalesManager") {
+      next();
+    } else {
+      res.status(403).json({ error: "Access denied. Requires sales role." });
+    }
+  };
+
   // --- Admin Email Settings API ---
   app.get("/api/admin/settings/email", authenticateJWT, requireAdminOrManager, (req, res) => {
     const settings = getSystemSettings();
@@ -3172,7 +3181,7 @@ async function startServer() {
 
   // ========================
   // Generate next sequential quotation number
-  app.get("/api/quotation/next-number", async (_req, res) => {
+  app.get("/api/quotation/next-number", authenticateJWT, requireSalesRole, async (_req: any, res: any) => {
     try {
       const now = new Date();
       const year = now.getFullYear();
@@ -7138,7 +7147,7 @@ async function startServer() {
   });
 
   // Save Quotation (Download action)
-  app.post("/api/quotation/save", async (req, res) => {
+  app.post("/api/quotation/save", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
       const { userEmail, userName, quotationData, userId, organization, state, duration } = req.body;
       
@@ -7210,7 +7219,7 @@ async function startServer() {
   });
 
   // Send Quotation Email
-  app.post("/api/quotation/send", async (req, res) => {
+  app.post("/api/quotation/send", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
       const { userEmail, userName, quotationData, pdfBase64, userId, organization, state, duration, quotationDate } = req.body;
       
@@ -9205,7 +9214,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/coupons/validate", async (req, res) => {
+  app.post("/api/coupons/validate", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
       const { code, orderAmount } = req.body;
       const coupon = await prisma.coupon.findUnique({ where: { code } });
@@ -9693,14 +9702,6 @@ async function startServer() {
 
 
   // 2. SALES EXECUTIVE ROUTES
-  const requireSalesRole = (req: any, res: any, next: any) => {
-    const r = req.user?.role;
-    if (r === "SuperAdmin" || r === "SubscriptionManager" || r === "SalesExecutive" || r === "SalesManager") {
-      next();
-    } else {
-      res.status(403).json({ error: "Access denied. Requires sales role." });
-    }
-  };
 
   app.get("/api/sales/my-leads", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {

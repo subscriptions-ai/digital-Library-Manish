@@ -202,7 +202,9 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
       // Fetch sequential quotation number when entering preview step
       if (!quotationNumber) {
         try {
-          const res = await fetch('/api/quotation/next-number');
+          const res = await fetch('/api/quotation/next-number', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          });
           const data = await res.json();
           if (data.quotationNumber) setQuotationNumber(data.quotationNumber);
         } catch {
@@ -231,7 +233,10 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
 
       const res = await fetch('/api/coupons/validate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify({ code: couponCode, orderAmount: totalBasePrice })
       });
       const data = await res.json();
@@ -714,7 +719,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
           },
           body: JSON.stringify({
             userEmail: formData.email,
@@ -777,7 +782,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(user ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           userEmail: formData.email,
