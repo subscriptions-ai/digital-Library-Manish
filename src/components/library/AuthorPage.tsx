@@ -33,7 +33,10 @@ const auth = (): Record<string, string> | undefined => {
   return t ? { Authorization: `Bearer ${t}` } : undefined;
 };
 
-export function AuthorPage({ viewerBase = '/dashboard/viewer' }: { viewerBase?: string } = {}) {
+export function AuthorPage({
+  journalBase = '/dashboard/journal',
+  articleBase = '/dashboard/article',
+}: { viewerBase?: string; journalBase?: string; articleBase?: string } = {}) {
   const { authorId } = useParams<{ authorId: string }>();
   const navigate = useNavigate();
   const [a, setA] = useState<Author | null>(null);
@@ -159,7 +162,7 @@ export function AuthorPage({ viewerBase = '/dashboard/viewer' }: { viewerBase?: 
           <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
             {a.articles.map(art => (
               <div key={art.id} className="group px-5 py-4">
-                <Link to={`${viewerBase}/${art.id}`}
+                <Link to={`${articleBase}/${art.id}`}
                   className="block font-medium leading-snug text-slate-800 group-hover:text-blue-600">
                   {art.title}
                 </Link>
@@ -169,7 +172,7 @@ export function AuthorPage({ viewerBase = '/dashboard/viewer' }: { viewerBase?: 
                     <>
                       <span className="text-slate-300">·</span>
                       {art.journalIssn
-                        ? <Link to={`/journal/${encodeURIComponent(art.journalIssn)}`}
+                        ? <Link to={`${journalBase}/${encodeURIComponent(art.journalIssn)}`}
                             className="font-medium hover:text-blue-600">{art.journalName}</Link>
                         : <span>{art.journalName}</span>}
                     </>

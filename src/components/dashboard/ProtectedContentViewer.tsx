@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeft,
@@ -157,6 +157,11 @@ export function ProtectedContentViewer() {
   const [searchParams] = useSearchParams();
 
   // Content meta
+  // '/dashboard/viewer/:id' and '/institution/viewer/:id' both land here; the
+  // catalogue links have to stay inside whichever section the reader is in.
+  const { pathname } = useLocation();
+  const libBase = pathname.startsWith('/institution') ? '/institution' : '/dashboard';
+
   const [content, setContent] = useState<any>(null);
   const [loadingMeta, setLoadingMeta] = useState(true);
   const [metaError, setMetaError] = useState<string | null>(null);
@@ -473,7 +478,29 @@ export function ProtectedContentViewer() {
             <h1 className={`font-bold leading-tight line-clamp-1 text-sm sm:text-base ${darkMode ? 'text-white' : 'text-slate-900'}`}>
               {content?.title}
             </h1>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">{content?.contentType}</p>
+            {/* The way back into the catalogue: which journal this came from, and
+                its full record. Without this the reader is a dead end. */}
+            <p className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider font-semibold truncate">
+              <span className="shrink-0">{content?.contentType}</span>
+              {content?.journalIssn && content?.journalName && (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <Link to={`${libBase}/journal/${encodeURIComponent(content.journalIssn)}`}
+                    className="truncate normal-case tracking-normal text-blue-500 hover:underline">
+                    {content.journalName}
+                  </Link>
+                </>
+              )}
+              {content?.kind === 'article' && (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <Link to={`${libBase}/article/${id}`}
+                    className="shrink-0 normal-case tracking-normal text-blue-500 hover:underline">
+                    Full record
+                  </Link>
+                </>
+              )}
+            </p>
           </div>
         </div>
 

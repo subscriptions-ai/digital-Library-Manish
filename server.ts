@@ -1708,7 +1708,20 @@ async function startServer() {
         } catch (e) { console.error('Activity log failed', e); }
       }
 
-      return res.json({ url: resolved.fileUrl, title: resolved.title, contentType: resolved.contentType });
+      // The reader also carries a way back into the catalogue — the journal it
+      // came from, and the full record — so no page in the library is a dead end.
+      const it: any = resolved.item;
+      return res.json({
+        url: resolved.fileUrl,
+        title: resolved.title,
+        contentType: resolved.contentType,
+        kind: resolved.kind,
+        journalName: it.journalName ?? null,
+        journalIssn: normaliseIssn(it.journalIssn) ?? null,
+        year: it.year ?? null,
+        volume: it.volume ?? null,
+        issue: it.issue ?? null,
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to view content" });
     }
@@ -5157,6 +5170,59 @@ async function startServer() {
     } catch (e: any) {
       console.error('GET library/author error:', e?.message);
       res.status(500).json({ error: "Failed to load author" });
+    }
+  });
+
+  /**
+   * One article, with everything that surrounds it.
+   *
+   * The viewer is a reading surface — zoom, progress, fullscreen — and putting
+   * bibliographic context inside it would clutter the reading. This is the
+   * record page instead: who wrote it, what it appeared in, and what sits beside
+   * it on the shelf. It also carries the source and rights the external audit
+   * asks every record to show.
+   */
+  app.get("/api/library/article/:id", async (req: any, res: any) => {
+    try {
+      const article = await (prisma as any).article.findUnique({
+        where: { id: req.params.id },
+        include: {
+          journal: { select: {
+            id: true, title: true, issn: true, publisherName: true, domain: true,
+            licence: true, licenceIsNC: true, firstYear: true, lastYear: true, volumeCount: true,
+          } },
+          authorLinks: {
+            select: { position: true, author: { select: { id: true, name: true, identitySource: true, articleCount: true } } },
+            orderBy: { position: 'asc' },
+          },
+        },
+      });
+      if (!article) return res.status(404).json({ error: "Article not found" });
+
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && article.domain && !scope.includes(article.domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+
+      // The rest of the issue — the other papers on the same rack.
+      const siblings = article.journalId && article.volume ? await (prisma as any).article.findMany({
+        where: {
+          journalId: article.journalId, volume: article.volume, issue: article.issue,
+          status: 'Published', NOT: { id: article.id },
+        },
+        select: { id: true, title: true, authors: true, pages: true },
+        take: 30,
+      }) : [];
+
+      res.json({
+        ...article,
+        authors_structured: article.authorLinks.map((l: any) => ({ ...l.author, position: l.position })),
+        authorLinks: undefined,
+        siblings,
+      });
+    } catch (e: any) {
+      console.error('GET library/article error:', e?.message);
+      res.status(500).json({ error: "Failed to load article" });
     }
   });
 

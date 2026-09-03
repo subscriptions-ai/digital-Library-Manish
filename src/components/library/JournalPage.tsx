@@ -51,7 +51,7 @@ function LicenceBadge({ licence, isNC }: { licence?: string | null; isNC?: boole
   );
 }
 
-function VolumeRow({ issn, vol, viewerBase }: { issn: string; vol: Volume; viewerBase: string }) {
+function VolumeRow({ issn, vol, articleBase }: { issn: string; vol: Volume; articleBase: string }) {
   const [open, setOpen] = useState(false);
   const [issues, setIssues] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -100,7 +100,7 @@ function VolumeRow({ issn, vol, viewerBase }: { issn: string; vol: Volume; viewe
               <ul className="space-y-2.5">
                 {iss.articles.map((a: any) => (
                   <li key={a.id} className="group">
-                    <Link to={`${viewerBase}/${a.id}`}
+                    <Link to={`${articleBase}/${a.id}`}
                       className="block text-sm font-medium leading-snug text-slate-800 group-hover:text-blue-600">
                       {a.title}
                     </Link>
@@ -123,7 +123,9 @@ function VolumeRow({ issn, vol, viewerBase }: { issn: string; vol: Volume; viewe
   );
 }
 
-export function JournalPage({ viewerBase = '/dashboard/viewer' }: { viewerBase?: string } = {}) {
+export function JournalPage({
+  articleBase = '/dashboard/article',
+}: { viewerBase?: string; articleBase?: string } = {}) {
   const { journalId } = useParams<{ journalId: string }>();
   const navigate = useNavigate();
   const [j, setJ] = useState<Journal | null>(null);
@@ -256,7 +258,7 @@ export function JournalPage({ viewerBase = '/dashboard/viewer' }: { viewerBase?:
         ) : (
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             {j.volumes.map(v => (
-              <VolumeRow key={v.volume} issn={j.issn || j.id} vol={v} viewerBase={viewerBase} />
+              <VolumeRow key={v.volume} issn={j.issn || j.id} vol={v} articleBase={articleBase} />
             ))}
           </div>
         )}
