@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { BookOpen, ChevronRight, ExternalLink, Loader2, User, Info } from 'lucide-react';
+import { ChevronRight, ExternalLink, Loader2 } from 'lucide-react';
 
 /**
  * A person, and everything of theirs the library holds.
@@ -33,6 +33,8 @@ const auth = (): Record<string, string> | undefined => {
   return t ? { Authorization: `Bearer ${t}` } : undefined;
 };
 
+const LABEL = 'font-mono text-[10.5px] uppercase tracking-wider text-faint';
+
 export function AuthorPage({
   journalBase = '/dashboard/journal',
   articleBase = '/dashboard/article',
@@ -57,7 +59,7 @@ export function AuthorPage({
   if (state === 'loading') {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="animate-spin text-slate-300" size={28} />
+        <Loader2 className="animate-spin text-faint" size={26} />
       </div>
     );
   }
@@ -65,8 +67,8 @@ export function AuthorPage({
   if (state === 'missing' || !a) {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Author not found</h1>
-        <button onClick={() => navigate(-1)} className="mt-6 text-sm font-bold text-blue-600 hover:underline">
+        <h1 className="font-serif text-xl font-medium text-ink">Author not found</h1>
+        <button onClick={() => navigate(-1)} className="mt-6 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
           Go back
         </button>
       </div>
@@ -74,57 +76,54 @@ export function AuthorPage({
   }
 
   const inferred = a.identitySource === 'NameMatch';
+  const total = a.articleCount ?? a.articles.length;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
+    <div className="min-h-full bg-ground">
       <Helmet><title>{a.name} | STM Digital Library</title></Helmet>
 
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-          <nav className="mb-5 flex items-center gap-1.5 text-xs font-medium text-slate-400">
-            <Link to="/digital-library" className="hover:text-slate-700">Library</Link>
-            <ChevronRight size={12} />
-            <span className="text-slate-600">Authors</span>
+      <header className="border-b border-rule bg-surface">
+        <div className="mx-auto max-w-5xl px-5 py-9">
+          <nav className="mb-5 flex items-center gap-1.5 font-mono text-[11px] text-faint">
+            <Link to="/digital-library" className="hover:text-accent">Library</Link>
+            <ChevronRight size={11} />
+            <span>Authors</span>
           </nav>
 
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-              <User size={26} />
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{a.name}</h1>
-              <p className="mt-1 text-sm text-slate-500">
-                {a.articleCount ?? a.articles.length} {(a.articleCount ?? a.articles.length) === 1 ? 'work' : 'works'} in this library
-                {a.affiliation && <> · {a.affiliation}</>}
-              </p>
-              {a.orcid && (
+          <h1 className="font-serif text-[28px] font-medium tracking-tight text-ink sm:text-[34px]">{a.name}</h1>
+
+          <p className="tnum mt-2 flex flex-wrap items-center gap-x-2 font-mono text-[12px] text-muted">
+            <span>{total} {total === 1 ? 'work' : 'works'} held</span>
+            {a.affiliation && <><span className="text-rule-2">·</span><span className="font-sans">{a.affiliation}</span></>}
+            {a.orcid && (
+              <>
+                <span className="text-rule-2">·</span>
                 <a href={`https://orcid.org/${a.orcid.replace(/^https?:\/\/orcid\.org\//, '')}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline">
-                  ORCID <ExternalLink size={11} />
+                  className="inline-flex items-center gap-1 text-accent hover:underline">
+                  ORCID <ExternalLink size={10} />
                 </a>
-              )}
-            </div>
-          </div>
+              </>
+            )}
+          </p>
 
           {inferred && (
-            <p className="mt-5 inline-flex max-w-2xl items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs leading-relaxed text-slate-500">
-              <Info size={13} className="mt-0.5 shrink-0 text-slate-400" />
+            <p className="mt-5 max-w-2xl rounded-md border border-rule bg-surface-2 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted">
               These works are grouped by name. Two researchers who publish under the same name will
               appear together here, and one who publishes under more than one spelling may appear twice.
             </p>
           )}
 
           {(a.journals.length > 0 || a.domains.length > 0) && (
-            <div className="mt-7 grid gap-6 sm:grid-cols-2">
+            <div className="mt-7 grid gap-7 sm:grid-cols-2">
               {a.journals.length > 0 && (
                 <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Publishes in</p>
-                  <ul className="space-y-1.5">
+                  <p className={LABEL}>Publishes in</p>
+                  <ul className="mt-2 space-y-1">
                     {a.journals.slice(0, 6).map(j => (
-                      <li key={j.name} className="flex items-baseline gap-2 text-sm">
-                        <span className="w-7 shrink-0 text-right font-bold tabular-nums text-slate-400">{j.count}</span>
-                        <span className="text-slate-700">{j.name}</span>
+                      <li key={j.name} className="flex items-baseline gap-3 text-[13.5px]">
+                        <span className="tnum w-7 shrink-0 text-right font-mono text-[12px] text-faint">{j.count}</span>
+                        <span className="text-ink-2">{j.name}</span>
                       </li>
                     ))}
                   </ul>
@@ -132,13 +131,13 @@ export function AuthorPage({
               )}
               {a.domains.length > 0 && (
                 <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Subject areas</p>
-                  <ul className="space-y-1.5">
+                  <p className={LABEL}>Subject areas</p>
+                  <ul className="mt-2 space-y-1">
                     {a.domains.slice(0, 6).map(d => (
-                      <li key={d.name} className="flex items-baseline gap-2 text-sm">
-                        <span className="w-7 shrink-0 text-right font-bold tabular-nums text-slate-400">{d.count}</span>
+                      <li key={d.name} className="flex items-baseline gap-3 text-[13.5px]">
+                        <span className="tnum w-7 shrink-0 text-right font-mono text-[12px] text-faint">{d.count}</span>
                         <Link to={`/domain/${d.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
-                          className="text-slate-700 hover:text-blue-600">{d.name}</Link>
+                          className="text-ink-2 hover:text-accent">{d.name}</Link>
                       </li>
                     ))}
                   </ul>
@@ -147,44 +146,42 @@ export function AuthorPage({
             </div>
           )}
         </div>
-      </section>
+      </header>
 
-      <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
-          <BookOpen size={18} className="text-blue-600" /> Works
-        </h2>
+      <section className="mx-auto max-w-5xl px-5 py-8">
+        <p className={LABEL}>Works</p>
 
         {a.articles.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
+          <div className="mt-3 rounded-md border border-rule bg-surface p-10 text-center text-sm text-muted">
             Nothing recorded for this author yet.
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            {a.articles.map(art => (
-              <div key={art.id} className="group px-5 py-4">
-                <Link to={`${articleBase}/${art.id}`}
-                  className="block font-medium leading-snug text-slate-800 group-hover:text-blue-600">
-                  {art.title}
-                </Link>
-                <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500">
-                  {art.year && <span className="tabular-nums">{art.year}</span>}
-                  {art.journalName && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      {art.journalIssn
+          <div className="mt-3 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-surface">
+            {a.articles.map((art, i) => (
+              <div key={art.id} className="flex gap-4 px-5 py-4">
+                <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{i + 1}</span>
+                <div className="min-w-0">
+                  <Link to={`${articleBase}/${art.id}`}
+                    className="block font-serif text-[16px] font-medium leading-snug text-ink hover:text-accent">
+                    {art.title}
+                  </Link>
+                  <p className="tnum mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
+                    {art.journalName && (
+                      art.journalIssn
                         ? <Link to={`${journalBase}/${encodeURIComponent(art.journalIssn)}`}
-                            className="font-medium hover:text-blue-600">{art.journalName}</Link>
-                        : <span>{art.journalName}</span>}
-                    </>
-                  )}
-                  {art.accessStatus === 'LinkOnly' && art.originalUrl && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <a href={art.originalUrl} target="_blank" rel="noopener noreferrer"
-                        className="font-semibold text-blue-600 hover:underline">read at publisher</a>
-                    </>
-                  )}
-                </p>
+                            className="text-ink-2 hover:text-accent hover:underline">{art.journalName}</Link>
+                        : <span className="text-ink-2">{art.journalName}</span>
+                    )}
+                    {art.year && <><span className="text-rule-2">·</span><span>{art.year}</span></>}
+                    {art.accessStatus === 'LinkOnly' && art.originalUrl && (
+                      <>
+                        <span className="text-rule-2">·</span>
+                        <a href={art.originalUrl} target="_blank" rel="noopener noreferrer"
+                          className="text-accent hover:underline">read at publisher</a>
+                      </>
+                    )}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

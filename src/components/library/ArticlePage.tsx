@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import {
-  BookOpen, Building2, ChevronRight, ExternalLink, FileText, Layers,
-  Loader2, Lock, ShieldCheck, User, Copy, Check,
-} from 'lucide-react';
+import { ChevronRight, ExternalLink, Loader2, Lock, Copy, Check } from 'lucide-react';
 
 /**
  * One article, and everything around it.
@@ -14,6 +11,9 @@ import {
  * page and not another reads as broken. It also carries source, identifier,
  * licence and a link to the publisher's own copy, which is what the external
  * audit asks every record to show.
+ *
+ * Set in the token palette, so it follows the app's theme without a single
+ * `dark:` twin.
  */
 
 type Author = { id: string; name: string; identitySource?: string; articleCount?: number; position: number };
@@ -42,12 +42,23 @@ const auth = (): Record<string, string> | undefined => {
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+const LABEL = 'font-mono text-[10.5px] uppercase tracking-wider text-faint';
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</dt>
-      <dd className="mt-0.5 text-sm text-slate-700">{children}</dd>
+    <div className="flex gap-3">
+      <dt className="w-[68px] shrink-0 text-[12.5px] text-muted">{label}</dt>
+      <dd className="tnum min-w-0 flex-1 text-[12.5px] text-ink-2">{children}</dd>
     </div>
+  );
+}
+
+function Panel({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-md border border-rule bg-surface p-5">
+      <p className={LABEL}>{label}</p>
+      <div className="mt-3">{children}</div>
+    </section>
   );
 }
 
@@ -79,27 +90,35 @@ export function ArticlePage({
   }, [articleId]);
 
   if (state === 'loading') {
-    return <div className="flex min-h-[50vh] items-center justify-center">
-      <Loader2 className="animate-spin text-slate-300" size={28} />
-    </div>;
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="animate-spin text-faint" size={26} />
+      </div>
+    );
   }
 
   if (state === 'denied') {
-    return <div className="mx-auto max-w-xl px-4 py-24 text-center">
-      <Lock className="mx-auto mb-4 text-slate-300" size={36} />
-      <h1 className="text-xl font-bold text-slate-900">Not in your subscription</h1>
-      <p className="mt-2 text-sm text-slate-500">This sits in a department your account does not cover.</p>
-      <Link to="/contact" className="mt-6 inline-block rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-700">
-        Request access
-      </Link>
-    </div>;
+    return (
+      <div className="mx-auto max-w-xl px-4 py-24 text-center">
+        <Lock className="mx-auto mb-4 text-faint" size={32} />
+        <h1 className="font-serif text-xl font-medium text-ink">Not in your subscription</h1>
+        <p className="mt-2 text-sm text-muted">This sits in a department your account does not cover.</p>
+        <Link to="/contact" className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
+          Request access
+        </Link>
+      </div>
+    );
   }
 
   if (state === 'missing' || !a) {
-    return <div className="mx-auto max-w-xl px-4 py-24 text-center">
-      <h1 className="text-xl font-bold text-slate-900">Article not found</h1>
-      <button onClick={() => navigate(-1)} className="mt-6 text-sm font-bold text-blue-600 hover:underline">Go back</button>
-    </div>;
+    return (
+      <div className="mx-auto max-w-xl px-4 py-24 text-center">
+        <h1 className="font-serif text-xl font-medium text-ink">Article not found</h1>
+        <button onClick={() => navigate(-1)} className="mt-6 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
+          Go back
+        </button>
+      </div>
+    );
   }
 
   const journalKey = a.journal?.issn || a.journalIssn || a.journal?.id;
@@ -111,144 +130,132 @@ export function ArticlePage({
   const rawAuthors = (a.authors || '').split(',').map(s => s.trim()).filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
+    <div className="min-h-full bg-ground">
       <Helmet>
         <title>{a.title} | STM Digital Library</title>
         {a.abstract && <meta name="description" content={a.abstract.slice(0, 155)} />}
       </Helmet>
 
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-4xl px-4 py-9 sm:px-6">
-          <nav className="mb-5 flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-400">
-            <Link to="/digital-library" className="hover:text-slate-700">Library</Link>
-            {a.domain && <>
-              <ChevronRight size={12} />
-              <Link to={`/domain/${slug(a.domain)}`} className="hover:text-slate-700">{a.domain}</Link>
-            </>}
-            {jName && journalKey && <>
-              <ChevronRight size={12} />
-              <Link to={`${journalBase}/${encodeURIComponent(journalKey)}`} className="hover:text-slate-700">{jName}</Link>
-            </>}
+      <header className="border-b border-rule bg-surface">
+        <div className="mx-auto max-w-4xl px-5 py-9">
+          <nav className="mb-5 flex flex-wrap items-center gap-1.5 font-mono text-[11px] text-faint">
+            <Link to="/digital-library" className="hover:text-accent">Library</Link>
+            {a.domain && (
+              <>
+                <ChevronRight size={11} />
+                <Link to={`/domain/${slug(a.domain)}`} className="hover:text-accent">{a.domain}</Link>
+              </>
+            )}
+            {jName && journalKey && (
+              <>
+                <ChevronRight size={11} />
+                <Link to={`${journalBase}/${encodeURIComponent(journalKey)}`} className="truncate hover:text-accent">{jName}</Link>
+              </>
+            )}
           </nav>
 
-          <h1 className="text-2xl font-extrabold leading-snug tracking-tight text-slate-900 sm:text-3xl">
+          <h1 className="font-serif text-[26px] font-medium leading-snug text-ink sm:text-[31px]">
             {a.title}
           </h1>
 
-          {/* Authors — every one a door */}
-          <p className="mt-3 text-sm leading-relaxed text-slate-600">
+          {/* Every author a door */}
+          <p className="mt-3 text-[14.5px] leading-relaxed text-ink-2">
             {a.authors_structured.length > 0
               ? a.authors_structured.map((au, i) => (
                   <React.Fragment key={au.id}>
-                    {i > 0 && <span className="text-slate-300"> · </span>}
-                    <Link to={`${authorBase}/${au.id}`} className="font-medium text-blue-600 hover:underline">
-                      {au.name}
-                    </Link>
+                    {i > 0 && <span className="text-faint"> · </span>}
+                    <Link to={`${authorBase}/${au.id}`} className="text-accent hover:underline">{au.name}</Link>
                   </React.Fragment>
                 ))
-              : rawAuthors.length ? rawAuthors.join(' · ') : <span className="text-slate-400">Author unrecorded</span>}
+              : rawAuthors.length ? rawAuthors.join(' · ') : <span className="text-faint">Author unrecorded</span>}
           </p>
 
-          {/* Where it appeared */}
-          {jName && (
-            <p className="mt-3 text-sm text-slate-600">
-              in{' '}
-              {journalKey
-                ? <Link to={`${journalBase}/${encodeURIComponent(journalKey)}`} className="font-semibold text-slate-800 hover:text-blue-600">{jName}</Link>
-                : <span className="font-semibold text-slate-800">{jName}</span>}
-              {a.volume && <> · Volume {a.volume}</>}
-              {a.issue && <> · Issue {a.issue}</>}
-              {a.year && <> · {a.year}</>}
-              {a.pages && <> · pp {a.pages}</>}
-            </p>
-          )}
+          {/* Where it appeared, set as a citation */}
+          <p className="tnum mt-2.5 flex flex-wrap items-center gap-x-2 font-mono text-[12px] text-muted">
+            {jName && (
+              journalKey
+                ? <Link to={`${journalBase}/${encodeURIComponent(journalKey)}`} className="text-ink-2 hover:text-accent hover:underline">{jName}</Link>
+                : <span className="text-ink-2">{jName}</span>
+            )}
+            {a.volume && <><span className="text-rule-2">·</span><span>{a.volume}{a.issue ? `(${a.issue})` : ''}</span></>}
+            {a.year && <><span className="text-rule-2">·</span><span>{a.year}</span></>}
+            {a.pages && <><span className="text-rule-2">·</span><span>pp {a.pages}</span></>}
+          </p>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             {canRead ? (
               <Link to={`${viewerBase}/${a.id}`}
-                className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-700">
-                <BookOpen size={16} /> Read full text
+                className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
+                Read full text
               </Link>
             ) : a.originalUrl ? (
               <a href={a.originalUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-slate-800">
-                Read at publisher <ExternalLink size={15} />
+                className="inline-flex items-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
+                Read at publisher <ExternalLink size={14} />
               </a>
             ) : (
-              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-400">
-                <Lock size={15} /> No full text held
+              <span className="inline-flex items-center gap-2 rounded-md border border-rule-2 px-4 py-2.5 text-sm text-faint">
+                <Lock size={14} /> No full text held
               </span>
             )}
             {doiUrl && (
               <button
                 onClick={() => { navigator.clipboard?.writeText(doiUrl); setCopied(true); setTimeout(() => setCopied(false), 1600); }}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50">
-                {copied ? <><Check size={15} className="text-emerald-600" /> Copied</> : <><Copy size={15} /> Copy DOI</>}
+                className="inline-flex items-center gap-1.5 rounded-md border border-rule-2 px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider text-muted hover:border-accent hover:text-accent">
+                {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy DOI</>}
               </button>
             )}
           </div>
         </div>
-      </section>
+      </header>
 
-      <div className="mx-auto grid max-w-4xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="mx-auto grid max-w-4xl gap-5 px-5 py-8 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
           {a.abstract && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h2 className="mb-3 text-sm font-bold text-slate-900">Abstract</h2>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{a.abstract}</p>
-            </div>
+            <Panel label="Abstract">
+              <p className="whitespace-pre-wrap text-[14.5px] leading-relaxed text-ink-2">{a.abstract}</p>
+            </Panel>
           )}
 
           {/* The rest of the rack */}
           {a.siblings.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-100 px-6 py-4">
-                <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                  <Layers size={15} className="text-blue-600" />
-                  Also in this issue
-                </h2>
+            <section className="rounded-md border border-rule bg-surface">
+              <div className="border-b border-rule px-5 py-3.5">
+                <p className={LABEL}>Also in this issue</p>
               </div>
-              <ul className="divide-y divide-slate-50">
+              <ul className="divide-y divide-rule">
                 {a.siblings.map(s => (
-                  <li key={s.id} className="group px-6 py-3.5">
+                  <li key={s.id} className="px-5 py-3">
                     <Link to={`${articleBase}/${s.id}`}
-                      className="block text-sm font-medium leading-snug text-slate-800 group-hover:text-blue-600">
+                      className="block font-serif text-[15px] leading-snug text-ink-2 hover:text-accent">
                       {s.title}
                     </Link>
-                    {s.authors && <p className="mt-0.5 text-xs text-slate-500">{s.authors}</p>}
+                    {s.authors && <p className="mt-0.5 text-[12.5px] text-muted">{s.authors}</p>}
                   </li>
                 ))}
               </ul>
-            </div>
+            </section>
           )}
         </div>
 
-        {/* Source & rights — what the audit asks every record to show */}
-        <aside className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-900">
-              <ShieldCheck size={15} className="text-blue-600" /> Source &amp; rights
-            </h2>
-            <dl className="space-y-3.5">
+        {/* Source and rights — what the audit asks every record to show */}
+        <aside className="space-y-5">
+          <Panel label="Source &amp; rights">
+            <dl className="space-y-2">
               {(a.publisherName || a.journal?.publisherName) && (
-                <Field label="Publisher">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Building2 size={13} className="text-slate-400" />
-                    {a.publisherName || a.journal?.publisherName}
-                  </span>
-                </Field>
+                <Field label="Publisher"><span className="font-sans">{a.publisherName || a.journal?.publisherName}</span></Field>
               )}
               {(a.journal?.issn || a.journalIssn) && (
-                <Field label="ISSN"><span className="font-mono text-xs">{a.journal?.issn || a.journalIssn}</span></Field>
+                <Field label="ISSN"><span className="font-mono">{a.journal?.issn || a.journalIssn}</span></Field>
               )}
-              {a.doi && <Field label="DOI"><span className="break-all font-mono text-xs">{a.doi}</span></Field>}
+              {a.doi && <Field label="DOI"><span className="break-all font-mono">{a.doi}</span></Field>}
               {a.year && <Field label="Published">{a.year}</Field>}
               <Field label="Licence">
                 {a.licence
-                  ? <span className={a.licenceIsNC ? 'font-semibold text-amber-700' : 'font-semibold text-emerald-700'}>
+                  ? <span className={a.licenceIsNC ? 'text-caution' : 'text-accent'}>
                       {a.licence}{a.licenceIsNC && ' — non-commercial'}
                     </span>
-                  : <span className="text-slate-400">Not recorded</span>}
+                  : <span className="text-faint">Not recorded</span>}
               </Field>
               <Field label="Access">
                 {a.accessStatus === 'ViewableHere' ? 'Readable here'
@@ -256,52 +263,46 @@ export function ArticlePage({
                   : a.accessStatus === 'MetadataOnly' ? 'Catalogue entry only'
                   : 'As held'}
               </Field>
-              {a.rightsHolder && <Field label="Rights holder">{a.rightsHolder}</Field>}
+              {a.rightsHolder && <Field label="Rights"><span className="font-sans">{a.rightsHolder}</span></Field>}
               {a.originalUrl && (
                 <Field label="Original">
                   <a href={a.originalUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 break-all text-xs font-semibold text-blue-600 hover:underline">
-                    Publisher's copy <ExternalLink size={11} className="shrink-0" />
+                    className="inline-flex items-center gap-1 break-all text-accent hover:underline">
+                    Publisher&rsquo;s copy <ExternalLink size={10} className="shrink-0" />
                   </a>
                 </Field>
               )}
             </dl>
-          </div>
+          </Panel>
 
           {a.journal && journalKey && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-900">
-                <FileText size={15} className="text-blue-600" /> This journal
-              </h2>
+            <Panel label="This journal">
               <Link to={`${journalBase}/${encodeURIComponent(journalKey)}`}
-                className="text-sm font-semibold text-slate-800 hover:text-blue-600">
+                className="font-serif text-[15px] font-medium leading-snug text-ink hover:text-accent">
                 {a.journal.title}
               </Link>
-              <p className="mt-1 text-xs text-slate-500">
-                {a.journal.firstYear && a.journal.lastYear && <>{a.journal.firstYear}–{a.journal.lastYear} · </>}
+              <p className="tnum mt-1.5 font-mono text-[11px] text-muted">
+                {a.journal.firstYear && a.journal.lastYear && <>{a.journal.firstYear}&ndash;{a.journal.lastYear} · </>}
                 {a.journal.volumeCount ?? 0} volumes held
               </p>
-            </div>
+            </Panel>
           )}
 
           {a.authors_structured.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-900">
-                <User size={15} className="text-blue-600" /> Authors
-              </h2>
-              <ul className="space-y-2">
+            <Panel label="Authors">
+              <ul className="space-y-1.5">
                 {a.authors_structured.map(au => (
-                  <li key={au.id}>
-                    <Link to={`${authorBase}/${au.id}`} className="text-sm font-medium text-blue-600 hover:underline">
+                  <li key={au.id} className="flex items-baseline justify-between gap-3">
+                    <Link to={`${authorBase}/${au.id}`} className="text-[13.5px] text-accent hover:underline">
                       {au.name}
                     </Link>
                     {typeof au.articleCount === 'number' && au.articleCount > 1 && (
-                      <span className="ml-1.5 text-xs text-slate-400">{au.articleCount} works here</span>
+                      <span className="tnum shrink-0 font-mono text-[11px] text-faint">{au.articleCount}</span>
                     )}
                   </li>
                 ))}
               </ul>
-            </div>
+            </Panel>
           )}
         </aside>
       </div>

@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import {
-  Building2, Calendar, ChevronRight, ChevronDown, ExternalLink,
-  Layers, Loader2, ShieldCheck, Lock, FileText,
-} from 'lucide-react';
+import { ChevronRight, ChevronDown, ExternalLink, Loader2, Lock } from 'lucide-react';
 
 /**
  * A journal, and its run of volumes.
@@ -31,21 +28,21 @@ const auth = (): Record<string, string> | undefined => {
   return t ? { Authorization: `Bearer ${t}` } : undefined;
 };
 
+const LABEL = 'font-mono text-[10.5px] uppercase tracking-wider text-faint';
+
 /** Access follows from the licence, so it is stated plainly rather than implied. */
-function LicenceBadge({ licence, isNC }: { licence?: string | null; isNC?: boolean | null }) {
+function LicenceMark({ licence, isNC }: { licence?: string | null; isNC?: boolean | null }) {
   if (!licence) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-500">
-        <Lock size={11} /> Licence not recorded
+      <span className="inline-flex items-center gap-1.5 rounded-[3px] border border-rule-2 px-2 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted">
+        <Lock size={10} /> Licence not recorded
       </span>
     );
   }
   const ok = !isNC;
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold ${
-      ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-         : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
-      <ShieldCheck size={11} />
+    <span className={`inline-flex items-center gap-1.5 rounded-[3px] border px-2 py-[3px] font-mono text-[10.5px] uppercase tracking-wide ${
+      ok ? 'border-accent bg-accent-soft text-accent' : 'border-caution bg-caution-soft text-caution'}`}>
       {licence}{!ok && ' · read at publisher'}
     </span>
   );
@@ -74,42 +71,40 @@ function VolumeRow({ issn, vol, articleBase }: { issn: string; vol: Volume; arti
   };
 
   return (
-    <div className="border-b border-slate-100 last:border-0">
+    <div>
       <button onClick={toggle}
-        className="flex w-full items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-slate-50">
-        {open ? <ChevronDown size={16} className="shrink-0 text-slate-400" />
-              : <ChevronRight size={16} className="shrink-0 text-slate-400" />}
-        <span className="w-24 shrink-0 font-bold text-slate-900">Volume {vol.volume}</span>
-        <span className="w-16 shrink-0 text-sm tabular-nums text-slate-500">{vol.year ?? '—'}</span>
-        <span className="text-sm text-slate-500">
+        className="flex w-full items-center gap-4 px-5 py-3 text-left hover:bg-surface-2">
+        {open ? <ChevronDown size={14} className="shrink-0 text-faint" />
+              : <ChevronRight size={14} className="shrink-0 text-faint" />}
+        <span className="tnum w-24 shrink-0 font-mono text-[13px] text-ink">Vol {vol.volume}</span>
+        <span className="tnum w-14 shrink-0 font-mono text-[12px] text-muted">{vol.year ?? '—'}</span>
+        <span className="tnum font-mono text-[12px] text-muted">
           {vol.issues} {vol.issues === 1 ? 'issue' : 'issues'} · {vol.articles} articles
         </span>
       </button>
 
       {open && (
-        <div className="bg-slate-50/70 px-5 pb-4 pl-14">
-          {loading && <p className="py-3 text-sm text-slate-400">Loading…</p>}
+        <div className="border-t border-rule bg-surface-2/60 px-5 pb-4 pl-14">
+          {loading && <p className="py-3 font-mono text-[12px] text-faint">Loading…</p>}
           {issues?.length === 0 && !loading && (
-            <p className="py-3 text-sm text-slate-400">Nothing recorded in this volume yet.</p>
+            <p className="py-3 font-mono text-[12px] text-faint">Nothing recorded in this volume yet.</p>
           )}
           {issues?.map(iss => (
             <div key={iss.issue} className="py-3">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Issue {iss.issue} — {iss.articles.length} articles
-              </p>
-              <ul className="space-y-2.5">
+              <p className={LABEL}>Issue {iss.issue} — {iss.articles.length} articles</p>
+              <ul className="mt-2 space-y-2.5">
                 {iss.articles.map((a: any) => (
-                  <li key={a.id} className="group">
+                  <li key={a.id}>
                     <Link to={`${articleBase}/${a.id}`}
-                      className="block text-sm font-medium leading-snug text-slate-800 group-hover:text-blue-600">
+                      className="block font-serif text-[15px] leading-snug text-ink-2 hover:text-accent">
                       {a.title}
                     </Link>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-0.5 text-[12.5px] text-muted">
                       {a.authors || 'Author unrecorded'}
-                      {a.pages && <> · pp {a.pages}</>}
+                      {a.pages && <span className="tnum font-mono"> · pp {a.pages}</span>}
                       {a.accessStatus === 'LinkOnly' && a.originalUrl && (
                         <> · <a href={a.originalUrl} target="_blank" rel="noopener noreferrer"
-                              className="font-semibold text-blue-600 hover:underline">read at publisher</a></>
+                              className="text-accent hover:underline">read at publisher</a></>
                       )}
                     </p>
                   </li>
@@ -147,7 +142,7 @@ export function JournalPage({
   if (state === 'loading') {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="animate-spin text-slate-300" size={28} />
+        <Loader2 className="animate-spin text-faint" size={26} />
       </div>
     );
   }
@@ -155,13 +150,10 @@ export function JournalPage({
   if (state === 'denied') {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <Lock className="mx-auto mb-4 text-slate-300" size={36} />
-        <h1 className="text-xl font-bold text-slate-900">Not in your subscription</h1>
-        <p className="mt-2 text-sm text-slate-500">
-          This journal sits in a department your account does not cover.
-        </p>
-        <Link to="/contact"
-          className="mt-6 inline-block rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-700">
+        <Lock className="mx-auto mb-4 text-faint" size={32} />
+        <h1 className="font-serif text-xl font-medium text-ink">Not in your subscription</h1>
+        <p className="mt-2 text-sm text-muted">This journal sits in a department your account does not cover.</p>
+        <Link to="/contact" className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
           Request access
         </Link>
       </div>
@@ -171,92 +163,83 @@ export function JournalPage({
   if (state === 'missing' || !j) {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Journal not found</h1>
-        <button onClick={() => navigate(-1)} className="mt-6 text-sm font-bold text-blue-600 hover:underline">
+        <h1 className="font-serif text-xl font-medium text-ink">Journal not found</h1>
+        <button onClick={() => navigate(-1)} className="mt-6 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
           Go back
         </button>
       </div>
     );
   }
 
-  const coverage = j.firstYear && j.lastYear ? `${j.firstYear}–${j.lastYear}` : null;
   const domainSlug = j.domain ? j.domain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
+    <div className="min-h-full bg-ground">
       <Helmet>
         <title>{j.title} | STM Digital Library</title>
         {j.description && <meta name="description" content={j.description.slice(0, 155)} />}
       </Helmet>
 
       {/* The spine */}
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-          <nav className="mb-5 flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-400">
-            <Link to="/digital-library" className="hover:text-slate-700">Library</Link>
+      <header className="border-b border-rule bg-surface">
+        <div className="mx-auto max-w-5xl px-5 py-9">
+          <nav className="mb-5 flex flex-wrap items-center gap-1.5 font-mono text-[11px] text-faint">
+            <Link to="/digital-library" className="hover:text-accent">Library</Link>
             {j.domain && domainSlug && (
               <>
-                <ChevronRight size={12} />
-                <Link to={`/domain/${domainSlug}`} className="hover:text-slate-700">{j.domain}</Link>
+                <ChevronRight size={11} />
+                <Link to={`/domain/${domainSlug}`} className="hover:text-accent">{j.domain}</Link>
               </>
             )}
           </nav>
 
-          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl">
+          <h1 className="font-serif text-[28px] font-medium leading-tight text-ink sm:text-[36px]">
             {j.title}
           </h1>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600">
-            {j.publisherName && (
-              <span className="inline-flex items-center gap-1.5">
-                <Building2 size={14} className="text-slate-400" />{j.publisherName}
-              </span>
-            )}
-            {j.issn && <span className="font-mono text-xs">ISSN {j.issn}</span>}
-            {coverage && (
-              <span className="inline-flex items-center gap-1.5">
-                <Calendar size={14} className="text-slate-400" />{coverage}
-              </span>
-            )}
+          <p className="tnum mt-3 flex flex-wrap items-center gap-x-2 font-mono text-[12px] text-muted">
+            {j.publisherName && <span className="text-ink-2">{j.publisherName}</span>}
+            {j.issn && <><span className="text-rule-2">·</span><span>ISSN {j.issn}</span></>}
+            {j.firstYear && j.lastYear && <><span className="text-rule-2">·</span><span>{j.firstYear}–{j.lastYear}</span></>}
             {j.homepage && (
-              <a href={j.homepage} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 font-semibold text-blue-600 hover:underline">
-                Publisher site <ExternalLink size={12} />
-              </a>
+              <>
+                <span className="text-rule-2">·</span>
+                <a href={j.homepage} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-accent hover:underline">
+                  Publisher site <ExternalLink size={10} />
+                </a>
+              </>
             )}
-          </div>
+          </p>
 
-          <div className="mt-4"><LicenceBadge licence={j.licence} isNC={j.licenceIsNC} /></div>
+          <div className="mt-4"><LicenceMark licence={j.licence} isNC={j.licenceIsNC} /></div>
 
           {j.description && (
-            <p className="mt-5 max-w-2xl text-sm leading-relaxed text-slate-600">{j.description}</p>
+            <p className="mt-5 max-w-2xl text-[14.5px] leading-relaxed text-ink-2">{j.description}</p>
           )}
 
-          <div className="mt-7 grid max-w-lg grid-cols-3 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
+          <dl className="mt-7 flex flex-wrap gap-x-10 gap-y-3">
             {([['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]] as const).map(([label, n]) => (
-              <div key={label} className="bg-white px-4 py-3">
-                <p className="text-xl font-bold tabular-nums text-slate-900">{Number(n ?? 0).toLocaleString()}</p>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+              <div key={label}>
+                <dt className={LABEL}>{label}</dt>
+                <dd className="tnum mt-0.5 font-mono text-[17px] text-ink">{Number(n ?? 0).toLocaleString()}</dd>
               </div>
             ))}
-          </div>
+          </dl>
         </div>
-      </section>
+      </header>
 
       {/* The run */}
-      <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
-          <Layers size={18} className="text-blue-600" /> Volumes
-        </h2>
+      <section className="mx-auto max-w-5xl px-5 py-8">
+        <p className={LABEL}>Volumes</p>
 
         {j.volumes.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
-            <FileText className="mx-auto mb-3 text-slate-300" size={30} />
-            <p className="text-sm font-semibold text-slate-500">No volumes recorded yet</p>
-            <p className="mt-1 text-xs text-slate-400">Articles appear here as the collection is built.</p>
+          <div className="mt-3 rounded-md border border-rule bg-surface p-10 text-center">
+            <p className="text-sm text-muted">No volumes recorded yet</p>
+            <p className="mt-1 font-mono text-[11px] text-faint">Articles appear here as the collection is built.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="mt-3 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-surface">
             {j.volumes.map(v => (
               <VolumeRow key={v.volume} issn={j.issn || j.id} vol={v} articleBase={articleBase} />
             ))}
