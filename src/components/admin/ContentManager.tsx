@@ -3,7 +3,7 @@ import { Search, Filter, Plus, Edit, Trash2, Eye, ExternalLink } from 'lucide-re
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
-import { DOMAINS } from '../../constants';
+import { DOMAINS, contentEditPath } from '../../constants';
 const CONTENT_TYPES = ['Books', 'Periodicals', 'Magazines', 'Case Reports', 'Theses', 'Conference Proceedings', 'Educational Videos', 'Newsletters'];
 
 export function ContentManager() {
@@ -194,7 +194,11 @@ export function ContentManager() {
                         </button>
                         <button 
                           title="Edit"
-                          onClick={() => navigate(`/admin/content/${item.id}`)}
+                          onClick={() => {
+                            const to = contentEditPath(item.contentType, item.id);
+                            if (to) navigate(to);
+                            else toast.error(`No editor for ${item.contentType || 'this type'}`);
+                          }}
                           className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                         >
                           <Edit size={16} />

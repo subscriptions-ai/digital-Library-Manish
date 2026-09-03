@@ -5075,9 +5075,17 @@ async function startServer() {
     } catch (e: any) { res.status(500).json({ error: "Failed to load facets" }); }
   });
 
+  // Sorting a result set is the server's job. Ordering the twenty rows already
+  // sent meant page two started the ordering again.
+  const orderFor = (sort: any): any[] => {
+    if (sort === 'oldest') return [{ year: 'asc' }, { createdAt: 'asc' }];
+    if (sort === 'title') return [{ title: 'asc' }];
+    return [{ year: 'desc' }, { createdAt: 'desc' }];
+  };
+
   app.get("/api/library/articles", async (req: any, res: any) => {
     try {
-      const { domain, journalId, journalIds, journalIssn, publisher, year, volume, issue, search, page = '1', limit = '20' } = req.query;
+      const { domain, journalId, journalIds, journalIssn, publisher, year, volume, issue, search, oa, sort, page = '1', limit = '20' } = req.query;
       const where: any = { status: 'Published' };
       applyDomainScope(where, domain, await libraryScopeDomains(req));
       const jidList = journalIds ? String(journalIds).split(',').filter(Boolean) : [];
@@ -5089,13 +5097,17 @@ async function startServer() {
       if (volume) where.volume = String(volume);
       if (issue) where.issue = String(issue);
       if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
+      // Open access narrowed the page the client had already been given, so a
+      // page of twelve could show three while the header still claimed 27,056.
+      // It belongs in the query, with the count.
+      if (oa === '1') where.accessType = { in: ['OpenAccess', 'Free'] };
       const take = Math.min(parseInt(limit as string) || 20, 100);
       const skip = ((parseInt(page as string) || 1) - 1) * take;
       // Join the journal so the metadata popup can show ISSN/eISSN even when the
       // denormalized copy on the article is missing (older ingests didn't set it).
       const [data, total] = await Promise.all([
         (prisma as any).article.findMany({
-          where, orderBy: [{ year: 'desc' }, { createdAt: 'desc' }], skip, take,
+          where, orderBy: orderFor(sort), skip, take,
           include: { journal: { select: { title: true, issn: true, eissn: true, subject: true, publisherName: true } } },
         }),
         (prisma as any).article.count({ where }),
@@ -5345,14 +5357,15 @@ async function startServer() {
 
   app.get("/api/library/books", async (req: any, res: any) => {
     try {
-      const { domain, search, page = '1', limit = '20' } = req.query;
+      const { domain, search, oa, sort, page = '1', limit = '20' } = req.query;
       const where: any = { status: 'Published' };
       applyDomainScope(where, domain, await libraryScopeDomains(req));
       if (search) where.title = { contains: search as string, mode: 'insensitive' };
+      if (oa === '1') where.accessType = { in: ['OpenAccess', 'Free'] };
       const take = Math.min(parseInt(limit as string) || 20, 100);
       const skip = ((parseInt(page as string) || 1) - 1) * take;
       const [data, total] = await Promise.all([
-        (prisma as any).book.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take, include: { chapters: true } }),
+        (prisma as any).book.findMany({ where, orderBy: orderFor(sort), skip, take, include: { chapters: true } }),
         (prisma as any).book.count({ where }),
       ]);
       res.json({ data, total, page: parseInt(page as string) || 1, limit: take });

@@ -436,3 +436,27 @@ export const PUBLISHER_BENEFITS = [
   { title: "Brand Authority", description: "List alongside top-tier publishers and enhance your journal's academic standing.", icon: "Award" },
 ];
 
+
+/**
+ * Which admin module edits which content type.
+ *
+ * The editor lives at /admin/<slug>/:id. Anything that links to "edit this
+ * item" has to route through here — the Content Manager's Edit button pointed
+ * at /admin/content/:id, which is not a route, so it landed on Not Found.
+ */
+export const CONTENT_MODULES: { slug: string; contentType: string }[] = [
+  { slug: 'books',                  contentType: 'Books'                  },
+  { slug: 'periodicals',            contentType: 'Periodicals'            },
+  { slug: 'magazines',              contentType: 'Magazines'              },
+  { slug: 'case-reports',           contentType: 'Case Reports'           },
+  { slug: 'theses',                 contentType: 'Theses'                 },
+  { slug: 'conference-proceedings', contentType: 'Conference Proceedings' },
+  { slug: 'educational-videos',     contentType: 'Educational Videos'     },
+  { slug: 'newsletters',            contentType: 'Newsletters'            },
+];
+
+/** The edit URL for a content row, or null when its type has no module. */
+export function contentEditPath(contentType?: string | null, id?: string): string | null {
+  const m = CONTENT_MODULES.find(x => x.contentType === contentType);
+  return m && id ? `/admin/${m.slug}/${id}` : null;
+}

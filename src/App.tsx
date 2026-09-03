@@ -80,16 +80,7 @@ import { EmailVerificationsPage } from './components/admin/EmailVerificationsPag
 import { AdminEmailSettings } from './components/admin/settings/AdminEmailSettings';
 import { DetailedAnalyticsPage } from './components/admin/dashboard/DetailedAnalyticsPage';
 
-const CONTENT_MODULES = [
-  { slug: 'books',                  contentType: 'Books'                   },
-  { slug: 'periodicals',            contentType: 'Periodicals'             },
-  { slug: 'magazines',              contentType: 'Magazines'               },
-  { slug: 'case-reports',           contentType: 'Case Reports'            },
-  { slug: 'theses',                 contentType: 'Theses'                  },
-  { slug: 'conference-proceedings', contentType: 'Conference Proceedings'  },
-  { slug: 'educational-videos',     contentType: 'Educational Videos'      },
-  { slug: 'newsletters',            contentType: 'Newsletters'             },
-];
+import { CONTENT_MODULES } from "./constants";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import { DashboardLayout } from "./components/DashboardLayout";

@@ -15023,9 +15023,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to load facets" });
     }
   });
+  const orderFor = (sort) => {
+    if (sort === "oldest") return [{ year: "asc" }, { createdAt: "asc" }];
+    if (sort === "title") return [{ title: "asc" }];
+    return [{ year: "desc" }, { createdAt: "desc" }];
+  };
   app.get("/api/library/articles", async (req, res) => {
     try {
-      const { domain, journalId, journalIds, journalIssn, publisher, year, volume, issue, search, page = "1", limit = "20" } = req.query;
+      const { domain, journalId, journalIds, journalIssn, publisher, year, volume, issue, search, oa, sort, page = "1", limit = "20" } = req.query;
       const where = { status: "Published" };
       applyDomainScope(where, domain, await libraryScopeDomains(req));
       const jidList = journalIds ? String(journalIds).split(",").filter(Boolean) : [];
@@ -15037,12 +15042,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (volume) where.volume = String(volume);
       if (issue) where.issue = String(issue);
       if (search) where.OR = [{ title: { contains: search, mode: "insensitive" } }, { authors: { contains: search, mode: "insensitive" } }];
+      if (oa === "1") where.accessType = { in: ["OpenAccess", "Free"] };
       const take = Math.min(parseInt(limit) || 20, 100);
       const skip = ((parseInt(page) || 1) - 1) * take;
       const [data, total] = await Promise.all([
         prisma3.article.findMany({
           where,
-          orderBy: [{ year: "desc" }, { createdAt: "desc" }],
+          orderBy: orderFor(sort),
           skip,
           take,
           include: { journal: { select: { title: true, issn: true, eissn: true, subject: true, publisherName: true } } }
@@ -15280,14 +15286,15 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/library/books", async (req, res) => {
     try {
-      const { domain, search, page = "1", limit = "20" } = req.query;
+      const { domain, search, oa, sort, page = "1", limit = "20" } = req.query;
       const where = { status: "Published" };
       applyDomainScope(where, domain, await libraryScopeDomains(req));
       if (search) where.title = { contains: search, mode: "insensitive" };
+      if (oa === "1") where.accessType = { in: ["OpenAccess", "Free"] };
       const take = Math.min(parseInt(limit) || 20, 100);
       const skip = ((parseInt(page) || 1) - 1) * take;
       const [data, total] = await Promise.all([
-        prisma3.book.findMany({ where, orderBy: { createdAt: "desc" }, skip, take, include: { chapters: true } }),
+        prisma3.book.findMany({ where, orderBy: orderFor(sort), skip, take, include: { chapters: true } }),
         prisma3.book.count({ where })
       ]);
       res.json({ data, total, page: parseInt(page) || 1, limit: take });

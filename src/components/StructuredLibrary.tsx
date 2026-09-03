@@ -103,6 +103,15 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
     journalsSig.current = sig;
   }, [mode, kind, domain, recentOnly, publisher]);
 
+  // Narrowing or reordering changes what the first page holds, so page 20 of the
+  // old result set is not a place to stay.
+  const narrowSig = useRef<string | null>(null);
+  useEffect(() => {
+    const sig = `${oaOnly}|${sort}`;
+    if (narrowSig.current !== null && narrowSig.current !== sig) setPage(1);
+    narrowSig.current = sig;
+  }, [oaOnly, sort]);
+
   const jidsKey = selJournalIds.join(',');
 
   // Mirror all filters into the URL query string (replace, so it doesn't spam history).
@@ -160,28 +169,28 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
       if (aSubjects.length) q.set('subjectArea', aSubjects.join(','));
       if (aTags.length) q.set('tag', aTags.join(','));
       url = `/api/content/list?${q}`;
-    } else if (kind === 'books') {
-      url = `/api/library/books?${q}`;
     } else {
-      if (publisher) q.set('publisher', publisher);
-      if (selJournalIds.length) q.set('journalIds', jidsKey);
-      if (year) q.set('year', year);
-      if (selJournalIds.length === 1) { if (volume) q.set('volume', volume); if (issue) q.set('issue', issue); }
-      url = `/api/library/articles?${q}`;
+      // Open access and sort go to the server. Filtering the page it had just
+      // sent back showed three results under a heading claiming 27,056, and
+      // ordering those rows restarted the order on every page.
+      if (oaOnly) q.set('oa', '1');
+      if (sort !== 'newest') q.set('sort', sort);
+      if (kind === 'books') {
+        url = `/api/library/books?${q}`;
+      } else {
+        if (publisher) q.set('publisher', publisher);
+        if (selJournalIds.length) q.set('journalIds', jidsKey);
+        if (year) q.set('year', year);
+        if (selJournalIds.length === 1) { if (volume) q.set('volume', volume); if (issue) q.set('issue', issue); }
+        url = `/api/library/articles?${q}`;
+      }
     }
     fetch(url, authOpts()).then(r => r.json())
       .then(d => { setItems(d.data || []); setTotal(d.total || 0); })
       .catch(() => setItems([])).finally(() => setLoading(false));
-  }, [mode, kind, domain, publisher, jidsKey, year, volume, issue, debounced, page, aType, aSubjects, aTags]);
+  }, [mode, kind, domain, publisher, jidsKey, year, volume, issue, debounced, page, aType, aSubjects, aTags, oaOnly, sort]);
 
-  const displayed = useMemo(() => {
-    let list = [...items];
-    if (oaOnly) list = list.filter(i => ['OpenAccess', 'Free'].includes(i.accessType));
-    if (sort === 'oldest') list.sort((a, b) => (a.year || 0) - (b.year || 0));
-    else if (sort === 'title') list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    else list.sort((a, b) => (b.year || 0) - (a.year || 0));
-    return list;
-  }, [items, oaOnly, sort]);
+  const displayed = items;
 
   const filteredJournals = journalQuery ? journals.filter(j => j.title?.toLowerCase().includes(journalQuery.toLowerCase())) : journals;
   const selJournals = journals.filter(j => selJournalIds.includes(j.id));
@@ -391,9 +400,11 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-faint hidden sm:block">Sort</span>
-              <select value={sort} onChange={e => setSort(e.target.value as Sort)} className="text-xs font-semibold rounded-lg border border-rule bg-surface px-2.5 py-1.5 outline-none focus:border-accent">
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
+              <select value={mode === 'archived' ? 'title' : sort} onChange={e => setSort(e.target.value as Sort)}
+                title={mode === 'archived' ? 'Archived items carry no reliable publication date' : undefined}
+                className="text-xs font-semibold rounded-lg border border-rule bg-surface px-2.5 py-1.5 outline-none focus:border-accent">
+                {mode !== 'archived' && <option value="newest">Newest first</option>}
+                {mode !== 'archived' && <option value="oldest">Oldest first</option>}
                 <option value="title">Title A–Z</option>
               </select>
             </div>
