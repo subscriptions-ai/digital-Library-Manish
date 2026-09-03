@@ -23,6 +23,7 @@ import { JournalPage } from "./components/library/JournalPage";
 import { AuthorPage } from "./components/library/AuthorPage";
 import { ArticlePage } from "./components/library/ArticlePage";
 import { DepartmentPage } from "./components/library/DepartmentPage";
+import { PublisherPage } from "./components/library/PublisherPage";
 import { PrivacyPolicy } from "./components/PrivacyPolicy";
 import { TermsAndConditions } from "./components/TermsAndConditions";
 import { LegalDisclaimer } from "./components/LegalDisclaimer";
@@ -196,6 +197,7 @@ export default function App() {
                 <Route path="/dashboard/author/:authorId" element={<DashboardLayout><AuthorPage /></DashboardLayout>} />
                 <Route path="/dashboard/article/:articleId" element={<DashboardLayout><ArticlePage /></DashboardLayout>} />
                 <Route path="/dashboard/department/:slug" element={<DashboardLayout><DepartmentPage /></DashboardLayout>} />
+                <Route path="/dashboard/publisher/:slug" element={<DashboardLayout><PublisherPage /></DashboardLayout>} />
                 <Route path="/admin/agency-inquiries" element={<AdminLayout><AgencyInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/contact-inquiries" element={<AdminLayout><ContactInquiriesPage /></AdminLayout>} />
                 <Route path="/admin/takedown" element={<AdminLayout><TakedownRequests /></AdminLayout>} />
@@ -259,10 +261,11 @@ export default function App() {
                 <Route path="/institution/access" element={<InstitutionLayout><InstitutionContentAccess /></InstitutionLayout>} />
                 <Route path="/institution/library" element={<InstitutionLayout><InstitutionContentLibrary /></InstitutionLayout>} />
                 <Route path="/institution/explore" element={<InstitutionLayout><StructuredLibrary viewerBasePath="/institution/viewer" /></InstitutionLayout>} />
-                <Route path="/institution/journal/:journalId" element={<InstitutionLayout><JournalPage articleBase="/institution/article" departmentBase="/institution/department" /></InstitutionLayout>} />
+                <Route path="/institution/journal/:journalId" element={<InstitutionLayout><JournalPage articleBase="/institution/article" departmentBase="/institution/department" publisherBase="/institution/publisher" /></InstitutionLayout>} />
                 <Route path="/institution/author/:authorId" element={<InstitutionLayout><AuthorPage journalBase="/institution/journal" articleBase="/institution/article" departmentBase="/institution/department" /></InstitutionLayout>} />
-                <Route path="/institution/article/:articleId" element={<InstitutionLayout><ArticlePage viewerBase="/institution/viewer" journalBase="/institution/journal" authorBase="/institution/author" articleBase="/institution/article" departmentBase="/institution/department" /></InstitutionLayout>} />
+                <Route path="/institution/article/:articleId" element={<InstitutionLayout><ArticlePage viewerBase="/institution/viewer" journalBase="/institution/journal" authorBase="/institution/author" articleBase="/institution/article" departmentBase="/institution/department" publisherBase="/institution/publisher" /></InstitutionLayout>} />
                 <Route path="/institution/department/:slug" element={<InstitutionLayout><DepartmentPage journalBase="/institution/journal" browseBase="/institution/explore" /></InstitutionLayout>} />
+                <Route path="/institution/publisher/:slug" element={<InstitutionLayout><PublisherPage journalBase="/institution/journal" departmentBase="/institution/department" /></InstitutionLayout>} />
                 <Route path="/institution/viewer/:id" element={<InstitutionLayout><ProtectedContentViewer /></InstitutionLayout>} />
                 <Route path="/institution/videos/player/:id" element={<InstitutionLayout><LmsVideoPlayer /></InstitutionLayout>} />
                 <Route path="/institution/subscriptions" element={<InstitutionLayout><InstitutionSubscriptions /></InstitutionLayout>} />
@@ -302,10 +305,11 @@ export default function App() {
 
                       <Route path="/journals" element={<DigitalLibrary />} />
                       <Route path="/journal/:journalId" element={<JournalDetail />} />
-                      <Route path="/library/journal/:journalId" element={<JournalPage articleBase="/library/article" departmentBase="/library/department" />} />
+                      <Route path="/library/journal/:journalId" element={<JournalPage articleBase="/library/article" departmentBase="/library/department" publisherBase="/library/publisher" />} />
                       <Route path="/library/author/:authorId" element={<AuthorPage journalBase="/library/journal" articleBase="/library/article" departmentBase="/library/department" />} />
-                      <Route path="/library/article/:articleId" element={<ArticlePage journalBase="/library/journal" authorBase="/library/author" articleBase="/library/article" departmentBase="/library/department" />} />
+                      <Route path="/library/article/:articleId" element={<ArticlePage journalBase="/library/journal" authorBase="/library/author" articleBase="/library/article" departmentBase="/library/department" publisherBase="/library/publisher" />} />
                       <Route path="/library/department/:slug" element={<DepartmentPage journalBase="/library/journal" browseBase="/digital-library" />} />
+                      <Route path="/library/publisher/:slug" element={<PublisherPage journalBase="/library/journal" departmentBase="/library/department" />} />
                       <Route path="/institutional-access" element={<InstitutionalAccess />} />
                       <Route path="/about" element={<AboutUs />} />
                       <Route path="/contact" element={<ContactUs />} />

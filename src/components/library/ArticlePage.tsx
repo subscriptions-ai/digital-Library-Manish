@@ -68,9 +68,10 @@ export function ArticlePage({
   authorBase = '/dashboard/author',
   articleBase = '/dashboard/article',
   departmentBase = '/dashboard/department',
+  publisherBase = '/dashboard/publisher',
 }: {
   viewerBase?: string; journalBase?: string; authorBase?: string; articleBase?: string;
-  departmentBase?: string;
+  departmentBase?: string; publisherBase?: string;
 } = {}) {
   const { articleId } = useParams<{ articleId: string }>();
   const navigate = useNavigate();
@@ -245,7 +246,12 @@ export function ArticlePage({
           <Panel label="Source &amp; rights">
             <dl className="space-y-2">
               {(a.publisherName || a.journal?.publisherName) && (
-                <Field label="Publisher"><span className="font-sans">{a.publisherName || a.journal?.publisherName}</span></Field>
+                <Field label="Publisher">
+                  <Link to={`${publisherBase}/${slug(a.publisherName || a.journal?.publisherName || '')}`}
+                    className="font-sans text-accent hover:underline">
+                    {a.publisherName || a.journal?.publisherName}
+                  </Link>
+                </Field>
               )}
               {(a.journal?.issn || a.journalIssn) && (
                 <Field label="ISSN"><span className="font-mono">{a.journal?.issn || a.journalIssn}</span></Field>

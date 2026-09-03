@@ -5401,6 +5401,57 @@ async function startServer() {
     }
   });
 
+  // GET /api/library/publisher/:slug — a publisher, and the journals of theirs
+  // we hold. Publisher names appear on every result row and journal spine; this
+  // is what makes them doors rather than plain text.
+  app.get("/api/library/publisher/:slug", async (req: any, res: any) => {
+    try {
+      const wanted = String(req.params.slug || '').toLowerCase();
+
+      const names: { publisherName: string }[] = await (prisma as any).journal.findMany({
+        where: { publisherName: { not: null }, articleCount: { gt: 0 } },
+        select: { publisherName: true }, distinct: ['publisherName'],
+      });
+      const match = names.find(n => departmentSlug(n.publisherName) === wanted);
+      if (!match) return res.status(404).json({ error: "Publisher not found" });
+      const publisherName = match.publisherName;
+
+      const scope = await libraryScopeDomains(req);
+      const where: any = { publisherName, articleCount: { gt: 0 } };
+      if (scope !== null) where.domain = { in: scope };
+
+      const journals = await (prisma as any).journal.findMany({
+        where,
+        select: {
+          id: true, title: true, issn: true, domain: true, licence: true, licenceIsNC: true,
+          articleCount: true, volumeCount: true, issueCount: true, firstYear: true, lastYear: true,
+        },
+        orderBy: { articleCount: 'desc' },
+      });
+
+      // A publisher the reader's subscription reaches none of is not an error —
+      // it is simply empty for them, and the page says so.
+      const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
+      const byDomain = new Map<string, number>();
+      for (const j of journals) if (j.domain) byDomain.set(j.domain, (byDomain.get(j.domain) || 0) + 1);
+
+      res.json({
+        publisherName,
+        slug: wanted,
+        journals,
+        articles: journals.reduce((n: number, j: any) => n + (j.articleCount || 0), 0),
+        firstYear: years.length ? Math.min(...years) : null,
+        lastYear: years.length ? Math.max(...years) : null,
+        departments: [...byDomain.entries()]
+          .map(([name, journals]) => ({ name, journals }))
+          .sort((a, b) => b.journals - a.journals),
+      });
+    } catch (e: any) {
+      console.error('GET library/publisher error:', e?.message);
+      res.status(500).json({ error: "Failed to load publisher" });
+    }
+  });
+
   // ── One query behind every count on the site ────────────────────────────
   // The homepage figure and the department figure have to agree, which they
   // cannot if each screen counts for itself.

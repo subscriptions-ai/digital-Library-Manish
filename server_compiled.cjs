@@ -15329,6 +15329,54 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to load department" });
     }
   });
+  app.get("/api/library/publisher/:slug", async (req, res) => {
+    try {
+      const wanted = String(req.params.slug || "").toLowerCase();
+      const names = await prisma3.journal.findMany({
+        where: { publisherName: { not: null }, articleCount: { gt: 0 } },
+        select: { publisherName: true },
+        distinct: ["publisherName"]
+      });
+      const match = names.find((n) => departmentSlug(n.publisherName) === wanted);
+      if (!match) return res.status(404).json({ error: "Publisher not found" });
+      const publisherName = match.publisherName;
+      const scope = await libraryScopeDomains(req);
+      const where = { publisherName, articleCount: { gt: 0 } };
+      if (scope !== null) where.domain = { in: scope };
+      const journals = await prisma3.journal.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          issn: true,
+          domain: true,
+          licence: true,
+          licenceIsNC: true,
+          articleCount: true,
+          volumeCount: true,
+          issueCount: true,
+          firstYear: true,
+          lastYear: true
+        },
+        orderBy: { articleCount: "desc" }
+      });
+      const years = journals.flatMap((j) => [j.firstYear, j.lastYear]).filter(Boolean);
+      const byDomain = /* @__PURE__ */ new Map();
+      for (const j of journals) if (j.domain) byDomain.set(j.domain, (byDomain.get(j.domain) || 0) + 1);
+      res.json({
+        publisherName,
+        slug: wanted,
+        journals,
+        articles: journals.reduce((n, j) => n + (j.articleCount || 0), 0),
+        firstYear: years.length ? Math.min(...years) : null,
+        lastYear: years.length ? Math.max(...years) : null,
+        departments: [...byDomain.entries()].map(([name, journals2]) => ({ name, journals: journals2 })).sort((a, b) => b.journals - a.journals)
+      });
+    } catch (e2) {
+      console.error("GET library/publisher error:", e2?.message);
+      res.status(500).json({ error: "Failed to load publisher" });
+    }
+  });
   app.get("/api/library/stats", async (_req, res) => {
     try {
       const [journals, byDomain, articles, books, authors] = await Promise.all([

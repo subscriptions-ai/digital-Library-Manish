@@ -121,7 +121,8 @@ function VolumeRow({ issn, vol, articleBase }: { issn: string; vol: Volume; arti
 export function JournalPage({
   articleBase = '/dashboard/article',
   departmentBase = '/dashboard/department',
-}: { viewerBase?: string; articleBase?: string; departmentBase?: string } = {}) {
+  publisherBase = '/dashboard/publisher',
+}: { viewerBase?: string; articleBase?: string; departmentBase?: string; publisherBase?: string } = {}) {
   const { journalId } = useParams<{ journalId: string }>();
   const navigate = useNavigate();
   const [j, setJ] = useState<Journal | null>(null);
@@ -199,7 +200,10 @@ export function JournalPage({
           </h1>
 
           <p className="tnum mt-3 flex flex-wrap items-center gap-x-2 font-mono text-[12px] text-muted">
-            {j.publisherName && <span className="text-ink-2">{j.publisherName}</span>}
+            {j.publisherName && (
+              <Link to={`${publisherBase}/${j.publisherName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
+                className="text-ink-2 hover:text-accent hover:underline">{j.publisherName}</Link>
+            )}
             {j.issn && <><span className="text-rule-2">·</span><span>ISSN {j.issn}</span></>}
             {j.firstYear && j.lastYear && <><span className="text-rule-2">·</span><span>{j.firstYear}–{j.lastYear}</span></>}
             {j.homepage && (
