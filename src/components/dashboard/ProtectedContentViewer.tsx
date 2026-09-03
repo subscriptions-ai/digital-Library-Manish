@@ -11,6 +11,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  PanelRight,
   Moon,
   Sun,
   BookOpen,
@@ -151,6 +152,16 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
 // ────────────────────────────────────────────────────────
 //  Main Viewer
 // ────────────────────────────────────────────────────────
+/** A label/value line in the rail. Values stay in mono so they line up. */
+function RailRow({ k, children }: { k: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-3">
+      <dt className="w-16 shrink-0 text-muted">{k}</dt>
+      <dd className="tnum min-w-0 font-mono text-[12px] text-ink-2">{children}</dd>
+    </div>
+  );
+}
+
 export function ProtectedContentViewer() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -163,6 +174,11 @@ export function ProtectedContentViewer() {
   const libBase = pathname.startsWith('/institution') ? '/institution' : '/dashboard';
 
   const [content, setContent] = useState<any>(null);
+  // The catalogue record behind what is being read: its journal, its authors,
+  // and the rest of its issue. A reader should never have to leave the page to
+  // find out what they are reading.
+  const [record, setRecord] = useState<any>(null);
+  const [railOpen, setRailOpen] = useState(() => window.innerWidth >= 1280);
   const [loadingMeta, setLoadingMeta] = useState(true);
   const [metaError, setMetaError] = useState<string | null>(null);
 
@@ -231,6 +247,19 @@ export function ProtectedContentViewer() {
       .then((data) => setContent(data))
       .catch((err) => setMetaError(err.message))
       .finally(() => setLoadingMeta(false));
+  }, [id]);
+
+  // Only the new collection has a structured record; legacy content simply
+  // shows no rail rather than an empty one.
+  useEffect(() => {
+    setRecord(null);
+    if (!id) return;
+    fetch(`/api/library/article/${id}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => d && setRecord(d))
+      .catch(() => {});
   }, [id]);
   
   // ── Fetch saved reading progress ──────────────────────
@@ -355,10 +384,14 @@ export function ProtectedContentViewer() {
         // If it's a network error from WAF (403, 503) or dead link (404), do not use iframe.
         // Iframe will either be blocked by Chrome or show a blank Cloudflare challenge.
         if (msg.includes('403') || msg.includes('404') || msg.includes('500') || msg.includes('502') || msg.includes('503')) {
-          setPdfError("This document is currently restricted by the publisher's security firewall or is temporarily unavailable. Our system has automatically flagged this item for administrative review.");
-        } else {
-          // If it's an "Invalid PDF structure" error, it's likely a valid HTML article page!
+          setPdfError('restricted');
+        } else if (content?.kind === 'content') {
+          // Legacy content is sometimes a genuine HTML page, which frames fine.
           setIframeFallback(true);
+        } else {
+          // An article's file lives on the publisher's server. Framing it gives
+          // a blocked page or a challenge screen, so show the record instead.
+          setPdfError('external');
         }
       })
       .finally(() => {
@@ -562,6 +595,17 @@ export function ProtectedContentViewer() {
             <Heart size={18} fill={isFavorite ? "currentColor" : "none"} className={isFavorite ? "animate-pulse" : ""} />
           </button>
 
+          {/* Context rail — only offered when there is a record to show */}
+          {record && (
+            <button
+              onClick={() => setRailOpen(o => !o)}
+              title={railOpen ? 'Hide record' : 'Show record'}
+              className={`hidden lg:block p-2 rounded-xl transition-colors ${railOpen ? 'text-accent' : (darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100')}`}
+            >
+              <PanelRight size={18} />
+            </button>
+          )}
+
           {/* Dark mode toggle */}
           <button
             onClick={() => setDarkMode(d => !d)}
@@ -611,25 +655,83 @@ export function ProtectedContentViewer() {
       )}
 
       {/* ─── BODY ────────────────────────────────────── */}
+      <div className="flex min-h-0 flex-1">
       <div
         ref={scrollAreaRef}
         className="flex-1 overflow-y-auto overflow-x-auto"
         style={{ scrollBehavior: 'smooth' }}
       >
-        {/* PDF Error — offer to read on the publisher's site (browser can open what our server can't) */}
+        {/* When the document will not render, show the record rather than a
+            failure. The reader still gets the abstract, the identifiers and a
+            way through to the publisher's own copy. */}
         {pdfError && !iframeFallback && (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 space-y-4">
-            <AlertCircle size={56} className="text-amber-500 mb-2" />
-            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">This article opens on the publisher's site</h2>
-            <p className="text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
-              The full text is hosted externally and can't be embedded here. Open it directly to read.
+          <div className="mx-auto max-w-2xl px-5 py-10">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-caution">
+              {pdfError === 'restricted' ? 'Full text unavailable' : 'Full text opens at the publisher'}
             </p>
-            {content?.url && (
-              <a href={content.url} target="_blank" rel="noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-colors">
-                <ExternalLink size={17} /> Open Full Text
-              </a>
+            <h2 className="mt-2 font-serif text-2xl font-medium leading-snug text-ink">
+              {content?.title}
+            </h2>
+
+            {record?.authors_structured?.length > 0 ? (
+              <p className="mt-2 text-sm text-ink-2">
+                {record.authors_structured.map((a: any, i: number) => (
+                  <React.Fragment key={a.id}>
+                    {i > 0 && <span className="text-faint"> · </span>}
+                    <Link to={`${libBase}/author/${a.id}`} className="text-accent hover:underline">{a.name}</Link>
+                  </React.Fragment>
+                ))}
+              </p>
+            ) : record?.authors ? (
+              <p className="mt-2 text-sm text-ink-2">{record.authors}</p>
+            ) : null}
+
+            <p className="tnum mt-2 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
+              {content?.journalName && (
+                content?.journalIssn
+                  ? <Link to={`${libBase}/journal/${encodeURIComponent(content.journalIssn)}`}
+                      className="text-ink-2 hover:text-accent hover:underline">{content.journalName}</Link>
+                  : <span className="text-ink-2">{content.journalName}</span>
+              )}
+              {content?.volume && <><span className="text-rule-2">·</span><span>{content.volume}{content.issue ? `(${content.issue})` : ''}</span></>}
+              {content?.year && <><span className="text-rule-2">·</span><span>{content.year}</span></>}
+              {content?.journalIssn && <><span className="text-rule-2">·</span><span>ISSN {content.journalIssn}</span></>}
+            </p>
+
+            {record?.abstract && (
+              <div className="mt-6 border-t border-rule pt-5">
+                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Abstract</p>
+                <p className="mt-2 whitespace-pre-wrap text-[14.5px] leading-relaxed text-ink-2">{record.abstract}</p>
+              </div>
             )}
+
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              {(record?.originalUrl || content?.url) && (
+                <a href={record?.originalUrl || content.url} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
+                  <ExternalLink size={15} /> Read at publisher
+                </a>
+              )}
+              {record?.doi && (
+                <a href={`https://doi.org/${String(record.doi).replace(/^https?:\/\/(dx\.)?doi\.org\//i, '')}`}
+                  target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-md border border-rule-2 px-4 py-2.5 font-mono text-[12px] text-muted hover:border-accent hover:text-accent">
+                  DOI {record.doi}
+                </a>
+              )}
+              {record && (
+                <Link to={`${libBase}/article/${id}`}
+                  className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline">
+                  Full record
+                </Link>
+              )}
+            </div>
+
+            <p className="mt-6 text-[12.5px] leading-relaxed text-faint">
+              {pdfError === 'restricted'
+                ? 'We hold this record and its metadata. The publisher\u2019s copy did not respond, so the link above may not work either.'
+                : 'We hold this record and its metadata. The publisher hosts the file and does not permit it to be served from here.'}
+            </p>
           </div>
         )}
 
@@ -714,6 +816,89 @@ export function ProtectedContentViewer() {
             />
           </div>
         )}
+      </div>
+
+      {/* ─── CONTEXT RAIL ────────────────────────────── */}
+      {record && railOpen && (
+        <aside className="hidden w-[320px] shrink-0 overflow-y-auto border-l border-rule bg-surface lg:block">
+          <div className="space-y-7 p-5">
+
+            {record.journal && (
+              <section>
+                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Published in</p>
+                <Link
+                  to={`${libBase}/journal/${encodeURIComponent(record.journal.issn || record.journal.id)}`}
+                  className="mt-1.5 block font-serif text-[15px] font-medium leading-snug text-ink hover:text-accent"
+                >
+                  {record.journal.title}
+                </Link>
+                <p className="tnum mt-1 font-mono text-[11px] text-muted">
+                  {record.journal.issn && <>ISSN {record.journal.issn}</>}
+                  {record.journal.firstYear && record.journal.lastYear && <> · {record.journal.firstYear}–{record.journal.lastYear}</>}
+                </p>
+                {record.journal.publisherName && (
+                  <p className="mt-1 text-[12.5px] leading-snug text-muted">{record.journal.publisherName}</p>
+                )}
+              </section>
+            )}
+
+            {record.authors_structured?.length > 0 && (
+              <section>
+                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Authors</p>
+                <ul className="mt-1.5 space-y-1">
+                  {record.authors_structured.map((a: any) => (
+                    <li key={a.id}>
+                      <Link to={`${libBase}/author/${a.id}`} className="text-[13.5px] text-accent hover:underline">
+                        {a.name}
+                      </Link>
+                      {a.articleCount > 1 && (
+                        <span className="tnum ml-1.5 font-mono text-[11px] text-faint">{a.articleCount}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <section>
+              <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">This record</p>
+              <dl className="mt-1.5 space-y-1.5 text-[12.5px]">
+                {record.volume && <RailRow k="Volume">{record.volume}{record.issue ? `(${record.issue})` : ''}</RailRow>}
+                {record.year && <RailRow k="Year">{record.year}</RailRow>}
+                {record.pages && <RailRow k="Pages">{record.pages}</RailRow>}
+                {record.doi && <RailRow k="DOI"><span className="break-all">{record.doi}</span></RailRow>}
+                {record.licence && <RailRow k="Licence">{record.licence}</RailRow>}
+              </dl>
+              <Link
+                to={`${libBase}/article/${id}`}
+                className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
+              >
+                Full record
+              </Link>
+            </section>
+
+            {record.siblings?.length > 0 && (
+              <section>
+                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">
+                  Also in this issue
+                </p>
+                <ul className="mt-1.5 divide-y divide-rule border-t border-rule">
+                  {record.siblings.slice(0, 12).map((sb: any) => (
+                    <li key={sb.id} className="py-2">
+                      <Link
+                        to={`${libBase}/viewer/${sb.id}`}
+                        className="block text-[13px] leading-snug text-ink-2 hover:text-accent"
+                      >
+                        {sb.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+        </aside>
+      )}
       </div>
 
       {/* ─── BOTTOM STATUS BAR ───────────────────────── */}

@@ -1891,17 +1891,16 @@ async function startServer() {
       const contentId = req.params.id;
       const isAdmin = req.user.role === 'SuperAdmin' || req.user.role === 'Admin';
       
-      const whereClause: any = { id: contentId };
-      if (!isAdmin) {
-        whereClause.status = { not: "Draft" };
-      }
-
-      const content = await prisma.content.findFirst({ where: whereClause });
-      if (!content || !content.fileUrl) {
+      // This read only Content, so every article from the new collection came
+      // back "Content not found" — and the iframe rendered that JSON as text.
+      const resolved = await resolveViewable(contentId, isAdmin);
+      if (!resolved || !resolved.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
+      const content: any = { ...resolved.item, fileUrl: resolved.fileUrl };
 
-      if (!isAdmin) {
+      const isOA = ['OpenAccess', 'Free'].includes(resolved.accessType || '');
+      if (!isAdmin && resolved.kind === 'content' && !isOA) {
         const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
         const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
         if (!hasAccess) {
@@ -1912,11 +1911,13 @@ async function startServer() {
       if (content.fileUrl.startsWith('/')) {
         const filePath = path.join(process.cwd(), 'dist', content.fileUrl);
         if (!fs.existsSync(filePath)) {
-          console.warn(`[proxy-frame] Auto-flagging missing local file: ${content.fileUrl}`);
-          await prisma.content.update({
-             where: { id: contentId },
-             data: { status: 'Draft', validationStatus: 'FLAGGED_CONTENT', isViewable: false, flaggedReason: 'Local file missing (404)' }
-          });
+          console.warn(`[proxy-frame] Missing local file: ${content.fileUrl}`);
+          if (resolved.kind === 'content') {
+            await prisma.content.update({
+               where: { id: contentId },
+               data: { status: 'Draft', validationStatus: 'FLAGGED_CONTENT', isViewable: false, flaggedReason: 'Local file missing (404)' }
+            });
+          }
           return res.status(404).json({ error: "File not found" });
         }
         return res.redirect(content.fileUrl);
