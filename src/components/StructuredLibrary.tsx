@@ -4,8 +4,8 @@ import { DOMAINS, CONTENT_TYPES } from '../constants';
 import { SmartPagination } from './SmartPagination';
 import { MetadataModal } from './MetadataModal';
 import {
-  BookOpen, FileText, Search, Archive, Sparkles, ChevronRight, ChevronDown,
-  Unlock, Copy, ArrowRight, SlidersHorizontal, X, BookMarked, Check, Info,
+  FileText, Search, Archive, Sparkles, ChevronRight, ChevronDown,
+  Unlock, Copy, SlidersHorizontal, X, BookMarked, Check,
 } from 'lucide-react';
 
 type Mode = 'new' | 'archived';
@@ -402,13 +402,23 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
           {loading ? (
             <div className="py-20 flex justify-center"><div className="w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
           ) : displayed.length === 0 ? (
-            <div className="py-20 text-center text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="py-20 text-center text-muted bg-surface rounded-md border border-rule">
               <FileText size={30} className="mx-auto mb-2 opacity-40" />
               No results. {mode === 'new' ? 'Try another department, or ingest data.' : 'No archived items match.'}
             </div>
           ) : (
-            <div className="space-y-3">
-              {displayed.map((it, i) => <ResultCard key={it.id || i} it={it} kind={kind} mode={mode} journalBase={journalBase} onOpen={() => navigate(`${viewerBasePath}/${it.id}`)} />)}
+            <div className="bg-surface border border-rule rounded-md divide-y divide-rule">
+              {displayed.map((it, i) => (
+                <ResultCard
+                  key={it.id || i}
+                  it={it}
+                  n={(page - 1) * PAGE_SIZE + i + 1}
+                  kind={kind}
+                  mode={mode}
+                  journalBase={journalBase}
+                  onOpen={() => navigate(`${viewerBasePath}/${it.id}`)}
+                />
+              ))}
             </div>
           )}
 
@@ -420,96 +430,131 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
   );
 }
 
-// ───────── card ─────────
-function ResultCard({ it, kind, mode, onOpen, journalBase }: { it: any; kind: Kind; mode: Mode; onOpen: () => void; journalBase: string }) {
+// ───────── record ─────────
+/**
+ * One result, as a catalogue record.
+ *
+ * This was a card: rounded, shadowed, five coloured pills, a bold blue title and
+ * a filled button. Twelve of them read as twelve separate objects rather than one
+ * list, and nothing led. A record is a ruled row — the title in the serif because
+ * it is what the reader came for, the identifiers in mono because that is how a
+ * catalogue has always set them, and colour spent only on whether the thing can
+ * actually be read.
+ */
+function ResultCard({ it, n, kind, mode, onOpen, journalBase }: {
+  it: any; n: number; kind: Kind; mode: Mode; onOpen: () => void; journalBase: string;
+}) {
   const isBook = kind === 'books' || it.contentType === 'Books';
-  const isOA = ['OpenAccess', 'Free'].includes(it.accessType);
   const hasPdf = !!(it.pdfUrl || it.fileUrl);
   // Legacy archived rows come back with fileUrl stripped when the user lacks access —
   // those still route to the viewer so the upgrade prompt shows. Only genuinely
   // file-less records ("metadata only") get the Read More popup.
   const metaOnly = !hasPdf && !it.locked;
   const [showMeta, setShowMeta] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   const authors = (it.authors || '').split(',').map((s: string) => s.trim()).filter(Boolean);
   const shown = authors.slice(0, 3);
-  const citation = isBook
-    ? [it.publisherName, it.isbn ? `ISBN ${it.isbn}` : '', it.edition ? `${it.edition} ed.` : '', it.year].filter(Boolean).join(' · ')
-    : [it.volume ? `Vol. ${it.volume}` : '', it.issue ? `No. ${it.issue}` : '', it.pages ? `pp. ${it.pages}` : '', it.year].filter(Boolean).join(' · ');
-  // The journal name is the thing a reader's eye lands on, so it is the thing
-  // that should open the journal — not a chevron tucked inside a filter panel.
   const journalKey = it.journalIssn || it.journalId;
 
-  const copyDoi = (e: React.MouseEvent) => { e.stopPropagation(); if (it.doi) navigator.clipboard?.writeText(it.doi); };
+  // Volume and issue read as 9(3), the way a citation is written.
+  const volIss = it.volume ? `${it.volume}${it.issue ? `(${it.issue})` : ''}` : (it.issue ? `(${it.issue})` : '');
+  const bits: string[] = isBook
+    ? [it.publisherName, it.isbn ? `ISBN ${it.isbn}` : '', it.edition ? `${it.edition} ed.` : '', it.year].filter(Boolean)
+    : [volIss, it.year, it.pages ? `pp ${it.pages}` : '', it.journalIssn ? `ISSN ${it.journalIssn}` : ''].filter(Boolean);
 
   const open = metaOnly ? () => setShowMeta(true) : onOpen;
+  const copyDoi = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!it.doi) return;
+    navigator.clipboard?.writeText(it.doi);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  // Content type only says something when it varies. Every article in the new
+  // collection is a periodical, so naming it on all of them is noise.
+  const typeMark = isBook ? 'Book' : (mode === 'archived' && it.contentType !== 'Periodicals' ? it.contentType : null);
 
   return (
-    <div className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all p-4">
-      {/* pills */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-2">
-        <Pill className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">{isBook ? 'Book' : (mode === 'archived' ? (it.contentType || 'Content') : (it.contentType || 'Journal Article'))}</Pill>
-        {hasPdf && <Pill className="bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">Full Text</Pill>}
-        {metaOnly && <Pill className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">Metadata Only</Pill>}
-        {isOA && <Pill className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"><Unlock size={9} className="inline -mt-0.5 mr-0.5" />Open Access</Pill>}
-        {it.domain && <Pill className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">{it.domain}</Pill>}
-      </div>
+    <div className="group flex gap-3 px-4 py-4 sm:gap-4 sm:px-5">
+      <span className="tnum hidden shrink-0 pt-1 font-mono text-[11px] text-faint sm:block sm:w-7">{n}</span>
 
-      {/* title */}
-      <button onClick={open} className="text-left w-full">
-        <h3 className="font-bold text-[15px] leading-snug text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
-          {isBook ? <BookOpen size={14} className="inline -mt-0.5 mr-1 text-indigo-500" /> : <FileText size={14} className="inline -mt-0.5 mr-1 text-emerald-500" />}
-          {it.title}
-        </h3>
-      </button>
+      <div className="min-w-0 flex-1">
+        <button onClick={open} className="block w-full text-left">
+          <h3 className="font-serif text-[17px] font-medium leading-snug text-ink group-hover:text-accent sm:text-[17.5px]">
+            {it.title}
+          </h3>
+        </button>
 
-      {/* authors */}
-      {authors.length > 0 && (
-        <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-1">
-          {shown.map((a: string, i: number) => (<span key={i} className="text-blue-700 dark:text-blue-400 font-medium">{a}{i < shown.length - 1 ? ', ' : ''}</span>))}
-          {authors.length > 3 && <span className="text-slate-400"> +{authors.length - 3} more</span>}
+        {authors.length > 0 && (
+          <p className="mt-1 text-[13.5px] leading-snug text-ink-2">
+            {shown.join(' · ')}
+            {authors.length > 3 && <span className="text-faint"> +{authors.length - 3} more</span>}
+          </p>
+        )}
+
+        <p className="tnum mt-1.5 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
+          {!isBook && it.journalName && (
+            journalKey ? (
+              <Link
+                to={`${journalBase}/${encodeURIComponent(journalKey)}`}
+                onClick={e => e.stopPropagation()}
+                className="text-ink-2 hover:text-accent hover:underline"
+              >
+                {it.journalName}
+              </Link>
+            ) : <span className="text-ink-2">{it.journalName}</span>
+          )}
+          {bits.map((b, i) => (
+            <React.Fragment key={i}>
+              {(i > 0 || (!isBook && it.journalName)) && <span className="text-rule-2">·</span>}
+              <span>{b}</span>
+            </React.Fragment>
+          ))}
         </p>
-      )}
 
-      {/* citation */}
-      {(it.journalName || citation) && (
-        <p className="mt-0.5 text-[12px] italic text-slate-500 dark:text-slate-400">
-          {!isBook && it.journalName && (journalKey ? (
-            <Link
-              to={`${journalBase}/${encodeURIComponent(journalKey)}`}
-              onClick={e => e.stopPropagation()}
-              className="font-medium not-italic text-blue-600 hover:underline dark:text-blue-400"
-            >
-              {it.journalName}
-            </Link>
-          ) : <span>{it.journalName}</span>)}
-          {!isBook && it.journalName && citation && ' · '}
-          {citation}
-        </p>
-      )}
-
-      {/* footer */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-        <div className="flex items-center gap-3">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {hasPdf && <Mark tone="accent">Full text</Mark>}
+          {metaOnly && <Mark tone="caution">Metadata only</Mark>}
+          {it.locked && <Mark>Subscription</Mark>}
+          {typeMark && <Mark>{typeMark}</Mark>}
+          {it.domain && <Mark>{it.domain}</Mark>}
           {it.doi && (
-            <button onClick={copyDoi} title="Copy DOI" className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
-              <Copy size={12} /> DOI
+            <button
+              onClick={copyDoi}
+              title="Copy DOI"
+              className="inline-flex items-center gap-1 rounded-[3px] border border-rule-2 px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted hover:border-accent hover:text-accent"
+            >
+              {copied ? <Check size={10} /> : <Copy size={10} />} {copied ? 'Copied' : 'DOI'}
             </button>
           )}
-          {it.publisherName && !isBook && <span className="text-[11px] text-slate-400 truncate max-w-[180px]">{it.publisherName}</span>}
         </div>
-        {metaOnly ? (
-          <button onClick={() => setShowMeta(true)} className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-lg transition-colors">
-            <Info size={13} /> Read More
-          </button>
-        ) : (
-          <button onClick={onOpen} className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 rounded-lg shadow-sm transition-colors">
-            {hasPdf ? 'Read Full Text' : 'Open'} <ArrowRight size={13} />
-          </button>
-        )}
+      </div>
+
+      <div className="shrink-0 self-start pt-0.5">
+        <button
+          onClick={open}
+          className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
+        >
+          {metaOnly ? 'Details' : hasPdf ? 'Read' : 'Open'}
+        </button>
       </div>
 
       {showMeta && <MetadataModal item={it} isBook={isBook} onClose={() => setShowMeta(false)} />}
     </div>
+  );
+}
+
+/** An outlined mark. Colour is spent only on whether the record can be read. */
+function Mark({ children, tone }: { children: React.ReactNode; tone?: 'accent' | 'caution' }) {
+  const t = tone === 'accent' ? 'border-accent text-accent bg-accent-soft'
+          : tone === 'caution' ? 'border-caution text-caution bg-caution-soft'
+          : 'border-rule-2 text-muted';
+  return (
+    <span className={`rounded-[3px] border px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide ${t}`}>
+      {children}
+    </span>
   );
 }
 

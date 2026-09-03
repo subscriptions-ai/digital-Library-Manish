@@ -1,3 +1,119 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Tokens.
+
+   Every colour is named for the role it plays, defined once here and redefined
+   once for the dark ground. Components reference the role — bg-surface,
+   text-muted, border-rule — and never a literal, so a component is written once
+   and both themes follow it.
+
+   This is what replaces `dark:` classes. Only 13 of 108 components ever carried
+   them, which is why the sidebar went dark while the cards stayed white.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+
+  /* grounds and surfaces — neutrals carry a faint warm bias so they read as
+     paper rather than as an unconsidered mid-grey */
+  --ground: #f6f6f4;
+  --surface: #ffffff;
+  --surface-2: #f0f0ed;
+
+  /* text */
+  --ink: #16181d;
+  --ink-2: #3d434b;
+  --muted: #6a6f76;
+  --faint: #9aa0a6;
+
+  /* separators */
+  --rule: #e0e0dc;
+  --rule-2: #cfcfc9;
+
+  /* one accent. links, the active facet, the single primary action per screen */
+  --accent: #0d5c63;
+  --accent-hover: #0a4a50;
+  --accent-soft: #e2eeee;
+  --accent-on: #ffffff;
+
+  /* state. caution marks a record we hold metadata for but not the file */
+  --caution: #b45309;
+  --caution-soft: #fbf0e0;
+  --alarm: #a3302a;
+  --alarm-soft: #fbeceb;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --ground: #101215;
+  --surface: #171a1e;
+  --surface-2: #1e2228;
+
+  --ink: #e9eaec;
+  --ink-2: #c3c7cc;
+  --muted: #949aa2;
+  --faint: #6d747c;
+
+  --rule: #282d33;
+  --rule-2: #363c44;
+
+  --accent: #4fb3ac;
+  --accent-hover: #7fcdc6;
+  --accent-soft: #14312f;
+  --accent-on: #0b1416;
+
+  --caution: #d99441;
+  --caution-soft: #33240f;
+  --alarm: #d9736b;
+  --alarm-soft: #2c1513;
+}
+
+/* `inline` makes Tailwind emit var(--ground) rather than the resolved colour,
+   so the .dark override above actually reaches the utility. */
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-rule: var(--rule);
+  --color-rule-2: var(--rule-2);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-on: var(--accent-on);
+
+  --color-caution: var(--caution);
+  --color-caution-soft: var(--caution-soft);
+  --color-alarm: var(--alarm);
+  --color-alarm-soft: var(--alarm-soft);
+}
+
+/* Three faces, three jobs: the serif carries titles, the sans carries the
+   interface, and the mono carries identifiers — ISSN, DOI, volume(issue) —
+   which is how a catalogue record has always been set. */
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Spectral", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Digits that sit in a column line up. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
