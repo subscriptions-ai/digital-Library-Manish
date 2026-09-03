@@ -249,18 +249,19 @@ export function ProtectedContentViewer() {
       .finally(() => setLoadingMeta(false));
   }, [id]);
 
-  // Only the new collection has a structured record; legacy content simply
-  // shows no rail rather than an empty one.
+  // Articles carry a full catalogue record; legacy items carry a smaller one.
+  // The rail renders whichever sections it is given.
   useEffect(() => {
     setRecord(null);
-    if (!id) return;
-    fetch(`/api/library/article/${id}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    })
+    if (!id || !content) return;
+    const url = content.kind === 'content'
+      ? `/api/library/content/${id}`
+      : `/api/library/article/${id}`;
+    fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
       .then(r => (r.ok ? r.json() : null))
       .then(d => d && setRecord(d))
       .catch(() => {});
-  }, [id]);
+  }, [id, content?.kind]);
   
   // ── Fetch saved reading progress ──────────────────────
   useEffect(() => {
@@ -499,7 +500,10 @@ export function ProtectedContentViewer() {
   return (
     <div
       ref={viewerWrapperRef}
-      className={`flex flex-col h-screen -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 ${darkMode ? 'bg-slate-950' : 'bg-slate-100'} transition-colors duration-300`}
+      // The reader fills its container exactly. It used to ask for h-screen
+      // inside a box that is one header shorter than the viewport, so the page
+      // overflowed by 64px and grew a second scrollbar beside the reader's own.
+      className={`absolute inset-0 flex flex-col ${darkMode ? 'bg-slate-950' : 'bg-slate-100'} transition-colors duration-300`}
     >
       {/* ─── TOP BAR ─────────────────────────────────── */}
       <div className={`h-14 shrink-0 flex items-center justify-between px-3 sm:px-5 border-b ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'} shadow-md z-20`}>
@@ -842,6 +846,16 @@ export function ProtectedContentViewer() {
               </section>
             )}
 
+            {/* Legacy rows store authors as one string and have no Author records,
+                so they are named but not linked — the alternative is a link that
+                goes nowhere. */}
+            {!record.authors_structured?.length && record.authors && (
+              <section>
+                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Authors</p>
+                <p className="mt-1.5 text-[13.5px] leading-snug text-ink-2">{record.authors}</p>
+              </section>
+            )}
+
             {record.authors_structured?.length > 0 && (
               <section>
                 <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Authors</p>
@@ -863,27 +877,32 @@ export function ProtectedContentViewer() {
             <section>
               <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">This record</p>
               <dl className="mt-1.5 space-y-1.5 text-[12.5px]">
+                {record.contentType && <RailRow k="Type">{record.contentType}</RailRow>}
+                {record.domain && <RailRow k="Dept">{record.domain}</RailRow>}
+                {record.subjectArea && <RailRow k="Subject">{record.subjectArea}</RailRow>}
                 {record.volume && <RailRow k="Volume">{record.volume}{record.issue ? `(${record.issue})` : ''}</RailRow>}
                 {record.year && <RailRow k="Year">{record.year}</RailRow>}
                 {record.pages && <RailRow k="Pages">{record.pages}</RailRow>}
                 {record.doi && <RailRow k="DOI"><span className="break-all">{record.doi}</span></RailRow>}
                 {record.licence && <RailRow k="Licence">{record.licence}</RailRow>}
               </dl>
-              <Link
-                to={`${libBase}/article/${id}`}
-                className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
-              >
-                Full record
-              </Link>
+              {record.journal && (
+                <Link
+                  to={`${libBase}/article/${id}`}
+                  className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
+                >
+                  Full record
+                </Link>
+              )}
             </section>
 
-            {record.siblings?.length > 0 && (
+            {(record.siblings?.length > 0 || record.related?.length > 0) && (
               <section>
                 <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">
-                  Also in this issue
+                  {record.siblings?.length ? 'Also in this issue' : (record.relatedLabel || 'Related')}
                 </p>
                 <ul className="mt-1.5 divide-y divide-rule border-t border-rule">
-                  {record.siblings.slice(0, 12).map((sb: any) => (
+                  {(record.siblings?.length ? record.siblings : record.related).slice(0, 12).map((sb: any) => (
                     <li key={sb.id} className="py-2">
                       <Link
                         to={`${libBase}/viewer/${sb.id}`}

@@ -5275,6 +5275,49 @@ async function startServer() {
     }
   });
 
+  // GET /api/library/content/:id — the record behind a legacy item, so the
+  // reader's rail is not empty for the 9,024 rows that predate the catalogue.
+  // publishedAt is deliberately absent: it defaults to now(), so every one of
+  // these rows would claim to have been published today.
+  app.get("/api/library/content/:id", authenticateJWT, async (req: any, res: any) => {
+    try {
+      const c = await prisma.content.findFirst({
+        where: { id: req.params.id, status: { not: 'Draft' } },
+        select: {
+          id: true, title: true, description: true, authors: true, domain: true,
+          contentType: true, subjectArea: true, tags: true, views: true,
+        },
+      });
+      if (!c) return res.status(404).json({ error: "Record not found" });
+
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && c.domain && !scope.includes(c.domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+
+      // Its neighbours on the same shelf. Matching the content type as well as
+      // the department is what makes this a shelf rather than a random draw —
+      // a thesis sits beside other theses. Most-read first, since these rows
+      // carry no reliable date to order by.
+      const related = await prisma.content.findMany({
+        where: {
+          id: { not: c.id },
+          status: { not: 'Draft' },
+          domain: c.domain || undefined,
+          contentType: c.contentType,
+        },
+        select: { id: true, title: true, authors: true },
+        orderBy: { views: 'desc' },
+        take: 12,
+      });
+
+      const relatedLabel = `More ${String(c.contentType || 'items').toLowerCase()} in ${c.domain || 'this department'}`;
+      res.json({ ...c, related, relatedLabel });
+    } catch (e) {
+      res.status(500).json({ error: "Failed to load record" });
+    }
+  });
+
   // ── One query behind every count on the site ────────────────────────────
   // The homepage figure and the department figure have to agree, which they
   // cannot if each screen counts for itself.
