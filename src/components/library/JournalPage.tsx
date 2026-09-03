@@ -120,7 +120,8 @@ function VolumeRow({ issn, vol, articleBase }: { issn: string; vol: Volume; arti
 
 export function JournalPage({
   articleBase = '/dashboard/article',
-}: { viewerBase?: string; articleBase?: string } = {}) {
+  departmentBase = '/dashboard/department',
+}: { viewerBase?: string; articleBase?: string; departmentBase?: string } = {}) {
   const { journalId } = useParams<{ journalId: string }>();
   const navigate = useNavigate();
   const [j, setJ] = useState<Journal | null>(null);
@@ -188,7 +189,7 @@ export function JournalPage({
             {j.domain && domainSlug && (
               <>
                 <ChevronRight size={11} />
-                <Link to={`/domain/${domainSlug}`} className="hover:text-accent">{j.domain}</Link>
+                <Link to={`${departmentBase}/${domainSlug}`} className="hover:text-accent">{j.domain}</Link>
               </>
             )}
           </nav>

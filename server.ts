@@ -5339,6 +5339,68 @@ async function startServer() {
     }
   });
 
+  // GET /api/library/department/:slug — a department as a shelf of journals.
+  // The department was reachable only as a marketing landing page; this is its
+  // catalogue entry, so "Nursing" in a breadcrumb opens what we actually hold.
+  const departmentSlug = (d: string) => d.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  app.get("/api/library/department/:slug", async (req: any, res: any) => {
+    try {
+      const wanted = String(req.params.slug || '').toLowerCase();
+
+      // Resolve the slug against the departments we actually hold journals in,
+      // so a renamed or unheld department 404s rather than showing an empty shelf.
+      const domains: { domain: string }[] = await (prisma as any).journal.findMany({
+        where: { domain: { not: null }, articleCount: { gt: 0 } },
+        select: { domain: true }, distinct: ['domain'],
+      });
+      const match = domains.find(d => departmentSlug(d.domain) === wanted);
+      if (!match) return res.status(404).json({ error: "Department not found" });
+      const domain = match.domain;
+
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && !scope.includes(domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+
+      const [journals, articles, books, publishers] = await Promise.all([
+        (prisma as any).journal.findMany({
+          where: { domain, articleCount: { gt: 0 } },
+          select: {
+            id: true, title: true, issn: true, publisherName: true, licence: true, licenceIsNC: true,
+            articleCount: true, volumeCount: true, issueCount: true, firstYear: true, lastYear: true,
+          },
+          orderBy: { articleCount: 'desc' },
+        }),
+        (prisma as any).article.count({ where: { domain, status: 'Published' } }),
+        (prisma as any).book.count({ where: { domain, status: 'Published' } }),
+        (prisma as any).journal.groupBy({
+          by: ['publisherName'],
+          where: { domain, articleCount: { gt: 0 }, publisherName: { not: null } },
+          _count: { _all: true },
+        }),
+      ]);
+
+      const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
+
+      res.json({
+        domain,
+        slug: wanted,
+        journals,
+        articles,
+        books,
+        firstYear: years.length ? Math.min(...years) : null,
+        lastYear: years.length ? Math.max(...years) : null,
+        publishers: publishers
+          .map((p: any) => ({ name: p.publisherName, journals: p._count._all }))
+          .sort((a: any, b: any) => b.journals - a.journals),
+      });
+    } catch (e: any) {
+      console.error('GET library/department error:', e?.message);
+      res.status(500).json({ error: "Failed to load department" });
+    }
+  });
+
   // ── One query behind every count on the site ────────────────────────────
   // The homepage figure and the department figure have to agree, which they
   // cannot if each screen counts for itself.

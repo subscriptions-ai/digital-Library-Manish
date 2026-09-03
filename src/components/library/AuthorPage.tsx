@@ -38,7 +38,8 @@ const LABEL = 'font-mono text-[10.5px] uppercase tracking-wider text-faint';
 export function AuthorPage({
   journalBase = '/dashboard/journal',
   articleBase = '/dashboard/article',
-}: { viewerBase?: string; journalBase?: string; articleBase?: string } = {}) {
+  departmentBase = '/dashboard/department',
+}: { viewerBase?: string; journalBase?: string; articleBase?: string; departmentBase?: string } = {}) {
   const { authorId } = useParams<{ authorId: string }>();
   const navigate = useNavigate();
   const [a, setA] = useState<Author | null>(null);
@@ -136,7 +137,7 @@ export function AuthorPage({
                     {a.domains.slice(0, 6).map(d => (
                       <li key={d.name} className="flex items-baseline gap-3 text-[13.5px]">
                         <span className="tnum w-7 shrink-0 text-right font-mono text-[12px] text-faint">{d.count}</span>
-                        <Link to={`/domain/${d.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
+                        <Link to={`${departmentBase}/${d.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
                           className="text-ink-2 hover:text-accent">{d.name}</Link>
                       </li>
                     ))}

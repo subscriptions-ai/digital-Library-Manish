@@ -67,8 +67,10 @@ export function ArticlePage({
   journalBase = '/dashboard/journal',
   authorBase = '/dashboard/author',
   articleBase = '/dashboard/article',
+  departmentBase = '/dashboard/department',
 }: {
   viewerBase?: string; journalBase?: string; authorBase?: string; articleBase?: string;
+  departmentBase?: string;
 } = {}) {
   const { articleId } = useParams<{ articleId: string }>();
   const navigate = useNavigate();
@@ -143,7 +145,7 @@ export function ArticlePage({
             {a.domain && (
               <>
                 <ChevronRight size={11} />
-                <Link to={`/domain/${slug(a.domain)}`} className="hover:text-accent">{a.domain}</Link>
+                <Link to={`${departmentBase}/${slug(a.domain)}`} className="hover:text-accent">{a.domain}</Link>
               </>
             )}
             {jName && journalKey && (

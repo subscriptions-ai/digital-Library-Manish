@@ -11075,6 +11075,14 @@ async function startServer() {
     }
     next();
   };
+  const requireSalesRole = (req, res, next) => {
+    const r2 = req.user?.role;
+    if (r2 === "SuperAdmin" || r2 === "SubscriptionManager" || r2 === "SalesExecutive" || r2 === "SalesManager") {
+      next();
+    } else {
+      res.status(403).json({ error: "Access denied. Requires sales role." });
+    }
+  };
   app.get("/api/admin/settings/email", authenticateJWT, requireAdminOrManager, (req, res) => {
     const settings = getSystemSettings();
     res.json({
@@ -13118,7 +13126,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to submit request" });
     }
   });
-  app.get("/api/quotation/next-number", async (_req, res) => {
+  app.get("/api/quotation/next-number", authenticateJWT, requireSalesRole, async (_req, res) => {
     try {
       const now = /* @__PURE__ */ new Date();
       const year = now.getFullYear();
@@ -15263,6 +15271,64 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to load record" });
     }
   });
+  const departmentSlug = (d) => d.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  app.get("/api/library/department/:slug", async (req, res) => {
+    try {
+      const wanted = String(req.params.slug || "").toLowerCase();
+      const domains = await prisma3.journal.findMany({
+        where: { domain: { not: null }, articleCount: { gt: 0 } },
+        select: { domain: true },
+        distinct: ["domain"]
+      });
+      const match = domains.find((d) => departmentSlug(d.domain) === wanted);
+      if (!match) return res.status(404).json({ error: "Department not found" });
+      const domain = match.domain;
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && !scope.includes(domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+      const [journals, articles, books, publishers] = await Promise.all([
+        prisma3.journal.findMany({
+          where: { domain, articleCount: { gt: 0 } },
+          select: {
+            id: true,
+            title: true,
+            issn: true,
+            publisherName: true,
+            licence: true,
+            licenceIsNC: true,
+            articleCount: true,
+            volumeCount: true,
+            issueCount: true,
+            firstYear: true,
+            lastYear: true
+          },
+          orderBy: { articleCount: "desc" }
+        }),
+        prisma3.article.count({ where: { domain, status: "Published" } }),
+        prisma3.book.count({ where: { domain, status: "Published" } }),
+        prisma3.journal.groupBy({
+          by: ["publisherName"],
+          where: { domain, articleCount: { gt: 0 }, publisherName: { not: null } },
+          _count: { _all: true }
+        })
+      ]);
+      const years = journals.flatMap((j) => [j.firstYear, j.lastYear]).filter(Boolean);
+      res.json({
+        domain,
+        slug: wanted,
+        journals,
+        articles,
+        books,
+        firstYear: years.length ? Math.min(...years) : null,
+        lastYear: years.length ? Math.max(...years) : null,
+        publishers: publishers.map((p2) => ({ name: p2.publisherName, journals: p2._count._all })).sort((a, b) => b.journals - a.journals)
+      });
+    } catch (e2) {
+      console.error("GET library/department error:", e2?.message);
+      res.status(500).json({ error: "Failed to load department" });
+    }
+  });
   app.get("/api/library/stats", async (_req, res) => {
     try {
       const [journals, byDomain, articles, books, authors] = await Promise.all([
@@ -16802,7 +16868,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed" });
     }
   });
-  app.post("/api/quotation/save", async (req, res) => {
+  app.post("/api/quotation/save", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const { userEmail, userName, quotationData, userId, organization, state, duration } = req.body;
       let creatorEmail = "User / System";
@@ -16870,7 +16936,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to save quotation" });
     }
   });
-  app.post("/api/quotation/send", async (req, res) => {
+  app.post("/api/quotation/send", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const { userEmail, userName, quotationData, pdfBase64, userId, organization, state, duration, quotationDate } = req.body;
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
@@ -18505,7 +18571,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to delete coupon" });
     }
   });
-  app.post("/api/coupons/validate", async (req, res) => {
+  app.post("/api/coupons/validate", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const { code, orderAmount } = req.body;
       const coupon = await prisma3.coupon.findUnique({ where: { code } });
@@ -18926,14 +18992,6 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to fetch sales team" });
     }
   });
-  const requireSalesRole = (req, res, next) => {
-    const r2 = req.user?.role;
-    if (r2 === "SuperAdmin" || r2 === "SubscriptionManager" || r2 === "SalesExecutive" || r2 === "SalesManager") {
-      next();
-    } else {
-      res.status(403).json({ error: "Access denied. Requires sales role." });
-    }
-  };
   app.get("/api/sales/my-leads", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const leads = await prisma3.lead.findMany({
