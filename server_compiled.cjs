@@ -6564,12 +6564,12 @@ var init_file = __esm({
 
 // node_modules/formdata-polyfill/esm.min.js
 function formDataToBlob(F2, B = fetch_blob_default) {
-  var b = `${r()}${r()}`.replace(/\./g, "").slice(-28).padStart(32, "-"), c = [], p = `--${b}\r
+  var b = `${r()}${r()}`.replace(/\./g, "").slice(-28).padStart(32, "-"), c = [], p2 = `--${b}\r
 Content-Disposition: form-data; name="`;
-  F2.forEach((v, n) => typeof v == "string" ? c.push(p + e(n) + `"\r
+  F2.forEach((v, n) => typeof v == "string" ? c.push(p2 + e(n) + `"\r
 \r
 ${v.replace(/\r(?!\n)|(?<!\r)\n/g, "\r\n")}\r
-`) : c.push(p + e(n) + `"; filename="${e(v.name, 1)}"\r
+`) : c.push(p2 + e(n) + `"; filename="${e(v.name, 1)}"\r
 Content-Type: ${v.type || "application/octet-stream"}\r
 \r
 `, v, "\r\n"));
@@ -7510,14 +7510,14 @@ var init_headers = __esm({
         }) : void 0;
         super(result);
         return new Proxy(this, {
-          get(target, p, receiver) {
-            switch (p) {
+          get(target, p2, receiver) {
+            switch (p2) {
               case "append":
               case "set":
                 return (name, value) => {
                   validateHeaderName(name);
                   validateHeaderValue(name, String(value));
-                  return URLSearchParams.prototype[p].call(
+                  return URLSearchParams.prototype[p2].call(
                     target,
                     String(name).toLowerCase(),
                     String(value)
@@ -7528,7 +7528,7 @@ var init_headers = __esm({
               case "getAll":
                 return (name) => {
                   validateHeaderName(name);
-                  return URLSearchParams.prototype[p].call(
+                  return URLSearchParams.prototype[p2].call(
                     target,
                     String(name).toLowerCase()
                   );
@@ -7539,7 +7539,7 @@ var init_headers = __esm({
                   return new Set(URLSearchParams.prototype.keys.call(target)).keys();
                 };
               default:
-                return Reflect.get(target, p, receiver);
+                return Reflect.get(target, p2, receiver);
             }
           }
         });
@@ -9406,7 +9406,7 @@ var import_compression = __toESM(require("compression"), 1);
 var import_bcryptjs = __toESM(require("bcryptjs"), 1);
 var import_jsonwebtoken = __toESM(require("jsonwebtoken"), 1);
 var import_node_cron = __toESM(require("node-cron"), 1);
-var import_client2 = require("@prisma/client");
+var import_client3 = require("@prisma/client");
 
 // src/routes/extraction.ts
 var import_client = require("@prisma/client");
@@ -9818,11 +9818,689 @@ async function runOjsExtraction(job) {
   });
 }
 
+// src/config.ts
+var COMPANY_DETAILS = {
+  // ── The product ─────────────────────────────────────────────────────────
+  name: "STM Digital Library",
+  website: "https://journalslibrary.com/",
+  // ── The operating entity ────────────────────────────────────────────────
+  legalName: "IT Break COM Pvt. Ltd.",
+  shortName: "IT Break",
+  /** Shown beneath the product name on documents, emails and the footer. */
+  positioning: "A product of IT Break COM Pvt. Ltd.",
+  gstin: "07AAACI8666D1ZI",
+  pan: "AAACI8666D",
+  // derived from the GSTIN — confirm against the PAN card
+  cin: "U74899DL2001PTC109327",
+  /** Import Export Code — printed on receipts. */
+  iec: "AAACI8666D",
+  // TODO: confirm IT Break's actual Import Export Code
+  /**
+   * The entity's registered state. This drives whether a customer is billed
+   * CGST + SGST or IGST — see `COMPANY_STATE` in src/lib/gstUtils.ts, which
+   * reads this value. Changing it changes the tax split on every new document.
+   */
+  state: "Delhi",
+  address: "A-118, 1st Floor, Sector 63, Noida, Uttar Pradesh, India - 201301",
+  /** Shorter form used inside document footers. */
+  registeredOffice: "A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India",
+  tel: ["0120-4781200", "0120-4781206"],
+  mobile: "+91-9810078958",
+  whatsapp: "+91-9810078958",
+  email: "info@celnet.in",
+  bank: {
+    accountNumber: "50200039946701",
+    accountName: "IT Break COM Private Limited",
+    bankName: "HDFC Bank",
+    branch: "Sector 62, Noida, India",
+    ifscCode: "HDFC0002649"
+  }
+};
+var BANK_ROWS = [
+  ["Account Name", COMPANY_DETAILS.bank.accountName],
+  ["Account Number", COMPANY_DETAILS.bank.accountNumber],
+  ["Bank Name", COMPANY_DETAILS.bank.bankName],
+  ["Branch", COMPANY_DETAILS.bank.branch],
+  ["IFSC Code", COMPANY_DETAILS.bank.ifscCode]
+];
+function currentIssuer() {
+  return {
+    legalName: COMPANY_DETAILS.legalName,
+    positioning: COMPANY_DETAILS.positioning,
+    gstin: COMPANY_DETAILS.gstin,
+    pan: COMPANY_DETAILS.pan,
+    cin: COMPANY_DETAILS.cin,
+    iec: COMPANY_DETAILS.iec,
+    state: COMPANY_DETAILS.state,
+    address: COMPANY_DETAILS.address,
+    registeredOffice: COMPANY_DETAILS.registeredOffice,
+    email: COMPANY_DETAILS.email,
+    tel: [...COMPANY_DETAILS.tel],
+    bank: { ...COMPANY_DETAILS.bank }
+  };
+}
+var STATUTORY_LINE = `GSTIN: ${COMPANY_DETAILS.gstin} \xA0|\xA0 PAN: ${COMPANY_DETAILS.pan} \xA0|\xA0 CIN: ${COMPANY_DETAILS.cin}`;
+
+// src/constants.ts
+var DEFAULT_CONTENT_TYPES = [
+  { type: "Books", count: "500+", description: "Core textbooks and reference materials." },
+  { type: "Periodicals", count: "1,200+", description: "High-impact technical journals." },
+  { type: "Magazines", count: "200+", description: "Subject-focused academic issues." },
+  { type: "Case Reports", count: "5,000+", description: "Real-world research applications." },
+  { type: "Theses", count: "10,000+", description: "Original research repository." },
+  { type: "Conference Proceedings", count: "3,000+", description: "Global conference insights." },
+  { type: "Educational Videos", count: "1,500+", description: "Visual learning resources." },
+  { type: "Newsletters", count: "800+", description: "Departmental updates." }
+];
+var DOMAINS = [
+  {
+    id: "electrical-engineering",
+    name: "Electrical Engineering",
+    description: "Electrical Engineering is a core branch of engineering that deals with the study, design, and application of equipment, devices, and systems which use electricity, electronics, and electromagnetism. It covers a wide spectrum from power generation and distribution to telecommunications and control systems.",
+    importance: "In the modern era, Electrical Engineering is indispensable. It powers our homes, drives industrial automation, enables global communication networks, and is at the heart of the renewable energy revolution and electric mobility. Research in this field is critical for achieving global sustainability goals and advancing technological frontiers.",
+    contentAvailable: ["60+ Specialized Journals", "20,000+ Technical Papers", "Interactive Simulations", "Expert Webinars"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Our Electrical Engineering library provides you with peer-reviewed research that is shaping the future of power grids, semiconductor technology, and signal processing. Stay ahead in a rapidly evolving field with access to the latest breakthroughs and industry standards.",
+    whoShouldAccess: ["Undergraduate & Postgraduate Students", "Power Systems Researchers", "Electronics Design Engineers", "Academic Libraries", "Energy Sector Corporates"],
+    features: ["Full-text Journal Access", "Reference E-Books", "High-Quality Video Tutorials", "Conference Paper Repository", "Monthly Research Newsletters"],
+    icon: "Zap",
+    themeColor: "blue"
+  },
+  {
+    id: "computer-it",
+    name: "Computer / IT",
+    description: "Computer Science and Information Technology involve the theoretical study of algorithms and data structures, and the practical application of computing systems to solve complex problems. This domain includes Artificial Intelligence, Cybersecurity, Software Engineering, and Data Science.",
+    importance: "Digital transformation is the defining trend of the 21st century. Computer Science research drives innovation in every sector, from healthcare to finance. Understanding AI, Big Data, and Cloud Computing is essential for any modern institution or professional aiming to lead in the digital economy.",
+    contentAvailable: ["100+ High-Impact Journals", "35,000+ Conference Proceedings", "Software Documentation", "Coding Masterclasses"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Our digital library offers unparalleled access to the latest research in Deep Learning, Blockchain, and Cyber-Physical Systems. Access ensures your researchers and students have the tools to innovate and excel in the global tech landscape.",
+    whoShouldAccess: ["CS & IT Students", "Software Developers", "AI Researchers", "Tech Startups", "University IT Departments"],
+    features: ["Access to Top-Tier Journals", "Latest Tech E-Books", "Programming Video Series", "Global Conference Papers", "Industry Trend Reports"],
+    icon: "Monitor",
+    themeColor: "indigo"
+  },
+  {
+    id: "medical-sciences",
+    name: "Medical Sciences",
+    description: "Medical Sciences encompass a vast array of disciplines dedicated to understanding human health, diagnosing diseases, and developing effective treatments. It includes clinical medicine, pharmacology, public health, and biomedical research.",
+    importance: "Medical research is the foundation of modern healthcare. It leads to life-saving discoveries, informs public health policies, and improves the quality of life globally. Access to the latest clinical trials and case reports is vital for medical practitioners and researchers.",
+    contentAvailable: ["150+ Peer-Reviewed Journals", "Clinical Case Studies", "Surgical Procedure Videos", "Medical Reference E-Books"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Stay updated with evidence-based medicine and the latest pharmacological advancements. Our library provides the critical data needed for clinical decision-making and cutting-edge biomedical research.",
+    whoShouldAccess: ["Medical Students & Interns", "Practicing Physicians", "Biomedical Researchers", "Hospital Libraries", "Pharmaceutical Companies"],
+    features: ["Clinical Journal Access", "Medical Case Report Database", "Surgical Video Library", "Reference Textbooks", "Health Policy Newsletters"],
+    icon: "Stethoscope",
+    themeColor: "red"
+  },
+  {
+    id: "management",
+    name: "Management",
+    description: "Management is the art and science of organizing resources and directing activities to achieve organizational goals. It covers strategic planning, human resources, finance, marketing, and operations management.",
+    importance: "Effective management is crucial for the success of any organization. Research in management provides insights into leadership, organizational behavior, and market dynamics, helping businesses navigate a complex and competitive global environment.",
+    contentAvailable: ["50+ Business Journals", "Market Research Reports", "Leadership Case Studies", "Executive Education Videos"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access the latest theories and case studies in digital transformation, sustainable business practices, and global leadership. Empower your team with the knowledge to drive organizational growth.",
+    whoShouldAccess: ["MBA & BBA Students", "Corporate Managers", "Business Consultants", "Entrepreneurship Hubs", "Management Institutes"],
+    features: ["Business Journal Access", "Strategic Management E-Books", "Leadership Video Series", "Market Analysis Reports", "Corporate Newsletters"],
+    icon: "Briefcase",
+    themeColor: "slate"
+  },
+  {
+    id: "chemistry",
+    name: "Chemistry",
+    description: "Chemistry is the study of matter, its properties, how and why substances combine or separate to form other substances, and how substances interact with energy. It is often called the central science because it bridges other natural sciences.",
+    importance: "Chemical research is fundamental to the development of new materials, medicines, and sustainable energy sources. From nanotechnology to environmental science, chemistry plays a pivotal role in solving global challenges.",
+    contentAvailable: ["70+ Specialized Journals", "Laboratory Protocols", "Chemical Safety Reports", "Molecular Modeling Videos"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Gain access to high-impact research in organic, inorganic, and analytical chemistry. Our library supports laboratory breakthroughs and industrial chemical applications with reliable, peer-reviewed data.",
+    whoShouldAccess: ["Chemistry Students", "Industrial Chemists", "Pharmacologists", "Research Laboratories", "Science Faculties"],
+    features: ["Chemistry Journal Access", "Advanced E-Books", "Lab Tutorial Videos", "Research Theses", "Safety & Regulatory Updates"],
+    icon: "Beaker",
+    themeColor: "emerald"
+  },
+  {
+    id: "mechanical-engineering",
+    name: "Mechanical Engineering",
+    description: "Mechanical Engineering is one of the oldest and broadest engineering branches. It involves the design, analysis, manufacturing, and maintenance of mechanical systems, ranging from small individual parts to large systems like aircraft and spacecraft.",
+    importance: "Mechanical engineering is the backbone of the manufacturing and transportation industries. Research in robotics, thermodynamics, and materials science is essential for the next generation of industrial automation and sustainable transport.",
+    contentAvailable: ["55+ Engineering Journals", "Design Standards", "CAD/CAM Tutorials", "Manufacturing Case Studies"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Stay informed about the latest advancements in additive manufacturing, fluid dynamics, and mechatronics. Our library provides the technical depth required for innovative engineering solutions.",
+    whoShouldAccess: ["Engineering Students", "Mechanical Designers", "Robotics Engineers", "Manufacturing Firms", "Technical Universities"],
+    features: ["Engineering Journal Access", "Technical E-Books", "Design Video Tutorials", "Conference Proceedings", "Industry Standards Updates"],
+    icon: "Settings",
+    themeColor: "orange"
+  },
+  {
+    id: "pharmacy",
+    name: "Pharmacy",
+    description: "Pharmacy is the health science that links medical science with chemistry and it is charged with the discovery, production, control, disposal, safe and effective use of drugs.",
+    importance: "The pharmaceutical sector is critical for global health. Continuous research is needed to develop new vaccines, manage chronic diseases, and ensure drug safety through rigorous clinical trials and pharmacological studies.",
+    contentAvailable: ["40+ Pharma Journals", "Drug Interaction Guides", "Clinical Trial Reports", "Pharmacology Videos"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access the latest research in drug delivery systems, clinical pharmacy, and medicinal chemistry. Our library is an essential resource for staying compliant with global pharmaceutical standards.",
+    whoShouldAccess: ["Pharmacy Students", "Pharmacists", "Drug Researchers", "Pharmaceutical Corporates", "Pharmacy Colleges"],
+    features: ["Pharma Journal Access", "Pharmacology E-Books", "Clinical Case Reports", "Research Theses", "Regulatory Newsletters"],
+    icon: "Pill",
+    themeColor: "pink"
+  },
+  {
+    id: "civil-construction",
+    name: "Civil / Construction Engineering",
+    description: "Civil Engineering is a professional engineering discipline that deals with the design, construction, and maintenance of the physical and naturally built environment, including works like roads, bridges, canals, dams, and buildings.",
+    importance: "As urbanization accelerates, civil engineering research is vital for creating sustainable, resilient, and smart infrastructure. Innovations in materials and construction techniques are key to building the cities of the future.",
+    contentAvailable: ["35+ Infrastructure Journals", "Building Codes & Standards", "Structural Analysis Reports", "Construction Site Videos"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Unlock research on green building, earthquake engineering, and smart city planning. Our library provides the foundational knowledge for modern infrastructure development.",
+    whoShouldAccess: ["Civil Engineering Students", "Structural Engineers", "Urban Planners", "Construction Companies", "Government Infrastructure Bodies"],
+    features: ["Civil Journal Access", "Infrastructure E-Books", "Site Safety Videos", "Conference Papers", "Urban Planning Reports"],
+    icon: "Building",
+    themeColor: "amber"
+  },
+  {
+    id: "nano-technology",
+    name: "Nano Technology",
+    description: "Nanotechnology is the manipulation of matter on an atomic, molecular, and supramolecular scale. It involves the design, characterization, production, and application of structures, devices, and systems by controlling shape and size at nanometer scale.",
+    importance: "Nanotechnology is a transformative field with applications in medicine, electronics, energy, and materials science. It allows for the creation of stronger, lighter, and more efficient products, driving the next industrial revolution.",
+    contentAvailable: ["25+ Nano Journals", "Nanomaterial Databases", "Scanning Microscopy Videos", "Nano-Bio Research Papers"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access pioneering research in carbon nanotubes, quantum dots, and nanomedicine. Stay at the cutting edge of a field that is redefining the limits of science and engineering.",
+    whoShouldAccess: ["Nanotechnology Students", "Material Scientists", "Biomedical Engineers", "Advanced Research Labs", "Tech Corporates"],
+    features: ["Nano Journal Access", "Advanced Materials E-Books", "Microscopy Video Tutorials", "Research Theses", "Nano-Tech Newsletters"],
+    icon: "Microscope",
+    themeColor: "indigo"
+  },
+  {
+    id: "bio-technology",
+    name: "Bio Technology",
+    description: "Biotechnology is the use of living systems and organisms to develop or make products, or 'any technological application that uses biological systems, living organisms, or derivatives thereof, to make or modify products or processes for specific use'.",
+    importance: "Biotechnology is at the forefront of solving global issues in healthcare, agriculture, and the environment. From gene editing to biofuels, biotech research is essential for a sustainable and healthy future.",
+    contentAvailable: ["45+ Biotech Journals", "Genomic Data Reports", "Lab Technique Videos", "Bioprocess Engineering Papers"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Explore the latest in CRISPR technology, synthetic biology, and agricultural biotechnology. Our library provides the biological insights needed for groundbreaking innovation.",
+    whoShouldAccess: ["Biotech Students", "Geneticists", "Agricultural Scientists", "Biotech Startups", "Life Science Departments"],
+    features: ["Biotech Journal Access", "Molecular Biology E-Books", "Lab Protocol Videos", "Conference Proceedings", "Biotech Industry Updates"],
+    icon: "Dna",
+    themeColor: "emerald"
+  },
+  {
+    id: "energy",
+    name: "Energy",
+    description: "The Energy domain focuses on the production, distribution, and consumption of energy. It covers traditional fossil fuels as well as renewable sources like solar, wind, and nuclear energy, along with energy storage and efficiency.",
+    importance: "Energy is the lifeblood of modern civilization. Transitioning to clean energy and improving energy efficiency are the most critical challenges of our time. Research in this field is vital for energy security and climate action.",
+    contentAvailable: ["30+ Energy Journals", "Renewable Energy Reports", "Power Plant Simulation Videos", "Energy Policy Papers"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Stay updated on the latest in battery technology, solar cell efficiency, and smart grid integration. Our library is a key resource for energy professionals and researchers.",
+    whoShouldAccess: ["Energy Engineering Students", "Renewable Energy Consultants", "Power Plant Operators", "Environmental NGOs", "Energy Sector Corporates"],
+    features: ["Energy Journal Access", "Renewable Energy E-Books", "Technical Video Lectures", "Research Theses", "Energy Policy Newsletters"],
+    icon: "Flame",
+    themeColor: "orange"
+  },
+  {
+    id: "life-sciences",
+    name: "Life Sciences",
+    description: "Life Sciences involve the scientific study of living organisms \u2013 such as microorganisms, plants, animals, and human beings \u2013 as well as related considerations like bioethics.",
+    importance: "Life sciences research is fundamental to our understanding of the natural world and our own biology. It informs conservation efforts, agricultural practices, and medical breakthroughs.",
+    contentAvailable: ["50+ Life Science Journals", "Biodiversity Reports", "Field Study Videos", "Biological Classification Guides"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access comprehensive research in ecology, zoology, botany, and microbiology. Our library supports a deep understanding of the complex systems that sustain life on Earth.",
+    whoShouldAccess: ["Biology Students", "Ecologists", "Microbiologists", "Conservationists", "Natural History Museums"],
+    features: ["Life Science Journal Access", "Biological E-Books", "Nature Documentary Videos", "Research Theses", "Environmental Newsletters"],
+    icon: "Leaf",
+    themeColor: "green"
+  },
+  {
+    id: "law",
+    name: "Law",
+    description: "Law is a system of rules created and enforced through social or governmental institutions to regulate behavior. It encompasses constitutional law, criminal law, international law, and corporate law.",
+    importance: "Legal research is essential for the administration of justice, the protection of rights, and the functioning of a civil society. Understanding legal precedents and evolving regulations is critical for legal professionals.",
+    contentAvailable: ["25+ Law Journals", "Legal Case Reports", "Court Proceeding Videos", "Constitutional Commentaries"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access a vast repository of legal case studies, international treaties, and scholarly legal analysis. Stay informed about the latest judicial interpretations and legislative changes.",
+    whoShouldAccess: ["Law Students", "Advocates & Judges", "Legal Scholars", "Corporate Legal Departments", "Law Firms"],
+    features: ["Legal Journal Access", "Law Reference E-Books", "Mock Trial Videos", "Legal Research Theses", "Legislative Update Newsletters"],
+    icon: "Gavel",
+    themeColor: "slate"
+  },
+  {
+    id: "agriculture",
+    name: "Agriculture",
+    description: "Agriculture is the science and art of cultivating plants and livestock. It includes crop production, soil science, animal husbandry, and agricultural economics.",
+    importance: "Agriculture is the foundation of food security. Research in sustainable farming, pest management, and crop genetics is vital for feeding a growing global population while protecting the environment.",
+    contentAvailable: ["35+ Agricultural Journals", "Soil Analysis Reports", "Farming Technique Videos", "Agri-Business Case Studies"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Explore the latest in precision agriculture, organic farming, and climate-resilient crops. Our library provides the knowledge to transform traditional farming into a high-tech industry.",
+    whoShouldAccess: ["Agriculture Students", "Agronomists", "Farmers & Agri-Entrepreneurs", "Agricultural Research Centers", "Agri-Input Companies"],
+    features: ["Agri Journal Access", "Soil Science E-Books", "Farming Video Tutorials", "Research Theses", "Market Trend Newsletters"],
+    icon: "Wheat",
+    themeColor: "amber"
+  },
+  {
+    id: "nursing",
+    name: "Nursing",
+    description: "Nursing is a profession within the healthcare sector focused on the care of individuals, families, and communities so they may attain, maintain, or recover optimal health and quality of life.",
+    importance: "Nurses are the backbone of healthcare delivery. Research in nursing practice, patient care, and healthcare management is essential for improving patient outcomes and healthcare efficiency.",
+    contentAvailable: ["30+ Nursing Journals", "Patient Care Protocols", "Clinical Skill Videos", "Nursing Ethics Reports"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Stay updated with the latest in evidence-based nursing practice and patient safety. Our library supports the professional development of nurses and the excellence of healthcare institutions.",
+    whoShouldAccess: ["Nursing Students", "Registered Nurses", "Nurse Educators", "Nursing Colleges", "Hospital Administration"],
+    features: ["Nursing Journal Access", "Clinical E-Books", "Skill Demonstration Videos", "Research Theses", "Nursing Practice Newsletters"],
+    icon: "HeartPulse",
+    themeColor: "rose"
+  },
+  {
+    id: "education-social-sciences",
+    name: "Education and Social Sciences",
+    description: "This domain explores the processes of learning and the complex structures of human society. It includes pedagogy, sociology, psychology, and educational technology.",
+    importance: "Education and social sciences research is key to understanding human behavior and improving societal structures. It informs educational policy, social welfare programs, and our understanding of cultural dynamics.",
+    contentAvailable: ["40+ Education Journals", "Sociological Reports", "Psychological Case Studies", "Pedagogical Video Series"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access research on inclusive education, digital learning, and social policy. Our library provides the insights needed to build a more equitable and informed society.",
+    whoShouldAccess: ["Education Students", "Teachers & Educators", "Sociologists", "Policy Makers", "Social Work Organizations"],
+    features: ["Education Journal Access", "Social Science E-Books", "Teaching Method Videos", "Research Theses", "Educational Trend Newsletters"],
+    icon: "GraduationCap",
+    themeColor: "purple"
+  },
+  {
+    id: "applied-sciences",
+    name: "Applied Sciences",
+    description: "Applied Sciences involve the application of existing scientific knowledge to practical applications, like technology or inventions. It bridges the gap between theoretical science and engineering.",
+    importance: "Applied science is the engine of practical innovation. It takes discoveries from the lab and turns them into products and processes that improve our daily lives.",
+    contentAvailable: ["45+ Applied Science Journals", "Patent Reports", "Experimental Technique Videos", "Industrial Application Papers"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Unlock research in forensic science, environmental technology, and applied physics. Our library supports the practical application of scientific principles across various industries.",
+    whoShouldAccess: ["Applied Science Students", "Industrial Researchers", "Forensic Experts", "Innovation Hubs", "Technical Departments"],
+    features: ["Applied Science Journal Access", "Technical E-Books", "Experimental Video Tutorials", "Research Theses", "Innovation Newsletters"],
+    icon: "FlaskConical",
+    themeColor: "cyan"
+  },
+  {
+    id: "multidisciplinary",
+    name: "Multidisciplinary",
+    description: "Multidisciplinary research involves the combination of several professional specializations or academic disciplines to solve complex problems that cannot be addressed by a single field.",
+    importance: "The most significant challenges of our time \u2013 like climate change and global pandemics \u2013 require multidisciplinary solutions. This domain fosters collaboration and the integration of diverse perspectives.",
+    contentAvailable: ["50+ Multidisciplinary Journals", "Interdisciplinary Reports", "Collaborative Research Videos", "Cross-Domain Case Studies"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access a broad range of research that transcends traditional boundaries. Our library is the perfect resource for researchers looking to expand their horizons and find innovative solutions.",
+    whoShouldAccess: ["Interdisciplinary Researchers", "General Science Students", "Academic Libraries", "Think Tanks", "Global Organizations"],
+    features: ["Multidisciplinary Journal Access", "Broad-Spectrum E-Books", "Collaborative Video Series", "Research Theses", "Global Research Newsletters"],
+    icon: "Layers",
+    themeColor: "violet"
+  },
+  {
+    id: "electronics-telecommunication",
+    name: "Electronics & Telecommunication Engineering",
+    description: "This field deals with the design and development of electronic circuits, equipment, and communication systems. It includes 5G technology, satellite communication, and embedded systems.",
+    importance: "In a hyper-connected world, telecommunications research is the foundation of global connectivity. It enables high-speed internet, mobile communication, and the Internet of Things (IoT).",
+    contentAvailable: ["40+ Telecom Journals", "Signal Processing Reports", "Antenna Design Videos", "Wireless Network Papers"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Stay at the forefront of wireless communication, optical fiber technology, and VLSI design. Our library provides the technical depth for the next generation of communication systems.",
+    whoShouldAccess: ["Engineering Students", "Telecom Engineers", "Network Architects", "Telecom Corporates", "Technical Institutes"],
+    features: ["Telecom Journal Access", "Electronics E-Books", "Technical Video Tutorials", "Conference Proceedings", "Telecom Industry Newsletters"],
+    icon: "Radio",
+    themeColor: "sky"
+  },
+  {
+    id: "chemical-engineering",
+    name: "Chemical Engineering",
+    description: "Chemical Engineering is a branch of engineering that uses principles of chemistry, physics, mathematics, biology, and economics to efficiently use, produce, design, transport and transform energy and materials.",
+    importance: "Chemical engineers are essential for the production of everything from fuels to food. Research in this field is key to sustainable manufacturing and the development of green chemical processes.",
+    contentAvailable: ["35+ Chem-Eng Journals", "Process Design Reports", "Plant Operation Videos", "Safety Standards Papers"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access research on process intensification, biochemical engineering, and sustainable materials. Our library supports the optimization of industrial chemical processes.",
+    whoShouldAccess: ["Chemical Engineering Students", "Process Engineers", "Plant Managers", "Chemical Corporates", "Engineering Departments"],
+    features: ["Chem-Eng Journal Access", "Process Engineering E-Books", "Plant Safety Videos", "Research Theses", "Industrial Newsletters"],
+    icon: "FlaskRound",
+    themeColor: "teal"
+  },
+  {
+    id: "ayurveda",
+    name: "Ayurveda",
+    description: "Ayurveda is one of the world's oldest holistic healing systems. It was developed more than 3,000 years ago in India. It\u2019s based on the belief that health and wellness depend on a delicate balance between the mind, body, and spirit.",
+    importance: "Ayurvedic research is vital for validating traditional knowledge with modern scientific methods. It offers alternative and complementary approaches to health and wellness that are gaining global recognition.",
+    contentAvailable: ["20+ Ayurveda Journals", "Herbal Medicine Reports", "Panchakarma Technique Videos", "Ancient Text Commentaries"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Explore the scientific basis of Ayurvedic treatments and herbal pharmacology. Our library is a unique resource for integrating traditional wisdom with modern healthcare.",
+    whoShouldAccess: ["Ayurveda Students (BAMS/MD)", "Ayurvedic Practitioners", "Herbal Researchers", "Wellness Centers", "Ayurvedic Colleges"],
+    features: ["Ayurveda Journal Access", "Traditional Medicine E-Books", "Treatment Video Tutorials", "Research Theses", "Wellness Newsletters"],
+    icon: "Sprout",
+    themeColor: "lime"
+  },
+  {
+    id: "architecture",
+    name: "Architecture",
+    description: "Architecture is both the process and the product of planning, designing, and constructing buildings or other structures. It is a multidisciplinary field that combines art, science, and technology.",
+    importance: "Architecture shapes the environment we live in. Research in sustainable design, urban planning, and architectural history is essential for creating functional, beautiful, and eco-friendly spaces.",
+    contentAvailable: ["25+ Architecture Journals", "Design Portfolios", "Architectural Walkthrough Videos", "Urban Planning Reports"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access research on green architecture, parametric design, and heritage conservation. Our library provides the inspiration and technical knowledge for modern architectural practice.",
+    whoShouldAccess: ["Architecture Students", "Architects", "Interior Designers", "Urban Planners", "Architecture Firms"],
+    features: ["Architecture Journal Access", "Design E-Books", "Walkthrough Video Series", "Conference Proceedings", "Design Trend Newsletters"],
+    icon: "Compass",
+    themeColor: "stone"
+  },
+  {
+    id: "material-science",
+    name: "Material Science",
+    description: "Material Science is an interdisciplinary field involving the properties of matter and its applications to various areas of science and engineering. It investigates the relationship between the structure of materials at atomic or molecular scales and their macroscopic properties.",
+    importance: "Material science is the foundation of technological progress. From semiconductors to aerospace alloys, new materials drive innovation in every engineering field.",
+    contentAvailable: ["30+ Material Science Journals", "Material Property Databases", "Microscopy Videos", "Metallurgy Reports"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Stay updated on the latest in polymers, ceramics, and composite materials. Our library provides the structural insights needed to engineer the next generation of high-performance materials.",
+    whoShouldAccess: ["Material Science Students", "Metallurgists", "Aerospace Engineers", "Research Labs", "Manufacturing Corporates"],
+    features: ["Material Science Journal Access", "Metallurgy E-Books", "Lab Technique Videos", "Research Theses", "Material Trend Newsletters"],
+    icon: "Box",
+    themeColor: "zinc"
+  },
+  {
+    id: "applied-mechanics",
+    name: "Applied Mechanics",
+    description: "Applied Mechanics is a branch of the physical sciences and the practical application of mechanics. It examines the response of bodies or systems of bodies to external forces.",
+    importance: "Applied mechanics is fundamental to structural engineering, mechanical design, and aerospace. It provides the mathematical and physical models needed to predict the behavior of complex systems.",
+    contentAvailable: ["20+ Mechanics Journals", "Structural Simulation Reports", "Dynamics Video Lectures", "Finite Element Analysis Papers"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access research on computational mechanics, fracture mechanics, and biomechanics. Our library provides the analytical depth required for advanced engineering research.",
+    whoShouldAccess: ["Engineering Students", "Structural Analysts", "Mechanical Researchers", "Technical Institutes", "R&D Centers"],
+    features: ["Mechanics Journal Access", "Computational E-Books", "Simulation Video Tutorials", "Research Theses", "Technical Newsletters"],
+    icon: "Activity",
+    themeColor: "neutral"
+  },
+  {
+    id: "dental",
+    name: "Dental",
+    description: "Dental science covers the study, diagnosis, prevention, and treatment of diseases, disorders, and conditions of the oral cavity.",
+    importance: "Dental research is essential for advancing oral healthcare, innovating new treatments, and improving overall systemic health.",
+    contentAvailable: ["25+ Dental Journals", "Clinical Case Studies", "Surgical Videos", "Orthodontic Reports"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access the latest research in periodontology, prosthodontics, and oral surgery. Our library provides the clinical data needed for modern dental practice.",
+    whoShouldAccess: ["Dental Students", "Dentists", "Oral Surgeons", "Dental Clinics", "Research Labs"],
+    features: ["Dental Journal Access", "Clinical Textbooks", "Procedural Videos", "Research Theses", "Dental Newsletters"],
+    icon: "Stethoscope",
+    themeColor: "teal"
+  },
+  {
+    id: "physiotherapy",
+    name: "Physiotherapy",
+    description: "Physiotherapy focuses on physical rehabilitation, injury prevention, and health and fitness.",
+    importance: "Physiotherapy research helps in developing new rehabilitation techniques, improving mobility, and managing pain effectively.",
+    contentAvailable: ["20+ Physiotherapy Journals", "Rehabilitation Guides", "Exercise Videos", "Clinical Trials"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Explore research in biomechanics, sports therapy, and neuro-rehabilitation. Stay updated with evidence-based physical therapy.",
+    whoShouldAccess: ["Physiotherapy Students", "Physical Therapists", "Sports Clinics", "Rehabilitation Centers", "Hospitals"],
+    features: ["Physiotherapy Journal Access", "Rehab E-Books", "Therapy Videos", "Research Theses", "Health Newsletters"],
+    icon: "Activity",
+    themeColor: "blue"
+  },
+  {
+    id: "commerce",
+    name: "Commerce",
+    description: "Commerce covers the exchange of goods and services, including legal, economic, political, social, cultural, and technological systems.",
+    importance: "Commerce research is vital for understanding market dynamics, consumer behavior, and global trade.",
+    contentAvailable: ["30+ Commerce Journals", "Market Analysis", "Financial Reports", "Trade Case Studies"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access comprehensive research in accounting, finance, and international business. Our library supports deep economic and commercial analysis.",
+    whoShouldAccess: ["Commerce Students", "Economists", "Business Analysts", "Financial Institutions", "Corporate Researchers"],
+    features: ["Commerce Journal Access", "Finance E-Books", "Market Trend Videos", "Research Theses", "Economic Newsletters"],
+    icon: "Briefcase",
+    themeColor: "slate"
+  },
+  {
+    id: "arts",
+    name: "Arts",
+    description: "The Arts encompass a broad range of human practices of creative expression, storytelling, and cultural commentary.",
+    importance: "Arts research preserves cultural heritage, fosters creativity, and provides critical perspectives on human history and society.",
+    contentAvailable: ["25+ Arts Journals", "Literary Critiques", "Art History Videos", "Cultural Case Studies"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Explore research in literature, performing arts, and visual arts. Our library provides the critical insights needed for humanistic studies.",
+    whoShouldAccess: ["Arts Students", "Historians", "Literary Critics", "Museums", "Cultural Institutions"],
+    features: ["Arts Journal Access", "Humanities E-Books", "Cultural Documentaries", "Research Theses", "Arts Newsletters"],
+    icon: "BookOpen",
+    themeColor: "pink"
+  },
+  {
+    id: "science",
+    name: "Science",
+    description: "Science is the systematic enterprise that builds and organizes knowledge in the form of testable explanations and predictions about the universe.",
+    importance: "Scientific research drives innovation, solves critical global challenges, and enhances our fundamental understanding of the natural world.",
+    contentAvailable: ["50+ Science Journals", "Experimental Protocols", "Lab Demonstration Videos", "Research Papers"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Access cutting-edge research across physics, biology, and chemistry. Our library supports comprehensive scientific inquiry and discovery.",
+    whoShouldAccess: ["Science Students", "Researchers", "Laboratories", "Academic Institutions", "R&D Centers"],
+    features: ["Science Journal Access", "Reference Textbooks", "Experiment Videos", "Research Theses", "Scientific Newsletters"],
+    icon: "Atom",
+    themeColor: "sky"
+  }
+];
+
+// src/lib/ingestionWorker.ts
+var import_client2 = require("@prisma/client");
+var prisma2 = new import_client2.PrismaClient();
+var p = prisma2;
+var CONTACT = process.env.OPENALEX_CONTACT || "info@celnet.in";
+var UA = { "User-Agent": `STM Digital Library (mailto:${CONTACT})` };
+var COMMERCIAL_OK = /^(cc[\s-]?by([\s-]?(sa|nd))?|cc0|public[\s-]?domain)$/i;
+function licenceAllowsCommercialUse(raw, ncFlag) {
+  if (ncFlag === true) return false;
+  const t2 = String(raw || "").trim();
+  if (!t2) return false;
+  if (/nc/i.test(t2.replace(/[^a-z]/gi, ""))) return false;
+  return COMMERCIAL_OK.test(t2.replace(/\s+/g, " "));
+}
+var DEPARTMENT_TERMS = {
+  "Computer / IT": ["computer science", "information technology", "informatics"],
+  "Civil / Construction Engineering": ["civil engineering", "construction"],
+  "Electronics & Telecommunication Engineering": ["electronics", "telecommunication"],
+  "Ayurveda": ["ayurveda", "traditional medicine", "pharmacognosy", "herbal medicine"],
+  "Applied Mechanics": ["applied mechanics", "mechanics"],
+  "Material Science": ["materials science", "materials"],
+  "Nano Technology": ["nanotechnology", "nanoscience"],
+  "Bio Technology": ["biotechnology"],
+  "Education and Social Sciences": ["education", "social sciences"],
+  // Deliberately narrowed: as a bare term "science" matches almost every journal
+  // in DOAJ and would swamp every other department.
+  "Science": ["natural sciences", "general science"],
+  "Applied Sciences": ["applied sciences"],
+  "Arts": ["arts", "humanities"],
+  "Commerce": ["commerce", "business"],
+  "Multidisciplinary": ["multidisciplinary"]
+};
+function searchTermsFor(department) {
+  return DEPARTMENT_TERMS[department] || [department];
+}
+function normaliseIssn(raw) {
+  if (!raw) return null;
+  const t2 = String(raw).replace(/[\u2010-\u2015]/g, "-").replace(/\s+/g, "").toUpperCase();
+  const m2 = t2.match(/^(\d{4})-?(\d{3}[\dX])$/);
+  return m2 ? `${m2[1]}-${m2[2]}` : null;
+}
+var sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+async function getJson(url) {
+  try {
+    const r2 = await fetch(url, { headers: UA });
+    if (!r2.ok) return null;
+    return await r2.json();
+  } catch {
+    return null;
+  }
+}
+async function getState() {
+  return p.ingestionState.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: { id: "singleton" }
+  });
+}
+async function discoverJournals(department, state) {
+  const records = [];
+  for (const term of searchTermsFor(department)) {
+    const d = await getJson(
+      `https://doaj.org/api/search/journals/${encodeURIComponent(term)}?pageSize=100`
+    );
+    if (d?.results?.length) records.push(...d.results);
+    await sleep(400);
+  }
+  if (!records.length) return { seen: 0, accepted: 0, rejected: 0 };
+  let seen = 0, accepted = 0, rejected = 0;
+  for (const rec of records) {
+    const b = rec.bibjson || {};
+    const title = b.title;
+    if (!title) continue;
+    seen++;
+    const lic = (b.license || [])[0];
+    const ok = licenceAllowsCommercialUse(lic?.type, lic?.NC);
+    const issn = normaliseIssn(b.pissn) || normaliseIssn(b.eissn);
+    const data = {
+      title,
+      issn: issn || void 0,
+      eissn: normaliseIssn(b.eissn),
+      publisherName: b.publisher?.name || null,
+      country: b.publisher?.country || null,
+      domain: department,
+      subjects: (b.subject || []).map((s2) => s2.term).filter(Boolean),
+      homepage: (b.link || []).find((l) => l.type === "homepage")?.url || null,
+      licence: lic?.type || null,
+      licenceIsNC: lic?.NC === true || !ok,
+      rightsBasis: "DOAJ declaration",
+      rightsVerifiedAt: /* @__PURE__ */ new Date(),
+      rightsVerifiedBy: "ingestion",
+      // Rejected titles are still catalogued — they simply never serve full text.
+      status: ok ? "Accepted" : "MetadataOnly"
+    };
+    const existing = issn ? await p.journal.findFirst({ where: { issn } }) : await p.journal.findFirst({ where: { title } });
+    if (existing) {
+      if (existing.rightsBasis === "our own") continue;
+      await p.journal.update({ where: { id: existing.id }, data });
+    } else {
+      await p.journal.create({ data });
+    }
+    ok ? accepted++ : rejected++;
+  }
+  return { seen, accepted, rejected };
+}
+async function fetchArticlesForOneJournal(state) {
+  const journal = await p.journal.findFirst({
+    where: { status: "Accepted", issn: { not: null }, rightsBasis: "DOAJ declaration" },
+    orderBy: [{ lastIngestedAt: { sort: "asc", nulls: "first" } }]
+  });
+  if (!journal) return { journal: null, added: 0, skipped: 0 };
+  const fromYear = (/* @__PURE__ */ new Date()).getFullYear() - (state.yearsBack - 1);
+  const url = `https://api.openalex.org/works?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)},from_publication_date:${fromYear}-01-01,open_access.is_oa:true&per-page=${Math.min(state.batchSize, 200)}&sort=publication_date:desc`;
+  const d = await getJson(url);
+  await p.journal.update({ where: { id: journal.id }, data: { lastIngestedAt: /* @__PURE__ */ new Date() } });
+  if (!d?.results?.length) return { journal: journal.title, added: 0, skipped: 0 };
+  let added = 0, skipped = 0;
+  for (const w of d.results) {
+    const doi = (w.doi || "").replace(/^https?:\/\/(dx\.)?doi\.org\//i, "") || null;
+    const pdf = w.best_oa_location?.pdf_url || w.open_access?.oa_url || null;
+    const lic = w.best_oa_location?.license || null;
+    const ok = lic ? licenceAllowsCommercialUse(lic) : !journal.licenceIsNC;
+    const fingerprint = doi ? `doi:${doi.toLowerCase()}` : `t:${String(w.title || "").toLowerCase().replace(/\W+/g, " ").trim().slice(0, 180)}|${w.publication_year}`;
+    if (await p.article.findFirst({ where: { fingerprint }, select: { id: true } })) {
+      skipped++;
+      continue;
+    }
+    await p.article.create({
+      data: {
+        title: w.title || w.display_name || "Untitled",
+        authors: (w.authorships || []).map((a) => a.author?.display_name).filter(Boolean).join(", "),
+        abstract: null,
+        // see the abstract decision — not stored for ingested work
+        doi,
+        pdfUrl: pdf,
+        journalId: journal.id,
+        journalName: journal.title,
+        journalIssn: journal.issn,
+        publisherName: journal.publisherName,
+        volume: w.biblio?.volume || null,
+        issue: w.biblio?.issue || null,
+        year: w.publication_year || null,
+        originalDate: w.publication_date ? new Date(w.publication_date) : null,
+        originalUrl: w.primary_location?.landing_page_url || (doi ? `https://doi.org/${doi}` : null),
+        domain: journal.domain,
+        subject: (w.concepts || [])[0]?.display_name || null,
+        licence: lic,
+        licenceIsNC: !ok,
+        rightsHolder: journal.publisherName,
+        accessStatus: ok && pdf ? "ViewableHere" : "LinkOnly",
+        parentKind: "Journal",
+        parentId: journal.id,
+        contentType: "Periodicals",
+        status: "Published",
+        source: "OpenAlex",
+        ownershipSource: "Ingested",
+        fingerprint
+      }
+    }).then(() => {
+      added++;
+    }).catch(() => {
+      skipped++;
+    });
+  }
+  const agg = await p.$queryRawUnsafe(
+    `select count(*)::int a, count(distinct volume)::int v, count(distinct issue)::int i,
+            min(year) f, max(year) l from "Article" where "journalId" = $1`,
+    journal.id
+  );
+  const s2 = agg[0];
+  await p.journal.update({
+    where: { id: journal.id },
+    data: { articleCount: s2.a, volumeCount: s2.v, issueCount: s2.i, firstYear: s2.f, lastYear: s2.l }
+  });
+  return { journal: journal.title, added, skipped };
+}
+async function runIngestionPass(departments) {
+  const state = await getState();
+  if (!state.enabled) return { skipped: "disabled" };
+  try {
+    const wanted = state.departments?.length ? state.departments : departments;
+    for (const dep of wanted) {
+      const found = await p.journal.count({
+        where: { domain: dep, rightsBasis: "DOAJ declaration" }
+      });
+      if (found > 0) continue;
+      const r3 = await discoverJournals(dep, state);
+      await p.ingestionState.update({
+        where: { id: "singleton" },
+        data: {
+          phase: "Journals",
+          currentDepartment: dep,
+          lastRunAt: /* @__PURE__ */ new Date(),
+          lastError: null,
+          journalsSeen: { increment: r3.seen },
+          journalsAccepted: { increment: r3.accepted },
+          journalsRejected: { increment: r3.rejected }
+        }
+      });
+      return { phase: "Journals", department: dep, ...r3 };
+    }
+    const r2 = await fetchArticlesForOneJournal(state);
+    await p.ingestionState.update({
+      where: { id: "singleton" },
+      data: {
+        phase: "Articles",
+        currentJournal: r2.journal,
+        lastRunAt: /* @__PURE__ */ new Date(),
+        lastError: null,
+        articlesAdded: { increment: r2.added },
+        articlesSkipped: { increment: r2.skipped }
+      }
+    });
+    return { phase: "Articles", ...r2 };
+  } catch (e2) {
+    await p.ingestionState.update({
+      where: { id: "singleton" },
+      data: { lastError: String(e2?.message || e2).slice(0, 1e3), lastRunAt: /* @__PURE__ */ new Date() }
+    }).catch(() => {
+    });
+    return { error: String(e2?.message || e2) };
+  }
+}
+
 // src/lib/emailTemplates.ts
 var MAIL_BASE = (process.env.APP_URL || "https://journalslibrary.com").replace(/\/+$/, "");
 var esc = (s2) => String(s2 ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 var escLines = (s2) => esc(s2).replace(/\r?\n/g, "<br/>");
-var buildEmail = (bodyRows, preheader = "") => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><meta name="color-scheme" content="light"/></head><body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">` + (preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(preheader)}</div>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);"><tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/><h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2><p style="margin:0;font-size:12px;color:#64748b;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` + bodyRows + `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;"><p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">\u{1F3C6} 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p><p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p><p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p><p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">A Division of Consortium eLearning Network Pvt. Ltd.</p><div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;"><p style="margin:0;font-size:11px;color:#94a3b8;">\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/privacy-policy" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/terms-and-conditions" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr><tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr></table></td></tr></table></body></html>`;
+var buildEmail = (bodyRows, preheader = "") => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><meta name="color-scheme" content="light"/></head><body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">` + (preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(preheader)}</div>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);"><tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/><h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2><p style="margin:0;font-size:12px;color:#64748b;">${COMPANY_DETAILS.positioning}</p><div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` + bodyRows + `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;"><p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">\u{1F3C6} 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p><p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p><p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p><p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">${COMPANY_DETAILS.positioning}</p><div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;"><p style="margin:0;font-size:11px;color:#94a3b8;">\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/privacy-policy" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/terms-and-conditions" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr><tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr></table></td></tr></table></body></html>`;
 var eBody = (inner) => `<tr><td style="padding:30px 40px 34px;">${inner}</td></tr>`;
 var eH1 = (t2) => `<h1 style="margin:0 0 14px;font-size:19px;line-height:1.35;font-weight:800;color:#0f172a;">${t2}</h1>`;
 var eP = (t2) => `<p style="margin:0 0 14px;font-size:14px;line-height:1.65;color:#334155;">${t2}</p>`;
@@ -9851,7 +10529,7 @@ if (!import_crypto2.default.hash) {
     return import_crypto2.default.createHash(algo).update(data).digest(encoding);
   };
 }
-var prisma2 = new import_client2.PrismaClient();
+var prisma3 = new import_client3.PrismaClient();
 var APP_DIR = typeof __dirname !== "undefined" ? __dirname : import_path2.default.dirname((0, import_url.fileURLToPath)(import_meta.url));
 var SETTINGS_FILE = import_path2.default.join(APP_DIR, "settings.json");
 function getSystemSettings() {
@@ -9992,7 +10670,7 @@ async function startServer() {
     const dynamicTransporter = import_nodemailer.default.createTransport({
       SES: { sesClient: dynamicSes, SendEmailCommand: sesv2.SendEmailCommand }
     });
-    return { transporter: dynamicTransporter, isDev: false, emailFrom: settings.emailFrom || process.env.EMAIL_FROM || "info@celnet.in" };
+    return { transporter: dynamicTransporter, isDev: false, emailFrom: settings.emailFrom || process.env.EMAIL_FROM || COMPANY_DETAILS.email };
   };
   const sendMail = async (mailOptions, logAsSent = true) => {
     try {
@@ -10024,7 +10702,7 @@ async function startServer() {
         info = await dynTrans.sendMail(opts);
       }
       if (logAsSent) {
-        await prisma2.emailLog.create({
+        await prisma3.emailLog.create({
           data: {
             to: typeof opts.to === "string" ? opts.to : JSON.stringify(opts.to),
             subject: opts.subject,
@@ -10037,7 +10715,7 @@ async function startServer() {
     } catch (error) {
       console.error("\u274C Email Sending Failed:", error);
       if (logAsSent) {
-        await prisma2.emailLog.create({
+        await prisma3.emailLog.create({
           data: {
             to: typeof mailOptions.to === "string" ? mailOptions.to : JSON.stringify(mailOptions.to),
             subject: mailOptions.subject || "No Subject",
@@ -10053,18 +10731,18 @@ async function startServer() {
       return null;
     }
   };
-  const ADMIN_INBOX = process.env.ADMIN_EMAIL || "info@celnet.in";
+  const ADMIN_INBOX = process.env.ADMIN_EMAIL || COMPANY_DETAILS.email;
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
   app.get("/api/public/counts", async (req, res) => {
     try {
       const [books, periodicals, theses, videos, totalContent] = await Promise.all([
-        prisma2.content.count({ where: { contentType: "Books", status: { not: "Draft" } } }),
-        prisma2.content.count({ where: { contentType: "Periodicals", status: { not: "Draft" } } }),
-        prisma2.content.count({ where: { contentType: "Theses", status: { not: "Draft" } } }),
-        prisma2.content.count({ where: { contentType: "Educational Videos", status: { not: "Draft" } } }),
-        prisma2.content.count({ where: { status: { not: "Draft" } } })
+        prisma3.content.count({ where: { contentType: "Books", status: { not: "Draft" } } }),
+        prisma3.content.count({ where: { contentType: "Periodicals", status: { not: "Draft" } } }),
+        prisma3.content.count({ where: { contentType: "Theses", status: { not: "Draft" } } }),
+        prisma3.content.count({ where: { contentType: "Educational Videos", status: { not: "Draft" } } }),
+        prisma3.content.count({ where: { status: { not: "Draft" } } })
       ]);
       res.json({
         categories: [
@@ -10082,7 +10760,7 @@ async function startServer() {
   });
   app.get("/api/public/content-type-counts", async (req, res) => {
     try {
-      const groups = await prisma2.content.groupBy({
+      const groups = await prisma3.content.groupBy({
         by: ["contentType"],
         where: { status: { not: "Draft" } },
         _count: { id: true }
@@ -10099,7 +10777,7 @@ async function startServer() {
   });
   app.get("/api/public/domain-counts", async (req, res) => {
     try {
-      const groups = await prisma2.content.groupBy({
+      const groups = await prisma3.content.groupBy({
         by: ["domain"],
         where: { status: { not: "Draft" }, domain: { not: null } },
         _count: { id: true }
@@ -10131,24 +10809,24 @@ async function startServer() {
       if (!settings.emailVerificationEnabled) {
         return res.json({ verified: true });
       }
-      let record = await prisma2.emailVerification.findUnique({ where: { email } });
+      let record = await prisma3.emailVerification.findUnique({ where: { email } });
       if (record && record.isVerified) {
         return res.json({ verified: true });
       }
       const otp = Math.floor(1e5 + Math.random() * 9e5).toString();
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1e3);
       if (record) {
-        await prisma2.emailVerification.update({
+        await prisma3.emailVerification.update({
           where: { email },
           data: { otp, otpExpiry }
         });
       } else {
-        await prisma2.emailVerification.create({
+        await prisma3.emailVerification.create({
           data: { email, otp, otpExpiry, isVerified: false }
         });
       }
       const mailOptions = {
-        from: '"STM Digital Library" <info@celnet.in>',
+        from: `"${COMPANY_DETAILS.name}" <${COMPANY_DETAILS.email}>`,
         to: email,
         subject: "Your Email Verification OTP",
         html: buildEmail(`
@@ -10175,14 +10853,14 @@ async function startServer() {
     try {
       const { email, otp } = req.body;
       if (!email || !otp) return res.status(400).json({ error: "Email and OTP required" });
-      const record = await prisma2.emailVerification.findUnique({ where: { email } });
+      const record = await prisma3.emailVerification.findUnique({ where: { email } });
       if (!record || record.isVerified) {
         return res.status(400).json({ error: "Invalid request or already verified" });
       }
       if (record.otp !== otp || !record.otpExpiry || record.otpExpiry < /* @__PURE__ */ new Date()) {
         return res.status(400).json({ error: "Invalid or expired OTP" });
       }
-      await prisma2.emailVerification.update({
+      await prisma3.emailVerification.update({
         where: { email },
         data: { isVerified: true, otp: null, otpExpiry: null }
       });
@@ -10195,12 +10873,12 @@ async function startServer() {
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, name, organization, contact, designation } = req.body;
-      const existingUser = await prisma2.user.findUnique({ where: { email } });
+      const existingUser = await prisma3.user.findUnique({ where: { email } });
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
       }
       const hashedPassword = await import_bcryptjs.default.hash(password, 10);
-      const userObj = await prisma2.user.create({
+      const userObj = await prisma3.user.create({
         data: {
           email,
           password: hashedPassword,
@@ -10216,7 +10894,7 @@ async function startServer() {
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `\u{1F195} New User Registration \u2014 ${name}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F195} New Subscriber Alert</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new user has just registered on the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:20px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">User Details</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${name}</td></tr><tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Contact</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${contact || "Not provided"}</td></tr><tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || "Not provided"}</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;">${organization || "Not provided"}</td></tr></table><div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;"><p style="margin:0;font-size:13px;color:#1e3a6e;">\u26A1 <strong>Action:</strong> Review the new subscriber and assign a plan if needed.</p></div></td></tr>`
@@ -10227,7 +10905,7 @@ async function startServer() {
         to: email,
         subject: `\u{1F389} Welcome to STM Digital Library, ${name}!`,
         html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;"><h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome aboard, ${name}! \u{1F393}</h3><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Your account is ready. You now have access to STM Digital Library \u2014 your gateway to peer-reviewed journals, e-books, conference proceedings &amp; more.</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td style="text-align:center;padding:14px 8px;background:#f0f9ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">\u{1F4DA}</div><p style="margin:0;font-size:11px;font-weight:700;color:#0369a1;">50,000+<br/>Journals</p></td><td width="4"></td><td style="text-align:center;padding:14px 8px;background:#f0fdf4;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">\u{1F3A5}</div><p style="margin:0;font-size:11px;font-weight:700;color:#15803d;">Educational<br/>Videos</p></td><td width="4"></td><td style="text-align:center;padding:14px 8px;background:#fdf4ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">\u{1F4D6}</div><p style="margin:0;font-size:11px;font-weight:700;color:#7e22ce;">E-Books &amp;<br/>Theses</p></td></tr></table><div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;"><p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F680} Getting Started</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Log in at <strong>journalslibrary.com</strong></p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Browse domains &amp; subscribe to your field</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Access full-text content instantly</p></div><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
+          `<tr><td style="padding:28px 40px 24px;"><h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome aboard, ${name}! \u{1F393}</h3><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Your account is ready. You now have access to STM Digital Library \u2014 your gateway to peer-reviewed journals, e-books, conference proceedings &amp; more.</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td style="text-align:center;padding:14px 8px;background:#f0f9ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">\u{1F4DA}</div><p style="margin:0;font-size:11px;font-weight:700;color:#0369a1;">50,000+<br/>Journals</p></td><td width="4"></td><td style="text-align:center;padding:14px 8px;background:#f0fdf4;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">\u{1F3A5}</div><p style="margin:0;font-size:11px;font-weight:700;color:#15803d;">Educational<br/>Videos</p></td><td width="4"></td><td style="text-align:center;padding:14px 8px;background:#fdf4ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">\u{1F4D6}</div><p style="margin:0;font-size:11px;font-weight:700;color:#7e22ce;">E-Books &amp;<br/>Theses</p></td></tr></table><div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;"><p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F680} Getting Started</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Log in at <strong>journalslibrary.com</strong></p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Browse domains &amp; subscribe to your field</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Access full-text content instantly</p></div><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
         )
       };
       await sendMail(adminMailOptions);
@@ -10243,9 +10921,9 @@ async function startServer() {
     try {
       const { email, password } = req.body;
       if (process.env.MASTER_ADMIN_EMAIL && process.env.MASTER_ADMIN_PASSWORD && email === process.env.MASTER_ADMIN_EMAIL && password === process.env.MASTER_ADMIN_PASSWORD) {
-        let adminUser = await prisma2.user.findUnique({ where: { email } });
+        let adminUser = await prisma3.user.findUnique({ where: { email } });
         if (!adminUser) {
-          adminUser = await prisma2.user.create({
+          adminUser = await prisma3.user.create({
             data: {
               email,
               password: await import_bcryptjs.default.hash(password, 10),
@@ -10262,7 +10940,7 @@ async function startServer() {
         const { password: _2, ...profile2 } = adminUser;
         return res.json({ token: token2, user: profile2 });
       }
-      const userObj = await prisma2.user.findUnique({ where: { email } });
+      const userObj = await prisma3.user.findUnique({ where: { email } });
       if (!userObj) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
@@ -10292,25 +10970,25 @@ async function startServer() {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: "Email is required" });
-      const userObj = await prisma2.user.findUnique({ where: { email } });
+      const userObj = await prisma3.user.findUnique({ where: { email } });
       if (!userObj) {
         return res.json({ message: "If your email is registered, an OTP has been sent." });
       }
       const otp = Math.floor(1e5 + Math.random() * 9e5).toString();
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1e3);
-      const record = await prisma2.emailVerification.findUnique({ where: { email } });
+      const record = await prisma3.emailVerification.findUnique({ where: { email } });
       if (record) {
-        await prisma2.emailVerification.update({
+        await prisma3.emailVerification.update({
           where: { email },
           data: { otp, otpExpiry }
         });
       } else {
-        await prisma2.emailVerification.create({
+        await prisma3.emailVerification.create({
           data: { email, otp, otpExpiry, isVerified: false }
         });
       }
       const mailOptions = {
-        from: '"STM Digital Library" <info@celnet.in>',
+        from: `"${COMPANY_DETAILS.name}" <${COMPANY_DETAILS.email}>`,
         to: email,
         subject: "Password Reset OTP",
         html: buildEmail(`
@@ -10337,23 +11015,23 @@ async function startServer() {
       if (newPassword.length < 8) {
         return res.status(400).json({ error: "Password must be at least 8 characters long" });
       }
-      const record = await prisma2.emailVerification.findUnique({ where: { email } });
+      const record = await prisma3.emailVerification.findUnique({ where: { email } });
       if (!record) {
         return res.status(400).json({ error: "Invalid request" });
       }
       if (record.otp !== otp || !record.otpExpiry || record.otpExpiry < /* @__PURE__ */ new Date()) {
         return res.status(400).json({ error: "Invalid or expired OTP" });
       }
-      const userObj = await prisma2.user.findUnique({ where: { email } });
+      const userObj = await prisma3.user.findUnique({ where: { email } });
       if (!userObj) {
         return res.status(404).json({ error: "User not found" });
       }
       const hashedPassword = await import_bcryptjs.default.hash(newPassword, 10);
-      await prisma2.user.update({
+      await prisma3.user.update({
         where: { email },
         data: { password: hashedPassword }
       });
-      await prisma2.emailVerification.update({
+      await prisma3.emailVerification.update({
         where: { email },
         data: { otp: null, otpExpiry: null }
       });
@@ -10365,7 +11043,7 @@ async function startServer() {
   });
   app.get("/api/auth/me", authenticateJWT, async (req, res) => {
     try {
-      const userObj = await prisma2.user.findUnique({
+      const userObj = await prisma3.user.findUnique({
         where: { email: req.user.email },
         include: {
           quotations: { orderBy: { createdAt: "desc" } },
@@ -10376,7 +11054,7 @@ async function startServer() {
       if (!userObj) {
         return res.status(404).json({ error: "User not found" });
       }
-      const emailVerif = await prisma2.emailVerification.findUnique({
+      const emailVerif = await prisma3.emailVerification.findUnique({
         where: { email: userObj.email },
         select: { isVerified: true }
       });
@@ -10437,7 +11115,7 @@ async function startServer() {
   });
   app.get("/api/admin/email-logs", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const logs = await prisma2.emailLog.findMany({
+      const logs = await prisma3.emailLog.findMany({
         orderBy: { createdAt: "desc" },
         take: 100
         // Limit to last 100 logs
@@ -10450,7 +11128,7 @@ async function startServer() {
   app.post("/api/admin/email-logs/:id/resend", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const logId = req.params.id;
-      const log = await prisma2.emailLog.findUnique({ where: { id: logId } });
+      const log = await prisma3.emailLog.findUnique({ where: { id: logId } });
       if (!log) return res.status(404).json({ error: "Log not found" });
       if (!log.htmlContent) return res.status(400).json({ error: "Email content not available for resending (older log without HTML stored)." });
       await sendMail({
@@ -10460,7 +11138,7 @@ async function startServer() {
         _isTestEmail: true
         // Throw error explicitly instead of silent catch
       }, false);
-      await prisma2.emailLog.update({
+      await prisma3.emailLog.update({
         where: { id: logId },
         data: { status: "Sent", error: null, createdAt: /* @__PURE__ */ new Date() }
       });
@@ -10473,32 +11151,32 @@ async function startServer() {
     try {
       const CONTENT_TYPES = ["Books", "Periodicals", "Magazines", "Case Reports", "Theses", "Conference Proceedings", "Educational Videos", "Newsletters"];
       const [users, payments, subscriptions, quotations, contentCounts, pendingRequests, totalContent] = await Promise.all([
-        prisma2.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-        prisma2.payment.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { user: true } }),
-        prisma2.subscription.findMany({ orderBy: { createdAt: "desc" }, include: { user: true } }),
-        prisma2.quotation.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+        prisma3.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+        prisma3.payment.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { user: true } }),
+        prisma3.subscription.findMany({ orderBy: { createdAt: "desc" }, include: { user: true } }),
+        prisma3.quotation.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
         Promise.all(CONTENT_TYPES.map(async (ct) => ({
           name: ct,
-          value: await prisma2.content.count({ where: { contentType: ct } })
+          value: await prisma3.content.count({ where: { contentType: ct } })
         }))),
-        prisma2.subscriptionRequest.count({ where: { status: "Pending" } }),
-        prisma2.content.count()
+        prisma3.subscriptionRequest.count({ where: { status: "Pending" } }),
+        prisma3.content.count()
       ]);
-      const totalUsers = await prisma2.user.count();
-      const totalPublished = await prisma2.content.count({ where: { status: { in: ["Published", "published"] } } });
-      const totalDrafted = await prisma2.content.count({ where: { status: { notIn: ["Published", "published"] } } });
+      const totalUsers = await prisma3.user.count();
+      const totalPublished = await prisma3.content.count({ where: { status: { in: ["Published", "published"] } } });
+      const totalDrafted = await prisma3.content.count({ where: { status: { notIn: ["Published", "published"] } } });
       const now = /* @__PURE__ */ new Date();
       const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const currentMonthPayments = await prisma2.payment.aggregate({ _sum: { amount: true }, where: { status: "Success", createdAt: { gte: startOfCurrentMonth } } });
-      const prevMonthPayments = await prisma2.payment.aggregate({ _sum: { amount: true }, where: { status: "Success", createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } } });
+      const currentMonthPayments = await prisma3.payment.aggregate({ _sum: { amount: true }, where: { status: "Success", createdAt: { gte: startOfCurrentMonth } } });
+      const prevMonthPayments = await prisma3.payment.aggregate({ _sum: { amount: true }, where: { status: "Success", createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } } });
       const currentRev = currentMonthPayments._sum.amount || 0;
       const prevRev = prevMonthPayments._sum.amount || 0;
       const revenueGrowthPct = prevRev === 0 ? currentRev > 0 ? 100 : 0 : Number(((currentRev - prevRev) / prevRev * 100).toFixed(1));
-      const currentUsers = await prisma2.user.count({ where: { createdAt: { gte: startOfCurrentMonth } } });
-      const prevUsers = await prisma2.user.count({ where: { createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } } });
+      const currentUsers = await prisma3.user.count({ where: { createdAt: { gte: startOfCurrentMonth } } });
+      const prevUsers = await prisma3.user.count({ where: { createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } } });
       const userGrowthPct = prevUsers === 0 ? currentUsers > 0 ? 100 : 0 : Number(((currentUsers - prevUsers) / prevUsers * 100).toFixed(1));
-      const domainGroups = await prisma2.content.groupBy({
+      const domainGroups = await prisma3.content.groupBy({
         by: ["domain"],
         _count: { id: true },
         where: { domain: { not: null } }
@@ -10515,7 +11193,7 @@ async function startServer() {
         { name: "Jan", revenue: 61e3 },
         { name: "Feb", revenue: 59e3 },
         { name: "Mar", revenue: 75e3 },
-        { name: currentMonth, revenue: payments.filter((p) => p.status === "Success").reduce((acc, p) => acc + p.amount, 0) || 82e3 }
+        { name: currentMonth, revenue: payments.filter((p2) => p2.status === "Success").reduce((acc, p2) => acc + p2.amount, 0) || 82e3 }
       ];
       const userGrowthData = [
         { name: "Oct", users: 120 },
@@ -10565,7 +11243,7 @@ async function startServer() {
           totalContent,
           totalPublished,
           totalDrafted,
-          totalRevenue: payments.filter((p) => p.status === "Success").reduce((acc, p) => acc + p.amount, 0),
+          totalRevenue: payments.filter((p2) => p2.status === "Success").reduce((acc, p2) => acc + p2.amount, 0),
           activeSubscriptions: subscriptions.filter((s2) => s2.status === "Active").length,
           pendingRequests,
           contentGrowthPct: 0,
@@ -10600,12 +11278,12 @@ async function startServer() {
   app.get("/api/admin/india-state-stats", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const [usersByState, quotationsByState, contactsByState, totalUsers, totalSubscriptions, totalRevenue] = await Promise.all([
-        prisma2.user.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
-        prisma2.quotation.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
-        prisma2.contactInquiry.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
-        prisma2.user.count({ where: { role: { not: "SuperAdmin" } } }),
-        prisma2.subscription.count({ where: { status: "Active" } }),
-        prisma2.payment.aggregate({ _sum: { amount: true }, where: { status: "Success" } })
+        prisma3.user.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma3.quotation.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma3.contactInquiry.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma3.user.count({ where: { role: { not: "SuperAdmin" } } }),
+        prisma3.subscription.count({ where: { status: "Active" } }),
+        prisma3.payment.aggregate({ _sum: { amount: true }, where: { status: "Success" } })
       ]);
       const stateMap = {};
       const add = (state, field, count) => {
@@ -10639,8 +11317,8 @@ async function startServer() {
   app.get("/api/user/dashboard", authenticateJWT, async (req, res) => {
     try {
       const subscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const payments = await prisma2.payment.findMany({ where: { userId: req.user.uid, status: "Success" } });
-      const recentViews = await prisma2.studentActivity.findMany({
+      const payments = await prisma3.payment.findMany({ where: { userId: req.user.uid, status: "Success" } });
+      const recentViews = await prisma3.studentActivity.findMany({
         where: { userId: req.user.uid },
         orderBy: { accessedAt: "desc" },
         take: 6,
@@ -10656,15 +11334,15 @@ async function startServer() {
       }));
       const activeSubs = subscriptions;
       const nearestExpiry = activeSubs.sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())[0]?.endDate || null;
-      const totalSpent = payments.reduce((acc, p) => acc + p.amount, 0);
+      const totalSpent = payments.reduce((acc, p2) => acc + p2.amount, 0);
       const OR_clauses = [{ userId: req.user.uid }];
       if (req.user.institutionId) {
         OR_clauses.push({ institutionId: req.user.institutionId });
       } else {
-        const u = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        const u = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
         if (u?.institutionId) OR_clauses.push({ institutionId: u.institutionId });
       }
-      const allSubscriptions = await prisma2.subscription.findMany({
+      const allSubscriptions = await prisma3.subscription.findMany({
         where: { OR: OR_clauses },
         orderBy: { endDate: "desc" }
       });
@@ -10692,7 +11370,7 @@ async function startServer() {
   });
   app.get("/api/user/history", authenticateJWT, async (req, res) => {
     try {
-      const recentViews = await prisma2.studentActivity.findMany({
+      const recentViews = await prisma3.studentActivity.findMany({
         where: { userId: req.user.uid },
         orderBy: { accessedAt: "desc" },
         take: 100,
@@ -10708,17 +11386,17 @@ async function startServer() {
     try {
       const { contentId, lastPage, timeSpent } = req.body;
       if (!contentId || !lastPage) return res.status(400).json({ error: "contentId and lastPage are required" });
-      const existing = await prisma2.studentActivity.findFirst({
+      const existing = await prisma3.studentActivity.findFirst({
         where: { userId: req.user.uid, contentId }
       });
       if (existing) {
-        await prisma2.studentActivity.update({
+        await prisma3.studentActivity.update({
           where: { id: existing.id },
           data: { lastPage: Number(lastPage), timeSpent: { increment: Number(timeSpent) || 0 } }
         });
         res.json({ success: true, lastPage: Number(lastPage) });
       } else {
-        await prisma2.studentActivity.create({
+        await prisma3.studentActivity.create({
           data: { userId: req.user.uid, contentId, lastPage: Number(lastPage), timeSpent: Number(timeSpent) || 0 }
         });
         res.json({ success: true, lastPage: Number(lastPage) });
@@ -10730,7 +11408,7 @@ async function startServer() {
   });
   app.get("/api/user/reading-progress/:contentId", authenticateJWT, async (req, res) => {
     try {
-      const activity = await prisma2.studentActivity.findFirst({
+      const activity = await prisma3.studentActivity.findFirst({
         where: { userId: req.user.uid, contentId: req.params.contentId }
       });
       res.json({ lastPage: activity?.lastPage || 1, accessedAt: activity?.accessedAt || null });
@@ -10738,15 +11416,46 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch reading progress" });
     }
   });
+  const favouriteKindOf = async (id) => {
+    if (await prisma3.content.count({ where: { id } })) return "Content";
+    if (await prisma3.article.count({ where: { id } })) return "Article";
+    if (await prisma3.book.count({ where: { id } })) return "Book";
+    return null;
+  };
   app.get("/api/user/favorites", authenticateJWT, async (req, res) => {
     try {
-      const favorites = await prisma2.favorite.findMany({
+      const favorites = await prisma3.favorite.findMany({
         where: { userId: req.user.uid },
-        include: { content: true },
         orderBy: { createdAt: "desc" }
       });
-      res.json(favorites.map((f3) => ({ ...f3.content, favoriteId: f3.id, favoritedAt: f3.createdAt })));
+      if (!favorites.length) return res.json([]);
+      const idsOf = (t2) => favorites.filter((f3) => f3.itemType === t2).map((f3) => f3.contentId);
+      const [contents, articles, books] = await Promise.all([
+        idsOf("Content").length ? prisma3.content.findMany({ where: { id: { in: idsOf("Content") } } }) : [],
+        idsOf("Article").length ? prisma3.article.findMany({ where: { id: { in: idsOf("Article") } } }) : [],
+        idsOf("Book").length ? prisma3.book.findMany({ where: { id: { in: idsOf("Book") } } }) : []
+      ]);
+      const byId = /* @__PURE__ */ new Map();
+      for (const c of contents) byId.set(c.id, { ...c, itemType: "Content" });
+      for (const a of articles) byId.set(a.id, {
+        ...a,
+        itemType: "Article",
+        description: a.abstract || null,
+        thumbnailUrl: null
+      });
+      for (const b of books) byId.set(b.id, {
+        ...b,
+        itemType: "Book",
+        description: b.description || null,
+        thumbnailUrl: b.coverUrl || null,
+        contentType: "Books"
+      });
+      res.json(favorites.map((f3) => {
+        const item = byId.get(f3.contentId);
+        return item ? { ...item, favoriteId: f3.id, favoritedAt: f3.createdAt } : null;
+      }).filter(Boolean));
     } catch (error) {
+      console.error("Favorites fetch error:", error);
       res.status(500).json({ error: "Failed to fetch favorites" });
     }
   });
@@ -10754,18 +11463,19 @@ async function startServer() {
     try {
       const { contentId } = req.body;
       if (!contentId) return res.status(400).json({ error: "contentId is required" });
-      const existing = await prisma2.favorite.findFirst({
+      const existing = await prisma3.favorite.findFirst({
         where: { userId: req.user.uid, contentId }
       });
       if (existing) {
-        await prisma2.favorite.delete({ where: { id: existing.id } });
+        await prisma3.favorite.delete({ where: { id: existing.id } });
         return res.json({ success: true, favorited: false });
-      } else {
-        await prisma2.favorite.create({
-          data: { userId: req.user.uid, contentId }
-        });
-        return res.json({ success: true, favorited: true });
       }
+      const itemType = await favouriteKindOf(contentId);
+      if (!itemType) return res.status(404).json({ error: "That item no longer exists" });
+      await prisma3.favorite.create({
+        data: { userId: req.user.uid, contentId, itemType }
+      });
+      return res.json({ success: true, favorited: true });
     } catch (error) {
       console.error("Favorite toggle error:", error);
       res.status(500).json({ error: "Failed to toggle favorite" });
@@ -10773,7 +11483,7 @@ async function startServer() {
   });
   app.get("/api/user/favorites/check/:contentId", authenticateJWT, async (req, res) => {
     try {
-      const existing = await prisma2.favorite.findFirst({
+      const existing = await prisma3.favorite.findFirst({
         where: { userId: req.user.uid, contentId: req.params.contentId }
       });
       res.json({ favorited: !!existing });
@@ -10787,10 +11497,10 @@ async function startServer() {
       if (req.user.institutionId) {
         OR_clauses.push({ institutionId: req.user.institutionId });
       } else if (req.user.role === "Institution" || req.user.role === "Student" || req.user.role === "Subscriber") {
-        const u = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        const u = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
         if (u?.institutionId) OR_clauses.push({ institutionId: u.institutionId });
       }
-      const subscriptions = await prisma2.subscription.findMany({
+      const subscriptions = await prisma3.subscription.findMany({
         where: { OR: OR_clauses },
         orderBy: { startDate: "desc" }
       });
@@ -10803,13 +11513,13 @@ async function startServer() {
     const OR_clauses = [{ userId: uid }];
     let resolvedInstId = institutionId;
     if (!resolvedInstId) {
-      const u = await prisma2.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+      const u = await prisma3.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
       if (u?.institutionId) resolvedInstId = u.institutionId;
     }
     if (resolvedInstId) {
       OR_clauses.push({ institutionId: resolvedInstId });
     }
-    return prisma2.subscription.findMany({
+    return prisma3.subscription.findMany({
       where: {
         OR: OR_clauses,
         status: "Active",
@@ -10842,16 +11552,43 @@ async function startServer() {
   app.get("/api/user/content-access", authenticateJWT, async (req, res) => {
     try {
       const activeSubscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const realCounts = await prisma2.content.groupBy({
-        by: ["domain", "contentType"],
-        _count: { id: true },
-        where: { status: { in: ["Published", "published"] } }
-      });
-      const uniqueModules = realCounts.filter((rc) => rc.domain && rc.contentType).map((rc) => ({
-        id: `${rc.domain}_${rc.contentType}`,
-        domain: rc.domain,
-        contentType: rc.contentType,
-        totalCount: rc._count.id
+      const [contentCounts, articleCounts, bookCounts] = await Promise.all([
+        prisma3.content.groupBy({
+          by: ["domain", "contentType"],
+          _count: { id: true },
+          where: { status: { in: ["Published", "published"] } }
+        }),
+        prisma3.article.groupBy({
+          by: ["domain", "contentType"],
+          _count: { id: true },
+          where: { status: "Published" }
+        }),
+        prisma3.book.groupBy({
+          by: ["domain"],
+          _count: { id: true },
+          where: { status: "Published" }
+        })
+      ]);
+      const totals = /* @__PURE__ */ new Map();
+      const addTo = (domain, contentType, n, which) => {
+        if (!domain || !contentType || !n) return;
+        const key = `${domain}_${contentType}`;
+        const row = totals.get(key) || { domain: String(domain), contentType: String(contentType), totalCount: 0, legacyCount: 0, newCount: 0 };
+        row.totalCount += n;
+        if (which === "legacy") row.legacyCount += n;
+        else row.newCount += n;
+        totals.set(key, row);
+      };
+      for (const rc of contentCounts) addTo(rc.domain, rc.contentType, rc._count.id, "legacy");
+      for (const rc of articleCounts) addTo(rc.domain, rc.contentType, rc._count.id, "new");
+      for (const rc of bookCounts) addTo(rc.domain, "Books", rc._count.id, "new");
+      const uniqueModules = Array.from(totals.values()).map((t2) => ({
+        id: `${t2.domain}_${t2.contentType}`,
+        domain: t2.domain,
+        contentType: t2.contentType,
+        totalCount: t2.totalCount,
+        legacyCount: t2.legacyCount,
+        newCount: t2.newCount
       }));
       const accessMap = uniqueModules.map((mod) => {
         const mockContent = { domain: mod.domain, contentType: mod.contentType };
@@ -10920,23 +11657,23 @@ async function startServer() {
         const legacyWhere = { status: { not: "Draft" } };
         if (!isAdmin && subOr.length) legacyWhere.AND = [{ OR: subOr }];
         const [dg, cg] = await Promise.all([
-          prisma2.content.groupBy({ by: ["domain"], where: legacyWhere }),
-          prisma2.content.groupBy({ by: ["contentType"], where: legacyWhere })
+          prisma3.content.groupBy({ by: ["domain"], where: legacyWhere }),
+          prisma3.content.groupBy({ by: ["contentType"], where: legacyWhere })
         ]);
         legacyDepts = dg.map((x2) => x2.domain).filter(Boolean);
         legacyTypes = cg.map((x2) => x2.contentType).filter(Boolean);
       }
       const domFilter = isAdmin ? {} : { domain: { in: [...scopeDomains] } };
       const [aDepts, bDepts, aCount, bCount] = await Promise.all([
-        prisma2.article.groupBy({ by: ["domain"], where: { status: "Published", ...domFilter } }),
-        prisma2.book.groupBy({ by: ["domain"], where: { status: "Published", ...domFilter } }),
-        prisma2.article.count({ where: { status: "Published", ...domFilter } }),
-        prisma2.book.count({ where: { status: "Published", ...domFilter } })
+        prisma3.article.groupBy({ by: ["domain"], where: { status: "Published", ...domFilter } }),
+        prisma3.book.groupBy({ by: ["domain"], where: { status: "Published", ...domFilter } }),
+        prisma3.article.count({ where: { status: "Published", ...domFilter } }),
+        prisma3.book.count({ where: { status: "Published", ...domFilter } })
       ]);
       const newDepts = [...new Set([...aDepts.map((x2) => x2.domain), ...bDepts.map((x2) => x2.domain)].filter(Boolean))];
       const [adg, acg] = await Promise.all([
-        prisma2.content.groupBy({ by: ["domain"], where: { status: { not: "Draft" } } }),
-        prisma2.content.groupBy({ by: ["contentType"], where: { status: { not: "Draft" } } })
+        prisma3.content.groupBy({ by: ["domain"], where: { status: { not: "Draft" } } }),
+        prisma3.content.groupBy({ by: ["contentType"], where: { status: { not: "Draft" } } })
       ]);
       res.json({
         all: isAdmin,
@@ -11002,7 +11739,7 @@ async function startServer() {
           }
         }
       }
-      const contents = await prisma2.content.findMany({
+      const contents = await prisma3.content.findMany({
         where,
         select: { domain: true, subjectArea: true, tags: true }
       });
@@ -11135,8 +11872,8 @@ async function startServer() {
           }
         }
         const [contents2, total2] = await Promise.all([
-          prisma2.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
-          prisma2.content.count({ where })
+          prisma3.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
+          prisma3.content.count({ where })
         ]);
         return res.json({
           data: contents2.map((c) => ({ ...c, locked: false })),
@@ -11146,8 +11883,8 @@ async function startServer() {
         });
       }
       const [contents, total] = await Promise.all([
-        prisma2.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
-        prisma2.content.count({ where })
+        prisma3.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
+        prisma3.content.count({ where })
       ]);
       if (!userDetails) {
         return res.json({
@@ -11172,11 +11909,11 @@ async function startServer() {
     }
   });
   const resolveViewable = async (id, isAdmin) => {
-    const c = await prisma2.content.findFirst({ where: isAdmin ? { id } : { id, status: { not: "Draft" } } });
+    const c = await prisma3.content.findFirst({ where: isAdmin ? { id } : { id, status: { not: "Draft" } } });
     if (c) return { kind: "content", item: c, fileUrl: c.fileUrl, title: c.title, contentType: c.contentType, accessType: c.accessType, status: c.status };
-    const a = await prisma2.article.findFirst({ where: isAdmin ? { id } : { id, status: "Published" } });
+    const a = await prisma3.article.findFirst({ where: isAdmin ? { id } : { id, status: "Published" } });
     if (a) return { kind: "article", item: a, fileUrl: a.pdfUrl, title: a.title, contentType: a.contentType || "Periodicals", accessType: a.accessType || "OpenAccess", status: a.status };
-    const b = await prisma2.book.findFirst({ where: isAdmin ? { id } : { id, status: "Published" } });
+    const b = await prisma3.book.findFirst({ where: isAdmin ? { id } : { id, status: "Published" } });
     if (b) return { kind: "book", item: b, fileUrl: b.pdfUrl, title: b.title, contentType: "Books", accessType: b.accessType || "OpenAccess", status: b.status };
     return null;
   };
@@ -11194,21 +11931,32 @@ async function startServer() {
       }
       if (!hasAccess) return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
       if ((resolved.kind === "article" || resolved.kind === "book") && !isAdminRole) {
-        prisma2[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {
+        prisma3[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {
         });
-        prisma2.readEvent.create({ data: { itemType: resolved.kind, itemId: resolved.item.id, publisherId: resolved.item.publisherId || null, userId: req.user.uid } }).catch(() => {
+        prisma3.readEvent.create({ data: { itemType: resolved.kind, itemId: resolved.item.id, publisherId: resolved.item.publisherId || null, userId: req.user.uid } }).catch(() => {
         });
       }
       if (resolved.kind === "content" && (req.user.role === "Student" || req.user.role === "Subscriber")) {
         try {
-          const existing = await prisma2.studentActivity.findFirst({ where: { userId: req.user.uid, contentId: resolved.item.id } });
-          if (existing) await prisma2.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
-          else await prisma2.studentActivity.create({ data: { userId: req.user.uid, contentId: resolved.item.id, timeSpent: 0, lastPage: 1 } });
+          const existing = await prisma3.studentActivity.findFirst({ where: { userId: req.user.uid, contentId: resolved.item.id } });
+          if (existing) await prisma3.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
+          else await prisma3.studentActivity.create({ data: { userId: req.user.uid, contentId: resolved.item.id, timeSpent: 0, lastPage: 1 } });
         } catch (e2) {
           console.error("Activity log failed", e2);
         }
       }
-      return res.json({ url: resolved.fileUrl, title: resolved.title, contentType: resolved.contentType });
+      const it = resolved.item;
+      return res.json({
+        url: resolved.fileUrl,
+        title: resolved.title,
+        contentType: resolved.contentType,
+        kind: resolved.kind,
+        journalName: it.journalName ?? null,
+        journalIssn: normaliseIssn(it.journalIssn) ?? null,
+        year: it.year ?? null,
+        volume: it.volume ?? null,
+        issue: it.issue ?? null
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to view content" });
     }
@@ -11242,7 +11990,7 @@ async function startServer() {
         } else {
           console.warn(`[proxy-pdf] Auto-flagging missing local file: ${content.fileUrl}`);
           if (resolved.kind === "content") {
-            await prisma2.content.update({
+            await prisma3.content.update({
               where: { id: contentId },
               data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: "Local file missing (404)" }
             });
@@ -11280,7 +12028,7 @@ async function startServer() {
       if (!upstreamRes.ok) {
         console.error(`[proxy-pdf] Upstream failed with ${upstreamRes.status} for ${content.fileUrl}`);
         if (upstreamRes.status === 403 || upstreamRes.status === 404 || upstreamRes.status >= 500) {
-          await prisma2.content.update({
+          await prisma3.content.update({
             where: { id: contentId },
             data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: `Upstream failed with ${upstreamRes.status}` }
           });
@@ -11309,15 +12057,13 @@ async function startServer() {
     try {
       const contentId = req.params.id;
       const isAdmin = req.user.role === "SuperAdmin" || req.user.role === "Admin";
-      const whereClause = { id: contentId };
-      if (!isAdmin) {
-        whereClause.status = { not: "Draft" };
-      }
-      const content = await prisma2.content.findFirst({ where: whereClause });
-      if (!content || !content.fileUrl) {
+      const resolved = await resolveViewable(contentId, isAdmin);
+      if (!resolved || !resolved.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
-      if (!isAdmin) {
+      const content = { ...resolved.item, fileUrl: resolved.fileUrl };
+      const isOA = ["OpenAccess", "Free"].includes(resolved.accessType || "");
+      if (!isAdmin && resolved.kind === "content" && !isOA) {
         const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
         const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
         if (!hasAccess) {
@@ -11327,11 +12073,13 @@ async function startServer() {
       if (content.fileUrl.startsWith("/")) {
         const filePath = import_path2.default.join(process.cwd(), "dist", content.fileUrl);
         if (!import_fs2.default.existsSync(filePath)) {
-          console.warn(`[proxy-frame] Auto-flagging missing local file: ${content.fileUrl}`);
-          await prisma2.content.update({
-            where: { id: contentId },
-            data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: "Local file missing (404)" }
-          });
+          console.warn(`[proxy-frame] Missing local file: ${content.fileUrl}`);
+          if (resolved.kind === "content") {
+            await prisma3.content.update({
+              where: { id: contentId },
+              data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: "Local file missing (404)" }
+            });
+          }
           return res.status(404).json({ error: "File not found" });
         }
         return res.redirect(content.fileUrl);
@@ -11359,7 +12107,7 @@ async function startServer() {
       });
       if (!upstreamRes) return;
       if (!upstreamRes.ok && (upstreamRes.status === 403 || upstreamRes.status === 404 || upstreamRes.status >= 500)) {
-        await prisma2.content.update({
+        await prisma3.content.update({
           where: { id: contentId },
           data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: `Upstream failed with ${upstreamRes.status}` }
         });
@@ -11387,7 +12135,7 @@ async function startServer() {
   });
   app.get("/api/user/quotations", authenticateJWT, async (req, res) => {
     try {
-      const quotations = await prisma2.quotation.findMany({
+      const quotations = await prisma3.quotation.findMany({
         where: { userEmail: req.user.email },
         orderBy: { createdAt: "desc" }
       });
@@ -11396,9 +12144,44 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch quotations" });
     }
   });
+  app.get("/api/my/quotations", authenticateJWT, async (req, res) => {
+    try {
+      const email = req.user?.email;
+      if (!email) return res.json({ quotations: [], stats: { total: 0, paid: 0, pending: 0, value: 0 } });
+      const { status, search } = req.query;
+      const where = { createdBy: email };
+      if (status && status !== "All") where.status = status;
+      if (search) {
+        where.OR = [
+          { id: { contains: search, mode: "insensitive" } },
+          { userName: { contains: search, mode: "insensitive" } },
+          { userEmail: { contains: search, mode: "insensitive" } },
+          { organization: { contains: search, mode: "insensitive" } }
+        ];
+      }
+      const quotations = await prisma3.quotation.findMany({
+        where,
+        orderBy: { createdAt: "desc" }
+      });
+      const all = await prisma3.quotation.findMany({
+        where: { createdBy: email },
+        select: { status: true, total: true }
+      });
+      const stats = {
+        total: all.length,
+        paid: all.filter((q) => q.status === "Paid").length,
+        pending: all.filter((q) => !["Paid", "Cancelled"].includes(q.status)).length,
+        value: all.filter((q) => q.status === "Paid").reduce((n, q) => n + (q.total || 0), 0)
+      };
+      res.json({ quotations, stats });
+    } catch (error) {
+      console.error("GET /api/my/quotations error:", error);
+      res.status(500).json({ error: "Failed to fetch your quotations" });
+    }
+  });
   app.get("/api/user/invoices", authenticateJWT, async (req, res) => {
     try {
-      const payments = await prisma2.payment.findMany({
+      const payments = await prisma3.payment.findMany({
         where: { userId: req.user.uid },
         orderBy: { createdAt: "desc" }
       });
@@ -11418,7 +12201,7 @@ async function startServer() {
       if (clearFirstLogin || password) {
         dataToUpdate.isFirstLogin = false;
       }
-      const updatedUser = await prisma2.user.update({
+      const updatedUser = await prisma3.user.update({
         where: { id: req.user.uid },
         data: dataToUpdate
       });
@@ -11430,7 +12213,7 @@ async function startServer() {
   });
   app.delete("/api/user/account", authenticateJWT, async (req, res) => {
     try {
-      await prisma2.user.delete({
+      await prisma3.user.delete({
         where: { id: req.user.uid }
       });
       res.json({ message: "Account deleted successfully" });
@@ -11471,7 +12254,7 @@ async function startServer() {
           <td style="padding:32px 40px 24px;text-align:center;border-bottom:1px solid #E8EDF4;">
             <img src="https://journalslibrary.com/logo.png" alt="STM Logo" width="60" height="60" style="display:inline-block;margin-bottom:14px;" onerror="this.style.display='none'"/>
             <h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:#1A3A6B;letter-spacing:-0.3px;">STM Digital Library</h1>
-            <p style="margin:0;font-size:12px;color:#6B7A99;font-weight:400;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <p style="margin:0;font-size:12px;color:#6B7A99;font-weight:400;">${COMPANY_DETAILS.positioning}</p>
           </td>
         </tr>
 
@@ -11592,7 +12375,7 @@ async function startServer() {
                 <td style="padding:16px 20px;">
                   <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1E40AF;">&#128295; Need Assistance?</p>
                   <p style="margin:0 0 10px;font-size:12px;color:#3B5FBF;line-height:1.6;">If you face any issues related to login, access, or subscription, please contact us:</p>
-                  <p style="margin:0 0 4px;font-size:13px;color:#1E40AF;">&#128231;&nbsp;<a href="mailto:info@celnet.in" style="color:#2563EB;font-weight:700;text-decoration:none;">info@celnet.in</a></p>
+                  <p style="margin:0 0 4px;font-size:13px;color:#1E40AF;">&#128231;&nbsp;<a href="mailto:${COMPANY_DETAILS.email}" style="color:#2563EB;font-weight:700;text-decoration:none;">${COMPANY_DETAILS.email}</a></p>
                   <p style="margin:0;font-size:13px;color:#1E40AF;">&#128222;&nbsp;<a href="tel:+919810078958" style="color:#2563EB;font-weight:700;text-decoration:none;">+91-9810078958</a></p>
                 </td>
               </tr>
@@ -11606,7 +12389,7 @@ async function startServer() {
             <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#FCD34D;letter-spacing:0.5px;text-transform:uppercase;">&#127942; 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
             <p style="margin:0 0 4px;font-size:13px;color:#CBD5E1;">Regards,</p>
             <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#FFFFFF;">STM Digital Library Team</p>
-            <p style="margin:0 0 16px;font-size:12px;color:#94A3B8;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <p style="margin:0 0 16px;font-size:12px;color:#94A3B8;">${COMPANY_DETAILS.positioning}</p>
             <div style="height:1px;background:#2D5299;margin-bottom:14px;"></div>
             <p style="margin:0;font-size:11px;color:#64748B;">
               &copy; ${(/* @__PURE__ */ new Date()).getFullYear()} STM Digital Library. All rights reserved.&nbsp;|&nbsp;
@@ -11633,7 +12416,7 @@ async function startServer() {
   };
   const sendPaymentSuccessEmails = async (userEmail, userName, totalAmount, items, paymentId, orderId, invoiceNumber, pdfBase64) => {
     const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-    const adminEmail = process.env.ADMIN_EMAIL || "info@celnet.in";
+    const adminEmail = process.env.ADMIN_EMAIL || COMPANY_DETAILS.email;
     const year = (/* @__PURE__ */ new Date()).getFullYear();
     const itemsHtml = Array.isArray(items) ? items.map((item) => `
       <tr>
@@ -11651,7 +12434,7 @@ async function startServer() {
   <!-- Header -->
   <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
     <h1 style="color:#ffffff;margin:0 0 4px;font-size:24px;font-weight:900;letter-spacing:1px;">STM DIGITAL LIBRARY</h1>
-    <p style="color:#93c5fd;margin:0 0 16px;font-size:12px;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+    <p style="color:#93c5fd;margin:0 0 16px;font-size:12px;">${COMPANY_DETAILS.positioning}</p>
     <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;">\u2705 &nbsp;Payment Confirmed</span>
   </td></tr>
   <!-- Success Banner -->
@@ -11724,15 +12507,15 @@ async function startServer() {
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
     <tr><td style="padding:16px 22px;">
       <p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">\u{1F4DE} Need Help?</p>
-      <p style="margin:2px 0;font-size:13px;color:#1e293b;">\u{1F4E7} <a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:600;">info@celnet.in</a></p>
+      <p style="margin:2px 0;font-size:13px;color:#1e293b;">\u{1F4E7} <a href="mailto:${COMPANY_DETAILS.email}" style="color:#2563eb;text-decoration:none;font-weight:600;">${COMPANY_DETAILS.email}</a></p>
       <p style="margin:2px 0;font-size:13px;color:#1e293b;">\u{1F4DE} +91-9810078958</p>
     </td></tr></table>
   </td></tr>
   <!-- Footer -->
   <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:24px 48px;text-align:center;">
     <p style="color:#f8fafc;font-size:12px;margin:0 0 4px;font-weight:700;">STM Digital Library \u2014 21 Years of Trusted Excellence</p>
-    <p style="color:#64748b;font-size:11px;margin:0;">\xA9 ${year} Consortium eLearning Network Pvt. Ltd. All rights reserved.</p>
-    <p style="color:#475569;font-size:10px;margin:4px 0 0;">GSTIN: 09AACCC6494M1Z1 &nbsp;|&nbsp; PAN: AACCC6494M</p>
+    <p style="color:#64748b;font-size:11px;margin:0;">\xA9 ${year} ${COMPANY_DETAILS.legalName}. All rights reserved.</p>
+    <p style="color:#475569;font-size:10px;margin:4px 0 0;">GSTIN: ${COMPANY_DETAILS.gstin} &nbsp;|&nbsp; PAN: ${COMPANY_DETAILS.pan}</p>
   </td></tr>
 </table>
 </td></tr></table>
@@ -11795,7 +12578,7 @@ async function startServer() {
           { displayName: { contains: search, mode: "insensitive" } }
         ];
       }
-      const users = await prisma2.user.findMany({
+      const users = await prisma3.user.findMany({
         where,
         include: {
           subscriptions: { where: { status: "Active" }, take: 3 },
@@ -11812,7 +12595,7 @@ async function startServer() {
         },
         orderBy: { createdAt: "desc" }
       });
-      const verifications = await prisma2.emailVerification.findMany();
+      const verifications = await prisma3.emailVerification.findMany();
       const verifiedEmails = new Set(verifications.filter((v) => v.isVerified).map((v) => v.email));
       const sanitized = users.map(({ password: _, ...u }) => ({
         ...u,
@@ -11826,7 +12609,7 @@ async function startServer() {
   });
   app.get("/api/admin/institutions", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const institutions = await prisma2.institution.findMany({
+      const institutions = await prisma3.institution.findMany({
         select: { id: true, name: true, status: true },
         orderBy: { name: "asc" }
       });
@@ -11844,13 +12627,13 @@ async function startServer() {
       if (role === "Institution" && !institutionName) {
         return res.status(400).json({ error: "Institution Name is required for Institution role" });
       }
-      const existing = await prisma2.user.findUnique({ where: { email } });
+      const existing = await prisma3.user.findUnique({ where: { email } });
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
       const plainPassword = customPassword || generatePassword();
       const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
       let newInstId = null;
       if (role === "Institution") {
-        const newInst = await prisma2.institution.create({
+        const newInst = await prisma3.institution.create({
           data: {
             name: institutionName,
             status: "Active"
@@ -11858,7 +12641,7 @@ async function startServer() {
         });
         newInstId = newInst.id;
       }
-      const newUser = await prisma2.user.create({
+      const newUser = await prisma3.user.create({
         data: {
           email,
           password: hashedPassword,
@@ -11872,7 +12655,7 @@ async function startServer() {
           demoExpiresAt: isDemoAccount ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3) : null
         }
       });
-      await prisma2.usageLog.create({
+      await prisma3.usageLog.create({
         data: {
           action: "USER_CREATED",
           details: `User ${email} created with role ${role} by ${req.user.email}`,
@@ -11900,16 +12683,16 @@ async function startServer() {
       if (role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
       }
-      const existing = await prisma2.user.findUnique({ where: { id } });
+      const existing = await prisma3.user.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: "User not found" });
       if (email && email !== existing.email) {
-        const taken = await prisma2.user.findUnique({ where: { email } });
+        const taken = await prisma3.user.findUnique({ where: { email } });
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
       let newInstitutionProfile = existing.institutionProfile || {};
       if (branch !== void 0) newInstitutionProfile.branch = branch;
       if (department !== void 0) newInstitutionProfile.department = department;
-      const updated = await prisma2.user.update({
+      const updated = await prisma3.user.update({
         where: { id },
         data: {
           ...displayName ? { displayName } : {},
@@ -11939,10 +12722,10 @@ async function startServer() {
       if (role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
       }
-      const prevUser = await prisma2.user.findUnique({ where: { id } });
+      const prevUser = await prisma3.user.findUnique({ where: { id } });
       if (!prevUser) return res.status(404).json({ error: "User not found" });
-      const updated = await prisma2.user.update({ where: { id }, data: { role } });
-      await prisma2.usageLog.create({
+      const updated = await prisma3.user.update({ where: { id }, data: { role } });
+      await prisma3.usageLog.create({
         data: {
           action: "ROLE_CHANGE",
           details: `Role changed from ${prevUser.role} \u2192 ${role} for user ${prevUser.email} by ${req.user.email}`,
@@ -11958,16 +12741,16 @@ async function startServer() {
   app.post("/api/admin/users/:id/reset-password", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const targetUser = await prisma2.user.findUnique({ where: { id } });
+      const targetUser = await prisma3.user.findUnique({ where: { id } });
       if (!targetUser) return res.status(404).json({ error: "User not found" });
       const newPlain = generatePassword();
       const hashed = await import_bcryptjs.default.hash(newPlain, 10);
-      await prisma2.user.update({
+      await prisma3.user.update({
         where: { id },
         data: { password: hashed, isFirstLogin: true }
       });
       await sendCredentialsEmail(targetUser.email, targetUser.displayName || "User", newPlain);
-      await prisma2.usageLog.create({
+      await prisma3.usageLog.create({
         data: {
           action: "PASSWORD_RESET",
           details: `Password reset for ${targetUser.email} by ${req.user.email}`,
@@ -11983,17 +12766,17 @@ async function startServer() {
     try {
       const { id } = req.params;
       if (id === req.user.uid) return res.status(400).json({ error: "Cannot delete your own account" });
-      await prisma2.$transaction([
-        prisma2.payment.deleteMany({ where: { userId: id } }),
-        prisma2.subscription.deleteMany({ where: { userId: id } }),
-        prisma2.subscriptionRequest.deleteMany({ where: { userId: id } }),
-        prisma2.quotation.deleteMany({ where: { userId: id } }),
-        prisma2.submission.deleteMany({ where: { userId: id } }),
-        prisma2.usageLog.deleteMany({ where: { userId: id } }),
-        prisma2.studentActivity.deleteMany({ where: { userId: id } }),
-        prisma2.couponUsage.deleteMany({ where: { userId: id } }),
-        prisma2.favorite.deleteMany({ where: { userId: id } }),
-        prisma2.user.delete({ where: { id } })
+      await prisma3.$transaction([
+        prisma3.payment.deleteMany({ where: { userId: id } }),
+        prisma3.subscription.deleteMany({ where: { userId: id } }),
+        prisma3.subscriptionRequest.deleteMany({ where: { userId: id } }),
+        prisma3.quotation.deleteMany({ where: { userId: id } }),
+        prisma3.submission.deleteMany({ where: { userId: id } }),
+        prisma3.usageLog.deleteMany({ where: { userId: id } }),
+        prisma3.studentActivity.deleteMany({ where: { userId: id } }),
+        prisma3.couponUsage.deleteMany({ where: { userId: id } }),
+        prisma3.favorite.deleteMany({ where: { userId: id } }),
+        prisma3.user.delete({ where: { id } })
       ]);
       res.json({ message: "User deleted" });
     } catch (err) {
@@ -12011,7 +12794,7 @@ async function startServer() {
     "Corporate Innovator"
   ];
   async function syncContentModuleCounts() {
-    const groups = await prisma2.content.groupBy({
+    const groups = await prisma3.content.groupBy({
       by: ["domain", "contentType"],
       where: { status: { in: ["Published", "published"] }, domain: { not: null } },
       _count: { id: true }
@@ -12019,7 +12802,7 @@ async function startServer() {
     for (const g of groups) {
       if (!g.domain) continue;
       for (const userType of USER_TYPES) {
-        await prisma2.contentModule.upsert({
+        await prisma3.contentModule.upsert({
           where: { domain_contentType_userType: { domain: g.domain, contentType: g.contentType, userType } },
           create: { domain: g.domain, contentType: g.contentType, userType, totalCount: g._count.id },
           update: { totalCount: g._count.id }
@@ -12033,7 +12816,7 @@ async function startServer() {
       const where = { isActive: true };
       if (domain) where.domain = domain;
       where.userType = userType ? userType : "General";
-      const modules = await prisma2.contentModule.findMany({
+      const modules = await prisma3.contentModule.findMany({
         where,
         orderBy: [{ domain: "asc" }, { contentType: "asc" }]
       });
@@ -12048,7 +12831,7 @@ async function startServer() {
       if (!Array.isArray(moduleIds) || moduleIds.length === 0) {
         return res.json({ subtotal: 0, gstAmount: 0, total: 0, breakdown: [], planType });
       }
-      const modules = await prisma2.contentModule.findMany({
+      const modules = await prisma3.contentModule.findMany({
         where: { id: { in: moduleIds }, isActive: true }
       });
       const breakdown = modules.map((m2) => {
@@ -12092,7 +12875,7 @@ async function startServer() {
       const { userType } = req.query;
       const where = {};
       if (userType && userType !== "all") where.userType = userType;
-      const modules = await prisma2.contentModule.findMany({
+      const modules = await prisma3.contentModule.findMany({
         where,
         orderBy: [{ domain: "asc" }, { userType: "asc" }, { contentType: "asc" }]
       });
@@ -12113,7 +12896,7 @@ async function startServer() {
       if (yearlyDiscountPct !== void 0) data.yearlyDiscountPct = parseFloat(yearlyDiscountPct);
       if (isActive !== void 0) data.isActive = isActive;
       if (userType !== void 0) data.userType = userType;
-      const updated = await prisma2.contentModule.update({ where: { id }, data });
+      const updated = await prisma3.contentModule.update({ where: { id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update module" });
@@ -12122,7 +12905,7 @@ async function startServer() {
   app.post("/api/admin/content-modules/sync", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       await syncContentModuleCounts();
-      const modules = await prisma2.contentModule.findMany({ orderBy: [{ domain: "asc" }, { contentType: "asc" }] });
+      const modules = await prisma3.contentModule.findMany({ orderBy: [{ domain: "asc" }, { contentType: "asc" }] });
       res.json({ synced: modules.length, modules });
     } catch (error) {
       res.status(500).json({ error: "Sync failed" });
@@ -12131,7 +12914,7 @@ async function startServer() {
   app.get("/api/videos/grouped", authenticateJWT, async (req, res) => {
     try {
       const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const videos = await prisma2.content.findMany({
+      const videos = await prisma3.content.findMany({
         where: {
           contentType: "Educational Videos",
           status: { in: ["Published", "published"] }
@@ -12153,7 +12936,7 @@ async function startServer() {
   app.get("/api/videos/:id/details", authenticateJWT, async (req, res) => {
     try {
       const videoId = req.params.id;
-      const content = await prisma2.content.findUnique({ where: { id: videoId } });
+      const content = await prisma3.content.findUnique({ where: { id: videoId } });
       if (!content || content.contentType !== "Educational Videos") {
         return res.status(404).json({ error: "Video not found" });
       }
@@ -12163,13 +12946,13 @@ async function startServer() {
       }
       if (["Student", "Subscriber"].includes(req.user.role)) {
         try {
-          const existing = await prisma2.studentActivity.findFirst({
+          const existing = await prisma3.studentActivity.findFirst({
             where: { userId: req.user.uid, contentId: content.id }
           });
           if (existing) {
-            await prisma2.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
+            await prisma3.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
           } else {
-            await prisma2.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
+            await prisma3.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
           }
         } catch (e2) {
           console.error("Activity log failed (video):", e2);
@@ -12177,7 +12960,7 @@ async function startServer() {
       }
       let related = [];
       if (content.domain) {
-        const allRelated = await prisma2.content.findMany({
+        const allRelated = await prisma3.content.findMany({
           where: {
             contentType: "Educational Videos",
             domain: content.domain,
@@ -12224,7 +13007,7 @@ async function startServer() {
       if (domain) where.domain = domain;
       if (contentType) where.contentType = contentType;
       const [data, total] = await Promise.all([
-        prisma2.content.findMany({
+        prisma3.content.findMany({
           where,
           skip,
           take: parseInt(limit),
@@ -12243,7 +13026,7 @@ async function startServer() {
             publishedAt: true
           }
         }),
-        prisma2.content.count({ where })
+        prisma3.content.count({ where })
       ]);
       res.json({ data, total, query: q, page: parseInt(page), limit: parseInt(limit) });
     } catch (err) {
@@ -12255,7 +13038,7 @@ async function startServer() {
     try {
       const domain = req.query.domain;
       if (!domain) return res.status(400).json({ error: "domain query param required" });
-      const contentGroups = await prisma2.content.groupBy({
+      const contentGroups = await prisma3.content.groupBy({
         by: ["contentType"],
         where: { domain, status: { in: ["Published", "published"] } },
         _count: { id: true },
@@ -12269,7 +13052,7 @@ async function startServer() {
       const moduleWhere = { domain, isActive: true };
       if (userType) moduleWhere.userType = userType;
       else moduleWhere.userType = "General";
-      const modules = await prisma2.contentModule.findMany({
+      const modules = await prisma3.contentModule.findMany({
         where: moduleWhere,
         orderBy: { contentType: "asc" }
       });
@@ -12298,7 +13081,7 @@ async function startServer() {
         return res.status(400).json({ error: "Name, email and domain are required" });
       }
       const planDesc = `Domain Access Request: ${domain} | Plan: ${planType || "Monthly"} | Modules: ${Array.isArray(selectedModules) ? selectedModules.join(", ") : "All"} | Est. Total: \u20B9${totalPrice || 0}${organization ? ` | Org: ${organization}` : ""}`;
-      const request = await prisma2.subscriptionRequest.create({
+      const request = await prisma3.subscriptionRequest.create({
         data: {
           userName,
           email,
@@ -12313,7 +13096,7 @@ async function startServer() {
       const durationMonths = planType === "Yearly" ? 12 : planType === "Quarterly" ? 3 : 1;
       const adminMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `\u{1F525} New Domain Access Lead: ${domain} \u2014 ${userName}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F525} New Domain Access Lead</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new access request has been submitted for the <strong>${domain}</strong> collection.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4E6} Request Details</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Domain:</span> <strong style="color:#fff;">${domain}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Notes:</span> <span style="color:#e2e8f0;">${notes || "\u2014"}</span></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:18px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Contact Info</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:35%;border-bottom:1px solid #f1f5f9;">Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${userName}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${organization || "N/A"}</td></tr></table><div style="background:#fefce8;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:12px 16px;"><p style="margin:0;font-size:13px;color:#92400e;">\u{1F3C3} <strong>Hot Lead!</strong> Follow up within 24 hours.</p></div></td></tr>`
@@ -12324,7 +13107,7 @@ async function startServer() {
         to: email,
         subject: `\u2705 Your Request for ${domain} Access \u2014 Received!`,
         html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u2705 Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${userName}</strong>, we have received your request for the <strong>${domain}</strong> collection. Our team will contact you shortly to finalize the setup.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4CB} Your Request Summary</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Domain:</span> <strong style="color:#fff;">${domain}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Organization:</span> <span style="color:#e2e8f0;">${organization || "\u2014"}</span></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Notes:</span> <span style="color:#e2e8f0;">${notes || "\u2014"}</span></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} What Happens Next?</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our team reviews your request within 24 hrs</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We confirm subscription &amp; payment details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Full-text access is activated instantly</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u2705 Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${userName}</strong>, we have received your request for the <strong>${domain}</strong> collection. Our team will contact you shortly to finalize the setup.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4CB} Your Request Summary</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Domain:</span> <strong style="color:#fff;">${domain}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Organization:</span> <span style="color:#e2e8f0;">${organization || "\u2014"}</span></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Notes:</span> <span style="color:#e2e8f0;">${notes || "\u2014"}</span></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} What Happens Next?</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our team reviews your request within 24 hrs</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We confirm subscription &amp; payment details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Full-text access is activated instantly</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
         )
       };
       await sendMail(adminMailOptions);
@@ -12341,7 +13124,7 @@ async function startServer() {
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, "0");
       const prefix = `QTN-${year}-${month}-`;
-      const count = await prisma2.quotation.count({
+      const count = await prisma3.quotation.count({
         where: { id: { startsWith: prefix } }
       });
       const seq = String(count + 1).padStart(2, "0");
@@ -12370,8 +13153,9 @@ async function startServer() {
       } = req.body;
       const expiresAt = /* @__PURE__ */ new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
-      const quotation = await prisma2.quotation.create({
+      const quotation = await prisma3.quotation.create({
         data: {
+          issuer: currentIssuer(),
           userName,
           userEmail,
           organization,
@@ -12400,7 +13184,7 @@ async function startServer() {
       const { status } = req.query;
       const where = {};
       if (status) where.status = status;
-      const quotations = await prisma2.quotation.findMany({
+      const quotations = await prisma3.quotation.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { user: true }
@@ -12413,11 +13197,14 @@ async function startServer() {
   app.put("/api/admin/quotations/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const { status, notes } = req.body;
+      const { status, notes, paymentMethod } = req.body;
       const data = {};
       if (status) data.status = status;
       if (notes !== void 0) data.notes = notes;
-      const updated = await prisma2.quotation.update({ where: { id }, data });
+      const updated = await prisma3.quotation.update({ where: { id }, data });
+      if (status === "Paid") {
+        await recordQuotationPayment(updated, { method: paymentMethod });
+      }
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update quotation" });
@@ -12427,7 +13214,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
-      const quotation = await prisma2.quotation.findUnique({ where: { id } });
+      const quotation = await prisma3.quotation.findUnique({ where: { id } });
       if (!quotation) return res.status(404).json({ error: "Quotation not found" });
       if (!quotation.userId) return res.status(400).json({ error: "Quotation has no linked user; assign manually" });
       const breakdown = quotation.pricingBreakdown || {};
@@ -12439,7 +13226,7 @@ async function startServer() {
         d.setMonth(d.getMonth() + months);
         return d;
       })();
-      const sub = await prisma2.subscription.create({
+      const sub = await prisma3.subscription.create({
         data: {
           userId: quotation.userId,
           planName: `Custom Package (${quotation.planType})`,
@@ -12450,7 +13237,7 @@ async function startServer() {
           status: "Active"
         }
       });
-      await prisma2.quotation.update({ where: { id }, data: { status: "Paid" } });
+      await prisma3.quotation.update({ where: { id }, data: { status: "Paid" } });
       res.json({ subscription: sub, quotation: { ...quotation, status: "Paid" } });
     } catch (error) {
       console.error("Convert quotation error:", error);
@@ -12460,20 +13247,41 @@ async function startServer() {
   const generateReceiptNumber = async () => {
     const now = /* @__PURE__ */ new Date();
     const prefix = `RCP-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-`;
-    const count = await prisma2.receipt.count({ where: { receiptNumber: { startsWith: prefix } } });
+    const count = await prisma3.receipt.count({ where: { receiptNumber: { startsWith: prefix } } });
     return `${prefix}${String(count + 1).padStart(2, "0")}`;
+  };
+  const recordQuotationPayment = async (quotation, opts = {}) => {
+    try {
+      const data = {
+        amount: quotation.total,
+        status: "Success",
+        method: opts.method || "Bank Transfer",
+        userId: quotation.userId || null,
+        items: quotation.items || [],
+        paymentId: opts.receiptNumber || null
+      };
+      return await prisma3.payment.upsert({
+        where: { orderId: quotation.id },
+        update: data,
+        create: { orderId: quotation.id, ...data, createdAt: opts.paidAt || /* @__PURE__ */ new Date() }
+      });
+    } catch (e2) {
+      console.error("[payments] failed to record payment for quotation", quotation?.id, e2);
+      return null;
+    }
   };
   app.post("/api/admin/quotations/:id/receipt", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
       const { paymentMethod, paymentRef, paymentDate } = req.body || {};
-      const quotation = await prisma2.quotation.findUnique({ where: { id } });
+      const quotation = await prisma3.quotation.findUnique({ where: { id } });
       if (!quotation) return res.status(404).json({ error: "Quotation not found" });
-      const existing = await prisma2.receipt.findFirst({ where: { quotationId: id } });
+      const existing = await prisma3.receipt.findFirst({ where: { quotationId: id } });
       if (existing) return res.status(409).json({ error: "A receipt already exists for this quotation", receipt: existing });
       const receiptNumber = await generateReceiptNumber();
-      const receipt = await prisma2.receipt.create({
+      const receipt = await prisma3.receipt.create({
         data: {
+          issuer: currentIssuer(),
           receiptNumber,
           quotationId: quotation.id,
           userId: quotation.userId || null,
@@ -12500,7 +13308,12 @@ async function startServer() {
           createdBy: req.user?.email || req.user?.uid || "Admin"
         }
       });
-      await prisma2.quotation.update({ where: { id }, data: { status: "Paid" } });
+      await prisma3.quotation.update({ where: { id }, data: { status: "Paid" } });
+      await recordQuotationPayment(quotation, {
+        method: receipt.paymentMethod,
+        receiptNumber: receipt.receiptNumber,
+        paidAt: receipt.paymentDate
+      });
       res.json(receipt);
     } catch (error) {
       console.error("Create receipt error:", error);
@@ -12519,7 +13332,7 @@ async function startServer() {
           { organization: { contains: search, mode: "insensitive" } }
         ];
       }
-      const receipts = await prisma2.receipt.findMany({ where, orderBy: { createdAt: "desc" } });
+      const receipts = await prisma3.receipt.findMany({ where, orderBy: { createdAt: "desc" } });
       res.json(receipts);
     } catch (error) {
       console.error("List receipts error:", error);
@@ -12528,7 +13341,7 @@ async function startServer() {
   });
   app.get("/api/admin/receipts/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const receipt = await prisma2.receipt.findUnique({ where: { id: req.params.id } });
+      const receipt = await prisma3.receipt.findUnique({ where: { id: req.params.id } });
       if (!receipt) return res.status(404).json({ error: "Receipt not found" });
       res.json(receipt);
     } catch (error) {
@@ -12541,9 +13354,9 @@ async function startServer() {
       const { id } = req.params;
       const { pdfBase64 } = req.body || {};
       if (!pdfBase64) return res.status(400).json({ error: "Missing receipt PDF" });
-      const receipt = await prisma2.receipt.findUnique({ where: { id } });
+      const receipt = await prisma3.receipt.findUnique({ where: { id } });
       if (!receipt) return res.status(404).json({ error: "Receipt not found" });
-      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "info@celnet.in").trim();
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || COMPANY_DETAILS.email).trim();
       const logoPath = import_path2.default.join(process.cwd(), "public", "assets", "stm-logo.png");
       const logoExists = import_fs2.default.existsSync(logoPath);
       const paidOn = new Date(receipt.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -12556,7 +13369,7 @@ async function startServer() {
       <tr><td style="background:linear-gradient(135deg,#065f46 0%,#047857 100%);padding:32px 48px 28px;text-align:center;">
         ${logoExists ? `<img src="cid:stm-logo" alt="STM Digital Library" width="96" height="96" style="display:block;margin:0 auto 14px;border-radius:12px;"/>` : ""}
         <h1 style="color:#ffffff;margin:0 0 6px;font-size:24px;font-weight:900;letter-spacing:1px;">PAYMENT RECEIPT</h1>
-        <p style="color:#a7f3d0;margin:0;font-size:13px;font-weight:500;">STM Digital Library \u2014 Consortium eLearning Network Pvt. Ltd.</p>
+        <p style="color:#a7f3d0;margin:0;font-size:13px;font-weight:500;">${COMPANY_DETAILS.name} \u2014 ${COMPANY_DETAILS.legalName}</p>
       </td></tr>
       <tr><td style="padding:32px 48px 8px;">
         <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${receipt.userName},</p>
@@ -12581,7 +13394,7 @@ async function startServer() {
         </table>
       </td></tr>
       <tr><td style="padding:0 48px 36px;">
-        <p style="font-size:13px;color:#64748b;line-height:1.7;margin:0;">This is a computer-generated receipt. For any queries, contact us at ${process.env.ADMIN_EMAIL || "info@celnet.in"}.</p>
+        <p style="font-size:13px;color:#64748b;line-height:1.7;margin:0;">This is a computer-generated receipt. For any queries, contact us at ${process.env.ADMIN_EMAIL || COMPANY_DETAILS.email}.</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -12592,12 +13405,12 @@ async function startServer() {
       if (logoExists) attachments.push({ filename: "stm-logo.png", path: logoPath, cid: "stm-logo" });
       await sendMail({
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: [receipt.userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
+        to: [receipt.userEmail, process.env.ADMIN_EMAIL || COMPANY_DETAILS.email],
         subject: `Payment Receipt ${receipt.receiptNumber} \u2014 STM Digital Library`,
         html: htmlBody,
         attachments
       });
-      const updated = await prisma2.receipt.update({ where: { id }, data: { emailSentAt: /* @__PURE__ */ new Date() } });
+      const updated = await prisma3.receipt.update({ where: { id }, data: { emailSentAt: /* @__PURE__ */ new Date() } });
       res.json({ status: "success", receipt: updated });
     } catch (error) {
       console.error("Send receipt error:", error);
@@ -12659,13 +13472,13 @@ async function startServer() {
     const base = { publisherId };
     if (facing) base.ownershipSource = { not: "Ingested" };
     const [articles, books, articlesPublished, articlesPending, articlesRejected, artReads, bookReads] = await Promise.all([
-      prisma2.article.count({ where: { ...base } }),
-      prisma2.book.count({ where: { ...base } }),
-      prisma2.article.count({ where: { ...base, status: "Published" } }),
-      prisma2.article.count({ where: { ...base, status: "Draft" } }),
-      prisma2.article.count({ where: { ...base, status: "Rejected" } }),
-      prisma2.article.aggregate({ where: { ...base }, _sum: { views: true } }),
-      prisma2.book.aggregate({ where: { ...base }, _sum: { views: true } })
+      prisma3.article.count({ where: { ...base } }),
+      prisma3.book.count({ where: { ...base } }),
+      prisma3.article.count({ where: { ...base, status: "Published" } }),
+      prisma3.article.count({ where: { ...base, status: "Draft" } }),
+      prisma3.article.count({ where: { ...base, status: "Rejected" } }),
+      prisma3.article.aggregate({ where: { ...base }, _sum: { views: true } }),
+      prisma3.book.aggregate({ where: { ...base }, _sum: { views: true } })
     ]);
     const totalReads = (artReads._sum.views || 0) + (bookReads._sum.views || 0);
     return { articles, books, articlesPublished, articlesPending, articlesRejected, totalReads };
@@ -12675,8 +13488,8 @@ async function startServer() {
     const map = {};
     const at = (id) => map[id] ||= emptyPublisherCounts();
     const [artGroups, bookGroups] = await Promise.all([
-      prisma2.article.groupBy({ by: ["publisherId", "status"], _count: { _all: true }, _sum: { views: true } }),
-      prisma2.book.groupBy({ by: ["publisherId"], _count: { _all: true }, _sum: { views: true } })
+      prisma3.article.groupBy({ by: ["publisherId", "status"], _count: { _all: true }, _sum: { views: true } }),
+      prisma3.book.groupBy({ by: ["publisherId"], _count: { _all: true }, _sum: { views: true } })
     ]);
     for (const g of artGroups) {
       if (!g.publisherId) continue;
@@ -12699,9 +13512,9 @@ async function startServer() {
   const resolvePublisherForUser = async (req) => {
     const uid = req.user?.uid || req.user?.id;
     if (!uid) return null;
-    const direct = await prisma2.publisher.findFirst({ where: { userId: uid } });
+    const direct = await prisma3.publisher.findFirst({ where: { userId: uid } });
     if (direct) return direct;
-    const contact = await prisma2.publisherContact.findFirst({ where: { userId: uid }, include: { publisher: true } });
+    const contact = await prisma3.publisherContact.findFirst({ where: { userId: uid }, include: { publisher: true } });
     return contact?.publisher || null;
   };
   const requirePublisher = (req, res, next) => {
@@ -12718,9 +13531,9 @@ async function startServer() {
         { email: { contains: search, mode: "insensitive" } },
         { country: { contains: search, mode: "insensitive" } }
       ];
-      const publishers = await prisma2.publisher.findMany({ where, orderBy: { createdAt: "desc" } });
+      const publishers = await prisma3.publisher.findMany({ where, orderBy: { createdAt: "desc" } });
       const countsFor = await getPublisherCountsMap();
-      res.json(publishers.map((p) => ({ ...p, counts: countsFor(p.id) })));
+      res.json(publishers.map((p2) => ({ ...p2, counts: countsFor(p2.id) })));
     } catch (e2) {
       console.error("List publishers error:", e2);
       res.status(500).json({ error: "Failed to fetch publishers" });
@@ -12730,7 +13543,7 @@ async function startServer() {
     try {
       const { name, email, contactNumber, website, country, address, agreementNote, allowedContentTypes } = req.body;
       if (!name) return res.status(400).json({ error: "Publisher name is required" });
-      const publisher = await prisma2.publisher.create({
+      const publisher = await prisma3.publisher.create({
         data: {
           name,
           email: email || null,
@@ -12752,7 +13565,7 @@ async function startServer() {
   });
   app.get("/api/admin/publishers/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const publisher = await prisma2.publisher.findUnique({
+      const publisher = await prisma3.publisher.findUnique({
         where: { id: req.params.id },
         include: {
           locations: { orderBy: { isPrimary: "desc" } },
@@ -12777,7 +13590,7 @@ async function startServer() {
         if (v !== void 0) data[k] = v;
       }
       if (parentId !== void 0) data.parentId = parentId && parentId !== req.params.id ? parentId : null;
-      const publisher = await prisma2.publisher.update({ where: { id: req.params.id }, data });
+      const publisher = await prisma3.publisher.update({ where: { id: req.params.id }, data });
       res.json(publisher);
     } catch (e2) {
       res.status(500).json({ error: "Failed to update publisher" });
@@ -12787,22 +13600,22 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { email, contactNumber, website, country, address, agreementNote, allowedContentTypes } = req.body;
-      const publisher = await prisma2.publisher.findUnique({ where: { id } });
+      const publisher = await prisma3.publisher.findUnique({ where: { id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
       const loginEmail = (email || publisher.email || "").trim().toLowerCase();
       if (!loginEmail) return res.status(400).json({ error: "Email is required to create publisher login" });
-      let user = await prisma2.user.findUnique({ where: { email: loginEmail } });
+      let user = await prisma3.user.findUnique({ where: { email: loginEmail } });
       let generatedPassword = "";
       if (!user) {
         generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + "!";
         const hashed = await import_bcryptjs.default.hash(generatedPassword, 10);
-        user = await prisma2.user.create({
+        user = await prisma3.user.create({
           data: { email: loginEmail, password: hashed, displayName: publisher.name, role: "Publisher", status: "Active", isFirstLogin: true }
         });
       } else {
-        await prisma2.user.update({ where: { id: user.id }, data: { role: "Publisher" } });
+        await prisma3.user.update({ where: { id: user.id }, data: { role: "Publisher" } });
       }
-      const updated = await prisma2.publisher.update({
+      const updated = await prisma3.publisher.update({
         where: { id },
         data: {
           email: loginEmail,
@@ -12817,7 +13630,7 @@ async function startServer() {
         }
       });
       try {
-        const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "info@celnet.in").trim();
+        const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || COMPANY_DETAILS.email).trim();
         const credsBlock = generatedPassword ? eRows([
           ["Login email", esc(loginEmail)],
           ["Temporary password", `<span style="font-family:Consolas,Menlo,monospace;font-size:15px;font-weight:700;letter-spacing:0.5px;color:#1e3a6e;">${esc(generatedPassword)}</span>`]
@@ -12857,7 +13670,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.delete("/api/admin/publishers/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma2.publisher.delete({ where: { id: req.params.id } });
+      await prisma3.publisher.delete({ where: { id: req.params.id } });
       res.json({ message: "Publisher removed" });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete publisher (it may have linked content)" });
@@ -12865,9 +13678,9 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.post("/api/admin/publishers/:id/articles", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const publisher = await prisma2.publisher.findUnique({ where: { id: req.params.id } });
+      const publisher = await prisma3.publisher.findUnique({ where: { id: req.params.id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
-      const article = await prisma2.article.create({ data: mapArticleInput(req.body, publisher, req.body.status || "Published", req.user?.email || "Admin", "AdminEntered") });
+      const article = await prisma3.article.create({ data: mapArticleInput(req.body, publisher, req.body.status || "Published", req.user?.email || "Admin", "AdminEntered") });
       res.json(article);
     } catch (e2) {
       console.error(e2);
@@ -12876,9 +13689,9 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.post("/api/admin/publishers/:id/books", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const publisher = await prisma2.publisher.findUnique({ where: { id: req.params.id } });
+      const publisher = await prisma3.publisher.findUnique({ where: { id: req.params.id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
-      const book = await prisma2.book.create({ data: mapBookInput(req.body, publisher, req.body.status || "Published", req.user?.email || "Admin", "AdminEntered") });
+      const book = await prisma3.book.create({ data: mapBookInput(req.body, publisher, req.body.status || "Published", req.user?.email || "Admin", "AdminEntered") });
       res.json(book);
     } catch (e2) {
       res.status(500).json({ error: "Failed to create book" });
@@ -12887,8 +13700,8 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   app.get("/api/admin/review/pending", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const [articles, books] = await Promise.all([
-        prisma2.article.findMany({ where: { status: "Draft" }, orderBy: { createdAt: "desc" }, take: 200 }),
-        prisma2.book.findMany({ where: { status: "Draft" }, orderBy: { createdAt: "desc" }, take: 200 })
+        prisma3.article.findMany({ where: { status: "Draft" }, orderBy: { createdAt: "desc" }, take: 200 }),
+        prisma3.book.findMany({ where: { status: "Draft" }, orderBy: { createdAt: "desc" }, take: 200 })
       ]);
       res.json({ articles, books });
     } catch (e2) {
@@ -12900,10 +13713,10 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       const { id } = req.params;
       const { action, note } = req.body;
       if (action === "approve") {
-        const updated = await prisma2[model].update({ where: { id }, data: { status: "Published", rejectionNote: null } });
+        const updated = await prisma3[model].update({ where: { id }, data: { status: "Published", rejectionNote: null } });
         return res.json(updated);
       } else if (action === "reject") {
-        const updated = await prisma2[model].update({ where: { id }, data: { status: "Rejected", rejectionNote: note || "Rejected by reviewer" } });
+        const updated = await prisma3[model].update({ where: { id }, data: { status: "Rejected", rejectionNote: note || "Rejected by reviewer" } });
         return res.json(updated);
       }
       res.status(400).json({ error: "Invalid action (use approve|reject)" });
@@ -12928,8 +13741,8 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       if (!publisher) return res.json({ articles: [], books: [] });
       const own = { publisherId: publisher.id, ownershipSource: { not: "Ingested" } };
       const [articles, books] = await Promise.all([
-        prisma2.article.findMany({ where: own, orderBy: { createdAt: "desc" } }),
-        prisma2.book.findMany({ where: own, orderBy: { createdAt: "desc" }, include: { chapters: true } })
+        prisma3.article.findMany({ where: own, orderBy: { createdAt: "desc" } }),
+        prisma3.book.findMany({ where: own, orderBy: { createdAt: "desc" }, include: { chapters: true } })
       ]);
       res.json({ articles, books });
     } catch (e2) {
@@ -12940,7 +13753,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
-      const article = await prisma2.article.create({ data: mapArticleInput(req.body, publisher, "Draft", publisher.name) });
+      const article = await prisma3.article.create({ data: mapArticleInput(req.body, publisher, "Draft", publisher.name) });
       res.json(article);
     } catch (e2) {
       console.error(e2);
@@ -12951,7 +13764,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
-      const book = await prisma2.book.create({ data: mapBookInput(req.body, publisher, "Draft", publisher.name) });
+      const book = await prisma3.book.create({ data: mapBookInput(req.body, publisher, "Draft", publisher.name) });
       res.json(book);
     } catch (e2) {
       res.status(500).json({ error: "Failed to submit book" });
@@ -12960,12 +13773,12 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   app.put("/api/publisher/articles/:id", authenticateJWT, requirePublisher, async (req, res) => {
     try {
       const publisher = await resolvePublisherForUser(req);
-      const existing = await prisma2.article.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma3.article.findUnique({ where: { id: req.params.id } });
       if (!existing || existing.publisherId !== publisher?.id || existing.ownershipSource === "Ingested") return res.status(403).json({ error: "Not your article" });
       const data = mapArticleInput(req.body, publisher, "Draft", publisher.name);
       delete data.publisherId;
       delete data.publisherName;
-      const article = await prisma2.article.update({ where: { id: req.params.id }, data: { ...data, status: "Draft", rejectionNote: null } });
+      const article = await prisma3.article.update({ where: { id: req.params.id }, data: { ...data, status: "Draft", rejectionNote: null } });
       res.json(article);
     } catch (e2) {
       res.status(500).json({ error: "Failed to update article" });
@@ -12974,12 +13787,12 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   app.put("/api/publisher/books/:id", authenticateJWT, requirePublisher, async (req, res) => {
     try {
       const publisher = await resolvePublisherForUser(req);
-      const existing = await prisma2.book.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma3.book.findUnique({ where: { id: req.params.id } });
       if (!existing || existing.publisherId !== publisher?.id || existing.ownershipSource === "Ingested") return res.status(403).json({ error: "Not your book" });
       const data = mapBookInput(req.body, publisher, "Draft", publisher.name);
       delete data.publisherId;
       delete data.publisherName;
-      const book = await prisma2.book.update({ where: { id: req.params.id }, data: { ...data, status: "Draft", rejectionNote: null } });
+      const book = await prisma3.book.update({ where: { id: req.params.id }, data: { ...data, status: "Draft", rejectionNote: null } });
       res.json(book);
     } catch (e2) {
       res.status(500).json({ error: "Failed to update book" });
@@ -13037,9 +13850,9 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     zip: { mime: "application/zip", kind: "archive" }
   };
   const MEDIA_ALLOWED_EXT = Object.keys(MEDIA_TYPES);
-  const absoluteUrl = (req, p) => {
+  const absoluteUrl = (req, p2) => {
     const base = (process.env.APP_URL || "").replace(/\/+$/, "") || `${req.headers["x-forwarded-proto"] || req.protocol}://${req.get("host")}`;
-    return `${base}${p}`;
+    return `${base}${p2}`;
   };
   const withAbsolute = (req, a) => ({ ...a, absoluteUrl: absoluteUrl(req, a.url) });
   const readImageSize = (buf, ext) => {
@@ -13091,7 +13904,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       const stored = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${ext}`;
       fsm.writeFileSync(import_path2.default.join(MEDIA_DIR, stored), buf);
       const dims = type.kind === "image" ? readImageSize(buf, ext) : {};
-      const asset = await prisma2.mediaAsset.create({
+      const asset = await prisma3.mediaAsset.create({
         data: {
           fileName: stored,
           originalName: original,
@@ -13133,9 +13946,9 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
         ];
       }
       const [items, total, grouped] = await Promise.all([
-        prisma2.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }),
-        prisma2.mediaAsset.count({ where }),
-        prisma2.mediaAsset.groupBy({ by: ["kind"], _count: { _all: true }, _sum: { size: true } })
+        prisma3.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }),
+        prisma3.mediaAsset.count({ where }),
+        prisma3.mediaAsset.groupBy({ by: ["kind"], _count: { _all: true }, _sum: { size: true } })
       ]);
       const counts = {};
       let totalSize = 0;
@@ -13164,7 +13977,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       if (altText !== void 0) data.altText = altText || null;
       if (caption !== void 0) data.caption = caption || null;
       if (folder !== void 0) data.folder = folder || null;
-      const asset = await prisma2.mediaAsset.update({ where: { id: req.params.id }, data });
+      const asset = await prisma3.mediaAsset.update({ where: { id: req.params.id }, data });
       res.json(withAbsolute(req, asset));
     } catch (e2) {
       console.error("media update:", e2);
@@ -13173,7 +13986,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.delete("/api/admin/media/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const asset = await prisma2.mediaAsset.findUnique({ where: { id: req.params.id } });
+      const asset = await prisma3.mediaAsset.findUnique({ where: { id: req.params.id } });
       if (!asset) return res.status(404).json({ error: "Not found" });
       try {
         const fsm = await import("node:fs");
@@ -13182,7 +13995,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       } catch (fileErr) {
         console.error("media delete (file):", fileErr);
       }
-      await prisma2.mediaAsset.delete({ where: { id: req.params.id } });
+      await prisma3.mediaAsset.delete({ where: { id: req.params.id } });
       res.json({ success: true });
     } catch (e2) {
       console.error("media delete:", e2);
@@ -13191,16 +14004,16 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.get("/api/admin/publisher-tree", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const all = await prisma2.publisher.findMany({ orderBy: { name: "asc" } });
+      const all = await prisma3.publisher.findMany({ orderBy: { name: "asc" } });
       const countsFor = await getPublisherCountsMap();
       const byId = {};
-      all.forEach((p) => {
-        byId[p.id] = { ...p, counts: countsFor(p.id), children: [] };
+      all.forEach((p2) => {
+        byId[p2.id] = { ...p2, counts: countsFor(p2.id), children: [] };
       });
       const roots = [];
-      all.forEach((p) => {
-        if (p.parentId && byId[p.parentId]) byId[p.parentId].children.push(byId[p.id]);
-        else roots.push(byId[p.id]);
+      all.forEach((p2) => {
+        if (p2.parentId && byId[p2.parentId]) byId[p2.parentId].children.push(byId[p2.id]);
+        else roots.push(byId[p2.id]);
       });
       res.json(roots);
     } catch (e2) {
@@ -13211,7 +14024,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   app.post("/api/admin/publishers/:id/locations", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { label, type, country, city, address, isPrimary } = req.body;
-      const loc = await prisma2.publisherLocation.create({ data: { publisherId: req.params.id, label: label || null, type: type || "Office", country: country || null, city: city || null, address: address || null, isPrimary: !!isPrimary } });
+      const loc = await prisma3.publisherLocation.create({ data: { publisherId: req.params.id, label: label || null, type: type || "Office", country: country || null, city: city || null, address: address || null, isPrimary: !!isPrimary } });
       res.json(loc);
     } catch (e2) {
       res.status(500).json({ error: "Failed to add location" });
@@ -13221,14 +14034,14 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const data = {};
       for (const k of ["label", "type", "country", "city", "address", "isPrimary"]) if (req.body[k] !== void 0) data[k] = req.body[k];
-      res.json(await prisma2.publisherLocation.update({ where: { id: req.params.id }, data }));
+      res.json(await prisma3.publisherLocation.update({ where: { id: req.params.id }, data }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to update location" });
     }
   });
   app.delete("/api/admin/locations/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma2.publisherLocation.delete({ where: { id: req.params.id } });
+      await prisma3.publisherLocation.delete({ where: { id: req.params.id } });
       res.json({ ok: true });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete location" });
@@ -13238,7 +14051,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const { name, email, title, phone, isPrimary } = req.body;
       if (!name) return res.status(400).json({ error: "Contact name is required" });
-      const c = await prisma2.publisherContact.create({ data: { publisherId: req.params.id, name, email: email || null, title: title || null, phone: phone || null, isPrimary: !!isPrimary } });
+      const c = await prisma3.publisherContact.create({ data: { publisherId: req.params.id, name, email: email || null, title: title || null, phone: phone || null, isPrimary: !!isPrimary } });
       res.json(c);
     } catch (e2) {
       res.status(500).json({ error: "Failed to add contact" });
@@ -13248,14 +14061,14 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const data = {};
       for (const k of ["name", "email", "title", "phone", "isPrimary"]) if (req.body[k] !== void 0) data[k] = req.body[k];
-      res.json(await prisma2.publisherContact.update({ where: { id: req.params.id }, data }));
+      res.json(await prisma3.publisherContact.update({ where: { id: req.params.id }, data }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to update contact" });
     }
   });
   app.delete("/api/admin/contacts/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma2.publisherContact.delete({ where: { id: req.params.id } });
+      await prisma3.publisherContact.delete({ where: { id: req.params.id } });
       res.json({ ok: true });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete contact" });
@@ -13263,19 +14076,19 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.post("/api/admin/contacts/:id/invite", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const contact = await prisma2.publisherContact.findUnique({ where: { id: req.params.id }, include: { publisher: true } });
+      const contact = await prisma3.publisherContact.findUnique({ where: { id: req.params.id }, include: { publisher: true } });
       if (!contact) return res.status(404).json({ error: "Contact not found" });
       const loginEmail = (contact.email || "").trim().toLowerCase();
       if (!loginEmail) return res.status(400).json({ error: "Contact needs an email to receive a login" });
-      let user = await prisma2.user.findUnique({ where: { email: loginEmail } });
+      let user = await prisma3.user.findUnique({ where: { email: loginEmail } });
       let tempPassword = "";
       if (!user) {
         tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + "!";
-        user = await prisma2.user.create({ data: { displayName: contact.name, email: loginEmail, password: await import_bcryptjs.default.hash(tempPassword, 10), role: "Publisher", status: "Active", isFirstLogin: true } });
+        user = await prisma3.user.create({ data: { displayName: contact.name, email: loginEmail, password: await import_bcryptjs.default.hash(tempPassword, 10), role: "Publisher", status: "Active", isFirstLogin: true } });
       } else if (user.role !== "Publisher") {
-        user = await prisma2.user.update({ where: { id: user.id }, data: { role: "Publisher" } });
+        user = await prisma3.user.update({ where: { id: user.id }, data: { role: "Publisher" } });
       }
-      await prisma2.publisherContact.update({ where: { id: contact.id }, data: { userId: user.id, scopeNodeId: contact.publisherId } });
+      await prisma3.publisherContact.update({ where: { id: contact.id }, data: { userId: user.id, scopeNodeId: contact.publisherId } });
       res.json({ ok: true, email: loginEmail, tempPassword: tempPassword || null, note: tempPassword ? "Share these credentials securely." : "Existing account upgraded to a publisher seat." });
     } catch (e2) {
       console.error("contact invite:", e2);
@@ -13287,16 +14100,16 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       const from = req.params.id;
       const to = req.body.targetId;
       if (!to || to === from) return res.status(400).json({ error: "Pick a different target publisher" });
-      const target = await prisma2.publisher.findUnique({ where: { id: to } });
+      const target = await prisma3.publisher.findUnique({ where: { id: to } });
       if (!target) return res.status(404).json({ error: "Target publisher not found" });
-      await prisma2.journal.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
-      await prisma2.article.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
-      await prisma2.book.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
-      await prisma2.publisherLocation.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
-      await prisma2.publisherContact.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
-      await prisma2.publisherAgreement.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
-      await prisma2.publisher.updateMany({ where: { parentId: from }, data: { parentId: to } });
-      await prisma2.publisher.delete({ where: { id: from } });
+      await prisma3.journal.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
+      await prisma3.article.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
+      await prisma3.book.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
+      await prisma3.publisherLocation.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
+      await prisma3.publisherContact.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
+      await prisma3.publisherAgreement.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
+      await prisma3.publisher.updateMany({ where: { parentId: from }, data: { parentId: to } });
+      await prisma3.publisher.delete({ where: { id: from } });
       res.json({ ok: true, mergedInto: to });
     } catch (e2) {
       console.error("merge:", e2);
@@ -13316,7 +14129,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const { title, documentUrl, body, version, note } = req.body;
       if (!title) return res.status(400).json({ error: "Agreement title is required" });
-      const ag = await prisma2.publisherAgreement.create({
+      const ag = await prisma3.publisherAgreement.create({
         data: { publisherId: req.params.id, title, documentUrl: documentUrl || null, body: body || null, version: version || "1.0", note: note || null, status: "Draft", createdBy: req.user?.email || "Admin", auditTrail: [{ event: "created", by: req.user?.email || "Admin", at: (/* @__PURE__ */ new Date()).toISOString() }] }
       });
       res.json(ag);
@@ -13327,12 +14140,12 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.post("/api/admin/agreements/:id/send", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const ag = await prisma2.publisherAgreement.findUnique({
+      const ag = await prisma3.publisherAgreement.findUnique({
         where: { id: req.params.id },
         include: { publisher: { include: { contacts: true } } }
       });
       if (!ag) return res.status(404).json({ error: "Agreement not found" });
-      const updated = await prisma2.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Sent", sentAt: /* @__PURE__ */ new Date(), auditTrail: pushAudit(ag, "sent", req.user?.email || "Admin", req) } });
+      const updated = await prisma3.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Sent", sentAt: /* @__PURE__ */ new Date(), auditTrail: pushAudit(ag, "sent", req.user?.email || "Admin", req) } });
       const to = publisherRecipients(ag.publisher);
       if (to.length) {
         const name = ag.publisher?.name || "there";
@@ -13368,7 +14181,7 @@ Signing is your choice. If anything does not suit you, decline it and tell us wh
   });
   app.delete("/api/admin/agreements/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma2.publisherAgreement.delete({ where: { id: req.params.id } });
+      await prisma3.publisherAgreement.delete({ where: { id: req.params.id } });
       res.json({ ok: true });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete agreement" });
@@ -13378,9 +14191,9 @@ Signing is your choice. If anything does not suit you, decline it and tell us wh
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.json([]);
-      const list = await prisma2.publisherAgreement.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "desc" } });
+      const list = await prisma3.publisherAgreement.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "desc" } });
       await Promise.all(list.filter((a) => a.status === "Sent").map(
-        (a) => prisma2.publisherAgreement.update({ where: { id: a.id }, data: { status: "Viewed", viewedAt: /* @__PURE__ */ new Date(), auditTrail: pushAudit(a, "viewed", publisher.name, req) } })
+        (a) => prisma3.publisherAgreement.update({ where: { id: a.id }, data: { status: "Viewed", viewedAt: /* @__PURE__ */ new Date(), auditTrail: pushAudit(a, "viewed", publisher.name, req) } })
       ));
       res.json(list);
     } catch (e2) {
@@ -13390,12 +14203,12 @@ Signing is your choice. If anything does not suit you, decline it and tell us wh
   app.post("/api/publisher/agreements/:id/sign", authenticateJWT, requirePublisher, async (req, res) => {
     try {
       const publisher = await resolvePublisherForUser(req);
-      const ag = await prisma2.publisherAgreement.findUnique({ where: { id: req.params.id } });
+      const ag = await prisma3.publisherAgreement.findUnique({ where: { id: req.params.id } });
       if (!ag || ag.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your agreement" });
       if (ag.status === "Accepted") return res.status(400).json({ error: "Already signed" });
       const { signatureType, signatureData, name, email } = req.body;
       if (!signatureData || !name) return res.status(400).json({ error: "A signature and signer name are required" });
-      const updated = await prisma2.publisherAgreement.update({
+      const updated = await prisma3.publisherAgreement.update({
         where: { id: ag.id },
         data: {
           status: "Accepted",
@@ -13442,9 +14255,9 @@ ${MAIL_BASE}/admin/publishers`
   app.post("/api/publisher/agreements/:id/decline", authenticateJWT, requirePublisher, async (req, res) => {
     try {
       const publisher = await resolvePublisherForUser(req);
-      const ag = await prisma2.publisherAgreement.findUnique({ where: { id: req.params.id } });
+      const ag = await prisma3.publisherAgreement.findUnique({ where: { id: req.params.id } });
       if (!ag || ag.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your agreement" });
-      const updated = await prisma2.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Declined", decidedAt: /* @__PURE__ */ new Date(), declineReason: req.body.reason || null, auditTrail: pushAudit(ag, "declined", publisher.name, req) } });
+      const updated = await prisma3.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Declined", decidedAt: /* @__PURE__ */ new Date(), declineReason: req.body.reason || null, auditTrail: pushAudit(ag, "declined", publisher.name, req) } });
       sendMail({
         to: ADMIN_INBOX,
         subject: `Agreement declined \u2014 ${publisher.name}`,
@@ -13475,7 +14288,7 @@ ${MAIL_BASE}/admin/publishers`
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
       const { kind = "article", fileName, items } = req.body;
       if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: "No rows to import" });
-      const batch = await prisma2.publisherUpload.create({ data: { publisherId: publisher.id, kind, fileName: fileName || null, rows: items.length, status: "Pending", createdBy: publisher.name } });
+      const batch = await prisma3.publisherUpload.create({ data: { publisherId: publisher.id, kind, fileName: fileName || null, rows: items.length, status: "Pending", createdBy: publisher.name } });
       let accepted = 0, rejected = 0;
       for (const row of items) {
         try {
@@ -13484,13 +14297,13 @@ ${MAIL_BASE}/admin/publishers`
             continue;
           }
           const data = kind === "book" ? mapBookInput({ ...row, uploadId: batch.id }, publisher, "Draft", publisher.name) : mapArticleInput({ ...row, uploadId: batch.id }, publisher, "Draft", publisher.name);
-          await prisma2[kind === "book" ? "book" : "article"].create({ data });
+          await prisma3[kind === "book" ? "book" : "article"].create({ data });
           accepted++;
         } catch {
           rejected++;
         }
       }
-      const done = await prisma2.publisherUpload.update({ where: { id: batch.id }, data: { accepted, rejected, status: "Processed" } });
+      const done = await prisma3.publisherUpload.update({ where: { id: batch.id }, data: { accepted, rejected, status: "Processed" } });
       res.json({ ...done, accepted, rejected });
     } catch (e2) {
       console.error("publisher upload:", e2);
@@ -13501,7 +14314,7 @@ ${MAIL_BASE}/admin/publishers`
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.json([]);
-      res.json(await prisma2.publisherUpload.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "desc" } }));
+      res.json(await prisma3.publisherUpload.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "desc" } }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to load uploads" });
     }
@@ -13511,7 +14324,7 @@ ${MAIL_BASE}/admin/publishers`
       const { model, ids, action, note } = req.body;
       if (!["article", "book"].includes(model) || !Array.isArray(ids) || !ids.length) return res.status(400).json({ error: "Provide model + ids" });
       const data = action === "approve" ? { status: "Published", rejectionNote: null } : { status: "Rejected", rejectionNote: note || "Rejected by reviewer" };
-      const r2 = await prisma2[model].updateMany({ where: { id: { in: ids } }, data });
+      const r2 = await prisma3[model].updateMany({ where: { id: { in: ids } }, data });
       res.json({ ok: true, count: r2.count });
     } catch (e2) {
       res.status(500).json({ error: "Bulk review failed" });
@@ -13519,7 +14332,7 @@ ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/agreement-templates", authenticateJWT, requireAdminOrManager, async (_req, res) => {
     try {
-      res.json(await prisma2.agreementTemplate.findMany({ orderBy: { createdAt: "desc" } }));
+      res.json(await prisma3.agreementTemplate.findMany({ orderBy: { createdAt: "desc" } }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to load templates" });
     }
@@ -13528,14 +14341,14 @@ ${MAIL_BASE}/admin/publishers`
     try {
       const { title, version, body } = req.body;
       if (!title) return res.status(400).json({ error: "Template title required" });
-      res.json(await prisma2.agreementTemplate.create({ data: { title, version: version || "1.0", body: body || null, createdBy: req.user?.email || "Admin" } }));
+      res.json(await prisma3.agreementTemplate.create({ data: { title, version: version || "1.0", body: body || null, createdBy: req.user?.email || "Admin" } }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to save template" });
     }
   });
   app.delete("/api/admin/agreement-templates/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma2.agreementTemplate.delete({ where: { id: req.params.id } });
+      await prisma3.agreementTemplate.delete({ where: { id: req.params.id } });
       res.json({ ok: true });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete template" });
@@ -13543,8 +14356,8 @@ ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/publishers/:id/messages", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const msgs = await prisma2.publisherMessage.findMany({ where: { publisherId: req.params.id }, orderBy: { createdAt: "asc" } });
-      await prisma2.publisherMessage.updateMany({ where: { publisherId: req.params.id, sender: "publisher", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
+      const msgs = await prisma3.publisherMessage.findMany({ where: { publisherId: req.params.id }, orderBy: { createdAt: "asc" } });
+      await prisma3.publisherMessage.updateMany({ where: { publisherId: req.params.id, sender: "publisher", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
       res.json(msgs);
     } catch (e2) {
       res.status(500).json({ error: "Failed to load messages" });
@@ -13554,8 +14367,8 @@ ${MAIL_BASE}/admin/publishers`
     try {
       const { body, attachmentUrl } = req.body;
       if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
-      const msg = await prisma2.publisherMessage.create({ data: { publisherId: req.params.id, sender: "admin", senderName: req.user?.email || "STM Team", body: body || "", attachmentUrl: attachmentUrl || null } });
-      const publisher = await prisma2.publisher.findUnique({ where: { id: req.params.id }, include: { contacts: true } });
+      const msg = await prisma3.publisherMessage.create({ data: { publisherId: req.params.id, sender: "admin", senderName: req.user?.email || "STM Team", body: body || "", attachmentUrl: attachmentUrl || null } });
+      const publisher = await prisma3.publisher.findUnique({ where: { id: req.params.id }, include: { contacts: true } });
       const to = publisherRecipients(publisher);
       if (to.length) {
         sendMail({
@@ -13583,8 +14396,8 @@ Read and reply: ${MAIL_BASE}/publisher`
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.json([]);
-      const msgs = await prisma2.publisherMessage.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "asc" } });
-      await prisma2.publisherMessage.updateMany({ where: { publisherId: publisher.id, sender: "admin", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
+      const msgs = await prisma3.publisherMessage.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "asc" } });
+      await prisma3.publisherMessage.updateMany({ where: { publisherId: publisher.id, sender: "admin", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
       res.json(msgs);
     } catch (e2) {
       res.status(500).json({ error: "Failed to load messages" });
@@ -13596,7 +14409,7 @@ Read and reply: ${MAIL_BASE}/publisher`
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
       const { body, attachmentUrl } = req.body;
       if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
-      const msg = await prisma2.publisherMessage.create({ data: { publisherId: publisher.id, sender: "publisher", senderName: publisher.name, body: body || "", attachmentUrl: attachmentUrl || null } });
+      const msg = await prisma3.publisherMessage.create({ data: { publisherId: publisher.id, sender: "publisher", senderName: publisher.name, body: body || "", attachmentUrl: attachmentUrl || null } });
       sendMail({
         to: ADMIN_INBOX,
         subject: `New message from ${publisher.name}`,
@@ -13620,8 +14433,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.json({ total: 0, unreadMessages: 0, pendingAgreements: 0 });
       const [unreadMessages, pendingAgreements] = await Promise.all([
-        prisma2.publisherMessage.count({ where: { publisherId: publisher.id, sender: "admin", readAt: null } }),
-        prisma2.publisherAgreement.count({ where: { publisherId: publisher.id, status: { in: ["Sent", "Viewed"] } } })
+        prisma3.publisherMessage.count({ where: { publisherId: publisher.id, sender: "admin", readAt: null } }),
+        prisma3.publisherAgreement.count({ where: { publisherId: publisher.id, status: { in: ["Sent", "Viewed"] } } })
       ]);
       res.json({ total: unreadMessages + pendingAgreements, unreadMessages, pendingAgreements });
     } catch (e2) {
@@ -13630,8 +14443,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   const readAnalytics = async (publisherId, days = 30) => {
     const since = new Date(Date.now() - days * 864e5);
-    const series = await prisma2.$queryRaw`SELECT to_char(date_trunc('day', "at"), 'YYYY-MM-DD') as day, count(*)::int as reads FROM "ReadEvent" WHERE "publisherId" = ${publisherId} AND "at" >= ${since} GROUP BY 1 ORDER BY 1`;
-    const topArticles = await prisma2.article.findMany({ where: { publisherId, ownershipSource: { not: "Ingested" }, views: { gt: 0 } }, orderBy: { views: "desc" }, take: 5, select: { id: true, title: true, views: true } });
+    const series = await prisma3.$queryRaw`SELECT to_char(date_trunc('day', "at"), 'YYYY-MM-DD') as day, count(*)::int as reads FROM "ReadEvent" WHERE "publisherId" = ${publisherId} AND "at" >= ${since} GROUP BY 1 ORDER BY 1`;
+    const topArticles = await prisma3.article.findMany({ where: { publisherId, ownershipSource: { not: "Ingested" }, views: { gt: 0 } }, orderBy: { views: "desc" }, take: 5, select: { id: true, title: true, views: true } });
     const totalReads = series.reduce((s2, r2) => s2 + Number(r2.reads), 0);
     return { days, series, topArticles, totalReads };
   };
@@ -13654,7 +14467,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/notifications", authenticateJWT, requireAdminOrManager, async (_req, res) => {
     try {
-      const unread = await prisma2.publisherMessage.findMany({
+      const unread = await prisma3.publisherMessage.findMany({
         where: { sender: "publisher", readAt: null },
         orderBy: { createdAt: "desc" },
         take: 30,
@@ -13668,11 +14481,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const messages = Object.values(byPub);
       const [pa, pb] = await Promise.all([
-        prisma2.article.count({ where: { status: "Draft" } }),
-        prisma2.book.count({ where: { status: "Draft" } })
+        prisma3.article.count({ where: { status: "Draft" } }),
+        prisma3.book.count({ where: { status: "Draft" } })
       ]);
       const reviewCount = pa + pb;
-      const recent = await prisma2.publisherAgreement.findMany({
+      const recent = await prisma3.publisherAgreement.findMany({
         where: { status: { in: ["Accepted", "Declined"] }, decidedAt: { gte: new Date(Date.now() - 7 * 864e5) } },
         orderBy: { decidedAt: "desc" },
         take: 10,
@@ -13696,22 +14509,22 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   };
   const upsertPublisherByName = async (name, source) => {
     if (!name) return null;
-    const existing = await prisma2.publisher.findFirst({ where: { name } });
+    const existing = await prisma3.publisher.findFirst({ where: { name } });
     if (existing) return existing;
     try {
-      return await prisma2.publisher.create({ data: { name, tieUpStatus: "Discovered", source } });
+      return await prisma3.publisher.create({ data: { name, tieUpStatus: "Discovered", source } });
     } catch {
-      return prisma2.publisher.findFirst({ where: { name } });
+      return prisma3.publisher.findFirst({ where: { name } });
     }
   };
   const upsertJournalByIssn = async (issn, data) => {
     if (!issn) return null;
-    const existing = await prisma2.journal.findUnique({ where: { issn } });
+    const existing = await prisma3.journal.findUnique({ where: { issn } });
     if (existing) return existing;
     try {
-      return await prisma2.journal.create({ data: { ...data, issn } });
+      return await prisma3.journal.create({ data: { ...data, issn } });
     } catch {
-      return prisma2.journal.findUnique({ where: { issn } });
+      return prisma3.journal.findUnique({ where: { issn } });
     }
   };
   const TRUSTED_PDF_HOSTS = [
@@ -13960,7 +14773,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         for (const it of items) {
           try {
             const fp = articleFingerprint(it.doi, it.title, it.authors);
-            const exists = await prisma2.article.findUnique({ where: { fingerprint: fp } });
+            const exists = await prisma3.article.findUnique({ where: { fingerprint: fp } });
             if (exists) {
               job.duplicates++;
               continue;
@@ -13976,7 +14789,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
               openAccess: !!it.openAccess,
               startYear: it.year || null
             });
-            await prisma2.article.create({
+            await prisma3.article.create({
               data: {
                 title: it.title,
                 authors: it.authors || null,
@@ -14016,6 +14829,47 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       job.finishedAt = Date.now();
     }
   }
+  const ALL_DEPARTMENTS = DOMAINS.map((d) => d.name);
+  app.get("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (_req, res) => {
+    try {
+      res.json(await getState());
+    } catch {
+      res.status(500).json({ error: "Failed to read ingestion state" });
+    }
+  });
+  app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { enabled, yearsBack, departments, batchSize } = req.body || {};
+      const data = {};
+      if (typeof enabled === "boolean") data.enabled = enabled;
+      if (Number.isInteger(yearsBack) && yearsBack > 0 && yearsBack <= 50) data.yearsBack = yearsBack;
+      if (Array.isArray(departments)) data.departments = departments;
+      if (Number.isInteger(batchSize) && batchSize > 0 && batchSize <= 200) data.batchSize = batchSize;
+      await getState();
+      res.json(await prisma3.ingestionState.update({ where: { id: "singleton" }, data }));
+    } catch {
+      res.status(500).json({ error: "Failed to update ingestion state" });
+    }
+  });
+  app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (_req, res) => {
+    try {
+      res.json(await runIngestionPass(ALL_DEPARTMENTS));
+    } catch (e2) {
+      res.status(500).json({ error: String(e2?.message || e2) });
+    }
+  });
+  let ingestBusy = false;
+  setInterval(async () => {
+    if (ingestBusy) return;
+    ingestBusy = true;
+    try {
+      await runIngestionPass(ALL_DEPARTMENTS);
+    } catch (e2) {
+      console.error("[ingest] pass failed:", e2);
+    } finally {
+      ingestBusy = false;
+    }
+  }, 6e4);
   app.post("/api/admin/ingest/run", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { source = "openalex", departments = [], perDept = 25 } = req.body;
@@ -14106,7 +14960,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { domain } = req.query;
       const where = { status: "Published" };
       applyDomainScope(where, domain, await libraryScopeDomains(req));
-      const groups = await prisma2.article.groupBy({ by: ["publisherName"], where, _count: { _all: true } });
+      const groups = await prisma3.article.groupBy({ by: ["publisherName"], where, _count: { _all: true } });
       const list = groups.filter((g) => g.publisherName).map((g) => ({ name: g.publisherName, count: g._count._all })).sort((a, b) => b.count - a.count);
       res.json(list);
     } catch (e2) {
@@ -14124,8 +14978,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       if (publisher) where.publisherName = publisher;
       if (search) where.title = { contains: search, mode: "insensitive" };
-      const journals = await prisma2.journal.findMany({ where, orderBy: { title: "asc" }, take: 500 });
-      const groups = journals.length ? await prisma2.article.groupBy({
+      const journals = await prisma3.journal.findMany({ where, orderBy: { title: "asc" }, take: 500 });
+      const groups = journals.length ? await prisma3.article.groupBy({
         by: ["journalId"],
         where: { status: "Published", journalId: { in: journals.map((j) => j.id) } },
         _count: { _all: true }
@@ -14153,13 +15007,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const jidList = journalIds ? String(journalIds).split(",").filter(Boolean) : [];
       if (jidList.length) base.journalId = { in: jidList };
       else if (journalId) base.journalId = journalId;
-      const years = await prisma2.article.findMany({ where: base, distinct: ["year"], select: { year: true }, orderBy: { year: "desc" } });
+      const years = await prisma3.article.findMany({ where: base, distinct: ["year"], select: { year: true }, orderBy: { year: "desc" } });
       const volWhere = { ...base };
       if (year) volWhere.year = parseInt(year);
-      const volumes = await prisma2.article.findMany({ where: volWhere, distinct: ["volume"], select: { volume: true } });
+      const volumes = await prisma3.article.findMany({ where: volWhere, distinct: ["volume"], select: { volume: true } });
       const issWhere = { ...volWhere };
       if (volume) issWhere.volume = String(volume);
-      const issues = await prisma2.article.findMany({ where: issWhere, distinct: ["issue"], select: { issue: true } });
+      const issues = await prisma3.article.findMany({ where: issWhere, distinct: ["issue"], select: { issue: true } });
       res.json({
         years: years.map((y) => y.year).filter((v) => v != null),
         volumes: volumes.map((v) => v.volume).filter(Boolean),
@@ -14186,19 +15040,242 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const take = Math.min(parseInt(limit) || 20, 100);
       const skip = ((parseInt(page) || 1) - 1) * take;
       const [data, total] = await Promise.all([
-        prisma2.article.findMany({
+        prisma3.article.findMany({
           where,
           orderBy: [{ year: "desc" }, { createdAt: "desc" }],
           skip,
           take,
           include: { journal: { select: { title: true, issn: true, eissn: true, subject: true, publisherName: true } } }
         }),
-        prisma2.article.count({ where })
+        prisma3.article.count({ where })
       ]);
       res.json({ data, total, page: parseInt(page) || 1, limit: take });
     } catch (e2) {
       console.error("library articles:", e2);
       res.status(500).json({ error: "Failed to load articles" });
+    }
+  });
+  app.get("/api/library/journal/:issn", async (req, res) => {
+    try {
+      const key = decodeURIComponent(req.params.issn);
+      const norm = normaliseIssn(key);
+      const journal = await prisma3.journal.findFirst({
+        where: { OR: [
+          { issn: key },
+          { eissn: key },
+          { id: key },
+          ...norm ? [{ issn: norm }, { eissn: norm }] : []
+        ] }
+      });
+      if (!journal) return res.status(404).json({ error: "Journal not found" });
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && journal.domain && !scope.includes(journal.domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+      const volumes = await prisma3.$queryRawUnsafe(`
+        select volume, max(year)::int as year,
+               count(distinct issue)::int as issues, count(*)::int as articles
+        from "Article"
+        where "journalId" = $1 and status = 'Published' and volume is not null
+        group by volume order by max(year) desc nulls last, volume desc`, journal.id);
+      res.json({ ...journal, volumes });
+    } catch (e2) {
+      console.error("GET library/journal error:", e2?.message);
+      res.status(500).json({ error: "Failed to load journal" });
+    }
+  });
+  app.get("/api/library/journal/:issn/volume/:volume", async (req, res) => {
+    try {
+      const key = decodeURIComponent(req.params.issn);
+      const volume = decodeURIComponent(req.params.volume);
+      const norm = normaliseIssn(key);
+      const journal = await prisma3.journal.findFirst({
+        where: { OR: [
+          { issn: key },
+          { eissn: key },
+          { id: key },
+          ...norm ? [{ issn: norm }, { eissn: norm }] : []
+        ] },
+        select: { id: true, title: true, domain: true, issn: true, licence: true }
+      });
+      if (!journal) return res.status(404).json({ error: "Journal not found" });
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && journal.domain && !scope.includes(journal.domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+      const articles = await prisma3.article.findMany({
+        where: { journalId: journal.id, volume, status: "Published" },
+        select: {
+          id: true,
+          title: true,
+          authors: true,
+          issue: true,
+          year: true,
+          pages: true,
+          doi: true,
+          accessStatus: true,
+          licence: true,
+          originalUrl: true,
+          pdfUrl: true
+        },
+        orderBy: [{ issue: "asc" }, { title: "asc" }],
+        take: 500
+      });
+      const issues = {};
+      for (const a of articles) {
+        const k = a.issue || "\u2014";
+        (issues[k] = issues[k] || []).push(a);
+      }
+      res.json({
+        journal,
+        volume,
+        issues: Object.entries(issues).map(([issue, items]) => ({ issue, articles: items }))
+      });
+    } catch (e2) {
+      console.error("GET library/volume error:", e2?.message);
+      res.status(500).json({ error: "Failed to load volume" });
+    }
+  });
+  app.get("/api/library/author/:id", async (req, res) => {
+    try {
+      const author = await prisma3.author.findUnique({ where: { id: req.params.id } });
+      if (!author) return res.status(404).json({ error: "Author not found" });
+      const links = await prisma3.articleAuthor.findMany({
+        where: { authorId: author.id },
+        select: { position: true, article: { select: {
+          id: true,
+          title: true,
+          year: true,
+          journalName: true,
+          journalIssn: true,
+          domain: true,
+          accessStatus: true,
+          doi: true,
+          originalUrl: true
+        } } },
+        take: 500
+      });
+      const articles = links.map((l) => ({ ...l.article, position: l.position })).filter((a) => a).sort((a, b) => (b.year || 0) - (a.year || 0));
+      const byJournal = /* @__PURE__ */ new Map();
+      const byDomain = /* @__PURE__ */ new Map();
+      for (const a of articles) {
+        if (a.journalName) byJournal.set(a.journalName, (byJournal.get(a.journalName) || 0) + 1);
+        if (a.domain) byDomain.set(a.domain, (byDomain.get(a.domain) || 0) + 1);
+      }
+      const top = (m2) => [...m2.entries()].sort((x2, y) => y[1] - x2[1]).map(([name, count]) => ({ name, count }));
+      res.json({ ...author, articles, journals: top(byJournal), domains: top(byDomain) });
+    } catch (e2) {
+      console.error("GET library/author error:", e2?.message);
+      res.status(500).json({ error: "Failed to load author" });
+    }
+  });
+  app.get("/api/library/article/:id", async (req, res) => {
+    try {
+      const article = await prisma3.article.findUnique({
+        where: { id: req.params.id },
+        include: {
+          journal: { select: {
+            id: true,
+            title: true,
+            issn: true,
+            publisherName: true,
+            domain: true,
+            licence: true,
+            licenceIsNC: true,
+            firstYear: true,
+            lastYear: true,
+            volumeCount: true
+          } },
+          authorLinks: {
+            select: { position: true, author: { select: { id: true, name: true, identitySource: true, articleCount: true } } },
+            orderBy: { position: "asc" }
+          }
+        }
+      });
+      if (!article) return res.status(404).json({ error: "Article not found" });
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && article.domain && !scope.includes(article.domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+      const siblings = article.journalId && article.volume ? await prisma3.article.findMany({
+        where: {
+          journalId: article.journalId,
+          volume: article.volume,
+          issue: article.issue,
+          status: "Published",
+          NOT: { id: article.id }
+        },
+        select: { id: true, title: true, authors: true, pages: true },
+        take: 30
+      }) : [];
+      res.json({
+        ...article,
+        authors_structured: article.authorLinks.map((l) => ({ ...l.author, position: l.position })),
+        authorLinks: void 0,
+        siblings
+      });
+    } catch (e2) {
+      console.error("GET library/article error:", e2?.message);
+      res.status(500).json({ error: "Failed to load article" });
+    }
+  });
+  app.get("/api/library/content/:id", authenticateJWT, async (req, res) => {
+    try {
+      const c = await prisma3.content.findFirst({
+        where: { id: req.params.id, status: { not: "Draft" } },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          authors: true,
+          domain: true,
+          contentType: true,
+          subjectArea: true,
+          tags: true,
+          views: true
+        }
+      });
+      if (!c) return res.status(404).json({ error: "Record not found" });
+      const scope = await libraryScopeDomains(req);
+      if (scope !== null && c.domain && !scope.includes(c.domain)) {
+        return res.status(403).json({ error: "Not in your subscription" });
+      }
+      const related = await prisma3.content.findMany({
+        where: {
+          id: { not: c.id },
+          status: { not: "Draft" },
+          domain: c.domain || void 0,
+          contentType: c.contentType
+        },
+        select: { id: true, title: true, authors: true },
+        orderBy: { views: "desc" },
+        take: 12
+      });
+      const relatedLabel = `More ${String(c.contentType || "items").toLowerCase()} in ${c.domain || "this department"}`;
+      res.json({ ...c, related, relatedLabel });
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to load record" });
+    }
+  });
+  app.get("/api/library/stats", async (_req, res) => {
+    try {
+      const [journals, byDomain, articles, books, authors] = await Promise.all([
+        prisma3.journal.count({ where: { articleCount: { gt: 0 } } }),
+        prisma3.$queryRawUnsafe(`
+          select domain,
+                 count(*)::int as journals,
+                 coalesce(sum("articleCount"),0)::int as articles,
+                 min("firstYear") as from_year, max("lastYear") as to_year
+          from "Journal" where domain is not null and "articleCount" > 0
+          group by domain order by journals desc`),
+        prisma3.article.count({ where: { status: "Published" } }),
+        prisma3.book.count({ where: { status: "Published" } }),
+        prisma3.author.count()
+      ]);
+      res.json({ journals, articles, books, authors, departments: byDomain });
+    } catch (e2) {
+      console.error("GET library/stats error:", e2?.message);
+      res.status(500).json({ error: "Failed to load stats" });
     }
   });
   app.get("/api/library/books", async (req, res) => {
@@ -14210,8 +15287,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const take = Math.min(parseInt(limit) || 20, 100);
       const skip = ((parseInt(page) || 1) - 1) * take;
       const [data, total] = await Promise.all([
-        prisma2.book.findMany({ where, orderBy: { createdAt: "desc" }, skip, take, include: { chapters: true } }),
-        prisma2.book.count({ where })
+        prisma3.book.findMany({ where, orderBy: { createdAt: "desc" }, skip, take, include: { chapters: true } }),
+        prisma3.book.count({ where })
       ]);
       res.json({ data, total, page: parseInt(page) || 1, limit: take });
     } catch (e2) {
@@ -14280,7 +15357,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (domain) where.domain = domain;
       if (status) where.status = status;
       if (search) where.OR = [{ title: { contains: search, mode: "insensitive" } }, { authors: { contains: search, mode: "insensitive" } }];
-      const model = prisma2[kind];
+      const model = prisma3[kind];
       const [rows, total] = await Promise.all([
         model.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }),
         model.count({ where })
@@ -14294,7 +15371,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const kind = req.params.kind === "book" ? "book" : "article";
-      const row = await prisma2[kind].findUnique({ where: { id: req.params.id }, ...kind === "book" ? { include: { chapters: true } } : {} });
+      const row = await prisma3[kind].findUnique({ where: { id: req.params.id }, ...kind === "book" ? { include: { chapters: true } } : {} });
       if (!row) return res.status(404).json({ error: "Not found" });
       res.json(aliasItem(row));
     } catch (e2) {
@@ -14307,7 +15384,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const kind = kindFor(req.body.contentType);
       if (kind === "book") {
         const chapters = Array.isArray(req.body.chapters) ? req.body.chapters.filter((c) => c && c.title) : [];
-        const book = await prisma2.book.create({
+        const book = await prisma3.book.create({
           data: {
             ...buildAdminBook(req.body, by),
             chapters: chapters.length ? { create: chapters.map((c, i2) => ({ title: c.title, authors: c.authors || null, pdfUrl: c.pdfUrl || null, pages: c.pages || null, chapterNumber: c.chapterNumber ? parseInt(c.chapterNumber) : i2 + 1, status: req.body.status || "Published" })) } : void 0
@@ -14326,7 +15403,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         openAccess: data.accessType === "OpenAccess",
         startYear: data.year || null
       });
-      const article = await prisma2.article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
+      const article = await prisma3.article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
       res.json(article);
     } catch (e2) {
       console.error("admin library create:", e2);
@@ -14346,9 +15423,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const getPub = async (name) => {
         if (!name) return null;
         if (pubCache.has(name)) return pubCache.get(name);
-        const p = await upsertPublisherByName(name, "Admin");
-        pubCache.set(name, p);
-        return p;
+        const p2 = await upsertPublisherByName(name, "Admin");
+        pubCache.set(name, p2);
+        return p2;
       };
       const getJrn = async (issn, data) => {
         if (!issn) return await upsertJournalByIssn(issn, data);
@@ -14362,7 +15439,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         try {
           if (!b.title || !String(b.title).trim()) throw new Error("Title is required");
           if (kind === "book") {
-            await prisma2.book.create({ data: buildAdminBook(b, by) });
+            await prisma3.book.create({ data: buildAdminBook(b, by) });
           } else {
             const data = buildAdminArticle(b, by);
             const publisher = await getPub(data.publisherName);
@@ -14375,7 +15452,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
               openAccess: data.accessType === "OpenAccess",
               startYear: data.year || null
             });
-            await prisma2.article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
+            await prisma3.article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
           }
           success++;
         } catch (e2) {
@@ -14394,7 +15471,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const kind = req.params.kind === "book" ? "book" : "article";
       const by = req.user?.email || "Admin";
       if (Object.keys(req.body).length === 1 && req.body.status) {
-        const updated2 = await prisma2[kind].update({ where: { id: req.params.id }, data: { status: req.body.status } });
+        const updated2 = await prisma3[kind].update({ where: { id: req.params.id }, data: { status: req.body.status } });
         return res.json(aliasItem(updated2));
       }
       const data = kind === "book" ? buildAdminBook(req.body, by) : buildAdminArticle(req.body, by);
@@ -14412,11 +15489,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         data.publisherId = publisher?.id || null;
         data.journalId = journal?.id || null;
       }
-      const updated = await prisma2[kind].update({ where: { id: req.params.id }, data });
+      const updated = await prisma3[kind].update({ where: { id: req.params.id }, data });
       if (kind === "book" && Array.isArray(req.body.chapters)) {
-        await prisma2.chapter.deleteMany({ where: { bookId: req.params.id } });
+        await prisma3.chapter.deleteMany({ where: { bookId: req.params.id } });
         const chs = req.body.chapters.filter((c) => c && c.title);
-        if (chs.length) await prisma2.chapter.createMany({ data: chs.map((c, i2) => ({ bookId: req.params.id, title: c.title, authors: c.authors || null, pdfUrl: c.pdfUrl || null, pages: c.pages || null, chapterNumber: c.chapterNumber ? parseInt(c.chapterNumber) : i2 + 1, status: req.body.status || "Published" })) });
+        if (chs.length) await prisma3.chapter.createMany({ data: chs.map((c, i2) => ({ bookId: req.params.id, title: c.title, authors: c.authors || null, pdfUrl: c.pdfUrl || null, pages: c.pages || null, chapterNumber: c.chapterNumber ? parseInt(c.chapterNumber) : i2 + 1, status: req.body.status || "Published" })) });
       }
       res.json(aliasItem(updated));
     } catch (e2) {
@@ -14427,7 +15504,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.delete("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const kind = req.params.kind === "book" ? "book" : "article";
-      await prisma2[kind].delete({ where: { id: req.params.id } });
+      await prisma3[kind].delete({ where: { id: req.params.id } });
       res.json({ message: "Deleted" });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete item" });
@@ -14438,7 +15515,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { action, kind: k, ids } = req.body;
       const kind = k === "book" ? "book" : "article";
       if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: "No items" });
-      const model = prisma2[kind];
+      const model = prisma3[kind];
       if (action === "Delete") {
         await model.deleteMany({ where: { id: { in: ids } } });
         return res.json({ message: `${ids.length} deleted` });
@@ -14466,8 +15543,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ];
       }
       const [contents, total] = await Promise.all([
-        prisma2.content.findMany({ where, skip, take: parseInt(limit), orderBy: { publishedAt: "desc" } }),
-        prisma2.content.count({ where })
+        prisma3.content.findMany({ where, skip, take: parseInt(limit), orderBy: { publishedAt: "desc" } }),
+        prisma3.content.count({ where })
       ]);
       res.json({ data: contents, total, page: parseInt(page), limit: parseInt(limit) });
     } catch (error) {
@@ -14478,7 +15555,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price, accessType, status, publishingMode } = req.body;
-      const newContent = await prisma2.content.create({
+      const newContent = await prisma3.content.create({
         data: { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price: parseFloat(price) || 0, accessType, status, publishingMode: publishingMode || "Direct" }
       });
       res.json(newContent);
@@ -14490,7 +15567,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/admin/content/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const content = await prisma2.content.findUnique({ where: { id } });
+      const content = await prisma3.content.findUnique({ where: { id } });
       if (!content) return res.status(404).json({ error: "Content not found" });
       res.json(content);
     } catch (error) {
@@ -14503,7 +15580,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { id } = req.params;
       const data = req.body;
       if (data.price !== void 0) data.price = parseFloat(data.price) || 0;
-      const updatedContent = await prisma2.content.update({ where: { id }, data });
+      const updatedContent = await prisma3.content.update({ where: { id }, data });
       res.json(updatedContent);
     } catch (error) {
       console.error("Admin Content PUT Error:", error);
@@ -14519,18 +15596,18 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (contentType) where.contentType = contentType;
       if (limit && parseInt(limit) > 0) {
         const take = parseInt(limit);
-        const drafts = await prisma2.content.findMany({
+        const drafts = await prisma3.content.findMany({
           where,
           select: { id: true },
           take
         });
         const ids = drafts.map((d) => d.id);
         if (ids.length > 0) {
-          const result = await prisma2.content.deleteMany({ where: { id: { in: ids } } });
+          const result = await prisma3.content.deleteMany({ where: { id: { in: ids } } });
           count = result.count;
         }
       } else {
-        const result = await prisma2.content.deleteMany({ where });
+        const result = await prisma3.content.deleteMany({ where });
         count = result.count;
       }
       res.json({ success: true, count, message: `Deleted ${count} drafted items.` });
@@ -14548,21 +15625,21 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (contentType) where.contentType = contentType;
       if (limit && parseInt(limit) > 0) {
         const take = parseInt(limit);
-        const drafts = await prisma2.content.findMany({
+        const drafts = await prisma3.content.findMany({
           where,
           select: { id: true },
           take
         });
         const ids = drafts.map((d) => d.id);
         if (ids.length > 0) {
-          const result = await prisma2.content.updateMany({
+          const result = await prisma3.content.updateMany({
             where: { id: { in: ids } },
             data: { status: "Published", validationStatus: null, flaggedReason: null }
           });
           count = result.count;
         }
       } else {
-        const result = await prisma2.content.updateMany({
+        const result = await prisma3.content.updateMany({
           where,
           data: { status: "Published", validationStatus: null, flaggedReason: null }
         });
@@ -14577,7 +15654,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.delete("/api/admin/content/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma2.content.delete({ where: { id } });
+      await prisma3.content.delete({ where: { id } });
       res.json({ success: true });
     } catch (error) {
       console.error("Admin Content DELETE Error:", error);
@@ -14605,13 +15682,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             continue;
           }
           const fingerprint = generateFingerprint2(item.title, item.authors);
-          const existing = await prisma2.content.findUnique({ where: { fingerprint } });
+          const existing = await prisma3.content.findUnique({ where: { fingerprint } });
           if (existing) {
             results.skipped++;
             results.errors.push({ row: i2 + 1, item, error: "Duplicate content (fingerprint match)" });
             continue;
           }
-          await prisma2.content.create({
+          await prisma3.content.create({
             data: {
               title: item.title,
               description: item.description,
@@ -14648,10 +15725,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         return res.status(400).json({ error: "Invalid payload. Expected action and contentIds array." });
       }
       if (action === "Delete") {
-        await prisma2.content.deleteMany({ where: { id: { in: contentIds } } });
+        await prisma3.content.deleteMany({ where: { id: { in: contentIds } } });
       } else if (action === "Publish" || action === "Draft") {
         const statusVal = action === "Publish" ? "Published" : "Draft";
-        await prisma2.content.updateMany({
+        await prisma3.content.updateMany({
           where: { id: { in: contentIds } },
           data: { status: statusVal }
         });
@@ -14668,7 +15745,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { isBlocked } = req.body;
-      const user = await prisma2.user.update({
+      const user = await prisma3.user.update({
         where: { id },
         data: { isBlocked: !!isBlocked }
       });
@@ -14684,7 +15761,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       let finalContentTypes = [];
       let finalPlanName = "Custom Plan";
       if (bundleId) {
-        const bundle = await prisma2.bundle.findUnique({ where: { id: bundleId } });
+        const bundle = await prisma3.bundle.findUnique({ where: { id: bundleId } });
         if (!bundle) return res.status(404).json({ error: "Bundle not found" });
         finalDomains = Array.isArray(bundle.domains) ? bundle.domains : [];
         finalContentTypes = Array.isArray(bundle.contentTypes) ? bundle.contentTypes : [];
@@ -14707,18 +15784,18 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const targets = Array.isArray(userIds) ? userIds : [userIds].filter(Boolean);
       if (targets.length === 0) return res.status(400).json({ error: "No users selected" });
       for (const userId of targets) {
-        const user = await prisma2.user.findUnique({ where: { id: userId } });
+        const user = await prisma3.user.findUnique({ where: { id: userId } });
         const isInst = user?.role === "Institution";
         let assignedInstitutionId = null;
         if (isInst) {
           if (user.institutionId) {
             assignedInstitutionId = user.institutionId;
           } else {
-            const inst = await prisma2.institution.findFirst({ where: { subscriptionId: userId } });
+            const inst = await prisma3.institution.findFirst({ where: { subscriptionId: userId } });
             if (inst) assignedInstitutionId = inst.id;
           }
         }
-        const sub = await prisma2.subscription.create({
+        const sub = await prisma3.subscription.create({
           data: {
             userId: isInst ? null : userId,
             institutionId: assignedInstitutionId,
@@ -14742,7 +15819,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/bundles", authenticateJWT, async (req, res) => {
     try {
-      const bundles = await prisma2.bundle.findMany({
+      const bundles = await prisma3.bundle.findMany({
         where: { status: "Active" },
         orderBy: { name: "asc" }
       });
@@ -14757,7 +15834,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { status } = req.query;
       const where = {};
       if (status) where.status = status;
-      const requests = await prisma2.subscriptionRequest.findMany({
+      const requests = await prisma3.subscriptionRequest.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { user: true, subscription: true }
@@ -14770,7 +15847,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/admin/subscription-requests", async (req, res) => {
     try {
       const { userName, email, planType, durationMonths, planDescription, paymentRef, notes, userId } = req.body;
-      const request = await prisma2.subscriptionRequest.create({
+      const request = await prisma3.subscriptionRequest.create({
         data: { userName, email, planType, durationMonths: parseInt(durationMonths) || 1, planDescription, paymentRef, notes, userId }
       });
       res.json(request);
@@ -14782,7 +15859,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
-      const requestObj = await prisma2.subscriptionRequest.findUnique({ where: { id } });
+      const requestObj = await prisma3.subscriptionRequest.findUnique({ where: { id } });
       if (!requestObj) return res.status(404).json({ error: "Request not found" });
       const start = startDate ? new Date(startDate) : /* @__PURE__ */ new Date();
       let end;
@@ -14792,7 +15869,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         end = new Date(start);
         end.setMonth(end.getMonth() + (requestObj.durationMonths || 1));
       }
-      const subscription = await prisma2.subscription.create({
+      const subscription = await prisma3.subscription.create({
         data: {
           userId: requestObj.userId,
           planName: requestObj.planDescription || requestObj.planType,
@@ -14804,7 +15881,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           requestId: id
         }
       });
-      await prisma2.subscriptionRequest.update({
+      await prisma3.subscriptionRequest.update({
         where: { id },
         data: { status: "Approved" }
       });
@@ -14818,7 +15895,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { rejectionNote } = req.body;
-      const updated = await prisma2.subscriptionRequest.update({
+      const updated = await prisma3.subscriptionRequest.update({
         where: { id },
         data: { status: "Rejected", rejectionNote }
       });
@@ -14829,7 +15906,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/payments", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const payments = await prisma2.payment.findMany({
+      const payments = await prisma3.payment.findMany({
         orderBy: { createdAt: "desc" },
         include: { user: true }
       });
@@ -14843,11 +15920,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { status } = req.query;
       const where = {};
       if (status) where.status = status;
-      await prisma2.subscription.updateMany({
+      await prisma3.subscription.updateMany({
         where: { endDate: { lt: /* @__PURE__ */ new Date() }, status: "Active" },
         data: { status: "Expired" }
       });
-      const subscriptions = await prisma2.subscription.findMany({
+      const subscriptions = await prisma3.subscription.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { user: true, request: true, institution: { include: { users: true } } }
@@ -14865,7 +15942,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (status) data.status = status;
       if (endDate) data.endDate = new Date(endDate);
       if (status === "Cancelled") data.cancelledAt = /* @__PURE__ */ new Date();
-      const updated = await prisma2.subscription.update({ where: { id }, data });
+      const updated = await prisma3.subscription.update({ where: { id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update subscription" });
@@ -14924,13 +16001,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         let generatedPassword = "";
         if (!finalUserId && guestData && guestData.email) {
           try {
-            const existingUser = await prisma2.user.findUnique({ where: { email: guestData.email } });
+            const existingUser = await prisma3.user.findUnique({ where: { email: guestData.email } });
             if (existingUser) {
               finalUserId = existingUser.id;
             } else {
               generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase() + "!";
               const hashedPassword = await import_bcryptjs.default.hash(generatedPassword, 10);
-              const newUser = await prisma2.user.create({
+              const newUser = await prisma3.user.create({
                 data: {
                   email: guestData.email,
                   displayName: guestData.name || "New User",
@@ -14949,7 +16026,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           }
         }
         if (items && amount) {
-          await prisma2.payment.create({
+          await prisma3.payment.create({
             data: {
               orderId: razorpay_order_id,
               paymentId: razorpay_payment_id,
@@ -14960,9 +16037,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             }
           });
           if (req.body.couponCode && req.body.discountAmount > 0) {
-            const coupon = await prisma2.coupon.findUnique({ where: { code: req.body.couponCode } });
+            const coupon = await prisma3.coupon.findUnique({ where: { code: req.body.couponCode } });
             if (coupon) {
-              await prisma2.couponUsage.create({
+              await prisma3.couponUsage.create({
                 data: {
                   couponId: coupon.id,
                   userId: finalUserId,
@@ -14970,7 +16047,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                   discount: parseFloat(req.body.discountAmount)
                 }
               });
-              await prisma2.coupon.update({
+              await prisma3.coupon.update({
                 where: { id: coupon.id },
                 data: { usedCount: { increment: 1 } }
               });
@@ -14978,21 +16055,21 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           }
           let newInstitutionId = null;
           if (finalUserId) {
-            const u = await prisma2.user.findUnique({ where: { id: finalUserId } });
+            const u = await prisma3.user.findUnique({ where: { id: finalUserId } });
             if (u && u.role === "Institution") {
               if (u.institutionId) {
                 newInstitutionId = u.institutionId;
               } else {
-                let inst = await prisma2.institution.findFirst({ where: { subscriptionId: u.id } });
+                let inst = await prisma3.institution.findFirst({ where: { subscriptionId: u.id } });
                 if (!inst && u.organization) {
-                  inst = await prisma2.institution.create({
+                  inst = await prisma3.institution.create({
                     data: {
                       name: u.organization,
                       status: "Active",
                       subscriptionId: u.id
                     }
                   });
-                  await prisma2.user.update({
+                  await prisma3.user.update({
                     where: { id: u.id },
                     data: { institutionId: inst.id }
                   });
@@ -15005,7 +16082,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             for (const item of items) {
               const days = item.duration === "Yearly" ? 365 : item.duration === "Half-Yearly" ? 180 : item.duration === "Quarterly" ? 90 : 30;
               const endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1e3);
-              await prisma2.subscription.create({
+              await prisma3.subscription.create({
                 data: {
                   domainId: item.domainId ? String(item.domainId) : null,
                   domainName: item.domainName,
@@ -15038,7 +16115,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             let targetEmail = guestData?.email || "";
             let targetName = guestData?.name || "Valued Customer";
             if (!targetEmail && finalUserId) {
-              const dbUser = await prisma2.user.findUnique({ where: { id: finalUserId } });
+              const dbUser = await prisma3.user.findUnique({ where: { id: finalUserId } });
               if (dbUser) {
                 targetEmail = dbUser.email;
                 targetName = dbUser.displayName || "Subscriber";
@@ -15089,7 +16166,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         requestType
       } = formData;
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      await prisma2.demoRequest.create({
+      await prisma3.demoRequest.create({
         data: {
           fullName,
           institutionalEmail,
@@ -15103,7 +16180,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         }
       });
       try {
-        await prisma2.lead.create({
+        await prisma3.lead.create({
           data: {
             name: fullName,
             email: institutionalEmail,
@@ -15120,7 +16197,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `New ${requestType || "Demo"} Session Request: ${institutionName}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F3AF} New Demo Session Request (${requestType || "Institution"})</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A user has requested a personalized demo of the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Request Details</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Type</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#2563eb;border-bottom:1px solid #f1f5f9;">${requestType || "Institution"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${institutionalEmail}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organization / Inst.</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${institutionName}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">WhatsApp</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${whatsappNumber || "N/A"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Department / Tech</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${department}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Location</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${city}, ${state}</td></tr></table></td></tr>`
@@ -15131,7 +16208,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         to: institutionalEmail,
         subject: "Your Demo Session Request has been received",
         html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F44B} Demo Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for showing interest in a personalized demo. Our team will contact you within 24 hours to schedule a convenient walkthrough of the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} Next Steps</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our experts review your request details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We reach out via email/WhatsApp to fix a slot</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; A guided platform tour tailored for your needs</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Need immediate assistance? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a></p></td></tr>`
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F44B} Demo Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for showing interest in a personalized demo. Our team will contact you within 24 hours to schedule a convenient walkthrough of the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} Next Steps</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our experts review your request details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We reach out via email/WhatsApp to fix a slot</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; A guided platform tour tailored for your needs</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Need immediate assistance? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a></p></td></tr>`
         )
       };
       await sendMail(adminMailOptions);
@@ -15144,10 +16221,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/demo-requests", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const requests = await prisma2.demoRequest.findMany({
+      const requests = await prisma3.demoRequest.findMany({
         orderBy: { createdAt: "desc" }
       });
-      const verifications = await prisma2.emailVerification.findMany();
+      const verifications = await prisma3.emailVerification.findMany();
       const verifiedEmails = new Set(verifications.filter((v) => v.isVerified).map((v) => v.email));
       const enhancedRequests = requests.map((req2) => ({
         ...req2,
@@ -15163,7 +16240,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { status, adminNotes } = req.body;
-      const updated = await prisma2.demoRequest.update({
+      const updated = await prisma3.demoRequest.update({
         where: { id },
         data: { status, adminNotes }
       });
@@ -15178,9 +16255,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { id } = req.params;
       const { durationDays } = req.body;
       const days = Number(durationDays) || 14;
-      const demoReq = await prisma2.demoRequest.findUnique({ where: { id } });
+      const demoReq = await prisma3.demoRequest.findUnique({ where: { id } });
       if (!demoReq) return res.status(404).json({ error: "Demo request not found" });
-      const existingUser = await prisma2.user.findUnique({ where: { email: demoReq.institutionalEmail } });
+      const existingUser = await prisma3.user.findUnique({ where: { email: demoReq.institutionalEmail } });
       if (existingUser) return res.status(400).json({ error: "User with this email already exists. Cannot auto-provision." });
       const plainPassword = generatePassword();
       const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
@@ -15188,12 +16265,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const targetRole = isStudent ? "Subscriber" : "Institution";
       let newInstId = void 0;
       if (!isStudent) {
-        const newInst = await prisma2.institution.create({
+        const newInst = await prisma3.institution.create({
           data: { name: demoReq.institutionName, status: "Active" }
         });
         newInstId = newInst.id;
       }
-      const newUser = await prisma2.user.create({
+      const newUser = await prisma3.user.create({
         data: {
           email: demoReq.institutionalEmail,
           password: hashedPassword,
@@ -15207,7 +16284,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           demoExpiresAt: new Date(Date.now() + days * 24 * 60 * 60 * 1e3)
         }
       });
-      await prisma2.subscription.create({
+      await prisma3.subscription.create({
         data: {
           domainName: demoReq.department,
           planName: `${demoReq.requestType || "Demo"} Trial`,
@@ -15230,7 +16307,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           customMessage: `We are delighted to inform you that your <strong>Demo Request has been accepted</strong>. Your temporary trial access has been <span style="color:#16A34A;font-weight:700;">successfully provisioned</span> for your requested department.`
         }
       );
-      const updated = await prisma2.demoRequest.update({
+      const updated = await prisma3.demoRequest.update({
         where: { id },
         data: {
           status: "Completed",
@@ -15246,13 +16323,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/admin/demo-requests/:id/resend-credentials", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const demoReq = await prisma2.demoRequest.findUnique({ where: { id } });
+      const demoReq = await prisma3.demoRequest.findUnique({ where: { id } });
       if (!demoReq) return res.status(404).json({ error: "Demo request not found" });
-      const userObj = await prisma2.user.findUnique({ where: { email: demoReq.institutionalEmail } });
+      const userObj = await prisma3.user.findUnique({ where: { email: demoReq.institutionalEmail } });
       if (!userObj) return res.status(404).json({ error: "No associated user account found for this email." });
       const plainPassword = generatePassword();
       const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
-      await prisma2.user.update({
+      await prisma3.user.update({
         where: { id: userObj.id },
         data: {
           password: hashedPassword,
@@ -15271,7 +16348,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           customMessage: `As requested, we have <strong>reset your Demo Access credentials</strong>. Your access has been refreshed and updated.`
         }
       );
-      const updated = await prisma2.demoRequest.update({
+      const updated = await prisma3.demoRequest.update({
         where: { id },
         data: {
           adminNotes: (demoReq.adminNotes ? demoReq.adminNotes + "\n\n" : "") + `[AUTO] Credentials reset and resent on ${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}`
@@ -15302,7 +16379,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `New Institutional Trial Request: ${institutionName}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F3DB}\uFE0F New Institutional Trial Request</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">An institution has requested a trial access through the website.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Personal Details</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${institutionalEmail}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || "N/A"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">WhatsApp</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${whatsappNumber || "N/A"}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Institution</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${institutionName}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Department</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${department}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">City / State</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${city}, ${state}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Country</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${country}</td></tr></table></td></tr>`
@@ -15313,7 +16390,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         to: institutionalEmail,
         subject: "Your Institutional Trial Request has been received",
         html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F3DB}\uFE0F Trial Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for requesting an institutional trial for <strong>${institutionName}</strong> \u2014 <strong>${department}</strong>. Our team is reviewing your request and will get in touch shortly to set up the access.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} What Happens Next?</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our institutional access team verifies your details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We discuss IP-based or remote access setup</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Your institution gets seamless trial access</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F3DB}\uFE0F Trial Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for requesting an institutional trial for <strong>${institutionName}</strong> \u2014 <strong>${department}</strong>. Our team is reviewing your request and will get in touch shortly to set up the access.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} What Happens Next?</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our institutional access team verifies your details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We discuss IP-based or remote access setup</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Your institution gets seamless trial access</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
         )
       };
       await sendMail(adminMailOptions);
@@ -15339,7 +16416,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         message
       } = formData;
       try {
-        await prisma2.contactInquiry.create({
+        await prisma3.contactInquiry.create({
           data: {
             fullName,
             email,
@@ -15353,7 +16430,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             status: "All"
           }
         });
-        await prisma2.lead.create({
+        await prisma3.lead.create({
           data: {
             name: fullName,
             email,
@@ -15371,7 +16448,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: emailFrom,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: "New Contact Inquiry from Website",
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F4E9} New Contact Inquiry</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new inquiry was submitted via the website contact form.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Inquiry Details</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:35%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${fullName}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Mobile</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${mobile || "N/A"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organization</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${organization || "N/A"}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || "N/A"}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">State</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${state || "N/A"}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Departments</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;">${Array.isArray(departments) ? departments.join(", ") : departments || "N/A"}</td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd;"><tr><td style="padding:16px 20px;"><p style="color:#0369a1;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">\u{1F4AC} Message</p><p style="font-size:13px;color:#1e293b;line-height:1.6;margin:0;">${message}</p></td></tr></table></td></tr>`
@@ -15384,7 +16461,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u2705 We've Got Your Message!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for contacting <strong>STM Digital Library</strong>. We have received your inquiry and our team will get back to you within <strong>1\u20132 business days</strong>.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd;margin-bottom:16px;"><tr><td style="padding:16px 20px;"><p style="color:#0369a1;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">\u{1F4AC} Your Message</p><p style="font-size:13px;color:#1e293b;line-height:1.6;margin:0;">${message}</p></td></tr></table>` + (departments && (Array.isArray(departments) ? departments.length > 0 : true) ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;margin-bottom:16px;"><tr><td style="padding:16px 20px;"><p style="color:#7e22ce;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F4DA} Selected Departments</p>` + (Array.isArray(departments) ? departments : [departments]).map(
             (d) => `<span style="display:inline-block;background:#ede9fe;color:#6d28d9;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;margin:3px 4px 3px 0;">${d}</span>`
-          ).join("") + `</td></tr></table>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F4DE} Reach Us Directly</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F4E7} <a href="mailto:info@celnet.in" style="color:#93c5fd;">info@celnet.in</a></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F4DE} +91-120-4781200</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F310} <a href="https://journalslibrary.com" style="color:#93c5fd;">journalslibrary.com</a></p></td></tr></table></td></tr>`
+          ).join("") + `</td></tr></table>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F4DE} Reach Us Directly</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F4E7} <a href="mailto:${COMPANY_DETAILS.email}" style="color:#93c5fd;">${COMPANY_DETAILS.email}</a></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F4DE} +91-120-4781200</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F310} <a href="https://journalslibrary.com" style="color:#93c5fd;">journalslibrary.com</a></p></td></tr></table></td></tr>`
         )
       };
       await sendMail(adminMailOptions);
@@ -15408,7 +16485,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           { message: { contains: search, mode: "insensitive" } }
         ];
       }
-      const inquiries = await prisma2.contactInquiry.findMany({
+      const inquiries = await prisma3.contactInquiry.findMany({
         where,
         orderBy: { createdAt: "desc" }
       });
@@ -15420,10 +16497,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const inquiry = await prisma2.contactInquiry.findUnique({ where: { id: req.params.id } });
+      const inquiry = await prisma3.contactInquiry.findUnique({ where: { id: req.params.id } });
       if (!inquiry) return res.status(404).json({ error: "Not found" });
       if (inquiry.status === "New") {
-        await prisma2.contactInquiry.update({ where: { id: req.params.id }, data: { status: "Read" } });
+        await prisma3.contactInquiry.update({ where: { id: req.params.id }, data: { status: "Read" } });
         inquiry.status = "Read";
       }
       res.json(inquiry);
@@ -15437,7 +16514,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const data = {};
       if (status) data.status = status;
       if (adminNotes !== void 0) data.adminNotes = adminNotes;
-      const updated = await prisma2.contactInquiry.update({ where: { id: req.params.id }, data });
+      const updated = await prisma3.contactInquiry.update({ where: { id: req.params.id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update inquiry" });
@@ -15446,7 +16523,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/admin/contact-inquiries/:id/reply", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { replyText, subject } = req.body;
-      const inquiry = await prisma2.contactInquiry.findUnique({ where: { id: req.params.id } });
+      const inquiry = await prisma3.contactInquiry.findUnique({ where: { id: req.params.id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       await sendMail({
@@ -15465,14 +16542,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
               <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px;">
                 <p style="margin: 0; font-size: 13px; color: #64748b;">
                   For further assistance, please reply to this email or call us at <strong>+91-120-4781200</strong>.<br/>
-                  <strong>STM Digital Library</strong> | info@celnet.in
+                  <strong>${COMPANY_DETAILS.name}</strong> | ${COMPANY_DETAILS.email}
                 </p>
               </div>
             </div>
           </div>
         `
       });
-      const updated = await prisma2.contactInquiry.update({
+      const updated = await prisma3.contactInquiry.update({
         where: { id: req.params.id },
         data: { status: "Replied", replyText, repliedAt: /* @__PURE__ */ new Date() }
       });
@@ -15484,16 +16561,228 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.delete("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma2.contactInquiry.delete({ where: { id: req.params.id } });
+      await prisma3.contactInquiry.delete({ where: { id: req.params.id } });
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete inquiry" });
     }
   });
+  const TAKEDOWN_SLA_DAYS = 7;
+  const TAKEDOWN_CAPACITIES = ["RightsHolder", "AuthorisedAgent", "Author", "Other"];
+  const TAKEDOWN_ACTIONS = ["RemoveEntirely", "RemoveFileKeepMetadata", "AddAttribution", "Other"];
+  const TAKEDOWN_STATUSES = ["New", "UnderReview", "ActionTaken", "Rejected", "Withdrawn"];
+  async function nextTakedownReference() {
+    const year = (/* @__PURE__ */ new Date()).getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const countThisYear = await prisma3.takedownRequest.count({
+      where: { createdAt: { gte: startOfYear } }
+    });
+    return `TDN-${year}-${String(countThisYear + 1).padStart(4, "0")}`;
+  }
+  async function resolveReportedContent(url) {
+    const out = {};
+    try {
+      const uuid = (url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || [])[0];
+      if (!uuid) return out;
+      const content = await prisma3.content.findUnique({ where: { id: uuid }, select: { id: true } });
+      if (content) return { matchedContentId: content.id, matchedKind: "content" };
+      const article = await prisma3.article.findUnique({
+        where: { id: uuid },
+        select: { id: true, ownershipSource: true }
+      });
+      if (article) return { matchedContentId: article.id, matchedKind: "article", ownershipSource: article.ownershipSource };
+      const book = await prisma3.book.findUnique({
+        where: { id: uuid },
+        select: { id: true, ownershipSource: true }
+      });
+      if (book) return { matchedContentId: book.id, matchedKind: "book", ownershipSource: book.ownershipSource };
+    } catch {
+    }
+    return out;
+  }
+  app.post("/api/takedown", async (req, res) => {
+    try {
+      const {
+        requesterName,
+        requesterEmail,
+        requesterPhone,
+        organization,
+        capacity,
+        capacityOther,
+        contentUrl,
+        contentTitle,
+        identifier,
+        ownershipBasis,
+        requestedAction,
+        requestedActionOther,
+        additionalInfo,
+        goodFaithDeclared,
+        accuracyDeclared
+      } = req.body || {};
+      const missing = ["requesterName", "requesterEmail", "contentUrl", "ownershipBasis"].filter((f3) => !String(req.body?.[f3] || "").trim());
+      if (missing.length) {
+        return res.status(400).json({ error: `Missing required field(s): ${missing.join(", ")}` });
+      }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(requesterEmail).trim())) {
+        return res.status(400).json({ error: "Please enter a valid email address." });
+      }
+      if (!goodFaithDeclared || !accuracyDeclared) {
+        return res.status(400).json({ error: "Both declarations must be confirmed before submitting." });
+      }
+      const safeCapacity = TAKEDOWN_CAPACITIES.includes(capacity) ? capacity : "Other";
+      const safeAction = TAKEDOWN_ACTIONS.includes(requestedAction) ? requestedAction : "RemoveEntirely";
+      const resolved = await resolveReportedContent(String(contentUrl));
+      const reference = await nextTakedownReference();
+      const now = /* @__PURE__ */ new Date();
+      const dueAt = new Date(now.getTime() + TAKEDOWN_SLA_DAYS * 24 * 60 * 60 * 1e3);
+      const created = await prisma3.takedownRequest.create({
+        data: {
+          reference,
+          requesterName: String(requesterName).trim(),
+          requesterEmail: String(requesterEmail).trim(),
+          requesterPhone: requesterPhone?.trim() || null,
+          organization: organization?.trim() || null,
+          capacity: safeCapacity,
+          capacityOther: safeCapacity === "Other" ? capacityOther?.trim() || null : null,
+          contentUrl: String(contentUrl).trim(),
+          contentTitle: contentTitle?.trim() || null,
+          identifier: identifier?.trim() || null,
+          matchedContentId: resolved.matchedContentId || null,
+          matchedKind: resolved.matchedKind || null,
+          ownershipSource: resolved.ownershipSource || null,
+          ownershipBasis: String(ownershipBasis).trim(),
+          requestedAction: safeAction,
+          requestedActionOther: safeAction === "Other" ? requestedActionOther?.trim() || null : null,
+          additionalInfo: additionalInfo?.trim() || null,
+          goodFaithDeclared: true,
+          accuracyDeclared: true,
+          status: "New",
+          dueAt,
+          ipAddress: req.ip || req.headers["x-forwarded-for"] || null,
+          userAgent: req.headers["user-agent"] || null,
+          auditTrail: [{ event: "Received", at: now.toISOString(), by: "public form" }]
+        }
+      });
+      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+      const rightsInbox = process.env.RIGHTS_EMAIL || process.env.ADMIN_EMAIL || COMPANY_DETAILS.email;
+      const actionLabels = {
+        RemoveEntirely: "Remove the listing entirely",
+        RemoveFileKeepMetadata: "Remove the file, keep citation metadata",
+        AddAttribution: "Correct or add attribution",
+        Other: requestedActionOther || "Other"
+      };
+      transporter?.sendMail?.({
+        from: emailFrom,
+        to: rightsInbox,
+        replyTo: created.requesterEmail,
+        subject: `[${reference}] Content removal request \u2014 due ${dueAt.toDateString()}`,
+        html: `
+          <h2>Content removal request ${reference}</h2>
+          <p><strong>Respond by ${dueAt.toDateString()}</strong> (${TAKEDOWN_SLA_DAYS}-day published SLA).</p>
+          <table cellpadding="6" style="border-collapse:collapse">
+            <tr><td><strong>From</strong></td><td>${created.requesterName} &lt;${created.requesterEmail}&gt;</td></tr>
+            <tr><td><strong>Organisation</strong></td><td>${created.organization || "\u2014"}</td></tr>
+            <tr><td><strong>Acting as</strong></td><td>${created.capacityOther || safeCapacity}</td></tr>
+            <tr><td><strong>URL</strong></td><td>${created.contentUrl}</td></tr>
+            <tr><td><strong>Identifier</strong></td><td>${created.identifier || "\u2014"}</td></tr>
+            <tr><td><strong>Origin</strong></td><td>${created.ownershipSource || "not resolved"}</td></tr>
+            <tr><td><strong>Requested</strong></td><td>${actionLabels[safeAction]}</td></tr>
+          </table>
+          <h3>Basis of claim</h3>
+          <p>${String(created.ownershipBasis).replace(/</g, "&lt;")}</p>
+          ${created.additionalInfo ? `<h3>Additional information</h3><p>${String(created.additionalInfo).replace(/</g, "&lt;")}</p>` : ""}
+        `
+      }).catch?.((e2) => console.error("[takedown] admin notification failed:", e2));
+      transporter?.sendMail?.({
+        from: emailFrom,
+        to: created.requesterEmail,
+        subject: `We have received your content removal request (${reference})`,
+        html: `
+          <p>Dear ${created.requesterName},</p>
+          <p>Thank you for contacting us. Your request has been logged as
+             <strong>${reference}</strong> and will be reviewed by
+             ${dueAt.toDateString()}.</p>
+          <p>Reported URL: ${created.contentUrl}</p>
+          <p>If you need to add anything, reply to this email quoting the reference above.</p>
+          <p>\u2014 ${process.env.COMPANY_NAME || COMPANY_DETAILS.name}</p>
+        `
+      }).catch?.((e2) => console.error("[takedown] acknowledgement failed:", e2));
+      res.status(201).json({ success: true, reference, dueAt });
+    } catch (error) {
+      console.error("POST /api/takedown error:", error);
+      res.status(500).json({ error: "Could not submit your request. Please email us directly." });
+    }
+  });
+  app.get("/api/admin/takedown-requests", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { status, search } = req.query;
+      const where = {};
+      if (status && status !== "All") where.status = status;
+      if (search) {
+        where.OR = [
+          { reference: { contains: search, mode: "insensitive" } },
+          { requesterName: { contains: search, mode: "insensitive" } },
+          { requesterEmail: { contains: search, mode: "insensitive" } },
+          { organization: { contains: search, mode: "insensitive" } },
+          { contentUrl: { contains: search, mode: "insensitive" } },
+          { contentTitle: { contains: search, mode: "insensitive" } }
+        ];
+      }
+      const [requests, openCount, overdueCount] = await Promise.all([
+        prisma3.takedownRequest.findMany({ where, orderBy: { createdAt: "desc" } }),
+        prisma3.takedownRequest.count({ where: { status: { in: ["New", "UnderReview"] } } }),
+        prisma3.takedownRequest.count({
+          where: { status: { in: ["New", "UnderReview"] }, dueAt: { lt: /* @__PURE__ */ new Date() } }
+        })
+      ]);
+      res.json({ requests, openCount, overdueCount });
+    } catch (error) {
+      console.error("GET takedown-requests error:", error);
+      res.status(500).json({ error: "Failed to fetch takedown requests" });
+    }
+  });
+  app.get("/api/admin/takedown-requests/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const request = await prisma3.takedownRequest.findUnique({ where: { id: req.params.id } });
+      if (!request) return res.status(404).json({ error: "Not found" });
+      res.json(request);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch takedown request" });
+    }
+  });
+  app.put("/api/admin/takedown-requests/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { status, actionTaken, adminNotes } = req.body || {};
+      const existing = await prisma3.takedownRequest.findUnique({ where: { id: req.params.id } });
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      const data = {};
+      const now = /* @__PURE__ */ new Date();
+      const who = req.user?.email || req.user?.name || "admin";
+      const trail = Array.isArray(existing.auditTrail) ? [...existing.auditTrail] : [];
+      if (status && TAKEDOWN_STATUSES.includes(status) && status !== existing.status) {
+        data.status = status;
+        trail.push({ event: `Status \u2192 ${status}`, at: now.toISOString(), by: who });
+        if (status === "UnderReview" && !existing.acknowledgedAt) data.acknowledgedAt = now;
+        if (["ActionTaken", "Rejected", "Withdrawn"].includes(status)) data.resolvedAt = now;
+      }
+      if (actionTaken !== void 0 && actionTaken !== existing.actionTaken) {
+        data.actionTaken = actionTaken;
+        trail.push({ event: "Action recorded", at: now.toISOString(), by: who, detail: actionTaken });
+      }
+      if (adminNotes !== void 0) data.adminNotes = adminNotes;
+      if (trail.length !== (existing.auditTrail?.length || 0)) data.auditTrail = trail;
+      data.handledBy = who;
+      const updated = await prisma3.takedownRequest.update({ where: { id: req.params.id }, data });
+      res.json(updated);
+    } catch (error) {
+      console.error("PUT takedown-request error:", error);
+      res.status(500).json({ error: "Failed to update takedown request" });
+    }
+  });
   app.get("/api/quotation/customer/:email", async (req, res) => {
     try {
       const email = req.params.email;
-      const q = await prisma2.quotation.findFirst({
+      const q = await prisma3.quotation.findFirst({
         where: { userEmail: email },
         orderBy: { createdAt: "desc" }
       });
@@ -15521,7 +16810,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         }
       }
       const quotationNumber = quotationData.quotationNumber;
-      await prisma2.quotation.upsert({
+      await prisma3.quotation.upsert({
         where: { id: quotationNumber },
         update: {
           status: "Downloaded",
@@ -15540,6 +16829,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           couponCode: quotationData.couponCode || null
         },
         create: {
+          issuer: currentIssuer(),
           id: quotationNumber,
           userEmail,
           userName,
@@ -15604,7 +16894,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
             ${logoExists ? `<img src="cid:stm-logo" alt="STM Digital Library" width="110" height="110" style="display:block;margin:0 auto 16px;border-radius:12px;" />` : `<div style="display:inline-block;background:#2563eb;border-radius:12px;padding:10px 22px;margin-bottom:16px;"><span style="color:#ffffff;font-size:18px;font-weight:900;letter-spacing:3px;">STM</span></div>`}
             <h1 style="color:#ffffff;margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:1px;line-height:1.2;">STM DIGITAL LIBRARY</h1>
-            <p style="color:#93c5fd;margin:0 0 16px;font-size:13px;font-weight:500;letter-spacing:0.5px;">A Division of Consortium eLearning Network Pvt. Ltd.</p>
+            <p style="color:#93c5fd;margin:0 0 16px;font-size:13px;font-weight:500;letter-spacing:0.5px;">${COMPANY_DETAILS.positioning}</p>
             <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;letter-spacing:1px;">
               \u{1F3C6} &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
             </span>
@@ -15714,23 +17004,23 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;width:45%;">Account Name</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">Consortium eLearning Network Pvt. Ltd.</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.legalName}</td>
                     </tr>
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Account Number</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">03942000001153</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.accountNumber}</td>
                     </tr>
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Bank Name</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">HDFC Bank</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.bankName}</td>
                     </tr>
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Branch</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:600;padding:5px 0;border-bottom:1px solid #fde68a;">Sector-62, Noida, U.P., India</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:600;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.branch}</td>
                     </tr>
                     <tr>
                       <td style="color:#92400e;font-size:12px;padding:5px 0;">IFSC Code</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;">HDFC0002649</td>
+                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;">${COMPANY_DETAILS.bank.ifscCode}</td>
                     </tr>
                   </table>
                 </td>
@@ -15750,7 +17040,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                   <table cellpadding="0" cellspacing="4">
                     <tr>
                       <td style="padding:4px 0;font-size:13px;color:#1e293b;">
-                        \u{1F4E7} &nbsp;<a href="mailto:info@celnet.in" style="color:#2563eb;text-decoration:none;font-weight:600;">info@celnet.in</a>
+                        \u{1F4E7} &nbsp;<a href="mailto:${COMPANY_DETAILS.email}" style="color:#2563eb;text-decoration:none;font-weight:600;">${COMPANY_DETAILS.email}</a>
                       </td>
                     </tr>
                     <tr>
@@ -15778,7 +17068,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                 <td style="padding-top:20px;">
                   <p style="color:#475569;font-size:14px;margin:0 0 4px;">Warm regards,</p>
                   <p style="color:#1e293b;font-size:15px;font-weight:700;margin:0 0 2px;">STM Digital Library Team</p>
-                  <p style="color:#64748b;font-size:12px;margin:0;">Consortium eLearning Network Pvt. Ltd.</p>
+                  <p style="color:#64748b;font-size:12px;margin:0;">${COMPANY_DETAILS.legalName}</p>
                   <p style="color:#64748b;font-size:12px;margin:4px 0 0;">A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India</p>
                 </td>
                 <td style="text-align:right;vertical-align:bottom;padding-top:20px;">
@@ -15798,10 +17088,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
               \u{1F3C6} &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
             </p>
             <p style="color:#64748b;font-size:11px;margin:0 0 4px;">
-              \xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} Consortium eLearning Network Pvt. Ltd. All rights reserved.
+              \xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} ${COMPANY_DETAILS.legalName} All rights reserved.
             </p>
             <p style="color:#475569;font-size:11px;margin:0;">
-              GSTIN: 09AACCC6494M1Z1 &nbsp;|&nbsp; PAN: AACCC6494M &nbsp;|&nbsp; CIN: U80302DL2005PTC138759
+              GSTIN: ${COMPANY_DETAILS.gstin} &nbsp;|&nbsp; PAN: ${COMPANY_DETAILS.pan} &nbsp;|&nbsp; CIN: ${COMPANY_DETAILS.cin}
             </p>
           </td>
         </tr>
@@ -15828,7 +17118,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const mailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: [userEmail, process.env.ADMIN_EMAIL || "info@celnet.in"],
+        to: [userEmail, process.env.ADMIN_EMAIL || COMPANY_DETAILS.email],
         subject: `Quotation ${quotationNumber} \u2014 STM Digital Library`,
         html: htmlBody,
         attachments: inlineAttachments
@@ -15852,7 +17142,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         /src="cid:stm-logo"/g,
         `src="${PUBLIC_BASE}/assets/stm-logo.png"`
       );
-      prisma2.quotation.upsert({
+      prisma3.quotation.upsert({
         where: { id: quotationNumber },
         update: {
           status: "Sent",
@@ -15872,6 +17162,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           userCategory: quotationData.userCategory || null
         },
         create: {
+          issuer: currentIssuer(),
           id: quotationNumber,
           userEmail,
           userName,
@@ -15901,9 +17192,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         }
       }).then(async (qtn) => {
         if (quotationData.couponCode && quotationData.discountAmount > 0) {
-          const coupon = await prisma2.coupon.findUnique({ where: { code: quotationData.couponCode } });
+          const coupon = await prisma3.coupon.findUnique({ where: { code: quotationData.couponCode } });
           if (coupon) {
-            await prisma2.couponUsage.create({
+            await prisma3.couponUsage.create({
               data: {
                 couponId: coupon.id,
                 userId: userId || null,
@@ -15911,7 +17202,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                 discount: parseFloat(quotationData.discountAmount)
               }
             });
-            await prisma2.coupon.update({
+            await prisma3.coupon.update({
               where: { id: coupon.id },
               data: { usedCount: { increment: 1 } }
             });
@@ -15954,21 +17245,21 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
         const userId = req.user.uid || req.user.id || req.user.userId;
-        const authUser = await prisma2.user.findUnique({ where: { id: userId } });
+        const authUser = await prisma3.user.findUnique({ where: { id: userId } });
         targetInstitutionId = authUser?.institutionId;
       }
       if (!targetInstitutionId) {
         return res.json({ studentCount: 0, activeGrants: 0, totalInteractions: 0, avgLearningTime: "0h 0m", recentActivity: [] });
       }
-      const studentCount = await prisma2.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
-      const recentActivity = await prisma2.studentActivity.findMany({
+      const studentCount = await prisma3.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
+      const recentActivity = await prisma3.studentActivity.findMany({
         where: { user: { institutionId: targetInstitutionId } },
         include: { user: true, content: true },
         take: 5,
         orderBy: { accessedAt: "desc" }
       });
-      const interactions = await prisma2.studentActivity.count({ where: { user: { institutionId: targetInstitutionId } } });
-      const totalTimeObj = await prisma2.studentActivity.aggregate({
+      const interactions = await prisma3.studentActivity.count({ where: { user: { institutionId: targetInstitutionId } } });
+      const totalTimeObj = await prisma3.studentActivity.aggregate({
         _sum: { timeSpent: true },
         where: { user: { institutionId: targetInstitutionId } }
       });
@@ -15989,14 +17280,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
         const userId = req.user.uid || req.user.id || req.user.userId;
-        const authUser = await prisma2.user.findUnique({ where: { id: userId } });
+        const authUser = await prisma3.user.findUnique({ where: { id: userId } });
         targetInstitutionId = authUser?.institutionId;
       }
       if (!targetInstitutionId) {
         return res.json({ totalStudents: 0, starReader: null, readingTimeline: [], topContent: [], totalInteractions: 0 });
       }
-      const students = await prisma2.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
-      const activities = await prisma2.studentActivity.findMany({
+      const students = await prisma3.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
+      const activities = await prisma3.studentActivity.findMany({
         where: { user: { institutionId: targetInstitutionId } },
         include: { user: true, content: true }
       });
@@ -16063,13 +17354,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const OR_clauses = [{ userId }];
       let instId = req.user.institutionId;
       if (!instId) {
-        const u = await prisma2.user.findUnique({ where: { id: userId }, select: { institutionId: true } });
+        const u = await prisma3.user.findUnique({ where: { id: userId }, select: { institutionId: true } });
         instId = u?.institutionId;
       }
       if (instId) {
         OR_clauses.push({ institutionId: instId });
       }
-      const subscriptions = await prisma2.subscription.findMany({
+      const subscriptions = await prisma3.subscription.findMany({
         where: { OR: OR_clauses },
         orderBy: { startDate: "desc" }
       });
@@ -16084,7 +17375,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         return res.status(403).json({ error: "Unauthorized" });
       }
       const userId = req.user.uid || req.user.id || req.user.userId;
-      const user = await prisma2.user.findUnique({ where: { id: userId } });
+      const user = await prisma3.user.findUnique({ where: { id: userId } });
       if (!user) return res.status(404).json({ error: "User not found" });
       const prof = user.institutionProfile || {};
       res.json({
@@ -16114,7 +17405,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const { contactName, city, contactPhone, address, website, logoUrl, coursesOffered, totalCourses, studentBodySize } = req.body;
       const userId = req.user.uid || req.user.id || req.user.userId;
-      await prisma2.user.update({
+      await prisma3.user.update({
         where: { id: userId },
         data: {
           ...contactName ? { displayName: contactName } : {},
@@ -16136,19 +17427,38 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
+  const resolveTargetInstitution = async (req) => {
+    if (req.user.role === "Institution") {
+      const me = await prisma3.user.findUnique({
+        where: { id: req.user.uid || req.user.id || req.user.userId },
+        select: { organization: true, institutionId: true }
+      });
+      if (!me?.institutionId) {
+        return { name: "", error: "Your account is not linked to an institution yet. Ask an administrator to link it before adding students." };
+      }
+      return { id: me.institutionId, name: me.organization || "" };
+    }
+    const explicit = req.body?.institutionId || req.query?.institutionId;
+    if (!explicit) {
+      return { name: "", error: "institutionId is required when adding students as an administrator." };
+    }
+    const inst = await prisma3.institution.findUnique({ where: { id: explicit }, select: { name: true } });
+    if (!inst) return { name: "", error: "That institution does not exist." };
+    return { id: explicit, name: inst.name || "" };
+  };
   app.get("/api/institution/students", authenticateJWT, async (req, res) => {
     try {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
         const userId = req.user.uid || req.user.id || req.user.userId;
-        const authUser = await prisma2.user.findUnique({ where: { id: userId } });
+        const authUser = await prisma3.user.findUnique({ where: { id: userId } });
         targetInstitutionId = authUser?.institutionId;
       }
       if (!targetInstitutionId) {
         return res.json([]);
       }
-      const students = await prisma2.user.findMany({
+      const students = await prisma3.user.findMany({
         where: { institutionId: targetInstitutionId, role: "Student" },
         include: { subscriptions: true, activities: { include: { content: true } } },
         orderBy: { createdAt: "desc" }
@@ -16167,17 +17477,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (!name || !email || !password) {
         return res.status(400).json({ error: "Name, email and password are required" });
       }
-      const existing = await prisma2.user.findUnique({ where: { email } });
+      const existing = await prisma3.user.findUnique({ where: { email } });
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
       const hashed = await import_bcryptjs.default.hash(password, 10);
-      let institutionName = "";
-      let targetInstitutionId = void 0;
-      if (req.user.role === "Institution") {
-        const institutionUser = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
-        institutionName = institutionUser?.organization || "";
-        targetInstitutionId = institutionUser?.institutionId;
-      }
-      const student = await prisma2.user.create({
+      const target = await resolveTargetInstitution(req);
+      if (target.error) return res.status(400).json({ error: target.error });
+      const institutionName = target.name;
+      const targetInstitutionId = target.id;
+      const student = await prisma3.user.create({
         data: {
           email,
           password: hashed,
@@ -16210,13 +17517,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (!Array.isArray(users) || users.length === 0) {
         return res.status(400).json({ error: "A valid array of users is required" });
       }
-      let institutionName = "";
-      let targetInstitutionId = void 0;
-      if (req.user.role === "Institution") {
-        const institutionUser = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { organization: true, institutionId: true } });
-        institutionName = institutionUser?.organization || "";
-        targetInstitutionId = institutionUser?.institutionId;
-      }
+      const target = await resolveTargetInstitution(req);
+      if (target.error) return res.status(400).json({ error: target.error });
+      const institutionName = target.name;
+      const targetInstitutionId = target.id;
       let successCount = 0;
       let errorCount = 0;
       const errors = [];
@@ -16227,14 +17531,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             errors.push({ email: u.email || "Unknown", error: "Missing required fields" });
             continue;
           }
-          const existing = await prisma2.user.findUnique({ where: { email: u.email } });
+          const existing = await prisma3.user.findUnique({ where: { email: u.email } });
           if (existing) {
             errorCount++;
             errors.push({ email: u.email, error: "Email already exists" });
             continue;
           }
           const hashed = await import_bcryptjs.default.hash(u.password, 10);
-          await prisma2.user.create({
+          await prisma3.user.create({
             data: {
               email: u.email,
               password: hashed,
@@ -16270,14 +17574,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { isBlocked } = req.body;
       if (req.user.role === "Institution") {
         const callerId = req.user.uid || req.user.id || req.user.userId;
-        const caller = await prisma2.user.findUnique({ where: { id: callerId } });
-        const target = await prisma2.user.findUnique({ where: { id } });
+        const caller = await prisma3.user.findUnique({ where: { id: callerId } });
+        const target = await prisma3.user.findUnique({ where: { id } });
         if (!target) return res.status(404).json({ error: "Student not found" });
         if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
         }
       }
-      const student = await prisma2.user.update({
+      const student = await prisma3.user.update({
         where: { id },
         data: { isBlocked }
       });
@@ -16294,14 +17598,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { id } = req.params;
       const { displayName, email, contact, designation, branch, department, password } = req.body;
       if (email) {
-        const taken = await prisma2.user.findFirst({ where: { email, id: { not: id } } });
+        const taken = await prisma3.user.findFirst({ where: { email, id: { not: id } } });
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
-      const existing = await prisma2.user.findUnique({ where: { id } });
+      const existing = await prisma3.user.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: "User not found" });
       if (req.user.role === "Institution") {
         const callerId = req.user.uid || req.user.id || req.user.userId;
-        const caller = await prisma2.user.findUnique({ where: { id: callerId } });
+        const caller = await prisma3.user.findUnique({ where: { id: callerId } });
         if (!caller?.institutionId || existing.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
         }
@@ -16319,7 +17623,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (password && password.trim() !== "") {
         dataToUpdate.password = await import_bcryptjs.default.hash(password, 10);
       }
-      const updated = await prisma2.user.update({
+      const updated = await prisma3.user.update({
         where: { id },
         data: dataToUpdate
       });
@@ -16337,14 +17641,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { id } = req.params;
       if (req.user.role === "Institution") {
         const callerId = req.user.uid || req.user.id || req.user.userId;
-        const caller = await prisma2.user.findUnique({ where: { id: callerId } });
-        const target = await prisma2.user.findUnique({ where: { id } });
+        const caller = await prisma3.user.findUnique({ where: { id: callerId } });
+        const target = await prisma3.user.findUnique({ where: { id } });
         if (!target) return res.status(404).json({ error: "Student not found" });
         if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
         }
       }
-      await prisma2.user.delete({ where: { id } });
+      await prisma3.user.delete({ where: { id } });
       res.json({ message: "Student removed" });
     } catch (err) {
       res.status(500).json({ error: "Failed to delete student" });
@@ -16404,7 +17708,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   const runValidationEngine = async (type) => {
     if (currentValidationProgress.isRunning) return;
     try {
-      const contents = await prisma2.content.findMany({
+      const contents = await prisma3.content.findMany({
         where: { status: { not: "Draft" } },
         // Skip already-drafted content — no point re-flagging it
         select: { id: true, title: true, description: true, authors: true, fileUrl: true, thumbnailUrl: true, domain: true, contentType: true }
@@ -16417,7 +17721,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         currentTask: "Initializing Engine...",
         startedAt: Date.now()
       };
-      const report = await prisma2.validationReport.create({
+      const report = await prisma3.validationReport.create({
         data: { type, status: "Reviewing", issues: [] }
       });
       const issues = [];
@@ -16467,7 +17771,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         currentValidationProgress.issuesFound = issues.length;
       }
       currentValidationProgress.currentTask = "Saving report...";
-      await prisma2.validationReport.update({
+      await prisma3.validationReport.update({
         where: { id: report.id },
         data: {
           status: "Draft",
@@ -16496,12 +17800,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { contentIds, reportId } = req.body;
       if (!contentIds || !Array.isArray(contentIds)) return res.status(400).json({ error: "Invalid contentIds array" });
-      await prisma2.content.updateMany({
+      await prisma3.content.updateMany({
         where: { id: { in: contentIds } },
         data: { status: "Draft" }
       });
       if (reportId) {
-        const report = await prisma2.validationReport.findUnique({ where: { id: reportId } });
+        const report = await prisma3.validationReport.findUnique({ where: { id: reportId } });
         if (report) {
           const existingDrafted = Array.isArray(report.draftedContentIds) ? report.draftedContentIds : [];
           const merged = Array.from(/* @__PURE__ */ new Set([...existingDrafted, ...contentIds]));
@@ -16514,7 +17818,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             count: contentIds.length,
             note: `${contentIds.length} item(s) moved to Draft status.`
           });
-          await prisma2.validationReport.update({
+          await prisma3.validationReport.update({
             where: { id: reportId },
             data: { draftedContentIds: merged, timeline: tl }
           });
@@ -16528,7 +17832,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/validator/reports", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const reports = await prisma2.validationReport.findMany({ orderBy: { startedAt: "desc" } });
+      const reports = await prisma3.validationReport.findMany({ orderBy: { startedAt: "desc" } });
       res.json(reports);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch validation reports" });
@@ -16547,7 +17851,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const report = await prisma2.validationReport.findUnique({ where: { id } });
+      const report = await prisma3.validationReport.findUnique({ where: { id } });
       if (!report) return res.status(404).json({ error: "Report not found" });
       const tl = Array.isArray(report.timeline) ? report.timeline : [];
       const actor = req.user?.email || req.user?.name || "Admin";
@@ -16557,7 +17861,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         at: (/* @__PURE__ */ new Date()).toISOString(),
         note: `Status changed to "${status}".`
       });
-      const updated = await prisma2.validationReport.update({
+      const updated = await prisma3.validationReport.update({
         where: { id },
         data: { status, timeline: tl }
       });
@@ -16569,7 +17873,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.delete("/api/admin/validator/reports/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma2.validationReport.delete({ where: { id } });
+      await prisma3.validationReport.delete({ where: { id } });
       res.json({ message: "Report deleted successfully." });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete report" });
@@ -16604,7 +17908,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       /ncbi\.nlm\.nih\.gov\/pmc\/articles\//i
     ];
     const hasFileExtension = /\.(pdf|mp4|webm|ogg|avi|mov|epub|djvu)(\?|$)/i.test(url);
-    const isKnownPageUrl = knownPagePatterns.some((p) => p.test(url));
+    const isKnownPageUrl = knownPagePatterns.some((p2) => p2.test(url));
     if (isKnownPageUrl && !hasFileExtension) {
       return {
         isViewable: false,
@@ -16707,7 +18011,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   const runViewerValidationEngine = async (type) => {
     if (currentViewerValidationProgress.isRunning) return;
     try {
-      const contents = await prisma2.content.findMany({
+      const contents = await prisma3.content.findMany({
         where: { fileUrl: { not: null } },
         // scan all content that has a file URL
         select: { id: true, title: true, contentType: true, fileUrl: true, status: true }
@@ -16721,7 +18025,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         currentTask: "Initializing Viewer Engine...",
         startedAt: Date.now()
       };
-      const report = await prisma2.validationReport.create({
+      const report = await prisma3.validationReport.create({
         data: {
           type,
           validationType: "ViewerBased",
@@ -16750,7 +18054,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                 flaggedReason: result.flaggedReason ?? null,
                 lastValidatedAt: /* @__PURE__ */ new Date()
               };
-              await prisma2.content.update({ where: { id: c.id }, data: updateData });
+              await prisma3.content.update({ where: { id: c.id }, data: updateData });
               if (!result.isViewable) {
                 issues.push({
                   contentId: c.id,
@@ -16776,7 +18080,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
               });
               flaggedCount++;
               try {
-                await prisma2.content.update({
+                await prisma3.content.update({
                   where: { id: c.id },
                   data: {
                     validationStatus: "FLAGGED_CONTENT",
@@ -16798,7 +18102,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         await new Promise((r2) => setTimeout(r2, 50));
       }
       currentViewerValidationProgress.currentTask = "Saving report\u2026";
-      await prisma2.validationReport.update({
+      await prisma3.validationReport.update({
         where: { id: report.id },
         data: {
           status: "Draft",
@@ -16848,7 +18152,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ];
       }
       const [items, total] = await Promise.all([
-        prisma2.content.findMany({
+        prisma3.content.findMany({
           where,
           select: {
             id: true,
@@ -16867,12 +18171,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           skip,
           take: parseInt(limit)
         }),
-        prisma2.content.count({ where })
+        prisma3.content.count({ where })
       ]);
       const [notValidated, validViewable, flaggedContent] = await Promise.all([
-        prisma2.content.count({ where: { validationStatus: "Not Validated", status: { not: "Draft" } } }),
-        prisma2.content.count({ where: { validationStatus: "VALID_VIEWABLE" } }),
-        prisma2.content.count({ where: { validationStatus: "FLAGGED_CONTENT" } })
+        prisma3.content.count({ where: { validationStatus: "Not Validated", status: { not: "Draft" } } }),
+        prisma3.content.count({ where: { validationStatus: "VALID_VIEWABLE" } }),
+        prisma3.content.count({ where: { validationStatus: "FLAGGED_CONTENT" } })
       ]);
       res.json({ items, total, page: parseInt(page), limit: parseInt(limit), summary: { notValidated, validViewable, flaggedContent } });
     } catch (error) {
@@ -16882,7 +18186,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.patch("/api/admin/validator/content/:id/mark-valid", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma2.content.update({
+      await prisma3.content.update({
         where: { id },
         data: {
           validationStatus: "VALID_VIEWABLE",
@@ -16900,7 +18204,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.patch("/api/admin/validator/content/:id/move-draft", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma2.content.update({
+      await prisma3.content.update({
         where: { id },
         data: { status: "Draft" }
       });
@@ -16911,11 +18215,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/admin/validator/auto-cleanup", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const result = await prisma2.content.updateMany({
+      const result = await prisma3.content.updateMany({
         where: { validationStatus: "FLAGGED_CONTENT", status: { not: "Draft" } },
         data: { status: "Draft" }
       });
-      const latestReport = await prisma2.validationReport.findFirst({
+      const latestReport = await prisma3.validationReport.findFirst({
         where: { validationType: "ViewerBased" },
         orderBy: { startedAt: "desc" }
       });
@@ -16929,7 +18233,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           count: result.count,
           note: `Auto-cleanup: ${result.count} flagged item(s) moved to Draft.`
         });
-        await prisma2.validationReport.update({ where: { id: latestReport.id }, data: { timeline: tl } });
+        await prisma3.validationReport.update({ where: { id: latestReport.id }, data: { timeline: tl } });
       }
       res.json({ message: `Auto-cleanup complete. ${result.count} item(s) moved to Draft.`, count: result.count });
     } catch (error) {
@@ -16941,7 +18245,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { contentIds, status, search } = req.body;
       let contents;
       if (Array.isArray(contentIds) && contentIds.length > 0) {
-        contents = await prisma2.content.findMany({
+        contents = await prisma3.content.findMany({
           where: { id: { in: contentIds } },
           select: { id: true, title: true, contentType: true, fileUrl: true }
         });
@@ -16954,7 +18258,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             { contentType: { contains: search, mode: "insensitive" } }
           ];
         }
-        contents = await prisma2.content.findMany({
+        contents = await prisma3.content.findMany({
           where,
           select: { id: true, title: true, contentType: true, fileUrl: true }
         });
@@ -16989,7 +18293,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                 batch.map(async (c) => {
                   try {
                     const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
-                    await prisma2.content.update({
+                    await prisma3.content.update({
                       where: { id: c.id },
                       data: {
                         validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
@@ -17024,7 +18328,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const results = [];
       for (const c of contents) {
         const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
-        await prisma2.content.update({
+        await prisma3.content.update({
           where: { id: c.id },
           data: {
             validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
@@ -17045,13 +18349,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/agency-inquiry", async (req, res) => {
     try {
       const { agencyName, contactPerson, email, phone, region, experience, message } = req.body;
-      const inquiry = await prisma2.agencyInquiry.create({
+      const inquiry = await prisma3.agencyInquiry.create({
         data: { agencyName, contactPerson, email, phone, region, experience, message }
       });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const adminMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: process.env.ADMIN_EMAIL || "info@celnet.in",
+        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
         subject: `\u{1F91D} New Agency Partner Application: ${agencyName}`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F91D} New Agency Partnership Application</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new reseller agency has applied to partner with STM Digital Library.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F3E2} Agency Profile</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Agency:</span> <strong style="color:#fff;">${agencyName}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Contact:</span> <strong style="color:#e2e8f0;">${contactPerson}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Region:</span> <strong style="color:#86efac;">${region || "Not specified"}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Experience:</span> <strong style="color:#fde68a;">${experience || "Not specified"}</strong></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">Contact Details</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;width:35%;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:9px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr style="background:#fafbfc;"><td style="padding:9px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Phone</td><td style="padding:9px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${phone || "Not provided"}</td></tr><tr><td style="padding:9px 16px;font-size:12px;color:#94a3b8;">Message</td><td style="padding:9px 16px;font-size:13px;color:#475569;">${message || "None"}</td></tr></table><div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;"><p style="margin:0;font-size:13px;color:#1e3a6e;">\u2139\uFE0F Use <strong>Accept / Reject</strong> in the admin panel to respond.</p></div></td></tr>`
@@ -17062,7 +18366,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         to: email,
         subject: `\u{1F31F} Your Partnership Application \u2014 STM Digital Library`,
         html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F31F} Application Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${contactPerson}</strong>, thank you for applying to become a certified partner of <strong>STM Digital Library</strong>. Your application for <strong>${agencyName}</strong> is under review.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4BC} Application Summary</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Agency:</span> <strong style="color:#fff;">${agencyName}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Region:</span> <strong style="color:#86efac;">${region || "Not specified"}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Status:</span> <strong style="color:#fde68a;">\u23F3 Under Review</strong></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#7e22ce;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F3C6} What Partners Get</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Exclusive reseller pricing &amp; margins</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Dedicated partner support &amp; training</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Co-branded marketing materials</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Access to 50,000+ academic journals &amp; content</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">We'll respond within <strong>2\u20133 business days</strong> at <strong>${email}</strong>. For urgent queries: <a href="mailto:info@celnet.in" style="color:#1e3a6e;font-weight:600;">info@celnet.in</a></p></td></tr>`
+          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F31F} Application Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${contactPerson}</strong>, thank you for applying to become a certified partner of <strong>STM Digital Library</strong>. Your application for <strong>${agencyName}</strong> is under review.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4BC} Application Summary</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Agency:</span> <strong style="color:#fff;">${agencyName}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Region:</span> <strong style="color:#86efac;">${region || "Not specified"}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Status:</span> <strong style="color:#fde68a;">\u23F3 Under Review</strong></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#7e22ce;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F3C6} What Partners Get</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Exclusive reseller pricing &amp; margins</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Dedicated partner support &amp; training</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Co-branded marketing materials</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Access to 50,000+ academic journals &amp; content</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">We'll respond within <strong>2\u20133 business days</strong> at <strong>${email}</strong>. For urgent queries: <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a></p></td></tr>`
         )
       };
       await sendMail(adminMailOptions);
@@ -17075,7 +18379,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/agency-inquiry", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const inquiries = await prisma2.agencyInquiry.findMany({
+      const inquiries = await prisma3.agencyInquiry.findMany({
         orderBy: { createdAt: "desc" }
       });
       res.json(inquiries);
@@ -17086,7 +18390,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/agency-inquiry/accept", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id, discount, emailContent, validUntil, subject, html, attachment } = req.body;
-      const inquiry = await prisma2.agencyInquiry.findUnique({ where: { id } });
+      const inquiry = await prisma3.agencyInquiry.findUnique({ where: { id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
@@ -17105,7 +18409,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ];
       }
       await sendMail(mailOptions);
-      const updated = await prisma2.agencyInquiry.update({
+      const updated = await prisma3.agencyInquiry.update({
         where: { id },
         data: {
           status: "Accepted",
@@ -17122,7 +18426,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/agency-inquiry/reject", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id, subject, html } = req.body;
-      const inquiry = await prisma2.agencyInquiry.findUnique({ where: { id } });
+      const inquiry = await prisma3.agencyInquiry.findUnique({ where: { id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       await sendMail({
@@ -17131,7 +18435,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         subject: subject || "Update on Your STM Digital Library Partnership Application",
         html: html || "<p>Thank you for your interest, but we cannot proceed with your application at this time.</p>"
       });
-      const updated = await prisma2.agencyInquiry.update({
+      const updated = await prisma3.agencyInquiry.update({
         where: { id },
         data: { status: "Rejected" }
       });
@@ -17143,7 +18447,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/coupons", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const coupons = await prisma2.coupon.findMany({ orderBy: { createdAt: "desc" } });
+      const coupons = await prisma3.coupon.findMany({ orderBy: { createdAt: "desc" } });
       res.json(coupons);
     } catch (e2) {
       console.error(e2);
@@ -17153,9 +18457,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/coupons", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { code, discountType, discountValue, maxUses, validFrom, validUntil, minimumOrderAmount } = req.body;
-      const existing = await prisma2.coupon.findUnique({ where: { code } });
+      const existing = await prisma3.coupon.findUnique({ where: { code } });
       if (existing) return res.status(400).json({ error: "Coupon code already exists" });
-      const coupon = await prisma2.coupon.create({
+      const coupon = await prisma3.coupon.create({
         data: {
           code,
           discountType,
@@ -17175,7 +18479,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.put("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { isActive } = req.body;
-      const coupon = await prisma2.coupon.update({
+      const coupon = await prisma3.coupon.update({
         where: { id: req.params.id },
         data: { isActive }
       });
@@ -17187,7 +18491,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.delete("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      await prisma2.coupon.delete({ where: { id: req.params.id } });
+      await prisma3.coupon.delete({ where: { id: req.params.id } });
       res.json({ success: true });
     } catch (e2) {
       console.error(e2);
@@ -17197,7 +18501,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/coupons/validate", async (req, res) => {
     try {
       const { code, orderAmount } = req.body;
-      const coupon = await prisma2.coupon.findUnique({ where: { code } });
+      const coupon = await prisma3.coupon.findUnique({ where: { code } });
       if (!coupon) return res.status(404).json({ error: "Invalid coupon code" });
       if (!coupon.isActive) return res.status(400).json({ error: "Coupon is not active" });
       if (coupon.validFrom && new Date(coupon.validFrom) > /* @__PURE__ */ new Date()) return res.status(400).json({ error: "Coupon not yet valid" });
@@ -17218,7 +18522,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const coupon = await prisma2.coupon.findUnique({
+      const coupon = await prisma3.coupon.findUnique({
         where: { id: req.params.id },
         include: {
           usages: {
@@ -17246,7 +18550,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (cfCountry) locationStr = cfCity ? `${cfCity}, ${cfCountry}` : cfCountry;
       const finalIpStr = locationStr ? `${ipAddress} (${locationStr})` : String(ipAddress);
       const userAgent = req.headers["user-agent"];
-      await prisma2.pageVisit.create({
+      await prisma3.pageVisit.create({
         data: {
           path: path3,
           userId,
@@ -17278,19 +18582,19 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         dateFilter = { createdAt: { gte: thirtyDaysAgo } };
       }
-      const totalVisits = await prisma2.pageVisit.count({ where: dateFilter });
-      const topPagesRaw = await prisma2.pageVisit.groupBy({
+      const totalVisits = await prisma3.pageVisit.count({ where: dateFilter });
+      const topPagesRaw = await prisma3.pageVisit.groupBy({
         by: ["path"],
         where: dateFilter,
         _count: { path: true },
         orderBy: { _count: { path: "desc" } },
         take: 10
       });
-      const topPages = topPagesRaw.map((p) => ({
-        path: p.path,
-        count: p._count.path
+      const topPages = topPagesRaw.map((p2) => ({
+        path: p2.path,
+        count: p2._count.path
       }));
-      const allVisits = await prisma2.pageVisit.findMany({
+      const allVisits = await prisma3.pageVisit.findMany({
         where: dateFilter,
         select: { createdAt: true, sessionId: true }
       });
@@ -17328,7 +18632,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           lte: endOfDay
         };
       }
-      const visits = await prisma2.pageVisit.findMany({
+      const visits = await prisma3.pageVisit.findMany({
         orderBy: { createdAt: "asc" },
         where: dateFilter
       });
@@ -17354,7 +18658,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         s2.endTime = visit.createdAt;
         s2.paths.push({ path: visit.path, time: visit.createdAt });
       }
-      const users = await prisma2.user.findMany({
+      const users = await prisma3.user.findMany({
         where: { id: { in: Array.from(userIds) } },
         select: { id: true, displayName: true, email: true }
       });
@@ -17381,7 +18685,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/verifications", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const verifications = await prisma2.emailVerification.findMany({
+      const verifications = await prisma3.emailVerification.findMany({
         orderBy: { updatedAt: "desc" }
       });
       res.json(verifications);
@@ -17392,7 +18696,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/feedback", authenticateJWT, async (req, res) => {
     try {
       const { rating, comment, type } = req.body;
-      const feedback = await prisma2.feedback.create({
+      const feedback = await prisma3.feedback.create({
         data: {
           rating: Number(rating) || 5,
           comment,
@@ -17408,7 +18712,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/feedbacks", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const feedbacks = await prisma2.feedback.findMany({
+      const feedbacks = await prisma3.feedback.findMany({
         include: {
           user: {
             select: {
@@ -17434,7 +18738,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/feedbacks/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const feedback = await prisma2.feedback.findUnique({
+      const feedback = await prisma3.feedback.findUnique({
         where: { id: req.params.id },
         include: {
           user: {
@@ -17472,7 +18776,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/user/feedbacks", authenticateJWT, async (req, res) => {
     try {
-      const feedbacks = await prisma2.feedback.findMany({
+      const feedbacks = await prisma3.feedback.findMany({
         where: { userId: req.user.uid },
         orderBy: { createdAt: "desc" }
       });
@@ -17484,7 +18788,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/leads", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const leads = await prisma2.lead.findMany({
+      const leads = await prisma3.lead.findMany({
         orderBy: { createdAt: "desc" },
         include: { assignedTo: { select: { id: true, displayName: true, email: true } } }
       });
@@ -17500,11 +18804,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (!leadIds || !Array.isArray(leadIds) || !assignedToId) {
         return res.status(400).json({ error: "Invalid data provided" });
       }
-      await prisma2.lead.updateMany({
+      await prisma3.lead.updateMany({
         where: { id: { in: leadIds } },
         data: { assignedToId, assignedAt: /* @__PURE__ */ new Date(), assignmentSeen: false }
       });
-      await prisma2.leadInteraction.createMany({
+      await prisma3.leadInteraction.createMany({
         data: leadIds.map((leadId) => ({
           leadId,
           userId: req.user.uid,
@@ -17520,12 +18824,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/admin/leads/migrate", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const demos = await prisma2.demoRequest.findMany();
+      const demos = await prisma3.demoRequest.findMany();
       let demoCount = 0;
       for (const d of demos) {
-        const exists = await prisma2.lead.findFirst({ where: { email: d.institutionalEmail, source: "Demo Request" } });
+        const exists = await prisma3.lead.findFirst({ where: { email: d.institutionalEmail, source: "Demo Request" } });
         if (!exists) {
-          await prisma2.lead.create({
+          await prisma3.lead.create({
             data: {
               name: d.fullName,
               email: d.institutionalEmail,
@@ -17541,15 +18845,15 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           });
           demoCount++;
         } else if (!exists.state && d.state) {
-          await prisma2.lead.update({ where: { id: exists.id }, data: { state: d.state } });
+          await prisma3.lead.update({ where: { id: exists.id }, data: { state: d.state } });
         }
       }
-      const contacts = await prisma2.contactInquiry.findMany();
+      const contacts = await prisma3.contactInquiry.findMany();
       let contactCount = 0;
       for (const c of contacts) {
-        const exists = await prisma2.lead.findFirst({ where: { email: c.email, source: "Contact Inquiry" } });
+        const exists = await prisma3.lead.findFirst({ where: { email: c.email, source: "Contact Inquiry" } });
         if (!exists) {
-          await prisma2.lead.create({
+          await prisma3.lead.create({
             data: {
               name: c.fullName,
               email: c.email,
@@ -17565,13 +18869,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           });
           contactCount++;
         } else if (!exists.state && c.state) {
-          await prisma2.lead.update({ where: { id: exists.id }, data: { state: c.state } });
+          await prisma3.lead.update({ where: { id: exists.id }, data: { state: c.state } });
         }
       }
-      await prisma2.lead.updateMany({ where: { status: "New" }, data: { status: "All" } });
-      await prisma2.lead.updateMany({ where: { status: "Contacted" }, data: { status: "Positive" } });
-      await prisma2.lead.updateMany({ where: { status: "Converted" }, data: { status: "Subscriber" } });
-      await prisma2.lead.updateMany({ where: { status: "Lost" }, data: { status: "Negative" } });
+      await prisma3.lead.updateMany({ where: { status: "New" }, data: { status: "All" } });
+      await prisma3.lead.updateMany({ where: { status: "Contacted" }, data: { status: "Positive" } });
+      await prisma3.lead.updateMany({ where: { status: "Converted" }, data: { status: "Subscriber" } });
+      await prisma3.lead.updateMany({ where: { status: "Lost" }, data: { status: "Negative" } });
       res.json({ message: `Migration successful. Synced ${demoCount} Demos and ${contactCount} Contacts.` });
     } catch (error) {
       console.error("Migration error:", error);
@@ -17580,7 +18884,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/sales-team", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const team = await prisma2.user.findMany({
+      const team = await prisma3.user.findMany({
         where: { role: { in: ["SalesExecutive", "SalesManager"] } },
         select: {
           id: true,
@@ -17594,10 +18898,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         }
       });
       const enhanced = await Promise.all(team.map(async (member) => {
-        const subscriberCount = await prisma2.lead.count({
+        const subscriberCount = await prisma3.lead.count({
           where: { assignedToId: member.id, status: "Subscriber" }
         });
-        const lastInteraction = await prisma2.leadInteraction.findFirst({
+        const lastInteraction = await prisma3.leadInteraction.findFirst({
           where: { userId: member.id },
           orderBy: { createdAt: "desc" },
           select: { createdAt: true }
@@ -17625,11 +18929,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   };
   app.get("/api/sales/my-leads", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
-      const leads = await prisma2.lead.findMany({
+      const leads = await prisma3.lead.findMany({
         where: { assignedToId: req.user.uid },
         orderBy: { updatedAt: "desc" }
       });
-      prisma2.lead.updateMany({ where: { assignedToId: req.user.uid, assignmentSeen: false }, data: { assignmentSeen: true } }).catch(() => {
+      prisma3.lead.updateMany({ where: { assignedToId: req.user.uid, assignmentSeen: false }, data: { assignmentSeen: true } }).catch(() => {
       });
       res.json(leads);
     } catch (error) {
@@ -17641,8 +18945,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const where = { assignedToId: req.user.uid, assignmentSeen: false };
       const [newLeads, list] = await Promise.all([
-        prisma2.lead.count({ where }),
-        prisma2.lead.findMany({ where, orderBy: { assignedAt: "desc" }, take: 10, select: { id: true, name: true, organization: true, source: true, assignedAt: true } })
+        prisma3.lead.count({ where }),
+        prisma3.lead.findMany({ where, orderBy: { assignedAt: "desc" }, take: 10, select: { id: true, name: true, organization: true, source: true, assignedAt: true } })
       ]);
       res.json({ total: newLeads, newLeads, list });
     } catch (error) {
@@ -17651,11 +18955,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/sales/my-activity", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
-      const myLeads = await prisma2.lead.findMany({
+      const myLeads = await prisma3.lead.findMany({
         where: { assignedToId: req.user.uid },
         select: { id: true }
       });
-      const interactions = await prisma2.leadInteraction.findMany({
+      const interactions = await prisma3.leadInteraction.findMany({
         where: { leadId: { in: myLeads.map((l) => l.id) } },
         orderBy: { createdAt: "desc" },
         include: {
@@ -17672,7 +18976,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/sales/leads/:id", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
-      const lead = await prisma2.lead.findUnique({
+      const lead = await prisma3.lead.findUnique({
         where: { id: req.params.id },
         include: {
           interactions: {
@@ -17691,7 +18995,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.put("/api/sales/leads/:id/status", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const { status } = req.body;
-      const lead = await prisma2.lead.update({
+      const lead = await prisma3.lead.update({
         where: { id: req.params.id },
         data: { status }
       });
@@ -17704,7 +19008,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/sales/leads/:id/interactions", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const { type, notes } = req.body;
-      const interaction = await prisma2.leadInteraction.create({
+      const interaction = await prisma3.leadInteraction.create({
         data: {
           leadId: req.params.id,
           userId: req.user.uid,
@@ -17715,7 +19019,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           user: { select: { displayName: true, email: true, role: true } }
         }
       });
-      await prisma2.lead.update({
+      await prisma3.lead.update({
         where: { id: req.params.id },
         data: { updatedAt: /* @__PURE__ */ new Date() }
       });
@@ -17728,7 +19032,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/public/content/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const content = await prisma2.content.findUnique({
+      const content = await prisma3.content.findUnique({
         where: { id },
         select: {
           id: true,
@@ -17763,7 +19067,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         res.type("application/xml");
         return res.send(cachedSitemapIndex);
       }
-      const totalContent = await prisma2.content.count({ where: { status: "Published" } });
+      const totalContent = await prisma3.content.count({ where: { status: "Published" } });
       const limitPerPage = 4e4;
       const totalPages = Math.ceil(totalContent / limitPerPage);
       const baseUrl = "https://journalslibrary.com";
@@ -17804,7 +19108,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
 `;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 `;
-    const staticRoutes = ["/", "/journals", "/contact", "/subscriptions", "/about", "/signup"];
+    const staticRoutes = ["/", "/journals", "/contact", "/about", "/signup"];
     for (const route of staticRoutes) {
       const loc = route === "/" ? baseUrl : `${baseUrl}${route}`;
       xml += `  <url>
@@ -17829,7 +19133,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const limitPerPage = 4e4;
       const skip = (page - 1) * limitPerPage;
-      const allContent = await prisma2.content.findMany({
+      const allContent = await prisma3.content.findMany({
         where: { status: "Published" },
         select: { id: true, updatedAt: true },
         skip,
