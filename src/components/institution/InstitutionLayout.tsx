@@ -38,32 +38,32 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
 
   if (loading || !profile) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+      <div className="min-h-screen bg-surface-2 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-surface-2 flex">
       {/* Sidebar */}
-      <aside className={`bg-indigo-900 text-white flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+      <aside className={`bg-ink text-surface flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
             <div className="flex items-center gap-2.5 font-extrabold tracking-tight min-w-0">
               {profile.institutionProfile?.logoUrl ? (
-                <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 bg-white shadow-sm border border-indigo-500/30">
+                <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 bg-surface shadow-sm border border-accent/30">
                   <img src={profile.institutionProfile.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 bg-accent rounded-lg flex items-center justify-center shrink-0">
                   <LayoutDashboard size={18} />
                 </div>
               )}
               <span className="text-sm truncate">{profile.organization || 'INSTITUTION'}</span>
             </div>
           )}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-white/10 rounded-lg text-indigo-200">
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-surface/10 rounded-lg text-faint">
             {isSidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
           </button>
         </div>
@@ -124,22 +124,22 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           <NavButton icon={<LogOut size={18} />} label="Sign Out" active={false} collapsed={!isSidebarOpen}
             onClick={handleSignOut} danger />
                   <div className={`flex items-center gap-3 px-3 py-2 ${!isSidebarOpen && 'justify-center'} mt-2`}>
-            <div className="h-8 w-8 rounded-full bg-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
+            <div className="h-8 w-8 rounded-full bg-ink-2 flex items-center justify-center text-xs font-bold shrink-0">
               {(profile.organization || profile.displayName || 'IN').substring(0, 2).toUpperCase()}
             </div>
             {isSidebarOpen && (
               <div className="overflow-hidden">
                 <div className="text-xs font-bold truncate">{profile.displayName || 'Institution Head'}</div>
-                <div className="text-[10px] text-indigo-300 truncate">{profile.organization || 'University Portal'}</div>
+                <div className="text-[10px] text-faint truncate">{profile.organization || 'University Portal'}</div>
               </div>
             )}
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-slate-50">
-        <header className="bg-white/80 backdrop-blur-md border-b border-white z-10 sticky top-0 h-16 flex items-center justify-between px-8 shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-          <h1 className="text-lg font-bold text-slate-800">
+      <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-surface-2">
+        <header className="bg-surface/80 backdrop-blur-md border-b border-white z-10 sticky top-0 h-16 flex items-center justify-between px-8 shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+          <h1 className="text-lg font-bold text-ink">
             {location.pathname === '/institution' ? (profile.organization || 'Institution Dashboard')
             : location.pathname.startsWith('/institution/students') ? 'Student Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
@@ -152,7 +152,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           </h1>
           <button 
             onClick={handleSignOut}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-alarm bg-alarm-soft hover:bg-alarm-soft rounded-lg transition-colors"
           >
             <LogOut size={16} />
             <span className="hidden sm:inline">Sign Out</span>
@@ -172,10 +172,10 @@ function NavButton({ icon, label, active, collapsed, onClick, danger = false }: 
 }) {
   return (
     <button onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all ${
-        active ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/20'
-        : danger ? 'text-red-300 hover:bg-red-500/10'
-        : 'text-indigo-200 hover:bg-white/5 hover:text-white'
+      className={`w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-semibold transition-all ${
+        active ? 'bg-accent text-white shadow-md shadow-indigo-900/20'
+        : danger ? 'text-faint hover:bg-alarm-soft hover:text-alarm'
+        : 'text-faint hover:bg-surface/5 hover:text-white'
       } ${collapsed && 'justify-center'}`}
       title={collapsed ? label : undefined}
     >

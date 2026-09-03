@@ -45,12 +45,12 @@ export function InstitutionDashboardHome() {
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-10 w-64 bg-slate-200 rounded-xl" />
+        <div className="h-10 w-64 bg-rule rounded-md" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {[...Array(4)].map((_, i) => <div key={i} className="bg-slate-200 h-32 rounded-3xl w-full" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="bg-rule h-32 rounded-md w-full" />)}
         </div>
-        <div className="h-24 bg-slate-200 rounded-3xl" />
-        <div className="h-64 bg-slate-200 rounded-3xl" />
+        <div className="h-24 bg-rule rounded-md" />
+        <div className="h-64 bg-rule rounded-md" />
       </div>
     );
   }
@@ -72,8 +72,7 @@ export function InstitutionDashboardHome() {
       label: "Enrolled Students",
       value: stats?.studentCount ?? 0,
       icon: <Users size={22} />,
-      gradient: "from-blue-500 to-blue-600",
-      bg: "bg-blue-50",
+      bg: "bg-accent-soft",
       change: '+3 this month',
       positive: true,
     },
@@ -81,8 +80,7 @@ export function InstitutionDashboardHome() {
       label: "Active Access Grants",
       value: stats?.activeGrants ?? 0,
       icon: <BookOpen size={22} />,
-      gradient: "from-emerald-500 to-teal-600",
-      bg: "bg-emerald-50",
+      bg: "bg-accent-soft",
       change: `${activeSubs.length} plan(s)`,
       positive: true,
     },
@@ -90,8 +88,7 @@ export function InstitutionDashboardHome() {
       label: "Content Interactions",
       value: stats?.totalInteractions ?? 0,
       icon: <Activity size={22} />,
-      gradient: "from-amber-400 to-orange-500",
-      bg: "bg-amber-50",
+      bg: "bg-caution-soft",
       change: 'All time',
       positive: null,
     },
@@ -99,8 +96,7 @@ export function InstitutionDashboardHome() {
       label: "Avg. Learning Time",
       value: stats?.avgLearningTime ?? '0h 0m',
       icon: <Clock size={22} />,
-      gradient: "from-purple-500 to-violet-600",
-      bg: "bg-purple-50",
+      bg: "bg-accent-soft",
       change: 'Per student',
       positive: null,
     },
@@ -113,15 +109,15 @@ export function InstitutionDashboardHome() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest px-2.5 py-1 bg-indigo-50 rounded-full border border-indigo-100">
+            <span className="text-[10px] font-bold text-accent uppercase tracking-widest px-2.5 py-1 bg-accent-soft rounded-full border border-rule">
               Institution Dashboard
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{institutionName}</h1>
-          <p className="text-slate-500 text-sm mt-1">Here is a real-time overview of your institution's activity.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-ink tracking-tight">{institutionName}</h1>
+          <p className="text-muted text-sm mt-1">Here is a real-time overview of your institution's activity.</p>
         </div>
         <Link to="/institution/library"
-          className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-2xl transition-all shadow-md shadow-indigo-200 hover:shadow-indigo-300/50 group"
+          className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-white text-sm font-bold rounded-md transition-all shadow-md shadow-indigo-200 hover:shadow-indigo-300/50 group"
         >
           <Sparkles size={15} /> Browse Library <ArrowUpRight size={15} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
         </Link>
@@ -134,23 +130,23 @@ export function InstitutionDashboardHome() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-900 rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-indigo-900/20 relative overflow-hidden"
+          className="bg-accent rounded-md p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-indigo-900/20 relative overflow-hidden"
         >
           {/* Decorative background circle */}
-          <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-surface/5 rounded-full blur-3xl pointer-events-none" />
+          
           
           <div className="relative z-10 flex-1 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-              <Clock className="text-indigo-300" size={18} />
-              <span className="text-indigo-200 font-bold uppercase tracking-wider text-xs">
+              <Clock className="text-faint" size={18} />
+              <span className="text-faint font-bold uppercase tracking-wider text-xs">
                 {nearestSub ? `${nearestSub.planName || 'Plan'} (${nearestSub.planType || 'Subscription'})` : 'Subscription Countdown'}
               </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1">
               {isExpired ? 'Your subscription has expired.' : 'Your active plan is running.'}
             </h2>
-            <p className="text-indigo-200 text-sm max-w-lg">
+            <p className="text-faint text-sm max-w-lg">
               {isExpired 
                 ? 'Please renew your plan to regain full access to the digital library and journals.'
                 : `Your nearest active plan (${nearestSub.planName || nearestSub.domainName || 'Subscription'}) will expire on ${new Date(nearestSub.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.`}
@@ -158,11 +154,11 @@ export function InstitutionDashboardHome() {
           </div>
 
           <div className="relative z-10 flex items-center justify-center gap-4">
-            <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 min-w-[120px] shadow-inner">
-              <span className={`text-4xl md:text-5xl font-black ${maxDaysLeft <= 10 ? 'text-rose-400' : 'text-white'}`}>
+            <div className="flex flex-col items-center justify-center bg-surface/10 backdrop-blur-md border border-white/20 rounded-md p-4 min-w-[120px] shadow-inner">
+              <span className={`text-4xl md:text-5xl font-black ${maxDaysLeft <= 10 ? 'text-alarm' : 'text-white'}`}>
                 {maxDaysLeft}
               </span>
-              <span className="text-indigo-200 text-xs font-bold uppercase tracking-widest mt-1">Days Left</span>
+              <span className="text-faint text-xs font-bold uppercase tracking-widest mt-1">Days Left</span>
             </div>
           </div>
         </motion.div>
@@ -176,23 +172,23 @@ export function InstitutionDashboardHome() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.07 }}
-            className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-200 transition-all group"
+            className="bg-surface rounded-md border border-rule shadow-sm p-6 hover:shadow-lg hover:-translate-y-0.5 hover:border-rule transition-all group"
           >
             <div className="flex items-start justify-between mb-5">
-              <div className={`h-11 w-11 rounded-2xl bg-gradient-to-br ${c.gradient} flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform`}>
+              <div className={`h-11 w-11 rounded-md bg-accent-soft text-accent flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform`}>
                 {c.icon}
               </div>
               {c.positive !== null && (
-                <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full ${c.positive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>
+                <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full ${c.positive ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-faint'}`}>
                   <TrendingUp size={10} /> {c.change}
                 </span>
               )}
               {c.positive === null && (
-                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-50 text-slate-400">{c.change}</span>
+                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-surface-2 text-faint">{c.change}</span>
               )}
             </div>
-            <div className="text-3xl font-black text-slate-900 tracking-tight">{c.value}</div>
-            <div className="text-xs font-semibold text-slate-500 mt-1">{c.label}</div>
+            <div className="text-3xl font-black text-ink tracking-tight">{c.value}</div>
+            <div className="text-xs font-semibold text-muted mt-1">{c.label}</div>
           </motion.div>
         ))}
       </div>
@@ -204,20 +200,20 @@ export function InstitutionDashboardHome() {
         transition={{ delay: 0.32 }}
       >
         <Link to="/institution/library"
-          className="flex items-center gap-5 p-6 bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-700 text-white rounded-3xl shadow-xl shadow-indigo-200/60 hover:shadow-2xl hover:shadow-indigo-300/50 transition-all hover:-translate-y-0.5 group"
+          className="flex items-center gap-5 p-6 bg-accent text-white rounded-md shadow-xl shadow-indigo-200/60 hover:shadow-2xl hover:shadow-indigo-300/50 transition-all hover:-translate-y-0.5 group"
         >
-          <div className="h-14 w-14 bg-white/15 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-white/25 transition-colors">
+          <div className="h-14 w-14 bg-surface/15 rounded-md flex items-center justify-center shrink-0 group-hover:bg-surface/25 transition-colors">
             <BookOpen size={26} />
           </div>
           <div className="flex-1">
             <div className="font-bold text-lg">Browse Your Content Library</div>
-            <div className="text-indigo-200 text-sm mt-0.5">Read journals, books, periodicals and more included in your subscription plan.</div>
+            <div className="text-faint text-sm mt-0.5">Read journals, books, periodicals and more included in your subscription plan.</div>
           </div>
           <div className="shrink-0 flex items-center gap-2">
-            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white/20 rounded-xl text-sm font-bold">
+            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-surface/20 rounded-md text-sm font-bold">
               <Zap size={13} /> Open Library
             </span>
-            <ChevronRight size={22} className="text-indigo-200 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight size={22} className="text-faint group-hover:translate-x-1 transition-transform" />
           </div>
         </Link>
       </motion.div>
@@ -227,17 +223,17 @@ export function InstitutionDashboardHome() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
+        className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden"
       >
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-50 bg-slate-50/50">
-          <div className="p-2.5 bg-indigo-50 rounded-xl">
-            <CreditCard className="text-indigo-600" size={18} />
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-rule bg-surface-2/50">
+          <div className="p-2.5 bg-accent-soft rounded-md">
+            <CreditCard className="text-accent" size={18} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-800">Subscription Plans</h2>
-            <p className="text-xs text-slate-500">Content access plans assigned to your institution</p>
+            <h2 className="text-base font-bold text-ink">Subscription Plans</h2>
+            <p className="text-xs text-muted">Content access plans assigned to your institution</p>
           </div>
-          <span className="ml-auto px-2.5 py-1 bg-indigo-50 text-indigo-600 font-bold text-xs rounded-lg border border-indigo-100">
+          <span className="ml-auto px-2.5 py-1 bg-accent-soft text-accent font-bold text-xs rounded-lg border border-rule">
             {subs.length} plan{subs.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -245,9 +241,9 @@ export function InstitutionDashboardHome() {
         <div className="p-6">
           {subs.length === 0 ? (
             <div className="text-center py-12">
-              <Package className="mx-auto mb-3 text-slate-300" size={36} />
-              <p className="text-slate-500 text-sm font-medium">No subscriptions found for your institution.</p>
-              <p className="text-slate-400 text-xs mt-1">Contact your STM representative to set up access.</p>
+              <Package className="mx-auto mb-3 text-faint" size={36} />
+              <p className="text-muted text-sm font-medium">No subscriptions found for your institution.</p>
+              <p className="text-faint text-xs mt-1">Contact your STM representative to set up access.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -266,41 +262,41 @@ export function InstitutionDashboardHome() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className={`relative p-4 rounded-2xl border overflow-hidden ${
-                      isExpiring ? 'border-amber-200 bg-amber-50/50'
-                      : isActive ? 'border-emerald-100 bg-emerald-50/30'
-                      : 'border-slate-200 bg-slate-50'
+                    className={`relative p-4 rounded-md border overflow-hidden ${
+                      isExpiring ? 'border-caution bg-caution-soft/50'
+                      : isActive ? 'border-rule bg-accent-soft/30'
+                      : 'border-rule bg-surface-2'
                     }`}
                   >
                     {/* Left accent */}
-                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${isExpiring ? 'bg-amber-400' : isActive ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${isExpiring ? 'bg-caution' : isActive ? 'bg-accent' : 'bg-rule-2'}`} />
                     <div className="pl-3 flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-800 text-sm">{sub.planName || sub.domainName || 'Subscription Plan'}</span>
+                          <span className="font-bold text-ink text-sm">{sub.planName || sub.domainName || 'Subscription Plan'}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
+                            isActive ? 'bg-accent-soft text-accent' : 'bg-rule text-muted'
                           }`}>{sub.status}</span>
                           {isExpiring && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-800 flex items-center gap-1">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-caution-soft text-caution flex items-center gap-1">
                               <AlertTriangle size={9} /> {daysLeft}d left
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 mt-1 text-xs text-slate-500">
+                        <div className="flex items-center gap-4 mt-1 text-xs text-muted">
                           <span className="flex items-center gap-1"><Calendar size={11} /> {new Date(sub.startDate).toLocaleDateString('en-IN')}</span>
-                          <span className="text-slate-300">→</span>
+                          <span className="text-faint">→</span>
                           <span className="flex items-center gap-1"><Calendar size={11} /> {new Date(sub.endDate).toLocaleDateString('en-IN')}</span>
                         </div>
-                        {sub.domainName && sub.planName && <div className="text-xs text-slate-400 mt-0.5">Domain: {sub.domainName}</div>}
+                        {sub.domainName && sub.planName && <div className="text-xs text-faint mt-0.5">Domain: {sub.domainName}</div>}
                       </div>
                       <div className="shrink-0">
                         {isActive ? (
-                          <div className="flex items-center gap-1.5 text-emerald-600 text-xs font-bold">
+                          <div className="flex items-center gap-1.5 text-accent text-xs font-bold">
                             <CheckCircle size={16} /> Active
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 text-slate-400 text-xs font-bold">
+                          <div className="flex items-center gap-1.5 text-faint text-xs font-bold">
                             <AlertTriangle size={16} /> Expired
                           </div>
                         )}
@@ -319,19 +315,19 @@ export function InstitutionDashboardHome() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.48 }}
-        className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
+        className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden"
       >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-50">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-rule">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-purple-50 rounded-xl">
-              <Activity className="text-purple-600" size={18} />
+            <div className="p-2.5 bg-accent-soft rounded-md">
+              <Activity className="text-accent" size={18} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-800">Recent Student Activity</h2>
-              <p className="text-xs text-slate-500">Latest content access by your enrolled students</p>
+              <h2 className="text-base font-bold text-ink">Recent Student Activity</h2>
+              <p className="text-xs text-muted">Latest content access by your enrolled students</p>
             </div>
           </div>
-          <Link to="/institution/students" className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">
+          <Link to="/institution/students" className="text-xs font-bold text-accent hover:underline flex items-center gap-1">
             View All <ChevronRight size={14} />
           </Link>
         </div>
@@ -345,26 +341,26 @@ export function InstitutionDashboardHome() {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl hover:bg-slate-100/70 transition-colors"
+                  className="flex items-center justify-between p-4 bg-surface-2 rounded-md hover:bg-surface-2/70 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                    <div className="h-8 w-8 rounded-full bg-accent-soft flex items-center justify-center text-accent font-bold text-xs shrink-0">
                       {(act.user?.displayName || act.user?.email || 'S')[0].toUpperCase()}
                     </div>
                     <div>
-                      <div className="font-bold text-slate-800 text-sm">{act.user?.displayName || act.user?.email || 'Student'}</div>
-                      <div className="text-xs text-slate-500 truncate max-w-xs">Accessed: {act.content?.title || 'External Module'}</div>
+                      <div className="font-bold text-ink text-sm">{act.user?.displayName || act.user?.email || 'Student'}</div>
+                      <div className="text-xs text-muted truncate max-w-xs">Accessed: {act.content?.title || 'External Module'}</div>
                     </div>
                   </div>
-                  <div className="text-slate-400 text-xs shrink-0 ml-4">{new Date(act.accessedAt).toLocaleString()}</div>
+                  <div className="text-faint text-xs shrink-0 ml-4">{new Date(act.accessedAt).toLocaleString()}</div>
                 </motion.div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 text-slate-500">
+            <div className="text-center py-12 text-muted">
               <Activity className="mx-auto mb-3 opacity-20" size={32} />
               <p className="text-sm font-medium">No recent student activity registered yet.</p>
-              <p className="text-xs text-slate-400 mt-1">Students will appear here once they start reading content.</p>
+              <p className="text-xs text-faint mt-1">Students will appear here once they start reading content.</p>
             </div>
           )}
         </div>

@@ -133,19 +133,19 @@ export function InstitutionProfile() {
   return (
     <div className="max-w-3xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Institution Profile</h1>
-        <p className="text-slate-500 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-ink tracking-tight">Institution Profile</h1>
+        <p className="text-muted text-sm mt-1">
           Manage your institution's contact info and branding. The institution name is set by your administrator.
         </p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Logo + Institution Name card */}
-        <div className="bg-gradient-to-br from-indigo-700 to-indigo-900 rounded-2xl p-8 text-white">
+        <div className="bg-accent rounded-md p-8 text-white">
           <div className="flex items-center gap-6">
             {/* Logo circle */}
             <div className="relative group">
-              <div className="h-24 w-24 rounded-2xl overflow-hidden bg-indigo-600 flex items-center justify-center shrink-0 shadow-xl shadow-black/20">
+              <div className="h-24 w-24 rounded-md overflow-hidden bg-accent flex items-center justify-center shrink-0 shadow-xl shadow-black/20">
                 {displayLogo ? (
                   <img src={displayLogo} alt="Logo" className="w-full h-full object-cover" />
                 ) : (
@@ -155,7 +155,7 @@ export function InstitutionProfile() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-2 -right-2 h-8 w-8 bg-white text-indigo-700 rounded-full flex items-center justify-center shadow-md hover:bg-indigo-50 transition-colors"
+                className="absolute -bottom-2 -right-2 h-8 w-8 bg-surface text-accent rounded-full flex items-center justify-center shadow-md hover:bg-accent-soft transition-colors"
                 title="Upload logo"
               >
                 <Camera size={14} />
@@ -170,13 +170,13 @@ export function InstitutionProfile() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-2xl font-black tracking-tight truncate">{data.institutionName}</div>
-              <div className="flex items-center gap-1.5 text-indigo-200 text-sm mt-1">
+              <div className="flex items-center gap-1.5 text-faint text-sm mt-1">
                 <Lock size={12} />
                 <span>Institution name is managed by your administrator</span>
               </div>
               {data.website && (
                 <a href={data.website} target="_blank" rel="noreferrer"
-                  className="text-indigo-200 hover:text-white text-sm flex items-center gap-1.5 mt-2 transition-colors">
+                  className="text-faint hover:text-white text-sm flex items-center gap-1.5 mt-2 transition-colors">
                   <Globe size={13} /> {data.website.replace(/^https?:\/\//, '')}
                 </a>
               )}
@@ -187,109 +187,109 @@ export function InstitutionProfile() {
 
 
         {/* Editable fields */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-6">
-          <h2 className="text-base font-bold text-slate-800">Contact Information</h2>
+        <div className="bg-surface rounded-md border border-rule shadow-sm p-8 space-y-6">
+          <h2 className="text-base font-bold text-ink">Contact Information</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Contact Person Name</label>
+              <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Contact Person Name</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
                 <input
                   type="text" value={data.contactName}
                   onChange={e => setData(d => ({ ...d, contactName: e.target.value }))}
                   placeholder="Dr. Priya Sharma"
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all"
+                  className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Contact Phone</label>
+              <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Contact Phone</label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
                 <input
                   type="tel" value={data.contactPhone}
                   onChange={e => setData(d => ({ ...d, contactPhone: e.target.value }))}
                   placeholder="+91 98765 43210"
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all"
+                  className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">City / District</label>
+              <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">City / District</label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
                 <input
                   type="text" value={data.city}
                   onChange={e => setData(d => ({ ...d, city: e.target.value }))}
                   placeholder="New Delhi"
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all"
+                  className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Website</label>
+              <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Website</label>
               <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
                 <input
                   type="url" value={data.website}
                   onChange={e => setData(d => ({ ...d, website: e.target.value }))}
                   placeholder="https://university.edu.in"
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all"
+                  className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Address</label>
+            <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Full Address</label>
             <textarea
               value={data.address}
               onChange={e => setData(d => ({ ...d, address: e.target.value }))}
               rows={3}
               placeholder="Building / Block, Street, State — PIN Code"
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all resize-none"
+              className="w-full px-4 py-3 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all resize-none"
             />
           </div>
 
-          <div className="pt-4 border-t border-slate-100">
-            <h2 className="text-base font-bold text-slate-800 mb-6">Institution Details (For Marketing & Suggestions)</h2>
+          <div className="pt-4 border-t border-rule">
+            <h2 className="text-base font-bold text-ink mb-6">Institution Details (For Marketing & Suggestions)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Courses Offered (Comma separated)</label>
+                <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Courses Offered (Comma separated)</label>
                 <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
                   <input
                     type="text" value={data.coursesOffered}
                     onChange={e => setData(d => ({ ...d, coursesOffered: e.target.value }))}
                     placeholder="e.g. Engineering, Nursing, Architecture, MBA"
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all"
+                    className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
                   />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">This helps us suggest relevant domains and subscriptions.</p>
+                <p className="text-[11px] text-faint mt-1">This helps us suggest relevant domains and subscriptions.</p>
               </div>
               
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Number of Courses</label>
+                <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Total Number of Courses</label>
                 <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
                   <input
                     type="number" value={data.totalCourses}
                     onChange={e => setData(d => ({ ...d, totalCourses: e.target.value }))}
                     placeholder="e.g. 15"
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all"
+                    className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Student Body Size</label>
+                <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Student Body Size</label>
                 <div className="relative">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
                   <select
                     value={data.studentBodySize}
                     onChange={e => setData(d => ({ ...d, studentBodySize: e.target.value }))}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none transition-all appearance-none"
+                    className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all appearance-none"
                   >
                     <option value="">Select Size...</option>
                     <option value="1-500">1 - 500</option>
@@ -305,7 +305,7 @@ export function InstitutionProfile() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-accent text-white rounded-md font-bold text-sm hover:bg-accent-hover transition-all shadow-lg  disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {saving ? (
               <><Loader2 size={16} className="animate-spin" /> Saving...</>

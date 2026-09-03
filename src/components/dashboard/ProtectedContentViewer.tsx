@@ -629,7 +629,7 @@ export function ProtectedContentViewer() {
           </button>
 
           {/* Secure badge */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/15 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-soft text-accent text-[10px] font-bold uppercase tracking-wider">
             <Shield size={11} /> Secure
           </div>
         </div>
@@ -924,7 +924,7 @@ export function ProtectedContentViewer() {
       {isPdf && numPages > 0 && (
         <div className={`shrink-0 h-9 flex items-center justify-between px-5 border-t text-[11px] ${darkMode ? 'bg-slate-900 border-white/10 text-slate-500' : 'bg-surface border-rule text-faint'}`}>
           <span className="flex items-center gap-2">
-            <Shield size={11} className="text-emerald-500" />
+            <Shield size={11} className="text-accent" />
             Protected Content — Reading session is logged
           </span>
           <span className="font-mono">

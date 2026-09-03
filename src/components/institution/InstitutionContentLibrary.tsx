@@ -156,26 +156,26 @@ export function InstitutionContentLibrary() {
     <div className="flex flex-col md:flex-row gap-6 pb-12 items-start">
       {/* Sidebar for Filters */}
       <div className="w-full md:w-[280px] shrink-0 space-y-6 md:sticky md:top-24">
-        <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
+        <div className="bg-surface rounded-md border border-rule p-6 shadow-sm">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => navigate('/institution/access')} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors shrink-0 border border-slate-200">
-              <ArrowLeft size={18} className="text-slate-600" />
+            <button onClick={() => navigate('/institution/access')} className="p-2 bg-surface-2 hover:bg-surface-2 rounded-md transition-colors shrink-0 border border-rule">
+              <ArrowLeft size={18} className="text-ink-2" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-tight">Content Library</h1>
-              <p className="text-xs font-semibold text-slate-500 mt-0.5">Advanced Filters</p>
+              <h1 className="text-xl font-bold text-ink tracking-tight leading-tight">Content Library</h1>
+              <p className="text-xs font-semibold text-muted mt-0.5">Advanced Filters</p>
             </div>
           </div>
 
           <div className="space-y-5">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" size={16} />
               <input
                 type="text"
                 placeholder="Search resources..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 transition-all outline-none text-slate-800 placeholder:text-slate-400"
+                className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent transition-all outline-none text-ink placeholder:text-faint"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -183,14 +183,14 @@ export function InstitutionContentLibrary() {
             
             {/* Content Type Filter */}
             <div className="pt-2">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Content Type</h3>
+              <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Content Type</h3>
               <select value={filterType} onChange={e => { 
                   setFilterType(e.target.value); 
                   setFilterSubjects([]);
                   setFilterTags([]);
                   setPage(1); 
                 }}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 outline-none text-slate-800 transition-all cursor-pointer appearance-none">
+                className="w-full px-3 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent outline-none text-ink transition-all cursor-pointer appearance-none">
                 <option value="">All Types</option>
                 {(subscribedTypes.length > 0 ? subscribedTypes : ['Books','Periodicals','Magazines','Theses','Educational Videos']).map(t => (
                   <option key={t} value={t}>{t}</option>
@@ -200,15 +200,15 @@ export function InstitutionContentLibrary() {
 
             {/* Domain Filter */}
             {availableFilters.domains.length > 0 && (
-              <div className="pt-4 border-t border-slate-100">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Domain</h3>
+              <div className="pt-4 border-t border-rule">
+                <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Domain</h3>
                 <select value={filterDomain} onChange={e => { 
                     setFilterDomain(e.target.value); 
                     setFilterSubjects([]);
                     setFilterTags([]);
                     setPage(1); 
                   }}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 outline-none text-slate-800 transition-all cursor-pointer appearance-none">
+                  className="w-full px-3 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent outline-none text-ink transition-all cursor-pointer appearance-none">
                   <option value="">All Subscribed Domains</option>
                   {availableFilters.domains
                     .filter(d => subscribedDomains.length === 0 || subscribedDomains.includes(d))
@@ -220,8 +220,8 @@ export function InstitutionContentLibrary() {
             {/* Subject Filter */}
             <AnimatePresence>
               {availableFilters.subjects.length > 0 && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-slate-100">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Subject Area</h3>
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-rule">
+                  <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Subject Area</h3>
                   <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
                     {availableFilters.subjects.map(s => (
                       <label key={s} className="flex items-start gap-3 cursor-pointer group">
@@ -233,9 +233,9 @@ export function InstitutionContentLibrary() {
                             else setFilterSubjects(filterSubjects.filter(sub => sub !== s));
                             setPage(1);
                           }}
-                          className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-100 border-slate-300 w-4 h-4 cursor-pointer"
+                          className="mt-0.5 rounded text-accent focus:border-accent bg-surface-2 border-rule-2 w-4 h-4 cursor-pointer"
                         />
-                        <span className="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors leading-tight">{s}</span>
+                        <span className="text-sm text-ink-2 group-hover:text-accent transition-colors leading-tight">{s}</span>
                       </label>
                     ))}
                   </div>
@@ -246,8 +246,8 @@ export function InstitutionContentLibrary() {
             {/* Tags Filter */}
             <AnimatePresence>
               {availableFilters.tags.length > 0 && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-slate-100">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Topics & Tags</h3>
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-rule">
+                  <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Topics & Tags</h3>
                   <div className="flex flex-wrap gap-1.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                     {availableFilters.tags.map(t => {
                       const isSelected = filterTags.includes(t);
@@ -261,8 +261,8 @@ export function InstitutionContentLibrary() {
                           }}
                           className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${
                             isSelected 
-                              ? 'bg-indigo-600 text-white border-indigo-600' 
-                              : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
+                              ? 'bg-accent text-accent-on border-accent' 
+                              : 'bg-surface text-ink-2 border-rule hover:border-accent hover:text-accent'
                           }`}
                         >
                           {t}
@@ -280,8 +280,8 @@ export function InstitutionContentLibrary() {
       {/* Main Content Grid */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-6">
-          <div className="text-slate-500 text-sm font-medium">
-            Showing <span className="text-slate-900 font-bold">{totalItems}</span> results
+          <div className="text-muted text-sm font-medium">
+            Showing <span className="text-ink font-bold">{totalItems}</span> results
           </div>
         </div>
 
@@ -289,23 +289,23 @@ export function InstitutionContentLibrary() {
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
               <div key={i} className="animate-pulse flex flex-col h-[280px]">
-                <div className="bg-slate-200 rounded-xl aspect-[3/4] w-full" />
+                <div className="bg-rule rounded-md aspect-[3/4] w-full" />
                 <div className="mt-3 space-y-2">
-                  <div className="h-4 bg-slate-200 rounded w-full" />
-                  <div className="h-3 bg-slate-200 rounded w-2/3" />
+                  <div className="h-4 bg-rule rounded w-full" />
+                  <div className="h-3 bg-rule rounded w-2/3" />
                 </div>
               </div>
             ))}
           </div>
         ) : contents.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
-            <BookOpen className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-            <h3 className="text-lg font-bold text-slate-900">No content found</h3>
-            <p className="text-slate-500 text-sm max-w-md mx-auto mt-2">Try adjusting your filters or search query to find what you're looking for.</p>
+          <div className="text-center py-20 bg-surface rounded-md border border-rule shadow-sm">
+            <BookOpen className="mx-auto h-12 w-12 text-faint mb-4" />
+            <h3 className="text-lg font-bold text-ink">No content found</h3>
+            <p className="text-muted text-sm max-w-md mx-auto mt-2">Try adjusting your filters or search query to find what you're looking for.</p>
             {(search || filterSubjects.length > 0 || filterTags.length > 0) && (
               <button 
                 onClick={() => { setSearch(''); setFilterSubjects([]); setFilterTags([]); setFilterDomain(''); setFilterType(''); }}
-                className="mt-6 text-indigo-600 font-bold text-sm hover:text-indigo-700"
+                className="mt-6 text-accent font-bold text-sm hover:text-accent"
               >
                 Clear all filters
               </button>
@@ -322,9 +322,9 @@ export function InstitutionContentLibrary() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   onClick={() => handleOpen(item)}
-                  className="group relative flex flex-col bg-white rounded-2xl overflow-hidden cursor-pointer border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                  className="group relative flex flex-col bg-surface rounded-md overflow-hidden cursor-pointer border border-rule shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                 >
-                  <div className={`relative w-full ${isVideo ? 'aspect-video' : 'aspect-[3/4]'} ${item.coverImage ? 'bg-slate-900' : 'bg-gradient-to-br from-slate-700 to-slate-900'} overflow-hidden`}>
+                  <div className={`relative w-full ${isVideo ? 'aspect-video' : 'aspect-[3/4]'} ${item.coverImage ? 'bg-ink' : 'bg-accent'} overflow-hidden`}>
                     {item.coverImage ? (
                       <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90" loading="lazy" />
                     ) : (
@@ -332,7 +332,7 @@ export function InstitutionContentLibrary() {
                         {isVideo ? <PlayCircle size={64} className="text-white/10" /> : <BookOpen size={64} className="text-white/10" />}
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
+                    <div className="absolute inset-0 bg-ink/45" />
                     
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5">
                       <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white bg-black/40 backdrop-blur-md rounded-md border border-white/10">
@@ -341,21 +341,21 @@ export function InstitutionContentLibrary() {
                     </div>
 
                     {item.locked && (
-                      <div className="absolute top-3 right-3 bg-white/90 backdrop-blur text-slate-700 p-1.5 rounded-lg shadow-sm border border-slate-200">
+                      <div className="absolute top-3 right-3 bg-surface/90 backdrop-blur text-ink-2 p-1.5 rounded-lg shadow-sm border border-rule">
                         <Lock size={14} />
                       </div>
                     )}
 
                     {isVideo && (
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="bg-blue-600 text-white rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                        <div className="bg-accent text-white rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
                           <PlayCircle size={28} fill="currentColor" />
                         </div>
                       </div>
                     )}
 
                     <div className="absolute bottom-3 left-3 right-3 text-white">
-                      <h3 className="font-bold text-sm leading-snug group-hover:text-blue-200 transition-colors">{item.title}</h3>
+                      <h3 className="font-bold text-sm leading-snug group-hover:text-accent transition-colors">{item.title}</h3>
                       <p className="text-[11px] text-white/70 line-clamp-1 mt-1 font-medium">{item.author}</p>
                     </div>
                   </div>
@@ -371,17 +371,17 @@ export function InstitutionContentLibrary() {
             <button 
               disabled={page === 1}
               onClick={() => { setPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 border border-rule rounded-md text-sm font-bold text-ink-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-2 transition-colors"
             >
               Previous
             </button>
-            <div className="px-4 py-2 text-sm font-bold text-slate-800">
+            <div className="px-4 py-2 text-sm font-bold text-ink">
               Page {page} of {totalPages}
             </div>
             <button 
               disabled={page === totalPages}
               onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 border border-rule rounded-md text-sm font-bold text-ink-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-2 transition-colors"
             >
               Next
             </button>
