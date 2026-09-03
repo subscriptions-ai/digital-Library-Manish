@@ -214,16 +214,16 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
   const clearAll = () => { setDomain(''); setPublisher(''); setSelJournalIds([]); setYear(''); setVolume(''); setIssue(''); setOaOnly(false); setRecentOnly(false); setSearch(''); setAType(''); setASubjects([]); setATags([]); };
 
   return (
-    <div className="text-slate-800 dark:text-slate-100 pb-28">
+    <div className="text-ink pb-28">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            <BookMarked className="text-blue-600" size={24} /> Journals &amp; Books
+          <h1 className="text-2xl font-black tracking-tight text-ink flex items-center gap-2">
+            <BookMarked className="text-accent" size={24} /> Journals &amp; Books
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Discover open-access research — filter precisely, read in your secure viewer.</p>
+          <p className="text-sm text-muted">Discover open-access research — filter precisely, read in your secure viewer.</p>
         </div>
-        <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
+        <div className="inline-flex bg-surface-2 rounded-md p-1 w-fit">
           <button onClick={() => setMode('new')} className={seg(mode === 'new')}><Sparkles size={14} /> New Collection</button>
           <button onClick={() => setMode('archived')} className={seg(mode === 'archived')}><Archive size={14} /> Archived</button>
         </div>
@@ -231,10 +231,10 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
 
       {/* Search bar */}
       <div className="relative mb-5">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search articles, authors, journals, topics…"
-          className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm shadow-sm outline-none focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/40 focus:border-blue-500 transition-all" />
-        <button onClick={() => setMobileFilters(v => !v)} className="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+          className="w-full pl-12 pr-4 py-3.5 rounded-md border border-rule bg-surface text-sm outline-none transition-colors focus:border-accent" />
+        <button onClick={() => setMobileFilters(v => !v)} className="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md bg-surface-2 text-ink-2">
           <SlidersHorizontal size={16} />
         </button>
       </div>
@@ -242,15 +242,15 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* ── Sidebar filters ── */}
         <aside className={`lg:col-span-1 space-y-4 ${mobileFilters ? 'block' : 'hidden lg:block'}`}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><SlidersHorizontal size={13} /> Refine</span>
-              {activeChips.length > 0 && <button onClick={clearAll} className="text-[11px] font-bold text-blue-600 hover:underline">Clear All</button>}
+          <div className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-rule">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-1.5"><SlidersHorizontal size={13} /> Refine</span>
+              {activeChips.length > 0 && <button onClick={clearAll} className="text-[11px] font-bold text-accent hover:underline">Clear All</button>}
             </div>
 
             <div className="p-4 space-y-4">
               {mode === 'new' && (showArticles || showBooks) && (
-                <div className="inline-flex w-full bg-slate-100 dark:bg-slate-700/60 rounded-lg p-1">
+                <div className="inline-flex w-full bg-surface-2/60 rounded-lg p-1">
                   {showArticles && <button onClick={() => setKind('articles')} className={seg2(kind === 'articles')}>Articles</button>}
                   {showBooks && <button onClick={() => setKind('books')} className={seg2(kind === 'books')}>Books</button>}
                 </div>
@@ -274,14 +274,14 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
 
               {mode === 'new' && (
                 <Group label="Independent Filters">
-                  <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
-                    <input type="checkbox" checked={oaOnly} onChange={e => setOaOnly(e.target.checked)} className="rounded text-emerald-600 w-4 h-4" />
-                    <Unlock size={13} className="text-emerald-600" /> Open Access only
+                  <label className="flex items-center gap-2 text-sm text-ink-2 cursor-pointer">
+                    <input type="checkbox" checked={oaOnly} onChange={e => setOaOnly(e.target.checked)} className="h-4 w-4 rounded-[3px] accent-[var(--accent)]" />
+                    <Unlock size={13} className="text-accent" /> Open Access only
                   </label>
                   {kind === 'articles' && (
-                    <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer mt-2">
-                      <input type="checkbox" checked={recentOnly} onChange={e => setRecentOnly(e.target.checked)} className="rounded text-blue-600 w-4 h-4" />
-                      <Sparkles size={13} className="text-blue-600" /> New journals (last 2 yrs)
+                    <label className="flex items-center gap-2 text-sm text-ink-2 cursor-pointer mt-2">
+                      <input type="checkbox" checked={recentOnly} onChange={e => setRecentOnly(e.target.checked)} className="rounded text-accent w-4 h-4" />
+                      <Sparkles size={13} className="text-accent" /> New journals (last 2 yrs)
                     </label>
                   )}
                 </Group>
@@ -300,8 +300,8 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                       <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                         {aFilters.subjects.map(s => (
                           <label key={s} className="flex items-start gap-2.5 cursor-pointer group">
-                            <input type="checkbox" checked={aSubjects.includes(s)} onChange={() => { setASubjects(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]); setATags([]); setPage(1); }} className="mt-0.5 w-4 h-4 rounded text-blue-600" />
-                            <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-600 leading-tight">{s}</span>
+                            <input type="checkbox" checked={aSubjects.includes(s)} onChange={() => { setASubjects(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]); setATags([]); setPage(1); }} className="mt-0.5 w-4 h-4 rounded text-accent" />
+                            <span className="text-[13px] font-medium text-ink-2 group-hover:text-accent leading-tight">{s}</span>
                           </label>
                         ))}
                       </div>
@@ -312,7 +312,7 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                       <div className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto">
                         {aFilters.tags.map(t => (
                           <button key={t} onClick={() => { setATags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]); setPage(1); }}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${aTags.includes(t) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-400'}`}>{t}</button>
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${aTags.includes(t) ? 'bg-accent border-accent text-accent-on' : 'bg-surface-2 border-rule text-ink-2 hover:border-accent'}`}>{t}</button>
                         ))}
                       </div>
                     </Group>
@@ -324,38 +324,38 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
 
           {/* Journals list + cascade */}
           {mode === 'new' && kind === 'articles' && (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+            <div className="bg-surface rounded-md border border-rule shadow-sm">
+              <div className="px-4 py-3 border-b border-rule">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Journals ({journals.length})</span>
-                  {selJournalIds.length > 0 && <button onClick={() => { setSelJournalIds([]); setYear(''); setVolume(''); setIssue(''); }} className="text-[10px] font-bold text-blue-600 hover:underline">{selJournalIds.length} selected · clear</button>}
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Journals ({journals.length})</span>
+                  {selJournalIds.length > 0 && <button onClick={() => { setSelJournalIds([]); setYear(''); setVolume(''); setIssue(''); }} className="text-[10px] font-bold text-accent hover:underline">{selJournalIds.length} selected · clear</button>}
                 </div>
                 <div className="relative mt-2">
-                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
                   <input value={journalQuery} onChange={e => setJournalQuery(e.target.value)} placeholder="Filter journals…"
-                    className="w-full pl-8 pr-2 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 outline-none focus:border-blue-500" />
+                    className="w-full pl-8 pr-2 py-1.5 text-xs rounded-lg border border-rule bg-surface-2 outline-none focus:border-accent" />
                 </div>
               </div>
               <div className="max-h-64 overflow-y-auto p-2">
-                {filteredJournals.length === 0 ? <p className="text-xs text-slate-400 px-2 py-3">No journals yet.</p> :
+                {filteredJournals.length === 0 ? <p className="text-xs text-faint px-2 py-3">No journals yet.</p> :
                   filteredJournals.map(j => {
                     const on = selJournalIds.includes(j.id);
                     return (
                       <button key={j.id} onClick={() => toggleJournal(j.id)}
-                        className={`w-full text-left px-2 py-2 rounded-lg text-xs mb-0.5 flex items-center justify-between gap-2 transition-colors ${on ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+                        className={`w-full text-left px-2 py-2 rounded-lg text-xs mb-0.5 flex items-center justify-between gap-2 transition-colors ${on ? 'bg-accent-soft text-accent font-bold' : 'text-ink-2 hover:bg-surface-2'}`}>
                         <span className="flex items-center gap-2 min-w-0">
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${on ? 'bg-blue-600 border-blue-600' : 'border-slate-300 dark:border-slate-600'}`}>{on && <Check size={11} className="text-white" />}</span>
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${on ? 'bg-accent border-accent' : 'border-rule-2'}`}>{on && <Check size={11} className="text-accent-on" />}</span>
                           <span className="truncate">{j.title}</span>
                         </span>
                         <span className="flex items-center gap-1 shrink-0">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">{j.articleCount}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-2 text-muted">{j.articleCount}</span>
                           <span
                             role="button"
                             tabIndex={0}
                             title="Open this journal and its volumes"
                             onClick={e => { e.stopPropagation(); navigate(`${journalBase}/${encodeURIComponent(j.issn || j.id)}`); }}
                             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); navigate(`${journalBase}/${encodeURIComponent(j.issn || j.id)}`); } }}
-                            className="p-0.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer"
+                            className="p-0.5 rounded text-faint hover:text-accent hover:bg-accent-soft cursor-pointer"
                           >
                             <ChevronRight size={13} />
                           </span>
@@ -365,11 +365,11 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                   })}
               </div>
               {selJournalIds.length > 0 && (
-                <div className="border-t border-slate-100 dark:border-slate-700 p-3 space-y-3">
+                <div className="border-t border-rule p-3 space-y-3">
                   {facets.years.length > 0 && <ChipRow label="Year" values={facets.years.map(String)} active={year} onPick={v => { setYear(v === year ? '' : v); setVolume(''); setIssue(''); setPage(1); }} />}
                   {selJournalIds.length === 1 && facets.volumes.length > 0 && <ChipRow label="Volume" prefix="Vol " values={facets.volumes} active={volume} onPick={v => { setVolume(v === volume ? '' : v); setIssue(''); setPage(1); }} />}
                   {selJournalIds.length === 1 && facets.issues.length > 0 && <ChipRow label="Issue" prefix="Iss " values={facets.issues} active={issue} onPick={v => { setIssue(v === issue ? '' : v); setPage(1); }} />}
-                  {selJournalIds.length > 1 && <p className="text-[10px] text-slate-400">Volume/Issue drill-down shows when a single journal is selected.</p>}
+                  {selJournalIds.length > 1 && <p className="text-[10px] text-faint">Volume/Issue drill-down shows when a single journal is selected.</p>}
                 </div>
               )}
             </div>
@@ -381,17 +381,17 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
           {/* result toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div className="flex items-center flex-wrap gap-2">
-              <span className="text-sm"><b className="text-slate-900 dark:text-white">{total}</b> <span className="text-slate-500">results</span></span>
+              <span className="text-sm"><b className="text-ink">{total}</b> <span className="text-muted">results</span></span>
               {activeChips.map((c, i) => (
-                <span key={i} className="inline-flex items-center gap-1 text-[11px] font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
+                <span key={i} className="inline-flex items-center gap-1 text-[11px] font-semibold bg-accent-soft text-accent px-2 py-1 rounded-full">
                   {c.label.length > 22 ? c.label.slice(0, 22) + '…' : c.label}
                   <button onClick={c.clear}><X size={11} /></button>
                 </span>
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 hidden sm:block">Sort</span>
-              <select value={sort} onChange={e => setSort(e.target.value as Sort)} className="text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 outline-none focus:border-blue-500">
+              <span className="text-xs text-faint hidden sm:block">Sort</span>
+              <select value={sort} onChange={e => setSort(e.target.value as Sort)} className="text-xs font-semibold rounded-lg border border-rule bg-surface px-2.5 py-1.5 outline-none focus:border-accent">
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
                 <option value="title">Title A–Z</option>
@@ -400,7 +400,7 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
           </div>
 
           {loading ? (
-            <div className="py-20 flex justify-center"><div className="w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+            <div className="py-20 flex justify-center"><div className="w-7 h-7 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>
           ) : displayed.length === 0 ? (
             <div className="py-20 text-center text-muted bg-surface rounded-md border border-rule">
               <FileText size={30} className="mx-auto mb-2 opacity-40" />
@@ -559,9 +559,9 @@ function Mark({ children, tone }: { children: React.ReactNode; tone?: 'accent' |
 }
 
 // ───────── small helpers ─────────
-const seg = (active: boolean) => `inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${active ? 'bg-slate-900 dark:bg-blue-600 text-white shadow' : 'text-slate-500 dark:text-slate-400'}`;
-const seg2 = (active: boolean) => `flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${active ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`;
-const selCls = "w-full text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-3 py-2 outline-none focus:border-blue-500";
+const seg = (active: boolean) => `inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${active ? 'bg-accent text-accent-on' : 'text-muted hover:text-ink-2'}`;
+const seg2 = (active: boolean) => `flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${active ? 'bg-surface text-ink shadow-sm' : 'text-muted'}`;
+const selCls = "w-full text-sm rounded-lg border border-rule bg-surface-2 px-3 py-2 outline-none focus:border-accent";
 
 function Pill({ children, className }: { children: React.ReactNode; className?: string }) {
   return <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${className}`}>{children}</span>;
@@ -570,7 +570,7 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
   const [open, setOpen] = useState(true);
   return (
     <div>
-      <button onClick={() => setOpen(o => !o)} className="flex items-center justify-between w-full text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+      <button onClick={() => setOpen(o => !o)} className="flex items-center justify-between w-full text-[11px] font-bold uppercase tracking-wider text-muted mb-2">
         {label} {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
       </button>
       {open && children}
@@ -580,11 +580,11 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
 function ChipRow({ label, values, active, onPick, prefix = '' }: { label: string; values: string[]; active: string; onPick: (v: string) => void; prefix?: string }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{label}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-faint mb-1.5">{label}</p>
       <div className="flex flex-wrap gap-1.5">
         {values.map(v => (
           <button key={v} onClick={() => onPick(v)}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${active === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-blue-400'}`}>
+            className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${active === v ? 'bg-accent text-accent-on border-accent' : 'bg-surface text-ink-2 border-rule hover:border-accent'}`}>
             {prefix}{v}
           </button>
         ))}
