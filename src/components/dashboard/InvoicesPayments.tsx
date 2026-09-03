@@ -35,24 +35,24 @@ export function InvoicesPayments() {
   return (
     <div className="space-y-6 pb-12">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Quotations & Invoices</h1>
-        <p className="text-sm text-slate-500 mt-1">Review your quotations, payment history, and download tax invoices.</p>
+        <h1 className="text-2xl font-bold text-ink tracking-tight">Quotations & Invoices</h1>
+        <p className="text-sm text-muted mt-1">Review your quotations, payment history, and download tax invoices.</p>
       </div>
 
-      <div className="flex gap-2 bg-white p-1 rounded-xl w-fit shadow-sm border border-slate-100">
-        <button onClick={() => setActiveTab('quotations')} className={`px-5 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'quotations' ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50'}`}>My Quotations</button>
-        <button onClick={() => setActiveTab('invoices')} className={`px-5 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'invoices' ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50'}`}>My Invoices</button>
+      <div className="flex gap-2 bg-surface p-1 rounded-md w-fit shadow-sm border border-rule">
+        <button onClick={() => setActiveTab('quotations')} className={`px-5 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'quotations' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-surface-2'}`}>My Quotations</button>
+        <button onClick={() => setActiveTab('invoices')} className={`px-5 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'invoices' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-surface-2'}`}>My Invoices</button>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden">
         {loading ? (
           <div className="animate-pulse p-6 space-y-4">
-            {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-slate-100 rounded-xl" />)}
+            {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-surface-2 rounded-md" />)}
           </div>
         ) : activeTab === 'quotations' ? (
           <div className="overflow-x-auto min-h-[400px]">
             <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-xs text-slate-500 font-bold uppercase tracking-widest border-b border-slate-100">
+              <thead className="bg-surface-2 text-xs text-muted font-bold uppercase tracking-widest border-b border-rule">
                 <tr>
                   <th className="px-6 py-4">Quotation ID</th>
                   <th className="px-6 py-4">Date</th>
@@ -61,7 +61,7 @@ export function InvoicesPayments() {
                   <th className="px-6 py-4 text-right">Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-rule">
                 <AnimatePresence>
                   {quotations.map((quotation, idx) => (
                     <motion.tr 
@@ -69,25 +69,25 @@ export function InvoicesPayments() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
-                      className="hover:bg-slate-50/50 transition-colors"
+                      className="hover:bg-surface-2/50 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <div className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded w-max">
+                        <div className="font-mono text-xs font-bold text-ink-2 bg-surface-2 px-2 py-1 rounded w-max">
                           {quotation.id}
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-medium text-slate-500">
+                      <td className="px-6 py-4 font-medium text-muted">
                         {new Date(quotation.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 font-extrabold text-slate-900 border-x border-slate-50">
+                      <td className="px-6 py-4 font-extrabold text-ink border-x border-rule">
                         ₹{quotation.total?.toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${
-                          quotation.status === 'Approved' ? 'bg-blue-100 text-blue-700' :
-                          quotation.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' :
-                          quotation.status === 'Cancelled' ? 'bg-slate-100 text-slate-700' :
-                          'bg-amber-100 text-amber-700'
+                          quotation.status === 'Approved' ? 'bg-accent-soft text-accent' :
+                          quotation.status === 'Paid' ? 'bg-accent-soft text-accent' :
+                          quotation.status === 'Cancelled' ? 'bg-surface-2 text-ink-2' :
+                          'bg-caution-soft text-caution'
                         }`}>
                           {quotation.status}
                         </span>
@@ -95,7 +95,7 @@ export function InvoicesPayments() {
                       <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => setSelectedQuotation(quotation)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-accent hover:text-accent hover:bg-accent-soft rounded-lg transition-colors"
                         >
                           View Email Template
                         </button>
@@ -108,16 +108,16 @@ export function InvoicesPayments() {
 
             {quotations.length === 0 && (
               <div className="text-center p-12">
-                <FileText size={48} className="mx-auto text-slate-200 mb-4" />
-                <h3 className="text-lg font-bold text-slate-600">No Quotations found</h3>
-                <p className="text-slate-400 text-sm mt-1">You haven't requested any quotations yet.</p>
+                <FileText size={48} className="mx-auto text-faint mb-4" />
+                <h3 className="text-lg font-bold text-ink-2">No Quotations found</h3>
+                <p className="text-faint text-sm mt-1">You haven't requested any quotations yet.</p>
               </div>
             )}
           </div>
         ) : (
           <div className="overflow-x-auto min-h-[400px]">
             <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-xs text-slate-500 font-bold uppercase tracking-widest border-b border-slate-100">
+              <thead className="bg-surface-2 text-xs text-muted font-bold uppercase tracking-widest border-b border-rule">
                 <tr>
                   <th className="px-6 py-4">Transaction ID</th>
                   <th className="px-6 py-4">Date</th>
@@ -126,7 +126,7 @@ export function InvoicesPayments() {
                   <th className="px-6 py-4 text-right">Invoice</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-rule">
                 <AnimatePresence>
                   {payments.map((payment, idx) => (
                     <motion.tr 
@@ -134,22 +134,22 @@ export function InvoicesPayments() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
-                      className="hover:bg-slate-50/50 transition-colors"
+                      className="hover:bg-surface-2/50 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <div className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded w-max">
+                        <div className="font-mono text-xs font-bold text-ink-2 bg-surface-2 px-2 py-1 rounded w-max">
                           {payment.id.split('_').pop()?.toUpperCase()}
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-medium text-slate-500">
+                      <td className="px-6 py-4 font-medium text-muted">
                         {new Date(payment.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 font-extrabold text-slate-900 border-x border-slate-50">
+                      <td className="px-6 py-4 font-extrabold text-ink border-x border-rule">
                         ₹{payment.amount?.toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${
-                          payment.status === 'Success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                          payment.status === 'Success' ? 'bg-accent-soft text-accent' : 'bg-alarm-soft text-alarm'
                         }`}>
                           {payment.status}
                         </span>
@@ -158,13 +158,13 @@ export function InvoicesPayments() {
                         {payment.status === 'Success' ? (
                           <button
                             onClick={() => downloadDummyInvoice(payment.id)}
-                            className="inline-flex items-center gap-2 p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="inline-flex items-center gap-2 p-2 text-muted hover:text-accent hover:bg-accent-soft rounded-lg transition-colors"
                             title="Download PDF Invoice"
                           >
                             <Download size={18} />
                           </button>
                         ) : (
-                          <span className="text-slate-300">-</span>
+                          <span className="text-faint">-</span>
                         )}
                       </td>
                     </motion.tr>
@@ -175,9 +175,9 @@ export function InvoicesPayments() {
 
             {payments.length === 0 && (
               <div className="text-center p-12">
-                <FileText size={48} className="mx-auto text-slate-200 mb-4" />
-                <h3 className="text-lg font-bold text-slate-600">No payment history</h3>
-                <p className="text-slate-400 text-sm mt-1">You haven't made any transactions yet.</p>
+                <FileText size={48} className="mx-auto text-faint mb-4" />
+                <h3 className="text-lg font-bold text-ink-2">No payment history</h3>
+                <p className="text-faint text-sm mt-1">You haven't made any transactions yet.</p>
               </div>
             )}
           </div>
@@ -186,30 +186,30 @@ export function InvoicesPayments() {
 
       {selectedQuotation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl w-full max-w-7xl h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
+          <div className="bg-surface rounded-md w-full max-w-7xl h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-4 bg-ink text-white flex justify-between items-center shrink-0">
               <h2 className="font-bold flex items-center gap-2">
-                <FileText size={18} className="text-blue-400" />
-                Quotation Details <span className="text-slate-400 font-normal">#{selectedQuotation.id}</span>
+                <FileText size={18} className="text-accent" />
+                Quotation Details <span className="text-faint font-normal">#{selectedQuotation.id}</span>
               </h2>
-              <button onClick={() => setSelectedQuotation(null)} className="text-slate-400 hover:text-white px-3 py-1 bg-slate-800 rounded-lg transition-colors">Close</button>
+              <button onClick={() => setSelectedQuotation(null)} className="text-faint hover:text-white px-3 py-1 bg-ink-2 rounded-lg transition-colors">Close</button>
             </div>
             
             <div className="flex-1 overflow-hidden min-h-0">
               <div className="grid grid-cols-1 lg:grid-cols-5 h-full min-h-0">
                 
                 {/* Left side: Info */}
-                <div className="lg:col-span-2 bg-white p-6 overflow-y-auto border-r border-slate-200">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Quotation Summary</h3>
+                <div className="lg:col-span-2 bg-surface p-6 overflow-y-auto border-r border-rule">
+                  <h3 className="text-sm font-bold text-faint uppercase tracking-wider mb-4">Quotation Summary</h3>
                   
                   <div className="space-y-6">
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <p className="text-xs text-slate-500 mb-1">Status</p>
+                    <div className="bg-surface-2 p-4 rounded-md border border-rule">
+                      <p className="text-xs text-muted mb-1">Status</p>
                       <span className={`inline-flex px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-md ${
-                        selectedQuotation.status === 'Approved' ? 'bg-blue-100 text-blue-700' :
-                        selectedQuotation.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' :
-                        selectedQuotation.status === 'Cancelled' ? 'bg-slate-100 text-slate-700' :
-                        'bg-amber-100 text-amber-700'
+                        selectedQuotation.status === 'Approved' ? 'bg-accent-soft text-accent' :
+                        selectedQuotation.status === 'Paid' ? 'bg-accent-soft text-accent' :
+                        selectedQuotation.status === 'Cancelled' ? 'bg-surface-2 text-ink-2' :
+                        'bg-caution-soft text-caution'
                       }`}>
                         {selectedQuotation.status}
                       </span>
@@ -217,44 +217,44 @@ export function InvoicesPayments() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-slate-500 mb-1">Plan</p>
-                        <p className="font-bold text-slate-900">{selectedQuotation.planType || 'Monthly'}</p>
+                        <p className="text-xs text-muted mb-1">Plan</p>
+                        <p className="font-bold text-ink">{selectedQuotation.planType || 'Monthly'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500 mb-1">Date</p>
-                        <p className="font-bold text-slate-900">{new Date(selectedQuotation.createdAt).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted mb-1">Date</p>
+                        <p className="font-bold text-ink">{new Date(selectedQuotation.createdAt).toLocaleDateString()}</p>
                       </div>
                     </div>
 
-                    <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                      <p className="text-xs text-slate-500 mb-2">Pricing Breakdown</p>
+                    <div className="border border-rule rounded-md p-4 bg-surface-2">
+                      <p className="text-xs text-muted mb-2">Pricing Breakdown</p>
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-slate-600">Subtotal</span>
-                        <span className="font-semibold text-slate-900">₹{selectedQuotation.subtotal?.toLocaleString()}</span>
+                        <span className="text-ink-2">Subtotal</span>
+                        <span className="font-semibold text-ink">₹{selectedQuotation.subtotal?.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between text-sm mb-3">
-                        <span className="text-slate-600">GST (18%)</span>
-                        <span className="font-semibold text-slate-900">₹{selectedQuotation.gstAmount?.toLocaleString()}</span>
+                        <span className="text-ink-2">GST (18%)</span>
+                        <span className="font-semibold text-ink">₹{selectedQuotation.gstAmount?.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between text-base pt-2 border-t border-slate-200">
-                        <span className="font-bold text-slate-900">Total</span>
-                        <span className="font-black text-blue-600">₹{selectedQuotation.total?.toLocaleString()}</span>
+                      <div className="flex justify-between text-base pt-2 border-t border-rule">
+                        <span className="font-bold text-ink">Total</span>
+                        <span className="font-black text-accent">₹{selectedQuotation.total?.toLocaleString()}</span>
                       </div>
                     </div>
 
-                    <div className="bg-blue-50 text-blue-800 p-4 rounded-xl border border-blue-100">
+                    <div className="bg-accent-soft text-accent p-4 rounded-md border border-rule">
                       <p className="text-sm font-medium">To proceed with this quotation, please contact your account manager or click upgrade in your dashboard.</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Right side: Email Preview */}
-                <div className="lg:col-span-3 bg-slate-100 flex flex-col h-full min-h-0">
-                  <div className="bg-slate-200 p-3 text-slate-600 flex justify-between items-center shrink-0 border-b border-slate-300">
+                <div className="lg:col-span-3 bg-surface-2 flex flex-col h-full min-h-0">
+                  <div className="bg-rule p-3 text-ink-2 flex justify-between items-center shrink-0 border-b border-rule-2">
                     <span className="text-xs font-bold uppercase tracking-wide">Sent Email Copy</span>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 md:p-8">
-                    <div className="bg-white shadow-lg mx-auto max-w-2xl min-h-full border border-slate-200 rounded-sm">
+                    <div className="bg-surface shadow-lg mx-auto max-w-2xl min-h-full border border-rule rounded-sm">
                       {selectedQuotation.sentEmailHtml ? (
                         <div dangerouslySetInnerHTML={{ __html: selectedQuotation.sentEmailHtml }} />
                       ) : (

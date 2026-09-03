@@ -86,7 +86,7 @@ export function FeedbackWidget() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-3.5 rounded-full shadow-2xl shadow-indigo-500/40 hover:shadow-indigo-500/60 transition-all flex items-center justify-center gap-2 hover:-translate-y-1 border border-white/10"
+        className="fixed bottom-6 right-6 z-40 bg-accent text-white px-5 py-3.5 rounded-full shadow-2xl shadow-indigo-500/40 hover:shadow-indigo-500/60 transition-all flex items-center justify-center gap-2 hover:-translate-y-1 border border-white/10"
       >
         <MessageSquareHeart size={20} className="animate-pulse" />
         <span className="whitespace-nowrap font-bold text-sm">
@@ -103,20 +103,20 @@ export function FeedbackWidget() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => !isSubmitting && setIsOpen(false)}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
             />
             
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-surface rounded-md shadow-2xl overflow-hidden"
             >
               <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                 {!isSuccess && !viewingHistory && (
                   <button
                     onClick={() => setViewingHistory(true)}
-                    className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-full transition-colors tooltip-trigger"
+                    className="p-2 bg-accent-soft hover:bg-accent-soft text-accent rounded-full transition-colors tooltip-trigger"
                     title="View Past Feedbacks"
                   >
                     <History size={18} />
@@ -125,7 +125,7 @@ export function FeedbackWidget() {
                 {viewingHistory && (
                   <button
                     onClick={() => setViewingHistory(false)}
-                    className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-full transition-colors tooltip-trigger"
+                    className="p-2 bg-surface-2 hover:bg-surface-2 text-ink-2 rounded-full transition-colors tooltip-trigger"
                     title="Back to Form"
                   >
                     <ArrowLeft size={18} />
@@ -134,7 +134,7 @@ export function FeedbackWidget() {
                 <button
                   onClick={() => setIsOpen(false)}
                   disabled={isSubmitting}
-                  className="p-2 bg-slate-100/50 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-700 text-slate-500 rounded-full transition-colors"
+                  className="p-2 bg-surface-2/50 hover:bg-rule text-muted rounded-full transition-colors"
                 >
                   <X size={18} />
                 </button>
@@ -146,21 +146,21 @@ export function FeedbackWidget() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", bounce: 0.5 }}
-                    className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-500 rounded-full flex items-center justify-center mb-6"
+                    className="w-20 h-20 bg-accent-soft text-accent rounded-full flex items-center justify-center mb-6"
                   >
                     <CheckCircle2 size={40} />
                   </motion.div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Thank You!</h3>
-                  <p className="text-slate-500 dark:text-slate-400">Your feedback helps us improve your digital library experience.</p>
+                  <h3 className="text-2xl font-bold text-ink mb-2">Thank You!</h3>
+                  <p className="text-muted">Your feedback helps us improve your digital library experience.</p>
                 </div>
               ) : !viewingHistory ? (
                 <div className="p-8">
                   <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-12">
+                    <div className="w-16 h-16 bg-accent-soft text-accent rounded-md flex items-center justify-center mx-auto mb-4 rotate-12">
                       <MessageSquareHeart size={32} />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">We value your feedback</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">How would you rate your experience with the platform so far?</p>
+                    <h2 className="text-2xl font-bold text-ink mb-2">We value your feedback</h2>
+                    <p className="text-sm text-muted">How would you rate your experience with the platform so far?</p>
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-6">
@@ -180,8 +180,8 @@ export function FeedbackWidget() {
                             size={36}
                             className={`transition-colors ${
                               star <= (hoverRating || rating)
-                                ? 'fill-amber-400 text-amber-400'
-                                : 'fill-slate-100 text-slate-200 dark:fill-slate-800 dark:text-slate-700'
+                                ? 'fill-caution text-caution'
+                                : 'fill-rule text-faint'
                             }`}
                           />
                         </button>
@@ -195,7 +195,7 @@ export function FeedbackWidget() {
                         onChange={(e) => setComment(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="Tell us what you love or what we can improve..."
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none h-32"
+                        className="w-full px-4 py-3 bg-surface-2/50 border border-rule rounded-md text-sm focus:outline-none focus:ring-2 focus:border-accent resize-none h-32"
                       />
                     </div>
 
@@ -203,7 +203,7 @@ export function FeedbackWidget() {
                     <button
                       type="submit"
                       disabled={isSubmitting || rating === 0}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      className="w-full flex items-center justify-center gap-2 py-3.5 bg-accent text-white rounded-md font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       {isSubmitting ? (
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -218,37 +218,37 @@ export function FeedbackWidget() {
               ) : (
                 <div className="p-8">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                    <div className="w-10 h-10 bg-accent-soft text-accent rounded-md flex items-center justify-center">
                       <History size={20} />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-slate-800">Your Feedbacks</h2>
-                      <p className="text-xs text-slate-500">History of your past submissions</p>
+                      <h2 className="text-xl font-bold text-ink">Your Feedbacks</h2>
+                      <p className="text-xs text-muted">History of your past submissions</p>
                     </div>
                   </div>
 
                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     {loadingHistory ? (
-                      <div className="flex justify-center py-10"><div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" /></div>
+                      <div className="flex justify-center py-10"><div className="w-8 h-8 border-2 border-accent border-t-indigo-600 rounded-full animate-spin" /></div>
                     ) : history.length === 0 ? (
                       <div className="text-center py-10">
-                        <MessageSquareHeart size={32} className="mx-auto text-slate-200 mb-2" />
-                        <p className="text-slate-500 text-sm">No past feedbacks found.</p>
+                        <MessageSquareHeart size={32} className="mx-auto text-faint mb-2" />
+                        <p className="text-muted text-sm">No past feedbacks found.</p>
                       </div>
                     ) : (
                       history.map((h, i) => (
-                        <div key={i} className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                        <div key={i} className="bg-surface-2 border border-rule rounded-md p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-1">
                               {[1,2,3,4,5].map(s => (
-                                <Star key={s} size={12} className={s <= h.rating ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"} />
+                                <Star key={s} size={12} className={s <= h.rating ? "fill-caution text-caution" : "fill-rule text-faint"} />
                               ))}
                             </div>
-                            <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                            <span className="text-[10px] text-faint font-bold flex items-center gap-1">
                               <Calendar size={10} /> {new Date(h.createdAt).toLocaleDateString()}
                             </span>
                           </div>
-                          {h.comment && <p className="text-sm text-slate-600 italic">"{h.comment}"</p>}
+                          {h.comment && <p className="text-sm text-ink-2 italic">"{h.comment}"</p>}
                         </div>
                       ))
                     )}

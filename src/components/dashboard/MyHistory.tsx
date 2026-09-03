@@ -33,7 +33,7 @@ export default function MyHistory() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
+        <Loader2 className="animate-spin text-accent" size={32} />
       </div>
     );
   }
@@ -41,24 +41,24 @@ export default function MyHistory() {
   return (
     <div className="max-w-6xl mx-auto pb-12">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <Clock className="text-blue-600" /> Reading History
+        <h1 className="text-2xl font-bold text-ink flex items-center gap-2">
+          <Clock className="text-accent" /> Reading History
         </h1>
-        <p className="text-slate-500 mt-1">Recently viewed articles, books, and videos.</p>
+        <p className="text-muted mt-1">Recently viewed articles, books, and videos.</p>
       </div>
 
       {history.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100 flex flex-col items-center justify-center">
-          <div className="w-16 h-16 bg-blue-50 text-blue-400 rounded-full flex items-center justify-center mb-4">
+        <div className="bg-surface rounded-md p-12 text-center shadow-sm border border-rule flex flex-col items-center justify-center">
+          <div className="w-16 h-16 bg-accent-soft text-accent rounded-full flex items-center justify-center mb-4">
             <Clock size={28} />
           </div>
-          <h3 className="text-lg font-bold text-slate-900 mb-2">No history found</h3>
-          <p className="text-slate-500 max-w-sm mb-6">
+          <h3 className="text-lg font-bold text-ink mb-2">No history found</h3>
+          <p className="text-muted max-w-sm mb-6">
             You haven't read or watched any content yet. Start exploring your library to see your history here.
           </p>
           <button
             onClick={() => navigate('/dashboard/library')}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+            className="px-6 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-md font-semibold transition-colors"
           >
             Explore Content
           </button>
@@ -76,30 +76,30 @@ export default function MyHistory() {
                   if (isVideo) navigate(`/dashboard/videos/player/${item.id}`);
                   else navigate(`/dashboard/viewer/${item.id}`);
                 }}
-                className="group bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl hover:border-blue-200 cursor-pointer transition-all duration-300 flex flex-col"
+                className="group bg-surface rounded-md border border-rule overflow-hidden shadow-sm hover:shadow-xl hover:border-accent cursor-pointer transition-all duration-300 flex flex-col"
               >
-                <div className="h-40 bg-slate-50 relative overflow-hidden flex items-center justify-center">
-                  {isVideo ? <PlayCircle size={48} className="text-slate-300" /> : <BookOpen size={48} className="text-slate-300" />}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="h-40 bg-surface-2 relative overflow-hidden flex items-center justify-center">
+                  {isVideo ? <PlayCircle size={48} className="text-faint" /> : <BookOpen size={48} className="text-faint" />}
                   
-                  <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  
+                  <div className="absolute bottom-3 left-3 bg-surface/90 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-bold text-ink-2 uppercase tracking-wider">
                     {item.contentType}
                   </div>
                 </div>
                 
                 <div className="p-5 flex-1 flex flex-col">
-                  <h3 className="font-bold text-slate-900 line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-bold text-ink line-clamp-2 mb-2 group-hover:text-accent transition-colors">
                     {item.title}
                   </h3>
-                  <p className="text-sm text-slate-500 line-clamp-2 mb-4 flex-1">
+                  <p className="text-sm text-muted line-clamp-2 mb-4 flex-1">
                     {item.authors || 'Unknown Author'}
                   </p>
                   
-                  <div className="flex items-center justify-between text-xs font-medium pt-4 border-t border-slate-100">
-                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md truncate max-w-[140px]">
+                  <div className="flex items-center justify-between text-xs font-medium pt-4 border-t border-rule">
+                    <span className="px-2 py-1 bg-surface-2 text-ink-2 rounded-md truncate max-w-[140px]">
                       {item.domain || 'General'}
                     </span>
-                    <span className="flex items-center gap-1 text-slate-400" title={`Viewed on ${new Date(activity.accessedAt).toLocaleDateString()}`}>
+                    <span className="flex items-center gap-1 text-faint" title={`Viewed on ${new Date(activity.accessedAt).toLocaleDateString()}`}>
                       <Clock size={12} />
                       {new Date(activity.accessedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>

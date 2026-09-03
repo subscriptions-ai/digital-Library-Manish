@@ -33,16 +33,16 @@ export function MyFeedbacksPage() {
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <MessageSquareHeart className="text-indigo-600" />
+          <h1 className="text-2xl font-bold text-ink tracking-tight flex items-center gap-2">
+            <MessageSquareHeart className="text-accent" />
             My Feedbacks
           </h1>
-          <p className="text-sm text-slate-500 mt-1">A history of all the feedback and ratings you have submitted.</p>
+          <p className="text-sm text-muted mt-1">A history of all the feedback and ratings you have submitted.</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={() => window.dispatchEvent(new Event('open-feedback'))}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm text-sm font-bold shadow-indigo-600/20"
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-md hover:bg-accent-hover transition-colors shadow-sm text-sm font-bold "
           >
             <Plus size={16} />
             Add New Feedback
@@ -50,7 +50,7 @@ export function MyFeedbacksPage() {
           <button 
             onClick={fetchHistory}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors shadow-sm text-sm font-bold disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-surface border border-rule text-ink-2 rounded-md hover:bg-surface-2 transition-colors shadow-sm text-sm font-bold disabled:opacity-50"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             Refresh
@@ -61,14 +61,14 @@ export function MyFeedbacksPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm animate-pulse h-40" />
+            <div key={i} className="bg-surface p-6 rounded-md border border-rule shadow-sm animate-pulse h-40" />
           ))}
         </div>
       ) : history.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
-          <MessageSquareHeart size={64} className="mx-auto text-slate-200 mb-4" />
-          <h3 className="text-lg font-bold text-slate-800">No feedbacks yet</h3>
-          <p className="text-slate-500 text-sm mt-1">You haven't submitted any feedback so far. Use the floating button to share your thoughts!</p>
+        <div className="text-center py-20 bg-surface rounded-md border border-rule shadow-sm">
+          <MessageSquareHeart size={64} className="mx-auto text-faint mb-4" />
+          <h3 className="text-lg font-bold text-ink">No feedbacks yet</h3>
+          <p className="text-muted text-sm mt-1">You haven't submitted any feedback so far. Use the floating button to share your thoughts!</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -78,7 +78,7 @@ export function MyFeedbacksPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+              className="bg-surface rounded-md border border-rule p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1">
@@ -86,24 +86,24 @@ export function MyFeedbacksPage() {
                     <Star 
                       key={star} 
                       size={18} 
-                      className={star <= h.rating ? "fill-amber-400 text-amber-400" : "fill-slate-100 text-slate-200"} 
+                      className={star <= h.rating ? "fill-caution text-caution" : "fill-rule text-faint"} 
                     />
                   ))}
                 </div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <div className="text-[10px] font-bold text-faint uppercase tracking-wider flex items-center gap-1">
                   <Calendar size={12} />
                   {new Date(h.createdAt).toLocaleDateString()}
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-4 flex-1 relative">
+              <div className="bg-surface-2 rounded-md p-4 flex-1 relative">
                 {h.comment ? (
-                  <p className="text-slate-700 text-sm leading-relaxed italic">"{h.comment}"</p>
+                  <p className="text-ink-2 text-sm leading-relaxed italic">"{h.comment}"</p>
                 ) : (
-                  <p className="text-slate-400 text-sm italic">No written comment.</p>
+                  <p className="text-faint text-sm italic">No written comment.</p>
                 )}
                 <div className="absolute top-0 right-4 -translate-y-1/2">
-                  <span className="text-[10px] font-bold px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg shadow-sm border border-indigo-200">
+                  <span className="text-[10px] font-bold px-2 py-1 bg-accent-soft text-accent rounded-lg shadow-sm border border-accent">
                     {h.type}
                   </span>
                 </div>

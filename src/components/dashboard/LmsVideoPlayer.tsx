@@ -33,8 +33,8 @@ export function LmsVideoPlayer() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] bg-slate-950 text-white rounded-3xl m-4">
-        <Loader2 className="animate-spin text-indigo-500 mb-4" size={40} />
+      <div className="flex flex-col items-center justify-center min-h-[70vh] bg-ink text-white rounded-md m-4">
+        <Loader2 className="animate-spin text-accent mb-4" size={40} />
         <h2 className="text-xl font-bold">Loading secure session...</h2>
       </div>
     );
@@ -53,19 +53,19 @@ export function LmsVideoPlayer() {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate(-1)}
-            className="p-2 hover:bg-slate-200 bg-slate-100 text-slate-600 rounded-full transition-colors"
+            className="p-2 hover:bg-rule bg-surface-2 text-ink-2 rounded-full transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-2">
-            <span className="bg-indigo-100 text-indigo-700 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-md">
+            <span className="bg-accent-soft text-accent text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-md">
               {video.domain}
             </span>
           </div>
         </div>
 
         {/* Video Player Container */}
-        <div className="w-full bg-black rounded-[24px] overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-200">
+        <div className="w-full bg-black rounded-[24px] overflow-hidden shadow-2xl shadow-indigo-900/10 border border-rule">
           <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
             {ytId ? (
               <iframe
@@ -78,7 +78,7 @@ export function LmsVideoPlayer() {
                 referrerPolicy="strict-origin-when-cross-origin"
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-500 flex-col gap-2">
+              <div className="absolute inset-0 flex items-center justify-center bg-ink text-muted flex-col gap-2">
                 <PlayCircle size={48} className="opacity-50" />
                 <p>Video format not supported for streaming.</p>
               </div>
@@ -87,24 +87,24 @@ export function LmsVideoPlayer() {
         </div>
 
         {/* Video Meta */}
-        <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight mb-4">
+        <div className="bg-surface rounded-md p-6 md:p-8 border border-rule shadow-sm">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-ink leading-tight mb-4">
             {video.title}
           </h1>
           
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-6 mb-6 text-sm text-slate-500 font-medium">
-            <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+          <div className="flex items-center gap-3 border-b border-rule pb-6 mb-6 text-sm text-muted font-medium">
+            <div className="flex items-center gap-1.5 text-accent bg-accent-soft px-3 py-1.5 rounded-lg border border-rule">
               <ShieldCheck size={16} />
               <span>Secure Session active</span>
             </div>
           </div>
 
           <div className="prose prose-slate max-w-none">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-2">
-              <Info size={20} className="text-indigo-500" />
+            <h3 className="flex items-center gap-2 text-lg font-bold text-ink mb-2">
+              <Info size={20} className="text-accent" />
               About this video
             </h3>
-            <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+            <p className="text-ink-2 leading-relaxed whitespace-pre-wrap">
               {video.description || "No description provided for this video."}
             </p>
           </div>
@@ -113,11 +113,11 @@ export function LmsVideoPlayer() {
 
       {/* Right Column: Related Videos Sidebar */}
       <div className="w-full lg:w-96 shrink-0 flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-slate-900 px-1 pt-2">Related Videos</h3>
+        <h3 className="text-lg font-bold text-ink px-1 pt-2">Related Videos</h3>
         
         <div className="space-y-3">
           {related.length === 0 ? (
-            <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100 text-slate-400 text-sm">
+            <div className="p-8 text-center bg-surface-2 rounded-md border border-rule text-faint text-sm">
               No related videos found in {video.domain}.
             </div>
           ) : (
@@ -129,23 +129,23 @@ export function LmsVideoPlayer() {
                 <div 
                   key={rv.id}
                   onClick={() => navigate(`/dashboard/videos/player/${rv.id}`)}
-                  className="flex gap-3 p-2 hover:bg-white rounded-xl transition-colors cursor-pointer group items-center"
+                  className="flex gap-3 p-2 hover:bg-surface rounded-md transition-colors cursor-pointer group items-center"
                 >
-                  <div className="relative w-36 h-20 bg-slate-100 rounded-lg overflow-hidden shrink-0">
+                  <div className="relative w-36 h-20 bg-surface-2 rounded-lg overflow-hidden shrink-0">
                     {rvThumb ? (
                       <img src={rvThumb} alt={rv.title} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400">
+                      <div className="w-full h-full flex items-center justify-center bg-rule text-faint">
                         <PlayCircle size={24} />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/0 transition-colors" />
+                    <div className="absolute inset-0 bg-ink/10 group-hover:bg-transparent transition-colors" />
                     <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 rounded-[4px]">
                       <PlayCircle size={10} className="text-white" />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0 pr-2">
-                    <h4 className="text-sm font-bold text-slate-800 leading-tight line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                    <h4 className="text-sm font-bold text-ink leading-tight line-clamp-2 group-hover:text-accent transition-colors">
                       {rv.title}
                     </h4>
                   </div>

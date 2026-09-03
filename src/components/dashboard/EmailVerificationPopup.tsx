@@ -61,26 +61,26 @@ export function EmailVerificationPopup() {
   return (
     <AnimatePresence>
       {isVisible && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-ink/40 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-amber-100"
+            className="w-full max-w-md bg-surface rounded-md shadow-2xl overflow-hidden border border-caution"
           >
-            <div className="bg-amber-50 p-6 flex flex-col items-center text-center relative border-b border-amber-100">
+            <div className="bg-caution-soft p-6 flex flex-col items-center text-center relative border-b border-caution">
               <button 
                 onClick={() => setIsVisible(false)}
-                className="absolute top-4 right-4 p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors"
+                className="absolute top-4 right-4 p-2 text-caution hover:bg-caution-soft rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
               
-              <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-caution-soft text-caution rounded-full flex items-center justify-center mb-4">
                 <MailWarning size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Verify Your Email</h3>
-              <p className="text-sm text-slate-600 mb-2">
+              <h3 className="text-xl font-bold text-ink mb-2">Verify Your Email</h3>
+              <p className="text-sm text-ink-2 mb-2">
                 We noticed your email address <strong>{profile?.email}</strong> is not verified yet. Please verify it to ensure you don't lose access to your account.
               </p>
             </div>
@@ -95,7 +95,7 @@ export function EmailVerificationPopup() {
                   />
                   <button 
                     onClick={() => setIsVerifying(false)}
-                    className="w-full py-2 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
+                    className="w-full py-2 text-sm font-bold text-muted hover:text-ink-2 transition-colors"
                   >
                     Cancel
                   </button>
@@ -104,7 +104,7 @@ export function EmailVerificationPopup() {
                 <div className="space-y-3">
                   <button 
                     onClick={() => setIsVerifying(true)}
-                    className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20"
+                    className="w-full py-3.5 bg-caution hover:opacity-90 text-white font-bold rounded-md transition-all shadow-lg "
                   >
                     Verify Email Now
                   </button>
@@ -112,14 +112,14 @@ export function EmailVerificationPopup() {
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <button 
                       onClick={() => snooze(1)}
-                      className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 hover:text-slate-800 transition-colors"
+                      className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 bg-surface-2 hover:bg-surface-2 border border-rule rounded-md text-ink-2 hover:text-ink transition-colors"
                     >
                       <Clock size={16} />
                       <span className="text-xs font-bold">Remind in 1 Hour</span>
                     </button>
                     <button 
                       onClick={() => snooze(24)}
-                      className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 hover:text-slate-800 transition-colors"
+                      className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 bg-surface-2 hover:bg-surface-2 border border-rule rounded-md text-ink-2 hover:text-ink transition-colors"
                     >
                       <Calendar size={16} />
                       <span className="text-xs font-bold">Remind Tomorrow</span>

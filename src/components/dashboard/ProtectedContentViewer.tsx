@@ -629,7 +629,7 @@ export function ProtectedContentViewer() {
           </button>
 
           {/* Secure badge */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/15 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
             <Shield size={11} /> Secure
           </div>
         </div>

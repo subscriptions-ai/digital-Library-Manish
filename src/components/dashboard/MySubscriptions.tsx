@@ -35,7 +35,7 @@ export function MySubscriptions() {
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        {[...Array(3)].map((_, i) => <div key={i} className="h-48 bg-slate-200 dark:bg-slate-700 rounded-3xl" />)}
+        {[...Array(3)].map((_, i) => <div key={i} className="h-48 bg-rule rounded-md" />)}
       </div>
     );
   }
@@ -48,19 +48,19 @@ export function MySubscriptions() {
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Timeline & Billing</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your active plans and renew expiring subscriptions.</p>
+          <h1 className="text-2xl font-bold text-ink tracking-tight">Timeline & Billing</h1>
+          <p className="text-sm text-muted mt-1">Manage your active plans and renew expiring subscriptions.</p>
         </div>
 
         {/* Summary Pills */}
         <div className="flex items-center gap-2">
           {activeCount > 0 && (
-            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-bold border border-emerald-100 dark:border-emerald-800/30">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-soft text-accent rounded-md text-xs font-bold border border-rule">
               <CheckCircle2 size={13} /> {activeCount} Active
             </span>
           )}
           {expiredCount > 0 && (
-            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold border border-red-100 dark:border-red-800/30">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-alarm-soft text-alarm rounded-md text-xs font-bold border border-alarm">
               <AlertCircle size={13} /> {expiredCount} Expired
             </span>
           )}
@@ -68,15 +68,15 @@ export function MySubscriptions() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-max">
+      <div className="flex bg-surface-2 p-1 rounded-md w-max">
         {(['All', 'Active', 'Expired'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setFilter(tab)}
             className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${
               filter === tab 
-                ? 'bg-white dark:bg-slate-700 shadow text-blue-600 dark:text-blue-400' 
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                ? 'bg-surface shadow text-accent' 
+                : 'text-muted hover:text-ink-2'
             }`}
           >
             {tab}
@@ -100,17 +100,17 @@ export function MySubscriptions() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2, delay: idx * 0.05 }}
-                className={`bg-white dark:bg-slate-800 rounded-3xl border shadow-sm p-6 relative overflow-hidden transition-shadow hover:shadow-md ${
+                className={`bg-surface rounded-md border shadow-sm p-6 relative overflow-hidden transition-shadow hover:shadow-md ${
                   isExpired 
-                    ? 'border-red-100 dark:border-red-900/30' 
+                    ? 'border-alarm' 
                     : isUrgent 
-                      ? 'border-amber-100 dark:border-amber-800/30' 
-                      : 'border-slate-100 dark:border-slate-700'
+                      ? 'border-caution' 
+                      : 'border-rule'
                 }`}
               >
                 {/* Subtle left accent bar */}
                 <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-3xl ${
-                  isExpired ? 'bg-red-400 dark:bg-red-600' : isUrgent ? 'bg-amber-400 dark:bg-amber-500' : 'bg-emerald-400 dark:bg-emerald-500'
+                  isExpired ? 'bg-alarm' : isUrgent ? 'bg-caution' : 'bg-accent'
                 }`} />
 
                 <div className="pl-3 flex flex-col sm:flex-row justify-between gap-6">
@@ -118,35 +118,35 @@ export function MySubscriptions() {
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                       <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md ${
                         isExpired 
-                          ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' 
-                          : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                          ? 'bg-alarm-soft text-alarm' 
+                          : 'bg-accent-soft text-accent'
                       }`}>
                         {sub.status}
                       </span>
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-md">{sub.planName}</span>
+                      <span className="text-xs font-bold text-muted bg-surface-2 px-2.5 py-1 rounded-md">{sub.planName}</span>
                     </div>
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">{sub.domainName}</h2>
+                    <h2 className="text-xl font-bold text-ink">{sub.domainName}</h2>
                     {sub.allowedContentTypes && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-lg">
+                      <p className="text-xs text-muted mt-1 max-w-lg">
                         Includes: {(sub.allowedContentTypes).join(', ')}
                       </p>
                     )}
                   </div>
 
                   <div className="text-left sm:text-right shrink-0">
-                    <div className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center sm:justify-end gap-2">
-                      <Calendar size={16} className="text-slate-400 dark:text-slate-500" />
+                    <div className="text-sm font-bold text-ink flex items-center sm:justify-end gap-2">
+                      <Calendar size={16} className="text-faint" />
                       {new Date(sub.startDate).toLocaleDateString()} — {new Date(sub.endDate).toLocaleDateString()}
                     </div>
                     {!isExpired ? (
-                      <p className={`text-xs font-bold mt-2 flex items-center sm:justify-end gap-1 ${isUrgent ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                      <p className={`text-xs font-bold mt-2 flex items-center sm:justify-end gap-1 ${isUrgent ? 'text-caution' : 'text-muted'}`}>
                         {isUrgent && <AlertCircle size={14}/>} {daysLeft} days remaining
                       </p>
                     ) : (
-                      <p className="text-xs font-bold mt-2 text-red-500 dark:text-red-400">Subscription Expired</p>
+                      <p className="text-xs font-bold mt-2 text-alarm">Subscription Expired</p>
                     )}
                     {isExpired && (
-                      <a href="/contact" className="mt-2 inline-block text-[10px] font-bold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+                      <a href="/contact" className="mt-2 inline-block text-[10px] font-bold px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white transition-colors">
                         Request Renewal
                       </a>
                     )}
@@ -155,17 +155,17 @@ export function MySubscriptions() {
 
                 {/* Progress Bar */}
                 <div className="mt-6 pl-3">
-                  <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-surface-2 rounded-full overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }} 
                       animate={{ width: `${progress}%` }} 
                       transition={{ duration: 1, delay: 0.2 }}
                       className={`h-full rounded-full ${
-                        isExpired ? 'bg-red-500 dark:bg-red-600' : isUrgent ? 'bg-amber-500 dark:bg-amber-400' : 'bg-emerald-500 dark:bg-emerald-400'
+                        isExpired ? 'bg-alarm' : isUrgent ? 'bg-caution' : 'bg-accent'
                       }`}
                     />
                   </div>
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1.5">
+                  <div className="flex justify-between text-[10px] font-bold text-faint uppercase tracking-widest mt-1.5">
                     <span>Started</span>
                     <span>{progress}% Elapsed</span>
                     <span>Ends</span>
@@ -177,11 +177,11 @@ export function MySubscriptions() {
         </AnimatePresence>
 
         {filteredSubs.length === 0 && (
-          <div className="text-center p-12 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700">
-            <CreditCard size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No subscriptions found</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">You don't have any {filter.toLowerCase()} subscriptions at the moment.</p>
-            <a href="/contact" className="mt-4 inline-block px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors">
+          <div className="text-center p-12 bg-surface rounded-md border border-rule">
+            <CreditCard size={48} className="mx-auto text-faint mb-4" />
+            <h3 className="text-lg font-bold text-ink mb-1">No subscriptions found</h3>
+            <p className="text-sm text-muted">You don't have any {filter.toLowerCase()} subscriptions at the moment.</p>
+            <a href="/contact" className="mt-4 inline-block px-5 py-2.5 bg-accent hover:bg-accent-hover text-white font-bold text-sm rounded-md transition-colors">
               Request Access
             </a>
           </div>
