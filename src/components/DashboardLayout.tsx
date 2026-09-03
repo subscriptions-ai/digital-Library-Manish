@@ -12,7 +12,9 @@ import {
   Library,
   Receipt,
   PlaySquare,
-  MessageSquareHeart
+  MessageSquareHeart,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,7 +39,24 @@ const sidebarItems: SidebarItem[] = [
   { label: 'Profile Settings', icon: Settings, path: '/dashboard/settings', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
 ];
 
+/**
+ * The theme lives here, not on one page.
+ *
+ * The toggle used to sit inside the dashboard home, so a reader on any other
+ * page could not reach it. The class it sets is what every token reads from,
+ * and the preference keeps its old key so an existing choice carries over.
+ */
+function useTheme() {
+  const [dark, setDark] = useState(() => localStorage.getItem('lms-dark') === '1');
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+    localStorage.setItem('lms-dark', dark ? '1' : '0');
+  }, [dark]);
+  return { dark, setDark };
+}
+
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { dark, setDark } = useTheme();
   const { profile, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -183,6 +202,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="flex h-9 w-9 items-center justify-center rounded-full border border-rule bg-surface-2 font-medium text-muted">
               {profile?.displayName?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase()}
             </div>
+            <button
+              onClick={() => setDark(d => !d)}
+              title={dark ? 'Light theme' : 'Dark theme'}
+              className="rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            >
+              {dark ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             <div className="mx-1 h-7 w-px bg-rule"></div>
             <button
               onClick={handleLogout}

@@ -127,10 +127,10 @@ function PageCanvas({ pdfDoc, pageNum, scale, darkMode, onVisible }: PageCanvasP
     >
       {rendering && (
         <div
-          className="absolute inset-0 flex items-center justify-center bg-slate-800/40 rounded-sm z-10"
+          className="absolute inset-0 z-10 flex items-center justify-center rounded-sm bg-ink/20"
           style={{ minWidth: 200, minHeight: 280 }}
         >
-          <Loader2 className="animate-spin text-blue-400" size={28} />
+          <Loader2 className="animate-spin text-accent" size={28} />
         </div>
       )}
       <canvas
@@ -453,15 +453,15 @@ export function ProtectedContentViewer() {
   // ────────────────────────────────────────────────────
   if (loadingMeta) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] bg-slate-950">
+      <div className="flex min-h-[80vh] flex-col items-center justify-center bg-ground">
         <div className="flex flex-col items-center gap-5">
           <div className="relative w-16 h-16">
-            <div className="absolute inset-0 rounded-full border-4 border-blue-500/20" />
-            <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+            <div className="absolute inset-0 rounded-full border-4 border-rule" />
+            <div className="absolute inset-0 animate-spin rounded-full border-4 border-accent border-t-transparent" />
           </div>
           <div className="text-center">
             <p className="text-white font-semibold text-lg">Verifying Access</p>
-            <p className="text-slate-400 text-sm mt-1">Establishing a secure reading session…</p>
+            <p className="mt-1 text-[13.5px] text-muted">Establishing a secure reading session…</p>
           </div>
         </div>
       </div>
@@ -473,16 +473,16 @@ export function ProtectedContentViewer() {
   // ────────────────────────────────────────────────────
   if (metaError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] bg-slate-950 text-center px-4">
+      <div className="flex min-h-[80vh] flex-col items-center justify-center bg-ground px-4 text-center">
         <div className="max-w-md space-y-5">
-          <div className="w-20 h-20 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
-            <AlertCircle size={36} className="text-red-400" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-alarm-soft">
+            <AlertCircle size={30} className="text-alarm" />
           </div>
           <h2 className="text-2xl font-bold text-white">Access Restricted</h2>
-          <p className="text-slate-400">{metaError}</p>
+          <p className="text-[13.5px] text-muted">{metaError}</p>
           <button
             onClick={() => navigate('/dashboard/library/access')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all"
+            className="inline-flex items-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover"
           >
             <BookOpen size={18} /> View My Access
           </button>
@@ -506,37 +506,37 @@ export function ProtectedContentViewer() {
       className={`absolute inset-0 flex flex-col ${darkMode ? 'bg-slate-950' : 'bg-slate-100'} transition-colors duration-300`}
     >
       {/* ─── TOP BAR ─────────────────────────────────── */}
-      <div className={`h-14 shrink-0 flex items-center justify-between px-3 sm:px-5 border-b ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'} shadow-md z-20`}>
+      <div className={`h-14 shrink-0 flex items-center justify-between px-3 sm:px-5 border-b ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-surface border-rule'} shadow-md z-20`}>
         {/* Left: back + title */}
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate(-1)}
-            className={`p-2 rounded-xl transition-colors shrink-0 ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+            className={`p-2 rounded-xl transition-colors shrink-0 ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
           >
             <ArrowLeft size={20} />
           </button>
           <div className="min-w-0">
-            <h1 className={`font-bold leading-tight line-clamp-1 text-sm sm:text-base ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+            <h1 className={`font-bold leading-tight line-clamp-1 text-sm sm:text-base ${darkMode ? 'text-white' : 'text-ink'}`}>
               {content?.title}
             </h1>
             {/* The way back into the catalogue: which journal this came from, and
                 its full record. Without this the reader is a dead end. */}
-            <p className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider font-semibold truncate">
+            <p className="flex items-center gap-1.5 truncate font-mono text-[10.5px] uppercase tracking-wider text-faint">
               <span className="shrink-0">{content?.contentType}</span>
               {content?.journalIssn && content?.journalName && (
                 <>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-rule-2">·</span>
                   <Link to={`${libBase}/journal/${encodeURIComponent(content.journalIssn)}`}
-                    className="truncate normal-case tracking-normal text-blue-500 hover:underline">
+                    className="truncate normal-case tracking-normal text-accent hover:underline">
                     {content.journalName}
                   </Link>
                 </>
               )}
               {content?.kind === 'article' && (
                 <>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-rule-2">·</span>
                   <Link to={`${libBase}/article/${id}`}
-                    className="shrink-0 normal-case tracking-normal text-blue-500 hover:underline">
+                    className="shrink-0 normal-case tracking-normal text-accent hover:underline">
                     Full record
                   </Link>
                 </>
@@ -549,9 +549,9 @@ export function ProtectedContentViewer() {
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Page indicator (PDF only) */}
           {isPdf && numPages > 0 && (
-            <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold ${darkMode ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+            <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold ${darkMode ? 'bg-white/5 text-slate-300' : 'bg-surface-2 text-ink-2'}`}>
               <span>{currentPage}</span>
-              <span className="text-slate-500">/</span>
+              <span className="text-muted">/</span>
               <span>{numPages}</span>
             </div>
           )}
@@ -561,7 +561,7 @@ export function ProtectedContentViewer() {
             <button
               onClick={() => setScale(s => Math.max(0.4, s - 0.2))}
               title="Zoom Out"
-              className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+              className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             >
               <ZoomOut size={18} />
             </button>
@@ -572,7 +572,7 @@ export function ProtectedContentViewer() {
             <button
               onClick={() => setScale(s => Math.min(3.0, s + 0.2))}
               title="Zoom In"
-              className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+              className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             >
               <ZoomIn size={18} />
             </button>
@@ -583,7 +583,7 @@ export function ProtectedContentViewer() {
             <button
               onClick={() => setScale(window.innerWidth < 640 ? 0.6 : 1.4)}
               title="Reset Zoom"
-              className={`hidden sm:block p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+              className={`hidden sm:block p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             >
               <RotateCcw size={16} />
             </button>
@@ -594,7 +594,7 @@ export function ProtectedContentViewer() {
             onClick={toggleFavorite}
             disabled={togglingFavorite}
             title={isFavorite ? "Remove from Wish List" : "Add to Wish List"}
-            className={`p-2 rounded-xl transition-all ${isFavorite ? 'text-red-500 hover:bg-red-500/10' : (darkMode ? 'text-slate-400 hover:text-red-400 hover:bg-white/10' : 'text-slate-500 hover:text-red-500 hover:bg-slate-100')}`}
+            className={`p-2 rounded-xl transition-all ${isFavorite ? 'text-red-500 hover:bg-red-500/10' : (darkMode ? 'text-slate-400 hover:text-red-400 hover:bg-white/10' : 'text-muted hover:text-alarm hover:bg-surface-2')}`}
           >
             <Heart size={18} fill={isFavorite ? "currentColor" : "none"} className={isFavorite ? "animate-pulse" : ""} />
           </button>
@@ -604,7 +604,7 @@ export function ProtectedContentViewer() {
             <button
               onClick={() => setRailOpen(o => !o)}
               title={railOpen ? 'Hide record' : 'Show record'}
-              className={`hidden lg:block p-2 rounded-xl transition-colors ${railOpen ? 'text-accent' : (darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100')}`}
+              className={`hidden lg:block p-2 rounded-xl transition-colors ${railOpen ? 'text-accent' : (darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2')}`}
             >
               <PanelRight size={18} />
             </button>
@@ -614,7 +614,7 @@ export function ProtectedContentViewer() {
           <button
             onClick={() => setDarkMode(d => !d)}
             title={darkMode ? 'Light Mode' : 'Dark Mode'}
-            className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+            className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
           >
             {darkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
@@ -623,7 +623,7 @@ export function ProtectedContentViewer() {
           <button
             onClick={toggleFullscreen}
             title="Fullscreen"
-            className={`hidden sm:block p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+            className={`hidden sm:block p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
           >
             <Maximize2 size={18} />
           </button>
@@ -641,17 +641,17 @@ export function ProtectedContentViewer() {
           <button
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-surface-2 text-ink-2 hover:bg-rule'}`}
           >
             <ChevronLeft size={14} /> Prev
           </button>
-          <span className={`text-xs font-mono ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-            Page <strong className={darkMode ? 'text-white' : 'text-slate-900'}>{currentPage}</strong> of <strong className={darkMode ? 'text-white' : 'text-slate-900'}>{numPages}</strong>
+          <span className={`text-xs font-mono ${darkMode ? 'text-slate-400' : 'text-muted'}`}>
+            Page <strong className={darkMode ? 'text-white' : 'text-ink'}>{currentPage}</strong> of <strong className={darkMode ? 'text-white' : 'text-ink'}>{numPages}</strong>
           </span>
           <button
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= numPages}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-surface-2 text-ink-2 hover:bg-rule'}`}
           >
             Next <ChevronRight size={14} />
           </button>
@@ -749,23 +749,23 @@ export function ProtectedContentViewer() {
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5">
               <div className="relative w-24 h-24">
                 <svg className="w-24 h-24 -rotate-90" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r={R} className="stroke-blue-500/15 dark:stroke-blue-400/10" strokeWidth="5" fill="none" />
-                  <circle cx="32" cy="32" r={R} className={`stroke-blue-500 transition-[stroke-dashoffset] duration-200 ease-out ${pct === null ? 'animate-spin origin-center' : ''}`}
+                  <circle cx="32" cy="32" r={R} className="stroke-blue-500/15" strokeWidth="5" fill="none" />
+                  <circle cx="32" cy="32" r={R} className={`stroke-accent transition-[stroke-dashoffset] duration-200 ease-out ${pct === null ? 'animate-spin origin-center' : ''}`}
                     strokeWidth="5" fill="none" strokeLinecap="round" strokeDasharray={CIRC}
                     strokeDashoffset={pct === null ? CIRC * 0.7 : CIRC * (1 - pct / 100)} />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   {pct === null
-                    ? <BookOpen size={22} className="text-blue-500 animate-pulse" />
-                    : <span className="text-lg font-black text-blue-600 dark:text-blue-400 tabular-nums">{pct}%</span>}
+                    ? <BookOpen size={22} className="animate-pulse text-accent" />
+                    : <span className="tnum font-mono text-[17px] text-accent tabular-nums">{pct}%</span>}
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-slate-600 dark:text-slate-300 text-sm font-bold">Loading document…</p>
-                <p className="text-slate-400 text-xs mt-1 tabular-nums">
+                <p className="text-ink-2 text-[13.5px]">Loading document…</p>
+                <p className="tnum mt-1 font-mono text-[11.5px] text-faint">
                   {total > 0 ? `${fmt(loaded)} of ${fmt(total)}` : (loaded > 0 ? `${fmt(loaded)} downloaded` : 'Preparing secure stream…')}
                 </p>
-                {total > 1048576 * 8 && <p className="text-slate-300 dark:text-slate-500 text-[11px] mt-1">Large file — this may take a moment</p>}
+                {total > 1048576 * 8 && <p className="text-faint text-[11px] mt-1">Large file — this may take a moment</p>}
               </div>
             </div>
           );
@@ -804,10 +804,10 @@ export function ProtectedContentViewer() {
         {iframeFallback && !isVideo && (
           <div>
             {content?.url && (
-              <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Can't see the document below?</span>
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-surface-2 border-b border-rule text-xs">
+                <span className="text-muted">Can't see the document below?</span>
                 <a href={content.url} target="_blank" rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold">
+                  className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 font-semibold text-accent-on hover:bg-accent-hover">
                   <ExternalLink size={13} /> Open Full Text
                 </a>
               </div>
@@ -922,7 +922,7 @@ export function ProtectedContentViewer() {
 
       {/* ─── BOTTOM STATUS BAR ───────────────────────── */}
       {isPdf && numPages > 0 && (
-        <div className={`shrink-0 h-9 flex items-center justify-between px-5 border-t text-[11px] ${darkMode ? 'bg-slate-900 border-white/10 text-slate-500' : 'bg-white border-slate-200 text-slate-400'}`}>
+        <div className={`shrink-0 h-9 flex items-center justify-between px-5 border-t text-[11px] ${darkMode ? 'bg-slate-900 border-white/10 text-slate-500' : 'bg-surface border-rule text-faint'}`}>
           <span className="flex items-center gap-2">
             <Shield size={11} className="text-emerald-500" />
             Protected Content — Reading session is logged

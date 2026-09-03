@@ -49,113 +49,76 @@ const contentTypeIcon = (type?: string) => {
   return <BookOpen size={14} />;
 };
 
-const contentTypeBadgeColor = (type?: string) => {
-  const t = (type || '').toLowerCase();
-  if (t.includes('video')) return 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300';
-  if (t.includes('thesis')) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
-  if (t.includes('periodical') || t.includes('journal')) return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
-  return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
-};
-
 import { DOMAINS } from '../../constants';
 
-const domainGradient = (domainName: string) => {
-  const domainObj = DOMAINS.find(d => d.name === domainName);
-  const c = domainObj?.themeColor || 'slate';
-  const map: Record<string, string> = {
-    'red': 'from-red-500 to-red-700',
-    'blue': 'from-blue-500 to-blue-700',
-    'green': 'from-green-500 to-green-700',
-    'emerald': 'from-emerald-500 to-emerald-700',
-    'teal': 'from-teal-500 to-teal-700',
-    'amber': 'from-amber-500 to-amber-700',
-    'purple': 'from-purple-500 to-purple-700',
-    'orange': 'from-orange-500 to-orange-700',
-    'pink': 'from-pink-500 to-pink-700',
-    'slate': 'from-slate-500 to-slate-700',
-    'indigo': 'from-indigo-500 to-indigo-700',
-    'lime': 'from-lime-500 to-lime-700',
-    'stone': 'from-stone-500 to-stone-700',
-    'zinc': 'from-zinc-500 to-zinc-700',
-    'neutral': 'from-neutral-500 to-neutral-700',
-    'gray': 'from-gray-500 to-gray-700',
-    'sky': 'from-sky-500 to-sky-700',
-    'rose': 'from-rose-500 to-rose-700',
-    'cyan': 'from-cyan-500 to-cyan-700',
-    'violet': 'from-violet-500 to-violet-700',
-  };
-  return map[c] || 'from-slate-500 to-slate-700';
-};
-
-// ─── Content Card ─────────────────────────────────────────────────────────────
-function ContentCard({ item, onOpen }: { item: ContentItem; onOpen: (item: ContentItem) => void }) {
+// ─── Content row ──────────────────────────────────────────────────────────────
+/**
+ * One item on the dashboard, as a record.
+ *
+ * This was a tile: a coloured gradient standing in for a cover that does not
+ * exist, a badge in one of four hues, and a hover lift. Twenty of them read as
+ * twenty products. It is the same ruled row the search results and the wish
+ * list use, so an item looks like itself wherever a reader meets it.
+ */
+function ContentCard({ item, n, onOpen }: { item: ContentItem; n: number; onOpen: (item: ContentItem) => void }) {
   const navigate = useNavigate();
   const isLocked = item.locked;
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={!isLocked ? { y: -4, scale: 1.02 } : {}}
-      className={`group relative rounded-2xl overflow-hidden border transition-all duration-300 cursor-pointer
-        ${isLocked
-          ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 opacity-75'
-          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-200 dark:hover:border-blue-700'
-        }`}
-      onClick={() => !isLocked && onOpen(item)}
-    >
-      {/* Thumbnail / Placeholder */}
-      <div className={`relative h-36 flex items-center justify-center text-white bg-gradient-to-br ${domainGradient(item.domain || '')}`}>
-        {item.thumbnailUrl ? (
-          <img src={item.thumbnailUrl} alt={item.title} className={`w-full h-full object-cover ${isLocked ? 'blur-sm' : ''}`} />
-        ) : (
-          <div className="text-6xl opacity-30">
-            {contentTypeIcon(item.contentType)}
-          </div>
-        )}
-        {/* Lock overlay */}
-        {isLocked && (
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2">
-            <div className="bg-white/20 backdrop-blur-md rounded-full p-3">
-              <Lock size={24} className="text-white" />
-            </div>
-          </div>
-        )}
-        {/* Content type badge */}
-        <div className="absolute top-2 left-2">
-          <span className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide backdrop-blur-md bg-black/30 text-white`}>
-            {contentTypeIcon(item.contentType)} {item.contentType || 'Book'}
-          </span>
-        </div>
-      </div>
 
-      {/* Info */}
-      <div className="p-4">
-        <h3 className={`font-semibold text-sm mb-1 leading-snug ${isLocked ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'}`}>
-          {item.title}
-        </h3>
-        <p className={`text-xs line-clamp-1 mb-3 ${isLocked ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
-          {item.authors || 'Unknown Author'}
-        </p>
-        <div className="flex items-center gap-2">
+  return (
+    <div className="group flex gap-4 px-5 py-4">
+      <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{n}</span>
+
+      <div className="min-w-0 flex-1">
+        <button
+          onClick={() => !isLocked && onOpen(item)}
+          disabled={isLocked}
+          className="block w-full text-left disabled:cursor-default"
+        >
+          <h3 className={`font-serif text-[16px] font-medium leading-snug ${
+            isLocked ? 'text-faint' : 'text-ink group-hover:text-accent'}`}>
+            {item.title}
+          </h3>
+        </button>
+
+        <p className="mt-1 truncate text-[13px] text-ink-2">{item.authors || 'Author unrecorded'}</p>
+
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {item.contentType && (
+            <span className="inline-flex items-center gap-1 rounded-[3px] border border-rule-2 px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted">
+              {contentTypeIcon(item.contentType)} {item.contentType}
+            </span>
+          )}
           {item.domain && (
-            <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 text-[10px] font-bold rounded-md uppercase tracking-wide truncate max-w-[80px]">
+            <span className="rounded-[3px] border border-rule-2 px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted">
               {item.domain}
             </span>
           )}
-          <div className="flex-1" />
-          {isLocked ? (
-            <button onClick={() => navigate('/contact')} className="text-[10px] font-bold text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 px-3 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
-              Request Access
-            </button>
-          ) : (
-            <button className="text-[10px] font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 px-3 py-1 rounded-lg group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all flex items-center gap-1">
-              Open <ChevronRight size={10} />
-            </button>
+          {isLocked && (
+            <span className="inline-flex items-center gap-1 rounded-[3px] border border-caution bg-caution-soft px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-caution">
+              <Lock size={9} /> Not in your subscription
+            </span>
           )}
         </div>
       </div>
-    </motion.div>
+
+      <div className="shrink-0 self-start pt-0.5">
+        {isLocked ? (
+          <button
+            onClick={() => navigate('/contact')}
+            className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
+          >
+            Request access
+          </button>
+        ) : (
+          <button
+            onClick={() => onOpen(item)}
+            className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
+          >
+            Open
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -196,15 +159,6 @@ export function LMSDashboard() {
     sessionStorage.setItem('lms_locked', showLocked ? '1' : '0');
     sessionStorage.setItem('lms_page', String(page));
   }, [search, domainFilter, typeFilter, subjectFilter, tagFilter, viewMode, showLocked, page]);
-
-  // dark mode
-  const [dark, setDark] = useState(() => localStorage.getItem('lms-dark') === '1');
-  useEffect(() => {
-    const el = document.documentElement;
-    if (dark) el.classList.add('dark');
-    else el.classList.remove('dark');
-    localStorage.setItem('lms-dark', dark ? '1' : '0');
-  }, [dark]);
 
   // debounce search
   useEffect(() => {
@@ -304,39 +258,32 @@ export function LMSDashboard() {
   const CONTENT_TYPES = ['Books', 'Periodicals', 'Theses', 'Videos', 'Case Reports'];
   const domains = Object.keys(grouped);
 
-  const gradients = [
-    'from-blue-600 to-indigo-700',
-    'from-emerald-500 to-teal-600',
-    'from-rose-500 to-pink-600',
-    'from-amber-500 to-orange-600',
-    'from-purple-500 to-violet-600',
-  ];
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900 transition-colors duration-300`}>
+    <div className="min-h-full bg-ground">
       {/* ── DEMO ACCOUNT BANNER ── */}
       {profile?.isDemoAccount && (
-        <div className="bg-orange-500 text-white px-4 py-2 text-center text-sm font-bold shadow-md relative z-40">
+        <div className="relative z-40 border-b border-caution bg-caution-soft px-4 py-2 text-center text-[13px] text-caution">
           ⚠️ This is a Demo Account. It is valid for 30 days and will expire on {profile.demoExpiresAt ? new Date(profile.demoExpiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its expiry date'}.
         </div>
       )}
 
       {/* ── TOP HEADER ── */}
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-30 px-6 py-4">
+      <div className="bg-surface/80 backdrop-blur-xl border-b border-rule/50 sticky top-0 z-30 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Welcome */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white truncate">
-              Welcome back, <span className="text-blue-600 dark:text-blue-400">{dashData?.displayName || profile?.displayName || 'Reader'}</span> 👋
+            <h1 className="text-xl font-bold text-ink truncate">
+              Welcome back, <span className="text-accent">{dashData?.displayName || profile?.displayName || 'Reader'}</span> 👋
             </h1>
             <div className="flex items-center gap-3 mt-0.5 flex-wrap">
               {expiryStr && (
-                <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1 text-xs text-muted">
                   <Clock size={12} /> Subscription expires {expiryStr}
                 </span>
               )}
               {dashData?.organization && (
-                <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                <span className="flex items-center gap-1 text-xs text-accent font-medium">
                   <GraduationCap size={12} /> {dashData.organization}
                 </span>
               )}
@@ -344,17 +291,14 @@ export function LMSDashboard() {
           </div>
           {/* Quick Stats */}
           <div className="hidden lg:flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-4 py-2 rounded-xl text-sm font-semibold border border-emerald-100 dark:border-emerald-800/40">
+            <div className="flex items-center gap-2 bg-accent-soft text-accent px-4 py-2 rounded-md text-sm font-semibold border border-rule">
               <CheckCircle size={15} /> {unlockedCount} Accessible
             </div>
             {lockedCount > 0 && (
-              <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-semibold border border-red-100 dark:border-red-800/40">
+              <div className="flex items-center gap-2 bg-alarm-soft text-alarm px-4 py-2 rounded-md text-sm font-semibold border border-alarm">
                 <Lock size={15} /> {lockedCount} Locked
               </div>
             )}
-            <button onClick={() => setDark(d => !d)} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-lg" title="Toggle Dark Mode">
-              {dark ? '☀️' : '🌙'}
-            </button>
           </div>
         </div>
       </div>
@@ -363,59 +307,53 @@ export function LMSDashboard() {
 
         {/* ── SUBSCRIPTION COUNTDOWN WIDGET ── */}
         {expiryDate && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-900 dark:from-slate-800 dark:via-blue-900/40 dark:to-slate-800 rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-blue-900/20 relative overflow-hidden"
-          >
-            {/* Decorative background circle */}
-            <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="relative z-10 flex-1 text-center md:text-left">
-              <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                <Clock className="text-blue-300" size={18} />
-                <span className="text-blue-200 font-bold uppercase tracking-wider text-xs">
-                  {dashData?.planName ? `${dashData.planName} (${dashData.planType})` : 'Subscription Countdown'}
-                </span>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1">
-                {isExpired ? 'Your access has expired.' : 'Your digital library access is active.'}
+          <div className={`flex flex-col gap-4 rounded-md border p-5 sm:flex-row sm:items-center sm:justify-between ${
+            isExpired || maxDaysLeft <= 10 ? 'border-caution bg-caution-soft' : 'border-rule bg-surface'}`}>
+            <div>
+              <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">
+                {dashData?.planName ? `${dashData.planName} · ${dashData.planType}` : 'Your access'}
+              </p>
+              <h2 className="mt-1.5 font-serif text-[19px] font-medium text-ink">
+                {isExpired ? 'Your access has expired' : 'Your access is active'}
               </h2>
-              <p className="text-blue-200 text-sm max-w-lg">
-                {isExpired 
-                  ? 'Please renew your plan to regain full access to premium journals and content.'
-                  : `Your current access plan will expire on ${new Date(expiryDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.`}
+              <p className="mt-1 text-[13.5px] text-ink-2">
+                {isExpired
+                  ? 'Renew to open the collection again.'
+                  : `Runs until ${new Date(expiryDate).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.`}
               </p>
             </div>
-
-            <div className="relative z-10 flex items-center justify-center gap-4">
-              <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 min-w-[120px] shadow-inner">
-                <span className={`text-4xl md:text-5xl font-black ${maxDaysLeft <= 10 ? 'text-rose-400' : 'text-white'}`}>
+            {!isExpired && (
+              <div className="shrink-0 text-left sm:text-right">
+                <p className={`tnum font-mono text-[30px] leading-none ${maxDaysLeft <= 10 ? 'text-caution' : 'text-ink'}`}>
                   {maxDaysLeft}
-                </span>
-                <span className="text-blue-200 text-xs font-bold uppercase tracking-widest mt-1">Days Left</span>
+                </p>
+                <p className="mt-1 font-mono text-[10.5px] uppercase tracking-wider text-faint">
+                  {maxDaysLeft === 1 ? 'day left' : 'days left'}
+                </p>
               </div>
-            </div>
-          </motion.div>
+            )}
+          </div>
         )}
 
-        {/* ── STATS ROW ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* ── WHAT THE SUBSCRIPTION COVERS ── */}
+        {/* These four were gradient tiles in four different hues. They are the
+            headline figures of the page, so they stay big — but one surface,
+            one rule, and the numbers set in mono so they line up. */}
+        <dl className="grid grid-cols-2 divide-rule overflow-hidden rounded-md border border-rule bg-surface sm:grid-cols-4 sm:divide-x">
           {[
-            { label: 'Active Subscriptions', value: dashData?.activeSubscriptions ?? '—', gradient: 'from-blue-500 to-blue-700', icon: <Star size={22} /> },
-            { label: 'Accessible Content', value: unlockedCount, gradient: 'from-emerald-500 to-emerald-700', icon: <BookOpen size={22} /> },
-            { label: 'Domains Covered', value: dashData?.allowedDomains?.length ?? 0, gradient: 'from-purple-500 to-purple-700', icon: <Layers size={22} /> },
-            { label: 'Items Read', value: dashData?.recentActivity?.length ?? 0, gradient: 'from-amber-500 to-orange-600', icon: <TrendingUp size={22} /> },
-          ].map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-              className={`bg-gradient-to-br ${s.gradient} rounded-2xl p-5 text-white shadow-lg relative overflow-hidden`}>
-              <div className="absolute -right-4 -top-4 opacity-20">{s.icon}</div>
-              <div className="text-xs font-bold uppercase tracking-widest opacity-80 mb-2">{s.label}</div>
-              <div className="text-4xl font-extrabold">{loadingDash ? <div className="w-10 h-8 bg-white/20 rounded animate-pulse" /> : s.value}</div>
-            </motion.div>
+            { label: 'Active subscriptions', value: dashData?.activeSubscriptions ?? '—' },
+            { label: 'Accessible items',     value: unlockedCount },
+            { label: 'Departments covered',  value: dashData?.allowedDomains?.length ?? 0 },
+            { label: 'Items read',           value: dashData?.recentActivity?.length ?? 0 },
+          ].map(st => (
+            <div key={st.label} className="border-b border-rule p-4 sm:border-b-0">
+              <dt className="font-mono text-[10.5px] uppercase tracking-wider text-faint">{st.label}</dt>
+              <dd className="tnum mt-1.5 font-mono text-[26px] leading-none text-ink">
+                {loadingDash ? <span className="text-faint">—</span> : Number(st.value ?? 0).toLocaleString()}
+              </dd>
+            </div>
           ))}
-        </div>
+        </dl>
 
         {/* ── EXPIRED SUBSCRIPTION ALERT ── */}
         {dashData?.expiredSubscriptions && dashData.expiredSubscriptions.length > 0 && (
@@ -430,24 +368,24 @@ export function LMSDashboard() {
             
             return (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                <div className="bg-gradient-to-r from-red-50 to-red-50/50 dark:from-red-900/20 dark:to-red-900/10 border border-red-200 dark:border-red-900/40 rounded-3xl p-6 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between shadow-sm relative overflow-hidden">
-                  <div className="absolute -top-10 -right-10 opacity-[0.03] dark:opacity-5 text-red-900 pointer-events-none">
+                <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-md border border-alarm bg-alarm-soft p-5 md:flex-row md:items-center">
+                  <div className="absolute -top-10 -right-10 opacity-[0.03] text-alarm pointer-events-none">
                     <AlertCircle size={200} />
                   </div>
                   <div className="flex items-start gap-4 relative z-10">
-                    <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/60 flex items-center justify-center flex-shrink-0 shadow-inner">
-                      <AlertCircle size={24} className="text-red-600 dark:text-red-400" />
+                    <div className="w-12 h-12 rounded-md bg-alarm-soft flex items-center justify-center flex-shrink-0 shadow-inner">
+                      <AlertCircle size={24} className="text-alarm" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-red-800 dark:text-red-300">
+                      <h2 className="text-lg font-bold text-alarm">
                         {recentExpired.planName || 'Subscription'} Expired
                       </h2>
-                      <p className="text-sm text-red-600/90 dark:text-red-400/90 font-medium mt-1">
-                        Your access to <span className="font-bold text-red-700 dark:text-red-300">{displayName}</span> ended on {new Date(recentExpired.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                      <p className="text-sm text-alarm/90 font-medium mt-1">
+                        Your access to <span className="font-bold text-alarm">{displayName}</span> ended on {new Date(recentExpired.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.
                       </p>
                     </div>
                   </div>
-                  <button onClick={() => navigate('/dashboard/subscriptions')} className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-red-600/20 hover:shadow-red-600/40 hover:-translate-y-0.5 relative z-10">
+                  <button onClick={() => navigate('/dashboard/subscriptions')} className="shrink-0 bg-alarm hover:opacity-90 text-white font-bold px-6 py-3 rounded-md transition-all shadow-lg shadow-red-600/20 hover:shadow-red-600/40 hover:-translate-y-0.5 relative z-10">
                     Renew Access Now
                   </button>
                 </div>
@@ -461,13 +399,13 @@ export function LMSDashboard() {
           <div className="relative">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-600 to-blue-400 shadow-sm shadow-blue-500/20" />
+                <div className="h-6 w-1 rounded-full bg-accent" />
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Continue Reading</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Pick up right where you left off</p>
+                  <h2 className="text-xl font-bold text-ink tracking-tight">Continue Reading</h2>
+                  <p className="text-xs text-muted font-medium">Pick up right where you left off</p>
                 </div>
               </div>
-              <button onClick={() => navigate('/dashboard/history')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+              <button onClick={() => navigate('/dashboard/history')} className="text-xs font-bold text-accent hover:underline flex items-center gap-1">
                 View History <ChevronRight size={14} />
               </button>
             </div>
@@ -479,13 +417,12 @@ export function LMSDashboard() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.05 }}
-                  className="min-w-[280px] w-[280px] snap-start group relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-300 dark:hover:border-blue-600 transition-all cursor-pointer"
+                  className="min-w-[280px] w-[280px] snap-start group relative bg-surface rounded-md border border-rule overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 hover:border-accent transition-all cursor-pointer"
                   onClick={() => navigate(`/dashboard/viewer/${a.id}?page=${a.lastPage || 1}`)}
                 >
-                  {/* Thumbnail / Domain Header */}
-                  <div className={`h-24 bg-gradient-to-br ${domainGradient(a.domain || '')} relative flex items-center justify-center`}>
-                    <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
-                    <BookOpen size={32} className="text-white/30 group-hover:scale-110 transition-transform duration-500" />
+                  {/* Domain header */}
+                  <div className="relative flex h-16 items-center justify-center border-b border-rule bg-surface-2">
+                    <BookOpen size={24} className="text-faint" />
                     
                     {/* Badge */}
                     <div className="absolute top-3 left-3">
@@ -499,21 +436,21 @@ export function LMSDashboard() {
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, (a.lastPage / 50) * 100)}%` }}
-                        className="h-full bg-blue-500"
+                        className="h-full bg-accent"
                       />
                     </div>
                   </div>
 
                   <div className="p-4">
-                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 line-clamp-1 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h3 className="font-bold text-sm text-ink line-clamp-1 mb-1 group-hover:text-accent transition-colors">
                       {a.title}
                     </h3>
                     <div className="flex items-center justify-between mt-4">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Current Progress</span>
-                        <span className="text-xs font-black text-blue-600 dark:text-blue-400">Page {a.lastPage}</span>
+                        <span className="text-[10px] font-bold text-faint uppercase tracking-tighter">Current Progress</span>
+                        <span className="text-xs font-black text-accent">Page {a.lastPage}</span>
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                      <div className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
                         <Play size={14} className="fill-current" />
                       </div>
                     </div>
@@ -526,44 +463,44 @@ export function LMSDashboard() {
 
         {/* ── FILTERS & SEARCH ── */}
         <div className="flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm w-full">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center bg-surface rounded-md border border-rule p-4 shadow-sm w-full">
             {/* Search */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
               <input
                 type="text"
                 placeholder="Search titles, authors, subjects, tags..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 text-slate-800 dark:text-white placeholder:text-slate-400"
+                className="w-full pl-9 pr-4 py-2.5 rounded-md bg-surface-2 border border-rule text-sm focus:outline-none focus:border-accent text-ink placeholder:text-faint"
               />
             </div>
             {/* Domain Filter */}
             <select value={domainFilter} onChange={e => { setDomainFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
-              className="w-full sm:w-auto min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
+              className="w-full sm:w-auto min-w-[150px] px-3 py-2.5 rounded-md bg-surface-2 border border-rule text-sm focus:outline-none focus:border-accent text-ink-2">
               <option value="">All Domains</option>
               {(avail?.legacy?.departments || dashData?.allowedDomains || domains).map((d: string) => <option key={d} value={d}>{d}</option>)}
             </select>
             {/* Content Type Filter */}
             <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
-              className="w-full sm:w-auto min-w-[150px] px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200">
+              className="w-full sm:w-auto min-w-[150px] px-3 py-2.5 rounded-md bg-surface-2 border border-rule text-sm focus:outline-none focus:border-accent text-ink-2">
               <option value="">All Types</option>
               {(avail?.legacy?.contentTypes || CONTENT_TYPES).map((t: string) => <option key={t} value={t}>{t}</option>)}
             </select>
             {/* Subject Filter */}
             {availableFilters.subjects.length > 0 && (
               <select value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}
-                className="w-full sm:w-auto min-w-[150px] max-w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:border-blue-400 text-slate-700 dark:text-slate-200 truncate">
+                className="w-full sm:w-auto min-w-[150px] max-w-full px-3 py-2.5 rounded-md bg-surface-2 border border-rule text-sm focus:outline-none focus:border-accent text-ink-2 truncate">
                 <option value="">All Subjects</option>
                 {availableFilters.subjects.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             )}
             {/* View Toggle */}
-            <div className="flex gap-1 bg-slate-100 dark:bg-slate-700 rounded-xl p-1 w-full sm:w-auto overflow-x-auto shrink-0">
-              <button onClick={() => setViewMode('grouped')} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grouped' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>
+            <div className="flex gap-1 bg-surface-2 rounded-md p-1 w-full sm:w-auto overflow-x-auto shrink-0">
+              <button onClick={() => setViewMode('grouped')} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grouped' ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink-2'}`}>
                 Grouped
               </button>
-              <button onClick={() => setViewMode('grid')} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grid' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>
+              <button onClick={() => setViewMode('grid')} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grid' ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink-2'}`}>
                 Grid
               </button>
             </div>
@@ -571,10 +508,10 @@ export function LMSDashboard() {
             {lockedCount > 0 && (
               <button 
                 onClick={() => setShowLocked(!showLocked)}
-                className={`flex justify-center items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border w-full sm:w-auto shrink-0
+                className={`flex justify-center items-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all border w-full sm:w-auto shrink-0
                   ${showLocked 
-                    ? 'bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400' 
-                    : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400 hover:border-blue-300'
+                    ? 'bg-alarm-soft border-alarm text-alarm' 
+                    : 'bg-surface-2 border-rule text-muted hover:border-accent'
                   }`}
               >
                 {showLocked ? <Eye size={14} /> : <Lock size={14} />}
@@ -590,17 +527,17 @@ export function LMSDashboard() {
                 initial={{ opacity: 0, height: 0 }} 
                 animate={{ opacity: 1, height: 'auto' }} 
                 exit={{ opacity: 0, height: 0 }}
-                className="flex flex-wrap gap-2 items-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm"
+                className="flex flex-wrap gap-2 items-center bg-surface rounded-md border border-rule p-4 shadow-sm"
               >
-                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mr-1">Popular Tags:</span>
+                <span className="text-xs font-bold text-faint uppercase tracking-widest mr-1">Popular Tags:</span>
                 {availableFilters.tags.slice(0, 15).map(tag => (
                   <button
                     key={tag}
                     onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}
                     className={`max-w-full truncate px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border
                       ${tagFilter === tag 
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20' 
-                        : 'bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-300 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                        ? 'bg-accent border-accent text-white shadow-md shadow-blue-500/20' 
+                        : 'bg-surface-2 border-rule text-ink-2 hover:border-accent hover:text-accent'
                       }`}
                   >
                     {tag}
@@ -611,7 +548,7 @@ export function LMSDashboard() {
           </AnimatePresence>
 
           {/* Refresh */}
-          <button onClick={fetchContent} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors">
+          <button onClick={fetchContent} className="p-2.5 rounded-md bg-surface-2 border border-rule text-muted hover:bg-accent-soft hover:text-accent transition-colors">
             <RefreshCw size={16} className={loadingContent ? 'animate-spin' : ''} />
           </button>
         </div>
@@ -620,14 +557,14 @@ export function LMSDashboard() {
         {loadingContent ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="rounded-2xl bg-slate-200 dark:bg-slate-700 h-60 animate-pulse" />
+              <div key={i} className="rounded-md bg-surface-2 h-60 animate-pulse" />
             ))}
           </div>
         ) : content.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">📚</div>
-            <h3 className="text-slate-700 dark:text-slate-200 font-bold text-xl mb-2">No content found</h3>
-            <p className="text-sm text-slate-400 dark:text-slate-500">Try adjusting your filters or contact your administrator.</p>
+            <h3 className="text-ink-2 font-bold text-xl mb-2">No content found</h3>
+            <p className="text-sm text-faint">Try adjusting your filters or contact your administrator.</p>
           </div>
         ) : viewMode === 'grouped' ? (
           // Grouped by Domain
@@ -636,30 +573,29 @@ export function LMSDashboard() {
               <div key={domain}>
                 {/* Domain Header */}
                 <div className="flex items-center gap-3 mb-5">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white bg-gradient-to-br ${domainGradient(domain)} shadow-sm`}>
-                    <BookMarked size={16} />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent-soft text-accent">
+                    <BookMarked size={15} />
                   </div>
                   <div className="flex-1">
-                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">{domain}</h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{items.length} items · {items.filter(i => !i.locked).length} accessible</p>
+                    <h2 className="text-lg font-bold text-ink">{domain}</h2>
+                    <p className="text-xs text-muted">{items.length} items · {items.filter(i => !i.locked).length} accessible</p>
                   </div>
-                  <button onClick={() => setDomainFilter(domain)} className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                  <button onClick={() => setDomainFilter(domain)} className="text-xs font-semibold text-accent hover:underline flex items-center gap-1">
                     See all <ChevronRight size={13} />
                   </button>
                 </div>
-                {/* Content types sub-grouped */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {items.map(item => <ContentCard key={item.id} item={item} onOpen={handleOpen} />)}
+                <div className="divide-y divide-rule rounded-md border border-rule bg-surface">
+                  {items.map((item, i) => <ContentCard key={item.id} item={item} n={i + 1} onOpen={handleOpen} />)}
                 </div>
               </div>
             ))}
           </div>
         ) : (
           // Flat grid
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            <AnimatePresence>
-              {displayContent.map(item => <ContentCard key={item.id} item={item} onOpen={handleOpen} />)}
-            </AnimatePresence>
+          <div className="divide-y divide-rule rounded-md border border-rule bg-surface">
+            {displayContent.map((item, i) => (
+              <ContentCard key={item.id} item={item} n={(page - 1) * ITEMS_PER_PAGE + i + 1} onOpen={handleOpen} />
+            ))}
           </div>
         )}
 
@@ -669,17 +605,17 @@ export function LMSDashboard() {
             <button
               disabled={page <= 1}
               onClick={() => setPage(p => Math.max(1, p - 1))}
-              className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm"
+              className="flex items-center gap-1 px-4 py-2 rounded-md bg-surface border border-rule text-sm font-semibold text-ink-2 disabled:opacity-40 hover:border-accent hover:text-accent transition-all shadow-sm"
             >
               <ChevronLeft size={16} /> Prev
             </button>
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl shadow-sm">
-              Page <strong className="text-blue-600 dark:text-blue-400">{page}</strong> of <strong>{Math.ceil(totalItems / ITEMS_PER_PAGE)}</strong>
+            <span className="text-sm font-medium text-ink-2 bg-surface border border-rule px-4 py-2 rounded-md shadow-sm">
+              Page <strong className="text-accent">{page}</strong> of <strong>{Math.ceil(totalItems / ITEMS_PER_PAGE)}</strong>
             </span>
             <button
               disabled={page >= Math.ceil(totalItems / ITEMS_PER_PAGE)}
               onClick={() => setPage(p => p + 1)}
-              className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm"
+              className="flex items-center gap-1 px-4 py-2 rounded-md bg-surface border border-rule text-sm font-semibold text-ink-2 disabled:opacity-40 hover:border-accent hover:text-accent transition-all shadow-sm"
             >
               Next <ChevronRight size={16} />
             </button>
@@ -689,15 +625,15 @@ export function LMSDashboard() {
         {/* ── LOCKED CONTENT NOTICE ── */}
         {lockedCount > 0 && !domainFilter && !typeFilter && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 bg-gradient-to-r from-rose-50 to-rose-50/50 dark:from-rose-900/20 dark:to-rose-900/10 border border-rose-200 dark:border-rose-800/40 rounded-2xl p-5">
-            <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center flex-shrink-0">
-              <AlertCircle size={24} className="text-rose-500" />
+            className="flex items-center gap-4 rounded-md border border-alarm bg-alarm-soft p-5">
+            <div className="w-12 h-12 rounded-md bg-alarm-soft flex items-center justify-center flex-shrink-0">
+              <AlertCircle size={24} className="text-alarm" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-rose-800 dark:text-rose-300">{lockedCount} items are locked</p>
-              <p className="text-xs text-rose-600 dark:text-rose-400 mt-0.5">Ask your administrator to extend your access</p>
+              <p className="text-sm font-bold text-alarm">{lockedCount} items are locked</p>
+              <p className="text-xs text-alarm mt-0.5">Ask your administrator to extend your access</p>
             </div>
-            <button onClick={() => navigate('/contact')} className="shrink-0 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors">
+            <button onClick={() => navigate('/contact')} className="shrink-0 bg-alarm hover:opacity-90 text-white px-4 py-2 rounded-md text-xs font-bold transition-colors">
               Request Access
             </button>
           </motion.div>
