@@ -5452,6 +5452,86 @@ async function startServer() {
     }
   });
 
+  // GET /api/library/subjects — the subject vocabulary, with holdings.
+  // Only subjects we actually hold journals under are listed, so every one of
+  // them opens onto something.
+  app.get("/api/library/subjects", async (req: any, res: any) => {
+    try {
+      const scope = await libraryScopeDomains(req);
+      const where: any = { articleCount: { gt: 0 } };
+      if (scope !== null) where.domain = { in: scope };
+      const journals = await (prisma as any).journal.findMany({
+        where, select: { subjects: true, articleCount: true },
+      });
+      const m = new Map<string, { journals: number; articles: number }>();
+      for (const j of journals) {
+        const subs: string[] = Array.isArray(j.subjects) ? j.subjects : [];
+        for (const sname of subs) {
+          const row = m.get(sname) || { journals: 0, articles: 0 };
+          row.journals += 1;
+          row.articles += j.articleCount || 0;
+          m.set(sname, row);
+        }
+      }
+      res.json([...m.entries()]
+        .map(([name, v]) => ({ name, slug: departmentSlug(name), ...v }))
+        .sort((a, b) => b.articles - a.articles));
+    } catch (e: any) {
+      console.error('GET library/subjects error:', e?.message);
+      res.status(500).json({ error: "Failed to load subjects" });
+    }
+  });
+
+  // GET /api/library/subject/:slug — one subject, and the journals under it.
+  app.get("/api/library/subject/:slug", async (req: any, res: any) => {
+    try {
+      const wanted = String(req.params.slug || '').toLowerCase();
+      const scope = await libraryScopeDomains(req);
+      const where: any = { articleCount: { gt: 0 } };
+      if (scope !== null) where.domain = { in: scope };
+
+      const all = await (prisma as any).journal.findMany({
+        where,
+        select: {
+          id: true, title: true, issn: true, domain: true, publisherName: true, subjects: true,
+          licence: true, licenceIsNC: true,
+          articleCount: true, volumeCount: true, issueCount: true, firstYear: true, lastYear: true,
+        },
+      });
+
+      // The subject is stored as a name inside a JSON array, so it is matched on
+      // its slug here rather than in the query.
+      let subject: string | null = null;
+      const journals = all.filter((j: any) => {
+        const subs: string[] = Array.isArray(j.subjects) ? j.subjects : [];
+        const hit = subs.find(sname => departmentSlug(sname) === wanted);
+        if (hit && !subject) subject = hit;
+        return !!hit;
+      });
+      if (!subject) return res.status(404).json({ error: "Subject not found" });
+
+      journals.sort((a: any, b: any) => (b.articleCount || 0) - (a.articleCount || 0));
+      const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
+      const byDomain = new Map<string, number>();
+      for (const j of journals) if (j.domain) byDomain.set(j.domain, (byDomain.get(j.domain) || 0) + 1);
+
+      res.json({
+        subject,
+        slug: wanted,
+        journals,
+        articles: journals.reduce((n: number, j: any) => n + (j.articleCount || 0), 0),
+        firstYear: years.length ? Math.min(...years) : null,
+        lastYear: years.length ? Math.max(...years) : null,
+        departments: [...byDomain.entries()]
+          .map(([name, journals]) => ({ name, journals }))
+          .sort((a, b) => b.journals - a.journals),
+      });
+    } catch (e: any) {
+      console.error('GET library/subject error:', e?.message);
+      res.status(500).json({ error: "Failed to load subject" });
+    }
+  });
+
   // ── One query behind every count on the site ────────────────────────────
   // The homepage figure and the department figure have to agree, which they
   // cannot if each screen counts for itself.

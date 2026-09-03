@@ -18,6 +18,7 @@ type Journal = {
   id: string; title: string; issn?: string | null; eissn?: string | null;
   publisherName?: string | null; domain?: string | null; description?: string | null;
   homepage?: string | null; licence?: string | null; licenceIsNC?: boolean | null;
+  subjects?: string[] | null;
   status?: string; firstYear?: number | null; lastYear?: number | null;
   articleCount?: number; volumeCount?: number; issueCount?: number;
   volumes: Volume[];
@@ -122,7 +123,11 @@ export function JournalPage({
   articleBase = '/dashboard/article',
   departmentBase = '/dashboard/department',
   publisherBase = '/dashboard/publisher',
-}: { viewerBase?: string; articleBase?: string; departmentBase?: string; publisherBase?: string } = {}) {
+  subjectBase = '/dashboard/subject',
+}: {
+  viewerBase?: string; articleBase?: string; departmentBase?: string;
+  publisherBase?: string; subjectBase?: string;
+} = {}) {
   const { journalId } = useParams<{ journalId: string }>();
   const navigate = useNavigate();
   const [j, setJ] = useState<Journal | null>(null);
@@ -218,6 +223,25 @@ export function JournalPage({
           </p>
 
           <div className="mt-4"><LicenceMark licence={j.licence} isNC={j.licenceIsNC} /></div>
+
+          {/* The publisher's own classification, which cuts across our departments. */}
+          {Array.isArray(j.subjects) && j.subjects.length > 0 && (
+            <div className="mt-5">
+              <p className={LABEL}>Classed under</p>
+              <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                {j.subjects.map(sub => (
+                  <li key={sub}>
+                    <Link
+                      to={`${subjectBase}/${sub.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
+                      className="text-[13px] text-ink-2 hover:text-accent hover:underline"
+                    >
+                      {sub}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {j.description && (
             <p className="mt-5 max-w-2xl text-[14.5px] leading-relaxed text-ink-2">{j.description}</p>

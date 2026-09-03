@@ -15377,6 +15377,81 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to load publisher" });
     }
   });
+  app.get("/api/library/subjects", async (req, res) => {
+    try {
+      const scope = await libraryScopeDomains(req);
+      const where = { articleCount: { gt: 0 } };
+      if (scope !== null) where.domain = { in: scope };
+      const journals = await prisma3.journal.findMany({
+        where,
+        select: { subjects: true, articleCount: true }
+      });
+      const m2 = /* @__PURE__ */ new Map();
+      for (const j of journals) {
+        const subs = Array.isArray(j.subjects) ? j.subjects : [];
+        for (const sname of subs) {
+          const row = m2.get(sname) || { journals: 0, articles: 0 };
+          row.journals += 1;
+          row.articles += j.articleCount || 0;
+          m2.set(sname, row);
+        }
+      }
+      res.json([...m2.entries()].map(([name, v]) => ({ name, slug: departmentSlug(name), ...v })).sort((a, b) => b.articles - a.articles));
+    } catch (e2) {
+      console.error("GET library/subjects error:", e2?.message);
+      res.status(500).json({ error: "Failed to load subjects" });
+    }
+  });
+  app.get("/api/library/subject/:slug", async (req, res) => {
+    try {
+      const wanted = String(req.params.slug || "").toLowerCase();
+      const scope = await libraryScopeDomains(req);
+      const where = { articleCount: { gt: 0 } };
+      if (scope !== null) where.domain = { in: scope };
+      const all = await prisma3.journal.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          issn: true,
+          domain: true,
+          publisherName: true,
+          subjects: true,
+          licence: true,
+          licenceIsNC: true,
+          articleCount: true,
+          volumeCount: true,
+          issueCount: true,
+          firstYear: true,
+          lastYear: true
+        }
+      });
+      let subject = null;
+      const journals = all.filter((j) => {
+        const subs = Array.isArray(j.subjects) ? j.subjects : [];
+        const hit = subs.find((sname) => departmentSlug(sname) === wanted);
+        if (hit && !subject) subject = hit;
+        return !!hit;
+      });
+      if (!subject) return res.status(404).json({ error: "Subject not found" });
+      journals.sort((a, b) => (b.articleCount || 0) - (a.articleCount || 0));
+      const years = journals.flatMap((j) => [j.firstYear, j.lastYear]).filter(Boolean);
+      const byDomain = /* @__PURE__ */ new Map();
+      for (const j of journals) if (j.domain) byDomain.set(j.domain, (byDomain.get(j.domain) || 0) + 1);
+      res.json({
+        subject,
+        slug: wanted,
+        journals,
+        articles: journals.reduce((n, j) => n + (j.articleCount || 0), 0),
+        firstYear: years.length ? Math.min(...years) : null,
+        lastYear: years.length ? Math.max(...years) : null,
+        departments: [...byDomain.entries()].map(([name, journals2]) => ({ name, journals: journals2 })).sort((a, b) => b.journals - a.journals)
+      });
+    } catch (e2) {
+      console.error("GET library/subject error:", e2?.message);
+      res.status(500).json({ error: "Failed to load subject" });
+    }
+  });
   app.get("/api/library/stats", async (_req, res) => {
     try {
       const [journals, byDomain, articles, books, authors] = await Promise.all([
