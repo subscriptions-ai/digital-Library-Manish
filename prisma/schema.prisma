@@ -699,7 +699,6 @@ model Content {
   updatedAt       DateTime @updatedAt @default(now())
   
   studentActivities StudentActivity[]
-  favorites         Favorite[]
 }
 
 model AccessRequest {
@@ -977,16 +976,21 @@ model ExtractionItem {
 
 model Favorite {
   id        String   @id @default(uuid())
-  
+
   user      User     @relation(fields: [userId], references: [id])
   userId    String
-  
-  content   Content  @relation(fields: [contentId], references: [id])
+
+  // A wish list has to hold anything a reader can open, so this points at
+  // Content, Article or Book rather than at one table. Same shape as ReadEvent.
+  // The column keeps its old name so existing rows survive untouched; only the
+  // foreign key to Content goes, which is what stopped articles being saved.
+  itemType  String   @default("Content")   // Content | Article | Book
   contentId String
 
   createdAt DateTime @default(now())
 
   @@unique([userId, contentId])
+  @@index([userId, createdAt])
 }
 
 model EmailVerification {

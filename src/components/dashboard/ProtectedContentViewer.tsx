@@ -275,9 +275,13 @@ export function ProtectedContentViewer() {
         body: JSON.stringify({ contentId: id })
       });
       const data = await res.json();
+      // A failure here used to fall through this `if` in silence — the heart
+      // simply never filled and nothing said why. Now it speaks.
       if (data.success) {
         setIsFavorite(data.favorited);
         toast.success(data.favorited ? "Added to your Wish List!" : "Removed from Wish List");
+      } else {
+        toast.error(data.error || "Could not update your Wish List");
       }
     } catch (err) {
       toast.error("Failed to update Wish List");

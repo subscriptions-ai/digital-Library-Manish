@@ -1119,15 +1119,53 @@ async function startServer() {
   });
 
   // ── FAVORITES (WISH LIST) ───────────────────────────────────────────────────
+  // A saved item can live in Content, Article or Book, so which table it came
+  // from is recorded on the row rather than enforced by a foreign key.
+  const favouriteKindOf = async (id: string): Promise<'Content' | 'Article' | 'Book' | null> => {
+    if (await prisma.content.count({ where: { id } })) return 'Content';
+    if (await (prisma as any).article.count({ where: { id } })) return 'Article';
+    if (await (prisma as any).book.count({ where: { id } })) return 'Book';
+    return null;
+  };
+
   app.get("/api/user/favorites", authenticateJWT, async (req: any, res) => {
     try {
       const favorites = await prisma.favorite.findMany({
         where: { userId: req.user.uid },
-        include: { content: true },
         orderBy: { createdAt: 'desc' }
       });
-      res.json(favorites.map((f: any) => ({ ...f.content, favoriteId: f.id, favoritedAt: f.createdAt })));
+      if (!favorites.length) return res.json([]);
+
+      // One query per table rather than one per saved item.
+      const idsOf = (t: string) => favorites.filter((f: any) => f.itemType === t).map((f: any) => f.contentId);
+      const [contents, articles, books] = await Promise.all([
+        idsOf('Content').length ? prisma.content.findMany({ where: { id: { in: idsOf('Content') } } }) : [],
+        idsOf('Article').length ? (prisma as any).article.findMany({ where: { id: { in: idsOf('Article') } } }) : [],
+        idsOf('Book').length ? (prisma as any).book.findMany({ where: { id: { in: idsOf('Book') } } }) : [],
+      ]);
+      const byId = new Map<string, any>();
+      for (const c of contents) byId.set(c.id, { ...c, itemType: 'Content' });
+      for (const a of articles) byId.set(a.id, {
+        ...a, itemType: 'Article',
+        description: a.abstract || null,
+        thumbnailUrl: null,
+      });
+      for (const b of books) byId.set(b.id, {
+        ...b, itemType: 'Book',
+        description: b.description || null,
+        thumbnailUrl: b.coverUrl || null,
+        contentType: 'Books',
+      });
+
+      // An item deleted since it was saved simply drops out of the list.
+      res.json(favorites
+        .map((f: any) => {
+          const item = byId.get(f.contentId);
+          return item ? { ...item, favoriteId: f.id, favoritedAt: f.createdAt } : null;
+        })
+        .filter(Boolean));
     } catch (error) {
+      console.error("Favorites fetch error:", error);
       res.status(500).json({ error: "Failed to fetch favorites" });
     }
   });
@@ -1144,12 +1182,15 @@ async function startServer() {
       if (existing) {
         await prisma.favorite.delete({ where: { id: existing.id } });
         return res.json({ success: true, favorited: false });
-      } else {
-        await prisma.favorite.create({
-          data: { userId: req.user.uid, contentId }
-        });
-        return res.json({ success: true, favorited: true });
       }
+
+      const itemType = await favouriteKindOf(contentId);
+      if (!itemType) return res.status(404).json({ error: "That item no longer exists" });
+
+      await prisma.favorite.create({
+        data: { userId: req.user.uid, contentId, itemType }
+      });
+      return res.json({ success: true, favorited: true });
     } catch (error) {
       console.error("Favorite toggle error:", error);
       res.status(500).json({ error: "Failed to toggle favorite" });

@@ -78,7 +78,7 @@ export default function MyFavorites() {
             You haven't added any content to your wish list yet. While reading or watching, click the heart icon to save items here.
           </p>
           <button
-            onClick={() => navigate('/dashboard/content')}
+            onClick={() => navigate('/dashboard/library')}
             className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
           >
             Explore Content
@@ -91,7 +91,7 @@ export default function MyFavorites() {
             return (
               <div 
                 key={item.id} 
-                onClick={() => navigate(`/dashboard/viewer/${item.id}`)}
+                onClick={() => navigate(item.itemType === 'Article' ? `/dashboard/article/${item.id}` : `/dashboard/viewer/${item.id}`)}
                 className="group bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl hover:border-blue-200 cursor-pointer transition-all duration-300 flex flex-col"
               >
                 <div className="h-40 bg-slate-100 relative overflow-hidden flex items-center justify-center">
