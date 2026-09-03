@@ -447,7 +447,7 @@ export function ProtectedContentViewer() {
           <h2 className="text-2xl font-bold text-white">Access Restricted</h2>
           <p className="text-slate-400">{metaError}</p>
           <button
-            onClick={() => navigate('/dashboard/access')}
+            onClick={() => navigate('/dashboard/library/access')}
             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all"
           >
             <BookOpen size={18} /> View My Access

@@ -4,6 +4,24 @@ import { CheckCircle2, XCircle, Search, ArrowRight, Lock, ChevronLeft, LayoutGri
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
+/**
+ * Send Browse to the shelf the items are actually on.
+ *
+ * These counts are drawn from Content, Article and Book together, but the two
+ * datasets live on different shelves. A Nursing reader was told "1,821 items"
+ * and then sent to the archived shelf, which holds none of them.
+ */
+function browseHref(mod: any, domain: string) {
+  const q = new URLSearchParams({ domain });
+  if ((mod.newCount ?? 0) > 0) {
+    if (mod.contentType === 'Books') q.set('kind', 'books');
+    return `/dashboard/library?${q}`;
+  }
+  q.set('mode', 'archived');
+  if (mod.contentType) q.set('atype', mod.contentType);
+  return `/dashboard/library?${q}`;
+}
+
 export function MyContentAccess() {
   const [accessMap, setAccessMap] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
@@ -103,7 +121,7 @@ export function MyContentAccess() {
                   
                   {mod.hasAccess ? (
                     <button 
-                      onClick={() => navigate(`/dashboard/library?domain=${encodeURIComponent(selectedDomain)}&type=${encodeURIComponent(mod.contentType)}`)}
+                      onClick={() => navigate(browseHref(mod, selectedDomain))}
                       className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 text-sm font-bold"
                     >
                       Browse <ArrowRight size={16} />

@@ -126,7 +126,7 @@ export function SubscriberOverview() {
             {data?.allowedDomains?.length > 0 ? data.allowedDomains.map((domain: string) => (
               <div key={domain} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
                 <span className="font-bold text-slate-800">{domain}</span>
-                <Link to="/dashboard/access" className="p-2 bg-white rounded-lg shadow-sm text-blue-600 hover:text-blue-700 hover:shadow">
+                <Link to="/dashboard/library/access" className="p-2 bg-white rounded-lg shadow-sm text-blue-600 hover:text-blue-700 hover:shadow">
                   <ArrowRight size={18} />
                 </Link>
               </div>

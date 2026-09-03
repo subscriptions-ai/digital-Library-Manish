@@ -1325,26 +1325,33 @@ async function startServer() {
         }),
       ]);
 
-      // 3. Merge into one count per (domain, contentType)
-      const totals = new Map<string, { domain: string; contentType: string; totalCount: number }>();
-      const addTo = (domain: any, contentType: any, n: number) => {
+      // 3. Merge into one count per (domain, contentType).
+      //    Which dataset the count came from is kept, because Browse has to
+      //    land the reader where the items actually are — a count drawn from
+      //    Article that sent them to the archived shelf showed them nothing.
+      type Row = { domain: string; contentType: string; totalCount: number; legacyCount: number; newCount: number };
+      const totals = new Map<string, Row>();
+      const addTo = (domain: any, contentType: any, n: number, which: 'legacy' | 'new') => {
         if (!domain || !contentType || !n) return;
         const key = `${domain}_${contentType}`;
-        const row = totals.get(key);
-        if (row) row.totalCount += n;
-        else totals.set(key, { domain: String(domain), contentType: String(contentType), totalCount: n });
+        const row = totals.get(key) || { domain: String(domain), contentType: String(contentType), totalCount: 0, legacyCount: 0, newCount: 0 };
+        row.totalCount += n;
+        if (which === 'legacy') row.legacyCount += n; else row.newCount += n;
+        totals.set(key, row);
       };
 
-      for (const rc of contentCounts) addTo(rc.domain, rc.contentType, rc._count.id);
-      for (const rc of articleCounts) addTo(rc.domain, rc.contentType, rc._count.id);
+      for (const rc of contentCounts) addTo(rc.domain, rc.contentType, rc._count.id, 'legacy');
+      for (const rc of articleCounts) addTo(rc.domain, rc.contentType, rc._count.id, 'new');
       // Book rows carry no contentType — they are all Books by definition.
-      for (const rc of bookCounts)    addTo(rc.domain, 'Books', rc._count.id);
+      for (const rc of bookCounts)    addTo(rc.domain, 'Books', rc._count.id, 'new');
 
       const uniqueModules = Array.from(totals.values()).map(t => ({
         id: `${t.domain}_${t.contentType}`,
         domain: t.domain,
         contentType: t.contentType,
         totalCount: t.totalCount,
+        legacyCount: t.legacyCount,
+        newCount: t.newCount,
       }));
 
       // 4. Map status for each module to "locked" vs "unlocked"

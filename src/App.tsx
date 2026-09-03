@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState, lazy, Suspense } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import { ForcePasswordChange } from "./components/ForcePasswordChange";
 import { Navbar } from "./components/Navbar";
@@ -94,12 +94,22 @@ const CONTENT_MODULES = [
 import { AuthProvider } from "./contexts/AuthContext";
 import { DashboardLayout } from "./components/DashboardLayout";
 import { LMSDashboard } from "./components/dashboard/LMSDashboard";
-import { MyContentAccess } from "./components/dashboard/MyContentAccess";
+import { LibraryHome } from "./components/dashboard/LibraryHome";
+
+/**
+ * A redirect that carries the query string with it. Every filtered browse URL
+ * the reader has shared or bookmarked lives under the old path with its
+ * filters in the query, and dropping them would land them on an unfiltered
+ * page that looks like the wrong one.
+ */
+function KeepQuery({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={`${to}${search}`} replace />;
+}
 import { MySubscriptions } from "./components/dashboard/MySubscriptions";
 import { InvoicesPayments } from "./components/dashboard/InvoicesPayments";
 import { ProfileSettings } from "./components/dashboard/ProfileSettings";
 import MyFavorites from "./components/dashboard/MyFavorites";
-import { MyContentLibrary } from "./components/dashboard/MyContentLibrary";
 import { ProtectedContentViewer } from "./components/dashboard/ProtectedContentViewer";
 import { VideoLibrary } from "./components/dashboard/VideoLibrary";
 import { LmsVideoPlayer } from "./components/dashboard/LmsVideoPlayer";
@@ -158,9 +168,13 @@ export default function App() {
                 {/* Subscriber Dashboard routes with DashboardLayout */}
                 <Route path="/dashboard" element={<DashboardLayout><LMSDashboard /></DashboardLayout>} />
                 <Route path="/dashboard/content/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
-                <Route path="/dashboard/access" element={<DashboardLayout><MyContentAccess /></DashboardLayout>} />
-                <Route path="/dashboard/library" element={<DashboardLayout><MyContentLibrary /></DashboardLayout>} />
-                <Route path="/dashboard/favorites" element={<DashboardLayout><MyFavorites /></DashboardLayout>} />
+                <Route path="/dashboard/library" element={<DashboardLayout><LibraryHome tab="browse" /></DashboardLayout>} />
+                <Route path="/dashboard/library/access" element={<DashboardLayout><LibraryHome tab="access" /></DashboardLayout>} />
+                <Route path="/dashboard/library/saved" element={<DashboardLayout><LibraryHome tab="saved" /></DashboardLayout>} />
+                {/* The old sidebar entries. Anything already linked or bookmarked
+                    still lands on the right tab rather than on NotFound. */}
+                <Route path="/dashboard/access" element={<Navigate to="/dashboard/library/access" replace />} />
+                <Route path="/dashboard/favorites" element={<Navigate to="/dashboard/library/saved" replace />} />
                 <Route path="/dashboard/history" element={<DashboardLayout><MyHistory /></DashboardLayout>} />
                 <Route path="/dashboard/feedbacks" element={<DashboardLayout><MyFeedbacksPage /></DashboardLayout>} />
                 <Route path="/dashboard/videos" element={<DashboardLayout><VideoLibrary /></DashboardLayout>} />
@@ -185,7 +199,7 @@ export default function App() {
                 <Route path="/admin/review" element={<AdminLayout><PublisherReviewQueue /></AdminLayout>} />
                 <Route path="/admin/ingestion" element={<AdminLayout><DataIngestion /></AdminLayout>} />
                 <Route path="/publisher" element={<PublisherLayout><PublisherDashboard /></PublisherLayout>} />
-                <Route path="/dashboard/explore" element={<DashboardLayout><StructuredLibrary /></DashboardLayout>} />
+                <Route path="/dashboard/explore" element={<KeepQuery to="/dashboard/library" />} />
                 <Route path="/dashboard/journal/:journalId" element={<DashboardLayout><JournalPage /></DashboardLayout>} />
                 <Route path="/dashboard/author/:authorId" element={<DashboardLayout><AuthorPage /></DashboardLayout>} />
                 <Route path="/dashboard/article/:articleId" element={<DashboardLayout><ArticlePage /></DashboardLayout>} />

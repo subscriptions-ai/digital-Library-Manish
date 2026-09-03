@@ -10,11 +10,8 @@ import {
   Menu,
   X,
   Library,
-  BookOpen,
   Receipt,
   PlaySquare,
-  Heart,
-  Sparkles,
   MessageSquareHeart
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,10 +27,9 @@ interface SidebarItem {
 
 const sidebarItems: SidebarItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
-  { label: 'My Library', icon: Library, path: '/dashboard/library', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
-  { label: 'Journals & Books', icon: Sparkles, path: '/dashboard/explore', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
-  { label: 'My Content Access', icon: BookOpen, path: '/dashboard/access', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
-  { label: 'My Wish List', icon: Heart, path: '/dashboard/favorites', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  // Browsing, entitlements and saved items are the same library seen three
+  // ways; they are tabs inside it now rather than three sidebar entries.
+  { label: 'Library', icon: Library, path: '/dashboard/library', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Video Library', icon: PlaySquare, path: '/dashboard/videos', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Feedbacks', icon: MessageSquareHeart, path: '/dashboard/feedbacks', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
