@@ -15720,6 +15720,119 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to load analytics" });
     }
   });
+  app.get("/api/institution/overview", authenticateJWT, async (req, res) => {
+    try {
+      const scope = await analyticsScope(req);
+      if (scope.error) return res.status(403).json({ error: scope.error });
+      const institutionId = scope.id;
+      const inst = await prisma3.institution.findUnique({
+        where: { id: institutionId },
+        select: { name: true }
+      });
+      const students = await prisma3.user.findMany({
+        where: { institutionId, role: "Student" },
+        select: { id: true, displayName: true, email: true, createdAt: true }
+      });
+      const subs = await prisma3.subscription.findMany({
+        where: { OR: [{ institutionId }, { user: { institutionId } }], status: "Active" },
+        select: { domains: true, domainName: true, endDate: true, contentTypes: true }
+      });
+      const domains = /* @__PURE__ */ new Set();
+      for (const s2 of subs) {
+        const d = Array.isArray(s2.domains) ? s2.domains : s2.domains ? JSON.parse(s2.domains) : [];
+        d.forEach((x2) => x2 && domains.add(x2));
+        if (s2.domainName) domains.add(s2.domainName);
+      }
+      const covered = [...domains];
+      const soonest = subs.map((s2) => s2.endDate).filter(Boolean).sort()[0] ?? null;
+      const daysLeft = soonest ? Math.ceil((new Date(soonest).getTime() - Date.now()) / 864e5) : null;
+      const jWhere = { articleCount: { gt: 0 } };
+      const aWhere = { status: "Published" };
+      if (covered.length) {
+        jWhere.domain = { in: covered };
+        aWhere.domain = { in: covered };
+      }
+      const since = new Date(Date.now() - 30 * 864e5);
+      const [journals, articles, books, byDept, newJournals, recent, unanswered, readers] = await Promise.all([
+        prisma3.journal.count({ where: jWhere }),
+        prisma3.article.count({ where: aWhere }),
+        prisma3.book.count({ where: covered.length ? { status: "Published", domain: { in: covered } } : { status: "Published" } }),
+        prisma3.journal.groupBy({
+          by: ["domain"],
+          where: { ...jWhere, domain: { not: null } },
+          _count: { _all: true },
+          _sum: { articleCount: true }
+        }),
+        prisma3.journal.findMany({
+          where: jWhere,
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: { id: true, title: true, issn: true, domain: true, articleCount: true }
+        }),
+        prisma3.libraryEvent.findMany({
+          where: { institutionId, kind: "view" },
+          orderBy: { at: "desc" },
+          take: 6,
+          select: { at: true, userId: true, itemId: true, itemType: true, domain: true }
+        }),
+        prisma3.libraryEvent.count({
+          where: { institutionId, kind: "search", resultCount: 0, at: { gte: since } }
+        }),
+        prisma3.libraryEvent.groupBy({
+          by: ["userId"],
+          where: { institutionId, kind: "view", at: { gte: since } }
+        })
+      ]);
+      const artIds = recent.filter((r2) => r2.itemType === "article").map((r2) => r2.itemId);
+      const conIds = recent.filter((r2) => r2.itemType === "content").map((r2) => r2.itemId);
+      const [ra, rc] = await Promise.all([
+        artIds.length ? prisma3.article.findMany({ where: { id: { in: artIds } }, select: { id: true, title: true } }) : [],
+        conIds.length ? prisma3.content.findMany({ where: { id: { in: conIds } }, select: { id: true, title: true } }) : []
+      ]);
+      const titleOf = new Map([
+        ...ra.map((a) => [a.id, a.title]),
+        ...rc.map((c) => [c.id, c.title])
+      ]);
+      const who = new Map(students.map((s2) => [s2.id, s2.displayName || s2.email]));
+      const everRead = new Set(
+        (await prisma3.libraryEvent.groupBy({ by: ["userId"], where: { institutionId, kind: "view" } })).map((r2) => r2.userId)
+      );
+      res.json({
+        institution: { id: institutionId, name: inst?.name || "" },
+        students: {
+          total: students.length,
+          neverSignedIn: students.filter((s2) => !everRead.has(s2.id)).length,
+          activeLast30: readers.length
+        },
+        subscription: {
+          departments: covered,
+          fullAccess: covered.length === 0 && subs.length > 0,
+          endsOn: soonest,
+          daysLeft
+        },
+        collection: {
+          journals,
+          articles,
+          books,
+          byDepartment: byDept.map((d) => ({ name: d.domain, journals: d._count._all, articles: d._sum.articleCount || 0 })).sort((a, b) => b.journals - a.journals)
+        },
+        hasActiveSubscription: subs.length > 0,
+        newJournals,
+        unansweredSearches: unanswered,
+        recent: recent.map((r2) => ({
+          at: r2.at,
+          itemId: r2.itemId,
+          itemType: r2.itemType,
+          domain: r2.domain,
+          title: titleOf.get(r2.itemId) || "An item",
+          student: who.get(r2.userId) || null
+        }))
+      });
+    } catch (e2) {
+      console.error("GET institution/overview error:", e2?.message);
+      res.status(500).json({ error: "Failed to load overview" });
+    }
+  });
   app.get("/api/library/stats", async (_req, res) => {
     try {
       const [journals, byDomain, articles, books, authors] = await Promise.all([

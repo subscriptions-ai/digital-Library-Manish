@@ -5848,6 +5848,127 @@ async function startServer() {
     }
   });
 
+  // ── The librarian's home ────────────────────────────────────────────────────
+  //
+  // Answers, in the order a librarian actually needs them: what wants my
+  // attention today, what did we actually buy, and is anyone reading it.
+  //
+  // The collection figures are the ones a college asks for before anything else
+  // and the ones a librarian forwards to their principal, so they are scoped to
+  // what this institution can genuinely reach rather than to the whole catalogue.
+  app.get("/api/institution/overview", authenticateJWT, async (req: any, res: any) => {
+    try {
+      const scope = await analyticsScope(req);
+      if (scope.error) return res.status(403).json({ error: scope.error });
+      const institutionId = scope.id!;
+
+      const inst = await prisma.institution.findUnique({
+        where: { id: institutionId }, select: { name: true },
+      });
+
+      const students = await prisma.user.findMany({
+        where: { institutionId, role: 'Student' },
+        select: { id: true, displayName: true, email: true, createdAt: true },
+      });
+
+      // What the subscription actually covers.
+      const subs = await prisma.subscription.findMany({
+        where: { OR: [{ institutionId }, { user: { institutionId } }], status: 'Active' },
+        select: { domains: true, domainName: true, endDate: true, contentTypes: true },
+      });
+      const domains = new Set<string>();
+      for (const s of subs) {
+        const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
+        (d as string[]).forEach(x => x && domains.add(x));
+        if (s.domainName) domains.add(s.domainName);
+      }
+      const covered = [...domains];
+      const soonest = subs.map(s => s.endDate).filter(Boolean).sort()[0] ?? null;
+      const daysLeft = soonest ? Math.ceil((new Date(soonest).getTime() - Date.now()) / 864e5) : null;
+
+      // The shelf they can reach. An empty domain list is a full-access
+      // subscription, not an empty one.
+      const jWhere: any = { articleCount: { gt: 0 } };
+      const aWhere: any = { status: 'Published' };
+      if (covered.length) { jWhere.domain = { in: covered }; aWhere.domain = { in: covered }; }
+
+      const since = new Date(Date.now() - 30 * 864e5);
+      const [journals, articles, books, byDept, newJournals, recent, unanswered, readers] = await Promise.all([
+        (prisma as any).journal.count({ where: jWhere }),
+        (prisma as any).article.count({ where: aWhere }),
+        (prisma as any).book.count({ where: covered.length ? { status: 'Published', domain: { in: covered } } : { status: 'Published' } }),
+        (prisma as any).journal.groupBy({
+          by: ['domain'], where: { ...jWhere, domain: { not: null } },
+          _count: { _all: true }, _sum: { articleCount: true },
+        }),
+        (prisma as any).journal.findMany({
+          where: jWhere, orderBy: { createdAt: 'desc' }, take: 5,
+          select: { id: true, title: true, issn: true, domain: true, articleCount: true },
+        }),
+        (prisma as any).libraryEvent.findMany({
+          where: { institutionId, kind: 'view' }, orderBy: { at: 'desc' }, take: 6,
+          select: { at: true, userId: true, itemId: true, itemType: true, domain: true },
+        }),
+        (prisma as any).libraryEvent.count({
+          where: { institutionId, kind: 'search', resultCount: 0, at: { gte: since } },
+        }),
+        (prisma as any).libraryEvent.groupBy({
+          by: ['userId'], where: { institutionId, kind: 'view', at: { gte: since } },
+        }),
+      ]);
+
+      // Titles for what was last read.
+      const artIds = recent.filter((r: any) => r.itemType === 'article').map((r: any) => r.itemId);
+      const conIds = recent.filter((r: any) => r.itemType === 'content').map((r: any) => r.itemId);
+      const [ra, rc] = await Promise.all([
+        artIds.length ? (prisma as any).article.findMany({ where: { id: { in: artIds } }, select: { id: true, title: true } }) : [],
+        conIds.length ? prisma.content.findMany({ where: { id: { in: conIds } }, select: { id: true, title: true } }) : [],
+      ]);
+      const titleOf = new Map<string, string>([
+        ...ra.map((a: any) => [a.id, a.title] as [string, string]),
+        ...rc.map((c: any) => [c.id, c.title] as [string, string]),
+      ]);
+      const who = new Map(students.map(s => [s.id, s.displayName || s.email]));
+
+      const everRead = new Set(
+        (await (prisma as any).libraryEvent.groupBy({ by: ['userId'], where: { institutionId, kind: 'view' } }))
+          .map((r: any) => r.userId)
+      );
+
+      res.json({
+        institution: { id: institutionId, name: inst?.name || '' },
+        students: {
+          total: students.length,
+          neverSignedIn: students.filter(s => !everRead.has(s.id)).length,
+          activeLast30: readers.length,
+        },
+        subscription: {
+          departments: covered,
+          fullAccess: covered.length === 0 && subs.length > 0,
+          endsOn: soonest,
+          daysLeft,
+        },
+        collection: {
+          journals, articles, books,
+          byDepartment: byDept
+            .map((d: any) => ({ name: d.domain, journals: d._count._all, articles: d._sum.articleCount || 0 }))
+            .sort((a: any, b: any) => b.journals - a.journals),
+        },
+        hasActiveSubscription: subs.length > 0,
+        newJournals,
+        unansweredSearches: unanswered,
+        recent: recent.map((r: any) => ({
+          at: r.at, itemId: r.itemId, itemType: r.itemType, domain: r.domain,
+          title: titleOf.get(r.itemId) || 'An item',
+          student: who.get(r.userId) || null,
+        })),
+      });
+    } catch (e: any) {
+      console.error('GET institution/overview error:', e?.message);
+      res.status(500).json({ error: "Failed to load overview" });
+    }
+  });
+
   // ── One query behind every count on the site ────────────────────────────
   // The homepage figure and the department figure have to agree, which they
   // cannot if each screen counts for itself.

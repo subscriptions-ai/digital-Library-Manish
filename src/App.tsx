@@ -120,7 +120,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ScrollToTop } from "./components/ScrollToTop";
 
 import { InstitutionLayout } from "./components/institution/InstitutionLayout";
-import { InstitutionDashboardHome } from "./components/institution/InstitutionDashboardHome";
+import { LibrarianHome } from "./components/institution/LibrarianHome";
 import { InstitutionStudentManager } from "./components/institution/InstitutionStudentManager";
 import { InstitutionProfile } from "./components/institution/InstitutionProfile";
 import { InstitutionContentLibrary } from "./components/institution/InstitutionContentLibrary";
@@ -257,7 +257,7 @@ export default function App() {
                 <Route path="/admin/*" element={<AdminLayout><AdminDashboardHome /></AdminLayout>} />
 
                 {/* Institution Routes */}
-                <Route path="/institution" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
+                <Route path="/institution" element={<InstitutionLayout><LibrarianHome /></InstitutionLayout>} />
                 <Route path="/institution/students" element={<InstitutionLayout><InstitutionStudentManager /></InstitutionLayout>} />
                 <Route path="/institution/analytics" element={<InstitutionLayout><LibrarianAnalytics /></InstitutionLayout>} />
                 <Route path="/institution/access" element={<InstitutionLayout><InstitutionContentAccess /></InstitutionLayout>} />
