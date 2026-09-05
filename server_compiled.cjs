@@ -15553,6 +15553,170 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to load subject" });
     }
   });
+  const periodOf = (req) => {
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 730);
+    const to = /* @__PURE__ */ new Date();
+    const from = new Date(to.getTime() - days * 864e5);
+    const prevFrom = new Date(from.getTime() - days * 864e5);
+    return { days, from, to, prevFrom };
+  };
+  const analyticsScope = async (req) => {
+    const role = req.user?.role;
+    if (role === "Institution") {
+      const me = await prisma3.user.findUnique({
+        where: { id: req.user.uid },
+        select: { institutionId: true }
+      });
+      if (!me?.institutionId) return { error: "Your account is not linked to an institution yet." };
+      return { id: me.institutionId };
+    }
+    if (role === "SuperAdmin" || role === "SubscriptionManager") {
+      const asked = req.query.institutionId;
+      if (!asked) return { error: "institutionId is required." };
+      return { id: asked };
+    }
+    return { error: "Not permitted." };
+  };
+  app.get("/api/analytics/institution", authenticateJWT, async (req, res) => {
+    try {
+      const scope = await analyticsScope(req);
+      if (scope.error) return res.status(403).json({ error: scope.error });
+      const institutionId = scope.id;
+      const { days, from, to, prevFrom } = periodOf(req);
+      const inst = await prisma3.institution.findUnique({
+        where: { id: institutionId },
+        select: { name: true }
+      });
+      const students = await prisma3.user.findMany({
+        where: { institutionId, role: "Student" },
+        select: { id: true, displayName: true, email: true, designation: true, createdAt: true }
+      });
+      const nameOf = new Map(students.map((s2) => [s2.id, s2]));
+      const inPeriod = { institutionId, at: { gte: from, lte: to } };
+      const [reads, prevReads, readerRows, prevReaderRows, byDomain, byJournal, topItems, missed, timeline, lastSeen] = await Promise.all([
+        prisma3.libraryEvent.count({ where: { ...inPeriod, kind: "view" } }),
+        prisma3.libraryEvent.count({ where: { institutionId, kind: "view", at: { gte: prevFrom, lt: from } } }),
+        prisma3.libraryEvent.groupBy({ by: ["userId"], where: { ...inPeriod, kind: "view" }, _count: { _all: true } }),
+        prisma3.libraryEvent.groupBy({ by: ["userId"], where: { institutionId, kind: "view", at: { gte: prevFrom, lt: from } } }),
+        prisma3.libraryEvent.groupBy({
+          by: ["domain"],
+          where: { ...inPeriod, kind: "view", domain: { not: null } },
+          _count: { _all: true },
+          orderBy: { _count: { domain: "desc" } },
+          take: 12
+        }),
+        prisma3.libraryEvent.groupBy({
+          by: ["journalIssn"],
+          where: { ...inPeriod, kind: "view", journalIssn: { not: null } },
+          _count: { _all: true },
+          orderBy: { _count: { journalIssn: "desc" } },
+          take: 10
+        }),
+        prisma3.libraryEvent.groupBy({
+          by: ["itemId", "itemType"],
+          where: { ...inPeriod, kind: "view", itemId: { not: null } },
+          _count: { _all: true },
+          orderBy: { _count: { itemId: "desc" } },
+          take: 10
+        }),
+        // The acquisition signal: what they asked for and we did not have.
+        prisma3.libraryEvent.groupBy({
+          by: ["query"],
+          where: { ...inPeriod, kind: "search", resultCount: 0, query: { not: null } },
+          _count: { _all: true },
+          orderBy: { _count: { query: "desc" } },
+          take: 15
+        }),
+        prisma3.$queryRawUnsafe(
+          `select date_trunc('week', "at")::date as week,
+                    count(*) filter (where kind = 'view')::int as reads,
+                    count(distinct "userId") filter (where kind = 'view')::int as readers
+             from "LibraryEvent"
+             where "institutionId" = $1 and "at" >= $2 and "at" <= $3
+             group by 1 order by 1`,
+          institutionId,
+          from,
+          to
+        ),
+        prisma3.$queryRawUnsafe(
+          `select "userId", max("at") as last_at, count(*)::int as reads
+             from "LibraryEvent"
+             where "institutionId" = $1 and kind = 'view' and "userId" is not null
+             group by 1`,
+          institutionId
+        )
+      ]);
+      const artIds = topItems.filter((t2) => t2.itemType === "article").map((t2) => t2.itemId);
+      const conIds = topItems.filter((t2) => t2.itemType === "content").map((t2) => t2.itemId);
+      const [arts, cons, journals] = await Promise.all([
+        artIds.length ? prisma3.article.findMany({ where: { id: { in: artIds } }, select: { id: true, title: true, journalIssn: true } }) : [],
+        conIds.length ? prisma3.content.findMany({ where: { id: { in: conIds } }, select: { id: true, title: true } }) : [],
+        byJournal.length ? prisma3.journal.findMany({
+          where: { issn: { in: byJournal.map((j) => j.journalIssn) } },
+          select: { issn: true, title: true }
+        }) : []
+      ]);
+      const titleOf = new Map([
+        ...arts.map((a) => [a.id, a.title]),
+        ...cons.map((c) => [c.id, c.title])
+      ]);
+      const journalTitle = new Map(journals.map((j) => [j.issn, j.title]));
+      const seen = new Map(lastSeen.map((r2) => [r2.userId, r2]));
+      const activeIds = new Set(readerRows.map((r2) => r2.userId));
+      const silent = students.filter((s2) => !activeIds.has(s2.id)).map((s2) => {
+        const l = seen.get(s2.id);
+        return {
+          id: s2.id,
+          name: s2.displayName || s2.email,
+          year: s2.designation || null,
+          lastSeen: l?.last_at ?? null,
+          everRead: !!l
+        };
+      }).sort((a, b) => Number(!!a.everRead) - Number(!!b.everRead));
+      res.json({
+        institution: { id: institutionId, name: inst?.name || "" },
+        period: { days, from, to },
+        usage: {
+          students: students.length,
+          activeStudents: activeIds.size,
+          previousActiveStudents: new Set(prevReaderRows.map((r2) => r2.userId)).size,
+          reads,
+          previousReads: prevReads,
+          neverRead: students.filter((s2) => !seen.has(s2.id)).length
+        },
+        silent: silent.slice(0, 100),
+        silentTotal: silent.length,
+        reading: {
+          byDomain: byDomain.map((d) => ({ name: d.domain, reads: d._count._all })),
+          byJournal: byJournal.map((j) => ({
+            issn: j.journalIssn,
+            name: journalTitle.get(j.journalIssn) || j.journalIssn,
+            reads: j._count._all
+          })),
+          topItems: topItems.map((t2) => ({
+            id: t2.itemId,
+            itemType: t2.itemType,
+            title: titleOf.get(t2.itemId) || "Untitled",
+            reads: t2._count._all
+          }))
+        },
+        demand: missed.map((m2) => ({ query: m2.query, searches: m2._count._all })),
+        trend: timeline.map((t2) => ({
+          week: t2.week,
+          reads: Number(t2.reads),
+          readers: Number(t2.readers)
+        })),
+        topReaders: readerRows.map((r2) => ({
+          id: r2.userId,
+          name: nameOf.get(r2.userId)?.displayName || nameOf.get(r2.userId)?.email || "Unknown",
+          reads: r2._count._all
+        })).sort((a, b) => b.reads - a.reads).slice(0, 10)
+      });
+    } catch (e2) {
+      console.error("GET analytics/institution error:", e2?.message);
+      res.status(500).json({ error: "Failed to load analytics" });
+    }
+  });
   app.get("/api/library/stats", async (_req, res) => {
     try {
       const [journals, byDomain, articles, books, authors] = await Promise.all([

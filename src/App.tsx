@@ -125,7 +125,7 @@ import { InstitutionStudentManager } from "./components/institution/InstitutionS
 import { InstitutionProfile } from "./components/institution/InstitutionProfile";
 import { InstitutionContentLibrary } from "./components/institution/InstitutionContentLibrary";
 import { InstitutionContentAccess } from "./components/institution/InstitutionContentAccess";
-import { InstitutionAnalytics } from "./components/institution/InstitutionAnalytics";
+import { LibrarianAnalytics } from "./components/institution/LibrarianAnalytics";
 import { InstitutionSubscriptions } from "./components/institution/InstitutionSubscriptions";
 
 import { ManagerLayout } from "./components/manager/ManagerLayout";
@@ -259,7 +259,7 @@ export default function App() {
                 {/* Institution Routes */}
                 <Route path="/institution" element={<InstitutionLayout><InstitutionDashboardHome /></InstitutionLayout>} />
                 <Route path="/institution/students" element={<InstitutionLayout><InstitutionStudentManager /></InstitutionLayout>} />
-                <Route path="/institution/analytics" element={<InstitutionLayout><InstitutionAnalytics /></InstitutionLayout>} />
+                <Route path="/institution/analytics" element={<InstitutionLayout><LibrarianAnalytics /></InstitutionLayout>} />
                 <Route path="/institution/access" element={<InstitutionLayout><InstitutionContentAccess /></InstitutionLayout>} />
                 <Route path="/institution/library" element={<InstitutionLayout><InstitutionContentLibrary /></InstitutionLayout>} />
                 <Route path="/institution/explore" element={<InstitutionLayout><StructuredLibrary viewerBasePath="/institution/viewer" /></InstitutionLayout>} />

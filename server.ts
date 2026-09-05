@@ -5667,6 +5667,184 @@ async function startServer() {
     }
   });
 
+  // ── The librarian's analytics ───────────────────────────────────────────────
+  //
+  // Six panels in the order a librarian asks for them: is it being used, who is
+  // not using it, what are they reading, what did they look for and not find,
+  // how is it trending, and then one student at a time.
+  //
+  // Everything reads LibraryEvent, so for the first time this covers all three
+  // shelves rather than only the legacy one.
+
+  const periodOf = (req: any) => {
+    const days = Math.min(Math.max(parseInt(req.query.days as string) || 30, 1), 730);
+    const to = new Date();
+    const from = new Date(to.getTime() - days * 864e5);
+    const prevFrom = new Date(from.getTime() - days * 864e5);
+    return { days, from, to, prevFrom };
+  };
+
+  /// Which institution this request is allowed to see. A librarian sees their
+  /// own and only their own; an administrator must name one.
+  const analyticsScope = async (req: any): Promise<{ id?: string; error?: string }> => {
+    const role = req.user?.role;
+    if (role === 'Institution') {
+      const me = await prisma.user.findUnique({
+        where: { id: req.user.uid }, select: { institutionId: true },
+      });
+      if (!me?.institutionId) return { error: 'Your account is not linked to an institution yet.' };
+      return { id: me.institutionId };
+    }
+    if (role === 'SuperAdmin' || role === 'SubscriptionManager') {
+      const asked = req.query.institutionId as string | undefined;
+      if (!asked) return { error: 'institutionId is required.' };
+      return { id: asked };
+    }
+    return { error: 'Not permitted.' };
+  };
+
+  app.get("/api/analytics/institution", authenticateJWT, async (req: any, res: any) => {
+    try {
+      const scope = await analyticsScope(req);
+      if (scope.error) return res.status(403).json({ error: scope.error });
+      const institutionId = scope.id!;
+      const { days, from, to, prevFrom } = periodOf(req);
+
+      const inst = await prisma.institution.findUnique({
+        where: { id: institutionId }, select: { name: true },
+      });
+      const students = await prisma.user.findMany({
+        where: { institutionId, role: 'Student' },
+        select: { id: true, displayName: true, email: true, designation: true, createdAt: true },
+      });
+      const nameOf = new Map(students.map(s => [s.id, s]));
+
+      const inPeriod = { institutionId, at: { gte: from, lte: to } };
+
+      const [reads, prevReads, readerRows, prevReaderRows, byDomain, byJournal, topItems, missed, timeline, lastSeen] =
+        await Promise.all([
+          (prisma as any).libraryEvent.count({ where: { ...inPeriod, kind: 'view' } }),
+          (prisma as any).libraryEvent.count({ where: { institutionId, kind: 'view', at: { gte: prevFrom, lt: from } } }),
+          (prisma as any).libraryEvent.groupBy({ by: ['userId'], where: { ...inPeriod, kind: 'view' }, _count: { _all: true } }),
+          (prisma as any).libraryEvent.groupBy({ by: ['userId'], where: { institutionId, kind: 'view', at: { gte: prevFrom, lt: from } } }),
+
+          (prisma as any).libraryEvent.groupBy({
+            by: ['domain'], where: { ...inPeriod, kind: 'view', domain: { not: null } },
+            _count: { _all: true }, orderBy: { _count: { domain: 'desc' } }, take: 12,
+          }),
+          (prisma as any).libraryEvent.groupBy({
+            by: ['journalIssn'], where: { ...inPeriod, kind: 'view', journalIssn: { not: null } },
+            _count: { _all: true }, orderBy: { _count: { journalIssn: 'desc' } }, take: 10,
+          }),
+          (prisma as any).libraryEvent.groupBy({
+            by: ['itemId', 'itemType'], where: { ...inPeriod, kind: 'view', itemId: { not: null } },
+            _count: { _all: true }, orderBy: { _count: { itemId: 'desc' } }, take: 10,
+          }),
+
+          // The acquisition signal: what they asked for and we did not have.
+          (prisma as any).libraryEvent.groupBy({
+            by: ['query'], where: { ...inPeriod, kind: 'search', resultCount: 0, query: { not: null } },
+            _count: { _all: true }, orderBy: { _count: { query: 'desc' } }, take: 15,
+          }),
+
+          (prisma as any).$queryRawUnsafe(
+            `select date_trunc('week', "at")::date as week,
+                    count(*) filter (where kind = 'view')::int as reads,
+                    count(distinct "userId") filter (where kind = 'view')::int as readers
+             from "LibraryEvent"
+             where "institutionId" = $1 and "at" >= $2 and "at" <= $3
+             group by 1 order by 1`,
+            institutionId, from, to),
+
+          (prisma as any).$queryRawUnsafe(
+            `select "userId", max("at") as last_at, count(*)::int as reads
+             from "LibraryEvent"
+             where "institutionId" = $1 and kind = 'view' and "userId" is not null
+             group by 1`,
+            institutionId),
+        ]);
+
+      // Names for the top items and journals, resolved in one pass each.
+      const artIds = topItems.filter((t: any) => t.itemType === 'article').map((t: any) => t.itemId);
+      const conIds = topItems.filter((t: any) => t.itemType === 'content').map((t: any) => t.itemId);
+      const [arts, cons, journals] = await Promise.all([
+        artIds.length ? (prisma as any).article.findMany({ where: { id: { in: artIds } }, select: { id: true, title: true, journalIssn: true } }) : [],
+        conIds.length ? prisma.content.findMany({ where: { id: { in: conIds } }, select: { id: true, title: true } }) : [],
+        byJournal.length ? (prisma as any).journal.findMany({
+          where: { issn: { in: byJournal.map((j: any) => j.journalIssn) } },
+          select: { issn: true, title: true },
+        }) : [],
+      ]);
+      const titleOf = new Map<string, string>([
+        ...arts.map((a: any) => [a.id, a.title] as [string, string]),
+        ...cons.map((c: any) => [c.id, c.title] as [string, string]),
+      ]);
+      const journalTitle = new Map(journals.map((j: any) => [j.issn, j.title]));
+
+      const seen = new Map(lastSeen.map((r: any) => [r.userId, r]));
+      const activeIds = new Set(readerRows.map((r: any) => r.userId));
+
+      // Who is not using it — the list a librarian can actually act on.
+      const silent = students
+        .filter(s => !activeIds.has(s.id))
+        .map(s => {
+          const l: any = seen.get(s.id);
+          return {
+            id: s.id, name: s.displayName || s.email, year: s.designation || null,
+            lastSeen: l?.last_at ?? null,
+            everRead: !!l,
+          };
+        })
+        .sort((a, b) => Number(!!a.everRead) - Number(!!b.everRead));
+
+      res.json({
+        institution: { id: institutionId, name: inst?.name || '' },
+        period: { days, from, to },
+
+        usage: {
+          students: students.length,
+          activeStudents: activeIds.size,
+          previousActiveStudents: new Set(prevReaderRows.map((r: any) => r.userId)).size,
+          reads,
+          previousReads: prevReads,
+          neverRead: students.filter(s => !seen.has(s.id)).length,
+        },
+
+        silent: silent.slice(0, 100),
+        silentTotal: silent.length,
+
+        reading: {
+          byDomain: byDomain.map((d: any) => ({ name: d.domain, reads: d._count._all })),
+          byJournal: byJournal.map((j: any) => ({
+            issn: j.journalIssn, name: journalTitle.get(j.journalIssn) || j.journalIssn, reads: j._count._all,
+          })),
+          topItems: topItems.map((t: any) => ({
+            id: t.itemId, itemType: t.itemType,
+            title: titleOf.get(t.itemId) || 'Untitled', reads: t._count._all,
+          })),
+        },
+
+        demand: missed.map((m: any) => ({ query: m.query, searches: m._count._all })),
+
+        trend: timeline.map((t: any) => ({
+          week: t.week, reads: Number(t.reads), readers: Number(t.readers),
+        })),
+
+        topReaders: readerRows
+          .map((r: any) => ({
+            id: r.userId,
+            name: nameOf.get(r.userId)?.displayName || nameOf.get(r.userId)?.email || 'Unknown',
+            reads: r._count._all,
+          }))
+          .sort((a: any, b: any) => b.reads - a.reads)
+          .slice(0, 10),
+      });
+    } catch (e: any) {
+      console.error('GET analytics/institution error:', e?.message);
+      res.status(500).json({ error: "Failed to load analytics" });
+    }
+  });
+
   // ── One query behind every count on the site ────────────────────────────
   // The homepage figure and the department figure have to agree, which they
   // cannot if each screen counts for itself.
