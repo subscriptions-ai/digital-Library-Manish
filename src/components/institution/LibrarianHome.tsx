@@ -32,9 +32,58 @@ type Overview = {
   };
   newJournals: { id: string; title: string; issn: string | null; domain: string | null; articleCount: number }[];
   hasActiveSubscription: boolean;
+  sparkline: number[];
   unansweredSearches: number;
   recent: { at: string; itemId: string; itemType: string; domain: string | null; title: string; student: string | null }[];
 };
+
+
+/**
+ * Seats in use, as a part of the whole.
+ *
+ * This is the renewal number — how much of what the college pays for is being
+ * used — and it is genuinely two parts of one total, which is the only case
+ * where a ring beats a bar. Two colours, so no categorical palette to get wrong.
+ */
+function Seats({ used, total }: { used: number; total: number }) {
+  const pct = total ? Math.min(used / total, 1) : 0;
+  const R = 30, C = 2 * Math.PI * R;
+  return (
+    <div className="flex items-center gap-4">
+      <svg width="76" height="76" viewBox="0 0 76 76" className="-rotate-90 shrink-0" role="img"
+        aria-label={`${used} of ${total} students reading`}>
+        <circle cx="38" cy="38" r={R} fill="none" stroke="var(--rule)" strokeWidth="7" />
+        <circle cx="38" cy="38" r={R} fill="none" stroke="var(--accent)" strokeWidth="7"
+          strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - pct)} />
+      </svg>
+      <div>
+        <p className="tnum font-mono text-[24px] leading-none text-ink">
+          {n(used)}<span className="text-[15px] text-muted"> of {n(total)}</span>
+        </p>
+        <p className="mt-1.5 text-[13px] leading-snug text-muted">
+          students have read something in the last month
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Twelve weeks of reading, at a glance. One series, so no legend and no labels. */
+function Spark({ values }: { values: number[] }) {
+  if (values.length < 3) return null;
+  const W = 150, H = 34, max = Math.max(...values, 1);
+  const x = (i: number) => (i / (values.length - 1)) * W;
+  const y = (v: number) => H - 3 - (v / max) * (H - 6);
+  const d = values.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="shrink-0" role="img"
+      aria-label="Reads over the last twelve weeks">
+      <path d={`${d} L${W},${H} L0,${H} Z`} fill="var(--accent)" opacity="0.10" />
+      <path d={d} fill="none" stroke="var(--accent)" strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={x(values.length - 1)} cy={y(values[values.length - 1])} r="2.5" fill="var(--accent)" />
+    </svg>
+  );
+}
 
 /** Something the librarian can act on, with the action attached to it. */
 function Todo({ tone, text, cta, to }: {
@@ -154,6 +203,18 @@ export function LibrarianHome() {
                   </>
                 : <>No departments are covered by an active subscription yet.</>}
           </p>
+
+          {st.total > 0 && (
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-6 border-t border-rule pt-6">
+              <Seats used={st.activeLast30} total={st.total} />
+              {d.sparkline?.length >= 3 && (
+                <div className="text-right">
+                  <p className={LABEL}>Last 12 weeks</p>
+                  <div className="mt-1.5"><Spark values={d.sparkline} /></div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 

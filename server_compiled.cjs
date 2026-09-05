@@ -15663,7 +15663,16 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ...cons.map((c) => [c.id, c.title])
       ]);
       const journalTitle = new Map(journals.map((j) => [j.issn, j.title]));
+      const legacySeen = await prisma3.studentActivity.groupBy({
+        by: ["userId"],
+        where: { user: { institutionId } },
+        _max: { accessedAt: true }
+      });
       const seen = new Map(lastSeen.map((r2) => [r2.userId, r2]));
+      for (const l of legacySeen) {
+        if (!l.userId) continue;
+        if (!seen.has(l.userId)) seen.set(l.userId, { userId: l.userId, last_at: l._max.accessedAt, reads: 0 });
+      }
       const activeIds = new Set(readerRows.map((r2) => r2.userId));
       const silent = students.filter((s2) => !activeIds.has(s2.id)).map((s2) => {
         const l = seen.get(s2.id);
@@ -15746,23 +15755,33 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const covered = [...domains];
       const soonest = subs.map((s2) => s2.endDate).filter(Boolean).sort()[0] ?? null;
       const daysLeft = soonest ? Math.ceil((new Date(soonest).getTime() - Date.now()) / 864e5) : null;
-      const jWhere = { articleCount: { gt: 0 } };
+      const jWhere = {};
       const aWhere = { status: "Published" };
       if (covered.length) {
         jWhere.domain = { in: covered };
         aWhere.domain = { in: covered };
       }
+      const domainFilter = covered.length ? `and a."domain" = any($1)` : "";
+      const args = covered.length ? [covered] : [];
       const since = new Date(Date.now() - 30 * 864e5);
-      const [journals, articles, books, byDept, newJournals, recent, unanswered, readers] = await Promise.all([
-        prisma3.journal.count({ where: jWhere }),
+      const [journalRows, articles, books, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
+        prisma3.$queryRawUnsafe(
+          `select count(distinct a."journalIssn")::int as n
+           from "Article" a
+           where a.status = 'Published' and a."journalIssn" is not null ${domainFilter}`,
+          ...args
+        ),
         prisma3.article.count({ where: aWhere }),
         prisma3.book.count({ where: covered.length ? { status: "Published", domain: { in: covered } } : { status: "Published" } }),
-        prisma3.journal.groupBy({
-          by: ["domain"],
-          where: { ...jWhere, domain: { not: null } },
-          _count: { _all: true },
-          _sum: { articleCount: true }
-        }),
+        prisma3.$queryRawUnsafe(
+          `select a."domain" as domain,
+                  count(distinct a."journalIssn")::int as journals,
+                  count(*)::int as articles
+           from "Article" a
+           where a.status = 'Published' and a."domain" is not null ${domainFilter}
+           group by 1 order by 2 desc, 3 desc`,
+          ...args
+        ),
         prisma3.journal.findMany({
           where: jWhere,
           orderBy: { createdAt: "desc" },
@@ -15781,7 +15800,17 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         prisma3.libraryEvent.groupBy({
           by: ["userId"],
           where: { institutionId, kind: "view", at: { gte: since } }
-        })
+        }),
+        // Twelve weeks of reads, for the sparkline in the header. One series,
+        // one measure — nothing here needs a palette.
+        prisma3.$queryRawUnsafe(
+          `select date_trunc('week', "at")::date as week, count(*)::int as reads
+           from "LibraryEvent"
+           where "institutionId" = $1 and kind = 'view' and "at" >= $2
+           group by 1 order by 1`,
+          institutionId,
+          new Date(Date.now() - 84 * 864e5)
+        )
       ]);
       const artIds = recent.filter((r2) => r2.itemType === "article").map((r2) => r2.itemId);
       const conIds = recent.filter((r2) => r2.itemType === "content").map((r2) => r2.itemId);
@@ -15794,9 +15823,18 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ...rc.map((c) => [c.id, c.title])
       ]);
       const who = new Map(students.map((s2) => [s2.id, s2.displayName || s2.email]));
-      const everRead = new Set(
-        (await prisma3.libraryEvent.groupBy({ by: ["userId"], where: { institutionId, kind: "view" } })).map((r2) => r2.userId)
-      );
+      const [evUsers, saUsers] = await Promise.all([
+        prisma3.libraryEvent.groupBy({ by: ["userId"], where: { institutionId, kind: "view" } }),
+        prisma3.studentActivity.findMany({
+          where: { user: { institutionId } },
+          select: { userId: true },
+          distinct: ["userId"]
+        })
+      ]);
+      const everRead = /* @__PURE__ */ new Set([
+        ...evUsers.map((r2) => r2.userId).filter(Boolean),
+        ...saUsers.map((r2) => r2.userId).filter(Boolean)
+      ]);
       res.json({
         institution: { id: institutionId, name: inst?.name || "" },
         students: {
@@ -15811,12 +15849,17 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           daysLeft
         },
         collection: {
-          journals,
+          journals: Number(journalRows?.[0]?.n || 0),
           articles,
           books,
-          byDepartment: byDept.map((d) => ({ name: d.domain, journals: d._count._all, articles: d._sum.articleCount || 0 })).sort((a, b) => b.journals - a.journals)
+          byDepartment: byDeptRows.map((d) => ({
+            name: d.domain,
+            journals: Number(d.journals),
+            articles: Number(d.articles)
+          }))
         },
         hasActiveSubscription: subs.length > 0,
+        sparkline: spark.map((r2) => Number(r2.reads)),
         newJournals,
         unansweredSearches: unanswered,
         recent: recent.map((r2) => ({

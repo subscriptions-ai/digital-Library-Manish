@@ -5783,7 +5783,16 @@ async function startServer() {
       ]);
       const journalTitle = new Map(journals.map((j: any) => [j.issn, j.title]));
 
-      const seen = new Map(lastSeen.map((r: any) => [r.userId, r]));
+      // Same reconciliation as the overview: a student who read before the event
+      // log existed has still read.
+      const legacySeen = await prisma.studentActivity.groupBy({
+        by: ['userId'], where: { user: { institutionId } }, _max: { accessedAt: true },
+      });
+      const seen = new Map<string, any>(lastSeen.map((r: any) => [r.userId, r]));
+      for (const l of legacySeen) {
+        if (!l.userId) continue;
+        if (!seen.has(l.userId)) seen.set(l.userId, { userId: l.userId, last_at: l._max.accessedAt, reads: 0 });
+      }
       const activeIds = new Set(readerRows.map((r: any) => r.userId));
 
       // Who is not using it — the list a librarian can actually act on.
@@ -5888,19 +5897,34 @@ async function startServer() {
 
       // The shelf they can reach. An empty domain list is a full-access
       // subscription, not an empty one.
-      const jWhere: any = { articleCount: { gt: 0 } };
+      //
+      // Counted from the articles themselves rather than from Journal.articleCount.
+      // That column is a denormalised counter filled by a backfill, and where the
+      // backfill has not run it reads zero for every journal — which showed a
+      // college "0 journals" on the same line as 28,748 articles.
+      const jWhere: any = {};
       const aWhere: any = { status: 'Published' };
       if (covered.length) { jWhere.domain = { in: covered }; aWhere.domain = { in: covered }; }
 
+      const domainFilter = covered.length
+        ? `and a."domain" = any($1)` : '';
+      const args: any[] = covered.length ? [covered] : [];
+
       const since = new Date(Date.now() - 30 * 864e5);
-      const [journals, articles, books, byDept, newJournals, recent, unanswered, readers] = await Promise.all([
-        (prisma as any).journal.count({ where: jWhere }),
+      const [journalRows, articles, books, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
+        (prisma as any).$queryRawUnsafe(
+          `select count(distinct a."journalIssn")::int as n
+           from "Article" a
+           where a.status = 'Published' and a."journalIssn" is not null ${domainFilter}`, ...args),
         (prisma as any).article.count({ where: aWhere }),
         (prisma as any).book.count({ where: covered.length ? { status: 'Published', domain: { in: covered } } : { status: 'Published' } }),
-        (prisma as any).journal.groupBy({
-          by: ['domain'], where: { ...jWhere, domain: { not: null } },
-          _count: { _all: true }, _sum: { articleCount: true },
-        }),
+        (prisma as any).$queryRawUnsafe(
+          `select a."domain" as domain,
+                  count(distinct a."journalIssn")::int as journals,
+                  count(*)::int as articles
+           from "Article" a
+           where a.status = 'Published' and a."domain" is not null ${domainFilter}
+           group by 1 order by 2 desc, 3 desc`, ...args),
         (prisma as any).journal.findMany({
           where: jWhere, orderBy: { createdAt: 'desc' }, take: 5,
           select: { id: true, title: true, issn: true, domain: true, articleCount: true },
@@ -5915,6 +5939,14 @@ async function startServer() {
         (prisma as any).libraryEvent.groupBy({
           by: ['userId'], where: { institutionId, kind: 'view', at: { gte: since } },
         }),
+        // Twelve weeks of reads, for the sparkline in the header. One series,
+        // one measure — nothing here needs a palette.
+        (prisma as any).$queryRawUnsafe(
+          `select date_trunc('week', "at")::date as week, count(*)::int as reads
+           from "LibraryEvent"
+           where "institutionId" = $1 and kind = 'view' and "at" >= $2
+           group by 1 order by 1`,
+          institutionId, new Date(Date.now() - 84 * 864e5)),
       ]);
 
       // Titles for what was last read.
@@ -5930,10 +5962,23 @@ async function startServer() {
       ]);
       const who = new Map(students.map(s => [s.id, s.displayName || s.email]));
 
-      const everRead = new Set(
-        (await (prisma as any).libraryEvent.groupBy({ by: ['userId'], where: { institutionId, kind: 'view' } }))
-          .map((r: any) => r.userId)
-      );
+      // Who has ever read anything, from both records.
+      //
+      // The student directory reads StudentActivity and this page read only
+      // LibraryEvent, so on an installation where the event log is new the
+      // dashboard announced that students had never opened the library while the
+      // directory listed what they had read. Two screens, one truth: a student
+      // counts as having read if either table says so.
+      const [evUsers, saUsers] = await Promise.all([
+        (prisma as any).libraryEvent.groupBy({ by: ['userId'], where: { institutionId, kind: 'view' } }),
+        prisma.studentActivity.findMany({
+          where: { user: { institutionId } }, select: { userId: true }, distinct: ['userId'],
+        }),
+      ]);
+      const everRead = new Set<string>([
+        ...evUsers.map((r: any) => r.userId).filter(Boolean),
+        ...saUsers.map((r: any) => r.userId).filter(Boolean),
+      ]);
 
       res.json({
         institution: { id: institutionId, name: inst?.name || '' },
@@ -5949,12 +5994,14 @@ async function startServer() {
           daysLeft,
         },
         collection: {
-          journals, articles, books,
-          byDepartment: byDept
-            .map((d: any) => ({ name: d.domain, journals: d._count._all, articles: d._sum.articleCount || 0 }))
-            .sort((a: any, b: any) => b.journals - a.journals),
+          journals: Number(journalRows?.[0]?.n || 0),
+          articles, books,
+          byDepartment: byDeptRows.map((d: any) => ({
+            name: d.domain, journals: Number(d.journals), articles: Number(d.articles),
+          })),
         },
         hasActiveSubscription: subs.length > 0,
+        sparkline: spark.map((r: any) => Number(r.reads)),
         newJournals,
         unansweredSearches: unanswered,
         recent: recent.map((r: any) => ({
