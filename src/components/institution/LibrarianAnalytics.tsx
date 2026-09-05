@@ -34,6 +34,7 @@ type Data = {
   };
   demand: { query: string; searches: number }[];
   trend: { week: string; reads: number; readers: number }[];
+  trendBucket?: 'day' | 'week';
   topReaders: { id: string; name: string; reads: number }[];
 };
 
@@ -70,28 +71,25 @@ function Trend({ points }: { points: { week: string; reads: number }[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const W = 720, H = 190, PAD = { t: 14, r: 14, b: 26, l: 44 };
 
-  if (points.length < 2) {
-    return (
-      <div className="flex h-[190px] items-center justify-center rounded-md border border-rule bg-surface-2/50">
-        <p className="font-mono text-[11.5px] text-faint">Not enough weeks yet to draw a trend.</p>
-      </div>
-    );
-  }
+  // The frame stays even when there is nothing in it. A chart that disappears
+  // reads as broken; a chart with an axis and no line reads as waiting.
+  const empty = points.length < 2;
 
   const max = Math.max(...points.map(p => p.reads), 1);
-  const nice = Math.ceil(max / 50) * 50 || 50;
+  const step = max <= 5 ? 1 : max <= 20 ? 5 : max <= 100 ? 25 : 50;
+  const nice = Math.max(Math.ceil(max / step) * step, step);
   const x = (i: number) => PAD.l + (i / (points.length - 1)) * (W - PAD.l - PAD.r);
   const y = (v: number) => PAD.t + (1 - v / nice) * (H - PAD.t - PAD.b);
 
   const line = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.reads).toFixed(1)}`).join(' ');
   const area = `${line} L${x(points.length - 1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`;
-  const peak = points.reduce((a, b, i) => (b.reads > points[a].reads ? i : a), 0);
+  const peak = points.length ? points.reduce((a, b, i) => (b.reads > points[a].reads ? i : a), 0) : 0;
   const fmt = (w: string) => new Date(w).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
   return (
     <div className="relative">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img"
-        aria-label={`Reads per week, peaking at ${points[peak].reads}`}>
+        aria-label={empty ? 'Reads over time, not enough data yet' : `Reads over time, peaking at ${points[peak].reads}`}>
         {[0, 0.5, 1].map(f => (
           <g key={f}>
             <line x1={PAD.l} x2={W - PAD.r} y1={y(nice * f)} y2={y(nice * f)} stroke="var(--rule)" strokeWidth="1" />
@@ -102,19 +100,28 @@ function Trend({ points }: { points: { week: string; reads: number }[] }) {
           </g>
         ))}
 
-        <path d={area} fill="var(--accent)" opacity="0.09" />
-        <path d={line} fill="none" stroke="var(--accent)" strokeWidth="2"
-          strokeLinejoin="round" strokeLinecap="round" />
+        {!empty && <>
+          <path d={area} fill="var(--accent)" opacity="0.09" />
+          <path d={line} fill="none" stroke="var(--accent)" strokeWidth="2"
+            strokeLinejoin="round" strokeLinecap="round" />
 
-        {/* Only the peak is labelled. */}
-        <circle cx={x(peak)} cy={y(points[peak].reads)} r="4" fill="var(--accent)"
-          stroke="var(--surface)" strokeWidth="2" />
-        <text x={x(peak)} y={y(points[peak].reads) - 10} textAnchor="middle"
-          className="tnum" fill="var(--ink-2)" fontSize="10.5" fontFamily="var(--mono)">
-          {n(points[peak].reads)}
-        </text>
+          {/* Only the peak is labelled. */}
+          <circle cx={x(peak)} cy={y(points[peak].reads)} r="4" fill="var(--accent)"
+            stroke="var(--surface)" strokeWidth="2" />
+          <text x={x(peak)} y={y(points[peak].reads) - 10} textAnchor="middle"
+            className="tnum" fill="var(--ink-2)" fontSize="10.5" fontFamily="var(--mono)">
+            {n(points[peak].reads)}
+          </text>
+        </>}
 
-        {hover !== null && (
+        {empty && (
+          <text x={W / 2} y={H / 2} textAnchor="middle" fill="var(--faint)"
+            fontSize="11.5" fontFamily="var(--mono)">
+            {points.length === 1 ? 'One day of activity so far' : 'No reads in this period yet'}
+          </text>
+        )}
+
+        {!empty && hover !== null && (
           <>
             <line x1={x(hover)} x2={x(hover)} y1={PAD.t} y2={H - PAD.b} stroke="var(--rule-2)" strokeWidth="1" />
             <circle cx={x(hover)} cy={y(points[hover].reads)} r="4.5" fill="var(--accent)"
@@ -122,21 +129,23 @@ function Trend({ points }: { points: { week: string; reads: number }[] }) {
           </>
         )}
 
-        <text x={PAD.l} y={H - 8} className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--mono)">
-          {fmt(points[0].week)}
-        </text>
-        <text x={W - PAD.r} y={H - 8} textAnchor="end" className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--mono)">
-          {fmt(points[points.length - 1].week)}
-        </text>
+        {points.length > 0 && <>
+          <text x={PAD.l} y={H - 8} className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--mono)">
+            {fmt(points[0].week)}
+          </text>
+          <text x={W - PAD.r} y={H - 8} textAnchor="end" className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--mono)">
+            {fmt(points[points.length - 1].week)}
+          </text>
+        </>}
 
         {/* Hit targets wider than the marks. */}
-        {points.map((_, i) => (
+        {!empty && points.map((_, i) => (
           <rect key={i} x={x(i) - (W / points.length) / 2} y={0} width={W / points.length} height={H}
             fill="transparent" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} />
         ))}
       </svg>
 
-      {hover !== null && (
+      {!empty && hover !== null && (
         <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 rounded-md border border-rule bg-surface px-3 py-1.5 shadow-sm">
           <p className="tnum font-mono text-[11px] text-ink">
             {fmt(points[hover].week)} · {n(points[hover].reads)} reads
@@ -147,9 +156,14 @@ function Trend({ points }: { points: { week: string; reads: number }[] }) {
   );
 }
 
-/** A list where the number carries a bar. One measure, so one colour. */
+/**
+ * A ranked list. The bar is a comparison, and a comparison needs something to
+ * compare — with one row, or with counts this small, a full-width bar says
+ * "dominant" about a single read. Below that threshold the number stands alone.
+ */
 function Ranked({ rows, hrefOf }: { rows: { name: string; reads: number; key: string }[]; hrefOf?: (k: string) => string | null }) {
   const max = Math.max(...rows.map(r => r.reads), 1);
+  const worthComparing = rows.length >= 3 && max >= 5;
   return (
     <ul className="divide-y divide-rule">
       {rows.map(r => {
@@ -162,9 +176,11 @@ function Ranked({ rows, hrefOf }: { rows: { name: string; reads: number; key: st
                 : <span className="truncate text-[13.5px] text-ink-2">{r.name}</span>}
               <span className="tnum shrink-0 font-mono text-[12px] text-muted">{n(r.reads)}</span>
             </div>
-            <div className="mt-1.5 h-[3px] w-full rounded-full bg-surface-2">
-              <div className="h-[3px] rounded-full bg-accent" style={{ width: `${(r.reads / max) * 100}%` }} />
-            </div>
+            {worthComparing && (
+              <div className="mt-1.5 h-[3px] w-full rounded-full bg-surface-2">
+                <div className="h-[3px] rounded-full bg-accent/70" style={{ width: `${Math.max((r.reads / max) * 100, 2)}%` }} />
+              </div>
+            )}
           </li>
         );
       })}
@@ -298,6 +314,29 @@ export function LibrarianAnalytics({
 
       <div className="mx-auto max-w-6xl space-y-5 px-5 py-7">
 
+        {/* An institution that has barely started should be told so plainly.
+            Panels built for hundreds of rows, each showing one, read as a
+            broken page rather than an early one. */}
+        {u.reads < 25 && (
+          <div className="rounded-md border border-rule bg-surface p-5">
+            <p className={LABEL}>Just getting started</p>
+            <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-2">
+              {u.reads === 0
+                ? <>Nobody has opened anything in the last {d.period.days} days, so there is nothing to
+                    measure yet.</>
+                : <>Your students have opened {n(u.reads)} {u.reads === 1 ? 'item' : 'items'} in the
+                    last {d.period.days} days. That is too little to draw a trend from or to rank
+                    anything by, so the panels below are showing exactly what there is rather than
+                    padding it out.</>}
+            </p>
+            <p className="mt-2.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
+              They fill in on their own as students read. The one worth watching first is
+              <b className="text-ink-2"> searched for, not found</b> — it tells you what to ask us
+              to add, and it needs only a handful of students to start being useful.
+            </p>
+          </div>
+        )}
+
         {/* 01 — the renewal question */}
         <dl className="grid grid-cols-2 divide-rule overflow-hidden rounded-md border border-rule bg-surface sm:grid-cols-4 sm:divide-x">
           <Stat label="Students" value={u.students} />
@@ -376,11 +415,13 @@ export function LibrarianAnalytics({
           </Panel>
 
           {/* 05 — what they read */}
-          <Panel label="Departments read" note="Each opens its shelf">
-            <Ranked
+          <Panel label="Departments read" note={d.reading.byDomain.length ? 'Each opens its shelf' : undefined}>
+            {d.reading.byDomain.length === 0
+              ? <p className="px-5 py-8 text-center text-[13px] text-muted">No reads recorded this period.</p>
+              : <Ranked
               rows={d.reading.byDomain.map(x => ({ key: x.name, name: x.name, reads: x.reads }))}
               hrefOf={k => `${departmentBase}/${slug(k)}`}
-            />
+            />}
           </Panel>
 
           <Panel label="Journals read" note="Each opens its run of volumes">
@@ -396,7 +437,10 @@ export function LibrarianAnalytics({
             )}
           </Panel>
 
-          <Panel label="Most read" note="The titles themselves">
+          <Panel label="Most read" note={d.reading.topItems.length ? 'The titles themselves' : undefined}>
+            {d.reading.topItems.length === 0 && (
+              <p className="px-5 py-8 text-center text-[13px] text-muted">Nothing has been opened yet.</p>
+            )}
             <ul className="divide-y divide-rule">
               {d.reading.topItems.map((t, i) => (
                 <li key={t.id} className="flex gap-3 px-5 py-3">
@@ -412,7 +456,10 @@ export function LibrarianAnalytics({
             </ul>
           </Panel>
 
-          <Panel label="Reads most" note="Your heaviest users this period">
+          <Panel label="Reads most" note={d.topReaders.length > 2 ? 'Your heaviest users this period' : undefined}>
+            {d.topReaders.length === 0 && (
+              <p className="px-5 py-8 text-center text-[13px] text-muted">No reader activity this period.</p>
+            )}
             <ul className="divide-y divide-rule">
               {d.topReaders.map((r, i) => (
                 <li key={r.id} className="flex items-baseline justify-between gap-4 px-5 py-2.5">

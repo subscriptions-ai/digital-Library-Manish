@@ -49,25 +49,30 @@
 .dark {
   color-scheme: dark;
 
-  --ground: #101215;
-  --surface: #171a1e;
-  --surface-2: #1e2228;
+  /* Near-white text on a near-black ground measured 14.5:1, which is the
+     classic dark-mode eye strain — the contrast is technically excellent and
+     physically unpleasant. Text softens to ~12:1, the ground drops and the
+     surface lifts so a panel actually sits above the page instead of dissolving
+     into it, and the small uppercase labels move above the readable floor. */
+  --ground: #0f1216;
+  --surface: #1c2129;
+  --surface-2: #262c35;
 
-  --ink: #e9eaec;
-  --ink-2: #c3c7cc;
-  --muted: #949aa2;
-  --faint: #6d747c;
+  --ink: #d9dce1;
+  --ink-2: #aeb4bd;
+  --muted: #8f969e;
+  --faint: #838b95;
 
-  --rule: #282d33;
-  --rule-2: #363c44;
+  --rule: #2f353e;
+  --rule-2: #3f4650;
 
-  --accent: #4fb3ac;
-  --accent-hover: #7fcdc6;
-  --accent-soft: #14312f;
+  --accent: #5cb3aa;
+  --accent-hover: #7ecac2;
+  --accent-soft: #16302e;
   --accent-on: #0b1416;
 
-  --caution: #d99441;
-  --caution-soft: #33240f;
+  --caution: #d3944d;
+  --caution-soft: #33250f;
   --alarm: #d9736b;
   --alarm-soft: #2c1513;
 }

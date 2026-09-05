@@ -5747,8 +5747,10 @@ async function startServer() {
             _count: { _all: true }, orderBy: { _count: { query: 'desc' } }, take: 15,
           }),
 
+          // Weeks over a long span, days over a short one — a 30-day window
+          // bucketed by week is four points, which is not a trend.
           (prisma as any).$queryRawUnsafe(
-            `select date_trunc('week', "at")::date as week,
+            `select date_trunc('${days <= 45 ? 'day' : 'week'}', "at")::date as week,
                     count(*) filter (where kind = 'view')::int as reads,
                     count(distinct "userId") filter (where kind = 'view')::int as readers
              from "LibraryEvent"
@@ -5826,6 +5828,7 @@ async function startServer() {
 
         demand: missed.map((m: any) => ({ query: m.query, searches: m._count._all })),
 
+        trendBucket: days <= 45 ? 'day' : 'week',
         trend: timeline.map((t: any) => ({
           week: t.week, reads: Number(t.reads), readers: Number(t.readers),
         })),

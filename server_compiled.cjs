@@ -15627,8 +15627,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           orderBy: { _count: { query: "desc" } },
           take: 15
         }),
+        // Weeks over a long span, days over a short one — a 30-day window
+        // bucketed by week is four points, which is not a trend.
         prisma3.$queryRawUnsafe(
-          `select date_trunc('week', "at")::date as week,
+          `select date_trunc('${days <= 45 ? "day" : "week"}', "at")::date as week,
                     count(*) filter (where kind = 'view')::int as reads,
                     count(distinct "userId") filter (where kind = 'view')::int as readers
              from "LibraryEvent"
@@ -15701,6 +15703,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           }))
         },
         demand: missed.map((m2) => ({ query: m2.query, searches: m2._count._all })),
+        trendBucket: days <= 45 ? "day" : "week",
         trend: timeline.map((t2) => ({
           week: t2.week,
           reads: Number(t2.reads),
