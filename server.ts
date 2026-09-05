@@ -5485,8 +5485,11 @@ async function startServer() {
 
       // Resolve the slug against the departments we actually hold journals in,
       // so a renamed or unheld department 404s rather than showing an empty shelf.
+      // Resolution is deliberately not gated on articleCount. That counter is
+      // derived, and a stale one turned a department we hold into a 404 saying
+      // we hold no journals under that name.
       const domains: { domain: string }[] = await (prisma as any).journal.findMany({
-        where: { domain: { not: null }, articleCount: { gt: 0 } },
+        where: { domain: { not: null } },
         select: { domain: true }, distinct: ['domain'],
       });
       const match = domains.find(d => departmentSlug(d.domain) === wanted);
@@ -5543,8 +5546,10 @@ async function startServer() {
     try {
       const wanted = String(req.params.slug || '').toLowerCase();
 
+      // As with the department page: a publisher we hold must never 404 because
+      // a derived counter has not been recomputed.
       const names: { publisherName: string }[] = await (prisma as any).journal.findMany({
-        where: { publisherName: { not: null }, articleCount: { gt: 0 } },
+        where: { publisherName: { not: null } },
         select: { publisherName: true }, distinct: ['publisherName'],
       });
       const match = names.find(n => departmentSlug(n.publisherName) === wanted);
@@ -5622,7 +5627,11 @@ async function startServer() {
     try {
       const wanted = String(req.params.slug || '').toLowerCase();
       const scope = await libraryScopeDomains(req);
-      const where: any = { articleCount: { gt: 0 } };
+      // Not gated on articleCount, for the same reason the department and
+      // publisher pages are not: a derived counter must never be what decides
+      // whether a page exists. The subject *list* still only offers subjects
+      // with holdings; a direct URL simply never dead-ends.
+      const where: any = {};
       if (scope !== null) where.domain = { in: scope };
 
       const all = await (prisma as any).journal.findMany({
@@ -5898,10 +5907,13 @@ async function startServer() {
       // The shelf they can reach. An empty domain list is a full-access
       // subscription, not an empty one.
       //
-      // Counted from the articles themselves rather than from Journal.articleCount.
-      // That column is a denormalised counter filled by a backfill, and where the
-      // backfill has not run it reads zero for every journal — which showed a
-      // college "0 journals" on the same line as 28,748 articles.
+      // Counted from the articles themselves rather than from Journal.articleCount,
+      // a denormalised counter filled by a backfill; where the backfill has not
+      // run it reads zero for every journal, which showed a college "0 journals"
+      // beside 28,748 articles.
+      //
+      // Keyed on journalId. Every published article has one; only 81% carry an
+      // ISSN, so counting distinct ISSNs drops 81 journals and 5,690 articles.
       const jWhere: any = {};
       const aWhere: any = { status: 'Published' };
       if (covered.length) { jWhere.domain = { in: covered }; aWhere.domain = { in: covered }; }
@@ -5913,14 +5925,14 @@ async function startServer() {
       const since = new Date(Date.now() - 30 * 864e5);
       const [journalRows, articles, books, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
         (prisma as any).$queryRawUnsafe(
-          `select count(distinct a."journalIssn")::int as n
+          `select count(distinct a."journalId")::int as n
            from "Article" a
-           where a.status = 'Published' and a."journalIssn" is not null ${domainFilter}`, ...args),
+           where a.status = 'Published' and a."journalId" is not null ${domainFilter}`, ...args),
         (prisma as any).article.count({ where: aWhere }),
         (prisma as any).book.count({ where: covered.length ? { status: 'Published', domain: { in: covered } } : { status: 'Published' } }),
         (prisma as any).$queryRawUnsafe(
           `select a."domain" as domain,
-                  count(distinct a."journalIssn")::int as journals,
+                  count(distinct a."journalId")::int as journals,
                   count(*)::int as articles
            from "Article" a
            where a.status = 'Published' and a."domain" is not null ${domainFilter}

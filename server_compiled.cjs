@@ -15377,7 +15377,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const wanted = String(req.params.slug || "").toLowerCase();
       const domains = await prisma3.journal.findMany({
-        where: { domain: { not: null }, articleCount: { gt: 0 } },
+        where: { domain: { not: null } },
         select: { domain: true },
         distinct: ["domain"]
       });
@@ -15434,7 +15434,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const wanted = String(req.params.slug || "").toLowerCase();
       const names = await prisma3.journal.findMany({
-        where: { publisherName: { not: null }, articleCount: { gt: 0 } },
+        where: { publisherName: { not: null } },
         select: { publisherName: true },
         distinct: ["publisherName"]
       });
@@ -15507,7 +15507,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const wanted = String(req.params.slug || "").toLowerCase();
       const scope = await libraryScopeDomains(req);
-      const where = { articleCount: { gt: 0 } };
+      const where = {};
       if (scope !== null) where.domain = { in: scope };
       const all = await prisma3.journal.findMany({
         where,
@@ -15766,16 +15766,16 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const since = new Date(Date.now() - 30 * 864e5);
       const [journalRows, articles, books, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
         prisma3.$queryRawUnsafe(
-          `select count(distinct a."journalIssn")::int as n
+          `select count(distinct a."journalId")::int as n
            from "Article" a
-           where a.status = 'Published' and a."journalIssn" is not null ${domainFilter}`,
+           where a.status = 'Published' and a."journalId" is not null ${domainFilter}`,
           ...args
         ),
         prisma3.article.count({ where: aWhere }),
         prisma3.book.count({ where: covered.length ? { status: "Published", domain: { in: covered } } : { status: "Published" } }),
         prisma3.$queryRawUnsafe(
           `select a."domain" as domain,
-                  count(distinct a."journalIssn")::int as journals,
+                  count(distinct a."journalId")::int as journals,
                   count(*)::int as articles
            from "Article" a
            where a.status = 'Published' and a."domain" is not null ${domainFilter}
