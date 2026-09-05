@@ -10448,9 +10448,9 @@ async function fetchArticlesForOneJournal(state) {
   });
   return { journal: journal.title, added, skipped };
 }
-async function runIngestionPass(departments) {
+async function runIngestionPass(departments, opts = {}) {
   const state = await getState();
-  if (!state.enabled) return { skipped: "disabled" };
+  if (!state.enabled && !opts.force) return { skipped: "disabled" };
   try {
     const wanted = state.departments?.length ? state.departments : departments;
     for (const dep of wanted) {
@@ -14952,7 +14952,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (_req, res) => {
     try {
-      res.json(await runIngestionPass(ALL_DEPARTMENTS));
+      res.json(await runIngestionPass(ALL_DEPARTMENTS, { force: true }));
     } catch (e2) {
       res.status(500).json({ error: String(e2?.message || e2) });
     }

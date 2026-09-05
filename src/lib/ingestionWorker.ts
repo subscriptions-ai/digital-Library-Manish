@@ -236,9 +236,17 @@ async function fetchArticlesForOneJournal(state: any) {
 }
 
 /** One slice of work. Called on a timer; returns immediately when switched off. */
-export async function runIngestionPass(departments: string[]) {
+/**
+ * One slice of work.
+ *
+ * `force` is what the admin screen's "Run one pass" sends. The pause switch
+ * governs the timer, not a deliberate press of a button — refusing a manual
+ * pass because the engine is paused, and reporting it as "nothing left to do",
+ * left an operator pressing a button that silently did nothing.
+ */
+export async function runIngestionPass(departments: string[], opts: { force?: boolean } = {}) {
   const state = await getState();
-  if (!state.enabled) return { skipped: 'disabled' };
+  if (!state.enabled && !opts.force) return { skipped: 'disabled' };
 
   try {
     const wanted: string[] = (state.departments as string[])?.length

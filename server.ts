@@ -5064,7 +5064,9 @@ async function startServer() {
 
   /** Run one slice now, so the switch can be tested without waiting for the timer. */
   app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
-    try { res.json(await runIngestionPass(ALL_DEPARTMENTS)); }
+    // A manual pass runs even while the engine is paused; that is the point of
+    // the button. The timer below still respects the switch.
+    try { res.json(await runIngestionPass(ALL_DEPARTMENTS, { force: true })); }
     catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
   });
 

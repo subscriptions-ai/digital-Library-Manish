@@ -55,9 +55,15 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
         method: 'POST', headers: { Authorization: `Bearer ${token()}` },
       });
       const d = await r.json();
-      toast.success(d.phase === 'Journals'
-        ? `Swept ${d.department}: ${d.accepted} accepted, ${d.rejected} refused`
-        : d.journal ? `${d.journal}: ${d.added} added` : 'Nothing left to do this pass');
+      // Say what actually happened. "Nothing left to do" was shown for every
+      // outcome the screen did not recognise, including the engine being off,
+      // which read as success when nothing had run at all.
+      if (d.error) toast.error(d.error);
+      else if (d.skipped === 'disabled') toast('The engine is paused — press Start to let it run on its own.', { icon: '⏸' });
+      else if (d.lastError) toast.error(`The source refused: ${d.lastError}`);
+      else if (d.phase === 'Journals') toast.success(`Swept ${d.department}: ${d.accepted} accepted, ${d.rejected} refused on licence`);
+      else if (d.phase === 'Articles') toast.success(`${d.journal}: ${d.added} added${d.skipped ? `, ${d.skipped} already held` : ''}`);
+      else toast('Every journal is up to date — nothing new to fetch.', { icon: '✓' });
       load();
     } catch { toast.error('Pass failed'); }
     finally { setBusy(false); }
