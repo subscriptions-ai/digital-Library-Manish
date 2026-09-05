@@ -80,12 +80,27 @@ const check = async (name, path, token, predicate) => {
     publishedArticles: await p.article.count({ where: { status: 'Published' } }),
   };
 
+  /** A shelf that reports articles but no journals cannot be right. */
+  const shelfIsCoherentTop = (what) => (b) => {
+    if (!Array.isArray(b.journals)) return 'no journals array';
+    const articles = b.articles ?? b.journals.reduce((n, j) => n + (j.articleCount || 0), 0);
+    if (articles > 0 && b.journals.length === 0)
+      return `${articles} articles under 0 journals — these cannot both be true (${what})`;
+    const sum = b.journals.reduce((n, j) => n + (j.articleCount || 0), 0);
+    if (b.articles !== undefined && sum > b.articles)
+      return `journals sum to ${sum} but the page total says ${b.articles}`;
+    return true;
+  };
+
   // ── 1. the catalogue ──────────────────────────────────────────────────────
   console.log('\nCatalogue');
   await check('library stats', '/api/library/stats', null, b => {
     if (b.articles !== truth.publishedArticles) return `articles ${b.articles} but the database has ${truth.publishedArticles}`;
-    if (b.journals === 0 && truth.journalsHoldingArticles > 0)
-      return `reports 0 journals while ${truth.journalsHoldingArticles} hold articles — the denormalised counter is stale, run scripts/recount-journals.cjs`;
+    if (b.journals !== truth.journalsHoldingArticles)
+      return `reports ${b.journals} journals but ${truth.journalsHoldingArticles} hold published articles`;
+    const deptArticles = (b.departments || []).reduce((n, d) => n + Number(d.articles || 0), 0);
+    if (deptArticles > b.articles)
+      return `departments sum to ${deptArticles} but the total says ${b.articles}`;
     return true;
   });
 
@@ -94,11 +109,28 @@ const check = async (name, path, token, predicate) => {
   } else meh('article record', 'no published articles');
 
   if (journal) {
-    await check('journal spine', `/api/library/journal/${encodeURIComponent(journal.issn || journal.id)}`, A,
-      b => Array.isArray(b.volumes) || 'no volumes array');
+    // A header claiming nothing is held above a body listing volumes is the same
+    // fault in its last hiding place.
+    const heldJournal = await p.article.findFirst({
+      where: { status: 'Published', journalId: { not: null } },
+      select: { journalId: true, journalIssn: true },
+    });
+    await check('journal spine', `/api/library/journal/${encodeURIComponent(heldJournal?.journalIssn || heldJournal?.journalId || journal.id)}`, A, b => {
+      if (!Array.isArray(b.volumes)) return 'no volumes array';
+      if (b.volumes.length > 0 && (b.articleCount || 0) === 0)
+        return `header says 0 articles while ${b.volumes.length} volumes are listed below it`;
+      if (b.volumes.length > (b.volumeCount || 0))
+        return `lists ${b.volumes.length} volumes but the header says ${b.volumeCount}`;
+      return true;
+    });
+    // A shelf that reports articles but no journals is the fault that shipped
+    // three times. Every shelf page is checked for it explicitly.
+    const shelfIsCoherent = shelfIsCoherentTop;
+
     await check('department page', `/api/library/department/${slug(journal.domain)}`, A, b => {
-      if (!Array.isArray(b.journals)) return 'no journals array';
-      if (b.journals.length === 0) return `resolved "${journal.domain}" but returned no journals — check the articleCount gate`;
+      const v = shelfIsCoherent('department')(b);
+      if (v !== true) return v;
+      if (b.journals.length === 0) return `resolved "${journal.domain}" but returned no journals`;
       return true;
     });
   } else meh('journal + department', 'no journals with a department');
@@ -108,11 +140,11 @@ const check = async (name, path, token, predicate) => {
 
   if (publisher) {
     await check('publisher page', `/api/library/publisher/${slug(publisher.publisherName)}`, A,
-      b => Array.isArray(b.journals) || 'no journals array');
+      shelfIsCoherentTop('publisher'));
   } else meh('publisher page', 'no journal carries a publisher');
 
   const subj = Array.isArray(subjectJournal?.subjects) ? subjectJournal.subjects[0] : null;
-  if (subj) await check('subject page', `/api/library/subject/${slug(subj)}`, A, b => Array.isArray(b.journals) || 'no journals array');
+  if (subj) await check('subject page', `/api/library/subject/${slug(subj)}`, A, shelfIsCoherentTop('subject'));
   else meh('subject page', 'no journal carries subjects');
 
   await check('subject list', '/api/library/subjects', A, b => Array.isArray(b) || 'not an array');

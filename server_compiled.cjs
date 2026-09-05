@@ -15187,13 +15187,30 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (scope !== null && journal.domain && !scope.includes(journal.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
+      const held = await prisma3.$queryRawUnsafe(
+        `select count(*)::int as articles,
+                count(distinct nullif("volume",''))::int as volumes,
+                count(distinct nullif("volume",'') || '|' || coalesce(nullif("issue",''),''))::int as issues,
+                min("year")::int as first_year, max("year")::int as last_year
+         from "Article" where "journalId" = $1 and status = 'Published'`,
+        journal.id
+      );
       const volumes = await prisma3.$queryRawUnsafe(`
         select volume, max(year)::int as year,
                count(distinct issue)::int as issues, count(*)::int as articles
         from "Article"
         where "journalId" = $1 and status = 'Published' and volume is not null
         group by volume order by max(year) desc nulls last, volume desc`, journal.id);
-      res.json({ ...journal, volumes });
+      const h2 = held?.[0] || {};
+      res.json({
+        ...journal,
+        articleCount: Number(h2.articles || 0),
+        volumeCount: Number(h2.volumes || 0),
+        issueCount: Number(h2.issues || 0),
+        firstYear: h2.first_year ?? journal.firstYear ?? null,
+        lastYear: h2.last_year ?? journal.lastYear ?? null,
+        volumes
+      });
     } catch (e2) {
       console.error("GET library/journal error:", e2?.message);
       res.status(500).json({ error: "Failed to load journal" });
@@ -15388,31 +15405,30 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (scope !== null && !scope.includes(domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
+      const shelfSql = (clause) => `
+        select j.id, j.title, j.issn, j.domain, j."publisherName", j.licence, j."licenceIsNC",
+               count(a.id)::int as "articleCount",
+               count(distinct nullif(a."volume",''))::int as "volumeCount",
+               count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
+               min(a."year")::int as "firstYear",
+               max(a."year")::int as "lastYear"
+        from "Journal" j
+        join "Article" a on a."journalId" = j.id and a.status = 'Published'
+        where ${clause}
+        group by j.id
+        order by "articleCount" desc`;
       const [journals, articles, books, publishers] = await Promise.all([
-        prisma3.journal.findMany({
-          where: { domain, articleCount: { gt: 0 } },
-          select: {
-            id: true,
-            title: true,
-            issn: true,
-            publisherName: true,
-            licence: true,
-            licenceIsNC: true,
-            articleCount: true,
-            volumeCount: true,
-            issueCount: true,
-            firstYear: true,
-            lastYear: true
-          },
-          orderBy: { articleCount: "desc" }
-        }),
+        prisma3.$queryRawUnsafe(shelfSql("j.domain = $1"), domain),
         prisma3.article.count({ where: { domain, status: "Published" } }),
         prisma3.book.count({ where: { domain, status: "Published" } }),
-        prisma3.journal.groupBy({
-          by: ["publisherName"],
-          where: { domain, articleCount: { gt: 0 }, publisherName: { not: null } },
-          _count: { _all: true }
-        })
+        prisma3.$queryRawUnsafe(
+          `select j."publisherName" as name, count(distinct j.id)::int as journals
+           from "Journal" j
+           join "Article" a on a."journalId" = j.id and a.status = 'Published'
+           where j.domain = $1 and j."publisherName" is not null
+           group by 1 order by 2 desc`,
+          domain
+        )
       ]);
       const years = journals.flatMap((j) => [j.firstYear, j.lastYear]).filter(Boolean);
       res.json({
@@ -15423,7 +15439,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         books,
         firstYear: years.length ? Math.min(...years) : null,
         lastYear: years.length ? Math.max(...years) : null,
-        publishers: publishers.map((p2) => ({ name: p2.publisherName, journals: p2._count._all })).sort((a, b) => b.journals - a.journals)
+        publishers: publishers.map((p2) => ({ name: p2.name, journals: Number(p2.journals) }))
       });
     } catch (e2) {
       console.error("GET library/department error:", e2?.message);
@@ -15442,25 +15458,19 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (!match) return res.status(404).json({ error: "Publisher not found" });
       const publisherName = match.publisherName;
       const scope = await libraryScopeDomains(req);
-      const where = { publisherName, articleCount: { gt: 0 } };
-      if (scope !== null) where.domain = { in: scope };
-      const journals = await prisma3.journal.findMany({
-        where,
-        select: {
-          id: true,
-          title: true,
-          issn: true,
-          domain: true,
-          licence: true,
-          licenceIsNC: true,
-          articleCount: true,
-          volumeCount: true,
-          issueCount: true,
-          firstYear: true,
-          lastYear: true
-        },
-        orderBy: { articleCount: "desc" }
-      });
+      const journals = await prisma3.$queryRawUnsafe(
+        `select j.id, j.title, j.issn, j.domain, j.licence, j."licenceIsNC",
+                count(a.id)::int as "articleCount",
+                count(distinct nullif(a."volume",''))::int as "volumeCount",
+                count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
+                min(a."year")::int as "firstYear", max(a."year")::int as "lastYear"
+         from "Journal" j
+         join "Article" a on a."journalId" = j.id and a.status = 'Published'
+         where j."publisherName" = $1 ${scope !== null ? "and j.domain = any($2)" : ""}
+         group by j.id
+         order by "articleCount" desc`,
+        ...scope !== null ? [publisherName, scope] : [publisherName]
+      );
       const years = journals.flatMap((j) => [j.firstYear, j.lastYear]).filter(Boolean);
       const byDomain = /* @__PURE__ */ new Map();
       for (const j of journals) if (j.domain) byDomain.set(j.domain, (byDomain.get(j.domain) || 0) + 1);
@@ -15481,12 +15491,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/library/subjects", async (req, res) => {
     try {
       const scope = await libraryScopeDomains(req);
-      const where = { articleCount: { gt: 0 } };
-      if (scope !== null) where.domain = { in: scope };
-      const journals = await prisma3.journal.findMany({
-        where,
-        select: { subjects: true, articleCount: true }
-      });
+      const journals = await prisma3.$queryRawUnsafe(
+        `select j.subjects, count(a.id)::int as "articleCount"
+         from "Journal" j
+         join "Article" a on a."journalId" = j.id and a.status = 'Published'
+         ${scope !== null ? "where j.domain = any($1)" : ""}
+         group by j.id`,
+        ...scope !== null ? [scope] : []
+      );
       const m2 = /* @__PURE__ */ new Map();
       for (const j of journals) {
         const subs = Array.isArray(j.subjects) ? j.subjects : [];
@@ -15509,24 +15521,19 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const scope = await libraryScopeDomains(req);
       const where = {};
       if (scope !== null) where.domain = { in: scope };
-      const all = await prisma3.journal.findMany({
-        where,
-        select: {
-          id: true,
-          title: true,
-          issn: true,
-          domain: true,
-          publisherName: true,
-          subjects: true,
-          licence: true,
-          licenceIsNC: true,
-          articleCount: true,
-          volumeCount: true,
-          issueCount: true,
-          firstYear: true,
-          lastYear: true
-        }
-      });
+      const all = await prisma3.$queryRawUnsafe(
+        `select j.id, j.title, j.issn, j.domain, j."publisherName", j.subjects,
+                j.licence, j."licenceIsNC",
+                count(a.id)::int as "articleCount",
+                count(distinct nullif(a."volume",''))::int as "volumeCount",
+                count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
+                min(a."year")::int as "firstYear", max(a."year")::int as "lastYear"
+         from "Journal" j
+         left join "Article" a on a."journalId" = j.id and a.status = 'Published'
+         ${scope !== null ? "where j.domain = any($1)" : ""}
+         group by j.id`,
+        ...scope !== null ? [scope] : []
+      );
       let subject = null;
       const journals = all.filter((j) => {
         const subs = Array.isArray(j.subjects) ? j.subjects : [];
@@ -15879,14 +15886,18 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/library/stats", async (_req, res) => {
     try {
       const [journals, byDomain, articles, books, authors] = await Promise.all([
-        prisma3.journal.count({ where: { articleCount: { gt: 0 } } }),
+        prisma3.$queryRawUnsafe(
+          `select count(distinct "journalId")::int as n from "Article"
+           where status = 'Published' and "journalId" is not null`
+        ).then((r2) => Number(r2?.[0]?.n || 0)),
         prisma3.$queryRawUnsafe(`
-          select domain,
-                 count(*)::int as journals,
-                 coalesce(sum("articleCount"),0)::int as articles,
-                 min("firstYear") as from_year, max("lastYear") as to_year
-          from "Journal" where domain is not null and "articleCount" > 0
-          group by domain order by journals desc`),
+          select a."domain" as domain,
+                 count(distinct a."journalId")::int as journals,
+                 count(*)::int as articles,
+                 min(a."year")::int as from_year, max(a."year")::int as to_year
+          from "Article" a
+          where a.status = 'Published' and a."domain" is not null
+          group by 1 order by 2 desc`),
         prisma3.article.count({ where: { status: "Published" } }),
         prisma3.book.count({ where: { status: "Published" } }),
         prisma3.author.count()

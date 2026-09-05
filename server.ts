@@ -5282,6 +5282,16 @@ async function startServer() {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
+      // The header counts come from the articles too. Reading them from the
+      // stored counter put "0 articles · 0 volumes" above a list of ten volumes.
+      const held: any[] = await (prisma as any).$queryRawUnsafe(
+        `select count(*)::int as articles,
+                count(distinct nullif("volume",''))::int as volumes,
+                count(distinct nullif("volume",'') || '|' || coalesce(nullif("issue",''),''))::int as issues,
+                min("year")::int as first_year, max("year")::int as last_year
+         from "Article" where "journalId" = $1 and status = 'Published'`,
+        journal.id);
+
       const volumes = await (prisma as any).$queryRawUnsafe(`
         select volume, max(year)::int as year,
                count(distinct issue)::int as issues, count(*)::int as articles
@@ -5289,7 +5299,16 @@ async function startServer() {
         where "journalId" = $1 and status = 'Published' and volume is not null
         group by volume order by max(year) desc nulls last, volume desc`, journal.id);
 
-      res.json({ ...journal, volumes });
+      const h = held?.[0] || {};
+      res.json({
+        ...journal,
+        articleCount: Number(h.articles || 0),
+        volumeCount: Number(h.volumes || 0),
+        issueCount: Number(h.issues || 0),
+        firstYear: h.first_year ?? journal.firstYear ?? null,
+        lastYear: h.last_year ?? journal.lastYear ?? null,
+        volumes,
+      });
     } catch (e: any) {
       console.error('GET library/journal error:', e?.message);
       res.status(500).json({ error: "Failed to load journal" });
@@ -5501,22 +5520,32 @@ async function startServer() {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
+      // Journals derived from the articles they hold, not from Journal.articleCount.
+      // The counter is written by two jobs and is zero wherever neither has run,
+      // which showed "0 journals" beside 2,506 articles on the same page.
+      const shelfSql = (clause: string) => `
+        select j.id, j.title, j.issn, j.domain, j."publisherName", j.licence, j."licenceIsNC",
+               count(a.id)::int as "articleCount",
+               count(distinct nullif(a."volume",''))::int as "volumeCount",
+               count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
+               min(a."year")::int as "firstYear",
+               max(a."year")::int as "lastYear"
+        from "Journal" j
+        join "Article" a on a."journalId" = j.id and a.status = 'Published'
+        where ${clause}
+        group by j.id
+        order by "articleCount" desc`;
+
       const [journals, articles, books, publishers] = await Promise.all([
-        (prisma as any).journal.findMany({
-          where: { domain, articleCount: { gt: 0 } },
-          select: {
-            id: true, title: true, issn: true, publisherName: true, licence: true, licenceIsNC: true,
-            articleCount: true, volumeCount: true, issueCount: true, firstYear: true, lastYear: true,
-          },
-          orderBy: { articleCount: 'desc' },
-        }),
+        (prisma as any).$queryRawUnsafe(shelfSql('j.domain = $1'), domain),
         (prisma as any).article.count({ where: { domain, status: 'Published' } }),
         (prisma as any).book.count({ where: { domain, status: 'Published' } }),
-        (prisma as any).journal.groupBy({
-          by: ['publisherName'],
-          where: { domain, articleCount: { gt: 0 }, publisherName: { not: null } },
-          _count: { _all: true },
-        }),
+        (prisma as any).$queryRawUnsafe(
+          `select j."publisherName" as name, count(distinct j.id)::int as journals
+           from "Journal" j
+           join "Article" a on a."journalId" = j.id and a.status = 'Published'
+           where j.domain = $1 and j."publisherName" is not null
+           group by 1 order by 2 desc`, domain),
       ]);
 
       const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
@@ -5529,9 +5558,7 @@ async function startServer() {
         books,
         firstYear: years.length ? Math.min(...years) : null,
         lastYear: years.length ? Math.max(...years) : null,
-        publishers: publishers
-          .map((p: any) => ({ name: p.publisherName, journals: p._count._all }))
-          .sort((a: any, b: any) => b.journals - a.journals),
+        publishers: publishers.map((p: any) => ({ name: p.name, journals: Number(p.journals) })),
       });
     } catch (e: any) {
       console.error('GET library/department error:', e?.message);
@@ -5557,17 +5584,20 @@ async function startServer() {
       const publisherName = match.publisherName;
 
       const scope = await libraryScopeDomains(req);
-      const where: any = { publisherName, articleCount: { gt: 0 } };
-      if (scope !== null) where.domain = { in: scope };
 
-      const journals = await (prisma as any).journal.findMany({
-        where,
-        select: {
-          id: true, title: true, issn: true, domain: true, licence: true, licenceIsNC: true,
-          articleCount: true, volumeCount: true, issueCount: true, firstYear: true, lastYear: true,
-        },
-        orderBy: { articleCount: 'desc' },
-      });
+      // Derived from the articles, for the same reason as the department page.
+      const journals = await (prisma as any).$queryRawUnsafe(
+        `select j.id, j.title, j.issn, j.domain, j.licence, j."licenceIsNC",
+                count(a.id)::int as "articleCount",
+                count(distinct nullif(a."volume",''))::int as "volumeCount",
+                count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
+                min(a."year")::int as "firstYear", max(a."year")::int as "lastYear"
+         from "Journal" j
+         join "Article" a on a."journalId" = j.id and a.status = 'Published'
+         where j."publisherName" = $1 ${scope !== null ? 'and j.domain = any($2)' : ''}
+         group by j.id
+         order by "articleCount" desc`,
+        ...(scope !== null ? [publisherName, scope] : [publisherName]));
 
       // A publisher the reader's subscription reaches none of is not an error —
       // it is simply empty for them, and the page says so.
@@ -5598,11 +5628,15 @@ async function startServer() {
   app.get("/api/library/subjects", async (req: any, res: any) => {
     try {
       const scope = await libraryScopeDomains(req);
-      const where: any = { articleCount: { gt: 0 } };
-      if (scope !== null) where.domain = { in: scope };
-      const journals = await (prisma as any).journal.findMany({
-        where, select: { subjects: true, articleCount: true },
-      });
+      // Holdings per journal come from the articles, so a subject with real
+      // holdings is never omitted because a counter has not been recomputed.
+      const journals = await (prisma as any).$queryRawUnsafe(
+        `select j.subjects, count(a.id)::int as "articleCount"
+         from "Journal" j
+         join "Article" a on a."journalId" = j.id and a.status = 'Published'
+         ${scope !== null ? 'where j.domain = any($1)' : ''}
+         group by j.id`,
+        ...(scope !== null ? [scope] : []));
       const m = new Map<string, { journals: number; articles: number }>();
       for (const j of journals) {
         const subs: string[] = Array.isArray(j.subjects) ? j.subjects : [];
@@ -5634,14 +5668,18 @@ async function startServer() {
       const where: any = {};
       if (scope !== null) where.domain = { in: scope };
 
-      const all = await (prisma as any).journal.findMany({
-        where,
-        select: {
-          id: true, title: true, issn: true, domain: true, publisherName: true, subjects: true,
-          licence: true, licenceIsNC: true,
-          articleCount: true, volumeCount: true, issueCount: true, firstYear: true, lastYear: true,
-        },
-      });
+      const all = await (prisma as any).$queryRawUnsafe(
+        `select j.id, j.title, j.issn, j.domain, j."publisherName", j.subjects,
+                j.licence, j."licenceIsNC",
+                count(a.id)::int as "articleCount",
+                count(distinct nullif(a."volume",''))::int as "volumeCount",
+                count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
+                min(a."year")::int as "firstYear", max(a."year")::int as "lastYear"
+         from "Journal" j
+         left join "Article" a on a."journalId" = j.id and a.status = 'Published'
+         ${scope !== null ? 'where j.domain = any($1)' : ''}
+         group by j.id`,
+        ...(scope !== null ? [scope] : []));
 
       // The subject is stored as a name inside a JSON array, so it is matched on
       // its slug here rather than in the query.
@@ -6033,15 +6071,22 @@ async function startServer() {
   // cannot if each screen counts for itself.
   app.get("/api/library/stats", async (_req: any, res: any) => {
     try {
+      // These are the figures the homepage and every department heading share,
+      // so they come from the articles rather than from a counter that two
+      // separate jobs are responsible for keeping current.
       const [journals, byDomain, articles, books, authors] = await Promise.all([
-        (prisma as any).journal.count({ where: { articleCount: { gt: 0 } } }),
+        (prisma as any).$queryRawUnsafe(
+          `select count(distinct "journalId")::int as n from "Article"
+           where status = 'Published' and "journalId" is not null`)
+          .then((r: any) => Number(r?.[0]?.n || 0)),
         (prisma as any).$queryRawUnsafe(`
-          select domain,
-                 count(*)::int as journals,
-                 coalesce(sum("articleCount"),0)::int as articles,
-                 min("firstYear") as from_year, max("lastYear") as to_year
-          from "Journal" where domain is not null and "articleCount" > 0
-          group by domain order by journals desc`),
+          select a."domain" as domain,
+                 count(distinct a."journalId")::int as journals,
+                 count(*)::int as articles,
+                 min(a."year")::int as from_year, max(a."year")::int as to_year
+          from "Article" a
+          where a.status = 'Published' and a."domain" is not null
+          group by 1 order by 2 desc`),
         (prisma as any).article.count({ where: { status: 'Published' } }),
         (prisma as any).book.count({ where: { status: 'Published' } }),
         (prisma as any).author.count(),
