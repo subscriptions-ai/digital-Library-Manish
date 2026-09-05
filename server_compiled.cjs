@@ -11883,6 +11883,16 @@ async function startServer() {
           prisma3.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
           prisma3.content.count({ where })
         ]);
+        if (search) {
+          logEvent(req, {
+            kind: "search",
+            query: String(search),
+            resultCount: total2,
+            domain: domain ? String(domain) : null,
+            itemType: "content",
+            dedupeWindowMs: 1e4
+          });
+        }
         return res.json({
           data: contents2.map((c) => ({ ...c, locked: false })),
           total: total2,
@@ -11894,6 +11904,16 @@ async function startServer() {
         prisma3.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
         prisma3.content.count({ where })
       ]);
+      if (search) {
+        logEvent(req, {
+          kind: "search",
+          query: String(search),
+          resultCount: total,
+          domain: domain ? String(domain) : null,
+          itemType: "content",
+          dedupeWindowMs: 1e4
+        });
+      }
       if (!userDetails) {
         return res.json({
           data: contents.map((c) => ({ ...c, locked: true, fileUrl: null })),
@@ -11916,6 +11936,65 @@ async function startServer() {
       res.status(500).json({ error: "Failed to load content list" });
     }
   });
+  const identify = (req) => {
+    if (req?.user) return req.user;
+    const h2 = req?.headers?.authorization;
+    if (!h2) return null;
+    try {
+      return import_jsonwebtoken.default.verify(h2.split(" ")[1], JWT_SECRET);
+    } catch {
+      return null;
+    }
+  };
+  const instCache = /* @__PURE__ */ new Map();
+  const institutionOf = async (user) => {
+    if (user?.institutionId) return user.institutionId;
+    const uid = user?.uid || user?.id;
+    if (!uid) return null;
+    const hit = instCache.get(uid);
+    if (hit && hit.until > Date.now()) return hit.id;
+    try {
+      const u = await prisma3.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+      const id = u?.institutionId ?? null;
+      instCache.set(uid, { id, until: Date.now() + 10 * 6e4 });
+      return id;
+    } catch {
+      return null;
+    }
+  };
+  const logEvent = (req, e2) => {
+    void (async () => {
+      try {
+        const user = identify(req);
+        const uid = user?.uid || user?.id || null;
+        let dedupeKey = null;
+        if (e2.dedupeWindowMs) {
+          const bucket = Math.floor(Date.now() / e2.dedupeWindowMs);
+          dedupeKey = [e2.kind, uid || "anon", e2.itemId || e2.query || "", bucket].join("|");
+        }
+        await prisma3.libraryEvent.create({
+          data: {
+            kind: e2.kind,
+            userId: uid,
+            institutionId: await institutionOf(user),
+            role: user?.role ?? null,
+            itemType: e2.itemType ?? null,
+            itemId: e2.itemId ?? null,
+            journalId: e2.journalId ?? null,
+            journalIssn: e2.journalIssn ?? null,
+            domain: e2.domain ?? null,
+            query: e2.query ? String(e2.query).slice(0, 300) : null,
+            resultCount: typeof e2.resultCount === "number" ? e2.resultCount : null,
+            durationMs: e2.durationMs ?? null,
+            sessionId: e2.sessionId ?? null,
+            dedupeKey
+          }
+        });
+      } catch (err) {
+        if (err?.code !== "P2002") console.error("[event] write failed:", err?.message);
+      }
+    })();
+  };
   const resolveViewable = async (id, isAdmin) => {
     const c = await prisma3.content.findFirst({ where: isAdmin ? { id } : { id, status: { not: "Draft" } } });
     if (c) return { kind: "content", item: c, fileUrl: c.fileUrl, title: c.title, contentType: c.contentType, accessType: c.accessType, status: c.status };
@@ -11942,6 +12021,18 @@ async function startServer() {
         prisma3[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {
         });
         prisma3.readEvent.create({ data: { itemType: resolved.kind, itemId: resolved.item.id, publisherId: resolved.item.publisherId || null, userId: req.user.uid } }).catch(() => {
+        });
+      }
+      if (!isAdminRole) {
+        const it2 = resolved.item;
+        logEvent(req, {
+          kind: "view",
+          itemType: resolved.kind,
+          itemId: it2.id,
+          journalId: it2.journalId ?? null,
+          journalIssn: normaliseIssn(it2.journalIssn) ?? null,
+          domain: it2.domain ?? null,
+          dedupeWindowMs: 3e4
         });
       }
       if (resolved.kind === "content" && (req.user.role === "Student" || req.user.role === "Subscriber")) {
@@ -15063,6 +15154,16 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         }),
         prisma3.article.count({ where })
       ]);
+      if (search) {
+        logEvent(req, {
+          kind: "search",
+          query: String(search),
+          resultCount: total,
+          domain: domain ? String(domain) : null,
+          itemType: "article",
+          dedupeWindowMs: 1e4
+        });
+      }
       res.json({ data, total, page: parseInt(page) || 1, limit: take });
     } catch (e2) {
       console.error("library articles:", e2);
@@ -15486,6 +15587,16 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         prisma3.book.findMany({ where, orderBy: orderFor(sort), skip, take, include: { chapters: true } }),
         prisma3.book.count({ where })
       ]);
+      if (search) {
+        logEvent(req, {
+          kind: "search",
+          query: String(search),
+          resultCount: total,
+          domain: domain ? String(domain) : null,
+          itemType: "book",
+          dedupeWindowMs: 1e4
+        });
+      }
       res.json({ data, total, page: parseInt(page) || 1, limit: take });
     } catch (e2) {
       res.status(500).json({ error: "Failed to load books" });

@@ -1190,3 +1190,53 @@ model IngestionState {
   lastError         String?  @db.Text
   updatedAt         DateTime @updatedAt
 }
+
+/// One row per thing that happened, written once and never updated.
+///
+/// The tables this replaces could not answer the questions the dashboards ask.
+/// StudentActivity was written update-in-place with an auto-updating timestamp,
+/// so a re-read moved the old date instead of adding a new one — there was no
+/// history to plot. It also only ever recorded legacy Content, leaving every
+/// read of the 29,000-article catalogue unrecorded. ReadEvent was append-only
+/// but fired twice for half its rows and carried no institution.
+///
+/// Both stay exactly as they are; nothing that reads them today changes.
+model LibraryEvent {
+  id            String   @id @default(uuid())
+  at            DateTime @default(now())
+
+  /// view | read | search | download | save | finish
+  kind          String
+
+  userId        String?
+  /// Copied at write time, not derived later: March's usage must stay March's
+  /// usage after a student transfers or leaves.
+  institutionId String?
+  role          String?
+
+  itemType      String?                            // article | book | content
+  itemId        String?
+  journalId     String?
+  journalIssn   String?
+  domain        String?
+
+  /// What was typed, and how many results came back. A search that returned
+  /// nothing is the acquisition signal the librarian's page is built around.
+  query         String?  @db.Text
+  resultCount   Int?
+
+  /// Time on the document, sent when the reader closes, so "opened" and
+  /// "actually read" stop being the same number.
+  durationMs    Int?
+  sessionId     String?
+
+  /// Makes the double-count impossible rather than merely unlikely. Nullable,
+  /// and Postgres permits many nulls in a unique index.
+  dedupeKey     String?  @unique
+
+  @@index([institutionId, at])
+  @@index([userId, at])
+  @@index([kind, at])
+  @@index([domain, at])
+  @@index([at])
+}

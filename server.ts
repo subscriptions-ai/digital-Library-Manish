@@ -1682,6 +1682,15 @@ async function startServer() {
           prisma.content.count({ where })
         ]);
 
+        // The archived shelf is searched from the same box, so it counts too.
+        if (search) {
+          logEvent(req, {
+            kind: 'search', query: String(search), resultCount: total,
+            domain: domain ? String(domain) : null, itemType: 'content',
+            dedupeWindowMs: 10_000,
+          });
+        }
+
         return res.json({ 
           data: contents.map(c => ({ ...c, locked: false })), 
           total, 
@@ -1694,6 +1703,17 @@ async function startServer() {
         prisma.content.findMany({ where, skip, take, orderBy: { title: 'asc' } }),
         prisma.content.count({ where })
       ]);
+
+
+        // Both paths through this handler return separately, so each logs its own
+        // search; only one of them ever runs for a given request.
+        if (search) {
+          logEvent(req, {
+            kind: 'search', query: String(search), resultCount: total,
+            domain: domain ? String(domain) : null, itemType: 'content',
+            dedupeWindowMs: 10_000,
+          });
+        }
 
       if (!userDetails) {
         return res.json({
@@ -1723,6 +1743,95 @@ async function startServer() {
 
   // Resolve a viewable item by id from legacy Content OR the new structured dataset (Article/Book).
   // Lets the existing protected viewer open new content transparently. New OA items are freely accessible.
+  // ── The event log ───────────────────────────────────────────────────────────
+  //
+  // Every interaction worth counting goes through here. Two rules govern it:
+  // it never blocks the request that produced it, and it never fails one — an
+  // analytics write that can 500 a reader's page is worse than no analytics.
+  //
+  // The institution is copied onto the row rather than derived later, so a
+  // month's usage stays that month's usage after a student transfers.
+
+  // Several of the surfaces worth measuring — the searches above all — are open
+  // to logged-out visitors and so carry no req.user, decoding the token only
+  // inside the scope check. Rather than change how those endpoints authenticate,
+  // the log reads the header itself when nobody has been attached. Without this
+  // every search would be recorded as anonymous, and the librarian's page needs
+  // to know whose search it was.
+  const identify = (req: any): any => {
+    if (req?.user) return req.user;
+    const h = req?.headers?.authorization;
+    if (!h) return null;
+    try { return jwt.verify(h.split(' ')[1], JWT_SECRET); } catch { return null; }
+  };
+
+  // A student's institution rarely changes and is read on every event, so it is
+  // held briefly rather than queried each time.
+  const instCache = new Map<string, { id: string | null; until: number }>();
+  const institutionOf = async (user: any): Promise<string | null> => {
+    if (user?.institutionId) return user.institutionId;
+    const uid = user?.uid || user?.id;
+    if (!uid) return null;
+    const hit = instCache.get(uid);
+    if (hit && hit.until > Date.now()) return hit.id;
+    try {
+      const u = await prisma.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+      const id = u?.institutionId ?? null;
+      instCache.set(uid, { id, until: Date.now() + 10 * 60_000 });
+      return id;
+    } catch { return null; }
+  };
+
+  type EventInput = {
+    kind: 'view' | 'read' | 'search' | 'download' | 'save' | 'finish';
+    itemType?: string | null; itemId?: string | null;
+    journalId?: string | null; journalIssn?: string | null; domain?: string | null;
+    query?: string | null; resultCount?: number | null;
+    durationMs?: number | null; sessionId?: string | null;
+    /// Distinct occurrences within the same bucket; omit to allow repeats.
+    dedupeWindowMs?: number;
+  };
+
+  const logEvent = (req: any, e: EventInput): void => {
+    void (async () => {
+      try {
+        const user = identify(req);
+        const uid = user?.uid || user?.id || null;
+
+        // Half of the old ReadEvent rows were the same read logged twice within
+        // two seconds. A key built from who, what and which time bucket makes
+        // that a no-op at the database rather than a number to apologise for.
+        let dedupeKey: string | null = null;
+        if (e.dedupeWindowMs) {
+          const bucket = Math.floor(Date.now() / e.dedupeWindowMs);
+          dedupeKey = [e.kind, uid || 'anon', e.itemId || e.query || '', bucket].join('|');
+        }
+
+        await (prisma as any).libraryEvent.create({
+          data: {
+            kind: e.kind,
+            userId: uid,
+            institutionId: await institutionOf(user),
+            role: user?.role ?? null,
+            itemType: e.itemType ?? null,
+            itemId: e.itemId ?? null,
+            journalId: e.journalId ?? null,
+            journalIssn: e.journalIssn ?? null,
+            domain: e.domain ?? null,
+            query: e.query ? String(e.query).slice(0, 300) : null,
+            resultCount: typeof e.resultCount === 'number' ? e.resultCount : null,
+            durationMs: e.durationMs ?? null,
+            sessionId: e.sessionId ?? null,
+            dedupeKey,
+          },
+        });
+      } catch (err: any) {
+        // A duplicate is the mechanism working, not a fault worth logging.
+        if (err?.code !== 'P2002') console.error('[event] write failed:', err?.message);
+      }
+    })();
+  };
+
   const resolveViewable = async (id: string, isAdmin: boolean) => {
     const c = await prisma.content.findFirst({ where: isAdmin ? { id } : { id, status: { not: 'Draft' } } });
     if (c) return { kind: 'content' as const, item: c, fileUrl: c.fileUrl, title: c.title, contentType: c.contentType, accessType: c.accessType, status: c.status };
@@ -1754,6 +1863,22 @@ async function startServer() {
       if ((resolved.kind === 'article' || resolved.kind === 'book') && !isAdminRole) {
         (prisma as any)[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {});
         (prisma as any).readEvent.create({ data: { itemType: resolved.kind, itemId: resolved.item.id, publisherId: (resolved.item as any).publisherId || null, userId: req.user.uid } }).catch(() => {});
+      }
+
+      // The event log records every kind of item, including the legacy shelf the
+      // old logging never saw, and collapses the repeat fire that made half of
+      // ReadEvent a duplicate of the row before it.
+      if (!isAdminRole) {
+        const it: any = resolved.item;
+        logEvent(req, {
+          kind: 'view',
+          itemType: resolved.kind,
+          itemId: it.id,
+          journalId: it.journalId ?? null,
+          journalIssn: normaliseIssn(it.journalIssn) ?? null,
+          domain: it.domain ?? null,
+          dedupeWindowMs: 30_000,
+        });
       }
 
       // Activity logging only for legacy content (StudentActivity.contentId FKs to Content)
@@ -5121,6 +5246,16 @@ async function startServer() {
         }),
         (prisma as any).article.count({ where }),
       ]);
+      // A search that came back with nothing is the single most useful thing a
+      // librarian can be told, and until now it was never written down.
+      if (search) {
+        logEvent(req, {
+          kind: 'search', query: String(search), resultCount: total,
+          domain: domain ? String(domain) : null, itemType: 'article',
+          dedupeWindowMs: 10_000,
+        });
+      }
+
       res.json({ data, total, page: parseInt(page as string) || 1, limit: take });
     } catch (e: any) { console.error("library articles:", e); res.status(500).json({ error: "Failed to load articles" }); }
   });
@@ -5570,6 +5705,14 @@ async function startServer() {
         (prisma as any).book.findMany({ where, orderBy: orderFor(sort), skip, take, include: { chapters: true } }),
         (prisma as any).book.count({ where }),
       ]);
+      if (search) {
+        logEvent(req, {
+          kind: 'search', query: String(search), resultCount: total,
+          domain: domain ? String(domain) : null, itemType: 'book',
+          dedupeWindowMs: 10_000,
+        });
+      }
+
       res.json({ data, total, page: parseInt(page as string) || 1, limit: take });
     } catch (e: any) { res.status(500).json({ error: "Failed to load books" }); }
   });
