@@ -180,6 +180,27 @@ const check = async (name, path, token, predicate) => {
           wrong.slice(0, 3).map(w => `${w.domain} shows ${shown[w.domain] || 0} but holds ${w._count.id}`).join('; '));
   }
 
+  // A department page that says "Launching Soon" over thousands of held
+  // articles is the same fault wearing a marketing label.
+  {
+    const held = await p.article.groupBy({
+      by: ['domain'], where: { status: 'Published', domain: { not: null } },
+      _count: { id: true }, orderBy: { _count: { domain: 'desc' } }, take: 5,
+    });
+    let wrong = null;
+    for (const h of held) {
+      const r = await get(`/api/domain-data?domain=${encodeURIComponent(h.domain)}`);
+      const summary = (r.body?.content_summary || []).filter(c => c.count > 0);
+      if (summary.length === 0) { wrong = `${h.domain} lists nothing while holding ${h._count.id} articles`; break; }
+      const named = summary.map(c => c.type);
+      if (!named.includes('Journals') || !named.includes('Articles')) {
+        wrong = `${h.domain} does not name journals and articles — it lists ${named.join(', ')}`; break;
+      }
+    }
+    wrong ? bad('department pages show what they hold', wrong)
+          : ok('department pages show what they hold', `${held.length} checked`);
+  }
+
   await check('the library leads with journals and articles', '/api/public/content-type-counts', null, b => {
     if (!('Journals' in b)) return 'no Journals count';
     if (!('Articles' in b)) return 'no Articles count';

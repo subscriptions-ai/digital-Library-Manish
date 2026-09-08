@@ -53,6 +53,8 @@ export const HERO_IMAGES: Record<string, string> = {
 
 // ─── Content type icon + description map ─────────────────────────────────────
 const CT_META: Record<string, { icon: any; desc: string }> = {
+  Journals:                { icon: Icons.BookOpen,      desc: "Peer-reviewed journals, held as full runs of volumes and issues." },
+  Articles:                { icon: Icons.FileText,      desc: "Individual research papers, each with its journal, issue and licence." },
   Books:                   { icon: Icons.Book,          desc: "Textbooks, reference materials, and specialized e-books." },
   Periodicals:             { icon: Icons.Newspaper,     desc: "Peer-reviewed technical journals and academic bulletins." },
   Magazines:               { icon: Icons.BookOpen,      desc: "Academic and subject-focused issues for broader perspectives." },
@@ -148,15 +150,24 @@ export function DomainLandingPage() {
   };
 
   /* ---------- derive displayed data ---------- */
-  const contentCounts: ContentSummaryItem[] =
-    apiLoading
-      ? domain?.contentTypes.map((ct) => ({ type: ct.type, count: 0 })) || []
-      : domainData?.content_summary
-        ? domain?.contentTypes.map(ct => {
-            const found = domainData.content_summary.find((s: any) => s.type === ct.type);
-            return { type: ct.type, count: found ? found.count : 0 };
-          }) || []
-        : domain?.contentTypes.map((ct) => ({ type: ct.type, count: 0 })) || [];
+  // What this department actually holds, in the order a college asks about it.
+  //
+  // This used to walk a fixed list of eight kinds and look each one up in the
+  // answer, so a department holding 81 journals and 2,790 articles rendered
+  // eight cards all reading "Launching Soon" — the list did not contain the
+  // words the catalogue uses, and the catalogue did not hold the kinds on the
+  // list. A promise on a public page that we cannot keep is worse than a short
+  // list of what is genuinely there.
+  const CT_ORDER = ['Journals', 'Articles', 'Books', 'Theses', 'Case Reports',
+                    'Conference Proceedings', 'Magazines', 'Educational Videos', 'Newsletters'];
+  const contentCounts: ContentSummaryItem[] = apiLoading
+    ? []
+    : ((domainData?.content_summary || []) as ContentSummaryItem[])
+        .filter(s => s.count > 0)
+        .sort((a, b) => {
+          const ia = CT_ORDER.indexOf(a.type), ib = CT_ORDER.indexOf(b.type);
+          return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+        });
 
   const heroImg = HERO_IMAGES[domainId || ""] || "https://images.unsplash.com/photo-1456406644174-8ddd4cd52a06?w=900&q=80";
 
@@ -366,6 +377,18 @@ export function DomainLandingPage() {
             </div>
           )}
 
+          {!apiLoading && contentCounts.length === 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+              <p className="text-sm font-semibold text-slate-700">
+                We are still building this department.
+              </p>
+              <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-slate-500">
+                Nothing is held under {domain.name} yet. Tell us what you need and we will
+                point the collection at it.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {contentCounts.map((ct, i) => {
               const meta = CT_META[ct.type] || { icon: Icons.BookOpen, desc: "" };
@@ -386,13 +409,9 @@ export function DomainLandingPage() {
                   </div>
                   <div className="text-base font-bold text-slate-900">{ct.type}</div>
                   <div className="text-sm font-semibold mt-1">
-                    {apiLoading ? (
-                      <span className="inline-block h-4 w-20 bg-slate-200 rounded animate-pulse" />
-                    ) : ct.count > 0 ? (
-                      <span className="text-indigo-600">{ct.count.toLocaleString("en-IN")} Available</span>
-                    ) : (
-                      <span className="text-amber-600">Launching Soon</span>
-                    )}
+                    {apiLoading
+                      ? <span className="inline-block h-4 w-20 bg-slate-200 rounded animate-pulse" />
+                      : <span className="text-indigo-600">{ct.count.toLocaleString("en-IN")} held</span>}
                   </div>
                   <p className="mt-3 text-xs text-slate-500 leading-relaxed">{desc}</p>
                 </motion.div>
