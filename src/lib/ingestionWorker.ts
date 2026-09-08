@@ -157,21 +157,60 @@ async function fetchArticlesForOneJournal(state: any) {
   // Only journals we discovered externally. Our own titles are filled from our
   // own records — pulling their articles back in from OpenAlex would mix
   // ingested rows into a journal whose rights basis says "our own".
-  const journal = await p.journal.findFirst({
-    where: { status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration' },
-    orderBy: [{ lastIngestedAt: { sort: 'asc', nulls: 'first' } }],
-  });
-  if (!journal) return { journal: null, added: 0, skipped: 0 };
+  // A journal still being walked comes first; one that has given up everything
+  // in the window is only revisited after a week, to pick up newly published
+  // work. Otherwise a finished journal would take a turn every pass and spend it
+  // asking a question already answered.
+  const staleAfter = new Date(Date.now() - 7 * 864e5);
+  const journal =
+    await p.journal.findFirst({
+      where: { status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration', exhaustedAt: null },
+      orderBy: [{ lastIngestedAt: { sort: 'asc', nulls: 'first' } }],
+    })
+    ?? await p.journal.findFirst({
+      where: {
+        status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration',
+        exhaustedAt: { lt: staleAfter },
+      },
+      orderBy: [{ lastIngestedAt: { sort: 'asc', nulls: 'first' } }],
+    });
+  if (!journal) return { journal: null, added: 0, skipped: 0, note: 'every journal is up to date' };
 
   const fromYear = new Date().getFullYear() - (state.yearsBack - 1);
+
+  // The cursor is the whole point. Without it this asked for the same first page
+  // every pass, so a journal stopped at one batch — fifty of the eight hundred
+  // and sixty-eight it holds — and nine of every ten requests re-fetched work we
+  // already had. '*' asks for the first page and for a cursor to continue from.
+  const cursor = journal.fetchCursor || '*';
   const url = `https://api.openalex.org/works`
     + `?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)}`
     + `,from_publication_date:${fromYear}-01-01,open_access.is_oa:true`
-    + `&per-page=${Math.min(state.batchSize, 200)}&sort=publication_date:desc`;
+    + `&per-page=${Math.min(state.batchSize, 200)}&sort=publication_date:desc`
+    + `&cursor=${encodeURIComponent(cursor)}`;
 
   const d = await getJson(url);
-  await p.journal.update({ where: { id: journal.id }, data: { lastIngestedAt: new Date() } });
-  if (!d?.results?.length) return { journal: journal.title, added: 0, skipped: 0 };
+
+  // A cursor can expire or be rejected. Rather than stalling on that journal for
+  // ever, drop back to the first page next time.
+  if (!d) {
+    await p.journal.update({
+      where: { id: journal.id },
+      data: { lastIngestedAt: new Date(), fetchCursor: null },
+    });
+    return { journal: journal.title, added: 0, skipped: 0, note: 'the source did not answer' };
+  }
+
+  const next = d.meta?.next_cursor ?? null;
+  if (!d.results?.length) {
+    // Nothing left in the window. Start again from the top next week so newly
+    // published work is picked up.
+    await p.journal.update({
+      where: { id: journal.id },
+      data: { lastIngestedAt: new Date(), fetchCursor: null, exhaustedAt: new Date() },
+    });
+    return { journal: journal.title, added: 0, skipped: 0, note: 'nothing new in this journal' };
+  }
 
   let added = 0, skipped = 0;
   for (const w of d.results) {
@@ -227,12 +266,27 @@ async function fetchArticlesForOneJournal(state: any) {
     `select count(*)::int a, count(distinct volume)::int v, count(distinct issue)::int i,
             min(year) f, max(year) l from "Article" where "journalId" = $1`, journal.id);
   const s = agg[0];
+
+  // Where to resume. No next cursor means the source has no more to give inside
+  // the window, so the journal is marked finished and drops into the weekly
+  // rotation instead of taking a turn every pass.
   await p.journal.update({
     where: { id: journal.id },
-    data: { articleCount: s.a, volumeCount: s.v, issueCount: s.i, firstYear: s.f, lastYear: s.l },
+    data: {
+      articleCount: s.a, volumeCount: s.v, issueCount: s.i, firstYear: s.f, lastYear: s.l,
+      lastIngestedAt: new Date(),
+      fetchCursor: next,
+      exhaustedAt: next ? null : new Date(),
+    },
   });
 
-  return { journal: journal.title, added, skipped };
+  return {
+    journal: journal.title,
+    added,
+    skipped,
+    more: Boolean(next),
+    note: next ? undefined : 'reached the end of this journal',
+  };
 }
 
 /** One slice of work. Called on a timer; returns immediately when switched off. */

@@ -295,6 +295,35 @@ const check = async (name, path, token, predicate) => {
     r.status === 401 ? ok(`${name} needs a login`, 'HTTP 401') : bad(`${name} needs a login`, `HTTP ${r.status} without a token`);
   }
 
+  // ── 4b. the engine is actually advancing ──────────────────────────────────
+  //
+  // Without a cursor every pass asked for the same first page, so a journal
+  // stopped at one batch and every later pass re-downloaded it. A journal that
+  // has been fetched from must either be carrying a cursor or be marked
+  // finished; carrying neither means it will start from the top again.
+  console.log('\nIngestion');
+  {
+    // Asserted here is the invariant bad code can actually break: a journal is
+    // either still being walked (it carries a cursor) or finished (it carries a
+    // date), never both and never neither once it has work in it. Journals
+    // fetched before the cursor existed carry neither yet and heal on their next
+    // pass, so those are reported rather than failed.
+    const contradictory = await p.journal.count({
+      where: { rightsBasis: 'DOAJ declaration', fetchCursor: { not: null }, exhaustedAt: { not: null } },
+    });
+    contradictory === 0
+      ? ok('a journal is either walking or finished, never both')
+      : bad('a journal is either walking or finished, never both',
+          `${contradictory} carry a cursor and a finished mark at once`);
+
+    const walking = await p.journal.count({ where: { rightsBasis: 'DOAJ declaration', fetchCursor: { not: null } } });
+    const done = await p.journal.count({ where: { rightsBasis: 'DOAJ declaration', exhaustedAt: { not: null } } });
+    const waiting = await p.journal.count({
+      where: { rightsBasis: 'DOAJ declaration', lastIngestedAt: { not: null }, fetchCursor: null, exhaustedAt: null },
+    });
+    ok('the engine is resumable', `${walking} walking · ${done} finished · ${waiting} yet to pick up a cursor`);
+  }
+
   // ── 5. nothing points at nothing ──────────────────────────────────────────
   console.log('\nDead ends');
   for (const [name, path] of [

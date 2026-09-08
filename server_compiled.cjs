@@ -10378,16 +10378,39 @@ async function discoverJournals(department, state) {
   return { seen, accepted, rejected };
 }
 async function fetchArticlesForOneJournal(state) {
+  const staleAfter = new Date(Date.now() - 7 * 864e5);
   const journal = await p.journal.findFirst({
-    where: { status: "Accepted", issn: { not: null }, rightsBasis: "DOAJ declaration" },
+    where: { status: "Accepted", issn: { not: null }, rightsBasis: "DOAJ declaration", exhaustedAt: null },
+    orderBy: [{ lastIngestedAt: { sort: "asc", nulls: "first" } }]
+  }) ?? await p.journal.findFirst({
+    where: {
+      status: "Accepted",
+      issn: { not: null },
+      rightsBasis: "DOAJ declaration",
+      exhaustedAt: { lt: staleAfter }
+    },
     orderBy: [{ lastIngestedAt: { sort: "asc", nulls: "first" } }]
   });
-  if (!journal) return { journal: null, added: 0, skipped: 0 };
+  if (!journal) return { journal: null, added: 0, skipped: 0, note: "every journal is up to date" };
   const fromYear = (/* @__PURE__ */ new Date()).getFullYear() - (state.yearsBack - 1);
-  const url = `https://api.openalex.org/works?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)},from_publication_date:${fromYear}-01-01,open_access.is_oa:true&per-page=${Math.min(state.batchSize, 200)}&sort=publication_date:desc`;
+  const cursor = journal.fetchCursor || "*";
+  const url = `https://api.openalex.org/works?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)},from_publication_date:${fromYear}-01-01,open_access.is_oa:true&per-page=${Math.min(state.batchSize, 200)}&sort=publication_date:desc&cursor=${encodeURIComponent(cursor)}`;
   const d = await getJson(url);
-  await p.journal.update({ where: { id: journal.id }, data: { lastIngestedAt: /* @__PURE__ */ new Date() } });
-  if (!d?.results?.length) return { journal: journal.title, added: 0, skipped: 0 };
+  if (!d) {
+    await p.journal.update({
+      where: { id: journal.id },
+      data: { lastIngestedAt: /* @__PURE__ */ new Date(), fetchCursor: null }
+    });
+    return { journal: journal.title, added: 0, skipped: 0, note: "the source did not answer" };
+  }
+  const next = d.meta?.next_cursor ?? null;
+  if (!d.results?.length) {
+    await p.journal.update({
+      where: { id: journal.id },
+      data: { lastIngestedAt: /* @__PURE__ */ new Date(), fetchCursor: null, exhaustedAt: /* @__PURE__ */ new Date() }
+    });
+    return { journal: journal.title, added: 0, skipped: 0, note: "nothing new in this journal" };
+  }
   let added = 0, skipped = 0;
   for (const w of d.results) {
     const doi = (w.doi || "").replace(/^https?:\/\/(dx\.)?doi\.org\//i, "") || null;
@@ -10444,9 +10467,24 @@ async function fetchArticlesForOneJournal(state) {
   const s2 = agg[0];
   await p.journal.update({
     where: { id: journal.id },
-    data: { articleCount: s2.a, volumeCount: s2.v, issueCount: s2.i, firstYear: s2.f, lastYear: s2.l }
+    data: {
+      articleCount: s2.a,
+      volumeCount: s2.v,
+      issueCount: s2.i,
+      firstYear: s2.f,
+      lastYear: s2.l,
+      lastIngestedAt: /* @__PURE__ */ new Date(),
+      fetchCursor: next,
+      exhaustedAt: next ? null : /* @__PURE__ */ new Date()
+    }
   });
-  return { journal: journal.title, added, skipped };
+  return {
+    journal: journal.title,
+    added,
+    skipped,
+    more: Boolean(next),
+    note: next ? void 0 : "reached the end of this journal"
+  };
 }
 async function runIngestionPass(departments, opts = {}) {
   const state = await getState();

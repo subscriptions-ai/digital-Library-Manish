@@ -241,6 +241,19 @@ model Journal {
   issueCount     Int      @default(0)
   lastIngestedAt DateTime?
 
+  /// Where the last fetch of this journal reached.
+  ///
+  /// Without it every pass asked the source for the same first page, so a
+  /// journal stopped at whatever one batch held — fifty of the eight hundred
+  /// and sixty-eight it actually has — and every pass after the first
+  /// re-downloaded work already held. Nine of every ten requests the engine
+  /// made were spent that way.
+  fetchCursor    String?
+  /// Set when a journal has given up everything inside the year window. It then
+  /// moves to a slower rotation and is checked for newly published work rather
+  /// than walked again from the start.
+  exhaustedAt    DateTime?
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
