@@ -106,7 +106,8 @@ export function DigitalLibrary() {
   }, []);
 
   const OFFERINGS = [
-    { name: "Periodicals", count: counts["Periodicals"] ?? 0, icon: <FileText size={24} />, color: "text-indigo-600", bg: "bg-indigo-100" },
+    { name: "Journals", count: counts["Journals"] ?? 0, icon: <BookOpen size={24} />, color: "text-indigo-600", bg: "bg-indigo-100", desc: "Peer-reviewed journals, held as full runs" },
+    { name: "Articles", count: counts["Articles"] ?? 0, icon: <FileText size={24} />, color: "text-indigo-600", bg: "bg-indigo-100" },
     { name: "Academic E-Books", count: counts["Books"] ?? 0, icon: <Book size={24} />, color: "text-blue-600", bg: "bg-blue-100" },
     { name: "Research Theses", count: counts["Theses"] ?? 0, icon: <GraduationCap size={24} />, color: "text-emerald-600", bg: "bg-emerald-100" },
     { name: "Conference Proceedings", count: counts["Conference Proceedings"] ?? 0, icon: <Presentation size={24} />, color: "text-amber-600", bg: "bg-amber-100" },

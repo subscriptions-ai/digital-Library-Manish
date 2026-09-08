@@ -288,24 +288,47 @@ async function startServer() {
   });
 
   // Public Stats for Home Page
+  //
+  // Counted across all three shelves. This read only the legacy Content table,
+  // so the public site advertised 6,208 items on a collection of 40,273 —
+  // eighty-five per cent of it invisible, and whole departments showing zero.
+  //
+  // Journals and articles lead, because that is the pair a college asks about
+  // before anything else. "Periodicals" named a storage category rather than
+  // anything a librarian would recognise.
   app.get("/api/public/counts", async (req, res) => {
     try {
-      const [books, periodicals, theses, videos, totalContent] = await Promise.all([
-        prisma.content.count({ where: { contentType: "Books", status: { not: "Draft" } } }),
-        prisma.content.count({ where: { contentType: "Periodicals", status: { not: "Draft" } } }),
-        prisma.content.count({ where: { contentType: "Theses", status: { not: "Draft" } } }),
-        prisma.content.count({ where: { contentType: "Educational Videos", status: { not: "Draft" } } }),
-        prisma.content.count({ where: { status: { not: "Draft" } } })
-      ]);
+      const live = { status: { not: "Draft" } };
+      const pub = { status: "Published" };
+
+      const [journalRows, articles, legacyPeriodicals, legacyBooks, newBooks, theses, legacyTotal] =
+        await Promise.all([
+          (prisma as any).$queryRawUnsafe(
+            `select count(distinct "journalId")::int as n from "Article"
+             where status = 'Published' and "journalId" is not null`),
+          (prisma as any).article.count({ where: pub }),
+          prisma.content.count({ where: { contentType: "Periodicals", ...live } }),
+          prisma.content.count({ where: { contentType: "Books", ...live } }),
+          (prisma as any).book.count({ where: pub }),
+          prisma.content.count({ where: { contentType: "Theses", ...live } }),
+          prisma.content.count({ where: live }),
+        ]);
+
+      const journals = Number(journalRows?.[0]?.n || 0);
+      const allArticles = articles + legacyPeriodicals;
+      const allBooks = legacyBooks + newBooks;
 
       res.json({
         categories: [
-          { label: "Books", value: `${books}+` },
-          { label: "Periodicals", value: `${periodicals}+` },
+          { label: "Journals", value: `${journals}+` },
+          { label: "Articles", value: `${allArticles}+` },
+          { label: "Books", value: `${allBooks}+` },
           { label: "Theses", value: `${theses}+` },
-          { label: "Educational Videos", value: `${videos}+` }
         ],
-        totalContent
+        journals,
+        articles: allArticles,
+        books: allBooks,
+        totalContent: legacyTotal + articles + newBooks,
       });
     } catch (error) {
       console.error("Public counts error:", error);
@@ -315,17 +338,36 @@ async function startServer() {
 
   // Public Domain Counts for Navbar
   // Public Stats by specific Content Type
+  // Counts by kind, for the library's own headline row.
+  //
+  // Journals and Articles are added as their own kinds because they are what a
+  // college asks for. The legacy "Periodicals" bucket is folded into Articles;
+  // it named a storage category rather than anything a librarian recognises.
   app.get("/api/public/content-type-counts", async (req, res) => {
     try {
-      const groups = await prisma.content.groupBy({
-        by: ['contentType'],
-        where: { status: { not: 'Draft' } },
-        _count: { id: true }
-      });
-      const countsMap = groups.reduce((acc: any, g: any) => {
-        if (g.contentType) acc[g.contentType] = g._count.id;
-        return acc;
-      }, {});
+      const [legacy, articles, newBooks, journalRows] = await Promise.all([
+        prisma.content.groupBy({
+          by: ['contentType'],
+          where: { status: { not: 'Draft' } },
+          _count: { id: true },
+        }),
+        (prisma as any).article.count({ where: { status: 'Published' } }),
+        (prisma as any).book.count({ where: { status: 'Published' } }),
+        (prisma as any).$queryRawUnsafe(
+          `select count(distinct "journalId")::int as n from "Article"
+           where status = 'Published' and "journalId" is not null`),
+      ]);
+
+      const countsMap: Record<string, number> = {};
+      for (const g of legacy as any[]) {
+        if (g.contentType) countsMap[g.contentType] = g._count.id;
+      }
+
+      countsMap['Journals'] = Number(journalRows?.[0]?.n || 0);
+      countsMap['Articles'] = articles + (countsMap['Periodicals'] || 0);
+      countsMap['Books'] = (countsMap['Books'] || 0) + newBooks;
+      delete countsMap['Periodicals'];
+
       res.json(countsMap);
     } catch (error) {
       console.error("Content type counts error:", error);
@@ -333,17 +375,37 @@ async function startServer() {
     }
   });
 
+  // Per-department counts for the public navigation.
+  //
+  // Read only the legacy table, so Electrical Engineering, Law and Agriculture
+  // each advertised zero while holding 2,790, 1,458 and 585 articles. A
+  // department showing nothing is a door a visitor does not open.
   app.get("/api/public/domain-counts", async (req, res) => {
     try {
-      const groups = await prisma.content.groupBy({
-        by: ['domain'],
-        where: { status: { not: 'Draft' }, domain: { not: null } },
-        _count: { id: true }
-      });
-      const countsMap = groups.reduce((acc: any, g: any) => {
-        if (g.domain) acc[g.domain] = g._count.id;
-        return acc;
-      }, {});
+      const [legacy, articles, books] = await Promise.all([
+        prisma.content.groupBy({
+          by: ['domain'],
+          where: { status: { not: 'Draft' }, domain: { not: null } },
+          _count: { id: true },
+        }),
+        (prisma as any).article.groupBy({
+          by: ['domain'],
+          where: { status: 'Published', domain: { not: null } },
+          _count: { id: true },
+        }),
+        (prisma as any).book.groupBy({
+          by: ['domain'],
+          where: { status: 'Published', domain: { not: null } },
+          _count: { id: true },
+        }),
+      ]);
+      const countsMap: Record<string, number> = {};
+      for (const set of [legacy, articles, books] as any[]) {
+        for (const g of set) {
+          if (!g.domain) continue;
+          countsMap[g.domain] = (countsMap[g.domain] || 0) + g._count.id;
+        }
+      }
       res.json(countsMap);
     } catch (error) {
       console.error("Domain counts error:", error);
@@ -3176,17 +3238,35 @@ async function startServer() {
       const domain = req.query.domain as string;
       if (!domain) return res.status(400).json({ error: "domain query param required" });
 
-      // 1. Content summary — count published content per type for this domain
-      const contentGroups = await prisma.content.groupBy({
-        by: ['contentType'],
-        where: { domain, status: { in: ['Published', 'published'] } },
-        _count: { id: true },
-        orderBy: { contentType: 'asc' }
-      });
-      const content_summary = contentGroups.map((g: any) => ({
-        type: g.contentType,
-        count: g._count.id
-      }));
+      // 1. Content summary — per kind, across all three shelves.
+      //    Counting only the legacy table left departments advertising nothing
+      //    while holding thousands of articles.
+      const [contentGroups, deptArticles, deptBooks, deptJournalRows] = await Promise.all([
+        prisma.content.groupBy({
+          by: ['contentType'],
+          where: { domain, status: { in: ['Published', 'published'] } },
+          _count: { id: true },
+          orderBy: { contentType: 'asc' },
+        }),
+        (prisma as any).article.count({ where: { domain, status: 'Published' } }),
+        (prisma as any).book.count({ where: { domain, status: 'Published' } }),
+        (prisma as any).$queryRawUnsafe(
+          `select count(distinct "journalId")::int as n from "Article"
+           where status = 'Published' and "domain" = $1 and "journalId" is not null`, domain),
+      ]);
+
+      const byType: Record<string, number> = {};
+      for (const g of contentGroups as any[]) {
+        if (g.contentType) byType[g.contentType] = g._count.id;
+      }
+      byType['Journals'] = Number(deptJournalRows?.[0]?.n || 0);
+      byType['Articles'] = deptArticles + (byType['Periodicals'] || 0);
+      byType['Books'] = (byType['Books'] || 0) + deptBooks;
+      delete byType['Periodicals'];
+
+      const content_summary = Object.entries(byType)
+        .filter(([, count]) => count > 0)
+        .map(([type, count]) => ({ type, count }));
 
       // 2. Pricing modules — active modules for this domain, optionally filtered by userType
       const { userType } = req.query as { userType?: string };

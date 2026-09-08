@@ -10737,21 +10737,34 @@ async function startServer() {
   });
   app.get("/api/public/counts", async (req, res) => {
     try {
-      const [books, periodicals, theses, videos, totalContent] = await Promise.all([
-        prisma3.content.count({ where: { contentType: "Books", status: { not: "Draft" } } }),
-        prisma3.content.count({ where: { contentType: "Periodicals", status: { not: "Draft" } } }),
-        prisma3.content.count({ where: { contentType: "Theses", status: { not: "Draft" } } }),
-        prisma3.content.count({ where: { contentType: "Educational Videos", status: { not: "Draft" } } }),
-        prisma3.content.count({ where: { status: { not: "Draft" } } })
+      const live = { status: { not: "Draft" } };
+      const pub = { status: "Published" };
+      const [journalRows, articles, legacyPeriodicals, legacyBooks, newBooks, theses, legacyTotal] = await Promise.all([
+        prisma3.$queryRawUnsafe(
+          `select count(distinct "journalId")::int as n from "Article"
+             where status = 'Published' and "journalId" is not null`
+        ),
+        prisma3.article.count({ where: pub }),
+        prisma3.content.count({ where: { contentType: "Periodicals", ...live } }),
+        prisma3.content.count({ where: { contentType: "Books", ...live } }),
+        prisma3.book.count({ where: pub }),
+        prisma3.content.count({ where: { contentType: "Theses", ...live } }),
+        prisma3.content.count({ where: live })
       ]);
+      const journals = Number(journalRows?.[0]?.n || 0);
+      const allArticles = articles + legacyPeriodicals;
+      const allBooks = legacyBooks + newBooks;
       res.json({
         categories: [
-          { label: "Books", value: `${books}+` },
-          { label: "Periodicals", value: `${periodicals}+` },
-          { label: "Theses", value: `${theses}+` },
-          { label: "Educational Videos", value: `${videos}+` }
+          { label: "Journals", value: `${journals}+` },
+          { label: "Articles", value: `${allArticles}+` },
+          { label: "Books", value: `${allBooks}+` },
+          { label: "Theses", value: `${theses}+` }
         ],
-        totalContent
+        journals,
+        articles: allArticles,
+        books: allBooks,
+        totalContent: legacyTotal + articles + newBooks
       });
     } catch (error) {
       console.error("Public counts error:", error);
@@ -10760,15 +10773,27 @@ async function startServer() {
   });
   app.get("/api/public/content-type-counts", async (req, res) => {
     try {
-      const groups = await prisma3.content.groupBy({
-        by: ["contentType"],
-        where: { status: { not: "Draft" } },
-        _count: { id: true }
-      });
-      const countsMap = groups.reduce((acc, g) => {
-        if (g.contentType) acc[g.contentType] = g._count.id;
-        return acc;
-      }, {});
+      const [legacy, articles, newBooks, journalRows] = await Promise.all([
+        prisma3.content.groupBy({
+          by: ["contentType"],
+          where: { status: { not: "Draft" } },
+          _count: { id: true }
+        }),
+        prisma3.article.count({ where: { status: "Published" } }),
+        prisma3.book.count({ where: { status: "Published" } }),
+        prisma3.$queryRawUnsafe(
+          `select count(distinct "journalId")::int as n from "Article"
+           where status = 'Published' and "journalId" is not null`
+        )
+      ]);
+      const countsMap = {};
+      for (const g of legacy) {
+        if (g.contentType) countsMap[g.contentType] = g._count.id;
+      }
+      countsMap["Journals"] = Number(journalRows?.[0]?.n || 0);
+      countsMap["Articles"] = articles + (countsMap["Periodicals"] || 0);
+      countsMap["Books"] = (countsMap["Books"] || 0) + newBooks;
+      delete countsMap["Periodicals"];
       res.json(countsMap);
     } catch (error) {
       console.error("Content type counts error:", error);
@@ -10777,15 +10802,30 @@ async function startServer() {
   });
   app.get("/api/public/domain-counts", async (req, res) => {
     try {
-      const groups = await prisma3.content.groupBy({
-        by: ["domain"],
-        where: { status: { not: "Draft" }, domain: { not: null } },
-        _count: { id: true }
-      });
-      const countsMap = groups.reduce((acc, g) => {
-        if (g.domain) acc[g.domain] = g._count.id;
-        return acc;
-      }, {});
+      const [legacy, articles, books] = await Promise.all([
+        prisma3.content.groupBy({
+          by: ["domain"],
+          where: { status: { not: "Draft" }, domain: { not: null } },
+          _count: { id: true }
+        }),
+        prisma3.article.groupBy({
+          by: ["domain"],
+          where: { status: "Published", domain: { not: null } },
+          _count: { id: true }
+        }),
+        prisma3.book.groupBy({
+          by: ["domain"],
+          where: { status: "Published", domain: { not: null } },
+          _count: { id: true }
+        })
+      ]);
+      const countsMap = {};
+      for (const set of [legacy, articles, books]) {
+        for (const g of set) {
+          if (!g.domain) continue;
+          countsMap[g.domain] = (countsMap[g.domain] || 0) + g._count.id;
+        }
+      }
       res.json(countsMap);
     } catch (error) {
       console.error("Domain counts error:", error);
@@ -13137,16 +13177,30 @@ async function startServer() {
     try {
       const domain = req.query.domain;
       if (!domain) return res.status(400).json({ error: "domain query param required" });
-      const contentGroups = await prisma3.content.groupBy({
-        by: ["contentType"],
-        where: { domain, status: { in: ["Published", "published"] } },
-        _count: { id: true },
-        orderBy: { contentType: "asc" }
-      });
-      const content_summary = contentGroups.map((g) => ({
-        type: g.contentType,
-        count: g._count.id
-      }));
+      const [contentGroups, deptArticles, deptBooks, deptJournalRows] = await Promise.all([
+        prisma3.content.groupBy({
+          by: ["contentType"],
+          where: { domain, status: { in: ["Published", "published"] } },
+          _count: { id: true },
+          orderBy: { contentType: "asc" }
+        }),
+        prisma3.article.count({ where: { domain, status: "Published" } }),
+        prisma3.book.count({ where: { domain, status: "Published" } }),
+        prisma3.$queryRawUnsafe(
+          `select count(distinct "journalId")::int as n from "Article"
+           where status = 'Published' and "domain" = $1 and "journalId" is not null`,
+          domain
+        )
+      ]);
+      const byType = {};
+      for (const g of contentGroups) {
+        if (g.contentType) byType[g.contentType] = g._count.id;
+      }
+      byType["Journals"] = Number(deptJournalRows?.[0]?.n || 0);
+      byType["Articles"] = deptArticles + (byType["Periodicals"] || 0);
+      byType["Books"] = (byType["Books"] || 0) + deptBooks;
+      delete byType["Periodicals"];
+      const content_summary = Object.entries(byType).filter(([, count]) => count > 0).map(([type, count]) => ({ type, count }));
       const { userType } = req.query;
       const moduleWhere = { domain, isActive: true };
       if (userType) moduleWhere.userType = userType;

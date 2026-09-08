@@ -149,6 +149,44 @@ const check = async (name, path, token, predicate) => {
 
   await check('subject list', '/api/library/subjects', A, b => Array.isArray(b) || 'not an array');
 
+  // ── 1b. the public counts ─────────────────────────────────────────────────
+  //
+  // These advertised 6,208 items on a collection of 40,273 because they counted
+  // only the legacy table. Whole departments read zero while holding thousands.
+  console.log('\nPublic counts');
+  const legacyLive = await p.content.count({ where: { status: { not: 'Draft' } } });
+  const newBooks = await p.book.count({ where: { status: 'Published' } });
+  const wholeCollection = legacyLive + truth.publishedArticles + newBooks;
+
+  await check('public counts cover all three shelves', '/api/public/counts', null, b => {
+    if (b.totalContent !== wholeCollection)
+      return `advertises ${b.totalContent} but the collection is ${wholeCollection} — a shelf is being left out`;
+    if ((b.journals || 0) !== truth.journalsHoldingArticles)
+      return `${b.journals} journals but ${truth.journalsHoldingArticles} hold articles`;
+    if ((b.articles || 0) < truth.publishedArticles)
+      return `${b.articles} articles but ${truth.publishedArticles} are published`;
+    return true;
+  });
+
+  {
+    const shown = (await get('/api/public/domain-counts')).body || {};
+    const held = await p.article.groupBy({
+      by: ['domain'], where: { status: 'Published', domain: { not: null } }, _count: { id: true },
+    });
+    const wrong = held.filter(h => (shown[h.domain] || 0) < h._count.id);
+    wrong.length === 0
+      ? ok('every department counts its articles', `${Object.keys(shown).length} departments`)
+      : bad('every department counts its articles',
+          wrong.slice(0, 3).map(w => `${w.domain} shows ${shown[w.domain] || 0} but holds ${w._count.id}`).join('; '));
+  }
+
+  await check('the library leads with journals and articles', '/api/public/content-type-counts', null, b => {
+    if (!('Journals' in b)) return 'no Journals count';
+    if (!('Articles' in b)) return 'no Articles count';
+    if ('Periodicals' in b) return 'still exposes the legacy "Periodicals" bucket';
+    return true;
+  });
+
   // ── 2. search and browse ──────────────────────────────────────────────────
   console.log('\nSearch and browse');
   await check('article search', '/api/library/articles?search=nursing&limit=5', A, b => {
