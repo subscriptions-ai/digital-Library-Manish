@@ -5131,12 +5131,15 @@ async function startServer() {
 
   app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      const { enabled, yearsBack, departments, batchSize } = req.body || {};
+      const { enabled, yearsBack, departments, batchSize, discoverEvery } = req.body || {};
       const data: any = {};
       if (typeof enabled === 'boolean') data.enabled = enabled;
       if (Number.isInteger(yearsBack) && yearsBack > 0 && yearsBack <= 50) data.yearsBack = yearsBack;
       if (Array.isArray(departments)) data.departments = departments;
       if (Number.isInteger(batchSize) && batchSize > 0 && batchSize <= 200) data.batchSize = batchSize;
+      // Zero would mean every pass looks for more titles and none ever fetches
+      // an article, which is the failure this setting exists to prevent.
+      if (Number.isInteger(discoverEvery) && discoverEvery > 0 && discoverEvery <= 50) data.discoverEvery = discoverEvery;
       await getIngestionState();
       res.json(await (prisma as any).ingestionState.update({ where: { id: 'singleton' }, data }));
     } catch { res.status(500).json({ error: "Failed to update ingestion state" }); }
@@ -5154,7 +5157,7 @@ async function startServer() {
       const take = Math.min(parseInt(req.query.limit as string) || 40, 200);
       const since = new Date(Date.now() - 7 * 864e5);
 
-      const [runs, totals, worst] = await Promise.all([
+      const [runs, totals, worst, sweeps, journalsHeld, booksHeld] = await Promise.all([
         (prisma as any).ingestionRun.findMany({ orderBy: { at: 'desc' }, take }),
         (prisma as any).ingestionRun.aggregate({
           where: { at: { gte: since } },
@@ -5167,7 +5170,50 @@ async function startServer() {
           where: { OR: [{ error: { not: null } }, { skippedFailed: { gt: 0 } }] },
           orderBy: { at: 'desc' }, take: 10,
         }),
+        // How far each department has been swept, per source. Totals said what
+        // had been collected but never how much was left — a department could
+        // sit on one page of a source holding a thousand more and nothing on
+        // the screen would say so.
+        prisma.$queryRawUnsafe(`
+          select department, source,
+                 sum(seen)::int      as seen,
+                 sum(accepted)::int  as accepted,
+                 sum(refused)::int   as refused,
+                 count(*)::int       as terms,
+                 count(*) filter (where "exhaustedAt" is null)::int as "termsOpen",
+                 max("lastSweptAt")  as "lastSweptAt"
+          from "DepartmentSweep" group by 1, 2`),
+        prisma.$queryRawUnsafe(
+          `select domain, count(*)::int n from "Journal" where domain is not null group by 1`),
+        prisma.$queryRawUnsafe(
+          `select domain, count(*)::int n from "Book"
+           where status = 'Published' and domain is not null group by 1`),
       ]);
+
+      const held = (rows: any[]) => new Map(rows.map((r: any) => [r.domain, r.n]));
+      const jHeld = held(journalsHeld as any[]);
+      const bHeld = held(booksHeld as any[]);
+
+      const byDept = new Map<string, any>();
+      for (const row of sweeps as any[]) {
+        const d = byDept.get(row.department) || {
+          department: row.department,
+          journalsHeld: jHeld.get(row.department) || 0,
+          booksHeld: bHeld.get(row.department) || 0,
+        };
+        d[row.source === 'DOAJ' ? 'doaj' : 'doab'] = {
+          seen: row.seen, accepted: row.accepted, refused: row.refused,
+          terms: row.terms, termsOpen: row.termsOpen, lastSweptAt: row.lastSweptAt,
+        };
+        byDept.set(row.department, d);
+      }
+      // A department with no sweep row yet has still not been reached; it belongs
+      // on the list precisely because it is empty.
+      for (const dep of new Set([...jHeld.keys(), ...bHeld.keys()]) as any) {
+        if (!byDept.has(dep)) byDept.set(dep, {
+          department: dep, journalsHeld: jHeld.get(dep) || 0, booksHeld: bHeld.get(dep) || 0,
+        });
+      }
 
       res.json({
         runs,
@@ -5178,6 +5224,7 @@ async function startServer() {
           failedToWrite: totals._sum.skippedFailed || 0,
         },
         problems: worst,
+        coverage: [...byDept.values()].sort((a, b) => a.department.localeCompare(b.department)),
       });
     } catch (e: any) {
       console.error('GET ingest/history error:', e?.message);

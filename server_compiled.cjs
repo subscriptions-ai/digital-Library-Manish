@@ -10304,6 +10304,26 @@ var DEPARTMENT_TERMS = {
   "Commerce": ["commerce", "business"],
   "Multidisciplinary": ["multidisciplinary"]
 };
+function licenceFromProse(raw) {
+  const t2 = String(raw || "").trim();
+  if (!t2) return null;
+  const url = t2.match(/creativecommons\.org\/(?:licenses|publicdomain)\/([a-z0-9-]+)/i);
+  if (url) {
+    const code2 = url[1].toLowerCase();
+    return code2 === "zero" || code2 === "mark" ? "CC0" : `CC ${code2.toUpperCase()}`;
+  }
+  if (/\bCC[\s-]?0\b/i.test(t2)) return "CC0";
+  const code = t2.match(/\bCC[\s-]?(BY(?:[\s-]?(?:NC|ND|SA))*)\b/i);
+  if (code) return `CC ${code[1].replace(/[\s-]+/g, "-").toUpperCase()}`;
+  if (/creative commons/i.test(t2) && /attribution/i.test(t2)) {
+    const parts = ["BY"];
+    if (/non[\s-]?commercial/i.test(t2)) parts.push("NC");
+    if (/no[\s-]?deriv/i.test(t2)) parts.push("ND");
+    if (/share[\s-]?alike/i.test(t2)) parts.push("SA");
+    return `CC ${parts.join("-")}`;
+  }
+  return null;
+}
 function searchTermsFor(department) {
   return DEPARTMENT_TERMS[department] || [department];
 }
@@ -10314,9 +10334,9 @@ function normaliseIssn(raw) {
   return m2 ? `${m2[1]}-${m2[2]}` : null;
 }
 var sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
-async function getJson(url) {
+async function getJson(url, timeoutMs = 12e4) {
   try {
-    const r2 = await fetch(url, { headers: UA });
+    const r2 = await fetch(url, { headers: UA, signal: AbortSignal.timeout(timeoutMs) });
     if (!r2.ok) return null;
     return await r2.json();
   } catch {
@@ -10330,22 +10350,59 @@ async function getState() {
     create: { id: "singleton" }
   });
 }
-async function discoverJournals(department, state) {
-  const records = [];
-  for (const term of searchTermsFor(department)) {
-    const d = await getJson(
-      `https://doaj.org/api/search/journals/${encodeURIComponent(term)}?pageSize=100`
-    );
-    if (d?.results?.length) records.push(...d.results);
-    await sleep(400);
+async function claimSweep(source, departments) {
+  const wanted = [];
+  for (const dep of departments) for (const term of searchTermsFor(dep)) wanted.push({ department: dep, term });
+  const held = await p.departmentSweep.count({ where: { source } });
+  if (held < wanted.length) {
+    for (const w of wanted) {
+      await p.departmentSweep.upsert({
+        where: { department_source_term: { department: w.department, source, term: w.term } },
+        update: {},
+        create: { department: w.department, source, term: w.term }
+      });
+    }
   }
-  if (!records.length) return { seen: 0, accepted: 0, rejected: 0 };
-  let seen = 0, accepted = 0, rejected = 0;
+  const reopenAfter = new Date(Date.now() - 30 * 864e5);
+  const where = { source, department: { in: departments } };
+  return await p.departmentSweep.findFirst({
+    where: { ...where, exhaustedAt: null },
+    orderBy: [{ lastSweptAt: { sort: "asc", nulls: "first" } }]
+  }) ?? await p.departmentSweep.findFirst({
+    where: { ...where, exhaustedAt: { lt: reopenAfter } },
+    orderBy: [{ lastSweptAt: { sort: "asc", nulls: "first" } }]
+  });
+}
+async function closeSweep(sweep, r2, nextPosition, full) {
+  await p.departmentSweep.update({
+    where: { id: sweep.id },
+    data: {
+      position: full ? nextPosition : 0,
+      exhaustedAt: full ? null : /* @__PURE__ */ new Date(),
+      lastSweptAt: /* @__PURE__ */ new Date(),
+      seen: { increment: r2.seen },
+      accepted: { increment: r2.accepted },
+      refused: { increment: r2.rejected }
+    }
+  });
+}
+var DOAJ_PAGE = 100;
+async function discoverJournalsPage(sweep) {
+  const page = sweep.position + 1;
+  const d = await getJson(
+    `https://doaj.org/api/search/journals/${encodeURIComponent(sweep.term)}?pageSize=${DOAJ_PAGE}&page=${page}`
+  );
+  const records = d?.results || [];
+  const r2 = { seen: 0, accepted: 0, rejected: 0 };
+  if (!records.length) {
+    await closeSweep(sweep, r2, sweep.position, false);
+    return { ...r2, more: false, total: d?.total ?? null };
+  }
   for (const rec of records) {
     const b = rec.bibjson || {};
     const title = b.title;
     if (!title) continue;
-    seen++;
+    r2.seen++;
     const lic = (b.license || [])[0];
     const ok = licenceAllowsCommercialUse(lic?.type, lic?.NC);
     const issn = normaliseIssn(b.pissn) || normaliseIssn(b.eissn);
@@ -10355,8 +10412,8 @@ async function discoverJournals(department, state) {
       eissn: normaliseIssn(b.eissn),
       publisherName: b.publisher?.name || null,
       country: b.publisher?.country || null,
-      domain: department,
-      subjects: (b.subject || []).map((s2) => s2.term).filter(Boolean),
+      domain: sweep.department,
+      subjects: (b.subject || []).map((x2) => x2.term).filter(Boolean),
       homepage: (b.link || []).find((l) => l.type === "homepage")?.url || null,
       licence: lic?.type || null,
       licenceIsNC: lic?.NC === true || !ok,
@@ -10369,13 +10426,125 @@ async function discoverJournals(department, state) {
     const existing = issn ? await p.journal.findFirst({ where: { issn } }) : await p.journal.findFirst({ where: { title } });
     if (existing) {
       if (existing.rightsBasis === "our own") continue;
-      await p.journal.update({ where: { id: existing.id }, data });
+      const { domain, ...rest } = data;
+      await p.journal.update({ where: { id: existing.id }, data: existing.domain ? rest : data });
     } else {
       await p.journal.create({ data });
     }
-    ok ? accepted++ : rejected++;
+    ok ? r2.accepted++ : r2.rejected++;
   }
-  return { seen, accepted, rejected };
+  const full = records.length >= DOAJ_PAGE;
+  await closeSweep(sweep, r2, sweep.position + 1, full);
+  return { ...r2, more: full, total: d?.total ?? null };
+}
+var DOAB_PAGE = 100;
+var DOAB_PAGES_PER_PASS = 2;
+async function doabPage(term, offset) {
+  const base = `https://directory.doabooks.org/rest/search?query=${encodeURIComponent(term)}&limit=${DOAB_PAGE}&offset=${offset}`;
+  const meta = await getJson(`${base}&expand=metadata`);
+  if (!Array.isArray(meta) || !meta.length) return Array.isArray(meta) ? [] : null;
+  await sleep(400);
+  const files = await getJson(`${base}&expand=bitstreams`);
+  const byId = new Map((Array.isArray(files) ? files : []).map((r2) => [r2.id, r2.bitstreams]));
+  return meta.map((r2) => ({ ...r2, bitstreams: byId.get(r2.id) || [] }));
+}
+function doabFields(rec) {
+  const m2 = /* @__PURE__ */ new Map();
+  for (const row of rec?.metadata || []) {
+    const k = row?.key;
+    const v = row?.value;
+    if (!k || v == null || v === "") continue;
+    const list = m2.get(k) || [];
+    list.push(String(v));
+    m2.set(k, list);
+  }
+  return {
+    one: (k) => m2.get(k)?.[0] ?? null,
+    all: (k) => m2.get(k) ?? []
+  };
+}
+async function discoverBooksPage(sweep) {
+  const r2 = { seen: 0, accepted: 0, rejected: 0 };
+  let added = 0, skippedHeld = 0, skippedFailed = 0;
+  let firstFailure = null;
+  let offset = sweep.position;
+  let full = true;
+  for (let page = 0; page < DOAB_PAGES_PER_PASS && full; page++) {
+    const records = await doabPage(sweep.term, offset);
+    if (records === null) break;
+    if (!records.length) {
+      full = false;
+      break;
+    }
+    for (const rec of records) {
+      const f3 = doabFields(rec);
+      const title = f3.one("dc.title") || rec.name;
+      if (!title) continue;
+      r2.seen++;
+      const doi = (f3.one("oapen.identifier.doi") || "").replace(/^https?:\/\/(dx\.)?doi\.org\//i, "") || null;
+      const isbn = f3.one("dc.identifier.isbn") || null;
+      const handle = rec.handle || null;
+      const fingerprint = doi ? `doab:doi:${doi.toLowerCase()}` : handle ? `doab:handle:${handle}` : `doab:t:${String(title).toLowerCase().replace(/\W+/g, " ").trim().slice(0, 180)}`;
+      if (await p.book.findFirst({ where: { fingerprint }, select: { id: true } })) {
+        skippedHeld++;
+        continue;
+      }
+      const licence = licenceFromProse(f3.one("publisher.oalicense"));
+      const commercialOk = licenceAllowsCommercialUse(licence);
+      commercialOk ? r2.accepted++ : r2.rejected++;
+      const cover = (rec.bitstreams || []).find((b) => /^image\//i.test(b?.mimeType || ""));
+      const year = Number(String(f3.one("dc.date.issued") || "").slice(0, 4)) || null;
+      const authors = [...f3.all("dc.contributor.author"), ...f3.all("dc.contributor.editor")].filter(Boolean).join(", ") || null;
+      await p.book.create({
+        data: {
+          title,
+          authors,
+          publisherName: f3.one("publisher.name") || null,
+          isbn,
+          doi,
+          year,
+          pages: f3.one("oapen.pages") || null,
+          subject: f3.one("dc.subject.other") || (f3.one("dc.subject.classification") || "").split("::").pop() || null,
+          domain: sweep.department,
+          language: f3.one("dc.language") || null,
+          country: f3.one("publisher.country") || null,
+          description: f3.one("dc.description.abstract") || null,
+          coverUrl: cover?.retrieveLink ? `https://directory.doabooks.org${cover.retrieveLink}` : null,
+          // Left null deliberately: DOAB holds no book file, so there is nothing
+          // here to serve and a URL would only be a broken promise.
+          pdfUrl: null,
+          accessType: "OpenAccess",
+          status: "Published",
+          licence,
+          licenceIsNC: !commercialOk,
+          // Named for what it is. `publisher.oalicense` is a sentence about a
+          // publisher's catalogue, not a declaration about this title, and it
+          // must never be mistaken for one when read back.
+          rightsBasis: licence ? "DOAB publisher statement" : "DOAB record, licence undeclared",
+          rightsVerifiedAt: /* @__PURE__ */ new Date(),
+          rightsVerifiedBy: "ingestion",
+          rightsStatus: "MetadataOnly",
+          accessStatus: "LinkOnly",
+          originalUrl: doi ? `https://doi.org/${doi}` : handle ? `https://directory.doabooks.org/handle/${handle}` : null,
+          rightsHolder: f3.one("publisher.name") || null,
+          source: "DOAB",
+          ownershipSource: "Ingested",
+          lastIngestedAt: /* @__PURE__ */ new Date(),
+          fingerprint
+        }
+      }).then(() => {
+        added++;
+      }).catch((e2) => {
+        skippedFailed++;
+        if (!firstFailure) firstFailure = String(e2?.message || e2).slice(0, 300);
+      });
+    }
+    offset += records.length;
+    full = records.length >= DOAB_PAGE;
+    if (full) await sleep(400);
+  }
+  await closeSweep(sweep, r2, offset, full);
+  return { ...r2, added, skippedHeld, skippedFailed, more: full, error: firstFailure };
 }
 async function fetchArticlesForOneJournal(state) {
   const staleAfter = new Date(Date.now() - 7 * 864e5);
@@ -10501,34 +10670,73 @@ async function runIngestionPass(departments, opts = {}) {
   });
   try {
     const wanted = state.departments?.length ? state.departments : departments;
-    for (const dep of wanted) {
-      const found = await p.journal.count({
-        where: { domain: dep, rightsBasis: "DOAJ declaration" }
-      });
-      if (found > 0) continue;
-      const r3 = await discoverJournals(dep, state);
-      await p.ingestionState.update({
-        where: { id: "singleton" },
-        data: {
-          phase: "Journals",
-          currentDepartment: dep,
-          lastRunAt: /* @__PURE__ */ new Date(),
-          lastError: null,
-          journalsSeen: { increment: r3.seen },
-          journalsAccepted: { increment: r3.accepted },
-          journalsRejected: { increment: r3.rejected }
+    const n = await p.ingestionState.update({
+      where: { id: "singleton" },
+      data: { passCount: { increment: 1 } },
+      select: { passCount: true }
+    }).then((x2) => x2.passCount).catch(() => 0);
+    const every = Math.max(1, state.discoverEvery || 5);
+    const wantsDiscovery = opts.only ? opts.only !== "articles" : n % every === 0;
+    const bookTurn = opts.only === "books" || opts.only !== "journals" && n % (every * 2) === 0;
+    if (wantsDiscovery) {
+      const order = bookTurn ? ["DOAB", "DOAJ"] : ["DOAJ", "DOAB"];
+      for (const source of order) {
+        if (opts.only === "journals" && source !== "DOAJ") continue;
+        if (opts.only === "books" && source !== "DOAB") continue;
+        const sweep = await claimSweep(source, wanted);
+        if (!sweep) continue;
+        if (source === "DOAJ") {
+          const r4 = await discoverJournalsPage(sweep);
+          await p.ingestionState.update({
+            where: { id: "singleton" },
+            data: {
+              phase: "Journals",
+              currentDepartment: sweep.department,
+              lastRunAt: /* @__PURE__ */ new Date(),
+              lastError: null,
+              journalsSeen: { increment: r4.seen },
+              journalsAccepted: { increment: r4.accepted },
+              journalsRejected: { increment: r4.rejected }
+            }
+          });
+          await record({
+            phase: "Journals",
+            source: "DOAJ",
+            department: sweep.department,
+            journalsSeen: r4.seen,
+            journalsAccepted: r4.accepted,
+            journalsRefused: r4.rejected,
+            more: r4.more,
+            note: r4.seen ? `"${sweep.term}" page ${sweep.position + 1}: ${r4.accepted} accepted, ${r4.rejected} refused on licence` : `"${sweep.term}" has no more to give`
+          });
+          return { phase: "Journals", source, department: sweep.department, term: sweep.term, ...r4 };
         }
-      });
-      await record({
-        phase: "Journals",
-        source: "DOAJ",
-        department: dep,
-        journalsSeen: r3.seen,
-        journalsAccepted: r3.accepted,
-        journalsRefused: r3.rejected,
-        note: `${r3.accepted} accepted, ${r3.rejected} refused on licence`
-      });
-      return { phase: "Journals", department: dep, ...r3 };
+        const r3 = await discoverBooksPage(sweep);
+        await p.ingestionState.update({
+          where: { id: "singleton" },
+          data: {
+            phase: "Books",
+            currentDepartment: sweep.department,
+            lastRunAt: /* @__PURE__ */ new Date(),
+            lastError: null,
+            booksAdded: { increment: r3.added },
+            booksSkipped: { increment: r3.skippedHeld + r3.skippedFailed }
+          }
+        });
+        await record({
+          phase: "Books",
+          source: "DOAB",
+          department: sweep.department,
+          added: r3.added,
+          skippedHeld: r3.skippedHeld,
+          skippedFailed: r3.skippedFailed,
+          more: r3.more,
+          error: r3.error,
+          note: r3.seen ? `"${sweep.term}" from ${sweep.position}: ${r3.added} added, ${r3.skippedHeld} already held` : `"${sweep.term}" has no more to give`
+        });
+        return { phase: "Books", source, department: sweep.department, term: sweep.term, ...r3 };
+      }
+      if (opts.only) return { phase: "Idle", note: "every sweep is up to date" };
     }
     const r2 = await fetchArticlesForOneJournal(state);
     await p.ingestionState.update({
@@ -15062,12 +15270,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const { enabled, yearsBack, departments, batchSize } = req.body || {};
+      const { enabled, yearsBack, departments, batchSize, discoverEvery } = req.body || {};
       const data = {};
       if (typeof enabled === "boolean") data.enabled = enabled;
       if (Number.isInteger(yearsBack) && yearsBack > 0 && yearsBack <= 50) data.yearsBack = yearsBack;
       if (Array.isArray(departments)) data.departments = departments;
       if (Number.isInteger(batchSize) && batchSize > 0 && batchSize <= 200) data.batchSize = batchSize;
+      if (Number.isInteger(discoverEvery) && discoverEvery > 0 && discoverEvery <= 50) data.discoverEvery = discoverEvery;
       await getState();
       res.json(await prisma3.ingestionState.update({ where: { id: "singleton" }, data }));
     } catch {
@@ -15078,7 +15287,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const take = Math.min(parseInt(req.query.limit) || 40, 200);
       const since = new Date(Date.now() - 7 * 864e5);
-      const [runs, totals, worst] = await Promise.all([
+      const [runs, totals, worst, sweeps, journalsHeld, booksHeld] = await Promise.all([
         prisma3.ingestionRun.findMany({ orderBy: { at: "desc" }, take }),
         prisma3.ingestionRun.aggregate({
           where: { at: { gte: since } },
@@ -15091,8 +15300,55 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           where: { OR: [{ error: { not: null } }, { skippedFailed: { gt: 0 } }] },
           orderBy: { at: "desc" },
           take: 10
-        })
+        }),
+        // How far each department has been swept, per source. Totals said what
+        // had been collected but never how much was left — a department could
+        // sit on one page of a source holding a thousand more and nothing on
+        // the screen would say so.
+        prisma3.$queryRawUnsafe(`
+          select department, source,
+                 sum(seen)::int      as seen,
+                 sum(accepted)::int  as accepted,
+                 sum(refused)::int   as refused,
+                 count(*)::int       as terms,
+                 count(*) filter (where "exhaustedAt" is null)::int as "termsOpen",
+                 max("lastSweptAt")  as "lastSweptAt"
+          from "DepartmentSweep" group by 1, 2`),
+        prisma3.$queryRawUnsafe(
+          `select domain, count(*)::int n from "Journal" where domain is not null group by 1`
+        ),
+        prisma3.$queryRawUnsafe(
+          `select domain, count(*)::int n from "Book"
+           where status = 'Published' and domain is not null group by 1`
+        )
       ]);
+      const held = (rows) => new Map(rows.map((r2) => [r2.domain, r2.n]));
+      const jHeld = held(journalsHeld);
+      const bHeld = held(booksHeld);
+      const byDept = /* @__PURE__ */ new Map();
+      for (const row of sweeps) {
+        const d = byDept.get(row.department) || {
+          department: row.department,
+          journalsHeld: jHeld.get(row.department) || 0,
+          booksHeld: bHeld.get(row.department) || 0
+        };
+        d[row.source === "DOAJ" ? "doaj" : "doab"] = {
+          seen: row.seen,
+          accepted: row.accepted,
+          refused: row.refused,
+          terms: row.terms,
+          termsOpen: row.termsOpen,
+          lastSweptAt: row.lastSweptAt
+        };
+        byDept.set(row.department, d);
+      }
+      for (const dep of /* @__PURE__ */ new Set([...jHeld.keys(), ...bHeld.keys()])) {
+        if (!byDept.has(dep)) byDept.set(dep, {
+          department: dep,
+          journalsHeld: jHeld.get(dep) || 0,
+          booksHeld: bHeld.get(dep) || 0
+        });
+      }
       res.json({
         runs,
         lastSevenDays: {
@@ -15101,7 +15357,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           alreadyHeld: totals._sum.skippedHeld || 0,
           failedToWrite: totals._sum.skippedFailed || 0
         },
-        problems: worst
+        problems: worst,
+        coverage: [...byDept.values()].sort((a, b) => a.department.localeCompare(b.department))
       });
     } catch (e2) {
       console.error("GET ingest/history error:", e2?.message);

@@ -1196,6 +1196,19 @@ model IngestionState {
   journalsRejected Int    @default(0)        // non-commercial or unusable licence
   articlesAdded    Int    @default(0)
   articlesSkipped  Int    @default(0)        // duplicates and out-of-window
+  booksAdded       Int    @default(0)
+  booksSkipped     Int    @default(0)
+
+  /// Passes run since the engine was switched on, and how often one of them is
+  /// spent on discovery instead of articles.
+  ///
+  /// Without this the two compete and one always loses. Discovery that ran only
+  /// until a department held its first journal left every department at a single
+  /// page for ever; discovery that ran whenever it had work to do would starve
+  /// articles, which is where the volume actually is. One pass in five looks for
+  /// more; the other four fetch.
+  passCount        Int    @default(0)
+  discoverEvery    Int    @default(5)
 
   currentDepartment String?
   currentJournal    String?
@@ -1292,4 +1305,38 @@ model IngestionRun {
   @@index([at])
   @@index([phase, at])
   @@index([journalId, at])
+}
+
+/// How far a department's sweep of one source has got.
+///
+/// Discovery used to ask "does this department hold any journal yet?" and skip
+/// it if so. One hundred records was therefore the whole of that department's
+/// catalogue for ever — 319 journals found out of DOAJ's 23,428. A department is
+/// not a box to tick once; it is a place to return to, page by page, until the
+/// source has nothing further, and then again a month later because sources grow.
+///
+/// One row per department per search term per source, because a department is
+/// searched under several terms and each runs out at its own page.
+model DepartmentSweep {
+  id          String    @id @default(uuid())
+  department  String
+  source      String                          // DOAJ | DOAB
+  term        String                          // the search term within the department
+
+  /// Where to resume. DOAJ counts pages from one, DOAB counts records from zero;
+  /// each source reads this in its own terms.
+  position    Int       @default(0)
+
+  /// Set when the source returned less than a full page — nothing more to give
+  /// today. Cleared when the sweep is started again.
+  exhaustedAt DateTime?
+  lastSweptAt DateTime?
+
+  seen        Int       @default(0)
+  accepted    Int       @default(0)
+  refused     Int       @default(0)
+
+  @@unique([department, source, term])
+  @@index([source, exhaustedAt])
+  @@index([source, lastSweptAt])
 }

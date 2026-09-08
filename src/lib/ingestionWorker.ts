@@ -61,6 +61,44 @@ const DEPARTMENT_TERMS: Record<string, string[]> = {
 };
 
 /** The terms to search for a department — its own name unless mapped above. */
+/**
+ * Read a licence out of a publisher's sentence about its licensing.
+ *
+ * DOAJ declares a licence per journal with an explicit non-commercial flag.
+ * DOAB declares nothing of the kind. What it carries is `publisher.oalicense`,
+ * free prose written by the publisher about its books in general — "Springer
+ * Nature books are published under the Creative Commons…" — and it is present on
+ * fewer than half the records. Publishers spell it three ways: a licence URL, a
+ * code such as CC BY-NC-ND, or the words written out in full.
+ *
+ * A blanket sentence about a publisher's catalogue is weaker evidence than a
+ * per-title declaration, so what this returns is recorded under its own rights
+ * basis and is never on its own grounds to host anything.
+ */
+export function licenceFromProse(raw?: string | null): string | null {
+  const t = String(raw || '').trim();
+  if (!t) return null;
+
+  const url = t.match(/creativecommons\.org\/(?:licenses|publicdomain)\/([a-z0-9-]+)/i);
+  if (url) {
+    const code = url[1].toLowerCase();
+    return code === 'zero' || code === 'mark' ? 'CC0' : `CC ${code.toUpperCase()}`;
+  }
+  if (/\bCC[\s-]?0\b/i.test(t)) return 'CC0';
+
+  const code = t.match(/\bCC[\s-]?(BY(?:[\s-]?(?:NC|ND|SA))*)\b/i);
+  if (code) return `CC ${code[1].replace(/[\s-]+/g, '-').toUpperCase()}`;
+
+  if (/creative commons/i.test(t) && /attribution/i.test(t)) {
+    const parts = ['BY'];
+    if (/non[\s-]?commercial/i.test(t)) parts.push('NC');
+    if (/no[\s-]?deriv/i.test(t)) parts.push('ND');
+    if (/share[\s-]?alike/i.test(t)) parts.push('SA');
+    return `CC ${parts.join('-')}`;
+  }
+  return null;
+}
+
 export function searchTermsFor(department: string): string[] {
   return DEPARTMENT_TERMS[department] || [department];
 }
@@ -81,9 +119,16 @@ export function normaliseIssn(raw?: string | null): string | null {
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-async function getJson(url: string): Promise<any | null> {
+/**
+ * `timeoutMs` is not a nicety. DOAB answers a hundred records in half a minute
+ * on a good day and there is no upper bound on a bad one; a fetch without a
+ * deadline holds the pass open for ever, and the timer's busy flag means no
+ * other work runs behind it. A request that has not answered by the deadline is
+ * treated as one that did not answer.
+ */
+async function getJson(url: string, timeoutMs = 120_000): Promise<any | null> {
   try {
-    const r = await fetch(url, { headers: UA });
+    const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(timeoutMs) });
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }
@@ -95,23 +140,79 @@ export async function getState() {
   });
 }
 
-/** Pull one page of journals for a department and decide each one's licence. */
-async function discoverJournals(department: string, state: any) {
-  const records: any[] = [];
-  for (const term of searchTermsFor(department)) {
-    const d = await getJson(
-      `https://doaj.org/api/search/journals/${encodeURIComponent(term)}?pageSize=100`);
-    if (d?.results?.length) records.push(...d.results);
-    await sleep(400);                       // stay well inside DOAJ's limits
-  }
-  if (!records.length) return { seen: 0, accepted: 0, rejected: 0 };
+/**
+ * Pick the sweep to work on next, creating the rows the first time a source is
+ * used. A sweep that has never run comes first; after that the one left longest,
+ * and a sweep that ran out is only reopened a month later, because DOAJ and DOAB
+ * both grow and a department that was complete in March is not complete in June.
+ */
+async function claimSweep(source: string, departments: string[]) {
+  const wanted: { department: string; term: string }[] = [];
+  for (const dep of departments) for (const term of searchTermsFor(dep)) wanted.push({ department: dep, term });
 
-  let seen = 0, accepted = 0, rejected = 0;
+  // Creating forty rows on every pass would be forty writes a minute to say
+  // nothing new, so they are only created when some are missing.
+  const held = await p.departmentSweep.count({ where: { source } });
+  if (held < wanted.length) {
+    for (const w of wanted) {
+      await p.departmentSweep.upsert({
+        where: { department_source_term: { department: w.department, source, term: w.term } },
+        update: {},
+        create: { department: w.department, source, term: w.term },
+      });
+    }
+  }
+
+  const reopenAfter = new Date(Date.now() - 30 * 864e5);
+  const where = { source, department: { in: departments } };
+  return (
+    await p.departmentSweep.findFirst({
+      where: { ...where, exhaustedAt: null },
+      orderBy: [{ lastSweptAt: { sort: 'asc', nulls: 'first' } }],
+    })
+    ?? await p.departmentSweep.findFirst({
+      where: { ...where, exhaustedAt: { lt: reopenAfter } },
+      orderBy: [{ lastSweptAt: { sort: 'asc', nulls: 'first' } }],
+    })
+  );
+}
+
+/** Record where a sweep got to. A short page means the source has no more today. */
+async function closeSweep(sweep: any, r: { seen: number; accepted: number; rejected: number }, nextPosition: number, full: boolean) {
+  await p.departmentSweep.update({
+    where: { id: sweep.id },
+    data: {
+      position: full ? nextPosition : 0,
+      exhaustedAt: full ? null : new Date(),
+      lastSweptAt: new Date(),
+      seen: { increment: r.seen },
+      accepted: { increment: r.accepted },
+      refused: { increment: r.rejected },
+    },
+  });
+}
+
+const DOAJ_PAGE = 100;
+
+/** One page of DOAJ journals for one department term; each title's licence decided here. */
+async function discoverJournalsPage(sweep: any) {
+  const page = sweep.position + 1;          // DOAJ counts pages from one
+  const d = await getJson(
+    `https://doaj.org/api/search/journals/${encodeURIComponent(sweep.term)}`
+    + `?pageSize=${DOAJ_PAGE}&page=${page}`);
+
+  const records: any[] = d?.results || [];
+  const r = { seen: 0, accepted: 0, rejected: 0 };
+  if (!records.length) {
+    await closeSweep(sweep, r, sweep.position, false);
+    return { ...r, more: false, total: d?.total ?? null };
+  }
+
   for (const rec of records) {
     const b = rec.bibjson || {};
     const title = b.title;
     if (!title) continue;
-    seen++;
+    r.seen++;
 
     const lic = (b.license || [])[0];
     const ok = licenceAllowsCommercialUse(lic?.type, lic?.NC);
@@ -124,8 +225,8 @@ async function discoverJournals(department: string, state: any) {
       eissn: normaliseIssn(b.eissn),
       publisherName: b.publisher?.name || null,
       country: b.publisher?.country || null,
-      domain: department,
-      subjects: (b.subject || []).map((s: any) => s.term).filter(Boolean),
+      domain: sweep.department,
+      subjects: (b.subject || []).map((x: any) => x.term).filter(Boolean),
       homepage: (b.link || []).find((l: any) => l.type === 'homepage')?.url || null,
       licence: lic?.type || null,
       licenceIsNC: lic?.NC === true || !ok,
@@ -143,13 +244,171 @@ async function discoverJournals(department: string, state: any) {
     if (existing) {
       // Never downgrade a journal we own or have an agreement for.
       if (existing.rightsBasis === 'our own') continue;
-      await p.journal.update({ where: { id: existing.id }, data });
+      // Nor move a journal another department already claimed; several terms
+      // return the same title and the last one to run would otherwise win.
+      const { domain, ...rest } = data;
+      await p.journal.update({ where: { id: existing.id }, data: existing.domain ? rest : data });
     } else {
       await p.journal.create({ data });
     }
-    ok ? accepted++ : rejected++;
+    ok ? r.accepted++ : r.rejected++;
   }
-  return { seen, accepted, rejected };
+
+  const full = records.length >= DOAJ_PAGE;
+  await closeSweep(sweep, r, sweep.position + 1, full);
+  return { ...r, more: full, total: d?.total ?? null };
+}
+
+// ── Books ────────────────────────────────────────────────────────────────────
+
+const DOAB_PAGE = 100;
+/** Pages of books per pass. Discovery gets one pass in five, so it takes more
+ *  than one page at a time or five thousand books would take a fortnight. */
+const DOAB_PAGES_PER_PASS = 2;
+
+/**
+ * A page of books, fetched as two requests rather than one.
+ *
+ * Asking DOAB for `expand=metadata,bitstreams` together takes ninety-five
+ * seconds for a hundred records. Asking for each separately takes thirty-three
+ * and seventeen — the two together are almost twice as fast as the one, which is
+ * the opposite of what you would expect and worth not undoing later. They are
+ * joined on the record id rather than on position, because nothing promises the
+ * two answers arrive in the same order.
+ */
+async function doabPage(term: string, offset: number) {
+  const base = `https://directory.doabooks.org/rest/search`
+    + `?query=${encodeURIComponent(term)}&limit=${DOAB_PAGE}&offset=${offset}`;
+
+  const meta = await getJson(`${base}&expand=metadata`);
+  if (!Array.isArray(meta) || !meta.length) return Array.isArray(meta) ? [] : null;
+
+  await sleep(400);
+  const files = await getJson(`${base}&expand=bitstreams`);
+  const byId = new Map<any, any>((Array.isArray(files) ? files : []).map((r: any) => [r.id, r.bitstreams]));
+
+  return meta.map((r: any) => ({ ...r, bitstreams: byId.get(r.id) || [] }));
+}
+
+/** DOAB returns metadata as a flat list of key/value rows, with keys repeating. */
+function doabFields(rec: any) {
+  const m = new Map<string, string[]>();
+  for (const row of rec?.metadata || []) {
+    const k = row?.key;
+    const v = row?.value;
+    if (!k || v == null || v === '') continue;
+    const list = m.get(k) || [];
+    list.push(String(v));
+    m.set(k, list);
+  }
+  return {
+    one: (k: string) => m.get(k)?.[0] ?? null,
+    all: (k: string) => m.get(k) ?? [],
+  };
+}
+
+/**
+ * One slice of DOAB books for a department term.
+ *
+ * Every one of these is catalogued and none is hosted, and that is not caution —
+ * DOAB carries no book file. What it holds per title is a cover image and four
+ * metadata exports (MARC, ONIX, RIS, TSV); the book itself lives with its
+ * publisher. So a DOAB book is a record with a cover and a link out, which is
+ * exactly what the reader gets, and the licence prose is recorded for what it is
+ * rather than used as permission to serve anything.
+ */
+async function discoverBooksPage(sweep: any) {
+  const r = { seen: 0, accepted: 0, rejected: 0 };
+  let added = 0, skippedHeld = 0, skippedFailed = 0;
+  let firstFailure: string | null = null;
+  let offset = sweep.position;
+  let full = true;
+
+  for (let page = 0; page < DOAB_PAGES_PER_PASS && full; page++) {
+    const records = await doabPage(sweep.term, offset);
+    // A null answer is the source failing, not the source being finished. Left
+    // unexhausted, the sweep is picked up again from the same offset.
+    if (records === null) break;
+    if (!records.length) { full = false; break; }
+
+    for (const rec of records) {
+      const f = doabFields(rec);
+      const title = f.one('dc.title') || rec.name;
+      if (!title) continue;
+      r.seen++;
+
+      const doi = (f.one('oapen.identifier.doi') || '')
+        .replace(/^https?:\/\/(dx\.)?doi\.org\//i, '') || null;
+      const isbn = f.one('dc.identifier.isbn') || null;
+      const handle = rec.handle || null;
+
+      const fingerprint = doi ? `doab:doi:${doi.toLowerCase()}`
+        : handle ? `doab:handle:${handle}`
+        : `doab:t:${String(title).toLowerCase().replace(/\W+/g, ' ').trim().slice(0, 180)}`;
+
+      if (await p.book.findFirst({ where: { fingerprint }, select: { id: true } })) { skippedHeld++; continue; }
+
+      const licence = licenceFromProse(f.one('publisher.oalicense'));
+      const commercialOk = licenceAllowsCommercialUse(licence);
+      commercialOk ? r.accepted++ : r.rejected++;
+
+      const cover = (rec.bitstreams || []).find((b: any) => /^image\//i.test(b?.mimeType || ''));
+      const year = Number(String(f.one('dc.date.issued') || '').slice(0, 4)) || null;
+      const authors = [...f.all('dc.contributor.author'), ...f.all('dc.contributor.editor')]
+        .filter(Boolean).join(', ') || null;
+
+      await p.book.create({
+        data: {
+          title,
+          authors,
+          publisherName: f.one('publisher.name') || null,
+          isbn,
+          doi,
+          year,
+          pages: f.one('oapen.pages') || null,
+          subject: f.one('dc.subject.other')
+            || (f.one('dc.subject.classification') || '').split('::').pop() || null,
+          domain: sweep.department,
+          language: f.one('dc.language') || null,
+          country: f.one('publisher.country') || null,
+          description: f.one('dc.description.abstract') || null,
+          coverUrl: cover?.retrieveLink ? `https://directory.doabooks.org${cover.retrieveLink}` : null,
+          // Left null deliberately: DOAB holds no book file, so there is nothing
+          // here to serve and a URL would only be a broken promise.
+          pdfUrl: null,
+          accessType: 'OpenAccess',
+          status: 'Published',
+          licence,
+          licenceIsNC: !commercialOk,
+          // Named for what it is. `publisher.oalicense` is a sentence about a
+          // publisher's catalogue, not a declaration about this title, and it
+          // must never be mistaken for one when read back.
+          rightsBasis: licence ? 'DOAB publisher statement' : 'DOAB record, licence undeclared',
+          rightsVerifiedAt: new Date(),
+          rightsVerifiedBy: 'ingestion',
+          rightsStatus: 'MetadataOnly',
+          accessStatus: 'LinkOnly',
+          originalUrl: doi ? `https://doi.org/${doi}`
+            : handle ? `https://directory.doabooks.org/handle/${handle}` : null,
+          rightsHolder: f.one('publisher.name') || null,
+          source: 'DOAB',
+          ownershipSource: 'Ingested',
+          lastIngestedAt: new Date(),
+          fingerprint,
+        },
+      }).then(() => { added++; }).catch((e: any) => {
+        skippedFailed++;
+        if (!firstFailure) firstFailure = String(e?.message || e).slice(0, 300);
+      });
+    }
+
+    offset += records.length;
+    full = records.length >= DOAB_PAGE;
+    if (full) await sleep(400);             // stay well inside DOAB's limits
+  }
+
+  await closeSweep(sweep, r, offset, full);
+  return { ...r, added, skippedHeld, skippedFailed, more: full, error: firstFailure };
 }
 
 /** Fetch one slice of articles for the journal refreshed longest ago. */
@@ -299,16 +558,22 @@ async function fetchArticlesForOneJournal(state: any) {
   };
 }
 
-/** One slice of work. Called on a timer; returns immediately when switched off. */
 /**
- * One slice of work.
+ * One slice of work. Called on a timer; returns immediately when switched off.
  *
  * `force` is what the admin screen's "Run one pass" sends. The pause switch
  * governs the timer, not a deliberate press of a button — refusing a manual
  * pass because the engine is paused, and reporting it as "nothing left to do",
  * left an operator pressing a button that silently did nothing.
+ *
+ * `only` restricts the pass to one kind of work, so a backfill script can spend
+ * an evening on books without the rotation spending four passes in five on
+ * articles.
  */
-export async function runIngestionPass(departments: string[], opts: { force?: boolean } = {}) {
+export async function runIngestionPass(
+  departments: string[],
+  opts: { force?: boolean; only?: 'journals' | 'articles' | 'books' } = {},
+) {
   const state = await getState();
   if (!state.enabled && !opts.force) return { skipped: 'disabled' };
 
@@ -323,33 +588,78 @@ export async function runIngestionPass(departments: string[], opts: { force?: bo
     const wanted: string[] = (state.departments as string[])?.length
       ? (state.departments as string[]) : departments;
 
-    // Journals first, always — but only for departments not yet swept. The
-    // earlier version compared a global journal count against a threshold, which
-    // meant one busy department satisfied the check and the rest were never
-    // discovered at all. Asking per department is self-correcting: a department
-    // with no discovered journals is simply the next one to sweep.
-    for (const dep of wanted) {
-      const found = await p.journal.count({
-        where: { domain: dep, rightsBasis: 'DOAJ declaration' },
-      });
-      if (found > 0) continue;
+    // How the pass is spent.
+    //
+    // Discovery and article-fetching want the same minute, and whichever is
+    // asked first takes every one of them. Discovery gated on "has this
+    // department any journal yet" stopped after a single page and never looked
+    // again — 319 journals of DOAJ's 23,428. Discovery run whenever it had work
+    // to do would take the engine for ever, because a source always has another
+    // page. So the split is fixed and visible: one pass in `discoverEvery` looks
+    // for more titles, the rest fetch articles, and either falls through to the
+    // other when it has nothing to do.
+    const n = await p.ingestionState.update({
+      where: { id: 'singleton' }, data: { passCount: { increment: 1 } }, select: { passCount: true },
+    }).then((x: any) => x.passCount).catch(() => 0);
 
-      const r = await discoverJournals(dep, state);
-      await p.ingestionState.update({
-        where: { id: 'singleton' },
-        data: {
-          phase: 'Journals', currentDepartment: dep, lastRunAt: new Date(), lastError: null,
-          journalsSeen: { increment: r.seen },
-          journalsAccepted: { increment: r.accepted },
-          journalsRejected: { increment: r.rejected },
-        },
-      });
-      await record({
-        phase: 'Journals', source: 'DOAJ', department: dep,
-        journalsSeen: r.seen, journalsAccepted: r.accepted, journalsRefused: r.rejected,
-        note: `${r.accepted} accepted, ${r.rejected} refused on licence`,
-      });
-      return { phase: 'Journals', department: dep, ...r };
+    const every = Math.max(1, state.discoverEvery || 5);
+    const wantsDiscovery = opts.only ? opts.only !== 'articles' : n % every === 0;
+
+    // DOAJ and DOAB alternate, so books are not queued behind every journal.
+    const bookTurn = opts.only === 'books' || (opts.only !== 'journals' && n % (every * 2) === 0);
+
+    if (wantsDiscovery) {
+      const order: ('DOAB' | 'DOAJ')[] = bookTurn ? ['DOAB', 'DOAJ'] : ['DOAJ', 'DOAB'];
+      for (const source of order) {
+        if (opts.only === 'journals' && source !== 'DOAJ') continue;
+        if (opts.only === 'books' && source !== 'DOAB') continue;
+
+        const sweep = await claimSweep(source, wanted);
+        if (!sweep) continue;
+
+        if (source === 'DOAJ') {
+          const r = await discoverJournalsPage(sweep);
+          await p.ingestionState.update({
+            where: { id: 'singleton' },
+            data: {
+              phase: 'Journals', currentDepartment: sweep.department, lastRunAt: new Date(), lastError: null,
+              journalsSeen: { increment: r.seen },
+              journalsAccepted: { increment: r.accepted },
+              journalsRejected: { increment: r.rejected },
+            },
+          });
+          await record({
+            phase: 'Journals', source: 'DOAJ', department: sweep.department,
+            journalsSeen: r.seen, journalsAccepted: r.accepted, journalsRefused: r.rejected,
+            more: r.more,
+            note: r.seen
+              ? `"${sweep.term}" page ${sweep.position + 1}: ${r.accepted} accepted, ${r.rejected} refused on licence`
+              : `"${sweep.term}" has no more to give`,
+          });
+          return { phase: 'Journals', source, department: sweep.department, term: sweep.term, ...r };
+        }
+
+        const r = await discoverBooksPage(sweep);
+        await p.ingestionState.update({
+          where: { id: 'singleton' },
+          data: {
+            phase: 'Books', currentDepartment: sweep.department, lastRunAt: new Date(), lastError: null,
+            booksAdded: { increment: r.added },
+            booksSkipped: { increment: r.skippedHeld + r.skippedFailed },
+          },
+        });
+        await record({
+          phase: 'Books', source: 'DOAB', department: sweep.department,
+          added: r.added, skippedHeld: r.skippedHeld, skippedFailed: r.skippedFailed,
+          more: r.more, error: r.error,
+          note: r.seen
+            ? `"${sweep.term}" from ${sweep.position}: ${r.added} added, ${r.skippedHeld} already held`
+            : `"${sweep.term}" has no more to give`,
+        });
+        return { phase: 'Books', source, department: sweep.department, term: sweep.term, ...r };
+      }
+      // Every sweep is exhausted and none is due to reopen. Fetch instead.
+      if (opts.only) return { phase: 'Idle', note: 'every sweep is up to date' };
     }
 
     const r = await fetchArticlesForOneJournal(state);

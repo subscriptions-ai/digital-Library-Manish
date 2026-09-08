@@ -324,6 +324,94 @@ const check = async (name, path, token, predicate) => {
     ok('the engine is resumable', `${walking} walking · ${done} finished · ${waiting} yet to pick up a cursor`);
   }
 
+  // ── 4b. books, and the sweeps that find them ──────────────────────────────
+  console.log('\nBooks and discovery');
+  {
+    const books = await p.book.count({ where: { status: 'Published' } });
+    if (!books) {
+      meh('books', 'none held yet');
+    } else {
+      // A book that says it can be read here but has no file is the reader
+      // clicking through to nothing. DOAB holds no book file at all — only a
+      // cover and metadata exports — so every one of its books is a link out,
+      // and any code that later forgets that shows up here.
+      const promised = await p.book.count({
+        where: { status: 'Published', accessStatus: 'ViewableHere', pdfUrl: null },
+      });
+      promised === 0
+        ? ok('no book offers full text it does not hold', `${books} books`)
+        : bad('no book offers full text it does not hold',
+            `${promised} say ViewableHere with no file`);
+
+      // Every book on a shelf must lead somewhere. One with neither a file nor
+      // a link is a card that cannot be opened.
+      const nowhere = await p.book.count({
+        where: { status: 'Published', pdfUrl: null, originalUrl: null },
+      });
+      nowhere === 0
+        ? ok('every book leads somewhere')
+        : bad('every book leads somewhere', `${nowhere} have neither a file nor a link`);
+
+      // The rights basis names the evidence. A book recorded as having no
+      // declared licence must not also carry one, and vice versa — that pairing
+      // is the whole reason the basis is written down rather than assumed.
+      const contradicts = await p.book.count({
+        where: {
+          OR: [
+            { rightsBasis: 'DOAB record, licence undeclared', licence: { not: null } },
+            { rightsBasis: 'DOAB publisher statement', licence: null },
+          ],
+        },
+      });
+      contradicts === 0
+        ? ok('a book’s licence agrees with its stated basis')
+        : bad('a book’s licence agrees with its stated basis', `${contradicts} disagree`);
+
+      // Books are filed under a department, and a department the catalogue does
+      // not know is a shelf no reader can reach.
+      const depts = new Set((await p.$queryRawUnsafe(
+        `select distinct domain from "Journal" where domain is not null`)).map(r => r.domain));
+      const orphans = (await p.$queryRawUnsafe(
+        `select domain, count(*)::int n from "Book"
+         where status = 'Published' and domain is not null group by 1`))
+        .filter(r => !depts.has(r.domain));
+      orphans.length === 0
+        ? ok('every book sits in a department the catalogue knows')
+        : bad('every book sits in a department the catalogue knows',
+            orphans.map(r => `${r.domain} (${r.n})`).join(', ').slice(0, 140));
+    }
+
+    const sweeps = await p.departmentSweep.count();
+    if (!sweeps) {
+      meh('discovery sweeps', 'no source has been swept yet');
+    } else {
+      // The same invariant as the journal cursor, one level up. A sweep that has
+      // run out starts again from the beginning, so a finished sweep holding a
+      // position is a contradiction — and the code that would produce it is the
+      // code that resumes a source in the wrong place.
+      const muddled = await p.departmentSweep.count({
+        where: { exhaustedAt: { not: null }, position: { gt: 0 } },
+      });
+      muddled === 0
+        ? ok('a sweep is either open or finished, never both')
+        : bad('a sweep is either open or finished, never both',
+            `${muddled} are marked finished but still hold a position`);
+
+      // The bug this whole table exists to prevent: discovery that visits a
+      // department once and never returns. A sweep left on its first page while
+      // the source still had more is exactly that, so it is counted and shown.
+      const open = await p.departmentSweep.count({ where: { exhaustedAt: null } });
+      const done = await p.departmentSweep.count({ where: { exhaustedAt: { not: null } } });
+      const untouched = await p.departmentSweep.count({ where: { lastSweptAt: null } });
+      ok('discovery continues', `${open} still to walk · ${done} walked out · ${untouched} not started`);
+
+      const bySource = await p.$queryRawUnsafe(
+        `select source, count(distinct department)::int d, sum(seen)::int seen
+         from "DepartmentSweep" group by 1 order by 1`);
+      for (const r of bySource) ok(`${r.source} reaches its departments`, `${r.d} departments · ${Number(r.seen).toLocaleString()} records seen`);
+    }
+  }
+
   // ── 5. nothing points at nothing ──────────────────────────────────────────
   console.log('\nDead ends');
   for (const [name, path] of [

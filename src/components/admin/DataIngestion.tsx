@@ -10,20 +10,51 @@ const SOURCES = [
   { id: 'arxiv', label: 'arXiv', hint: 'Direct in-app PDFs, but preprints (no journal/ISSN/volume)' },
 ];
 
+/** A number that reads as a number, and a dash where there is nothing yet. */
+const N = (n: any) => (n == null ? '—' : Number(n).toLocaleString());
+
+/** When something last happened, in the terms an operator thinks in. */
+function ago(iso?: string | null) {
+  if (!iso) return 'never';
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 48) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
+}
+
 /**
  * The continuous engine. Unlike the one-shot run below it, this is switched on
  * and left alone: a timer does one slice a minute and records where it reached,
  * so the numbers here keep moving without anyone watching them.
+ *
+ * What it shows is deliberately three separate questions, because the screen
+ * used to answer only the first and it was the least useful of them:
+ *
+ *   how much have we collected   — the running totals
+ *   what did it just do          — the run log, one row per pass
+ *   how much is left             — coverage, per department and per source
+ *
+ * The last is the one that matters. A department could sit on the first page of
+ * a source holding a thousand more titles and nothing here would have said so.
  */
 function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
   const token = () => localStorage.getItem('token');
   const [state, setState] = React.useState<any>(null);
+  const [history, setHistory] = React.useState<any>(null);
   const [busy, setBusy] = React.useState(false);
+  const [tab, setTab] = React.useState<'log' | 'coverage'>('log');
 
   const load = React.useCallback(async () => {
+    const auth = { headers: { Authorization: `Bearer ${token()}` } };
     try {
-      const r = await fetch('/api/admin/ingest/state', { headers: { Authorization: `Bearer ${token()}` } });
-      if (r.ok) setState(await r.json());
+      const [s, h] = await Promise.all([
+        fetch('/api/admin/ingest/state', auth),
+        fetch('/api/admin/ingest/history?limit=40', auth),
+      ]);
+      if (s.ok) setState(await s.json());
+      if (h.ok) setHistory(await h.json());
     } catch { /* the poll simply misses a beat */ }
   }, []);
 
@@ -61,9 +92,10 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
       if (d.error) toast.error(d.error);
       else if (d.skipped === 'disabled') toast('The engine is paused — press Start to let it run on its own.', { icon: '⏸' });
       else if (d.lastError) toast.error(`The source refused: ${d.lastError}`);
-      else if (d.phase === 'Journals') toast.success(`Swept ${d.department}: ${d.accepted} accepted, ${d.rejected} refused on licence`);
+      else if (d.phase === 'Journals') toast.success(`${d.department} · "${d.term}": ${d.accepted} accepted, ${d.rejected} refused on licence`);
+      else if (d.phase === 'Books') toast.success(`${d.department} · "${d.term}": ${d.added} books added${d.skippedHeld ? `, ${d.skippedHeld} already held` : ''}`);
       else if (d.phase === 'Articles') toast.success(`${d.journal}: ${d.added} added${d.skipped ? `, ${d.skipped} already held` : ''}`);
-      else toast('Every journal is up to date — nothing new to fetch.', { icon: '✓' });
+      else toast('Every source is up to date — nothing new to fetch.', { icon: '✓' });
       load();
     } catch { toast.error('Pass failed'); }
     finally { setBusy(false); }
@@ -72,6 +104,7 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
   if (!state) return null;
   const on = state.enabled;
   const chosen: string[] = Array.isArray(state.departments) ? state.departments : [];
+  const week = history?.lastSevenDays;
 
   return (
     <div className={`rounded-2xl border p-5 shadow-sm ${on ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-white'}`}>
@@ -85,8 +118,9 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
             <span className="text-sm font-medium text-slate-500">· {state.phase}</span>
           </h2>
           <p className="mt-1 max-w-xl text-xs text-slate-500">
-            Journals are discovered first and their licence decided once per title. Anything
-            non-commercial is catalogued but never served as full text.
+            Journals come from DOAJ and their licence is decided once per title; articles follow from
+            OpenAlex. Books come from DOAB, which holds no book file of its own, so every book is
+            catalogued with a link to its publisher and none is served here.
           </p>
         </div>
         <div className="flex gap-2">
@@ -101,20 +135,30 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-5">
+      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-3 lg:grid-cols-6">
         {[
           ['Journals seen', state.journalsSeen],
           ['Accepted', state.journalsAccepted],
           ['Refused — non-commercial', state.journalsRejected],
           ['Articles added', state.articlesAdded],
-          ['Skipped', state.articlesSkipped],
+          ['Books added', state.booksAdded],
+          ['Already held', (state.articlesSkipped || 0) + (state.booksSkipped || 0)],
         ].map(([label, n]) => (
           <div key={label as string} className="bg-white px-3 py-3">
-            <p className="text-lg font-bold tabular-nums text-slate-900">{Number(n).toLocaleString()}</p>
+            <p className="text-lg font-bold tabular-nums text-slate-900">{N(n)}</p>
             <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
           </div>
         ))}
       </div>
+
+      {week && (
+        <p className="mt-2 text-[11px] text-slate-500">
+          Last seven days: <b className="text-slate-700">{N(week.passes)}</b> passes,
+          {' '}<b className="text-slate-700">{N(week.added)}</b> added,
+          {' '}{N(week.alreadyHeld)} already held
+          {week.failedToWrite > 0 && <>, <b className="text-rose-600">{N(week.failedToWrite)} failed to write</b></>}
+        </p>
+      )}
 
       {(state.currentDepartment || state.currentJournal) && (
         <p className="mt-3 text-xs text-slate-500">
@@ -125,6 +169,111 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
       {state.lastError && (
         <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{state.lastError}</p>
       )}
+
+      {/* ── What it just did, and what is left ───────────────────────────── */}
+      <div className="mt-5 rounded-xl border border-slate-200 bg-white">
+        <div className="flex gap-1 border-b border-slate-200 p-1.5">
+          {([['log', 'Run log'], ['coverage', 'Coverage']] as const).map(([id, label]) => (
+            <button key={id} onClick={() => setTab(id)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+                tab === id ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'log' && (
+          <div className="max-h-80 overflow-y-auto">
+            {!history?.runs?.length ? (
+              <p className="p-4 text-xs text-slate-400">No pass has run yet.</p>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="px-3 py-2 font-bold">When</th>
+                    <th className="px-3 py-2 font-bold">Phase</th>
+                    <th className="px-3 py-2 font-bold">What</th>
+                    <th className="px-3 py-2 text-right font-bold">Added</th>
+                    <th className="px-3 py-2 text-right font-bold">Held</th>
+                    <th className="px-3 py-2 text-right font-bold">Failed</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {history.runs.map((r: any) => (
+                    <tr key={r.id} className={r.error || r.skippedFailed > 0 ? 'bg-rose-50/50' : ''}>
+                      <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-400">{ago(r.at)}</td>
+                      <td className="px-3 py-2">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                          r.phase === 'Error' ? 'bg-rose-100 text-rose-700'
+                          : r.phase === 'Books' ? 'bg-amber-100 text-amber-700'
+                          : r.phase === 'Journals' ? 'bg-indigo-100 text-indigo-700'
+                          : 'bg-slate-100 text-slate-600'}`}>{r.phase}</span>
+                      </td>
+                      <td className="max-w-md px-3 py-2 text-slate-600">
+                        <span className="font-semibold text-slate-800">{r.journalTitle || r.department || '—'}</span>
+                        {r.note && <span className="block text-slate-400">{r.note}</span>}
+                        {r.error && <span className="block text-rose-600">{r.error}</span>}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800">
+                        {r.phase === 'Journals' ? N(r.journalsAccepted) : N(r.added)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-400">
+                        {r.phase === 'Journals' ? N(r.journalsRefused) : N(r.skippedHeld)}
+                      </td>
+                      <td className={`px-3 py-2 text-right tabular-nums ${r.skippedFailed > 0 ? 'font-bold text-rose-600' : 'text-slate-300'}`}>
+                        {N(r.skippedFailed)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {tab === 'coverage' && (
+          <div className="max-h-80 overflow-y-auto">
+            {!history?.coverage?.length ? (
+              <p className="p-4 text-xs text-slate-400">No department has been swept yet.</p>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="px-3 py-2 font-bold">Department</th>
+                    <th className="px-3 py-2 text-right font-bold">Journals</th>
+                    <th className="px-3 py-2 font-bold">DOAJ swept</th>
+                    <th className="px-3 py-2 text-right font-bold">Books</th>
+                    <th className="px-3 py-2 font-bold">DOAB swept</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {history.coverage.map((c: any) => (
+                    <tr key={c.department}>
+                      <td className="px-3 py-2 font-semibold text-slate-800">{c.department}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-800">{N(c.journalsHeld)}</td>
+                      <td className="px-3 py-2 text-slate-400">
+                        {c.doaj
+                          ? <>{N(c.doaj.seen)} seen · {c.doaj.termsOpen
+                              ? <span className="text-emerald-600">{c.doaj.termsOpen} of {c.doaj.terms} still to walk</span>
+                              : <span>all walked</span>} · {ago(c.doaj.lastSweptAt)}</>
+                          : <span className="text-amber-600">not reached yet</span>}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-800">{N(c.booksHeld)}</td>
+                      <td className="px-3 py-2 text-slate-400">
+                        {c.doab
+                          ? <>{N(c.doab.seen)} seen · {c.doab.termsOpen
+                              ? <span className="text-emerald-600">{c.doab.termsOpen} of {c.doab.terms} still to walk</span>
+                              : <span>all walked</span>} · {ago(c.doab.lastSweptAt)}</>
+                          : <span className="text-amber-600">not reached yet</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="mt-5 flex flex-wrap items-end gap-5 border-t border-slate-200 pt-4">
         <label className="text-xs">
@@ -140,6 +289,13 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
             onChange={e => save({ batchSize: parseInt(e.target.value) || 50 })}
             className="w-24 rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-blue-500" />
           <span className="mt-1 block text-[10px] text-slate-400">Keeps one big journal from starving the rest</span>
+        </label>
+        <label className="text-xs">
+          <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500">Look for more every</span>
+          <input type="number" min={1} max={50} value={state.discoverEvery} disabled={busy}
+            onChange={e => save({ discoverEvery: parseInt(e.target.value) || 5 })}
+            className="w-24 rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-blue-500" />
+          <span className="mt-1 block text-[10px] text-slate-400">Passes. The rest fetch articles</span>
         </label>
       </div>
 
