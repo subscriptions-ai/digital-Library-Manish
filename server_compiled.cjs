@@ -10411,7 +10411,8 @@ async function fetchArticlesForOneJournal(state) {
     });
     return { journal: journal.title, added: 0, skipped: 0, note: "nothing new in this journal" };
   }
-  let added = 0, skipped = 0;
+  let added = 0, skippedHeld = 0, skippedFailed = 0;
+  let firstFailure = null;
   for (const w of d.results) {
     const doi = (w.doi || "").replace(/^https?:\/\/(dx\.)?doi\.org\//i, "") || null;
     const pdf = w.best_oa_location?.pdf_url || w.open_access?.oa_url || null;
@@ -10419,7 +10420,7 @@ async function fetchArticlesForOneJournal(state) {
     const ok = lic ? licenceAllowsCommercialUse(lic) : !journal.licenceIsNC;
     const fingerprint = doi ? `doi:${doi.toLowerCase()}` : `t:${String(w.title || "").toLowerCase().replace(/\W+/g, " ").trim().slice(0, 180)}|${w.publication_year}`;
     if (await p.article.findFirst({ where: { fingerprint }, select: { id: true } })) {
-      skipped++;
+      skippedHeld++;
       continue;
     }
     await p.article.create({
@@ -10455,8 +10456,9 @@ async function fetchArticlesForOneJournal(state) {
       }
     }).then(() => {
       added++;
-    }).catch(() => {
-      skipped++;
+    }).catch((e2) => {
+      skippedFailed++;
+      if (!firstFailure) firstFailure = String(e2?.message || e2).slice(0, 300);
     });
   }
   const agg = await p.$queryRawUnsafe(
@@ -10480,15 +10482,23 @@ async function fetchArticlesForOneJournal(state) {
   });
   return {
     journal: journal.title,
+    journalId: journal.id,
     added,
-    skipped,
+    skippedHeld,
+    skippedFailed,
+    skipped: skippedHeld + skippedFailed,
+    // kept so existing callers still read
     more: Boolean(next),
+    error: firstFailure,
     note: next ? void 0 : "reached the end of this journal"
   };
 }
 async function runIngestionPass(departments, opts = {}) {
   const state = await getState();
   if (!state.enabled && !opts.force) return { skipped: "disabled" };
+  const startedAt = Date.now();
+  const record = (row) => p.ingestionRun.create({ data: { ...row, durationMs: Date.now() - startedAt } }).catch(() => {
+  });
   try {
     const wanted = state.departments?.length ? state.departments : departments;
     for (const dep of wanted) {
@@ -10509,6 +10519,15 @@ async function runIngestionPass(departments, opts = {}) {
           journalsRejected: { increment: r3.rejected }
         }
       });
+      await record({
+        phase: "Journals",
+        source: "DOAJ",
+        department: dep,
+        journalsSeen: r3.seen,
+        journalsAccepted: r3.accepted,
+        journalsRefused: r3.rejected,
+        note: `${r3.accepted} accepted, ${r3.rejected} refused on licence`
+      });
       return { phase: "Journals", department: dep, ...r3 };
     }
     const r2 = await fetchArticlesForOneJournal(state);
@@ -10523,6 +10542,18 @@ async function runIngestionPass(departments, opts = {}) {
         articlesSkipped: { increment: r2.skipped }
       }
     });
+    await record({
+      phase: "Articles",
+      source: "OpenAlex",
+      journalId: r2.journalId ?? null,
+      journalTitle: r2.journal ?? null,
+      added: r2.added,
+      skippedHeld: r2.skippedHeld ?? 0,
+      skippedFailed: r2.skippedFailed ?? 0,
+      more: Boolean(r2.more),
+      note: r2.note ?? null,
+      error: r2.error ?? null
+    });
     return { phase: "Articles", ...r2 };
   } catch (e2) {
     await p.ingestionState.update({
@@ -10530,6 +10561,7 @@ async function runIngestionPass(departments, opts = {}) {
       data: { lastError: String(e2?.message || e2).slice(0, 1e3), lastRunAt: /* @__PURE__ */ new Date() }
     }).catch(() => {
     });
+    await record({ phase: "Error", error: String(e2?.message || e2).slice(0, 1e3) });
     return { error: String(e2?.message || e2) };
   }
 }
@@ -15040,6 +15072,40 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.json(await prisma3.ingestionState.update({ where: { id: "singleton" }, data }));
     } catch {
       res.status(500).json({ error: "Failed to update ingestion state" });
+    }
+  });
+  app.get("/api/admin/ingest/history", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const take = Math.min(parseInt(req.query.limit) || 40, 200);
+      const since = new Date(Date.now() - 7 * 864e5);
+      const [runs, totals, worst] = await Promise.all([
+        prisma3.ingestionRun.findMany({ orderBy: { at: "desc" }, take }),
+        prisma3.ingestionRun.aggregate({
+          where: { at: { gte: since } },
+          _sum: { added: true, skippedHeld: true, skippedFailed: true },
+          _count: { _all: true }
+        }),
+        // Passes that failed to write are the ones worth surfacing; they used to
+        // be indistinguishable from ordinary duplicates.
+        prisma3.ingestionRun.findMany({
+          where: { OR: [{ error: { not: null } }, { skippedFailed: { gt: 0 } }] },
+          orderBy: { at: "desc" },
+          take: 10
+        })
+      ]);
+      res.json({
+        runs,
+        lastSevenDays: {
+          passes: totals._count._all,
+          added: totals._sum.added || 0,
+          alreadyHeld: totals._sum.skippedHeld || 0,
+          failedToWrite: totals._sum.skippedFailed || 0
+        },
+        problems: worst
+      });
+    } catch (e2) {
+      console.error("GET ingest/history error:", e2?.message);
+      res.status(500).json({ error: "Failed to load history" });
     }
   });
   app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (_req, res) => {

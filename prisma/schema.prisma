@@ -1253,3 +1253,43 @@ model LibraryEvent {
   @@index([domain, at])
   @@index([at])
 }
+
+/// One row per ingestion pass, written once and never updated.
+///
+/// The engine kept running totals only, so there was no way to answer what
+/// happened last night, when a journal last gave us anything, or why 422,835
+/// items were skipped — that number was one counter incremented by two
+/// unrelated events, an article already held and a write that failed, with the
+/// failure's reason thrown away.
+model IngestionRun {
+  id            String   @id @default(uuid())
+  at            DateTime @default(now())
+
+  /// Journals | Articles | Books
+  phase         String
+  source        String?                          // OpenAlex | DOAJ | DOAB
+  department    String?
+  journalId     String?
+  journalTitle  String?
+
+  added         Int      @default(0)
+  /// Split apart so the number means something. Already held is the engine
+  /// working correctly; failed to write is not, and used to look identical.
+  skippedHeld   Int      @default(0)
+  skippedFailed Int      @default(0)
+
+  // Discovery passes report on titles rather than articles.
+  journalsSeen     Int   @default(0)
+  journalsAccepted Int   @default(0)
+  journalsRefused  Int   @default(0)
+
+  durationMs    Int?
+  /// True while the journal still has pages left to walk.
+  more          Boolean  @default(false)
+  note          String?
+  error         String?  @db.Text
+
+  @@index([at])
+  @@index([phase, at])
+  @@index([journalId, at])
+}

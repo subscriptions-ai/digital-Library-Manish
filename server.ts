@@ -5143,6 +5143,48 @@ async function startServer() {
   });
 
   /** Run one slice now, so the switch can be tested without waiting for the timer. */
+  // GET /api/admin/ingest/history — what the engine has actually been doing.
+  //
+  // The screen could show cumulative totals and nothing else, so an operator
+  // could see that 422,835 items had been skipped at some point and had no way
+  // to find out when, from which journal, or whether "skipped" meant we already
+  // held it or the write had failed.
+  app.get("/api/admin/ingest/history", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const take = Math.min(parseInt(req.query.limit as string) || 40, 200);
+      const since = new Date(Date.now() - 7 * 864e5);
+
+      const [runs, totals, worst] = await Promise.all([
+        (prisma as any).ingestionRun.findMany({ orderBy: { at: 'desc' }, take }),
+        (prisma as any).ingestionRun.aggregate({
+          where: { at: { gte: since } },
+          _sum: { added: true, skippedHeld: true, skippedFailed: true },
+          _count: { _all: true },
+        }),
+        // Passes that failed to write are the ones worth surfacing; they used to
+        // be indistinguishable from ordinary duplicates.
+        (prisma as any).ingestionRun.findMany({
+          where: { OR: [{ error: { not: null } }, { skippedFailed: { gt: 0 } }] },
+          orderBy: { at: 'desc' }, take: 10,
+        }),
+      ]);
+
+      res.json({
+        runs,
+        lastSevenDays: {
+          passes: totals._count._all,
+          added: totals._sum.added || 0,
+          alreadyHeld: totals._sum.skippedHeld || 0,
+          failedToWrite: totals._sum.skippedFailed || 0,
+        },
+        problems: worst,
+      });
+    } catch (e: any) {
+      console.error('GET ingest/history error:', e?.message);
+      res.status(500).json({ error: "Failed to load history" });
+    }
+  });
+
   app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
     // A manual pass runs even while the engine is paused; that is the point of
     // the button. The timer below still respects the switch.

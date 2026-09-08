@@ -212,7 +212,10 @@ async function fetchArticlesForOneJournal(state: any) {
     return { journal: journal.title, added: 0, skipped: 0, note: 'nothing new in this journal' };
   }
 
-  let added = 0, skipped = 0;
+  // Two unrelated things used to share one counter. Already held is the engine
+  // working; failed to write is not, and the reason was thrown away entirely.
+  let added = 0, skippedHeld = 0, skippedFailed = 0;
+  let firstFailure: string | null = null;
   for (const w of d.results) {
     const doi = (w.doi || '').replace(/^https?:\/\/(dx\.)?doi\.org\//i, '') || null;
     const pdf = w.best_oa_location?.pdf_url || w.open_access?.oa_url || null;
@@ -226,7 +229,7 @@ async function fetchArticlesForOneJournal(state: any) {
       ? `doi:${doi.toLowerCase()}`
       : `t:${String(w.title || '').toLowerCase().replace(/\W+/g, ' ').trim().slice(0, 180)}|${w.publication_year}`;
 
-    if (await p.article.findFirst({ where: { fingerprint }, select: { id: true } })) { skipped++; continue; }
+    if (await p.article.findFirst({ where: { fingerprint }, select: { id: true } })) { skippedHeld++; continue; }
 
     await p.article.create({
       data: {
@@ -258,7 +261,10 @@ async function fetchArticlesForOneJournal(state: any) {
         ownershipSource: 'Ingested',
         fingerprint,
       },
-    }).then(() => { added++; }).catch(() => { skipped++; });
+    }).then(() => { added++; }).catch((e: any) => {
+      skippedFailed++;
+      if (!firstFailure) firstFailure = String(e?.message || e).slice(0, 300);
+    });
   }
 
   // Refresh this journal's coverage so its page never computes counts live.
@@ -282,9 +288,13 @@ async function fetchArticlesForOneJournal(state: any) {
 
   return {
     journal: journal.title,
+    journalId: journal.id,
     added,
-    skipped,
+    skippedHeld,
+    skippedFailed,
+    skipped: skippedHeld + skippedFailed,   // kept so existing callers still read
     more: Boolean(next),
+    error: firstFailure,
     note: next ? undefined : 'reached the end of this journal',
   };
 }
@@ -301,6 +311,13 @@ async function fetchArticlesForOneJournal(state: any) {
 export async function runIngestionPass(departments: string[], opts: { force?: boolean } = {}) {
   const state = await getState();
   if (!state.enabled && !opts.force) return { skipped: 'disabled' };
+
+  // Every pass leaves a row behind, whatever happened. Running totals could say
+  // how much had ever been collected but never what happened last night, when a
+  // journal last gave us anything, or why anything was refused.
+  const startedAt = Date.now();
+  const record = (row: any) =>
+    p.ingestionRun.create({ data: { ...row, durationMs: Date.now() - startedAt } }).catch(() => {});
 
   try {
     const wanted: string[] = (state.departments as string[])?.length
@@ -327,6 +344,11 @@ export async function runIngestionPass(departments: string[], opts: { force?: bo
           journalsRejected: { increment: r.rejected },
         },
       });
+      await record({
+        phase: 'Journals', source: 'DOAJ', department: dep,
+        journalsSeen: r.seen, journalsAccepted: r.accepted, journalsRefused: r.rejected,
+        note: `${r.accepted} accepted, ${r.rejected} refused on licence`,
+      });
       return { phase: 'Journals', department: dep, ...r };
     }
 
@@ -339,12 +361,25 @@ export async function runIngestionPass(departments: string[], opts: { force?: bo
         articlesSkipped: { increment: r.skipped },
       },
     });
+    await record({
+      phase: 'Articles', source: 'OpenAlex',
+      journalId: (r as any).journalId ?? null,
+      journalTitle: r.journal ?? null,
+      added: r.added,
+      skippedHeld: (r as any).skippedHeld ?? 0,
+      skippedFailed: (r as any).skippedFailed ?? 0,
+      more: Boolean((r as any).more),
+      note: (r as any).note ?? null,
+      error: (r as any).error ?? null,
+    });
     return { phase: 'Articles', ...r };
   } catch (e: any) {
     await p.ingestionState.update({
       where: { id: 'singleton' },
       data: { lastError: String(e?.message || e).slice(0, 1000), lastRunAt: new Date() },
     }).catch(() => {});
+    // A pass that threw is the one most worth having a record of.
+    await record({ phase: 'Error', error: String(e?.message || e).slice(0, 1000) });
     return { error: String(e?.message || e) };
   }
 }
