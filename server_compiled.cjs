@@ -10675,14 +10675,15 @@ async function runIngestionPass(departments, opts = {}) {
       data: { passCount: { increment: 1 } },
       select: { passCount: true }
     }).then((x2) => x2.passCount).catch(() => 0);
+    const only = opts.only ?? (state.focus && state.focus !== "auto" ? state.focus : void 0);
     const every = Math.max(1, state.discoverEvery || 5);
-    const wantsDiscovery = opts.only ? opts.only !== "articles" : n % every === 0;
-    const bookTurn = opts.only === "books" || opts.only !== "journals" && n % (every * 2) === 0;
+    const wantsDiscovery = only ? only !== "articles" : n % every === 0;
+    const bookTurn = only === "books" || only !== "journals" && n % (every * 2) === 0;
     if (wantsDiscovery) {
       const order = bookTurn ? ["DOAB", "DOAJ"] : ["DOAJ", "DOAB"];
       for (const source of order) {
-        if (opts.only === "journals" && source !== "DOAJ") continue;
-        if (opts.only === "books" && source !== "DOAB") continue;
+        if (only === "journals" && source !== "DOAJ") continue;
+        if (only === "books" && source !== "DOAB") continue;
         const sweep = await claimSweep(source, wanted);
         if (!sweep) continue;
         if (source === "DOAJ") {
@@ -10736,7 +10737,7 @@ async function runIngestionPass(departments, opts = {}) {
         });
         return { phase: "Books", source, department: sweep.department, term: sweep.term, ...r3 };
       }
-      if (opts.only) return { phase: "Idle", note: "every sweep is up to date" };
+      if (only) return { phase: "Idle", note: `nothing left to sweep for ${only}` };
     }
     const r2 = await fetchArticlesForOneJournal(state);
     await p.ingestionState.update({
@@ -15270,13 +15271,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const { enabled, yearsBack, departments, batchSize, discoverEvery } = req.body || {};
+      const { enabled, yearsBack, departments, batchSize, discoverEvery, focus } = req.body || {};
       const data = {};
       if (typeof enabled === "boolean") data.enabled = enabled;
       if (Number.isInteger(yearsBack) && yearsBack > 0 && yearsBack <= 50) data.yearsBack = yearsBack;
       if (Array.isArray(departments)) data.departments = departments;
       if (Number.isInteger(batchSize) && batchSize > 0 && batchSize <= 200) data.batchSize = batchSize;
       if (Number.isInteger(discoverEvery) && discoverEvery > 0 && discoverEvery <= 50) data.discoverEvery = discoverEvery;
+      if (["auto", "journals", "books", "articles"].includes(focus)) data.focus = focus;
       await getState();
       res.json(await prisma3.ingestionState.update({ where: { id: "singleton" }, data }));
     } catch {

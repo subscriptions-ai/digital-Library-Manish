@@ -1210,6 +1210,14 @@ model IngestionState {
   passCount        Int    @default(0)
   discoverEvery    Int    @default(5)
 
+  /// What the engine should spend its passes on: auto | journals | books | articles.
+  ///
+  /// `auto` is the rotation above and is right for a library being kept up to
+  /// date. It is wrong for a library being filled: books get one pass in ten,
+  /// so an operator who wants five thousand of them has no way to ask for that
+  /// except to press a button five hundred times.
+  focus            String @default("auto")
+
   currentDepartment String?
   currentJournal    String?
   lastRunAt         DateTime?

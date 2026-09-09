@@ -5131,7 +5131,7 @@ async function startServer() {
 
   app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      const { enabled, yearsBack, departments, batchSize, discoverEvery } = req.body || {};
+      const { enabled, yearsBack, departments, batchSize, discoverEvery, focus } = req.body || {};
       const data: any = {};
       if (typeof enabled === 'boolean') data.enabled = enabled;
       if (Number.isInteger(yearsBack) && yearsBack > 0 && yearsBack <= 50) data.yearsBack = yearsBack;
@@ -5140,6 +5140,7 @@ async function startServer() {
       // Zero would mean every pass looks for more titles and none ever fetches
       // an article, which is the failure this setting exists to prevent.
       if (Number.isInteger(discoverEvery) && discoverEvery > 0 && discoverEvery <= 50) data.discoverEvery = discoverEvery;
+      if (['auto', 'journals', 'books', 'articles'].includes(focus)) data.focus = focus;
       await getIngestionState();
       res.json(await (prisma as any).ingestionState.update({ where: { id: 'singleton' }, data }));
     } catch { res.status(500).json({ error: "Failed to update ingestion state" }); }

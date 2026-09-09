@@ -95,6 +95,7 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
       else if (d.phase === 'Journals') toast.success(`${d.department} · "${d.term}": ${d.accepted} accepted, ${d.rejected} refused on licence`);
       else if (d.phase === 'Books') toast.success(`${d.department} · "${d.term}": ${d.added} books added${d.skippedHeld ? `, ${d.skippedHeld} already held` : ''}`);
       else if (d.phase === 'Articles') toast.success(`${d.journal}: ${d.added} added${d.skipped ? `, ${d.skipped} already held` : ''}`);
+      else if (d.phase === 'Idle') toast(d.note || 'Nothing left to do.', { icon: '✓' });
       else toast('Every source is up to date — nothing new to fetch.', { icon: '✓' });
       load();
     } catch { toast.error('Pass failed'); }
@@ -135,7 +136,41 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-3 lg:grid-cols-6">
+      {/* What to work on.
+          The rotation is right for a library being kept up to date and wrong for
+          one being filled: books get one pass in ten, so an operator wanting five
+          thousand of them had no way to ask except to press the button five
+          hundred times. Choosing here governs the timer as well as the button,
+          so it can be set and left. */}
+      <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">What to work on</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {([
+            ['auto', 'Everything', 'Journals, books and articles in rotation — right for keeping up to date'],
+            ['books', 'Books only', 'Every pass fetches ~200 books from DOAB'],
+            ['journals', 'Journals only', 'Every pass reads 100 journals from DOAJ and decides their licence'],
+            ['articles', 'Articles only', 'Every pass fills one journal from OpenAlex'],
+          ] as const).map(([id, label, hint]) => (
+            <button key={id} title={hint} disabled={busy} onClick={() => save({ focus: id })}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                (state.focus || 'auto') === id
+                  ? 'bg-slate-800 text-white'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2.5 text-[11px] leading-relaxed text-slate-500">
+          {(state.focus || 'auto') === 'auto'
+            ? 'One pass a minute, shared out: one in five looks for new titles, the rest fetch articles.'
+            : <>Every pass will do <b className="text-slate-700">{state.focus}</b> and nothing else, one a minute,
+              for as long as the engine is running. Press <b className="text-slate-700">Start</b> and leave it —
+              it keeps going with this screen closed. Set it back to <b className="text-slate-700">Everything</b>
+              {' '}when you are done.</>}
+        </p>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-3 lg:grid-cols-6">
         {[
           ['Journals seen', state.journalsSeen],
           ['Accepted', state.journalsAccepted],
@@ -301,7 +336,9 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
 
       <div className="mt-4">
         <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-          Departments {chosen.length === 0 && <span className="font-medium normal-case text-slate-400">— none chosen, so all of them</span>}
+          Departments {chosen.length === 0
+            ? <span className="font-medium normal-case text-slate-400">— none chosen, so all of them</span>
+            : <span className="font-medium normal-case text-amber-600">— only these {chosen.length} will be worked on. Deselect them all to cover every department.</span>}
         </p>
         <div className="flex flex-wrap gap-1.5">
           {deptNames.map(n => {

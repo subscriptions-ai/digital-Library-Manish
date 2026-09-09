@@ -571,6 +571,11 @@ async function fetchArticlesForOneJournal(state: any) {
  * articles.
  *
  * `departments` names the departments to cover for this call only.
+ *
+ * With neither given, `state.focus` decides. That setting exists because the
+ * rotation is right for a library being kept up to date and wrong for one being
+ * filled: books get one pass in ten, so an operator who wants five thousand of
+ * them could only ask by pressing a button five hundred times.
  */
 export async function runIngestionPass(
   departments: string[],
@@ -613,17 +618,22 @@ export async function runIngestionPass(
       where: { id: 'singleton' }, data: { passCount: { increment: 1 } }, select: { passCount: true },
     }).then((x: any) => x.passCount).catch(() => 0);
 
+    // What this pass is for. An argument wins over the setting, the setting wins
+    // over the rotation, and the rotation is what happens when nobody has said.
+    const only: 'journals' | 'articles' | 'books' | undefined =
+      opts.only ?? (state.focus && state.focus !== 'auto' ? state.focus : undefined);
+
     const every = Math.max(1, state.discoverEvery || 5);
-    const wantsDiscovery = opts.only ? opts.only !== 'articles' : n % every === 0;
+    const wantsDiscovery = only ? only !== 'articles' : n % every === 0;
 
     // DOAJ and DOAB alternate, so books are not queued behind every journal.
-    const bookTurn = opts.only === 'books' || (opts.only !== 'journals' && n % (every * 2) === 0);
+    const bookTurn = only === 'books' || (only !== 'journals' && n % (every * 2) === 0);
 
     if (wantsDiscovery) {
       const order: ('DOAB' | 'DOAJ')[] = bookTurn ? ['DOAB', 'DOAJ'] : ['DOAJ', 'DOAB'];
       for (const source of order) {
-        if (opts.only === 'journals' && source !== 'DOAJ') continue;
-        if (opts.only === 'books' && source !== 'DOAB') continue;
+        if (only === 'journals' && source !== 'DOAJ') continue;
+        if (only === 'books' && source !== 'DOAB') continue;
 
         const sweep = await claimSweep(source, wanted);
         if (!sweep) continue;
@@ -669,8 +679,10 @@ export async function runIngestionPass(
         });
         return { phase: 'Books', source, department: sweep.department, term: sweep.term, ...r };
       }
-      // Every sweep is exhausted and none is due to reopen. Fetch instead.
-      if (opts.only) return { phase: 'Idle', note: 'every sweep is up to date' };
+      // Every sweep is exhausted and none is due to reopen. Fetch instead —
+      // unless this pass was asked for one kind of work in particular, in which
+      // case silently doing a different kind is the wrong answer.
+      if (only) return { phase: 'Idle', note: `nothing left to sweep for ${only}` };
     }
 
     const r = await fetchArticlesForOneJournal(state);
