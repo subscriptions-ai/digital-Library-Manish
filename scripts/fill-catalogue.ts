@@ -3,6 +3,7 @@
  *
  *   npx tsx scripts/fill-catalogue.ts books                  # until 5,000 books are held
  *   npx tsx scripts/fill-catalogue.ts journals --target 8000
+ *   npx tsx scripts/fill-catalogue.ts articles --target 250000
  *   npx tsx scripts/fill-catalogue.ts books --passes 40
  *
  * Left alone the engine spends one pass in five on discovery and alternates the
@@ -28,16 +29,17 @@ const arg = (name: string, fallback: number) => {
   return Number.isFinite(v) ? v : fallback;
 };
 
-const KIND = (process.argv[2] || 'books') as 'books' | 'journals';
-if (KIND !== 'books' && KIND !== 'journals') {
-  console.error('Say which: books or journals.');
+const KIND = (process.argv[2] || 'books') as 'books' | 'journals' | 'articles';
+if (!['books', 'journals', 'articles'].includes(KIND)) {
+  console.error('Say which: books, journals or articles.');
   process.exit(1);
 }
 const TARGET = arg('target', 5000);
 const MAX_PASSES = arg('passes', 400);
 
-const held = () => (KIND === 'books'
-  ? p.book.count()
+const held = () => (
+  KIND === 'books' ? p.book.count()
+  : KIND === 'articles' ? p.article.count()
   : p.journal.count({ where: { rightsBasis: 'DOAJ declaration' } }));
 
 (async () => {
@@ -58,14 +60,20 @@ const held = () => (KIND === 'books'
       console.log(`\nNothing further to give: ${r.note || r.skipped}`);
       break;
     }
+    // A journal with nothing new still costs a pass. Say so rather than
+    // printing a row of zeroes that looks like a failure.
+    if (KIND === 'articles' && !r.journal) {
+      console.log(`\nNothing further to give: ${r.note || 'every journal is up to date'}`);
+      break;
+    }
     now = await held();
-    const gained = KIND === 'books' ? (r.added ?? 0) : (r.accepted ?? 0);
-    const passed = KIND === 'books' ? (r.skippedHeld ?? 0) : (r.rejected ?? 0);
+    const gained = KIND === 'journals' ? (r.accepted ?? 0) : (r.added ?? 0);
+    const passed = KIND === 'journals' ? (r.rejected ?? 0) : (r.skippedHeld ?? 0);
     console.log(
-      `${String(i).padStart(3)}. ${String(r.department || '').padEnd(42).slice(0, 42)}` +
+      `${String(i).padStart(4)}. ${String(r.department || r.journal || '').padEnd(42).slice(0, 42)}` +
       ` "${String(r.term || '').slice(0, 22)}"`.padEnd(26) +
       ` +${String(gained).padStart(4)}` +
-      `  ${KIND === 'books' ? 'held' : 'refused'} ${String(passed).padStart(4)}` +
+      `  ${KIND === 'journals' ? 'refused' : 'held'} ${String(passed).padStart(4)}` +
       `  total ${now}`
     );
     if (r.error) console.log(`      first failure: ${r.error}`);
@@ -74,6 +82,8 @@ const held = () => (KIND === 'books'
   const byDept = await p.$queryRawUnsafe(
     KIND === 'books'
       ? `select domain, count(*)::int n from "Book" where status = 'Published' group by 1 order by 2 desc`
+      : KIND === 'articles'
+      ? `select domain, count(*)::int n from "Article" where status = 'Published' group by 1 order by 2 desc`
       : `select domain, count(*)::int n from "Journal" where "rightsBasis" = 'DOAJ declaration' group by 1 order by 2 desc`);
   console.log(`\n${KIND}: ${startedWith} -> ${now}  (+${now - startedWith})\n`);
   for (const row of byDept) console.log(`  ${String(row.domain || '(none)').padEnd(46)} ${row.n}`);

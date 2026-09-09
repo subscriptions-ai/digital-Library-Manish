@@ -50,8 +50,22 @@ const check = async (name, path, token, predicate) => {
   bad(name, verdict || 'answered 200 but the content was wrong');
 };
 
+/** How much the catalogue holds right now, across all three shelves. */
+const catalogueSize = async () => {
+  const [a, b, c] = await Promise.all([p.article.count(), p.book.count(), p.content.count()]);
+  return a + b + c;
+};
+
 (async () => {
   console.log(`\nVerifying ${BASE}\n${'─'.repeat(66)}`);
+
+  // Several checks compare what an endpoint advertises against what the database
+  // holds, and those two are only comparable if the collection is standing
+  // still. Run this while ingestion is writing and they disagree by whatever was
+  // added in between — which looks exactly like the counting bug they exist to
+  // catch, and cost a re-run to tell apart. So the size is taken before and
+  // after, and any drift is named at the end rather than left to be guessed at.
+  const sizeAtStart = await catalogueSize();
 
   // ── identities ────────────────────────────────────────────────────────────
   const admin = await p.user.findFirst({ where: { role: 'SuperAdmin' }, select: { id: true, email: true, role: true } });
@@ -402,6 +416,24 @@ const check = async (name, path, token, predicate) => {
         : bad('every book sits in a department the catalogue knows',
             orphans.map(r => `${r.domain} (${r.n})`).join(', ').slice(0, 140));
 
+      // A cover belongs to one book. Two books wearing the same one is the
+      // signature of a join that did not join — and that is exactly what
+      // happened: the key was `id` where DOAB calls it `uuid`, so the map held a
+      // single entry under `undefined`, every record matched it, and 3,974 books
+      // shared 54 covers between them. Nothing in the data was malformed and no
+      // request failed; only looking at the page showed it. This asks the
+      // question that would have.
+      const sharedCovers = await p.$queryRawUnsafe(
+        `select count(*)::int shared, coalesce(sum(n), 0)::int affected from (
+           select "coverUrl", count(*)::int n from "Book"
+           where "coverUrl" is not null group by 1 having count(*) > 1) t`);
+      const sc = sharedCovers[0];
+      sc.shared === 0
+        ? ok('a cover belongs to one book',
+            `${await p.book.count({ where: { coverUrl: { not: null } } })} covers`)
+        : bad('a cover belongs to one book',
+            `${sc.affected} books share ${sc.shared} covers between them`);
+
       // The database holding a link is not the same as the reader being given
       // one. The popup shown for a record with no file reads `originalUrl`, and
       // a `select` on this endpoint that quietly dropped the column would leave
@@ -464,8 +496,14 @@ const check = async (name, path, token, predicate) => {
   }
 
   // ── verdict ───────────────────────────────────────────────────────────────
+  const sizeAtEnd = await catalogueSize();
   console.log(`\n${'─'.repeat(66)}`);
   console.log(`${pass} passed · ${fail ? R : ''}${fail} failed${O} · ${skip} skipped`);
+  if (sizeAtEnd !== sizeAtStart) {
+    console.log(`\n${Y}The collection grew by ${sizeAtEnd - sizeAtStart} while this ran.${O}`);
+    console.log(`${D}  Ingestion is writing. Any count that disagrees by roughly that much is`);
+    console.log(`  drift, not a fault — pause ingestion and run again before believing it.${O}`);
+  }
   if (fail) {
     console.log(`\n${R}Failures:${O}`);
     failures.forEach(f => console.log('  · ' + f));

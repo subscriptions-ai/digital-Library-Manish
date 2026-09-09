@@ -10445,8 +10445,10 @@ async function doabPage(term, offset) {
   if (!Array.isArray(meta) || !meta.length) return Array.isArray(meta) ? [] : null;
   await sleep(400);
   const files = await getJson(`${base}&expand=bitstreams`);
-  const byId = new Map((Array.isArray(files) ? files : []).map((r2) => [r2.id, r2.bitstreams]));
-  return meta.map((r2) => ({ ...r2, bitstreams: byId.get(r2.id) || [] }));
+  const byUuid = new Map(
+    (Array.isArray(files) ? files : []).filter((r2) => r2?.uuid).map((r2) => [r2.uuid, r2.bitstreams || []])
+  );
+  return meta.map((r2) => ({ ...r2, bitstreams: r2?.uuid && byUuid.get(r2.uuid) || [] }));
 }
 function doabFields(rec) {
   const m2 = /* @__PURE__ */ new Map();
@@ -10485,14 +10487,20 @@ async function discoverBooksPage(sweep) {
       const isbn = f3.one("dc.identifier.isbn") || null;
       const handle = rec.handle || null;
       const fingerprint = doi ? `doab:doi:${doi.toLowerCase()}` : handle ? `doab:handle:${handle}` : `doab:t:${String(title).toLowerCase().replace(/\W+/g, " ").trim().slice(0, 180)}`;
-      if (await p.book.findFirst({ where: { fingerprint }, select: { id: true } })) {
+      const cover = (rec.bitstreams || []).find((b) => /^image\//i.test(b?.mimeType || ""));
+      const coverUrl = cover?.retrieveLink ? `https://directory.doabooks.org${cover.retrieveLink}` : null;
+      const existing = await p.book.findFirst({ where: { fingerprint }, select: { id: true, coverUrl: true } });
+      if (existing) {
+        if (coverUrl && coverUrl !== existing.coverUrl) {
+          await p.book.update({ where: { id: existing.id }, data: { coverUrl } }).catch(() => {
+          });
+        }
         skippedHeld++;
         continue;
       }
       const licence = licenceFromProse(f3.one("publisher.oalicense"));
       const commercialOk = licenceAllowsCommercialUse(licence);
       commercialOk ? r2.accepted++ : r2.rejected++;
-      const cover = (rec.bitstreams || []).find((b) => /^image\//i.test(b?.mimeType || ""));
       const year = Number(String(f3.one("dc.date.issued") || "").slice(0, 4)) || null;
       const authors = [...f3.all("dc.contributor.author"), ...f3.all("dc.contributor.editor")].filter(Boolean).join(", ") || null;
       await p.book.create({
@@ -10509,7 +10517,7 @@ async function discoverBooksPage(sweep) {
           language: f3.one("dc.language") || null,
           country: f3.one("publisher.country") || null,
           description: f3.one("dc.description.abstract") || null,
-          coverUrl: cover?.retrieveLink ? `https://directory.doabooks.org${cover.retrieveLink}` : null,
+          coverUrl,
           // Left null deliberately: DOAB holds no book file, so there is nothing
           // here to serve and a URL would only be a broken promise.
           pdfUrl: null,

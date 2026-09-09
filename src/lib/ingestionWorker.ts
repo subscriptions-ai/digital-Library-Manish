@@ -272,9 +272,15 @@ const DOAB_PAGES_PER_PASS = 2;
  * Asking DOAB for `expand=metadata,bitstreams` together takes ninety-five
  * seconds for a hundred records. Asking for each separately takes thirty-three
  * and seventeen — the two together are almost twice as fast as the one, which is
- * the opposite of what you would expect and worth not undoing later. They are
- * joined on the record id rather than on position, because nothing promises the
- * two answers arrive in the same order.
+ * the opposite of what you would expect and worth not undoing later.
+ *
+ * They are joined on `uuid`, not on position, because nothing promises the two
+ * answers arrive in the same order. The field is `uuid`; there is no `id`. Keyed
+ * on `id` the map had a single entry under `undefined`, every record matched it,
+ * and all hundred books on a page were given the last book's cover — 3,974 books
+ * wearing 54 covers between them, each one wrong. A join with no key must return
+ * nothing, so a missing uuid drops the record's files rather than handing it
+ * whatever the map happens to hold.
  */
 async function doabPage(term: string, offset: number) {
   const base = `https://directory.doabooks.org/rest/search`
@@ -285,9 +291,12 @@ async function doabPage(term: string, offset: number) {
 
   await sleep(400);
   const files = await getJson(`${base}&expand=bitstreams`);
-  const byId = new Map<any, any>((Array.isArray(files) ? files : []).map((r: any) => [r.id, r.bitstreams]));
+  const byUuid = new Map<string, any>(
+    (Array.isArray(files) ? files : [])
+      .filter((r: any) => r?.uuid)
+      .map((r: any) => [r.uuid, r.bitstreams || []]));
 
-  return meta.map((r: any) => ({ ...r, bitstreams: byId.get(r.id) || [] }));
+  return meta.map((r: any) => ({ ...r, bitstreams: (r?.uuid && byUuid.get(r.uuid)) || [] }));
 }
 
 /** DOAB returns metadata as a flat list of key/value rows, with keys repeating. */
@@ -346,13 +355,26 @@ async function discoverBooksPage(sweep: any) {
         : handle ? `doab:handle:${handle}`
         : `doab:t:${String(title).toLowerCase().replace(/\W+/g, ' ').trim().slice(0, 180)}`;
 
-      if (await p.book.findFirst({ where: { fingerprint }, select: { id: true } })) { skippedHeld++; continue; }
+      const cover = (rec.bitstreams || []).find((b: any) => /^image\//i.test(b?.mimeType || ''));
+      const coverUrl = cover?.retrieveLink
+        ? `https://directory.doabooks.org${cover.retrieveLink}` : null;
+
+      const existing = await p.book.findFirst({ where: { fingerprint }, select: { id: true, coverUrl: true } });
+      if (existing) {
+        // A second sweep is worth something: it repairs what the first got wrong.
+        // Covers were attached by a join that could not work, so walking past a
+        // book we already hold would have left every one of them wrong for ever.
+        if (coverUrl && coverUrl !== existing.coverUrl) {
+          await p.book.update({ where: { id: existing.id }, data: { coverUrl } }).catch(() => {});
+        }
+        skippedHeld++;
+        continue;
+      }
 
       const licence = licenceFromProse(f.one('publisher.oalicense'));
       const commercialOk = licenceAllowsCommercialUse(licence);
       commercialOk ? r.accepted++ : r.rejected++;
 
-      const cover = (rec.bitstreams || []).find((b: any) => /^image\//i.test(b?.mimeType || ''));
       const year = Number(String(f.one('dc.date.issued') || '').slice(0, 4)) || null;
       const authors = [...f.all('dc.contributor.author'), ...f.all('dc.contributor.editor')]
         .filter(Boolean).join(', ') || null;
@@ -372,7 +394,7 @@ async function discoverBooksPage(sweep: any) {
           language: f.one('dc.language') || null,
           country: f.one('publisher.country') || null,
           description: f.one('dc.description.abstract') || null,
-          coverUrl: cover?.retrieveLink ? `https://directory.doabooks.org${cover.retrieveLink}` : null,
+          coverUrl,
           // Left null deliberately: DOAB holds no book file, so there is nothing
           // here to serve and a URL would only be a broken promise.
           pdfUrl: null,
