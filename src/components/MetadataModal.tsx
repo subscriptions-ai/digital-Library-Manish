@@ -75,6 +75,17 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
   const doi: string = item?.doi || '';
   const doiUrl = doi ? (/^https?:\/\//i.test(doi) ? doi : `https://doi.org/${doi.replace(/^doi:\s*/i, '')}`) : '';
 
+  // Where the reader actually goes when the file is not ours to serve.
+  //
+  // Most books in the catalogue are like this, and by nature rather than by
+  // omission: DOAB, which supplies them, holds no book file at all — only a
+  // cover and the metadata — so the book lives with its publisher and this link
+  // is the entire point of the record. Without it the popup ended on "cite using
+  // the details above", which is a dead end dressed up as an answer.
+  const linkOut: string = item?.originalUrl || doiUrl || '';
+  const cover: string = book ? (item?.coverUrl || meta.coverUrl || '') : '';
+  const [coverBroken, setCoverBroken] = useState(false);
+
   const copy = (text: string, key: string) => {
     navigator.clipboard?.writeText(text).then(() => {
       setCopied(key);
@@ -94,6 +105,7 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
       ['Subject', item?.subject || item?.subjectArea],
       ['Language', item?.language],
       ['Country', item?.country],
+      ['Licence', item?.licence],
       ['Chapters', Array.isArray(item?.chapters) && item.chapters.length ? item.chapters.length : null],
     ]
     : [
@@ -109,6 +121,7 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
       ['Subject', item?.subject || item?.subjectArea || item?.journal?.subject],
       ['Language', item?.language],
       ['Country', item?.country],
+      ['Licence', item?.licence],
       ['Content Type', item?.contentType],
     ];
   const shown = fields.filter(([, v]) => v !== null && v !== undefined && v !== '');
@@ -152,7 +165,12 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
 
         {/* body */}
         <div className="overflow-y-auto px-5 py-4 space-y-5">
-          <div>
+          <div className="flex gap-4">
+            {cover && !coverBroken && (
+              <img src={cover} alt="" loading="lazy" onError={() => setCoverBroken(true)}
+                className="h-32 w-22 shrink-0 rounded-md border border-slate-200 object-cover shadow-sm dark:border-slate-700" />
+            )}
+            <div className="min-w-0 flex-1">
             <h2 className="text-lg sm:text-xl font-black leading-snug text-slate-900 dark:text-white">
               {book ? <BookOpen size={16} className="inline -mt-1 mr-1.5 text-indigo-500" /> : <FileText size={16} className="inline -mt-1 mr-1.5 text-emerald-500" />}
               {item?.title || 'Untitled'}
@@ -165,6 +183,7 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
               </p>
             )}
             {citation && <p className="text-[12px] italic text-slate-500 dark:text-slate-400 mt-1">{citation}</p>}
+            </div>
           </div>
 
           {abstract ? (
@@ -235,7 +254,9 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
         {/* footer */}
         <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 shrink-0">
           <p className="text-[11px] text-slate-400">
-            {hasFile ? 'Full text available in the secure viewer.' : 'Full text not hosted — cite using the details above.'}
+            {hasFile ? 'Full text available in the secure viewer.'
+              : linkOut ? 'Not hosted here — the full text opens at the publisher.'
+              : 'Full text not hosted — cite using the details above.'}
           </p>
           <div className="flex items-center gap-2">
             <button onClick={onClose}
@@ -247,6 +268,12 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-lg shadow-sm">
                 Read Full Text
               </button>
+            )}
+            {!hasFile && linkOut && (
+              <a href={linkOut} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-lg shadow-sm">
+                <ExternalLink size={13} /> Read at publisher
+              </a>
             )}
           </div>
         </div>

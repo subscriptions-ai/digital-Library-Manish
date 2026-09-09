@@ -10669,7 +10669,7 @@ async function runIngestionPass(departments, opts = {}) {
   const record = (row) => p.ingestionRun.create({ data: { ...row, durationMs: Date.now() - startedAt } }).catch(() => {
   });
   try {
-    const wanted = state.departments?.length ? state.departments : departments;
+    const wanted = opts.departments?.length ? opts.departments : state.departments?.length ? state.departments : departments;
     const n = await p.ingestionState.update({
       where: { id: "singleton" },
       data: { passCount: { increment: 1 } },

@@ -379,6 +379,23 @@ const check = async (name, path, token, predicate) => {
         ? ok('every book sits in a department the catalogue knows')
         : bad('every book sits in a department the catalogue knows',
             orphans.map(r => `${r.domain} (${r.n})`).join(', ').slice(0, 140));
+
+      // The database holding a link is not the same as the reader being given
+      // one. The popup shown for a record with no file reads `originalUrl`, and
+      // a `select` on this endpoint that quietly dropped the column would leave
+      // every book ending on "cite using the details above" — a dead end that
+      // looks like an answer.
+      const listed = await get('/api/library/books?limit=20', A);
+      if (listed.status !== 200) {
+        bad('the books endpoint serves a way out', `HTTP ${listed.status}`);
+      } else {
+        const rows = listed.body?.data || [];
+        const stranded = rows.filter(b => !b.pdfUrl && !b.originalUrl && !b.doi);
+        stranded.length === 0
+          ? ok('the books endpoint serves a way out', `${rows.length} rows checked`)
+          : bad('the books endpoint serves a way out',
+              `${stranded.length} of ${rows.length} arrive with no file, no link and no DOI`);
+      }
     }
 
     const sweeps = await p.departmentSweep.count();

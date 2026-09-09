@@ -569,10 +569,12 @@ async function fetchArticlesForOneJournal(state: any) {
  * `only` restricts the pass to one kind of work, so a backfill script can spend
  * an evening on books without the rotation spending four passes in five on
  * articles.
+ *
+ * `departments` names the departments to cover for this call only.
  */
 export async function runIngestionPass(
   departments: string[],
-  opts: { force?: boolean; only?: 'journals' | 'articles' | 'books' } = {},
+  opts: { force?: boolean; only?: 'journals' | 'articles' | 'books'; departments?: string[] } = {},
 ) {
   const state = await getState();
   if (!state.enabled && !opts.force) return { skipped: 'disabled' };
@@ -585,8 +587,17 @@ export async function runIngestionPass(
     p.ingestionRun.create({ data: { ...row, durationMs: Date.now() - startedAt } }).catch(() => {});
 
   try {
-    const wanted: string[] = (state.departments as string[])?.length
-      ? (state.departments as string[]) : departments;
+    // Departments asked for by name beat the stored setting, the same way `force`
+    // beats the pause switch. The setting says what the engine does when left
+    // alone; it was never meant to overrule someone asking for something
+    // deliberately. Read the other way round, a backfill told to cover all
+    // twenty-seven departments silently covered the two left in the admin
+    // screen's chooser, and said nothing about the difference.
+    const wanted: string[] = opts.departments?.length
+      ? opts.departments
+      : (state.departments as string[])?.length
+        ? (state.departments as string[])
+        : departments;
 
     // How the pass is spent.
     //
