@@ -106,6 +106,18 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
   const on = state.enabled;
   const chosen: string[] = Array.isArray(state.departments) ? state.departments : [];
   const week = history?.lastSevenDays;
+  const focus: string = state.focus || 'auto';
+
+  // Whether the chosen focus has anywhere left to go. A source that has been
+  // walked out is not a fault and not a pause — it is simply finished until it
+  // grows — but an engine that looks busy while doing nothing is worse than one
+  // that says so. DOAJ ran out at 10,463 journals and the screen gave no sign.
+  const cov: any[] = history?.coverage || [];
+  const openFor = (key: 'doaj' | 'doab') =>
+    cov.reduce((n, c) => n + (c[key]?.termsOpen || 0), 0);
+  const nothingLeft =
+    (focus === 'journals' && cov.length && openFor('doaj') === 0) ||
+    (focus === 'books' && cov.length && openFor('doab') === 0);
 
   return (
     <div className={`rounded-2xl border p-5 shadow-sm ${on ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-white'}`}>
@@ -153,17 +165,24 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
           ] as const).map(([id, label, hint]) => (
             <button key={id} title={hint} disabled={busy} onClick={() => save({ focus: id })}
               className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-                (state.focus || 'auto') === id
+                focus === id
                   ? 'bg-slate-800 text-white'
                   : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
               {label}
             </button>
           ))}
         </div>
+        {nothingLeft && (
+          <p className="mt-2.5 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800">
+            <b>There are no more {focus} to fetch.</b> Every department has been walked to the end of
+            {' '}{focus === 'journals' ? 'DOAJ' : 'DOAB'}, so passes will do nothing while this is chosen.
+            Sources are looked at again a month after they run out; until then choose another kind of work.
+          </p>
+        )}
         <p className="mt-2.5 text-[11px] leading-relaxed text-slate-500">
-          {(state.focus || 'auto') === 'auto'
+          {focus === 'auto'
             ? 'One pass a minute, shared out: one in five looks for new titles, the rest fetch articles.'
-            : <>Every pass will do <b className="text-slate-700">{state.focus}</b> and nothing else, one a minute,
+            : <>Every pass will do <b className="text-slate-700">{focus}</b> and nothing else, one a minute,
               for as long as the engine is running. Press <b className="text-slate-700">Start</b> and leave it —
               it keeps going with this screen closed. Set it back to <b className="text-slate-700">Everything</b>
               {' '}when you are done.</>}
@@ -242,6 +261,7 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
                           r.phase === 'Error' ? 'bg-rose-100 text-rose-700'
                           : r.phase === 'Books' ? 'bg-amber-100 text-amber-700'
                           : r.phase === 'Journals' ? 'bg-indigo-100 text-indigo-700'
+                          : r.phase === 'Idle' ? 'bg-slate-100 text-slate-400'
                           : 'bg-slate-100 text-slate-600'}`}>{r.phase}</span>
                       </td>
                       <td className="max-w-md px-3 py-2 text-slate-600">

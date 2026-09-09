@@ -10745,7 +10745,16 @@ async function runIngestionPass(departments, opts = {}) {
         });
         return { phase: "Books", source, department: sweep.department, term: sweep.term, ...r3 };
       }
-      if (only) return { phase: "Idle", note: `nothing left to sweep for ${only}` };
+      if (only) {
+        const note = `nothing left to sweep for ${only} \u2014 every source has been walked out`;
+        await p.ingestionState.update({
+          where: { id: "singleton" },
+          data: { phase: "Idle", currentDepartment: null, currentJournal: null, lastRunAt: /* @__PURE__ */ new Date(), lastError: null }
+        }).catch(() => {
+        });
+        await record({ phase: "Idle", note });
+        return { phase: "Idle", note };
+      }
     }
     const r2 = await fetchArticlesForOneJournal(state);
     await p.ingestionState.update({

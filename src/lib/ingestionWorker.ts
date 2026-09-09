@@ -704,7 +704,21 @@ export async function runIngestionPass(
       // Every sweep is exhausted and none is due to reopen. Fetch instead —
       // unless this pass was asked for one kind of work in particular, in which
       // case silently doing a different kind is the wrong answer.
-      if (only) return { phase: 'Idle', note: `nothing left to sweep for ${only}` };
+      //
+      // Returning quietly was almost as bad. An operator chose journals, pressed
+      // Start, and watched a screen that went on reporting the last thing that
+      // had happened — a phase of "Books", a run log with no new rows, and not a
+      // word about why. A pass that decided to do nothing is still a pass, and
+      // has to leave the same trace as any other.
+      if (only) {
+        const note = `nothing left to sweep for ${only} — every source has been walked out`;
+        await p.ingestionState.update({
+          where: { id: 'singleton' },
+          data: { phase: 'Idle', currentDepartment: null, currentJournal: null, lastRunAt: new Date(), lastError: null },
+        }).catch(() => {});
+        await record({ phase: 'Idle', note });
+        return { phase: 'Idle', note };
+      }
     }
 
     const r = await fetchArticlesForOneJournal(state);
