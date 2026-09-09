@@ -15492,14 +15492,18 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       if (publisher) where.publisherName = publisher;
       if (search) where.title = { contains: search, mode: "insensitive" };
-      const journals = await prisma3.journal.findMany({ where, orderBy: { title: "asc" }, take: 500 });
-      const groups = journals.length ? await prisma3.article.groupBy({
+      const groups = await prisma3.article.groupBy({
         by: ["journalId"],
-        where: { status: "Published", journalId: { in: journals.map((j) => j.id) } },
+        where: { status: "Published", journalId: { not: null } },
         _count: { _all: true }
-      }) : [];
-      const countBy = new Map(groups.map((g) => [g.journalId, g._count._all]));
-      const withCounts = journals.map((j) => ({
+      });
+      const countBy = new Map(
+        groups.filter((g) => g.journalId).map((g) => [g.journalId, g._count._all])
+      );
+      if (!countBy.size) return res.json([]);
+      where.id = { in: [...countBy.keys()] };
+      const journals = await prisma3.journal.findMany({ where, orderBy: { title: "asc" }, take: 500 });
+      res.json(journals.map((j) => ({
         id: j.id,
         title: j.title,
         issn: j.issn,
@@ -15507,8 +15511,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         domain: j.domain,
         startYear: j.startYear,
         articleCount: countBy.get(j.id) || 0
-      }));
-      res.json(withCounts.filter((j) => j.articleCount > 0));
+      })));
     } catch (e2) {
       console.error("library journals:", e2);
       res.status(500).json({ error: "Failed to load journals" });

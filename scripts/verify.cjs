@@ -149,6 +149,28 @@ const check = async (name, path, token, predicate) => {
 
   await check('subject list', '/api/library/subjects', A, b => Array.isArray(b) || 'not an array');
 
+  // The journals filter must offer the journals that actually hold articles.
+  // It used to take five hundred titles alphabetically and then drop the empty
+  // ones, so a department whose one stocked journal sorted past the five
+  // hundredth offered nothing at all. The database is asked the same question
+  // independently, department by department.
+  {
+    const holding = await p.$queryRawUnsafe(
+      `select j.domain, count(distinct a."journalId")::int n
+       from "Article" a join "Journal" j on j.id = a."journalId"
+       where a.status = 'Published' and j.domain is not null
+       group by 1 order by 2 desc`);
+    const empty = [];
+    for (const row of holding.slice(0, 8)) {
+      const r = await get(`/api/library/journals?domain=${encodeURIComponent(row.domain)}`, A);
+      const offered = Array.isArray(r.body) ? r.body.length : 0;
+      if (offered === 0) empty.push(`${row.domain} holds ${row.n} but offers none`);
+    }
+    empty.length === 0
+      ? ok('the journals filter offers what is stocked', `${Math.min(holding.length, 8)} departments`)
+      : bad('the journals filter offers what is stocked', empty.join('; ').slice(0, 160));
+  }
+
   // ── 1b. the public counts ─────────────────────────────────────────────────
   //
   // These advertised 6,208 items on a collection of 40,273 because they counted

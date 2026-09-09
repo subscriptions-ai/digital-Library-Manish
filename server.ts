@@ -5340,23 +5340,32 @@ async function startServer() {
       if (recentYears) { where.startYear = { gte: new Date().getFullYear() - (parseInt(recentYears as string) || 0) }; }
       if (publisher) where.publisherName = publisher;
       if (search) where.title = { contains: search as string, mode: 'insensitive' };
+
+      // This list is a filter, so a journal holding no article does not belong
+      // in it — picking one would return an empty page. Which journals those are
+      // is asked of the articles themselves, and asked *first*.
+      //
+      // The order used to be the other way round: five hundred journals by title,
+      // then drop the empty ones. That was harmless while we held three hundred
+      // journals and fatal at ten thousand — Arts holds 1,456 titles of which one
+      // has articles so far, that one sorts past the five-hundredth, and the
+      // whole department's filter came back empty. A cap belongs after the
+      // question, not before it.
+      const groups = await (prisma as any).article.groupBy({
+        by: ['journalId'],
+        where: { status: 'Published', journalId: { not: null } },
+        _count: { _all: true },
+      });
+      const countBy = new Map<string, number>(
+        groups.filter((g: any) => g.journalId).map((g: any) => [g.journalId, g._count._all]));
+      if (!countBy.size) return res.json([]);
+      where.id = { in: [...countBy.keys()] };
+
       const journals = await (prisma as any).journal.findMany({ where, orderBy: { title: 'asc' }, take: 500 });
-      // One grouped count for the whole page. Counting per journal in a Promise.all
-      // meant up to 500 concurrent queries, which exhausted the connection pool and
-      // 500'd this endpoint (the /explore journals sidebar came back empty).
-      const groups = journals.length
-        ? await (prisma as any).article.groupBy({
-          by: ['journalId'],
-          where: { status: 'Published', journalId: { in: journals.map((j: any) => j.id) } },
-          _count: { _all: true },
-        })
-        : [];
-      const countBy = new Map(groups.map((g: any) => [g.journalId, g._count._all]));
-      const withCounts = journals.map((j: any) => ({
+      res.json(journals.map((j: any) => ({
         id: j.id, title: j.title, issn: j.issn, publisherName: j.publisherName, domain: j.domain, startYear: j.startYear,
         articleCount: countBy.get(j.id) || 0,
-      }));
-      res.json(withCounts.filter((j: any) => j.articleCount > 0));
+      })));
     } catch (e: any) { console.error("library journals:", e); res.status(500).json({ error: "Failed to load journals" }); }
   });
 
