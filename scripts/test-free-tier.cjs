@@ -306,10 +306,38 @@ const completed = async (count, holdEndedMinutesAgo) => {
 
   console.log('\nWhat a member may see');
   {
+    // Every one of these scoped by the member's domains, and a free member has
+    // none — so each answered "nothing", and the dashboard of somebody with the
+    // run of the library read 0 accessible items, 0 departments, no content
+    // found. Asking each of them again is the only way that class stays fixed.
+    await p.subscription.deleteMany({ where: { userId: user.id } });
     const a = await get('/api/library/articles?limit=5', token);
     const all = await get('/api/library/articles?limit=5', null);
-    is('a free member sees the whole library, not a set of domains',
-      a.body?.total, all.body?.total);
+    is('the new catalogue is whole', a.body?.total, all.body?.total);
+
+    const scope = await get('/api/user/access-scope', token);
+    is('their access is not a list of departments', scope.body?.all, true);
+
+    const dash = await get('/api/user/dashboard', token);
+    (dash.body?.allowedDomains?.length > 0)
+      ? ok('the dashboard covers departments', `${dash.body.allowedDomains.length}`)
+      : bad('the dashboard covers departments', 'none');
+    is('and names the membership', dash.body?.planName, 'Free membership');
+
+    const facets = await get('/api/user/available-facets', token);
+    ((facets.body?.archived?.departments?.length || facets.body?.neu?.departments?.length) > 0)
+      ? ok('the filters offer departments')
+      : bad('the filters offer departments', JSON.stringify(facets.body).slice(0, 120));
+
+    const filters = await get('/api/content/filters?1=1&onlyUnlocked=true', token);
+    ((filters.body?.subjects?.length || 0) + (filters.body?.tags?.length || 0) > 0)
+      ? ok('the archived filters are not empty')
+      : bad('the archived filters are not empty', JSON.stringify(filters.body).slice(0, 120));
+
+    const list = await get('/api/content/list?onlyUnlocked=true&limit=5', token);
+    (list.body?.total > 0)
+      ? ok('the archived shelf is not empty', `${list.body.total} items`)
+      : bad('the archived shelf is not empty', 'nothing returned');
   }
 })()
   .catch(e => bad('the run itself', String(e?.message || e)))

@@ -11707,6 +11707,7 @@ async function startServer() {
     if (req.user?.role !== "SuperAdmin") return res.status(403).json({ error: "Access denied" });
     next();
   };
+  const seesWholeLibrary = (role) => ["SuperAdmin", "Admin", "ContentManager", "Subscriber"].includes(String(role));
   const isFreeMember = async (req) => {
     if (req._isFreeMember !== void 0) return req._isFreeMember;
     if (!req.user?.uid || req.user.role !== "Subscriber") return req._isFreeMember = false;
@@ -12025,20 +12026,21 @@ async function startServer() {
         orderBy: { endDate: "desc" }
       });
       const expiredSubs = allSubscriptions.filter((sub) => sub.status !== "Active" || new Date(sub.endDate) < /* @__PURE__ */ new Date());
-      const allowedDomains = Array.from(new Set(
+      const allowedDomains = seesWholeLibrary(req.user.role) ? DOMAINS.map((d) => d.name) : Array.from(new Set(
         activeSubs.flatMap((s2) => {
           const d = Array.isArray(s2.domains) ? s2.domains : s2.domains ? JSON.parse(s2.domains) : [];
           return d;
         }).filter(Boolean)
       ));
+      const free = req.user.role === "Subscriber" && activeSubs.length === 0;
       res.json({
         activeSubscriptions: activeSubs.length,
         nearestExpiry,
         totalSpent,
         allowedDomains,
         recentActivity: mappedRecent,
-        planType: activeSubs[0]?.planType || "Free/Demo",
-        planName: activeSubs[0]?.planName || "Basic Plan",
+        planType: activeSubs[0]?.planType || (free ? "Free" : "Free/Demo"),
+        planName: activeSubs[0]?.planName || (free ? "Free membership" : "Basic Plan"),
         expiredSubscriptions: expiredSubs
       });
     } catch (error) {
@@ -12289,7 +12291,7 @@ async function startServer() {
   app.get("/api/user/access-scope", authenticateJWT, async (req, res) => {
     try {
       const role = req.user.role;
-      if (["SuperAdmin", "Admin", "ContentManager"].includes(role)) {
+      if (seesWholeLibrary(role)) {
         return res.json({ all: true, domains: [], contentTypes: [] });
       }
       const subs = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId);
@@ -12311,7 +12313,7 @@ async function startServer() {
   app.get("/api/user/available-facets", authenticateJWT, async (req, res) => {
     try {
       const role = req.user.role;
-      const isAdmin = ["SuperAdmin", "Admin", "ContentManager"].includes(role);
+      const isAdmin = seesWholeLibrary(role);
       const subs = isAdmin ? [] : await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId) || [];
       const scopeDomains = /* @__PURE__ */ new Set();
       const scopeTypes = /* @__PURE__ */ new Set();
@@ -12397,7 +12399,7 @@ async function startServer() {
           } catch {
           }
         }
-        if (ud && !["SuperAdmin", "Admin", "ContentManager"].includes(ud.role)) {
+        if (ud && !seesWholeLibrary(ud.role)) {
           const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
           if (!subs.length) return res.json({ domains: [], subjects: [], tags: [] });
           const subOr = [];
@@ -12511,7 +12513,7 @@ async function startServer() {
         }
       }
       if (onlyUnlocked === "true" && userDetails) {
-        if (userDetails.role !== "SuperAdmin" && userDetails.role !== "Admin" && userDetails.role !== "ContentManager") {
+        if (!seesWholeLibrary(userDetails.role)) {
           const activeSubs2 = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
           if (activeSubs2.length === 0) {
             return res.json({ data: [], total: 0, page: parseInt(page), limit: take });

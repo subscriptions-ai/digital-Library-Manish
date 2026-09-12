@@ -1004,6 +1004,22 @@ async function startServer() {
   };
 
   /**
+   * Whether this account sees the library whole, rather than a set of domains.
+   *
+   * The question is asked at every point that scopes a query, and it used to be
+   * spelled out each time as a list of administrative roles. Self-registered
+   * members now belong on that list: they are no longer given domains, so there
+   * is nothing to scope them to, and code that went looking for their domains
+   * found none and showed them an empty library — which is what a new member
+   * saw on their dashboard the day this shipped.
+   *
+   * It says nothing about how long they may read. That is the clock's business,
+   * and it is asked separately.
+   */
+  const seesWholeLibrary = (role?: string) =>
+    ['SuperAdmin', 'Admin', 'ContentManager', 'Subscriber'].includes(String(role));
+
+  /**
    * Whether the free member's clock applies to whoever is asking.
    *
    * Derived rather than stored, and that is the point: approving a Pro
@@ -1375,13 +1391,19 @@ async function startServer() {
 
       const expiredSubs = allSubscriptions.filter(sub => sub.status !== 'Active' || new Date(sub.endDate) < new Date());
 
-      // Unique domains user has access to — read from the `domains` JSON array field
-      const allowedDomains: string[] = Array.from(new Set(
-        activeSubs.flatMap(s => {
-          const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
-          return d as string[];
-        }).filter(Boolean)
-      ));
+      // What they may read is a different question from what they have bought,
+      // and answering both from the subscription list is what made a member with
+      // the run of the library see "0 departments covered".
+      const allowedDomains: string[] = seesWholeLibrary(req.user.role)
+        ? DOMAINS.map((d: any) => d.name)
+        : Array.from(new Set(
+            activeSubs.flatMap(s => {
+              const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
+              return d as string[];
+            }).filter(Boolean)
+          ));
+
+      const free = req.user.role === 'Subscriber' && activeSubs.length === 0;
 
       res.json({
         activeSubscriptions: activeSubs.length,
@@ -1389,8 +1411,8 @@ async function startServer() {
         totalSpent,
         allowedDomains,
         recentActivity: mappedRecent,
-        planType: activeSubs[0]?.planType || 'Free/Demo',
-        planName: activeSubs[0]?.planName || 'Basic Plan',
+        planType: activeSubs[0]?.planType || (free ? 'Free' : 'Free/Demo'),
+        planName: activeSubs[0]?.planName || (free ? 'Free membership' : 'Basic Plan'),
         expiredSubscriptions: expiredSubs
       });
     } catch (error) {
@@ -1721,7 +1743,7 @@ async function startServer() {
   app.get("/api/user/access-scope", authenticateJWT, async (req: any, res) => {
     try {
       const role = req.user.role;
-      if (['SuperAdmin', 'Admin', 'ContentManager'].includes(role)) {
+      if (seesWholeLibrary(role)) {
         return res.json({ all: true, domains: [], contentTypes: [] });
       }
       const subs = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId);
@@ -1746,7 +1768,7 @@ async function startServer() {
   app.get("/api/user/available-facets", authenticateJWT, async (req: any, res) => {
     try {
       const role = req.user.role;
-      const isAdmin = ['SuperAdmin', 'Admin', 'ContentManager'].includes(role);
+      const isAdmin = seesWholeLibrary(role);
       const subs = isAdmin ? [] : ((await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId)) || []);
 
       const scopeDomains = new Set<string>(); const scopeTypes = new Set<string>();
@@ -1835,7 +1857,7 @@ async function startServer() {
         const authHeader = req.headers.authorization;
         let ud: any = null;
         if (authHeader) { try { ud = jwt.verify(authHeader.split(' ')[1], JWT_SECRET); } catch { /* ignore */ } }
-        if (ud && !['SuperAdmin', 'Admin', 'ContentManager'].includes(ud.role)) {
+        if (ud && !seesWholeLibrary(ud.role)) {
           const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
           if (!subs.length) return res.json({ domains: [], subjects: [], tags: [] });
           const subOr: any[] = [];
@@ -1959,7 +1981,7 @@ async function startServer() {
 
 
       if (onlyUnlocked === "true" && userDetails) {
-        if (userDetails.role !== 'SuperAdmin' && userDetails.role !== 'Admin' && userDetails.role !== 'ContentManager') {
+        if (!seesWholeLibrary(userDetails.role)) {
           const activeSubs = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
           
           if (activeSubs.length === 0) {
