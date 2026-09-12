@@ -391,6 +391,51 @@ async function startServer() {
     };
   };
 
+  /**
+   * The same collection, cut by department.
+   *
+   * Written out inside the librarian's dashboard until the reader's dashboard
+   * needed it too, which is how two screens come to count one shelf two ways.
+   * The three shelves are exactly the three `collectionCounts` adds up, so a
+   * department's total and the library's total are the same arithmetic — the
+   * departments sum to the library, and a chart drawn from this cannot quietly
+   * claim more than there is.
+   */
+  const collectionByDepartment = async (domains?: string[]) => {
+    const f = (t: string) => (domains?.length ? `and ${t}."domain" = any($1)` : '');
+    const args: any[] = domains?.length ? [domains] : [];
+    const rows: any[] = await (prisma as any).$queryRawUnsafe(
+      `select domain,
+              sum(articles)::int as articles,
+              sum(books)::int as books,
+              sum(other)::int as other
+       from (
+         select a."domain" as domain, count(*)::int as articles, 0 as books, 0 as other
+           from "Article" a
+          where a.status = 'Published' and a."domain" is not null ${f('a')}
+          group by 1
+         union all
+         select b."domain", 0, count(*)::int, 0
+           from "Book" b
+          where b.status = 'Published' and b."domain" is not null ${f('b')}
+          group by 1
+         union all
+         select c."domain",
+                count(*) filter (where c."contentType" = 'Periodicals')::int,
+                count(*) filter (where c."contentType" = 'Books')::int,
+                count(*) filter (where c."contentType" not in ('Periodicals', 'Books'))::int
+           from "Content" c
+          where c.status <> 'Draft' and c."domain" is not null ${f('c')}
+          group by 1
+       ) t
+       group by 1
+       order by (sum(articles) + sum(books) + sum(other)) desc`, ...args);
+    return rows.map(d => {
+      const articles = Number(d.articles), books = Number(d.books), other = Number(d.other);
+      return { name: d.domain as string, articles, books, other, total: articles + books + other };
+    });
+  };
+
   app.get("/api/public/counts", async (req, res) => {
     try {
       const live = { status: { not: "Draft" } };
@@ -1637,6 +1682,45 @@ async function startServer() {
 
       const free = req.user.role === 'Subscriber' && activeSubs.length === 0;
 
+      // What the reader can actually open, counted the way every other screen
+      // counts it. The page used to headline "Accessible items" with the length
+      // of the page of results it had just fetched — twenty, forever, whatever
+      // the library held — and "Departments covered" with the list of
+      // departments the product has, including the ones holding nothing.
+      const scope = seesWholeLibrary(req.user.role, activeSubs) ? undefined : allowedDomains;
+      const since12w = new Date(Date.now() - 84 * 864e5);
+
+      const [counts, byDepartment, viewedItems, legacyRead, weekRows, deptRows, timeRow] = await Promise.all([
+        collectionCounts(scope),
+        collectionByDepartment(scope),
+        // Distinct items, not events: opening the same book twice is one book
+        // read. Both records are consulted because the event log is newer than
+        // some members' reading.
+        (prisma as any).libraryEvent.groupBy({
+          by: ['itemId'],
+          where: { userId: req.user.uid, kind: 'view', itemId: { not: null } },
+        }),
+        prisma.studentActivity.findMany({ where: { userId: req.user.uid }, select: { contentId: true } }),
+        (prisma as any).$queryRawUnsafe(
+          `select date_trunc('week', "at")::date as week, count(*)::int as reads
+             from "LibraryEvent"
+            where "userId" = $1 and kind = 'view' and "at" >= $2
+            group by 1 order by 1`, req.user.uid, since12w),
+        (prisma as any).libraryEvent.groupBy({
+          by: ['domain'],
+          where: { userId: req.user.uid, kind: 'view', domain: { not: null } },
+          _count: { _all: true },
+        }),
+        (prisma as any).$queryRawUnsafe(
+          `select coalesce(sum("durationMs"), 0)::bigint as ms
+             from "LibraryEvent" where "userId" = $1 and "durationMs" is not null`, req.user.uid),
+      ]);
+
+      const readIds = new Set<string>([
+        ...viewedItems.map((r: any) => r.itemId).filter(Boolean),
+        ...legacyRead.map(r => r.contentId).filter(Boolean),
+      ]);
+
       res.json({
         activeSubscriptions: activeSubs.length,
         nearestExpiry,
@@ -1645,7 +1729,23 @@ async function startServer() {
         recentActivity: mappedRecent,
         planType: activeSubs[0]?.planType || (free ? 'Free' : 'Free/Demo'),
         planName: activeSubs[0]?.planName || (free ? 'Free membership' : 'Basic Plan'),
-        expiredSubscriptions: expiredSubs
+        expiredSubscriptions: expiredSubs,
+
+        /** What the member holds, in the member's own word for it. */
+        membership: {
+          name: activeSubs.length ? (activeSubs[0]?.planName || 'Pro') : 'Basic',
+          kind: activeSubs.length ? 'Pro' : 'Free',
+          timed: free,
+        },
+        collection: { ...counts, byDepartment },
+        /** Departments that actually hold something, not departments that exist. */
+        departmentsCovered: byDepartment.length,
+        itemsRead: readIds.size,
+        readByWeek: (weekRows as any[]).map(r => Number(r.reads)),
+        readByDepartment: (deptRows as any[])
+          .map(r => ({ name: r.domain as string, reads: Number(r._count?._all || 0) }))
+          .sort((a, b) => b.reads - a.reads).slice(0, 8),
+        minutesRead: Math.round(Number(timeRow?.[0]?.ms || 0) / 60000),
       });
     } catch (error) {
       console.error("User dashboard error:", error);
@@ -6697,45 +6797,12 @@ async function startServer() {
       const aWhere: any = { status: 'Published' };
       if (covered.length) { jWhere.domain = { in: covered }; aWhere.domain = { in: covered }; }
 
-      const domainFilter = (t: string) => covered.length ? `and ${t}."domain" = any($1)` : '';
-      const args: any[] = covered.length ? [covered] : [];
-
       const since = new Date(Date.now() - 30 * 864e5);
       // The same count as everywhere else, narrowed to what this college covers.
       const [counts, byDeptRows, newJournals, recent, readSubjects, unanswered, readers, spark] = await Promise.all([
         collectionCounts(covered.length ? covered : undefined),
-        // How much there is in each department — all of it, not the articles
-        // alone. A librarian reading "6,164 articles" next to a library of
-        // 61,706 items has been handed a number that does not add up to
-        // anything they were told elsewhere. The three shelves are counted the
-        // same way `collectionCounts` counts them, so a department's total and
-        // the library's total are the same arithmetic.
-        (prisma as any).$queryRawUnsafe(
-          `select domain,
-                  sum(articles)::int as articles,
-                  sum(books)::int as books,
-                  sum(other)::int as other
-           from (
-             select a."domain" as domain, count(*)::int as articles, 0 as books, 0 as other
-               from "Article" a
-              where a.status = 'Published' and a."domain" is not null ${domainFilter('a')}
-              group by 1
-             union all
-             select b."domain", 0, count(*)::int, 0
-               from "Book" b
-              where b.status = 'Published' and b."domain" is not null ${domainFilter('b')}
-              group by 1
-             union all
-             select c."domain",
-                    count(*) filter (where c."contentType" = 'Periodicals')::int,
-                    count(*) filter (where c."contentType" = 'Books')::int,
-                    count(*) filter (where c."contentType" not in ('Periodicals', 'Books'))::int
-               from "Content" c
-              where c.status <> 'Draft' and c."domain" is not null ${domainFilter('c')}
-              group by 1
-           ) t
-           group by 1
-           order by (sum(articles) + sum(books) + sum(other)) desc`, ...args),
+        // The same breakdown the reader's dashboard draws, from one definition.
+        collectionByDepartment(covered.length ? covered : undefined),
         (prisma as any).journal.findMany({
           where: jWhere, orderBy: { createdAt: 'desc' }, take: 5,
           select: { id: true, title: true, issn: true, domain: true, articleCount: true },
@@ -6823,10 +6890,7 @@ async function startServer() {
           articles: counts.articles,
           books: counts.books,
           total: counts.total,
-          byDepartment: byDeptRows.map((d: any) => {
-            const articles = Number(d.articles), books = Number(d.books), other = Number(d.other);
-            return { name: d.domain, articles, books, other, total: articles + books + other };
-          }),
+          byDepartment: byDeptRows,
         },
         hasActiveSubscription: subs.length > 0,
         sparkline: spark.map((r: any) => Number(r.reads)),

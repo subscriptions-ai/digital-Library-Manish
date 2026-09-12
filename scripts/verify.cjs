@@ -74,9 +74,13 @@ const catalogueSize = async () => {
     where: { role: 'Student', institutionId: { not: null } },
     select: { id: true, email: true, role: true, institutionId: true },
   });
+  const reader = await p.user.findFirst({
+    where: { role: 'Subscriber' },
+    select: { id: true, email: true, role: true, institutionId: true },
+  });
   if (!admin) { console.log('No SuperAdmin in this database — cannot verify.'); process.exit(1); }
   const tok = u => jwt.sign({ uid: u.id, email: u.email, role: u.role, institutionId: u.institutionId }, SECRET, { expiresIn: '15m' });
-  const A = tok(admin), S = student ? tok(student) : null;
+  const A = tok(admin), S = student ? tok(student) : null, R = reader ? tok(reader) : null;
 
   // ── the rows the pages are built from ─────────────────────────────────────
   const [article, journal, author, inst, publisher, subjectJournal] = await Promise.all([
@@ -356,6 +360,32 @@ const catalogueSize = async () => {
       if (b.silentTotal > u.students) return `silent list ${b.silentTotal} exceeds ${u.students} students`;
       return true;
     });
+
+    // The reader's dashboard headlined "Accessible items 20" on a library of
+    // 61,706 — it was counting the page of results it had just fetched — and
+    // "Departments covered 29", the number of departments the product has,
+    // including those holding nothing. Both now come from the collection.
+    if (R) {
+      const b = (await get('/api/user/dashboard', R)).body || {};
+      const pub = (await get('/api/public/counts', null)).body || {};
+      const rows = b.collection?.byDepartment || [];
+      const readEvents = await p.libraryEvent.groupBy({
+        by: ['itemId'], where: { userId: reader.id, kind: 'view', itemId: { not: null } },
+      });
+      !b.collection
+        ? bad('the reader is told the size of the library', 'no collection block')
+        : b.collection.total !== pub.totalContent
+          ? bad('the reader is told the size of the library',
+              `the dashboard says ${n(b.collection.total)} and the home page says ${n(pub.totalContent)}`)
+          : b.departmentsCovered !== rows.length
+            ? bad('the reader is told the size of the library',
+                `${b.departmentsCovered} departments covered but ${rows.length} hold anything`)
+            : b.itemsRead > readEvents.length + 200
+              ? bad('the reader is told the size of the library',
+                  `claims ${b.itemsRead} items read against ${readEvents.length} distinct views`)
+              : ok('the reader is told the size of the library',
+                  `${n(b.collection.total)} items · ${b.departmentsCovered} departments · ${b.itemsRead} read`);
+    } else meh('the reader is told the size of the library', 'no subscriber');
 
     // The contradiction the librarian saw: two screens, one truth.
     const ov = (await get(`/api/institution/overview?institutionId=${inst.id}`, A)).body;

@@ -9,6 +9,7 @@ import {
   RefreshCw, Eye, AlertCircle, GraduationCap, Newspaper
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { Weeks, Bars, Collection } from '../charts';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -38,6 +39,16 @@ interface DashboardData {
   planType?: string;
   planName?: string;
   expiredSubscriptions?: any[];
+  membership?: { name: string; kind: 'Free' | 'Pro'; timed: boolean };
+  collection?: {
+    journals: number; articles: number; books: number; total: number;
+    byDepartment: { name: string; articles: number; books: number; other: number; total: number }[];
+  };
+  departmentsCovered?: number;
+  itemsRead?: number;
+  readByWeek?: number[];
+  readByDepartment?: { name: string; reads: number }[];
+  minutesRead?: number;
 }
 
 // ─── Content type icon helper ─────────────────────────────────────────────────
@@ -248,7 +259,9 @@ export function LMSDashboard() {
     return acc;
   }, {});
 
-  const unlockedCount = content.filter(c => !c.locked).length;
+  // Both of these describe the page of results in hand, not the library, so
+  // they may switch a filter on and off but must never be quoted as a figure:
+  // "20 Accessible" was this, on a library of 61,706.
   const lockedCount = content.filter(c => c.locked).length;
   
   const expiryDate = dashData?.nearestExpiry ? new Date(dashData.nearestExpiry) : null;
@@ -293,16 +306,14 @@ export function LMSDashboard() {
               )}
             </div>
           </div>
-          {/* Quick Stats */}
+          {/* What is open to them — the library's figure, not the page's.
+              This read "20 Accessible" on a library of 61,706, because it
+              counted the rows of the page that had just been fetched. */}
           <div className="hidden lg:flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-accent-soft text-accent px-4 py-2 rounded-md text-sm font-semibold border border-rule">
-              <CheckCircle size={15} /> {unlockedCount} Accessible
+            <div className="flex items-center gap-2 rounded-md border border-rule bg-accent-soft px-4 py-2 text-sm font-semibold text-accent">
+              <CheckCircle size={15} />
+              {loadingDash ? 'Loading…' : `${Number(dashData?.collection?.total ?? 0).toLocaleString()} items open to you`}
             </div>
-            {lockedCount > 0 && (
-              <div className="flex items-center gap-2 bg-alarm-soft text-alarm px-4 py-2 rounded-md text-sm font-semibold border border-alarm">
-                <Lock size={15} /> {lockedCount} Locked
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -343,21 +354,93 @@ export function LMSDashboard() {
         {/* These four were gradient tiles in four different hues. They are the
             headline figures of the page, so they stay big — but one surface,
             one rule, and the numbers set in mono so they line up. */}
+        {/* Four figures a member can act on. Three of these were wrong: the
+            first counted subscriptions on a product that no longer sells the
+            member one, the second counted the page instead of the library, and
+            the last counted the recent-activity list, which stops at six. */}
         <dl className="grid grid-cols-2 divide-rule overflow-hidden rounded-md border border-rule bg-surface sm:grid-cols-4 sm:divide-x">
           {[
-            { label: 'Active subscriptions', value: dashData?.activeSubscriptions ?? '—' },
-            { label: 'Accessible items',     value: unlockedCount },
-            { label: 'Departments covered',  value: dashData?.allowedDomains?.length ?? 0 },
-            { label: 'Items read',           value: dashData?.recentActivity?.length ?? 0 },
+            { label: 'Membership',        text: dashData?.membership?.name || 'Basic',
+              note: dashData?.membership?.timed ? 'Free · half an hour at a time' : 'No session limit' },
+            { label: 'Open to you',       value: dashData?.collection?.total ?? 0,
+              note: `${Number(dashData?.collection?.articles ?? 0).toLocaleString()} articles · ${Number(dashData?.collection?.books ?? 0).toLocaleString()} books` },
+            { label: 'Departments',       value: dashData?.departmentsCovered ?? 0, note: 'holding something you can open' },
+            { label: 'Items you have read', value: dashData?.itemsRead ?? 0,
+              note: (dashData?.minutesRead ?? 0) > 0 ? `${dashData?.minutesRead} minutes on the page` : undefined },
           ].map(st => (
             <div key={st.label} className="border-b border-rule p-4 sm:border-b-0">
               <dt className="font-mono text-[10.5px] uppercase tracking-wider text-faint">{st.label}</dt>
-              <dd className="tnum mt-1.5 font-mono text-[26px] leading-none text-ink">
-                {loadingDash ? <span className="text-faint">—</span> : Number(st.value ?? 0).toLocaleString()}
+              <dd className={`tnum mt-1.5 font-mono leading-none text-ink ${st.text ? 'text-[22px]' : 'text-[26px]'}`}>
+                {loadingDash ? <span className="text-faint">—</span>
+                  : st.text ?? Number(st.value ?? 0).toLocaleString()}
               </dd>
+              {!loadingDash && st.note && (
+                <p className="mt-1.5 text-[11px] leading-snug text-faint">{st.note}</p>
+              )}
             </div>
           ))}
         </dl>
+
+        {/* ── WHAT YOU READ, AND WHAT THERE IS TO READ ────────────────────── */}
+        {/* A dashboard for one reader has a hard problem: on the first day
+            there is no reading to show, and a page of empty frames is worse
+            than no page. So half of this is about the member and appears once
+            they have read something, and half is about the library and is
+            there from the first minute — which is also the half that tells
+            them where to go next. */}
+        {!loadingDash && (
+          <section className="space-y-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="font-serif text-[19px] font-medium text-ink">Your reading</h2>
+              {(dashData?.itemsRead ?? 0) > 0 && (
+                <button onClick={() => navigate('/dashboard/history')}
+                  className="font-mono text-[10.5px] uppercase tracking-wider text-accent hover:underline">
+                  View history
+                </button>
+              )}
+            </div>
+
+            {(dashData?.readByWeek?.length || dashData?.readByDepartment?.length) ? (
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div className="rounded-md border border-rule bg-surface p-5">
+                  <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Reading, by week</p>
+                  <p className="mt-1 text-[12px] text-faint">the last twelve weeks</p>
+                  <div className="mt-4">
+                    {dashData?.readByWeek?.length
+                      ? <Weeks data={dashData.readByWeek} />
+                      : <p className="py-8 text-center text-[13px] text-faint">Nothing opened in the last twelve weeks.</p>}
+                  </div>
+                </div>
+                <div className="rounded-md border border-rule bg-surface p-5">
+                  <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">What you read</p>
+                  <p className="mt-1 text-[12px] text-faint">by subject, since you joined</p>
+                  <div className="mt-4">
+                    {dashData?.readByDepartment?.length
+                      ? <Bars rows={dashData.readByDepartment.map(x => ({ name: x.name, value: x.reads }))} unit="opened" />
+                      : <p className="py-8 text-center text-[13px] text-faint">Nothing opened yet.</p>}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-md border border-rule bg-surface p-5">
+                <p className="text-[13.5px] text-ink-2">
+                  You have not opened anything yet. Once you do, this is where your reading shows up —
+                  week by week, and by subject.
+                </p>
+              </div>
+            )}
+
+            {dashData?.collection?.byDepartment?.length ? (
+              <div className="rounded-md border border-rule bg-surface p-5">
+                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Where the library is deep</p>
+                <p className="mt-1 text-[12px] text-faint">everything open to you, by department</p>
+                <div className="mt-4">
+                  <Collection rows={dashData.collection.byDepartment} />
+                </div>
+              </div>
+            ) : null}
+          </section>
+        )}
 
         {/* ── EXPIRED SUBSCRIPTION ALERT ── */}
         {dashData?.expiredSubscriptions && dashData.expiredSubscriptions.length > 0 && (
@@ -634,7 +717,7 @@ export function LMSDashboard() {
               <AlertCircle size={24} className="text-alarm" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-alarm">{lockedCount} items are locked</p>
+              <p className="text-sm font-bold text-alarm">Some items here are locked</p>
               <p className="text-xs text-alarm mt-0.5">Ask your administrator to extend your access</p>
             </div>
             <button onClick={() => navigate('/contact')} className="shrink-0 bg-alarm hover:opacity-90 text-white px-4 py-2 rounded-md text-xs font-bold transition-colors">
