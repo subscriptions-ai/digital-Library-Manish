@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { dashboardTitle, affiliation } from '../../lib/identity';
 import { useAllowance, countdown } from '../membership/ReadingClock';
 import { Link } from 'react-router-dom';
-import { AlertCircle, ArrowRight, BarChart3, BookOpen, Check, Loader2, Search, Sparkles, UserPlus, Users } from 'lucide-react';
+import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Check, Loader2, Search, Sparkles, TrendingUp, UserPlus, Users } from 'lucide-react';
 
 /**
  * A librarian's home.
@@ -47,21 +47,37 @@ type Overview = {
  * chart — there is nothing to compare and nothing to plot. The skill's own
  * answer to "is it even a chart" is no, and these are stat tiles.
  */
-function Stat({ label, value, note, accent = false }: {
-  label: string; value: number; note?: string; accent?: boolean;
+function Stat({ label, value, note, accent = false, to }: {
+  label: string; value: number; note?: string; accent?: boolean; to?: string;
 }) {
   return (
-    <div className={`rounded-2xl border p-5 ${accent
+    <div className={`group rounded-2xl border p-5 ${accent
       ? 'border-accent bg-accent text-white'
       : 'border-rule bg-surface'}`}>
-      <p className={`font-mono text-[10.5px] uppercase tracking-wider ${accent ? 'text-white/70' : 'text-faint'}`}>
-        {label}
-      </p>
-      <p className={`tnum mt-2 font-mono text-[30px] leading-none ${accent ? 'text-white' : 'text-ink'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <p className={`font-mono text-[10.5px] uppercase tracking-wider ${accent ? 'text-white/70' : 'text-faint'}`}>
+          {label}
+        </p>
+        {to && (
+          <Link
+            to={to}
+            aria-label={`Open ${label}`}
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${
+              accent ? 'bg-white/15 text-white hover:bg-white/25'
+                     : 'bg-surface-2 text-muted hover:bg-accent-soft hover:text-accent'}`}
+          >
+            <ArrowUpRight size={14} />
+          </Link>
+        )}
+      </div>
+      <p className={`tnum mt-3 font-mono text-[30px] leading-none ${accent ? 'text-white' : 'text-ink'}`}>
         {n(value)}
       </p>
       {note && (
-        <p className={`mt-2 text-[11.5px] ${accent ? 'text-white/80' : 'text-muted'}`}>{note}</p>
+        <span className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold ${
+          accent ? 'bg-white/15 text-white' : 'bg-accent-soft text-accent'}`}>
+          <TrendingUp size={12} /> {note}
+        </span>
       )}
     </div>
   );
@@ -308,10 +324,25 @@ export function LibrarianHome() {
       <header className="border-b border-rule bg-surface">
         <div className="mx-auto max-w-6xl px-5 py-8">
           {/* Named for whoever is looking at it, over the place it is about. */}
-          <p className={LABEL}>{dashboardTitle(profile as any)}</p>
-          <h1 className="mt-1 font-serif text-[27px] font-medium tracking-tight text-ink sm:text-[33px]">
-            {d.institution.name}
-          </h1>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className={LABEL}>{dashboardTitle(profile as any)}</p>
+              <h1 className="mt-1 font-serif text-[27px] font-medium tracking-tight text-ink sm:text-[33px]">
+                {d.institution.name}
+              </h1>
+            </div>
+            {/* The two things a librarian comes here to do. */}
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Link to="/institution/students"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover">
+                <UserPlus size={15} /> Add students
+              </Link>
+              <Link to="/institution/explore"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-rule bg-surface px-4 py-2.5 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-2">
+                <BookOpen size={15} /> Browse the library
+              </Link>
+            </div>
+          </div>
           {affiliation(profile as any) && (
             <p className="mt-1 text-[13px] text-muted">
               {profile?.displayName}{profile?.displayName ? ' · ' : ''}{affiliation(profile as any)}
@@ -382,11 +413,11 @@ export function LibrarianHome() {
             </div>
           )}
           <div className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Journals" value={col.journals} accent
+            <Stat label="Journals" value={col.journals} accent to="/institution/explore"
               note={d.newJournals.length ? `${d.newJournals.length} added lately` : undefined} />
-            <Stat label="Articles" value={col.articles} />
-            <Stat label="Books" value={col.books} />
-            <Stat label="Departments" value={depts.length} />
+            <Stat label="Articles" value={col.articles} to="/institution/explore" />
+            <Stat label="Books" value={col.books} to="/institution/explore?kind=books" />
+            <Stat label="Departments" value={depts.length} to="/institution/access" />
           </div>
 
           {/* Reading, who is doing it, and how long is left — the three things a

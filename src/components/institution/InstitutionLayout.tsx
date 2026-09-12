@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, LogOut, ChevronLeft, Menu, Activity, UserCircle, CreditCard, BookOpen, MessageSquareHeart } from 'lucide-react';
+import { Activity, BookOpen, ChevronLeft, CreditCard, LayoutDashboard, LogOut, Menu, MessageSquareHeart, Search, UserCircle, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -17,6 +17,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   const location = useLocation();
   const { profile, logout, loading, isInstitutionAdmin } = useAuth();
   const { allowance, msLeft, msUntil } = useAllowance();
+  const [q, setQ] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
@@ -51,10 +52,13 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   return (
     <div className="min-h-screen bg-surface-2 flex">
       {/* Sidebar */}
-      <aside className={`bg-ink text-surface flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+      {/* A light rail, not a dark slab. The dark one read as a different piece
+          of software bolted to the left of this one; against a light page the
+          weight belongs on the content, not on the furniture. */}
+      <aside className={`flex shrink-0 flex-col border-r border-rule bg-surface transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
-            <div className="flex items-center gap-2.5 font-extrabold tracking-tight min-w-0">
+            <div className="flex min-w-0 items-center gap-2.5 font-extrabold tracking-tight text-ink">
               {profile.institutionProfile?.logoUrl ? (
                 <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 bg-surface shadow-sm border border-accent/30">
                   <img src={profile.institutionProfile.logoUrl} alt="Logo" className="w-full h-full object-cover" />
@@ -67,12 +71,13 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
               <span className="text-sm truncate">{profile.organization || 'INSTITUTION'}</span>
             </div>
           )}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-surface/10 rounded-lg text-faint">
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="rounded-lg p-1.5 text-muted hover:bg-surface-2">
             {isSidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 space-y-1 pb-4 mt-4">
+        <nav className="mt-2 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+          {isSidebarOpen && <p className="px-3 pb-2 pt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">Menu</p>}
           <NavButton
             icon={<LayoutDashboard size={18} />}
             label="Dashboard Overview"
@@ -133,7 +138,25 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           )}
         </nav>
 
-        <div className="pt-4 pb-5 px-3 border-t border-white/10 space-y-0.5">
+        {/* The reference put a promotion here; ours is the thing we actually
+            want them to take, and only while it would mean something. */}
+        {isSidebarOpen && allowance?.timed && (
+          <div className="mx-3 mb-3 rounded-2xl bg-accent p-4 text-white">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/70">Free membership</p>
+            <p className="mt-1.5 text-[13px] font-semibold leading-snug">Read without a limit</p>
+            <p className="mt-1 text-[11.5px] leading-snug text-white/80">
+              Pro removes the half-hour sessions, for you and your students.
+            </p>
+            <button
+              onClick={() => navigate('/dashboard/pro')}
+              className="mt-3 w-full rounded-xl bg-white/15 py-2 text-[12px] font-bold hover:bg-white/25"
+            >
+              Apply for Pro
+            </button>
+          </div>
+        )}
+
+        <div className="space-y-0.5 border-t border-rule px-3 pb-5 pt-4">
           <NavButton icon={<LogOut size={18} />} label="Sign Out" active={false} collapsed={!isSidebarOpen}
             onClick={handleSignOut} danger />
                   <div className={`flex items-center gap-3 px-3 py-2 ${!isSidebarOpen && 'justify-center'} mt-2`}>
@@ -151,8 +174,8 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
       </aside>
 
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-surface-2">
-        <header className="bg-surface/80 backdrop-blur-md border-b border-white z-10 sticky top-0 h-16 flex items-center justify-between px-8 shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-          <h1 className="text-lg font-bold text-ink">
+        <header className="sticky top-0 z-10 flex h-[68px] shrink-0 items-center justify-between gap-6 border-b border-rule bg-surface px-6 lg:px-8">
+          <h1 className="shrink-0 text-[17px] font-bold text-ink">
             {location.pathname === '/institution' ? dashboardTitle(profile as any)
             : location.pathname.startsWith('/institution/students') ? 'Student Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
@@ -163,17 +186,39 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             : location.pathname === '/institution/feedbacks' ? 'My Feedbacks'
             : 'Dashboard'}
           </h1>
-          <div className="flex items-center gap-3">
-            {/* The same clock the readers carry. A librarian on the free
-                allowance is on it too, and a limit nobody can see is
-                indistinguishable from a site that has stopped working. */}
+          {/* Search where the hand expects it, and the member named on the
+              right — the two things every dashboard of this shape has and this
+              one did not. */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); if (q.trim()) navigate(`/institution/explore?search=${encodeURIComponent(q.trim())}`); }}
+            className="hidden min-w-0 flex-1 items-center gap-2 rounded-xl border border-rule bg-surface-2 px-3 py-2 md:flex lg:max-w-md"
+          >
+            <Search size={16} className="shrink-0 text-faint" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search journals, books, subjects…"
+              className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-faint"
+            />
+          </form>
+
+          <div className="flex shrink-0 items-center gap-3">
             <ReadingClock allowance={allowance} msLeft={msLeft} msUntil={msUntil} />
+            <div className="hidden items-center gap-2.5 border-l border-rule pl-3 sm:flex">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-bold text-accent">
+                {(profile.displayName || profile.organization || 'IN').substring(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-[13px] font-semibold text-ink">{profile.displayName || 'Librarian'}</p>
+                <p className="max-w-[160px] truncate text-[11px] text-faint">{profile.email}</p>
+              </div>
+            </div>
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-alarm bg-alarm-soft hover:bg-alarm-soft rounded-lg transition-colors"
+              title="Sign out"
+              className="rounded-xl border border-rule p-2 text-muted transition-colors hover:bg-alarm-soft hover:text-alarm"
             >
               <LogOut size={16} />
-              <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </header>
@@ -191,15 +236,19 @@ function NavButton({ icon, label, active, collapsed, onClick, danger = false }: 
 }) {
   return (
     <button onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-semibold transition-all ${
-        active ? 'bg-accent text-white shadow-md shadow-indigo-900/20'
-        : danger ? 'text-faint hover:bg-alarm-soft hover:text-alarm'
-        : 'text-faint hover:bg-surface/5 hover:text-white'
-      } ${collapsed && 'justify-center'}`}
+      className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold transition-colors ${
+        active ? 'bg-accent-soft text-accent'
+        : danger ? 'text-muted hover:bg-alarm-soft hover:text-alarm'
+        : 'text-muted hover:bg-surface-2 hover:text-ink'
+      } ${collapsed ? 'justify-center' : ''}`}
       title={collapsed ? label : undefined}
     >
+      {/* The mark that says where you are, on the edge where the eye runs down. */}
+      {active && !collapsed && (
+        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-accent" />
+      )}
       <div className="shrink-0">{icon}</div>
-      {!collapsed && <span>{label}</span>}
+      {!collapsed && <span className="truncate">{label}</span>}
     </button>
   );
 }
