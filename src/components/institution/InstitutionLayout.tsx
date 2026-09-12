@@ -52,10 +52,14 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   return (
     <div className="min-h-screen bg-surface-2 flex">
       {/* Sidebar */}
+      {/* It stays put. The rail scrolled away with the page, taking Sign Out,
+          the member block and the Pro card off screen on exactly the pages
+          long enough to need them. One viewport tall, pinned to the top, and
+          the nav scrolls inside itself if it ever outgrows the screen. */}
       {/* A light rail, not a dark slab. The dark one read as a different piece
           of software bolted to the left of this one; against a light page the
           weight belongs on the content, not on the furniture. */}
-      <aside className={`flex shrink-0 flex-col border-r border-rule bg-surface transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+      <aside className={`sticky top-0 flex h-screen shrink-0 flex-col self-start border-r border-rule bg-surface transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
             <div className="flex min-w-0 items-center gap-2.5 font-extrabold tracking-tight text-ink">

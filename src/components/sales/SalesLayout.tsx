@@ -106,7 +106,9 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-6 flex-1 flex flex-col md:flex-row gap-6">
-        <aside className="w-full md:w-64 shrink-0 space-y-2">
+        {/* Stacked above the content on a phone, pinned beside it on a desktop —
+            clear of the sticky header rather than under it. */}
+        <aside className="w-full space-y-2 md:sticky md:top-20 md:w-64 md:shrink-0 md:self-start">
           <button
             onClick={() => navigate('/sales')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${

@@ -53,7 +53,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <aside className={`bg-emerald-950 text-white flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+      <aside className={`sticky top-0 h-screen self-start bg-emerald-950 text-white flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
             <div className="flex items-center gap-2.5 font-extrabold tracking-tight">
