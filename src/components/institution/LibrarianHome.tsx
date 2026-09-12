@@ -352,12 +352,12 @@ export function LibrarianHome() {
             {/* The whole of it, counted once — articles, books and everything on
                 the archived shelf — rather than two of its parts. */}
             {sub.onFreeAllowance
-              ? <>The whole library — <b className="text-ink">{n(col.total)} items</b> across <b className="text-ink">{n(col.journals)} journals</b> — open to you and your students, half an hour at a time.</>
+              ? <>The whole library — <b className="text-ink">{n(col.total)} items</b> — open to you and your students, half an hour at a time.</>
               : sub.fullAccess
-              ? <>Full access to <b className="text-ink">{n(col.total)} items</b> across <b className="text-ink">{n(col.journals)} journals</b>.</>
+              ? <>Full access to <b className="text-ink">{n(col.total)} items</b>.</>
               : depts.length
                 ? <>
-                    <b className="text-ink">{n(col.journals)} journals</b> and <b className="text-ink">{n(col.articles)} articles</b>
+                    <b className="text-ink">{n(col.total)} items</b>
                     {' '}across {depts.length} {depts.length === 1 ? 'department' : 'departments'}, for {n(st.total)} {st.total === 1 ? 'student' : 'students'}.
                   </>
                 : <>No departments are covered by an active subscription yet.</>}
@@ -415,7 +415,7 @@ export function LibrarianHome() {
             </div>
           )}
           <div className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Journals" value={col.journals} accent to="/institution/explore"
+            <Stat label="Items" value={col.total} accent to="/institution/explore"
               note={d.newJournals.length ? `${d.newJournals.length} added lately` : undefined} />
             <Stat label="Articles" value={col.articles} to="/institution/explore" />
             <Stat label="Books" value={col.books} to="/institution/explore?kind=books" />
