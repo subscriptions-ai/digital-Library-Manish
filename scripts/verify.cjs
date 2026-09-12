@@ -313,6 +313,47 @@ const catalogueSize = async () => {
     }
   }
 
+  // ── the people who were already paying ────────────────────────────────────
+  console.log('\nSubscribers');
+  {
+    // The clock is lifted by *having an active subscription*, not by a flag
+    // somebody has to set — so nobody needed converting to Pro when the free
+    // tier arrived. That is a good design only for as long as it stays true,
+    // and the cost of it quietly ceasing to be true is a paying customer
+    // watching a thirty-minute timer. So it is asked, of every one of them,
+    // rather than assumed.
+    const live = await p.subscription.findMany({
+      where: { status: 'Active', endDate: { gt: new Date() }, userId: { not: null } },
+      select: { userId: true, planName: true, endDate: true },
+    });
+    if (!live.length) meh('no paying member is on the clock', 'no live subscriptions');
+    else {
+      const timed = [];
+      for (const sub of live) {
+        const u = await p.user.findUnique({
+          where: { id: sub.userId }, select: { id: true, email: true, role: true, institutionId: true },
+        });
+        if (!u) continue;
+        const a = (await get('/api/me/allowance', tok(u))).body || {};
+        if (a.timed) timed.push(`${u.email} (${sub.planName || 'a plan'})`);
+      }
+      timed.length
+        ? bad('no paying member is on the clock', `${timed.length} on the clock: ${timed.slice(0, 3).join(', ')}`)
+        : ok('no paying member is on the clock', `${live.length} live subscriptions checked`);
+    }
+
+    // A subscription attached to nobody is a subscription somebody paid for and
+    // nobody holds — the shape /api/domain-request used to create. Those
+    // members are on the clock and there is no screen on which that looks like
+    // anything but a bug.
+    const orphans = await p.subscription.count({
+      where: { status: 'Active', endDate: { gt: new Date() }, userId: null, institutionId: null },
+    });
+    orphans === 0
+      ? ok('every live subscription belongs to somebody')
+      : bad('every live subscription belongs to somebody', `${orphans} attached to neither a member nor an institution`);
+  }
+
   // ── the admin's members screen ────────────────────────────────────────────
   console.log('\nMembers');
   {
