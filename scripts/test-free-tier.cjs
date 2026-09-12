@@ -1,0 +1,239 @@
+#!/usr/bin/env node
+/**
+ * The free member's clock, against the running server.
+ *
+ *   node scripts/test-free-tier.cjs                 # http://localhost:3000
+ *   node scripts/test-free-tier.cjs https://host
+ *
+ * The table in scripts/test-allowance.ts proves the rules. This proves they are
+ * actually wired to the doors: that the reader and both proxies refuse when the
+ * time is up, that signing out stops the clock, that a subscription lifts it,
+ * and that nobody else is touched by any of it.
+ *
+ * It creates one throwaway member, moves its clock by editing its own rows
+ * rather than waiting two hours, and deletes everything it made at the end —
+ * including on failure.
+ */
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { PrismaClient } = require('@prisma/client');
+const p = new PrismaClient();
+
+const BASE = process.argv[2] || 'http://localhost:3000';
+const SECRET = process.env.JWT_SECRET || 'your-fallback-secret-for-dev-only';
+const EMAIL = 'free-clock-test@example.invalid';
+const PASSWORD = 'Test-Clock-9f2a!';
+const MIN = 60_000;
+
+const G = '\x1b[32m', R = '\x1b[31m', D = '\x1b[2m', O = '\x1b[0m';
+let pass = 0; const failures = [];
+const ok = (n, d = '') => { pass++; console.log(`  ${G}pass${O}  ${n}${d ? D + '  ' + d + O : ''}`); };
+const bad = (n, d) => { failures.push(`${n} — ${d}`); console.log(`  ${R}FAIL${O}  ${n}\n        ${R}${d}${O}`); };
+const is = (n, got, want) => (JSON.stringify(got) === JSON.stringify(want)
+  ? ok(n) : bad(n, `want ${JSON.stringify(want)}, got ${JSON.stringify(got)}`));
+
+const get = async (path, token) => {
+  const r = await fetch(BASE + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  let body = null; try { body = await r.json(); } catch { /* bytes, not json */ }
+  return { status: r.status, body };
+};
+const post = async (path, token, data) => {
+  const r = await fetch(BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(data || {}),
+  });
+  let body = null; try { body = await r.json(); } catch { /* */ }
+  return { status: r.status, body };
+};
+
+let user = null;
+
+const wipeSessions = () => p.freeSession.deleteMany({ where: { userId: user.id } });
+const istDay = at => new Date(at + 5.5 * 3600e3).toISOString().slice(0, 10);
+
+/** Put the member in a given situation without waiting for it to arrive. */
+const running = async minutesAgo => {
+  await wipeSessions();
+  const at = new Date(Date.now() - minutesAgo * MIN);
+  await p.freeSession.create({
+    data: { userId: user.id, day: istDay(at.getTime()), number: 1, runningSince: at, startedAt: at },
+  });
+};
+const completed = async (count, holdEndedMinutesAgo) => {
+  await wipeSessions();
+  const day = istDay(Date.now());
+  for (let n = 1; n <= count; n++) {
+    const done = new Date(Date.now() - (holdEndedMinutesAgo + 120) * MIN - (count - n) * MIN);
+    await p.freeSession.create({
+      data: {
+        userId: user.id, day, number: n, usedMs: 30 * MIN, startedAt: done,
+        completedAt: done, holdUntil: new Date(done.getTime() + 120 * MIN),
+      },
+    });
+  }
+};
+
+(async () => {
+  console.log(`\nThe free member's clock, against ${BASE}\n${'─'.repeat(64)}`);
+
+  const article = await p.article.findFirst({
+    where: { status: 'Published', pdfUrl: { not: null } }, select: { id: true },
+  });
+  if (!article) { console.log('No readable article to open — nothing to test against.'); return; }
+
+  await p.user.deleteMany({ where: { email: EMAIL } });
+  user = await p.user.create({
+    data: {
+      email: EMAIL, password: await bcrypt.hash(PASSWORD, 10),
+      displayName: 'Free Clock Test', role: 'Subscriber', status: 'Active',
+      interestedDomains: ['Nursing', 'Law'],
+    },
+  });
+  const token = jwt.sign({ uid: user.id, email: EMAIL, role: 'Subscriber' }, SECRET, { expiresIn: '1h' });
+  const view = () => get(`/api/content/${article.id}/view`, token);
+
+  // ── arriving ──────────────────────────────────────────────────────────────
+  console.log('\nArriving');
+  {
+    const a = await get('/api/me/allowance', token);
+    is('a new member is on the clock but has not started it',
+      [a.body?.plan, a.body?.timed, a.body?.state], ['Free', true, 'available']);
+    const after = await p.freeSession.count({ where: { userId: user.id } });
+    is('asking the time did not start it', after, 0);
+  }
+  {
+    const r = await post('/api/auth/login', null, { email: EMAIL, password: PASSWORD });
+    if (r.status !== 200) bad('signing in works', `HTTP ${r.status}`);
+    else {
+      await new Promise(r2 => setTimeout(r2, 400));    // the clock starts alongside the reply
+      const a = await get('/api/me/allowance', token);
+      is('signing in starts the clock', a.body?.state, 'running');
+      ok('and it is the first of the day', `session ${a.body?.number} of ${a.body?.sessionsPerDay}`);
+    }
+  }
+
+  // ── the doors ─────────────────────────────────────────────────────────────
+  console.log('\nWhile the clock runs');
+  await running(5);
+  {
+    const r = await view();
+    is('the reader opens', r.status, 200);
+  }
+
+  console.log('\nWhen the time is up');
+  await running(31);                                   // ran out a minute ago
+  {
+    const r = await view();
+    is('the reader is refused', [r.status, r.body?.code, r.body?.state], [403, 'FREE_LIMIT', 'waiting']);
+    r.body?.nextOpensAt
+      ? ok('and it says when the next session opens', new Date(r.body.nextOpensAt).toLocaleTimeString())
+      : bad('and it says when the next session opens', 'no nextOpensAt');
+  }
+  {
+    // The bytes come through the proxies. A gate only on the reader would be
+    // no gate at all.
+    const pdf = await get(`/api/content/${article.id}/proxy-pdf`, token);
+    is('the pdf proxy is refused too', [pdf.status, pdf.body?.code], [403, 'FREE_LIMIT']);
+    const frame = await get(`/api/content/${article.id}/proxy-frame?token=${token}`, token);
+    is('and so is the page proxy', frame.status, 403);
+  }
+
+  console.log('\nAfter the wait');
+  await completed(1, 1);                               // one done, wait ended a minute ago
+  {
+    const a = await get('/api/me/allowance', token);
+    is('nothing has started on its own', a.body?.state, 'available');
+    const r = await view();
+    is('opening something starts the second session', r.status, 200);
+    const n = await p.freeSession.count({ where: { userId: user.id } });
+    is('and it is recorded as the second', n, 2);
+  }
+
+  console.log("\nThe day's four");
+  await completed(4, 1);
+  {
+    const r = await view();
+    is('the fifth is refused', [r.status, r.body?.state], [403, 'spent']);
+    const a = await get('/api/me/allowance', token);
+    is('two hours are accounted for', a.body?.usedTodayMs / MIN, 120);
+    const midnight = new Date(a.body?.nextOpensAt);
+    is('and it comes back after midnight', midnight > new Date(), true);
+  }
+
+  console.log('\nSigning out');
+  await running(10);
+  {
+    const r = await post('/api/auth/logout', token);
+    is('the server is told', r.status, 200);
+    const row = await p.freeSession.findFirst({ where: { userId: user.id } });
+    is('the clock is stopped', row.runningSince, null);
+    is('and the ten minutes used are banked', Math.round(row.usedMs / MIN), 10);
+    const a = await get('/api/me/allowance', token);
+    is('twenty are kept for them', [a.body?.state, Math.round(a.body?.remainingMs / MIN)], ['paused', 20]);
+  }
+  {
+    // Signing out must not become a way to read for nothing.
+    const r = await view();
+    is('reading with a kept token starts it again', r.status, 200);
+    const row = await p.freeSession.findFirst({ where: { userId: user.id } });
+    row.runningSince ? ok('the clock is running again') : bad('the clock is running again', 'still stopped');
+  }
+
+  // ── who the clock does not apply to ───────────────────────────────────────
+  console.log('\nWho is not on the clock');
+  await completed(4, 1);                               // out of time, if it applied
+  const sub = await p.subscription.create({
+    data: {
+      userId: user.id, planName: 'Pro membership', planType: 'Custom', durationMonths: 12,
+      status: 'Active', endDate: new Date(Date.now() + 365 * 864e5),
+    },
+  });
+  {
+    const a = await get('/api/me/allowance', token);
+    is('a Pro member is not timed', [a.body?.plan, a.body?.timed], ['Unlimited', false]);
+    const r = await view();
+    is('and reads with the day already spent', r.status, 200);
+  }
+  await p.subscription.delete({ where: { id: sub.id } });
+  {
+    const r = await view();
+    is('and is timed again the moment it lapses', [r.status, r.body?.state], [403, 'spent']);
+  }
+  {
+    const student = await p.user.findFirst({
+      where: { role: 'Student', institutionId: { not: null } }, select: { id: true, email: true, role: true, institutionId: true },
+    });
+    if (!student) console.log(`  ${D}skip  institution members — none to test with${O}`);
+    else {
+      const st = jwt.sign({ uid: student.id, email: student.email, role: 'Student', institutionId: student.institutionId }, SECRET, { expiresIn: '1h' });
+      const a = await get('/api/me/allowance', st);
+      is('an institution member is untouched', [a.body?.plan, a.body?.timed], ['Unlimited', false]);
+    }
+  }
+
+  console.log('\nWhat a member may see');
+  {
+    const a = await get('/api/library/articles?limit=5', token);
+    const all = await get('/api/library/articles?limit=5', null);
+    is('a free member sees the whole library, not a set of domains',
+      a.body?.total, all.body?.total);
+  }
+})()
+  .catch(e => bad('the run itself', String(e?.message || e)))
+  .finally(async () => {
+    if (user) {
+      await p.freeSession.deleteMany({ where: { userId: user.id } }).catch(() => {});
+      await p.subscription.deleteMany({ where: { userId: user.id } }).catch(() => {});
+      await p.readEvent.deleteMany({ where: { userId: user.id } }).catch(() => {});
+      await p.libraryEvent.deleteMany({ where: { userId: user.id } }).catch(() => {});
+      await p.user.delete({ where: { id: user.id } }).catch(() => {});
+      const left = await p.user.count({ where: { email: EMAIL } });
+      left === 0 ? ok('the test member is cleaned up') : bad('the test member is cleaned up', 'still there');
+    }
+    console.log(`\n${'─'.repeat(64)}`);
+    console.log(`${pass} passed · ${failures.length ? R : ''}${failures.length} failed${O}`);
+    failures.forEach(f => console.log('  · ' + f));
+    await p.$disconnect();
+    process.exit(failures.length ? 1 : 0);
+  });

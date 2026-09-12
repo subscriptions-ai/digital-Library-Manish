@@ -24,6 +24,7 @@ import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { DOMAINS } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
+import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
   eBody, eH1, eP, eMuted, eBtn, eCard, eRows, eQuote,
@@ -656,11 +657,53 @@ async function startServer() {
         { expiresIn: '24h' }
       );
       
+      // The clock starts when they sign in. Not awaited: a member must never be
+      // kept waiting at the door by the bookkeeping, and if it fails the next
+      // thing they open starts it anyway.
+      if (userObj.role === 'Subscriber' && !userObj.institutionId) {
+        prisma.subscription
+          .count({ where: { userId: userObj.id, status: 'Active', endDate: { gt: new Date() } } })
+          .then(n => (n === 0 ? allowanceFor(prisma, userObj.id, { start: true }) : null))
+          .catch(() => {});
+      }
+
       const { password: _, ...profile } = userObj;
       res.json({ token, user: profile });
     } catch (error) {
       console.error("Login Error:", error);
       res.status(500).json({ error: "Failed to login" });
+    }
+  });
+
+  /**
+   * Signing out — which the server has never been told about until now.
+   *
+   * Logging out only cleared the browser, so the one action that stops the
+   * clock left no trace on the side that keeps it. It stops the clock and banks
+   * what is left of the stretch for when they return.
+   *
+   * The token itself stays valid until it expires, as it always has, so this is
+   * not a revocation; anything done with a kept token starts the clock again.
+   */
+  app.post("/api/auth/logout", authenticateJWT, async (req: any, res) => {
+    try { await pauseFor(prisma, req.user.uid); }
+    catch (e) { console.error('logout: could not stop the clock', e); }
+    res.json({ ok: true });
+  });
+
+  /**
+   * How much reading time is left. Polled by the screen, so it must never spend
+   * any: it asks with `start: false`, which is the difference between a clock
+   * and a meter that reads itself.
+   */
+  app.get("/api/me/allowance", authenticateJWT, async (req: any, res) => {
+    try {
+      if (!(await isFreeMember(req))) return res.json({ plan: 'Unlimited', timed: false });
+      const a = await allowanceFor(prisma, req.user.uid, { start: false });
+      res.json({ plan: 'Free', timed: true, sessionMs: SESSION_MS, sessionsPerDay: SESSIONS_PER_DAY, ...a });
+    } catch (e: any) {
+      console.error('allowance:', e?.message);
+      res.status(500).json({ error: "Failed to read your reading time" });
     }
   });
 
@@ -791,6 +834,61 @@ async function startServer() {
   const requireSuperAdmin = (req: any, res: express.Response, next: express.NextFunction) => {
     if (req.user?.role !== "SuperAdmin") return res.status(403).json({ error: "Access denied" });
     next();
+  };
+
+  /**
+   * Whether the free member's clock applies to whoever is asking.
+   *
+   * Derived rather than stored, and that is the point: approving a Pro
+   * application creates a subscription, which lifts the clock the same instant
+   * without anyone editing a flag — and when that subscription ends the member
+   * falls back to the free allowance rather than out of the library altogether.
+   *
+   * Institution members are governed by their librarian's agreement and are not
+   * touched by any of this.
+   */
+  const isFreeMember = async (req: any): Promise<boolean> => {
+    if (req._isFreeMember !== undefined) return req._isFreeMember;
+    if (!req.user?.uid || req.user.role !== 'Subscriber') return (req._isFreeMember = false);
+    const u = await prisma.user.findUnique({
+      where: { id: req.user.uid },
+      select: {
+        role: true, institutionId: true,
+        subscriptions: {
+          where: { status: 'Active', endDate: { gt: new Date() } },
+          select: { id: true }, take: 1,
+        },
+      },
+    });
+    return (req._isFreeMember =
+      !!u && u.role === 'Subscriber' && !u.institutionId && u.subscriptions.length === 0);
+  };
+
+  /**
+   * The gate on full text. Answers false having already replied.
+   *
+   * It is applied to every route that hands over the document itself, not only
+   * to the one the reader calls first — the two proxies stream the bytes, and a
+   * gate on the opening request alone would be bypassed by asking them directly.
+   *
+   * Opening something to read is one of the two things that sets the clock
+   * going, the other being signing in. Asking how much time is left is not.
+   */
+  const passesFreeClock = async (req: any, res: any): Promise<boolean> => {
+    if (!(await isFreeMember(req))) return true;
+    const a = await allowanceFor(prisma, req.user.uid, { start: true });
+    if (a.allowed) return true;
+    res.status(403).json({
+      code: 'FREE_LIMIT',
+      state: a.state,
+      error: a.state === 'spent'
+        ? "You have used today's two hours. Your next session begins after midnight."
+        : "Your reading session has ended. The next one opens shortly.",
+      nextOpensAt: a.nextOpensAt,
+      usedTodayMs: a.usedTodayMs,
+      sessionsLeft: a.sessionsLeft,
+    });
+    return false;
   };
 
   const requireAdminOrManager = (req: any, res: any, next: any) => {
@@ -1330,7 +1428,11 @@ async function startServer() {
   const checkContentAccess = (content: any, userRole: string, activeSubscriptions: any[]) => {
     // Admins, content managers, and institution librarians see everything they cover
     if (userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'ContentManager') return true;
-    
+
+    // As above: a self-registered member may open anything. The clock decides
+    // for how long; this decides what, and for them the answer is everything.
+    if (userRole === 'Subscriber') return true;
+
     return activeSubscriptions.some(sub => {
       const d: string[] = Array.isArray(sub.domains)
         ? sub.domains as string[]
@@ -1912,6 +2014,10 @@ async function startServer() {
       const resolved = await resolveViewable(contentId, isAdminRole);
       if (!resolved) return res.status(404).json({ error: "Content not found" });
 
+      // Checked after the item is resolved, so an id that does not exist still
+      // answers "not found" rather than "out of time".
+      if (!(await passesFreeClock(req, res))) return;
+
       // New-dataset OA items are freely viewable; legacy content uses subscription checks.
       const isOA = ['OpenAccess', 'Free'].includes(resolved.accessType || '');
       let hasAccess = true;
@@ -1982,6 +2088,11 @@ async function startServer() {
       if (!resolved || !resolved.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
+
+      // The document itself passes through here, so the clock is checked here
+      // too. Gating only the request that opens the reader would leave this one
+      // answering to anybody who asked it directly.
+      if (!(await passesFreeClock(req, res))) return;
       const content: any = resolved.item;
       content.fileUrl = resolved.fileUrl;
       const isOA = ['OpenAccess', 'Free'].includes(resolved.accessType || '');
@@ -2093,6 +2204,11 @@ async function startServer() {
       if (!resolved || !resolved.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
+
+      // The document itself passes through here, so the clock is checked here
+      // too. Gating only the request that opens the reader would leave this one
+      // answering to anybody who asked it directly.
+      if (!(await passesFreeClock(req, res))) return;
       const content: any = { ...resolved.item, fileUrl: resolved.fileUrl };
 
       const isOA = ['OpenAccess', 'Free'].includes(resolved.accessType || '');
@@ -5302,6 +5418,13 @@ async function startServer() {
     let ud: any = null;
     try { ud = jwt.verify(authHeader.split(' ')[1], JWT_SECRET); } catch { return null; }
     if (['SuperAdmin', 'Admin', 'ContentManager'].includes(ud.role)) return null;
+
+    // Individuals are no longer handed a set of domains. Every self-registered
+    // member sees the whole library; what separates free from paid is how long
+    // they may read, not what they may read. Institutions are unchanged — their
+    // scope is the agreement their librarian signed.
+    if (ud.role === 'Subscriber') return null;
+
     const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
     const domains = new Set<string>();
     for (const s of subs) {

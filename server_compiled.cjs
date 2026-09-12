@@ -10792,6 +10792,177 @@ async function runIngestionPass(departments, opts = {}) {
   }
 }
 
+// src/lib/freeAllowance.ts
+var SESSION_MS = 30 * 6e4;
+var HOLD_MS = 2 * 60 * 6e4;
+var SESSIONS_PER_DAY = 4;
+var IST_OFFSET_MS = 5.5 * 60 * 6e4;
+function istDay(at) {
+  return new Date(Number(at) + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+function nextIstMidnight(at) {
+  const shifted = new Date(Number(at) + IST_OFFSET_MS);
+  shifted.setUTCHours(0, 0, 0, 0);
+  return new Date(shifted.getTime() + 864e5 - IST_OFFSET_MS);
+}
+var liveUsed = (s2, now) => s2.usedMs + (s2.runningSince ? Math.max(0, now - Number(s2.runningSince)) : 0);
+function decide(sessions, nowAt, opts = {}) {
+  const now = Number(nowAt);
+  const writes = [];
+  const sorted = [...sessions].sort((a, b) => a.day.localeCompare(b.day) || a.number - b.number);
+  let current = sorted.length ? { ...sorted[sorted.length - 1] } : null;
+  if (current && !current.completedAt && liveUsed(current, now) >= SESSION_MS) {
+    const completedAt = current.runningSince ? new Date(Number(current.runningSince) + (SESSION_MS - current.usedMs)) : new Date(now);
+    const holdUntil = new Date(completedAt.getTime() + HOLD_MS);
+    writes.push({ op: "complete", id: current.id, completedAt, holdUntil });
+    current = { ...current, usedMs: SESSION_MS, runningSince: null, completedAt, holdUntil };
+    sorted[sorted.length - 1] = current;
+  }
+  const today = istDay(now);
+  const todays = sorted.filter((s2) => s2.day === today);
+  const usedTodayMs = todays.reduce((n, s2) => n + liveUsed(s2, now), 0);
+  const sessionsToday = todays.length;
+  const base = {
+    usedTodayMs,
+    sessionsToday,
+    sessionsLeft: Math.max(0, SESSIONS_PER_DAY - sessionsToday),
+    endsAt: null,
+    nextOpensAt: null,
+    remainingMs: 0
+  };
+  if (current && !current.completedAt) {
+    const remainingMs = SESSION_MS - liveUsed(current, now);
+    if (current.runningSince) {
+      return {
+        allowance: {
+          ...base,
+          state: "running",
+          allowed: true,
+          number: current.number,
+          endsAt: new Date(now + remainingMs),
+          remainingMs
+        },
+        writes
+      };
+    }
+    if (opts.start) {
+      writes.push({ op: "resume", id: current.id, at: new Date(now) });
+      return {
+        allowance: {
+          ...base,
+          state: "running",
+          allowed: true,
+          number: current.number,
+          endsAt: new Date(now + remainingMs),
+          remainingMs
+        },
+        writes
+      };
+    }
+    return {
+      allowance: { ...base, state: "paused", allowed: false, number: current.number, remainingMs },
+      writes
+    };
+  }
+  if (current?.holdUntil && now < Number(current.holdUntil)) {
+    return {
+      allowance: {
+        ...base,
+        state: "waiting",
+        allowed: false,
+        number: current.number,
+        nextOpensAt: current.holdUntil
+      },
+      writes
+    };
+  }
+  if (sessionsToday >= SESSIONS_PER_DAY) {
+    return {
+      allowance: {
+        ...base,
+        state: "spent",
+        allowed: false,
+        number: SESSIONS_PER_DAY,
+        nextOpensAt: nextIstMidnight(now)
+      },
+      writes
+    };
+  }
+  const number = sessionsToday + 1;
+  if (opts.start) {
+    writes.push({ op: "create", day: today, number, at: new Date(now) });
+    return {
+      allowance: {
+        ...base,
+        state: "running",
+        allowed: true,
+        number,
+        sessionsToday: sessionsToday + 1,
+        sessionsLeft: Math.max(0, SESSIONS_PER_DAY - (sessionsToday + 1)),
+        endsAt: new Date(now + SESSION_MS),
+        remainingMs: SESSION_MS
+      },
+      writes
+    };
+  }
+  return {
+    allowance: { ...base, state: "available", allowed: false, number, remainingMs: SESSION_MS },
+    writes
+  };
+}
+function decidePause(sessions, nowAt) {
+  const now = Number(nowAt);
+  const { writes } = decide(sessions, now, { start: false });
+  const sorted = [...sessions].sort((a, b) => a.day.localeCompare(b.day) || a.number - b.number);
+  const current = sorted.length ? sorted[sorted.length - 1] : null;
+  if (!current || current.completedAt || !current.runningSince) return writes;
+  if (writes.some((w) => w.op === "complete")) return writes;
+  return [...writes, { op: "pause", id: current.id, usedMs: Math.min(SESSION_MS, liveUsed(current, now)) }];
+}
+async function allowanceFor(p2, userId, opts = {}) {
+  return p2.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe("select pg_advisory_xact_lock(hashtext($1))", userId);
+    const rows = await tx.freeSession.findMany({
+      where: { userId },
+      orderBy: [{ day: "desc" }, { number: "desc" }],
+      take: 8
+      // today's four at most, plus last night's
+    });
+    const { allowance, writes } = decide(rows, /* @__PURE__ */ new Date(), opts);
+    await applyWrites(tx, userId, writes);
+    return allowance;
+  });
+}
+async function pauseFor(p2, userId) {
+  await p2.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe("select pg_advisory_xact_lock(hashtext($1))", userId);
+    const rows = await tx.freeSession.findMany({
+      where: { userId },
+      orderBy: [{ day: "desc" }, { number: "desc" }],
+      take: 8
+    });
+    await applyWrites(tx, userId, decidePause(rows, /* @__PURE__ */ new Date()));
+  });
+}
+async function applyWrites(tx, userId, writes) {
+  for (const w of writes) {
+    if (w.op === "complete") {
+      await tx.freeSession.update({
+        where: { id: w.id },
+        data: { usedMs: SESSION_MS, runningSince: null, completedAt: w.completedAt, holdUntil: w.holdUntil }
+      });
+    } else if (w.op === "resume") {
+      await tx.freeSession.update({ where: { id: w.id }, data: { runningSince: w.at } });
+    } else if (w.op === "pause") {
+      await tx.freeSession.update({ where: { id: w.id }, data: { usedMs: w.usedMs, runningSince: null } });
+    } else if (w.op === "create") {
+      await tx.freeSession.create({
+        data: { userId, day: w.day, number: w.number, runningSince: w.at, startedAt: w.at }
+      });
+    }
+  }
+}
+
 // src/lib/emailTemplates.ts
 var MAIL_BASE = (process.env.APP_URL || "https://journalslibrary.com").replace(/\/+$/, "");
 var esc = (s2) => String(s2 ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -11295,11 +11466,33 @@ async function startServer() {
         JWT_SECRET,
         { expiresIn: "24h" }
       );
+      if (userObj.role === "Subscriber" && !userObj.institutionId) {
+        prisma3.subscription.count({ where: { userId: userObj.id, status: "Active", endDate: { gt: /* @__PURE__ */ new Date() } } }).then((n) => n === 0 ? allowanceFor(prisma3, userObj.id, { start: true }) : null).catch(() => {
+        });
+      }
       const { password: _, ...profile } = userObj;
       res.json({ token, user: profile });
     } catch (error) {
       console.error("Login Error:", error);
       res.status(500).json({ error: "Failed to login" });
+    }
+  });
+  app.post("/api/auth/logout", authenticateJWT, async (req, res) => {
+    try {
+      await pauseFor(prisma3, req.user.uid);
+    } catch (e2) {
+      console.error("logout: could not stop the clock", e2);
+    }
+    res.json({ ok: true });
+  });
+  app.get("/api/me/allowance", authenticateJWT, async (req, res) => {
+    try {
+      if (!await isFreeMember(req)) return res.json({ plan: "Unlimited", timed: false });
+      const a = await allowanceFor(prisma3, req.user.uid, { start: false });
+      res.json({ plan: "Free", timed: true, sessionMs: SESSION_MS, sessionsPerDay: SESSIONS_PER_DAY, ...a });
+    } catch (e2) {
+      console.error("allowance:", e2?.message);
+      res.status(500).json({ error: "Failed to read your reading time" });
     }
   });
   app.post("/api/auth/forgot-password", async (req, res) => {
@@ -11403,6 +11596,37 @@ async function startServer() {
   const requireSuperAdmin = (req, res, next) => {
     if (req.user?.role !== "SuperAdmin") return res.status(403).json({ error: "Access denied" });
     next();
+  };
+  const isFreeMember = async (req) => {
+    if (req._isFreeMember !== void 0) return req._isFreeMember;
+    if (!req.user?.uid || req.user.role !== "Subscriber") return req._isFreeMember = false;
+    const u = await prisma3.user.findUnique({
+      where: { id: req.user.uid },
+      select: {
+        role: true,
+        institutionId: true,
+        subscriptions: {
+          where: { status: "Active", endDate: { gt: /* @__PURE__ */ new Date() } },
+          select: { id: true },
+          take: 1
+        }
+      }
+    });
+    return req._isFreeMember = !!u && u.role === "Subscriber" && !u.institutionId && u.subscriptions.length === 0;
+  };
+  const passesFreeClock = async (req, res) => {
+    if (!await isFreeMember(req)) return true;
+    const a = await allowanceFor(prisma3, req.user.uid, { start: true });
+    if (a.allowed) return true;
+    res.status(403).json({
+      code: "FREE_LIMIT",
+      state: a.state,
+      error: a.state === "spent" ? "You have used today's two hours. Your next session begins after midnight." : "Your reading session has ended. The next one opens shortly.",
+      nextOpensAt: a.nextOpensAt,
+      usedTodayMs: a.usedTodayMs,
+      sessionsLeft: a.sessionsLeft
+    });
+    return false;
   };
   const requireAdminOrManager = (req, res, next) => {
     const role = req.user?.role;
@@ -11873,6 +12097,7 @@ async function startServer() {
   };
   const checkContentAccess = (content, userRole, activeSubscriptions) => {
     if (userRole === "SuperAdmin" || userRole === "Admin" || userRole === "ContentManager") return true;
+    if (userRole === "Subscriber") return true;
     return activeSubscriptions.some((sub) => {
       const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
       const hasWildcardDomain = d.length === 0 && !sub.domainName;
@@ -12346,6 +12571,7 @@ async function startServer() {
       const isAdminRole = ["SuperAdmin", "Admin", "ContentManager"].includes(req.user.role);
       const resolved = await resolveViewable(contentId, isAdminRole);
       if (!resolved) return res.status(404).json({ error: "Content not found" });
+      if (!await passesFreeClock(req, res)) return;
       const isOA = ["OpenAccess", "Free"].includes(resolved.accessType || "");
       let hasAccess = true;
       if (resolved.kind === "content" && !isOA) {
@@ -12404,6 +12630,7 @@ async function startServer() {
       if (!resolved || !resolved.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
+      if (!await passesFreeClock(req, res)) return;
       const content = resolved.item;
       content.fileUrl = resolved.fileUrl;
       const isOA = ["OpenAccess", "Free"].includes(resolved.accessType || "");
@@ -12496,6 +12723,7 @@ async function startServer() {
       if (!resolved || !resolved.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
+      if (!await passesFreeClock(req, res)) return;
       const content = { ...resolved.item, fileUrl: resolved.fileUrl };
       const isOA = ["OpenAccess", "Free"].includes(resolved.accessType || "");
       if (!isAdmin && resolved.kind === "content" && !isOA) {
@@ -15470,6 +15698,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       return null;
     }
     if (["SuperAdmin", "Admin", "ContentManager"].includes(ud.role)) return null;
+    if (ud.role === "Subscriber") return null;
     const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
     const domains = /* @__PURE__ */ new Set();
     for (const s2 of subs) {

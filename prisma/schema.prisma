@@ -452,6 +452,14 @@ model User {
   institutionId String?
   
   institutionProfile Json?    @default("{}")
+
+  /// Departments the member said they wanted to read, chosen at signup.
+  ///
+  /// This is demand, not permission. Every self-registered member can read the
+  /// whole library; what differs is time, not subject. Assigning individuals a
+  /// set of domains is the model this replaces, so nothing may ever read this
+  /// field to decide access — only to learn what people came for.
+  interestedDomains Json      @default("[]")
   
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -1347,4 +1355,41 @@ model DepartmentSweep {
   @@unique([department, source, term])
   @@index([source, exhaustedAt])
   @@index([source, lastSweptAt])
+}
+
+/// One thirty-minute stretch of free reading.
+///
+/// A free member gets four of these a day, each followed by a two-hour wait.
+/// The clock starts when they sign in and stops only when they sign out —
+/// closing the tab does not stop it — so a stretch is measured in banked
+/// milliseconds plus however long the clock has been running since.
+///
+/// The current stretch is simply the most recent row: unfinished while
+/// `completedAt` is null, waiting while `holdUntil` is in the future. Keeping a
+/// row per stretch rather than a single counter means the day can be read back
+/// afterwards — who used all four, and how often — which is the difference
+/// between a limit and a lead.
+model FreeSession {
+  id           String    @id @default(uuid())
+  userId       String
+  /// The day this stretch belongs to, as YYYY-MM-DD in IST. A stretch counts
+  /// against the day it began on, even if it runs past midnight.
+  day          String
+  /// 1 to 4 within that day.
+  number       Int
+
+  /// Time banked from stretches of running already stopped.
+  usedMs       Int       @default(0)
+  /// Set while the clock is running; null while it is stopped.
+  runningSince DateTime?
+
+  /// When the thirty minutes ran out, and when the wait ends.
+  completedAt  DateTime?
+  holdUntil    DateTime?
+
+  startedAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, day, number])
+  @@index([userId, startedAt])
 }
