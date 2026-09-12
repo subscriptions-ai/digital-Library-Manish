@@ -920,11 +920,7 @@ async function startServer() {
   app.get("/api/me/allowance", authenticateJWT, async (req: any, res) => {
     try {
       if (!(await isFreeMember(req))) return res.json({ plan: 'Unlimited', timed: false });
-      // `use=1` is the screen saying the member has just arrived somewhere, not
-      // the countdown ticking. Arriving is use and starts the clock; asking how
-      // much is left must never spend any, or the number on screen would eat
-      // the thing it reports.
-      const a = await allowanceFor(prisma, req.user.uid, { start: req.query.use === '1' });
+      const a = await allowanceFor(prisma, req.user.uid, { start: false });
       res.json({ plan: 'Free', timed: true, sessionMs: SESSION_MS, sessionsPerDay: SESSIONS_PER_DAY, ...a });
     } catch (e: any) {
       console.error('allowance:', e?.message);

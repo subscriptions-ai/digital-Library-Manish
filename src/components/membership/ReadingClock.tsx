@@ -143,9 +143,8 @@ export function ReadingLimitNotice({
       <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
         {spent
           ? 'A free membership includes four half-hour sessions a day. The next one opens after midnight.'
-          : <>Free membership comes in half-hour sessions with a two-hour gap between them.
-              {allowance.nextOpensAt && <> The next one opens at <b className="text-ink">{clockTime(allowance.nextOpensAt)}</b>
-              {typeof msUntil === 'number' && msUntil > 0 && <> — in {countdown(msUntil)}</>}.</>}</>}
+          : <>Free membership comes in half-hour sessions, with a two-hour gap between them.
+              {allowance.nextOpensAt && <> The next one opens at <b className="text-ink">{clockTime(allowance.nextOpensAt)}</b>.</>}</>}
       </p>
       {allowance.nextOpensAt && (
         <div className="mt-4 flex flex-col items-center">
@@ -168,7 +167,7 @@ export function ReadingLimitNotice({
         <Sparkles size={15} /> Apply for Pro — read without a limit
       </Link>
       <p className="mt-3 text-xs text-faint">
-        Everything opens again on its own — you do not need to do anything.
+        You can still search and browse the whole catalogue while you wait.
       </p>
     </div>
   );
@@ -239,83 +238,5 @@ function WaitingClock({ opensAt, size = 148 }: { opensAt: Date; size?: number })
       {/* where the wait ends */}
       <circle cx={ex} cy={ey} r={3.5} className="fill-caution" />
     </svg>
-  );
-}
-
-/**
- * The wall.
- *
- * When the time is up the whole dashboard goes behind this — not a message
- * above a library the member can still browse. A limit they can read around is
- * not a limit, and the moment they most want more is the moment they are stopped,
- * so that is the moment to ask.
- *
- * Two things stay open: applying for Pro, which is the way past it, and signing
- * out, because trapping someone in a page with no way out is a different thing
- * altogether.
- */
-export function ReadingLockScreen({ allowance, msUntil }: { allowance: Allowance; msUntil: number | null }) {
-  const spent = allowance.state === 'spent';
-
-  // The page behind must not scroll while the wall is up.
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ground/80 p-4 backdrop-blur-md">
-      <div className="w-full max-w-md rounded-2xl border border-rule bg-surface p-7 text-center shadow-2xl">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-caution-soft text-caution">
-          <Lock size={22} />
-        </div>
-
-        <h2 className="font-serif text-2xl text-ink">
-          {spent ? 'That is today’s reading time' : 'Your reading session has ended'}
-        </h2>
-
-        <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted">
-          {spent
-            ? 'A free membership includes four half-hour sessions a day. Everything opens again after midnight.'
-            : 'Free membership comes in half-hour sessions, with a two-hour gap between them.'}
-        </p>
-
-        {allowance.nextOpensAt && (
-          <div className="mt-5 flex flex-col items-center">
-            <WaitingClock opensAt={new Date(allowance.nextOpensAt)} />
-            {typeof msUntil === 'number' && msUntil > 0 && (
-              <p className="mt-3 font-mono text-2xl tabular-nums text-ink">{countdown(msUntil)}</p>
-            )}
-            <p className="mt-0.5 text-xs text-muted">
-              opens at {clockTime(allowance.nextOpensAt)}
-            </p>
-          </div>
-        )}
-        {!spent && typeof allowance.sessionsLeft === 'number' && (
-          <p className="mt-3 text-xs text-faint">
-            {allowance.sessionsLeft} of {allowance.sessionsPerDay ?? 4} sessions left today
-          </p>
-        )}
-
-        <Link
-          to="/dashboard/pro"
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-        >
-          <Sparkles size={16} /> Get unlimited time — apply for Pro
-        </Link>
-
-        <p className="mt-3 text-xs text-faint">
-          Pro removes the sessions entirely. Nothing is charged here — we agree the terms on a call.
-        </p>
-
-        <button
-          onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }}
-          className="mt-4 text-xs font-semibold text-muted underline underline-offset-2 hover:text-ink"
-        >
-          Sign out
-        </button>
-      </div>
-    </div>
   );
 }

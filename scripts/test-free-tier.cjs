@@ -156,24 +156,6 @@ const completed = async (count, holdEndedMinutesAgo) => {
     }
   }
 
-  console.log('\nArriving somewhere is use');
-  {
-    await wipeSessions();
-    await get('/api/me/allowance', token);
-    is('the countdown does not spend anything',
-      await p.freeSession.count({ where: { userId: user.id } }), 0);
-
-    const r = await get('/api/me/allowance?use=1', token);
-    is('but arriving starts the clock', r.body?.state, 'running');
-    is('and it is written down', await p.freeSession.count({ where: { userId: user.id } }), 1);
-
-    // A member cannot walk out of the two hours by opening another page.
-    await completed(1, -60);                             // wait still has an hour to run
-    const during = await get('/api/me/allowance?use=1', token);
-    is('arriving during the wait starts nothing',
-      [during.body?.state, await p.freeSession.count({ where: { userId: user.id } })], ['waiting', 1]);
-  }
-
   // ── the doors ─────────────────────────────────────────────────────────────
   console.log('\nWhile the clock runs');
   await running(5);

@@ -18,7 +18,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { ReadingClock, ReadingLockScreen, useAllowance } from './membership/ReadingClock';
+import { ReadingClock, useAllowance } from './membership/ReadingClock';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FeedbackWidget } from './dashboard/FeedbackWidget';
 
@@ -84,26 +84,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, [profile, loading, navigate]);
 
-  // One clock for the whole shell, so the chip in the header and the wall over
-  // the page can never disagree about whether the time is up.
-  const { allowance, msLeft, msUntil, refresh } = useAllowance();
-
-  // Arriving somewhere in the library is use, and use starts the clock. Without
-  // this a member who waited out their two hours could browse indefinitely
-  // without the clock ever starting again — only opening something would start
-  // it. Reading about your own membership is the one exception: being shown the
-  // rules should not spend the thing they describe.
-  useEffect(() => {
-    if (location.pathname === '/dashboard/pro') return;
-    fetch('/api/me/allowance?use=1', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    }).then(() => refresh()).catch(() => {});
-  }, [location.pathname, refresh]);
-
-  // The wall. Everything except the way past it and the way out.
-  const locked = allowance?.timed
-    && (allowance.state === 'waiting' || allowance.state === 'spent')
-    && location.pathname !== '/dashboard/pro';
+  // The clock in the header. Browsing is free — the catalogue stays open while a
+  // member waits, and the limit lands where the reading does.
+  const { allowance, msLeft, msUntil } = useAllowance();
 
   // One small ask on mount, only for the people it can hide something from.
   const [hasPayments, setHasPayments] = useState(false);
@@ -274,9 +257,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </main>
       <FeedbackWidget />
 
-      {/* Last, and over everything — including the sidebar, the header and the
-          feedback button. A wall with a gap in it is a door. */}
-      {locked && allowance && <ReadingLockScreen allowance={allowance} msUntil={msUntil} />}
     </div>
   );
 }
