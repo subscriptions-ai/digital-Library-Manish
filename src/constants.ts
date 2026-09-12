@@ -563,6 +563,29 @@ export const DESIGNATION_GROUPS: Record<string, { label: string; roles: string[]
 export const ALL_DESIGNATIONS: string[] =
   Object.values(DESIGNATIONS_BY_TYPE).flat();
 
+/**
+ * The designations that come with the institution dashboard rather than the
+ * member one.
+ *
+ * Whoever runs a library or runs the place is given the librarian's view — the
+ * shelves, the people, the analytics — because that is the view they came for
+ * and the one that eventually gets bought. Everyone else gets the reader's
+ * dashboard. The free clock applies to both; what differs is what they see,
+ * not how long they may look at it.
+ */
+export const INSTITUTION_DASHBOARD_GROUPS: Record<string, string[]> = {
+  Institute: ['Library', 'Leadership'],
+  Corporate: ['Leadership'],
+};
+
+export function opensInstitutionDashboard(type?: string | null, designation?: string | null): boolean {
+  if (!type || !designation) return false;
+  const wanted = INSTITUTION_DASHBOARD_GROUPS[type] || [];
+  return (DESIGNATION_GROUPS[type] || [])
+    .filter(g => wanted.includes(g.label))
+    .some(g => g.roles.includes(designation));
+}
+
 /** Where a member is. India first, because that is where nearly all of them are. */
 export const COUNTRIES = [
   'India',

@@ -282,8 +282,25 @@ const completed = async (count, holdEndedMinutesAgo) => {
     if (!student) console.log(`  ${D}skip  institution members — none to test with${O}`);
     else {
       const st = jwt.sign({ uid: student.id, email: student.email, role: 'Student', institutionId: student.institutionId }, SECRET, { expiresIn: '1h' });
-      const a = await get('/api/me/allowance', st);
-      is('an institution member is untouched', [a.body?.plan, a.body?.timed], ['Unlimited', false]);
+
+      // The rule is the plan, not the role. A college with a plan running keeps
+      // its people off the clock; a college whose plan has lapsed does not
+      // leave them with nothing — they fall back to the free allowance, the
+      // same as anyone else without one.
+      const instSub = await p.subscription.create({
+        data: {
+          institutionId: student.institutionId, planName: 'Institution plan', planType: 'Custom',
+          durationMonths: 12, status: 'Active', endDate: new Date(Date.now() + 200 * 864e5),
+        },
+      });
+      const covered = await get('/api/me/allowance', st);
+      is('a college with a plan keeps its people off the clock',
+        [covered.body?.plan, covered.body?.timed], ['Unlimited', false]);
+
+      await p.subscription.delete({ where: { id: instSub.id } });
+      const lapsed = await get('/api/me/allowance', st);
+      is('and a college whose plan has lapsed falls back to the free allowance',
+        [lapsed.body?.plan, lapsed.body?.timed], ['Free', true]);
     }
   }
 
@@ -406,10 +423,15 @@ const completed = async (count, holdEndedMinutesAgo) => {
   .catch(e => bad('the run itself', String(e?.message || e)))
   .finally(async () => {
     if (joined) {
+      // A qualifying designation creates an institution to be the librarian of,
+      // so the tidy-up has to take that with it.
       await p.freeSession.deleteMany({ where: { userId: joined.id } }).catch(() => {});
+      const madeInstitution = joined.institutionId
+        || (await p.user.findUnique({ where: { id: joined.id }, select: { institutionId: true } }).catch(() => null))?.institutionId;
       await p.lead.deleteMany({ where: { email: JOIN_EMAIL } }).catch(() => {});
       await p.emailVerification.deleteMany({ where: { email: JOIN_EMAIL } }).catch(() => {});
       await p.user.delete({ where: { id: joined.id } }).catch(() => {});
+      if (madeInstitution) await p.institution.delete({ where: { id: madeInstitution } }).catch(() => {});
     }
     if (user) {
       await p.freeSession.deleteMany({ where: { userId: user.id } }).catch(() => {});

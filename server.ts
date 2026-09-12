@@ -22,7 +22,7 @@ import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
-import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE } from "./src/constants.js";
+import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, opensInstitutionDashboard } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
 import {
@@ -655,6 +655,24 @@ async function startServer() {
       const type = REGISTRANT_TYPES.some(t => t.id === registrantType) ? registrantType : null;
       const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
 
+      // Whoever runs a library, or runs the place, is given the librarian's
+      // view — and that view is about an institution, so there has to be one.
+      //
+      // A fresh one every time, deliberately. Attaching a stranger to an
+      // existing record by the name they happened to type would hand them
+      // somebody else's students and somebody else's analytics. Two people from
+      // one college therefore make two records, and merging them is an
+      // administrator's job rather than a guess made at the moment of signing up.
+      let accountRole = email === "info@celnet.in" ? "SuperAdmin" : "Subscriber";
+      let newInstitutionId: string | null = null;
+      if (accountRole !== 'SuperAdmin' && opensInstitutionDashboard(type, role) && String(organization || '').trim()) {
+        const created = await prisma.institution.create({
+          data: { name: String(organization).trim(), status: 'Active' },
+        });
+        newInstitutionId = created.id;
+        accountRole = 'Institution';
+      }
+
       const hashedPassword = await bcrypt.hash(password, 10);
       
       const userObj = await prisma.user.create({
@@ -676,7 +694,8 @@ async function startServer() {
           // The same number when they said it was the same, so nothing
           // downstream has to know the rule to reach them.
           whatsapp: (whatsapp || contact) ? String(whatsapp || contact).slice(0, 40) : null,
-          role: email === "info@celnet.in" ? "SuperAdmin" : "Subscriber",
+          role: accountRole,
+          institutionId: newInstitutionId,
           status: "Active",
           interestedDomains: interests,
         }
@@ -685,7 +704,10 @@ async function startServer() {
       // Every free member is someone who might want Pro, and the subjects they
       // named are the opening line of that conversation. Not awaited — a lead
       // that fails to file must never cost somebody their account.
-      if (userObj.role === 'Subscriber') {
+      // Everyone who signs up themselves, not only readers. A librarian or a
+      // dean registering is the most valuable lead there is, and gating this on
+      // the reader's role dropped exactly those.
+      if (!STAFF_ROLES.includes(userObj.role)) {
         prisma.lead.create({
           data: {
             name, email,
@@ -695,7 +717,7 @@ async function startServer() {
             status: 'All',
             state: state || null,
             notes: [
-              type ? `Registering as: ${type}` : null,
+              type ? `Registering as: ${type}${accountRole === 'Institution' ? ' — has the institution dashboard' : ''}` : null,
               role ? `Designation: ${role}` : (designation ? `Designation as given: ${designation}` : null),
               [state, country].filter(Boolean).length ? `Where: ${[state, country].filter(Boolean).join(', ')}` : null,
               whatsapp && whatsapp !== contact ? `WhatsApp: ${whatsapp}` : null,
@@ -821,10 +843,9 @@ async function startServer() {
       // The clock starts when they sign in. Not awaited: a member must never be
       // kept waiting at the door by the bookkeeping, and if it fails the next
       // thing they open starts it anyway.
-      if (userObj.role === 'Subscriber' && !userObj.institutionId) {
-        prisma.subscription
-          .count({ where: { userId: userObj.id, status: 'Active', endDate: { gt: new Date() } } })
-          .then(n => (n === 0 ? allowanceFor(prisma, userObj.id, { start: true }) : null))
+      if (!STAFF_ROLES.includes(userObj.role)) {
+        getUserActiveSubscriptions(userObj.id, userObj.role, userObj.institutionId)
+          .then(subs => (subs.length === 0 ? allowanceFor(prisma, userObj.id, { start: true }) : null))
           .catch(() => {});
       }
 
@@ -1180,21 +1201,25 @@ async function startServer() {
     next();
   };
 
+  /** Nobody on the staff side is ever on a reader's clock or scope. */
+  const STAFF_ROLES = ['SuperAdmin', 'Admin', 'ContentManager', 'SubscriptionManager',
+    'SalesExecutive', 'SalesManager', 'Publisher'];
+
   /**
    * Whether this account sees the library whole, rather than a set of domains.
    *
-   * The question is asked at every point that scopes a query, and it used to be
-   * spelled out each time as a list of administrative roles. Self-registered
-   * members now belong on that list: they are no longer given domains, so there
-   * is nothing to scope them to, and code that went looking for their domains
-   * found none and showed them an empty library — which is what a new member
-   * saw on their dashboard the day this shipped.
+   * The rule is now one sentence: no plan means the whole library, on the
+   * clock; a plan means what the plan covers, without one. Nothing is scoped by
+   * role any more, which is what let a member with the run of the library be
+   * shown an empty one — the code went looking for their domains, found none,
+   * and concluded they had nothing.
    *
    * It says nothing about how long they may read. That is the clock's business,
    * and it is asked separately.
    */
-  const seesWholeLibrary = (role?: string) =>
-    ['SuperAdmin', 'Admin', 'ContentManager', 'Subscriber'].includes(String(role));
+  const seesWholeLibrary = (role?: string, activeSubscriptions?: any[]) =>
+    ['SuperAdmin', 'Admin', 'ContentManager'].includes(String(role))
+    || (Array.isArray(activeSubscriptions) && activeSubscriptions.length === 0);
 
   /**
    * Whether the free member's clock applies to whoever is asking.
@@ -1209,19 +1234,9 @@ async function startServer() {
    */
   const isFreeMember = async (req: any): Promise<boolean> => {
     if (req._isFreeMember !== undefined) return req._isFreeMember;
-    if (!req.user?.uid || req.user.role !== 'Subscriber') return (req._isFreeMember = false);
-    const u = await prisma.user.findUnique({
-      where: { id: req.user.uid },
-      select: {
-        role: true, institutionId: true,
-        subscriptions: {
-          where: { status: 'Active', endDate: { gt: new Date() } },
-          select: { id: true }, take: 1,
-        },
-      },
-    });
-    return (req._isFreeMember =
-      !!u && u.role === 'Subscriber' && !u.institutionId && u.subscriptions.length === 0);
+    if (!req.user?.uid || STAFF_ROLES.includes(req.user.role)) return (req._isFreeMember = false);
+    const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+    return (req._isFreeMember = subs.length === 0);
   };
 
   /**
@@ -1571,7 +1586,7 @@ async function startServer() {
       // What they may read is a different question from what they have bought,
       // and answering both from the subscription list is what made a member with
       // the run of the library see "0 departments covered".
-      const allowedDomains: string[] = seesWholeLibrary(req.user.role)
+      const allowedDomains: string[] = seesWholeLibrary(req.user.role, activeSubs)
         ? DOMAINS.map((d: any) => d.name)
         : Array.from(new Set(
             activeSubs.flatMap(s => {
@@ -1795,9 +1810,9 @@ async function startServer() {
     // Admins, content managers, and institution librarians see everything they cover
     if (userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'ContentManager') return true;
 
-    // As above: a self-registered member may open anything. The clock decides
-    // for how long; this decides what, and for them the answer is everything.
-    if (userRole === 'Subscriber') return true;
+    // As above: without a plan, anything may be opened. The clock decides for
+    // how long; this decides what, and the answer is everything.
+    if (!activeSubscriptions.length) return true;
 
     return activeSubscriptions.some(sub => {
       const d: string[] = Array.isArray(sub.domains)
@@ -1920,10 +1935,10 @@ async function startServer() {
   app.get("/api/user/access-scope", authenticateJWT, async (req: any, res) => {
     try {
       const role = req.user.role;
-      if (seesWholeLibrary(role)) {
+      const subs = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId);
+      if (seesWholeLibrary(role, subs)) {
         return res.json({ all: true, domains: [], contentTypes: [] });
       }
-      const subs = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId);
       const domains = new Set<string>();
       const contentTypes = new Set<string>();
       for (const s of (subs || [])) {
@@ -1945,8 +1960,9 @@ async function startServer() {
   app.get("/api/user/available-facets", authenticateJWT, async (req: any, res) => {
     try {
       const role = req.user.role;
-      const isAdmin = seesWholeLibrary(role);
-      const subs = isAdmin ? [] : ((await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId)) || []);
+      const held = (await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId)) || [];
+      const isAdmin = seesWholeLibrary(role, held);
+      const subs = isAdmin ? [] : held;
 
       const scopeDomains = new Set<string>(); const scopeTypes = new Set<string>();
       const subOr: any[] = [];
@@ -2034,9 +2050,9 @@ async function startServer() {
         const authHeader = req.headers.authorization;
         let ud: any = null;
         if (authHeader) { try { ud = jwt.verify(authHeader.split(' ')[1], JWT_SECRET); } catch { /* ignore */ } }
-        if (ud && !seesWholeLibrary(ud.role)) {
-          const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
-          if (!subs.length) return res.json({ domains: [], subjects: [], tags: [] });
+        const held = ud ? await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId) : [];
+        if (ud && !seesWholeLibrary(ud.role, held)) {
+          const subs = held;
           const subOr: any[] = [];
           for (const sub of subs) {
             const d = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains as string) : []);
@@ -2158,12 +2174,9 @@ async function startServer() {
 
 
       if (onlyUnlocked === "true" && userDetails) {
-        if (!seesWholeLibrary(userDetails.role)) {
-          const activeSubs = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
-          
-          if (activeSubs.length === 0) {
-            return res.json({ data: [], total: 0, page: parseInt(page as string), limit: take });
-          }
+        const held = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
+        if (!seesWholeLibrary(userDetails.role, held)) {
+          const activeSubs = held;
 
           const subOrConditions: any[] = [];
           
@@ -5805,13 +5818,11 @@ async function startServer() {
     try { ud = jwt.verify(authHeader.split(' ')[1], JWT_SECRET); } catch { return null; }
     if (['SuperAdmin', 'Admin', 'ContentManager'].includes(ud.role)) return null;
 
-    // Individuals are no longer handed a set of domains. Every self-registered
-    // member sees the whole library; what separates free from paid is how long
-    // they may read, not what they may read. Institutions are unchanged — their
-    // scope is the agreement their librarian signed.
-    if (ud.role === 'Subscriber') return null;
-
     const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
+
+    // No plan means the whole library — on the clock, but whole. A plan means
+    // what the plan covers. Nothing is scoped by role.
+    if (!subs.length) return null;
     const domains = new Set<string>();
     for (const s of subs) {
       const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);

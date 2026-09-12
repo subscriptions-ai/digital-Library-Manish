@@ -10328,7 +10328,34 @@ var DESIGNATIONS_BY_TYPE = {
     "Independent Researcher"
   ]
 };
+var DESIGNATION_GROUPS = {
+  Institute: [
+    { label: "Library", roles: ["Librarian"] },
+    { label: "Leadership", roles: ["Principal", "Vice Principal", "Dean", "Director", "Head of Department (HOD)"] },
+    { label: "Faculty", roles: ["Professor", "Associate Professor", "Assistant Professor", "Faculty Member"] },
+    { label: "Research", roles: ["Research Scientist", "Research Associate", "Principal Investigator (PI)", "Research / Academic Coordinator"] }
+  ],
+  Corporate: [
+    { label: "Leadership", roles: ["CEO / Managing Director", "Director", "Vice President (VP)", "General Manager", "Department Head"] },
+    { label: "Research & development", roles: ["R&D Head", "R&D Manager", "Research Scientist", "Research Associate"] },
+    { label: "Management", roles: ["Senior Manager", "Manager", "HR Manager", "Accounts Manager", "Product Manager", "Engineering Manager", "Technical Lead / Manager", "Training & Development Manager", "Procurement / Purchase Manager"] }
+  ],
+  Solo: [
+    { label: "Studying", roles: ["Undergraduate Student", "Master's Student", "PhD Scholar", "Postdoctoral Researcher"] },
+    { label: "Research & academia", roles: ["Researcher / Scientist", "Faculty / Academic Professional", "Independent Researcher"] },
+    { label: "Working", roles: ["Working Professional", "Industry Professional", "Entrepreneur / Founder", "Consultant", "Freelancer"] }
+  ]
+};
 var ALL_DESIGNATIONS = Object.values(DESIGNATIONS_BY_TYPE).flat();
+var INSTITUTION_DASHBOARD_GROUPS = {
+  Institute: ["Library", "Leadership"],
+  Corporate: ["Leadership"]
+};
+function opensInstitutionDashboard(type, designation) {
+  if (!type || !designation) return false;
+  const wanted = INSTITUTION_DASHBOARD_GROUPS[type] || [];
+  return (DESIGNATION_GROUPS[type] || []).filter((g) => wanted.includes(g.label)).some((g) => g.roles.includes(designation));
+}
 
 // src/lib/ingestionWorker.ts
 var import_client2 = require("@prisma/client");
@@ -11499,6 +11526,15 @@ async function startServer() {
       const interests = Array.isArray(interestedDomains) ? [...new Set(interestedDomains.filter((d) => departmentNames.has(d)))].slice(0, 40) : [];
       const type = REGISTRANT_TYPES.some((t2) => t2.id === registrantType) ? registrantType : null;
       const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
+      let accountRole = email === "info@celnet.in" ? "SuperAdmin" : "Subscriber";
+      let newInstitutionId = null;
+      if (accountRole !== "SuperAdmin" && opensInstitutionDashboard(type, role) && String(organization || "").trim()) {
+        const created = await prisma3.institution.create({
+          data: { name: String(organization).trim(), status: "Active" }
+        });
+        newInstitutionId = created.id;
+        accountRole = "Institution";
+      }
       const hashedPassword = await import_bcryptjs.default.hash(password, 10);
       const userObj = await prisma3.user.create({
         data: {
@@ -11519,12 +11555,13 @@ async function startServer() {
           // The same number when they said it was the same, so nothing
           // downstream has to know the rule to reach them.
           whatsapp: whatsapp || contact ? String(whatsapp || contact).slice(0, 40) : null,
-          role: email === "info@celnet.in" ? "SuperAdmin" : "Subscriber",
+          role: accountRole,
+          institutionId: newInstitutionId,
           status: "Active",
           interestedDomains: interests
         }
       });
-      if (userObj.role === "Subscriber") {
+      if (!STAFF_ROLES.includes(userObj.role)) {
         prisma3.lead.create({
           data: {
             name,
@@ -11535,7 +11572,7 @@ async function startServer() {
             status: "All",
             state: state || null,
             notes: [
-              type ? `Registering as: ${type}` : null,
+              type ? `Registering as: ${type}${accountRole === "Institution" ? " \u2014 has the institution dashboard" : ""}` : null,
               role ? `Designation: ${role}` : designation ? `Designation as given: ${designation}` : null,
               [state, country].filter(Boolean).length ? `Where: ${[state, country].filter(Boolean).join(", ")}` : null,
               whatsapp && whatsapp !== contact ? `WhatsApp: ${whatsapp}` : null,
@@ -11614,8 +11651,8 @@ async function startServer() {
         JWT_SECRET,
         { expiresIn: "24h" }
       );
-      if (userObj.role === "Subscriber" && !userObj.institutionId) {
-        prisma3.subscription.count({ where: { userId: userObj.id, status: "Active", endDate: { gt: /* @__PURE__ */ new Date() } } }).then((n) => n === 0 ? allowanceFor(prisma3, userObj.id, { start: true }) : null).catch(() => {
+      if (!STAFF_ROLES.includes(userObj.role)) {
+        getUserActiveSubscriptions(userObj.id, userObj.role, userObj.institutionId).then((subs) => subs.length === 0 ? allowanceFor(prisma3, userObj.id, { start: true }) : null).catch(() => {
         });
       }
       const { password: _, ...profile } = userObj;
@@ -11866,23 +11903,21 @@ async function startServer() {
     if (req.user?.role !== "SuperAdmin") return res.status(403).json({ error: "Access denied" });
     next();
   };
-  const seesWholeLibrary = (role) => ["SuperAdmin", "Admin", "ContentManager", "Subscriber"].includes(String(role));
+  const STAFF_ROLES = [
+    "SuperAdmin",
+    "Admin",
+    "ContentManager",
+    "SubscriptionManager",
+    "SalesExecutive",
+    "SalesManager",
+    "Publisher"
+  ];
+  const seesWholeLibrary = (role, activeSubscriptions) => ["SuperAdmin", "Admin", "ContentManager"].includes(String(role)) || Array.isArray(activeSubscriptions) && activeSubscriptions.length === 0;
   const isFreeMember = async (req) => {
     if (req._isFreeMember !== void 0) return req._isFreeMember;
-    if (!req.user?.uid || req.user.role !== "Subscriber") return req._isFreeMember = false;
-    const u = await prisma3.user.findUnique({
-      where: { id: req.user.uid },
-      select: {
-        role: true,
-        institutionId: true,
-        subscriptions: {
-          where: { status: "Active", endDate: { gt: /* @__PURE__ */ new Date() } },
-          select: { id: true },
-          take: 1
-        }
-      }
-    });
-    return req._isFreeMember = !!u && u.role === "Subscriber" && !u.institutionId && u.subscriptions.length === 0;
+    if (!req.user?.uid || STAFF_ROLES.includes(req.user.role)) return req._isFreeMember = false;
+    const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+    return req._isFreeMember = subs.length === 0;
   };
   const passesFreeClock = async (req, res) => {
     if (!await isFreeMember(req)) return true;
@@ -12185,7 +12220,7 @@ async function startServer() {
         orderBy: { endDate: "desc" }
       });
       const expiredSubs = allSubscriptions.filter((sub) => sub.status !== "Active" || new Date(sub.endDate) < /* @__PURE__ */ new Date());
-      const allowedDomains = seesWholeLibrary(req.user.role) ? DOMAINS.map((d) => d.name) : Array.from(new Set(
+      const allowedDomains = seesWholeLibrary(req.user.role, activeSubs) ? DOMAINS.map((d) => d.name) : Array.from(new Set(
         activeSubs.flatMap((s2) => {
           const d = Array.isArray(s2.domains) ? s2.domains : s2.domains ? JSON.parse(s2.domains) : [];
           return d;
@@ -12368,7 +12403,7 @@ async function startServer() {
   };
   const checkContentAccess = (content, userRole, activeSubscriptions) => {
     if (userRole === "SuperAdmin" || userRole === "Admin" || userRole === "ContentManager") return true;
-    if (userRole === "Subscriber") return true;
+    if (!activeSubscriptions.length) return true;
     return activeSubscriptions.some((sub) => {
       const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
       const hasWildcardDomain = d.length === 0 && !sub.domainName;
@@ -12450,10 +12485,10 @@ async function startServer() {
   app.get("/api/user/access-scope", authenticateJWT, async (req, res) => {
     try {
       const role = req.user.role;
-      if (seesWholeLibrary(role)) {
+      const subs = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId);
+      if (seesWholeLibrary(role, subs)) {
         return res.json({ all: true, domains: [], contentTypes: [] });
       }
-      const subs = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId);
       const domains = /* @__PURE__ */ new Set();
       const contentTypes = /* @__PURE__ */ new Set();
       for (const s2 of subs || []) {
@@ -12472,8 +12507,9 @@ async function startServer() {
   app.get("/api/user/available-facets", authenticateJWT, async (req, res) => {
     try {
       const role = req.user.role;
-      const isAdmin = seesWholeLibrary(role);
-      const subs = isAdmin ? [] : await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId) || [];
+      const held = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId) || [];
+      const isAdmin = seesWholeLibrary(role, held);
+      const subs = isAdmin ? [] : held;
       const scopeDomains = /* @__PURE__ */ new Set();
       const scopeTypes = /* @__PURE__ */ new Set();
       const subOr = [];
@@ -12558,9 +12594,9 @@ async function startServer() {
           } catch {
           }
         }
-        if (ud && !seesWholeLibrary(ud.role)) {
-          const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
-          if (!subs.length) return res.json({ domains: [], subjects: [], tags: [] });
+        const held = ud ? await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId) : [];
+        if (ud && !seesWholeLibrary(ud.role, held)) {
+          const subs = held;
           const subOr = [];
           for (const sub of subs) {
             const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
@@ -12672,11 +12708,9 @@ async function startServer() {
         }
       }
       if (onlyUnlocked === "true" && userDetails) {
-        if (!seesWholeLibrary(userDetails.role)) {
-          const activeSubs2 = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
-          if (activeSubs2.length === 0) {
-            return res.json({ data: [], total: 0, page: parseInt(page), limit: take });
-          }
+        const held = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
+        if (!seesWholeLibrary(userDetails.role, held)) {
+          const activeSubs2 = held;
           const subOrConditions = [];
           for (const sub of activeSubs2) {
             const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
@@ -15979,8 +16013,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       return null;
     }
     if (["SuperAdmin", "Admin", "ContentManager"].includes(ud.role)) return null;
-    if (ud.role === "Subscriber") return null;
     const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
+    if (!subs.length) return null;
     const domains = /* @__PURE__ */ new Set();
     for (const s2 of subs) {
       const d = Array.isArray(s2.domains) ? s2.domains : s2.domains ? JSON.parse(s2.domains) : [];
