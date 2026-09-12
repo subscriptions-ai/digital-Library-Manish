@@ -11584,6 +11584,40 @@ async function startServer() {
       res.status(500).json({ error: "Could not send your application" });
     }
   });
+  app.get("/api/me/membership", authenticateJWT, async (req, res) => {
+    try {
+      const uid = req.user.uid;
+      const now = /* @__PURE__ */ new Date();
+      const [subs, applications, payments] = await Promise.all([
+        prisma3.subscription.findMany({ where: { userId: uid }, orderBy: { endDate: "desc" } }),
+        prisma3.subscriptionRequest.findMany({
+          where: { userId: uid },
+          orderBy: { createdAt: "desc" },
+          take: 10
+        }),
+        prisma3.payment.aggregate({
+          where: { userId: uid, status: "Success" },
+          _count: { _all: true },
+          _sum: { amount: true }
+        })
+      ]);
+      const active = subs.filter((s2) => s2.status === "Active" && new Date(s2.endDate) > now);
+      const current = active[0] || null;
+      const previous = subs.filter((s2) => !current || s2.id !== current.id);
+      const lapsed = !current ? subs.filter((s2) => new Date(s2.endDate) <= now).sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0] || null : null;
+      res.json({
+        plan: current ? "Pro" : "Free",
+        current,
+        lapsed,
+        previous,
+        applications,
+        payments: { count: payments._count._all, total: payments._sum.amount || 0 }
+      });
+    } catch (e2) {
+      console.error("membership:", e2?.message);
+      res.status(500).json({ error: "Failed to load your membership" });
+    }
+  });
   app.get("/api/me/pro-application", authenticateJWT, async (req, res) => {
     try {
       const application = await prisma3.subscriptionRequest.findFirst({

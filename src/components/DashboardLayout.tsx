@@ -84,13 +84,33 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, [profile, loading, navigate]);
 
+  // One small ask on mount, only for the people it can hide something from.
+  const [hasPayments, setHasPayments] = useState(false);
+  useEffect(() => {
+    if (profile?.role !== 'Subscriber') return;
+    fetch('/api/me/membership', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setHasPayments((d?.payments?.count || 0) > 0))
+      .catch(() => {});
+  }, [profile?.role]);
+
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
 
-  const filteredItems = sidebarItems.filter(item => 
+  // Membership and My Subscriptions were one subject told twice, and for a
+  // self-registered member the second was always an empty page. It folds into
+  // Membership for them; institutions keep it, because their plans really are
+  // subscriptions to a set of departments.
+  //
+  // Invoices is hidden until there is something in it, for the same reason: a
+  // free member should not be handed a third blank screen about their account.
+  const isIndividual = profile?.role === 'Subscriber';
+  const filteredItems = sidebarItems.filter(item =>
     profile?.role && item.roles.includes(profile.role)
+      && !(isIndividual && item.path === '/dashboard/subscriptions')
+      && !(isIndividual && item.path === '/dashboard/invoices' && !hasPayments)
   );
 
   return (

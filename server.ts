@@ -847,6 +847,60 @@ async function startServer() {
     }
   });
 
+  /**
+   * Everything a member's membership page needs, in one answer.
+   *
+   * Membership and subscription were two words for one thing seen from two
+   * sides — what the member may read, and the record that grants it — and the
+   * dashboard carried a page for each. The free member's was always empty, so
+   * half of what they were shown about their own account was a blank screen
+   * with a button to a public contact form.
+   *
+   * There is one page now, and this is what fills it: what they hold, how long
+   * it runs, what came before, and whether they have ever paid us anything.
+   */
+  app.get("/api/me/membership", authenticateJWT, async (req: any, res) => {
+    try {
+      const uid = req.user.uid;
+      const now = new Date();
+
+      const [subs, applications, payments] = await Promise.all([
+        prisma.subscription.findMany({ where: { userId: uid }, orderBy: { endDate: 'desc' } }),
+        (prisma as any).subscriptionRequest.findMany({
+          where: { userId: uid }, orderBy: { createdAt: 'desc' }, take: 10,
+        }),
+        prisma.payment.aggregate({
+          where: { userId: uid, status: 'Success' }, _count: { _all: true }, _sum: { amount: true },
+        }),
+      ]);
+
+      const active = subs.filter(s => s.status === 'Active' && new Date(s.endDate) > now);
+      const current = active[0] || null;
+      const previous = subs.filter(s => !current || s.id !== current.id);
+
+      // A membership that has run out is not an account that has been closed:
+      // they drop back to the free allowance. Saying which one ended, and when,
+      // is the difference between that and simply finding themselves timed
+      // again with no explanation.
+      const lapsed = !current
+        ? subs.filter(s => new Date(s.endDate) <= now)
+              .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0] || null
+        : null;
+
+      res.json({
+        plan: current ? 'Pro' : 'Free',
+        current,
+        lapsed,
+        previous,
+        applications,
+        payments: { count: payments._count._all, total: payments._sum.amount || 0 },
+      });
+    } catch (e: any) {
+      console.error('membership:', e?.message);
+      res.status(500).json({ error: "Failed to load your membership" });
+    }
+  });
+
   /** Where a member's own application stands, for their dashboard. */
   app.get("/api/me/pro-application", authenticateJWT, async (req: any, res) => {
     try {

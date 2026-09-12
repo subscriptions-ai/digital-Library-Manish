@@ -98,6 +98,19 @@ import { LibraryHome } from "./components/dashboard/LibraryHome";
  * filters in the query, and dropping them would land them on an unfiltered
  * page that looks like the wrong one.
  */
+/**
+ * The old subscriptions page, kept at its old address.
+ *
+ * For a self-registered member it is now part of Membership, so anything
+ * already linked or bookmarked lands there instead of on a blank page.
+ * Institutions and their students see it exactly as before.
+ */
+function SubscriptionsOrMembership() {
+  const { profile } = useAuth();
+  if (profile?.role === 'Subscriber') return <Navigate to="/dashboard/pro" replace />;
+  return <MySubscriptions />;
+}
+
 function KeepQuery({ to }: { to: string }) {
   const { search } = useLocation();
   return <Navigate to={`${to}${search}`} replace />;
@@ -177,7 +190,7 @@ export default function App() {
                 <Route path="/dashboard/videos" element={<DashboardLayout><VideoLibrary /></DashboardLayout>} />
                 <Route path="/dashboard/videos/player/:id" element={<DashboardLayout><LmsVideoPlayer /></DashboardLayout>} />
                 <Route path="/dashboard/viewer/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
-                <Route path="/dashboard/subscriptions" element={<DashboardLayout><MySubscriptions /></DashboardLayout>} />
+                <Route path="/dashboard/subscriptions" element={<DashboardLayout><SubscriptionsOrMembership /></DashboardLayout>} />
                 <Route path="/dashboard/invoices" element={<DashboardLayout><InvoicesPayments /></DashboardLayout>} />
                 <Route path="/dashboard/settings" element={<DashboardLayout><ProfileSettings /></DashboardLayout>} />
                 

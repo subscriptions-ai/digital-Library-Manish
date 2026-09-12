@@ -125,7 +125,10 @@ export function MySubscriptions() {
                       </span>
                       <span className="text-xs font-bold text-muted bg-surface-2 px-2.5 py-1 rounded-md">{sub.planName}</span>
                     </div>
-                    <h2 className="text-xl font-bold text-ink">{sub.domainName}</h2>
+                    {/* A plan that covers no particular department — a Pro
+                        membership, say — has no domain name, and heading the
+                        card with one left it titleless. */}
+                    <h2 className="text-xl font-bold text-ink">{sub.domainName || sub.planName || 'Membership'}</h2>
                     {sub.allowedContentTypes && (
                       <p className="text-xs text-muted mt-1 max-w-lg">
                         Includes: {(sub.allowedContentTypes).join(', ')}

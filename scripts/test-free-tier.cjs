@@ -304,6 +304,37 @@ const completed = async (count, holdEndedMinutesAgo) => {
     is('the reader opens with the day already spent', (await view()).status, 200);
   }
 
+  // ── one page for the account ─────────────────────────────────────────────
+  console.log('\nMembership and subscription, in one place');
+  {
+    await p.subscription.deleteMany({ where: { userId: user.id } });
+    const m = await get('/api/me/membership', token);
+    is('a free member holds a free membership',
+      [m.body?.plan, m.body?.current, m.body?.payments?.count], ['Free', null, 0]);
+
+    const sub = await p.subscription.create({
+      data: {
+        userId: user.id, planName: 'Pro membership', planType: 'Custom', durationMonths: 12,
+        status: 'Active', startDate: new Date(Date.now() - 30 * 864e5),
+        endDate: new Date(Date.now() + 335 * 864e5),
+      },
+    });
+    const pro = await get('/api/me/membership', token);
+    is('an approved member holds Pro, with dates',
+      [pro.body?.plan, pro.body?.current?.planName, !!pro.body?.current?.endDate],
+      ['Pro', 'Pro membership', true]);
+
+    // Running out is a return to the free allowance, not a locked door — and
+    // the page can only say so if it is told which membership ended.
+    await p.subscription.update({
+      where: { id: sub.id }, data: { endDate: new Date(Date.now() - 864e5) },
+    });
+    const after = await get('/api/me/membership', token);
+    is('a lapsed membership drops back to free and says which ended',
+      [after.body?.plan, after.body?.lapsed?.planName], ['Free', 'Pro membership']);
+    await p.subscription.delete({ where: { id: sub.id } });
+  }
+
   console.log('\nWhat a member may see');
   {
     // Every one of these scoped by the member's domains, and a free member has
