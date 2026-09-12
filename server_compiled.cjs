@@ -16766,7 +16766,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const domainFilter = covered.length ? `and a."domain" = any($1)` : "";
       const args = covered.length ? [covered] : [];
       const since = new Date(Date.now() - 30 * 864e5);
-      const [counts, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
+      const [counts, byDeptRows, newJournals, recent, readSubjects, unanswered, readers, spark] = await Promise.all([
         collectionCounts(covered.length ? covered : void 0),
         prisma3.$queryRawUnsafe(
           `select a."domain" as domain,
@@ -16789,6 +16789,18 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           take: 6,
           select: { at: true, userId: true, itemId: true, itemType: true, domain: true }
         }),
+        // What they actually read, by subject, over the last month. The
+        // collection says what is on the shelves; this says what comes off
+        // them, and a librarian is paid to know the difference.
+        prisma3.$queryRawUnsafe(
+          `select e."domain" as domain, count(*)::int as reads
+           from "LibraryEvent" e
+           where e."institutionId" = $1 and e.kind = 'view'
+             and e."domain" is not null and e.at >= $2
+           group by 1 order by 2 desc limit 8`,
+          institutionId,
+          since
+        ),
         prisma3.libraryEvent.count({
           where: { institutionId, kind: "search", resultCount: 0, at: { gte: since } }
         }),
@@ -16862,6 +16874,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         sparkline: spark.map((r2) => Number(r2.reads)),
         newJournals,
         unansweredSearches: unanswered,
+        readByDepartment: readSubjects.map((r2) => ({ name: r2.domain, reads: Number(r2.reads) })),
         recent: recent.map((r2) => ({
           at: r2.at,
           itemId: r2.itemId,

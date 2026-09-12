@@ -3,9 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { dashboardTitle, affiliation } from '../../lib/identity';
 import { useAllowance, countdown } from '../membership/ReadingClock';
 import { Link } from 'react-router-dom';
-import {
-  ArrowRight, BarChart3, BookOpen, Loader2, Search, UserPlus, Users,
-} from 'lucide-react';
+import { AlertCircle, ArrowRight, BarChart3, BookOpen, Check, Loader2, Search, Sparkles, UserPlus, Users } from 'lucide-react';
 
 /**
  * A librarian's home.
@@ -37,6 +35,7 @@ type Overview = {
   hasActiveSubscription: boolean;
   sparkline: number[];
   unansweredSearches: number;
+  readByDepartment: { name: string; reads: number }[];
   recent: { at: string; itemId: string; itemType: string; domain: string | null; title: string; student: string | null }[];
 };
 
@@ -80,14 +79,19 @@ function Stat({ label, value, note, accent = false }: {
 function Weeks({ data }: { data: number[] }) {
   const [over, setOver] = useState<number | null>(null);
   if (!data?.length) return null;
-  const max = Math.max(...data, 1);
-  const peak = data.indexOf(max);
+
+  // Always twelve slots, padded at the front. A single week of data was
+  // becoming a single bar the width of the frame — a solid slab that looked
+  // like a rendering fault rather than like one quiet week.
+  const weeks = [...Array(Math.max(0, 12 - data.length)).fill(0), ...data].slice(-12);
+  const max = Math.max(...weeks, 1);
+  const peak = weeks.indexOf(max);
 
   return (
     <div>
       <div className="flex h-[120px] items-end gap-[3px]">
-        {data.map((v, i) => {
-          const last = i === data.length - 1;
+        {weeks.map((v, i) => {
+          const last = i === weeks.length - 1;
           return (
             <div
               key={i}
@@ -106,7 +110,7 @@ function Weeks({ data }: { data: number[] }) {
               {over === i && (
                 <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-rule bg-surface px-2 py-1 text-[11px] text-ink shadow-lg">
                   <b className="tnum font-mono">{n(v)}</b> {v === 1 ? 'read' : 'reads'}
-                  <span className="text-faint"> · {i === data.length - 1 ? 'this week' : `${data.length - 1 - i} weeks ago`}</span>
+                  <span className="text-faint"> · {i === weeks.length - 1 ? 'this week' : `${weeks.length - 1 - i} weeks ago`}</span>
                 </div>
               )}
             </div>
@@ -119,6 +123,46 @@ function Weeks({ data }: { data: number[] }) {
         <span>this week</span>
       </div>
     </div>
+  );
+}
+
+/**
+ * Magnitude across things with names — subjects, departments.
+ *
+ * Horizontal, because the labels are words and words read across; vertical bars
+ * would have them turned on their side or cut short. One measure, one colour,
+ * and the value sits at the end of its own bar rather than on an axis nobody
+ * reads.
+ */
+function Bars({ rows, unit }: { rows: { name: string; value: number }[]; unit: string }) {
+  const [over, setOver] = useState<string | null>(null);
+  if (!rows.length) return null;
+  const max = Math.max(...rows.map(r => r.value), 1);
+
+  return (
+    <ul className="space-y-2.5">
+      {rows.map(r => (
+        <li
+          key={r.name}
+          onMouseEnter={() => setOver(r.name)}
+          onMouseLeave={() => setOver(null)}
+          className="cursor-default"
+        >
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="truncate text-[13px] text-ink-2">{r.name}</span>
+            <span className="tnum shrink-0 font-mono text-[12px] text-muted">
+              {n(r.value)} <span className="text-faint">{unit}</span>
+            </span>
+          </div>
+          <div className="mt-1.5 h-[7px] w-full overflow-hidden rounded-full bg-surface-2">
+            <div
+              className={`h-full rounded-full transition-colors ${over === r.name ? 'bg-accent' : 'bg-accent/55'}`}
+              style={{ width: `${Math.max(2, (r.value / max) * 100)}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -154,15 +198,22 @@ function Ring({ used, total, size = 132 }: { used: number; total: number; size?:
 function Todo({ tone, text, cta, to }: {
   tone: 'caution' | 'accent'; text: React.ReactNode; cta: string; to: string;
 }) {
-  const c = tone === 'caution'
-    ? 'border-caution bg-caution-soft'
-    : 'border-rule bg-surface';
+  // A line of prose with a link at the end read as a notice to be dismissed.
+  // The same thing with a mark beside it and the action as a button reads as a
+  // job, which is what it is.
+  const caution = tone === 'caution';
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 ${c}`}>
-      <p className="text-[14px] leading-snug text-ink-2">{text}</p>
+    <div className={`flex flex-wrap items-center gap-4 rounded-2xl border p-4 ${
+      caution ? 'border-caution/40 bg-caution-soft' : 'border-rule bg-surface'}`}>
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+        caution ? 'bg-caution/15 text-caution' : 'bg-accent-soft text-accent'}`}>
+        {caution ? <AlertCircle size={17} /> : <Sparkles size={17} />}
+      </span>
+      <p className="min-w-0 flex-1 text-[14px] leading-snug text-ink-2">{text}</p>
       <Link to={to}
-        className="inline-flex shrink-0 items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
-        {cta} <ArrowRight size={12} />
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-[12px] font-semibold transition-colors ${
+          caution ? 'bg-caution text-white hover:opacity-90' : 'bg-accent text-white hover:bg-accent-hover'}`}>
+        {cta} <ArrowRight size={13} />
       </Link>
     </div>
   );
@@ -289,10 +340,12 @@ export function LibrarianHome() {
           <p className={LABEL}>Wants your attention</p>
           <div className="mt-2.5 space-y-2.5">
             {todos.length ? todos : (
-              <div className="rounded-md border border-rule bg-surface px-4 py-3.5">
+              <div className="flex items-center gap-4 rounded-2xl border border-rule bg-surface p-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                  <Check size={17} />
+                </span>
                 <p className="text-[14px] text-ink-2">
-                  Nothing needs doing. Everyone enrolled has opened the library and your access is
-                  running normally.
+                  Nothing needs doing. Everyone enrolled has opened the library.
                 </p>
               </div>
             )}
@@ -314,14 +367,17 @@ export function LibrarianHome() {
               students yet" — which stopped being true the day a membership
               without a plan came to mean the whole library. */}
           {sub.onFreeAllowance && (
-            <div className="mt-2.5 rounded-md border border-accent bg-accent-soft px-4 py-3.5">
-              <p className="text-[14px] leading-snug text-ink-2">
-                All of it is open to you now, in half-hour sessions — four a day.
+            <div className="mt-2.5 flex flex-wrap items-center gap-4 rounded-2xl border border-accent/40 bg-accent-soft p-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white">
+                <Sparkles size={17} />
+              </span>
+              <p className="min-w-0 flex-1 text-[14px] leading-snug text-ink-2">
+                All of it is open to you now, in <b className="text-ink">half-hour sessions — four a day</b>.
                 Pro removes the sessions, for you and for your students.
               </p>
               <Link to="/dashboard/pro"
-                className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
-                Apply for Pro <ArrowRight size={12} />
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-accent-hover">
+                Apply for Pro <ArrowRight size={13} />
               </Link>
             </div>
           )}
@@ -391,21 +447,33 @@ export function LibrarianHome() {
             </div>
           </div>
 
-          {col.byDepartment.length > 0 && (
-            <ul className="mt-2.5 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-surface">
-              {col.byDepartment.slice(0, 8).map(x => (
-                <li key={x.name}>
-                  <Link to={`/institution/department/${slug(x.name)}`}
-                    className="flex items-baseline justify-between gap-4 px-5 py-2.5 hover:bg-surface-2">
-                    <span className="truncate text-[13.5px] text-ink-2">{x.name}</span>
-                    <span className="tnum shrink-0 font-mono text-[12px] text-muted">
-                      {n(x.journals)} journals · {n(x.articles)} articles
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          {/* Two questions a librarian is actually asked: what are they reading,
+              and where is the collection deep. Same measure on each chart, one
+              colour, and the labels read across rather than on their side. */}
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            <div className="rounded-2xl border border-rule bg-surface p-5">
+              <p className={LABEL}>What your students read</p>
+              <p className="mt-1 text-[12px] text-faint">by subject, last 30 days</p>
+              <div className="mt-4">
+                {d.readByDepartment?.length
+                  ? <Bars rows={d.readByDepartment.map(x => ({ name: x.name, value: x.reads }))} unit="reads" />
+                  : <p className="py-8 text-center text-[13px] text-faint">
+                      Nothing has been opened yet this month.
+                    </p>}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-rule bg-surface p-5">
+              <p className={LABEL}>Where the collection is deep</p>
+              <p className="mt-1 text-[12px] text-faint">articles held, by department</p>
+              <div className="mt-4">
+                {col.byDepartment.length
+                  ? <Bars rows={col.byDepartment.slice(0, 8).map(x => ({ name: x.name, value: x.articles }))} unit="articles" />
+                  : <p className="py-8 text-center text-[13px] text-faint">Nothing on the shelves yet.</p>}
+              </div>
+            </div>
+          </div>
+
         </section>
 
         {/* 03 — the things done most often */}
@@ -440,7 +508,10 @@ export function LibrarianHome() {
                       {j.title}
                     </Link>
                     <p className="tnum mt-0.5 font-mono text-[11.5px] text-muted">
-                      {j.domain}{j.domain && ' · '}{n(j.articleCount)} articles
+                      {/* A journal found last night has no articles yet; saying
+                          "0 articles" about it reads like a fault rather than
+                          like something still arriving. */}
+                      {j.domain}{j.articleCount > 0 && <> · {n(j.articleCount)} articles</>}
                     </p>
                   </li>
                 ))}

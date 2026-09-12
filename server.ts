@@ -6693,7 +6693,7 @@ async function startServer() {
 
       const since = new Date(Date.now() - 30 * 864e5);
       // The same count as everywhere else, narrowed to what this college covers.
-      const [counts, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
+      const [counts, byDeptRows, newJournals, recent, readSubjects, unanswered, readers, spark] = await Promise.all([
         collectionCounts(covered.length ? covered : undefined),
         (prisma as any).$queryRawUnsafe(
           `select a."domain" as domain,
@@ -6710,6 +6710,15 @@ async function startServer() {
           where: { institutionId, kind: 'view' }, orderBy: { at: 'desc' }, take: 6,
           select: { at: true, userId: true, itemId: true, itemType: true, domain: true },
         }),
+        // What they actually read, by subject, over the last month. The
+        // collection says what is on the shelves; this says what comes off
+        // them, and a librarian is paid to know the difference.
+        (prisma as any).$queryRawUnsafe(
+          `select e."domain" as domain, count(*)::int as reads
+           from "LibraryEvent" e
+           where e."institutionId" = $1 and e.kind = 'view'
+             and e."domain" is not null and e.at >= $2
+           group by 1 order by 2 desc limit 8`, institutionId, since),
         (prisma as any).libraryEvent.count({
           where: { institutionId, kind: 'search', resultCount: 0, at: { gte: since } },
         }),
@@ -6787,6 +6796,7 @@ async function startServer() {
         sparkline: spark.map((r: any) => Number(r.reads)),
         newJournals,
         unansweredSearches: unanswered,
+        readByDepartment: (readSubjects as any[]).map(r => ({ name: r.domain, reads: Number(r.reads) })),
         recent: recent.map((r: any) => ({
           at: r.at, itemId: r.itemId, itemType: r.itemType, domain: r.domain,
           title: titleOf.get(r.itemId) || 'An item',
