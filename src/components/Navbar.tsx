@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Menu, X, BookOpen, ChevronDown, LayoutGrid, User, LogOut } from "lucide-react";
+import { Search, Menu, X, ChevronDown, LayoutGrid, User, LogOut } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "../lib/utils";
 import { DOMAINS } from "../constants";
@@ -118,31 +118,11 @@ export function Navbar() {
                     </div>
                   )}
                 </div>
-                {!safeMode && (
-                <a
-                  href="https://journalslibrary.com/request-demo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                >
-                  Request Demo
-                </a>
-                )}
               </>
             ) : (
               <>
                 <Link to="/login" className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors px-2">Login</Link>
                 <Link to="/signup" className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">Get Started</Link>
-                {!safeMode && (
-                <a
-                  href="https://journalslibrary.com/request-demo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                >
-                  Request Demo
-                </a>
-                )}
               </>
             )}
           </div>
@@ -223,14 +203,6 @@ export function Navbar() {
               {!safeMode && <Link to="/faq" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">FAQ</Link>}
               <Link to="/contact" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Contact Us</Link>
             </nav>
-
-            <button
-              onClick={() => navigate('/contact')}
-              className="flex items-center gap-2 rounded-full bg-blue-600 px-5 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-200"
-            >
-              <BookOpen size={14} />
-              Request Access
-            </button>
           </div>
         </div>
       </div>
@@ -295,17 +267,6 @@ export function Navbar() {
                 <Link to="/contact" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Contact Us</Link>
               </div>
             </div>
-
-            <button
-              onClick={() => {
-                setIsMenuOpen(false);
-                navigate('/contact');
-              }}
-              className="flex items-center gap-3 text-lg font-bold text-blue-600"
-            >
-              <BookOpen size={22} />
-              Request Access
-            </button>
           </div>
 
           <div className="pt-6 border-t border-slate-100 flex flex-col gap-4">
@@ -326,29 +287,11 @@ export function Navbar() {
                   <LogOut size={20} />
                   Logout
                 </button>
-                <a
-                  href="https://journalslibrary.com/request-demo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center rounded-xl bg-blue-600 py-4 text-base font-bold text-white shadow-lg shadow-blue-200"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Request Demo
-                </a>
               </>
             ) : (
               <>
                 <Link to="/login" className="flex items-center justify-center rounded-xl border border-slate-200 py-4 text-base font-bold text-slate-700" onClick={() => setIsMenuOpen(false)}>Login</Link>
                 <Link to="/signup" className="flex items-center justify-center rounded-xl bg-slate-900 py-4 text-base font-bold text-white shadow-lg shadow-slate-200" onClick={() => setIsMenuOpen(false)}>Get Started</Link>
-                <a
-                  href="https://journalslibrary.com/request-demo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center rounded-xl bg-blue-600 py-4 text-base font-bold text-white shadow-lg shadow-blue-200"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Request Demo
-                </a>
               </>
             )}
           </div>
