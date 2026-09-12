@@ -109,8 +109,25 @@ const catalogueSize = async () => {
 
   // ── 1. the catalogue ──────────────────────────────────────────────────────
   console.log('\nCatalogue');
+  // The shelf is the new collection plus the archived one — a reader opens
+  // both — so that is what the total has to be. Checking it against the Article
+  // table alone was checking half the library.
+  const archivedPeriodicals = await p.content.count({
+    where: { contentType: 'Periodicals', status: { not: 'Draft' } },
+  });
+  const archivedBooks = await p.content.count({
+    where: { contentType: 'Books', status: { not: 'Draft' } },
+  });
+  const wholeShelf = {
+    articles: truth.publishedArticles + archivedPeriodicals,
+    books: (await p.book.count({ where: { status: 'Published' } })) + archivedBooks,
+  };
+
   await check('library stats', '/api/library/stats', null, b => {
-    if (b.articles !== truth.publishedArticles) return `articles ${b.articles} but the database has ${truth.publishedArticles}`;
+    if (b.articles !== wholeShelf.articles)
+      return `articles ${b.articles} but the shelf holds ${wholeShelf.articles} (${truth.publishedArticles} new + ${archivedPeriodicals} archived)`;
+    if (b.books !== wholeShelf.books)
+      return `books ${b.books} but the shelf holds ${wholeShelf.books}`;
     if (b.journals !== truth.journalsHoldingArticles)
       return `reports ${b.journals} journals but ${truth.journalsHoldingArticles} hold published articles`;
     const deptArticles = (b.departments || []).reduce((n, d) => n + Number(d.articles || 0), 0);
