@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ReadingClock, useAllowance } from './membership/ReadingClock';
+import { dashboardTitle, affiliation } from '../lib/identity';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FeedbackWidget } from './dashboard/FeedbackWidget';
 
@@ -206,8 +207,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             >
               <Menu size={24} />
             </button>
+            {/* The home page is named after the member; the rest are named
+                after themselves, because "Librarian Dashboard" over a list of
+                invoices would be a lie about which page you are on. */}
             <h2 className="max-w-[150px] truncate font-serif text-[17px] font-medium text-ink sm:max-w-none sm:text-[19px]">
-              {sidebarItems.find(i => location.pathname === i.path || (i.path !== '/dashboard' && location.pathname.startsWith(i.path)))?.label || 'Dashboard'}
+              {location.pathname === '/dashboard'
+                ? dashboardTitle(profile as any)
+                : (sidebarItems.find(i => location.pathname === i.path || (i.path !== '/dashboard' && location.pathname.startsWith(i.path)))?.label || 'Dashboard')}
             </h2>
           </div>
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -222,8 +228,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 )}
                 <span className="truncate max-w-[120px] lg:max-w-[200px]">{profile?.displayName || profile?.email}</span>
               </div>
-              {profile?.role === 'Student' && profile?.organization ? (
-                <p className="text-[12px] text-muted">{profile.organization}</p>
+              {/* What they are and where, rather than the internal word for
+                  the row their account sits in. */}
+              {affiliation(profile as any) ? (
+                <p className="max-w-[170px] truncate text-[12px] text-muted lg:max-w-[260px]">{affiliation(profile as any)}</p>
               ) : (
                 <p className="font-mono text-[11px] uppercase tracking-wider text-faint">{profile?.role}</p>
               )}

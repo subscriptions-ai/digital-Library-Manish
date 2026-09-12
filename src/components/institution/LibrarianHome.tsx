@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { dashboardTitle, affiliation } from '../../lib/identity';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, BarChart3, BookOpen, Loader2, Search, UserPlus, Users,
@@ -121,6 +123,7 @@ function Door({ to, icon: Icon, label, note }: {
 }
 
 export function LibrarianHome() {
+  const { profile } = useAuth();
   const [d, setD] = useState<Overview | null>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
   const [error, setError] = useState('');
@@ -189,10 +192,16 @@ export function LibrarianHome() {
       {/* What this college has, in one sentence */}
       <header className="border-b border-rule bg-surface">
         <div className="mx-auto max-w-6xl px-5 py-8">
-          <p className={LABEL}>Your library</p>
+          {/* Named for whoever is looking at it, over the place it is about. */}
+          <p className={LABEL}>{dashboardTitle(profile as any)}</p>
           <h1 className="mt-1 font-serif text-[27px] font-medium tracking-tight text-ink sm:text-[33px]">
             {d.institution.name}
           </h1>
+          {affiliation(profile as any) && (
+            <p className="mt-1 text-[13px] text-muted">
+              {profile?.displayName}{profile?.displayName ? ' · ' : ''}{affiliation(profile as any)}
+            </p>
+          )}
           <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-ink-2">
             {sub.fullAccess
               ? <>Full access to <b className="text-ink">{n(col.journals)} journals</b> and <b className="text-ink">{n(col.articles)} articles</b>.</>

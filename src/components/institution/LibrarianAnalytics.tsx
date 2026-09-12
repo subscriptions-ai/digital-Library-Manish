@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { BarChart3, Sparkles } from 'lucide-react';
+import { useAllowance } from '../membership/ReadingClock';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Download, Loader2, Search, TrendingDown, TrendingUp } from 'lucide-react';
 
@@ -220,6 +222,11 @@ export function LibrarianAnalytics({
   const [sp] = useSearchParams();
   const forInstitution = institutionId || sp.get('institutionId') || undefined;
 
+  // Blurred for anyone on the free clock — including an administrator's own
+  // account, which is why it asks the allowance rather than the role.
+  const { allowance } = useAllowance();
+  const locked = !!allowance?.timed;
+
   const [days, setDays] = useState(90);
   const [d, setD] = useState<Data | null>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
@@ -287,7 +294,36 @@ export function LibrarianAnalytics({
   const quiet = u.students - u.activeStudents;
 
   return (
-    <div className="min-h-full bg-ground">
+    <div className="relative min-h-full bg-ground">
+      {/* Shown, but not readable.
+          Hiding the analytics entirely would mean a free member never learns
+          they exist, and what is never seen is never wanted. Blurred, the shape
+          of it is plain — the panels, the chart, the numbers where numbers go —
+          and the one thing standing between them and it is named on top of it. */}
+      {locked && (
+        <div className="absolute inset-0 z-20 flex items-start justify-center bg-ground/50 p-6 backdrop-blur-[6px]">
+          <div className="mt-24 w-full max-w-md rounded-2xl border border-rule bg-surface p-6 text-center shadow-xl">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
+              <BarChart3 size={20} />
+            </div>
+            <h2 className="font-serif text-xl text-ink">See what your people actually read</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
+              Which subjects, which journals, who has never signed in, and how that changes
+              month to month. It is all here — Pro membership opens it.
+            </p>
+            <Link
+              to="/dashboard/pro"
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              <Sparkles size={15} /> Apply for Pro
+            </Link>
+            <p className="mt-3 text-xs text-faint">
+              The summary on your dashboard stays open either way.
+            </p>
+          </div>
+        </div>
+      )}
+      <div className={locked ? 'pointer-events-none select-none' : undefined} aria-hidden={locked || undefined}>
       <header className="border-b border-rule bg-surface">
         <div className="mx-auto max-w-6xl px-5 py-7">
           <p className={LABEL}>Usage</p>
@@ -473,6 +509,7 @@ export function LibrarianAnalytics({
             </ul>
           </Panel>
         </div>
+      </div>
       </div>
     </div>
   );

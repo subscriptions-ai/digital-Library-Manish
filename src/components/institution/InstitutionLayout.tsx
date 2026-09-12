@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { FeedbackWidget } from '../dashboard/FeedbackWidget';
+import { dashboardTitle, affiliation } from '../../lib/identity';
 
 interface InstitutionLayoutProps {
   children: React.ReactNode;
@@ -130,7 +131,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             {isSidebarOpen && (
               <div className="overflow-hidden">
                 <div className="text-xs font-bold truncate">{profile.displayName || 'Institution Head'}</div>
-                <div className="text-[10px] text-faint truncate">{profile.organization || 'University Portal'}</div>
+                <div className="text-[10px] text-faint truncate">{affiliation(profile as any) || 'University Portal'}</div>
               </div>
             )}
           </div>
@@ -140,7 +141,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-surface-2">
         <header className="bg-surface/80 backdrop-blur-md border-b border-white z-10 sticky top-0 h-16 flex items-center justify-between px-8 shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           <h1 className="text-lg font-bold text-ink">
-            {location.pathname === '/institution' ? (profile.organization || 'Institution Dashboard')
+            {location.pathname === '/institution' ? dashboardTitle(profile as any)
             : location.pathname.startsWith('/institution/students') ? 'Student Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
             : location.pathname === '/institution/library' ? 'Content Library'

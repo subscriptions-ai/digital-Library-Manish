@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { dashboardTitle } from '../../lib/identity';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -273,7 +274,10 @@ export function LMSDashboard() {
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Welcome */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-ink truncate">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-faint">
+              {dashboardTitle(profile as any)}
+            </p>
+            <h1 className="truncate text-xl font-bold text-ink">
               Welcome back, <span className="text-accent">{dashData?.displayName || profile?.displayName || 'Reader'}</span> 👋
             </h1>
             <div className="flex items-center gap-3 mt-0.5 flex-wrap">
