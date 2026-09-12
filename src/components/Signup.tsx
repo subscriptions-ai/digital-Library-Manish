@@ -8,6 +8,27 @@ import { EmailVerificationInput } from "./EmailVerificationInput";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATION_GROUPS, COUNTRIES } from "../constants";
 import { INDIAN_STATES } from "../lib/gstUtils";
 
+/**
+ * A small heading with a rule, so the form reads as four short questions.
+ *
+ * Defined out here, not inside Signup. A component declared inside another is a
+ * new type on every render, so React throws away everything under it and builds
+ * it again — which, in a form, means the field being typed into is destroyed
+ * after each keystroke and the cursor lands back on the page. That is exactly
+ * what happened: one letter, then the caret was gone.
+ */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="space-y-4">
+      <legend className="mb-3 flex w-full items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+        {title}
+        <span className="h-px flex-1 bg-slate-100" />
+      </legend>
+      {children}
+    </fieldset>
+  );
+}
+
 export function Signup() {
   const navigate = useNavigate();
   const { signup } = useAuth();
@@ -100,17 +121,6 @@ export function Signup() {
     'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white';
   const withIcon =
     'w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white';
-
-  /** A small heading with a rule, so the form reads as four short questions. */
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <fieldset className="space-y-4">
-      <legend className="mb-3 flex w-full items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
-        {title}
-        <span className="h-px flex-1 bg-slate-100" />
-      </legend>
-      {children}
-    </fieldset>
-  );
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-14">
