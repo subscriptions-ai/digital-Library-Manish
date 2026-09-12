@@ -77,9 +77,16 @@ export function countdown(ms: number): string {
 export const clockTime = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
 
-/** The chip in the header. Renders nothing for anyone the clock does not apply to. */
-export function ReadingClock({ className = '' }: { className?: string }) {
-  const { allowance, msLeft, msUntil } = useAllowance();
+/**
+ * The chip in the header. Renders nothing for anyone the clock does not apply to.
+ *
+ * It is given the allowance rather than fetching its own, so that the header and
+ * the lock screen are never a poll apart — one showing time left while the other
+ * has already shut the door.
+ */
+export function ReadingClock({ allowance, msLeft, msUntil, className = '' }: {
+  allowance: Allowance | null; msLeft: number | null; msUntil: number | null; className?: string;
+}) {
   if (!allowance?.timed) return null;
 
   const s = allowance.state;
@@ -140,8 +147,16 @@ export function ReadingLimitNotice({
               {allowance.nextOpensAt && <> The next one opens at <b className="text-ink">{clockTime(allowance.nextOpensAt)}</b>
               {typeof msUntil === 'number' && msUntil > 0 && <> — in {countdown(msUntil)}</>}.</>}</>}
       </p>
+      {allowance.nextOpensAt && (
+        <div className="mt-4 flex flex-col items-center">
+          <WaitingClock opensAt={new Date(allowance.nextOpensAt)} size={124} />
+          {typeof msUntil === 'number' && msUntil > 0 && (
+            <p className="mt-2.5 font-mono text-xl tabular-nums text-ink">{countdown(msUntil)}</p>
+          )}
+        </div>
+      )}
       {!spent && typeof allowance.sessionsLeft === 'number' && (
-        <p className="mt-1 text-xs text-faint">
+        <p className="mt-2 text-xs text-faint">
           {allowance.sessionsLeft} of {allowance.sessionsPerDay ?? 4} sessions left today
         </p>
       )}
@@ -153,8 +168,154 @@ export function ReadingLimitNotice({
         <Sparkles size={15} /> Apply for Pro — read without a limit
       </Link>
       <p className="mt-3 text-xs text-faint">
-        You can still search and browse the whole catalogue while you wait.
+        Everything opens again on its own — you do not need to do anything.
       </p>
+    </div>
+  );
+}
+
+
+/**
+ * A clock face for the wait.
+ *
+ * The hands show the time it is now and keep moving; the coloured arc is the
+ * stretch of dial still to be crossed before the next session opens. A number
+ * counting down tells you how long; a dial shows you, which is the difference
+ * between being told to wait and being able to see the end of it.
+ *
+ * The dial is twelve hours, so a two-hour wait is a sixty-degree wedge — big
+ * enough to read at a glance and honest about the scale.
+ */
+function WaitingClock({ opensAt, size = 148 }: { opensAt: Date; size?: number }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const c = size / 2;
+  const r = c - 8;
+
+  // Degrees clockwise from twelve.
+  const hourAngle = (d: Date) => ((d.getHours() % 12) + d.getMinutes() / 60) * 30;
+  const minuteAngle = (d: Date) => (d.getMinutes() + d.getSeconds() / 60) * 6;
+  const point = (angle: number, radius: number) => [
+    c + radius * Math.sin((angle * Math.PI) / 180),
+    c - radius * Math.cos((angle * Math.PI) / 180),
+  ];
+
+  const a1 = hourAngle(now);
+  const a2 = hourAngle(opensAt);
+  const sweep = (a2 - a1 + 360) % 360;
+  const [sx, sy] = point(a1, r);
+  const [ex, ey] = point(a2, r);
+  const [hx, hy] = point(a1, r * 0.5);
+  const [mx, my] = point(minuteAngle(now), r * 0.78);
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img"
+      aria-label={`Next session at ${opensAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>
+      <circle cx={c} cy={c} r={r} className="fill-surface-2 stroke-rule" strokeWidth={1.5} />
+
+      {/* the hours, as ticks rather than numerals — it is a countdown, not a watch */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const [x1, y1] = point(i * 30, r - 4);
+        const [x2, y2] = point(i * 30, r - (i % 3 === 0 ? 10 : 7));
+        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+          className={i % 3 === 0 ? 'stroke-muted' : 'stroke-faint'} strokeWidth={i % 3 === 0 ? 2 : 1} />;
+      })}
+
+      {/* what is left of the wait */}
+      {sweep > 0.5 && (
+        <path
+          d={`M ${sx} ${sy} A ${r} ${r} 0 ${sweep > 180 ? 1 : 0} 1 ${ex} ${ey}`}
+          className="stroke-caution" strokeWidth={4} strokeLinecap="round" fill="none"
+        />
+      )}
+
+      <line x1={c} y1={c} x2={hx} y2={hy} className="stroke-ink" strokeWidth={3.5} strokeLinecap="round" />
+      <line x1={c} y1={c} x2={mx} y2={my} className="stroke-ink" strokeWidth={2} strokeLinecap="round" />
+      <circle cx={c} cy={c} r={3} className="fill-ink" />
+      {/* where the wait ends */}
+      <circle cx={ex} cy={ey} r={3.5} className="fill-caution" />
+    </svg>
+  );
+}
+
+/**
+ * The wall.
+ *
+ * When the time is up the whole dashboard goes behind this — not a message
+ * above a library the member can still browse. A limit they can read around is
+ * not a limit, and the moment they most want more is the moment they are stopped,
+ * so that is the moment to ask.
+ *
+ * Two things stay open: applying for Pro, which is the way past it, and signing
+ * out, because trapping someone in a page with no way out is a different thing
+ * altogether.
+ */
+export function ReadingLockScreen({ allowance, msUntil }: { allowance: Allowance; msUntil: number | null }) {
+  const spent = allowance.state === 'spent';
+
+  // The page behind must not scroll while the wall is up.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ground/80 p-4 backdrop-blur-md">
+      <div className="w-full max-w-md rounded-2xl border border-rule bg-surface p-7 text-center shadow-2xl">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-caution-soft text-caution">
+          <Lock size={22} />
+        </div>
+
+        <h2 className="font-serif text-2xl text-ink">
+          {spent ? 'That is today’s reading time' : 'Your reading session has ended'}
+        </h2>
+
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted">
+          {spent
+            ? 'A free membership includes four half-hour sessions a day. Everything opens again after midnight.'
+            : 'Free membership comes in half-hour sessions, with a two-hour gap between them.'}
+        </p>
+
+        {allowance.nextOpensAt && (
+          <div className="mt-5 flex flex-col items-center">
+            <WaitingClock opensAt={new Date(allowance.nextOpensAt)} />
+            {typeof msUntil === 'number' && msUntil > 0 && (
+              <p className="mt-3 font-mono text-2xl tabular-nums text-ink">{countdown(msUntil)}</p>
+            )}
+            <p className="mt-0.5 text-xs text-muted">
+              opens at {clockTime(allowance.nextOpensAt)}
+            </p>
+          </div>
+        )}
+        {!spent && typeof allowance.sessionsLeft === 'number' && (
+          <p className="mt-3 text-xs text-faint">
+            {allowance.sessionsLeft} of {allowance.sessionsPerDay ?? 4} sessions left today
+          </p>
+        )}
+
+        <Link
+          to="/dashboard/pro"
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+        >
+          <Sparkles size={16} /> Get unlimited time — apply for Pro
+        </Link>
+
+        <p className="mt-3 text-xs text-faint">
+          Pro removes the sessions entirely. Nothing is charged here — we agree the terms on a call.
+        </p>
+
+        <button
+          onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }}
+          className="mt-4 text-xs font-semibold text-muted underline underline-offset-2 hover:text-ink"
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }
