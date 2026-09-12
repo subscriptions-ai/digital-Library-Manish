@@ -134,6 +134,108 @@ function ContentCard({ item, n, onOpen }: { item: ContentItem; n: number; onOpen
   );
 }
 
+type Trending = {
+  since: string | null;
+  chosenBy?: 'asked' | 'registration' | 'collection';
+  departments: { name: string; basis: 'read' | 'new'; items: {
+    id: string; type: string; title: string; where?: string | null; reads?: number; at?: string;
+  }[] }[];
+};
+
+const readerPath = (type: string, id: string) =>
+  type === 'article' ? `/dashboard/article/${id}`
+  : type === 'book' ? `/dashboard/viewer/${id}`
+  : `/dashboard/content/${id}`;
+
+const ago = (iso?: string) => {
+  if (!iso) return '';
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
+  return days <= 0 ? 'added today' : days === 1 ? 'added yesterday'
+    : days < 30 ? `added ${days} days ago` : `added ${Math.round(days / 30)} months ago`;
+};
+
+/**
+ * Where to go next, by department.
+ *
+ * The dashboard ended in a wall of filters over a shelf that could come back
+ * empty, which is a dead end dressed as a library. This answers the question
+ * the filters were making the reader ask for themselves.
+ *
+ * It says what it is measuring, because the two things it can honestly measure
+ * are small: what members here have opened in the last thirty days, and — for a
+ * department nobody has opened yet — what arrived most recently. It is not a
+ * global trend. We hold no citation counts, and a number with no source behind
+ * it is worth less than no number.
+ */
+function WorthOpening({ navigate }: { navigate: (to: string) => void }) {
+  const [data, setData] = useState<Trending | null>(null);
+
+  useEffect(() => {
+    fetch('/api/library/trending', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(setData)
+      .catch(() => {});
+  }, []);
+
+  if (!data?.departments?.length) return null;
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="font-serif text-[19px] font-medium text-ink">Worth opening next</h2>
+        <p className="text-[12px] text-faint">
+          {data.chosenBy === 'registration'
+            ? 'In the departments you chose when you registered'
+            : data.chosenBy === 'asked' ? 'In the departments you asked for'
+            : 'In the departments we hold most of'}
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {data.departments.map(d => (
+          <div key={d.name} className="flex flex-col rounded-md border border-rule bg-surface p-4">
+            <p className="truncate font-mono text-[10.5px] uppercase tracking-wider text-faint" title={d.name}>
+              {d.name}
+            </p>
+            <p className="mt-1 text-[11.5px] text-faint">
+              {d.basis === 'read' ? 'most opened here, last 30 days' : 'nobody has opened these yet — newest first'}
+            </p>
+            <ul className="mt-3 space-y-2.5">
+              {d.items.map(it => (
+                <li key={it.id}>
+                  <button
+                    onClick={() => navigate(readerPath(it.type, it.id))}
+                    className="group w-full text-left"
+                  >
+                    <p className="line-clamp-2 text-[13px] leading-snug text-ink-2 group-hover:text-accent">
+                      {it.title}
+                    </p>
+                    <p className="mt-0.5 flex items-baseline gap-1.5 text-[11px] text-faint">
+                      {it.where && <span className="min-w-0 truncate">{it.where}</span>}
+                      {it.where && <span className="shrink-0">·</span>}
+                      <span className="shrink-0 tabular-nums">
+                        {d.basis === 'read'
+                          ? `${it.reads} ${it.reads === 1 ? 'read' : 'reads'}`
+                          : ago(it.at)}
+                      </span>
+                    </p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => navigate(`/dashboard/department/${d.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`)}
+              className="mt-3 self-start font-mono text-[10.5px] uppercase tracking-wider text-accent hover:underline"
+            >
+              Browse the department →
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export function LMSDashboard() {
   const { profile } = useAuth();
@@ -548,6 +650,9 @@ export function LMSDashboard() {
           </div>
         )}
 
+        {/* ── WHERE TO GO NEXT ── */}
+        <WorthOpening navigate={navigate} />
+
         {/* ── FILTERS & SEARCH ── */}
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center bg-surface rounded-md border border-rule p-4 shadow-sm w-full">
@@ -648,10 +753,34 @@ export function LMSDashboard() {
             ))}
           </div>
         ) : content.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">📚</div>
-            <h3 className="text-ink-2 font-bold text-xl mb-2">No content found</h3>
-            <p className="text-sm text-faint">Try adjusting your filters or contact your administrator.</p>
+          // A shelf that comes back empty because of a filter set on a previous
+          // visit — the state survives in sessionStorage — used to end in advice
+          // to adjust filters, with nothing to press. Now there is something to
+          // press, and a way into the rest of the library.
+          <div className="py-16 text-center">
+            <div className="mb-4 text-5xl">📚</div>
+            <h3 className="mb-2 text-xl font-bold text-ink-2">Nothing matches these filters</h3>
+            <p className="text-sm text-faint">
+              {[search && `“${search}”`, domainFilter, typeFilter, subjectFilter, tagFilter].filter(Boolean).join(' · ') || 'No filters are set.'}
+            </p>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+              <button
+                onClick={() => {
+                  setSearch(''); setDebouncedSearch('');
+                  setDomainFilter(''); setTypeFilter(''); setSubjectFilter(''); setTagFilter('');
+                  setPage(1);
+                }}
+                className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover"
+              >
+                Clear filters
+              </button>
+              <button
+                onClick={() => navigate('/dashboard/library')}
+                className="rounded-md border border-rule px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-2"
+              >
+                Search the whole library
+              </button>
+            </div>
           </div>
         ) : viewMode === 'grouped' ? (
           // Grouped by Domain

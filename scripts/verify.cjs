@@ -387,6 +387,31 @@ const catalogueSize = async () => {
                   `${n(b.collection.total)} items · ${b.departmentsCovered} departments · ${b.itemsRead} read`);
     } else meh('the reader is told the size of the library', 'no subscriber');
 
+    // "Worth opening next" makes two claims about every row it shows: that the
+    // item exists, and what the number beside it counts. A recommendation
+    // pointing at a deleted id, or a read count invented for a shelf nobody has
+    // opened, is the kind of wrong that looks perfectly fine on screen.
+    if (R) {
+      const t = (await get('/api/library/trending', R)).body || {};
+      const depts = t.departments || [];
+      if (!depts.length) meh('what to read next is real', 'nothing recommended');
+      else {
+        const items = depts.flatMap(d => d.items.map(i => ({ ...i, basis: d.basis, dept: d.name })));
+        const missing = [];
+        for (const i of items) {
+          const table = i.type === 'article' ? p.article : i.type === 'book' ? p.book : p.content;
+          if (!(await table.findUnique({ where: { id: i.id }, select: { id: true } }))) missing.push(i.title);
+        }
+        const wrongBasis = items.find(i => (i.basis === 'read' ? !(i.reads >= 1) : !i.at));
+        missing.length
+          ? bad('what to read next is real', `${missing.length} recommended items do not exist: ${missing[0]}`)
+          : wrongBasis
+            ? bad('what to read next is real', `${wrongBasis.dept} is labelled ${wrongBasis.basis} but carries no such figure`)
+            : ok('what to read next is real',
+                `${depts.length} departments · ${items.length} items · ${depts.filter(d => d.basis === 'read').length} from reads`);
+      }
+    } else meh('what to read next is real', 'no subscriber');
+
     // The contradiction the librarian saw: two screens, one truth.
     const ov = (await get(`/api/institution/overview?institutionId=${inst.id}`, A)).body;
     const legacy = await p.studentActivity.findMany({

@@ -12348,6 +12348,100 @@ async function startServer() {
       res.status(500).json({ error: "Failed to load dashboard" });
     }
   });
+  app.get("/api/library/trending", authenticateJWT, async (req, res) => {
+    try {
+      const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      const whole = seesWholeLibrary(req.user.role, subs);
+      const allowed = whole ? [] : Array.from(new Set(subs.flatMap((sb) => {
+        const d = Array.isArray(sb.domains) ? sb.domains : sb.domains ? JSON.parse(sb.domains) : [];
+        return d;
+      }).filter(Boolean)));
+      const me = await prisma3.user.findUnique({
+        where: { id: req.user.uid },
+        select: { interestedDomains: true }
+      });
+      const interested = Array.isArray(me?.interestedDomains) ? me.interestedDomains : [];
+      const asked = String(req.query.domains || "").split(",").map((x2) => x2.trim()).filter(Boolean);
+      const permitted = (list) => allowed.length ? list.filter((d) => allowed.includes(d)) : list;
+      let departments = permitted(asked.length ? asked : interested);
+      if (!departments.length) {
+        const deep = await collectionByDepartment(allowed.length ? allowed : void 0);
+        departments = deep.slice(0, 4).map((d) => d.name);
+      }
+      departments = departments.slice(0, 4);
+      if (!departments.length) return res.json({ since: null, departments: [] });
+      const perDept = Math.max(1, Math.min(6, Number(req.query.limit) || 4));
+      const since = new Date(Date.now() - 30 * 864e5);
+      const read = await prisma3.libraryEvent.groupBy({
+        by: ["itemId", "itemType", "domain"],
+        where: { kind: "view", at: { gte: since }, domain: { in: departments }, itemId: { not: null } },
+        _count: { _all: true }
+      });
+      read.sort((a, b) => b._count._all - a._count._all);
+      const picked = /* @__PURE__ */ new Map();
+      for (const r2 of read) {
+        const bucket = picked.get(r2.domain) || [];
+        if (bucket.length < perDept) {
+          bucket.push(r2);
+          picked.set(r2.domain, bucket);
+        }
+      }
+      const idsOf = (t2) => read.filter((r2) => r2.itemType === t2 && (picked.get(r2.domain) || []).includes(r2)).map((r2) => r2.itemId);
+      const [arts, books, contents] = await Promise.all([
+        prisma3.article.findMany({ where: { id: { in: idsOf("article") } }, select: { id: true, title: true, domain: true, journalName: true } }),
+        prisma3.book.findMany({ where: { id: { in: idsOf("book") } }, select: { id: true, title: true, domain: true, publisherName: true } }),
+        prisma3.content.findMany({ where: { id: { in: idsOf("content") } }, select: { id: true, title: true, domain: true, contentType: true } })
+      ]);
+      const meta = new Map([
+        ...arts.map((a) => [a.id, { title: a.title, where: a.journalName }]),
+        ...books.map((b) => [b.id, { title: b.title, where: b.publisherName }]),
+        ...contents.map((c) => [c.id, { title: c.title, where: c.contentType }])
+      ]);
+      const empty = departments.filter((d) => !(picked.get(d) || []).some((r2) => meta.has(r2.itemId)));
+      const fresh = /* @__PURE__ */ new Map();
+      await Promise.all(empty.map(async (d) => {
+        const [a, b] = await Promise.all([
+          prisma3.article.findMany({
+            where: { status: "Published", domain: d },
+            orderBy: { createdAt: "desc" },
+            take: perDept,
+            select: { id: true, title: true, domain: true, journalName: true, createdAt: true }
+          }),
+          prisma3.book.findMany({
+            where: { status: "Published", domain: d },
+            orderBy: { createdAt: "desc" },
+            take: perDept,
+            select: { id: true, title: true, domain: true, publisherName: true, createdAt: true }
+          })
+        ]);
+        fresh.set(d, [
+          ...a.map((x2) => ({ id: x2.id, type: "article", title: x2.title, where: x2.journalName, at: x2.createdAt })),
+          ...b.map((x2) => ({ id: x2.id, type: "book", title: x2.title, where: x2.publisherName, at: x2.createdAt }))
+        ].sort((x2, y) => new Date(y.at).getTime() - new Date(x2.at).getTime()).slice(0, perDept));
+      }));
+      res.json({
+        since: since.toISOString(),
+        chosenBy: asked.length ? "asked" : interested.length ? "registration" : "collection",
+        departments: departments.map((name) => {
+          const rows = (picked.get(name) || []).filter((r2) => meta.has(r2.itemId));
+          return rows.length ? {
+            name,
+            basis: "read",
+            items: rows.map((r2) => ({
+              id: r2.itemId,
+              type: r2.itemType,
+              title: meta.get(r2.itemId).title,
+              where: meta.get(r2.itemId).where || null,
+              reads: r2._count._all
+            }))
+          } : { name, basis: "new", items: fresh.get(name) || [] };
+        }).filter((d) => d.items.length)
+      });
+    } catch (e2) {
+      console.error("trending error:", e2?.message);
+      res.status(500).json({ error: "Failed to load" });
+    }
+  });
   app.get("/api/user/history", authenticateJWT, async (req, res) => {
     try {
       const recentViews = await prisma3.studentActivity.findMany({

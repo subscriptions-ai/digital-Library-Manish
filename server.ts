@@ -1753,6 +1753,118 @@ async function startServer() {
     }
   });
 
+  /**
+   * What is worth opening next, by department.
+   *
+   * Two honest signals and no third: what other members here have opened in
+   * the last thirty days, and — for a department nobody has touched yet — what
+   * arrived most recently. Neither is a claim about the world. We hold no
+   * citation counts and no altmetrics, so this cannot say what is trending
+   * globally, and saying it anyway would be an invention dressed as a figure.
+   *
+   * The departments come from what the member said they were interested in
+   * when they registered. That list has been analytics-only until now; this is
+   * the first thing it does for the member who filled it in.
+   */
+  app.get("/api/library/trending", authenticateJWT, async (req: any, res) => {
+    try {
+      const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      const whole = seesWholeLibrary(req.user.role, subs);
+      const allowed: string[] = whole ? [] : Array.from(new Set(subs.flatMap(sb => {
+        const d = Array.isArray(sb.domains) ? sb.domains : (sb.domains ? JSON.parse(sb.domains as string) : []);
+        return d as string[];
+      }).filter(Boolean)));
+
+      const me = await prisma.user.findUnique({
+        where: { id: req.user.uid }, select: { interestedDomains: true },
+      });
+      const interested: string[] = Array.isArray(me?.interestedDomains) ? (me!.interestedDomains as string[]) : [];
+      const asked = String(req.query.domains || '').split(',').map(x => x.trim()).filter(Boolean);
+
+      const permitted = (list: string[]) => (allowed.length ? list.filter(d => allowed.includes(d)) : list);
+      let departments = permitted(asked.length ? asked : interested);
+
+      // Nothing chosen, or nothing chosen that we hold: fall back to the
+      // deepest departments rather than to an empty panel.
+      if (!departments.length) {
+        const deep = await collectionByDepartment(allowed.length ? allowed : undefined);
+        departments = deep.slice(0, 4).map(d => d.name);
+      }
+      departments = departments.slice(0, 4);
+      if (!departments.length) return res.json({ since: null, departments: [] });
+
+      const perDept = Math.max(1, Math.min(6, Number(req.query.limit) || 4));
+      const since = new Date(Date.now() - 30 * 864e5);
+
+      const read: any[] = await (prisma as any).libraryEvent.groupBy({
+        by: ['itemId', 'itemType', 'domain'],
+        where: { kind: 'view', at: { gte: since }, domain: { in: departments }, itemId: { not: null } },
+        _count: { _all: true },
+      });
+      read.sort((a, b) => b._count._all - a._count._all);
+
+      const picked = new Map<string, any[]>();
+      for (const r of read) {
+        const bucket = picked.get(r.domain) || [];
+        if (bucket.length < perDept) { bucket.push(r); picked.set(r.domain, bucket); }
+      }
+
+      // Titles for whatever was picked, one query a shelf.
+      const idsOf = (t: string) => read.filter(r => r.itemType === t && (picked.get(r.domain) || []).includes(r)).map(r => r.itemId);
+      const [arts, books, contents] = await Promise.all([
+        (prisma as any).article.findMany({ where: { id: { in: idsOf('article') } }, select: { id: true, title: true, domain: true, journalName: true } }),
+        (prisma as any).book.findMany({ where: { id: { in: idsOf('book') } }, select: { id: true, title: true, domain: true, publisherName: true } }),
+        prisma.content.findMany({ where: { id: { in: idsOf('content') } }, select: { id: true, title: true, domain: true, contentType: true } }),
+      ]);
+      const meta = new Map<string, any>([
+        ...arts.map((a: any) => [a.id, { title: a.title, where: a.journalName }] as [string, any]),
+        ...books.map((b: any) => [b.id, { title: b.title, where: b.publisherName }] as [string, any]),
+        ...contents.map((c: any) => [c.id, { title: c.title, where: c.contentType }] as [string, any]),
+      ]);
+
+      // A department nobody has opened yet still deserves a shelf: the newest
+      // thing in it, labelled as new rather than as read.
+      const empty = departments.filter(d => !(picked.get(d) || []).some(r => meta.has(r.itemId)));
+      const fresh = new Map<string, any[]>();
+      await Promise.all(empty.map(async d => {
+        const [a, b] = await Promise.all([
+          (prisma as any).article.findMany({
+            where: { status: 'Published', domain: d }, orderBy: { createdAt: 'desc' }, take: perDept,
+            select: { id: true, title: true, domain: true, journalName: true, createdAt: true },
+          }),
+          (prisma as any).book.findMany({
+            where: { status: 'Published', domain: d }, orderBy: { createdAt: 'desc' }, take: perDept,
+            select: { id: true, title: true, domain: true, publisherName: true, createdAt: true },
+          }),
+        ]);
+        fresh.set(d, [
+          ...a.map((x: any) => ({ id: x.id, type: 'article', title: x.title, where: x.journalName, at: x.createdAt })),
+          ...b.map((x: any) => ({ id: x.id, type: 'book', title: x.title, where: x.publisherName, at: x.createdAt })),
+        ].sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime()).slice(0, perDept));
+      }));
+
+      res.json({
+        since: since.toISOString(),
+        chosenBy: asked.length ? 'asked' : interested.length ? 'registration' : 'collection',
+        departments: departments.map(name => {
+          const rows = (picked.get(name) || []).filter(r => meta.has(r.itemId));
+          return rows.length
+            ? {
+                name, basis: 'read',
+                items: rows.map(r => ({
+                  id: r.itemId, type: r.itemType, title: meta.get(r.itemId).title,
+                  where: meta.get(r.itemId).where || null, reads: r._count._all,
+                })),
+              }
+            : { name, basis: 'new', items: fresh.get(name) || [] };
+        }).filter(d => d.items.length),
+      });
+    } catch (e: any) {
+      console.error('trending error:', e?.message);
+      res.status(500).json({ error: 'Failed to load' });
+    }
+  });
+
   // GET /api/user/history — Get full reading history
   app.get("/api/user/history", authenticateJWT, async (req: any, res) => {
     try {
