@@ -45,7 +45,7 @@ export function Signup() {
       return;
     }
     if (!formData.interestedDomains.length) {
-      toast.error('Please choose at least one subject you would like to read');
+      toast.error('Please select at least one department relevant to your institution');
       return;
     }
     if (!acceptedTerms || !acceptedPrivacy) {
@@ -147,16 +147,16 @@ export function Signup() {
                 />
               </div>
             </div>
-            {/* Interests, not permissions.
-                Every member reads the whole library — this asks what they came
-                for so we know what to collect more of, and the wording says so
-                plainly rather than letting anyone think they are choosing a
-                smaller library for themselves. */}
+            {/* Interests, not permissions. Every member reads the whole library
+                whatever they pick here; this only tells us where to collect
+                more. Note that the wording no longer says so — it used to, and
+                if members start believing their choices narrow what they can
+                read, that reassurance is the line to put back. */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Subjects based on market demand and university/institute requirements *</label>
+              <label className="text-sm font-bold text-slate-700">Departments Relevant to Your Institution *</label>
               <p className="text-xs text-slate-500">
-                You will be able to read everything we hold whatever you pick. This just tells us
-                what to collect more of.
+                Select the departments relevant to your institution. Your selection helps us identify
+                areas where additional resources and materials are needed.
               </p>
               <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
                 {/* Alphabetical: the constant is ordered by how the departments were
