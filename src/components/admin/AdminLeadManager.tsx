@@ -20,6 +20,10 @@ const STATUS_META: Record<string, { bg: string; text: string; border: string }> 
 
 export function AdminLeadManager() {
   const [leads, setLeads]               = useState<any[]>([]);
+  // The list is a page; these describe the whole table behind it.
+  const [leadTotal, setLeadTotal]       = useState(0);
+  const [facets, setFacets]             = useState<{ counts: Record<string, number>; countAll: number; sources: string[]; states: string[] }>(
+    { counts: {}, countAll: 0, sources: [], states: [] });
   const [team, setTeam]                 = useState<any[]>([]);
   const [loading, setLoading]           = useState(true);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
@@ -33,7 +37,13 @@ export function AdminLeadManager() {
   const [stateFilter, setStateFilter]   = useState('All');
   const [sourceFilter, setSourceFilter] = useState('All');
 
-  useEffect(() => { fetchData(); }, []);
+  // Filters are the server's business now, so changing one has to ask again.
+  // The search box waits for the typing to settle rather than asking per key.
+  useEffect(() => { fetchData(); }, [statusFilter, stateFilter, sourceFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => fetchData(), 350);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   const handleSyncOldLeads = async () => {
     setSyncing(true);
@@ -53,12 +63,26 @@ export function AdminLeadManager() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      const q = new URLSearchParams({ limit: '200' });
+      if (statusFilter !== 'All') q.set('status', statusFilter);
+      if (stateFilter !== 'All') q.set('state', stateFilter);
+      if (sourceFilter !== 'All') q.set('source', sourceFilter);
+      if (searchQuery.trim()) q.set('search', searchQuery.trim());
+
       const [leadsRes, teamRes] = await Promise.all([
-        fetch('/api/admin/leads',      { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
+        fetch(`/api/admin/leads?${q}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
         fetch('/api/admin/sales-team', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
       ]);
       if (!leadsRes.ok || !teamRes.ok) throw new Error('Failed to fetch data');
-      setLeads(await leadsRes.json());
+      const ld = await leadsRes.json();
+      setLeads(Array.isArray(ld) ? ld : (ld?.data ?? []));
+      setLeadTotal(Array.isArray(ld) ? ld.length : (ld?.total ?? 0));
+      setFacets({
+        counts: ld?.counts ?? {},
+        countAll: ld?.countAll ?? (Array.isArray(ld) ? ld.length : 0),
+        sources: ld?.sources ?? [],
+        states: ld?.states ?? [],
+      });
       setTeam(await teamRes.json());
     } catch { toast.error('Failed to load leads data'); }
     finally { setLoading(false); }
@@ -83,24 +107,13 @@ export function AdminLeadManager() {
   };
 
   // ── Derived data ─────────────────────────────────────────────
-  const uniqueStates  = Array.from(new Set(leads.map(l => l.state).filter(Boolean))).sort() as string[];
-  const uniqueSources = Array.from(new Set(leads.map(l => l.source).filter(Boolean))).sort() as string[];
+  // The choices come from every lead, not from the ones on screen. Sifting the
+  // page here would have offered a source list that shrank as the pile grew.
+  const uniqueStates  = facets.states;
+  const uniqueSources = facets.sources;
 
-  const filteredLeads = leads.filter(lead => {
-    if (statusFilter !== 'All' && lead.status !== statusFilter)   return false;
-    if (stateFilter  !== 'All' && lead.state  !== stateFilter)    return false;
-    if (sourceFilter !== 'All' && lead.source !== sourceFilter)   return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      if (
-        !lead.name?.toLowerCase().includes(q) &&
-        !lead.email?.toLowerCase().includes(q) &&
-        !lead.phone?.toLowerCase().includes(q) &&
-        !lead.organization?.toLowerCase().includes(q)
-      ) return false;
-    }
-    return true;
-  });
+  // Filtering happens on the server now; what arrives is already the answer.
+  const filteredLeads = leads;
 
   const allFilteredSelected =
     filteredLeads.length > 0 && filteredLeads.every(l => selectedLeads.includes(l.id));
@@ -115,7 +128,7 @@ export function AdminLeadManager() {
     }
   };
 
-  const getStatusCount = (s: string) => s === 'All' ? leads.length : leads.filter(l => l.status === s).length;
+  const getStatusCount = (s: string) => (s === 'All' ? facets.countAll : (facets.counts[s] ?? 0));
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -361,7 +374,7 @@ export function AdminLeadManager() {
 
       {!loading && leads.length > 0 && (
         <p className="text-xs font-bold text-slate-400 text-right">
-          Showing {filteredLeads.length} of {leads.length} total leads
+          Showing {filteredLeads.length} of {leadTotal.toLocaleString()} matching leads
           {selectedLeads.length > 0 && <span className="ml-2 text-indigo-600">• {selectedLeads.length} selected</span>}
         </p>
       )}

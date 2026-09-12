@@ -47,16 +47,27 @@ export function UserManager() {
   const [resetTarget, setResetTarget] = useState<any | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
 
-  const fetchUsers = async () => {
+  // A page at a time, counted on the server. The browser used to hold every
+  // member at once and sift them here, which is a habit that ends the day the
+  // membership outgrows a screenful.
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PER_PAGE = 50;
+
+  const fetchUsers = async (toPage = page) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (filterRole !== 'all') params.set('role', filterRole);
       if (search) params.set('search', search);
+      params.set('page', String(toPage));
+      params.set('limit', String(PER_PAGE));
       const res = await fetch(`/api/admin/users?${params}`, { headers: authHeader() });
-      let data: any[] = [];
+      let data: any = null;
       try { data = await res.json(); } catch {}
-      setUsers(Array.isArray(data) ? data : []);
+      setUsers(Array.isArray(data) ? data : (data?.data ?? []));
+      setTotal(Array.isArray(data) ? data.length : (data?.total ?? 0));
+      setPage(toPage);
     } catch {
       toast.error('Could not fetch users');
     } finally {
@@ -64,7 +75,13 @@ export function UserManager() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, [filterRole]);
+  // Searching is the server's job now, so it is asked again when the text
+  // settles rather than filtering whatever happens to be in hand.
+  useEffect(() => { fetchUsers(1); }, [filterRole]);
+  useEffect(() => {
+    const t = setTimeout(() => fetchUsers(1), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   /* ── EDIT ── */
   const openEdit = (user: any) => {
@@ -160,13 +177,13 @@ export function UserManager() {
     }
   };
 
-  const filtered = users.filter(u => {
-    const searchMatch = u.email?.toLowerCase().includes(search.toLowerCase()) || (u.displayName?.toLowerCase() || '').includes(search.toLowerCase());
-    const verifMatch = filterVerification === 'all' 
-                       || (filterVerification === 'verified' && u.isEmailVerified)
-                       || (filterVerification === 'unverified' && !u.isEmailVerified);
-    return searchMatch && verifMatch;
-  });
+  // Searching happens on the server now — repeating it here would quietly drop
+  // the matches it finds that this does not, such as an organisation name.
+  // Verification is still sifted here, and so applies to the page in hand.
+  const filtered = users.filter(u =>
+    filterVerification === 'all'
+    || (filterVerification === 'verified' && u.isEmailVerified)
+    || (filterVerification === 'unverified' && !u.isEmailVerified));
 
   const exportCSV = () => {
     const headers = [
@@ -279,7 +296,7 @@ export function UserManager() {
             <option value="unverified">Unverified Emails</option>
           </select>
         </div>
-        <button onClick={fetchUsers} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
+        <button onClick={() => fetchUsers(page)} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
           <RefreshCw size={15} />
         </button>
         <div className="relative">
@@ -543,9 +560,33 @@ export function UserManager() {
             </tbody>
           </table>
         </div>
-        {/* Footer count */}
-        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 text-xs text-slate-400">
-          {filtered.length} user{filtered.length !== 1 ? 's' : ''} shown
+        {/* Footer count and pager. The count is the whole membership matching the
+            filters, not the handful on screen — the difference between them is
+            the entire point of paging. */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-3 text-xs text-slate-500">
+          <span>
+            {total.toLocaleString()} user{total !== 1 ? 's' : ''}
+            {total > 0 && <> · showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, total)}</>}
+          </span>
+          {total > PER_PAGE && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => fetchUsers(page - 1)}
+                disabled={page <= 1 || loading}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-600 disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="tabular-nums">page {page} of {Math.max(1, Math.ceil(total / PER_PAGE))}</span>
+              <button
+                onClick={() => fetchUsers(page + 1)}
+                disabled={page >= Math.ceil(total / PER_PAGE) || loading}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-600 disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

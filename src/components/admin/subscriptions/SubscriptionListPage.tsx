@@ -64,7 +64,8 @@ export function SubscriptionListPage() {
         const res = await fetch(`/api/admin/users?${q.toString()}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
-        setSearchResults(await res.json());
+        const d = await res.json();
+        setSearchResults(Array.isArray(d) ? d : (d?.data ?? []));
       } catch {
         // fail silently for search
       } finally {

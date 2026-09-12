@@ -42,15 +42,17 @@ export function AdminExecutivePipeline() {
     try {
       const [teamRes, leadsRes] = await Promise.all([
         fetch('/api/admin/sales-team', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/admin/leads',       { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
+        fetch(`/api/admin/leads?assignedToId=${encodeURIComponent(id)}&limit=200`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
       ]);
       if (teamRes.ok) {
         const team = await teamRes.json();
         setExecutive(team.find((t: any) => t.id === id) || null);
       }
       if (leadsRes.ok) {
-        const allLeads = await leadsRes.json();
-        setLeads(allLeads.filter((l: any) => l.assignedToId === id));
+        // Asked for this executive's leads rather than for everyone's and
+        // then throwing the rest away.
+        const ld = await leadsRes.json();
+        setLeads(Array.isArray(ld) ? ld : (ld?.data ?? []));
       }
     } catch { toast.error('Failed to load pipeline data'); }
     finally { setLoading(false); }

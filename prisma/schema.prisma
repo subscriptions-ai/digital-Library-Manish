@@ -477,6 +477,14 @@ model User {
   
   assignedLeads         Lead[]            @relation("AssignedLeads")
   leadInteractions      LeadInteraction[] @relation("UserInteractions")
+
+  // The admin screens filter by role and read newest-first, and every page a
+  // member loads looks their institution up. None of that was indexed, which
+  // costs nothing at two hundred rows and a full scan of the table at two
+  // hundred thousand.
+  @@index([role, createdAt])
+  @@index([createdAt])
+  @@index([institutionId])
 }
 
 model Payment {
@@ -866,6 +874,13 @@ model Lead {
   interactions LeadInteraction[]
 
   @@index([assignedToId, assignmentSeen])
+  // Every signup files one of these, so the pile grows as fast as the
+  // membership does — and sales reads it by status, by where it came from, and
+  // newest first.
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([source, createdAt])
+  @@index([email])
 }
 
 model LeadInteraction {

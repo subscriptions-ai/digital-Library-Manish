@@ -14,7 +14,7 @@ import Razorpay from "razorpay";
 import nodemailer from "nodemailer";
 import * as sesv2 from "@aws-sdk/client-sesv2";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import compression from "compression";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -70,24 +70,71 @@ async function startServer() {
   }));
   app.use(compression());
   
-  // Rate Limiting Protection
+  /**
+   * Rate limiting, counted per member rather than per address.
+   *
+   * A college, a hospital and an office each reach the internet through one
+   * address. Counting requests by address therefore counts a whole institution
+   * as one visitor: fifty students sharing a gateway would have shared a
+   * thousand requests between them, and the reading clock alone asks for the
+   * time twice a minute per open tab. They would have been told the site was
+   * refusing them before anybody had opened an article — and told it in a way
+   * that looks exactly like the site being broken.
+   *
+   * So a signed-in member is counted as themselves, wherever they are sitting.
+   * Only anonymous traffic is counted by address, which is what the limit is
+   * actually for.
+   */
+  const perMemberKey = (req: any, res: any) => {
+    const auth = req.headers?.authorization;
+    if (auth?.startsWith('Bearer ')) {
+      try {
+        const ud: any = jwt.verify(auth.slice(7), JWT_SECRET);
+        if (ud?.uid) return `u:${ud.uid}`;
+      } catch { /* expired or forged — fall through to the address */ }
+    }
+    // ipKeyGenerator normalises IPv6 into a sensible subnet rather than letting
+    // one visitor look like an unlimited supply of addresses.
+    return ipKeyGenerator(req, res);
+  };
+
   const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // 1000 requests per 15 minutes
+    windowMs: 15 * 60 * 1000,
+    max: 1200,
+    keyGenerator: perMemberKey,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: "Too many requests from this IP, please try again after 15 minutes" }
+    message: { error: "Too many requests — please wait a few minutes and try again." }
   });
-  
+
+  /**
+   * Signing in is limited per account, not per address, for the same reason —
+   * and because guessing one password a hundred times is the thing worth
+   * stopping, not a hundred people signing in from one college at nine o'clock.
+   */
   const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 15, // Max 15 login attempts per 15 minutes
-    message: { error: "Too many login attempts from this IP, please try again after 15 minutes" }
+    windowMs: 15 * 60 * 1000,
+    max: 15,
+    keyGenerator: (req: any, res: any) => {
+      const email = String(req.body?.email || '').trim().toLowerCase();
+      return email ? `login:${email}` : ipKeyGenerator(req, res);
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many sign-in attempts for this account. Please try again in 15 minutes." }
   });
 
   app.use("/api/", apiLimiter);
-  app.use("/api/auth/login", loginLimiter);
-  app.use("/api/auth/admin-login", loginLimiter);
+
+  // The sign-in limiter counts by account, which means it has to be able to
+  // read the account out of the body — and the body parser below runs after it.
+  // A small parser of its own, ahead of it, fixes that; express skips a body it
+  // has already parsed, so the one below still handles everything else. Sign-in
+  // bodies are two fields, hence the modest ceiling.
+  const signInBody = express.json({ limit: "10kb" });
+  app.use("/api/auth/login", signInBody, loginLimiter);
+  app.use("/api/auth/admin-login", signInBody, loginLimiter);
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
@@ -509,6 +556,60 @@ async function startServer() {
   });
 
   // Auth: Signup
+  /**
+   * New members, gathered up and reported together.
+   *
+   * Flushed every half hour, or sooner if fifty arrive first. The alert is a
+   * convenience — whoever joined is in the members list and in the sales CRM
+   * whatever happens to this buffer — so losing half an hour of it to a restart
+   * costs nothing, and that is why it is allowed to live in memory.
+   */
+  const joinedSinceLastAlert: {
+    name: string; email: string; organization: string | null;
+    designation: string | null; interests: string[]; at: Date;
+  }[] = [];
+
+  const flushJoinAlerts = async () => {
+    if (!joinedSinceLastAlert.length) return;
+    const batch = joinedSinceLastAlert.splice(0, joinedSinceLastAlert.length);
+
+    const byInterest = new Map<string, number>();
+    for (const j of batch) for (const d of j.interests) byInterest.set(d, (byInterest.get(d) || 0) + 1);
+    const popular = [...byInterest.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+    const rows = batch.slice(0, 60).map((j, i) => (
+      `<tr style="background:${i % 2 ? '#fafbfc' : '#fff'};">` +
+      `<td style="padding:8px 14px;font-size:12.5px;color:#1e293b;">${j.name || '—'}</td>` +
+      `<td style="padding:8px 14px;font-size:12.5px;color:#1e3a6e;">${j.email}</td>` +
+      `<td style="padding:8px 14px;font-size:12px;color:#475569;">${j.organization || '—'}</td>` +
+      `<td style="padding:8px 14px;font-size:12px;color:#64748b;">${j.interests.join(', ') || '—'}</td>` +
+      `</tr>`
+    )).join('');
+
+    await sendMail({
+      to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
+      subject: `🆕 ${batch.length} new member${batch.length > 1 ? 's' : ''} joined`,
+      html: buildEmail(
+        `<tr><td style="padding:28px 40px 24px;">` +
+        `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">${batch.length} new member${batch.length > 1 ? 's' : ''}</p>` +
+        `<p style="margin:0 0 18px;font-size:13px;color:#475569;">Since the last of these. All of them are in the members list and filed as leads.</p>` +
+        (popular.length
+          ? `<p style="margin:0 0 14px;font-size:12.5px;color:#334155;"><b>Most wanted:</b> ${popular.map(([d, n]) => `${d} (${n})`).join(' · ')}</p>`
+          : '') +
+        `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;">` +
+        `<tr style="background:#f8fafc;">` +
+        `<td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Name</td>` +
+        `<td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Email</td>` +
+        `<td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Organisation</td>` +
+        `<td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Wants to read</td>` +
+        `</tr>${rows}</table>` +
+        (batch.length > 60 ? `<p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">…and ${batch.length - 60} more.</p>` : '') +
+        `</td></tr>`),
+    }).catch((e: any) => console.error('join alerts: could not send', e?.message));
+  };
+
+  cron.schedule("*/30 * * * *", () => { flushJoinAlerts().catch(() => {}); });
+
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, name, organization, contact, designation, interestedDomains } = req.body;
@@ -577,27 +678,20 @@ async function startServer() {
       const token = jwt.sign({ uid: userObj.id, email, role: userObj.role }, JWT_SECRET, { expiresIn: '24h' });
       
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      const adminMailOptions = {
-        from: `"STM Digital Library" <${emailFrom}>`,
-        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
-        subject: `🆕 New User Registration — ${name}`,
-        html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;">` +
-          `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">🆕 New Subscriber Alert</p>` +
-          `<p style="margin:0 0 20px;font-size:13px;color:#475569;">A new user has just registered on the platform.</p>` +
-          `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:20px;">` +
-          `<tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">User Details</td></tr>` +
-          `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${name}</td></tr>` +
-          `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr>` +
-          `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Contact</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${contact || 'Not provided'}</td></tr>` +
-          `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || 'Not provided'}</td></tr>` +
-          `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${organization || 'Not provided'}</td></tr>` +
-          `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Wants to read</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;">${interests.length ? interests.join(', ') : 'Not stated'}</td></tr>` +
-          `</table>` +
-          `<div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;">` +
-          `<p style="margin:0;font-size:13px;color:#1e3a6e;">⚡ <strong>Action:</strong> Filed as a lead in the sales CRM. They have a free membership; the subjects above are where a Pro conversation starts.</p></div>` +
-          `</td></tr>`)
-      };
+
+      // Gathered, not sent one at a time. Twenty thousand members arriving from
+      // one mailing would otherwise be twenty thousand separate alerts into the
+      // same inbox, which is not a notification — it is a way of making sure
+      // nobody ever reads one again. Nothing is lost if the process restarts:
+      // the member is in the database and filed as a lead either way.
+      joinedSinceLastAlert.push({
+        name, email,
+        organization: organization || null,
+        designation: designation || null,
+        interests,
+        at: new Date(),
+      });
+      if (joinedSinceLastAlert.length >= 50) flushJoinAlerts().catch(() => {});
 
       const userMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
@@ -622,7 +716,6 @@ async function startServer() {
           `</td></tr>`)
       };
 
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
 
       // Don't send password back
@@ -3038,42 +3131,63 @@ async function startServer() {
   // GET /api/admin/users — list users with optional role filter
   app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
+      // This handed back every matching member at once, each with their
+      // subscriptions, their payments, their institution and that institution's
+      // subscriptions — and the screen then filtered the pile in the browser.
+      // Fine for two hundred members. At twenty thousand it is a payload nobody
+      // can render and a table nobody can open, which is precisely the screen
+      // you would want on the day twenty thousand of them arrive.
       const { role: filterRole, search } = req.query;
+      const take = Math.min(Math.max(parseInt(String(req.query.limit)) || 50, 1), 200);
+      const page = Math.max(parseInt(String(req.query.page)) || 1, 1);
+
       const where: any = {};
       if (filterRole && filterRole !== 'all') where.role = filterRole;
       if (search) {
         where.OR = [
           { email: { contains: search as string, mode: 'insensitive' } },
-          { displayName: { contains: search as string, mode: 'insensitive' } }
+          { displayName: { contains: search as string, mode: 'insensitive' } },
+          { organization: { contains: search as string, mode: 'insensitive' } }
         ];
       }
-      const users = await prisma.user.findMany({
-        where,
-        include: {
-          subscriptions: { where: { status: 'Active' }, take: 3 },
-          payments: { orderBy: { createdAt: 'desc' }, take: 3 },
-          institution: {
-            include: {
-              subscriptions: {
-                where: { status: 'Active' },
-                orderBy: { createdAt: 'desc' },
-                take: 5
+
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          include: {
+            subscriptions: { where: { status: 'Active' }, take: 3 },
+            payments: { orderBy: { createdAt: 'desc' }, take: 3 },
+            institution: {
+              include: {
+                subscriptions: {
+                  where: { status: 'Active' },
+                  orderBy: { createdAt: 'desc' },
+                  take: 5
+                }
               }
             }
-          }
-        },
-        orderBy: { createdAt: 'desc' }
+          },
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * take,
+          take,
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      // Asked only about the people on this page. It used to read the whole
+      // verification table to answer a question about fifty of them.
+      const verifications = await (prisma as any).emailVerification.findMany({
+        where: { email: { in: users.map(u => u.email) }, isVerified: true },
+        select: { email: true },
       });
-      
-      const verifications = await (prisma as any).emailVerification.findMany();
-      const verifiedEmails = new Set(verifications.filter((v: any) => v.isVerified).map((v: any) => v.email));
+      const verifiedEmails = new Set(verifications.map((v: any) => v.email));
 
       // Strip passwords and append verification status
       const sanitized = users.map(({ password: _, ...u }) => ({
         ...u,
         isEmailVerified: verifiedEmails.has(u.email)
       }));
-      res.json(sanitized);
+      res.json({ data: sanitized, total, page, limit: take });
     } catch (err) {
       console.error('GET /api/admin/users error:', err);
       res.status(500).json({ error: "Failed to fetch users" });
@@ -3733,7 +3847,6 @@ async function startServer() {
         )
       };
 
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
 
       res.json({ success: true, requestId: request.id, message: "Your request has been received. We will contact you shortly." });
@@ -7710,7 +7823,6 @@ async function startServer() {
         )
       };
 
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
 
       res.json({ status: "success", message: "Demo request submitted successfully" });
@@ -7953,7 +8065,6 @@ async function startServer() {
         )
       };
 
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
 
       res.json({ status: "success", message: "Trial request submitted successfully" });
@@ -8071,7 +8182,6 @@ async function startServer() {
         )
       };
 
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
 
       res.json({ status: "success", message: "Inquiry submitted successfully" });
@@ -10355,7 +10465,6 @@ async function startServer() {
         )
       };
 
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
 
       res.json({ success: true, inquiry });
@@ -10839,11 +10948,57 @@ async function startServer() {
   // 1. ADMIN/MANAGER ROUTES
   app.get("/api/admin/leads", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
-      const leads = await prisma.lead.findMany({
-        orderBy: { createdAt: "desc" },
-        include: { assignedTo: { select: { id: true, displayName: true, email: true } } }
+      // Every signup files a lead, so this list grows exactly as fast as the
+      // membership. Filtering belongs here rather than in the browser — the
+      // pipeline screen used to fetch all of them to show one person's.
+      const { status, source, assignedToId, search } = req.query;
+      const take = Math.min(Math.max(parseInt(String(req.query.limit)) || 50, 1), 200);
+      const page = Math.max(parseInt(String(req.query.page)) || 1, 1);
+
+      const where: any = {};
+      if (status && status !== 'All') where.status = status;
+      if (source) where.source = source;
+      if (assignedToId) where.assignedToId = assignedToId;
+      if (req.query.state && req.query.state !== 'All') where.state = String(req.query.state);
+      if (search) {
+        where.OR = [
+          { email: { contains: String(search), mode: 'insensitive' } },
+          { name: { contains: String(search), mode: 'insensitive' } },
+          { phone: { contains: String(search), mode: 'insensitive' } },
+          { organization: { contains: String(search), mode: 'insensitive' } },
+        ];
+      }
+
+      // The screen's tabs and dropdowns have to describe every lead, not the
+      // fifty in hand — a tab reading "Positive (3)" when there are four
+      // hundred is worse than no number at all. So the counts and the choices
+      // are aggregated across the whole table, ignoring the status filter for
+      // the counts so the tabs still say what switching to them would show.
+      const { status: _s, ...whereWithoutStatus } = where;
+      const [leads, total, byStatus, sources, states] = await Promise.all([
+        prisma.lead.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          include: { assignedTo: { select: { id: true, displayName: true, email: true } } },
+          skip: (page - 1) * take,
+          take,
+        }),
+        prisma.lead.count({ where }),
+        prisma.lead.groupBy({ by: ['status'], where: whereWithoutStatus, _count: { _all: true } }),
+        prisma.lead.groupBy({ by: ['source'] }),
+        prisma.lead.groupBy({ by: ['state'] }),
+      ]);
+
+      res.json({
+        data: leads,
+        total,
+        page,
+        limit: take,
+        counts: Object.fromEntries(byStatus.map((g: any) => [g.status, g._count._all])),
+        countAll: byStatus.reduce((n: number, g: any) => n + g._count._all, 0),
+        sources: sources.map((g: any) => g.source).filter(Boolean).sort(),
+        states: states.map((g: any) => g.state).filter(Boolean).sort(),
       });
-      res.json(leads);
     } catch (error) {
       console.error("Fetch leads error:", error);
       res.status(500).json({ error: "Failed to fetch leads" });

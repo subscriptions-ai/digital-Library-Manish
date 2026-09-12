@@ -11023,25 +11023,40 @@ async function startServer() {
     // Disable CSP if it interferes with Vite/External resources, or configure properly
   }));
   app.use((0, import_compression.default)());
+  const perMemberKey = (req, res) => {
+    const auth = req.headers?.authorization;
+    if (auth?.startsWith("Bearer ")) {
+      try {
+        const ud = import_jsonwebtoken.default.verify(auth.slice(7), JWT_SECRET);
+        if (ud?.uid) return `u:${ud.uid}`;
+      } catch {
+      }
+    }
+    return ipKeyGenerator(req, res);
+  };
   const apiLimiter = rate_limit_default({
     windowMs: 15 * 60 * 1e3,
-    // 15 minutes
-    max: 1e3,
-    // 1000 requests per 15 minutes
+    max: 1200,
+    keyGenerator: perMemberKey,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: "Too many requests from this IP, please try again after 15 minutes" }
+    message: { error: "Too many requests \u2014 please wait a few minutes and try again." }
   });
   const loginLimiter = rate_limit_default({
     windowMs: 15 * 60 * 1e3,
-    // 15 minutes
     max: 15,
-    // Max 15 login attempts per 15 minutes
-    message: { error: "Too many login attempts from this IP, please try again after 15 minutes" }
+    keyGenerator: (req, res) => {
+      const email = String(req.body?.email || "").trim().toLowerCase();
+      return email ? `login:${email}` : ipKeyGenerator(req, res);
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many sign-in attempts for this account. Please try again in 15 minutes." }
   });
   app.use("/api/", apiLimiter);
-  app.use("/api/auth/login", loginLimiter);
-  app.use("/api/auth/admin-login", loginLimiter);
+  const signInBody = import_express.default.json({ limit: "10kb" });
+  app.use("/api/auth/login", signInBody, loginLimiter);
+  app.use("/api/auth/admin-login", signInBody, loginLimiter);
   app.use(import_express.default.json({ limit: "50mb" }));
   app.use(import_express.default.urlencoded({ limit: "50mb", extended: true }));
   const JWT_SECRET = process.env.JWT_SECRET || "your-fallback-secret-for-dev-only";
@@ -11377,6 +11392,26 @@ async function startServer() {
       res.status(500).json({ error: "Failed to verify OTP" });
     }
   });
+  const joinedSinceLastAlert = [];
+  const flushJoinAlerts = async () => {
+    if (!joinedSinceLastAlert.length) return;
+    const batch = joinedSinceLastAlert.splice(0, joinedSinceLastAlert.length);
+    const byInterest = /* @__PURE__ */ new Map();
+    for (const j of batch) for (const d of j.interests) byInterest.set(d, (byInterest.get(d) || 0) + 1);
+    const popular = [...byInterest.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const rows = batch.slice(0, 60).map((j, i2) => `<tr style="background:${i2 % 2 ? "#fafbfc" : "#fff"};"><td style="padding:8px 14px;font-size:12.5px;color:#1e293b;">${j.name || "\u2014"}</td><td style="padding:8px 14px;font-size:12.5px;color:#1e3a6e;">${j.email}</td><td style="padding:8px 14px;font-size:12px;color:#475569;">${j.organization || "\u2014"}</td><td style="padding:8px 14px;font-size:12px;color:#64748b;">${j.interests.join(", ") || "\u2014"}</td></tr>`).join("");
+    await sendMail({
+      to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
+      subject: `\u{1F195} ${batch.length} new member${batch.length > 1 ? "s" : ""} joined`,
+      html: buildEmail(
+        `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">${batch.length} new member${batch.length > 1 ? "s" : ""}</p><p style="margin:0 0 18px;font-size:13px;color:#475569;">Since the last of these. All of them are in the members list and filed as leads.</p>` + (popular.length ? `<p style="margin:0 0 14px;font-size:12.5px;color:#334155;"><b>Most wanted:</b> ${popular.map(([d, n]) => `${d} (${n})`).join(" \xB7 ")}</p>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;"><tr style="background:#f8fafc;"><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Name</td><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Email</td><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Organisation</td><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Wants to read</td></tr>${rows}</table>` + (batch.length > 60 ? `<p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">\u2026and ${batch.length - 60} more.</p>` : "") + `</td></tr>`
+      )
+    }).catch((e2) => console.error("join alerts: could not send", e2?.message));
+  };
+  import_node_cron.default.schedule("*/30 * * * *", () => {
+    flushJoinAlerts().catch(() => {
+    });
+  });
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, name, organization, contact, designation, interestedDomains } = req.body;
@@ -11422,14 +11457,16 @@ async function startServer() {
       }
       const token = import_jsonwebtoken.default.sign({ uid: userObj.id, email, role: userObj.role }, JWT_SECRET, { expiresIn: "24h" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      const adminMailOptions = {
-        from: `"STM Digital Library" <${emailFrom}>`,
-        to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
-        subject: `\u{1F195} New User Registration \u2014 ${name}`,
-        html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F195} New Subscriber Alert</p><p style="margin:0 0 20px;font-size:13px;color:#475569;">A new user has just registered on the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:20px;"><tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e2e8f0;" colspan="2">User Details</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;width:38%;border-bottom:1px solid #f1f5f9;">Full Name</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${name}</td></tr><tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Contact</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${contact || "Not provided"}</td></tr><tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || "Not provided"}</td></tr><tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${organization || "Not provided"}</td></tr><tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Wants to read</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;">${interests.length ? interests.join(", ") : "Not stated"}</td></tr></table><div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;"><p style="margin:0;font-size:13px;color:#1e3a6e;">\u26A1 <strong>Action:</strong> Filed as a lead in the sales CRM. They have a free membership; the subjects above are where a Pro conversation starts.</p></div></td></tr>`
-        )
-      };
+      joinedSinceLastAlert.push({
+        name,
+        email,
+        organization: organization || null,
+        designation: designation || null,
+        interests,
+        at: /* @__PURE__ */ new Date()
+      });
+      if (joinedSinceLastAlert.length >= 50) flushJoinAlerts().catch(() => {
+      });
       const userMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
         to: email,
@@ -11438,7 +11475,6 @@ async function startServer() {
           `<tr><td style="padding:28px 40px 24px;"><h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome, ${name} \u{1F393}</h3><p style="margin:0 0 18px;font-size:13px;color:#475569;line-height:1.7;">Your free membership is ready, and it opens the whole library \u2014 every subject we hold, journals, books and articles alike. Nothing is held back by subject; what a free membership limits is time.</p><div style="background:#f0f9ff;border-left:4px solid #0369a1;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:18px;"><p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0369a1;">How your reading time works</p><p style="margin:5px 0;font-size:13px;color:#334155;">You read in <strong>30-minute sessions</strong>, with a two-hour gap after each \u2014 <strong>four sessions, two hours, every day</strong>.</p><p style="margin:5px 0;font-size:13px;color:#334155;">The clock starts when you sign in and stops when you sign out. Closing the tab does not stop it, so <strong>sign out when you are finished</strong> and the rest of the session is kept for you.</p></div><div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;"><p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F680} Getting started</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Sign in at <strong>journalslibrary.com</strong></p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Search or browse \u2014 the catalogue is open to you in full</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Want unlimited reading? Apply for Pro from your dashboard</p></div><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
         )
       };
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
       const { password: _, ...profile } = userObj;
       res.json({ token, user: profile });
@@ -13379,38 +13415,49 @@ async function startServer() {
   app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { role: filterRole, search } = req.query;
+      const take = Math.min(Math.max(parseInt(String(req.query.limit)) || 50, 1), 200);
+      const page = Math.max(parseInt(String(req.query.page)) || 1, 1);
       const where = {};
       if (filterRole && filterRole !== "all") where.role = filterRole;
       if (search) {
         where.OR = [
           { email: { contains: search, mode: "insensitive" } },
-          { displayName: { contains: search, mode: "insensitive" } }
+          { displayName: { contains: search, mode: "insensitive" } },
+          { organization: { contains: search, mode: "insensitive" } }
         ];
       }
-      const users = await prisma3.user.findMany({
-        where,
-        include: {
-          subscriptions: { where: { status: "Active" }, take: 3 },
-          payments: { orderBy: { createdAt: "desc" }, take: 3 },
-          institution: {
-            include: {
-              subscriptions: {
-                where: { status: "Active" },
-                orderBy: { createdAt: "desc" },
-                take: 5
+      const [users, total] = await Promise.all([
+        prisma3.user.findMany({
+          where,
+          include: {
+            subscriptions: { where: { status: "Active" }, take: 3 },
+            payments: { orderBy: { createdAt: "desc" }, take: 3 },
+            institution: {
+              include: {
+                subscriptions: {
+                  where: { status: "Active" },
+                  orderBy: { createdAt: "desc" },
+                  take: 5
+                }
               }
             }
-          }
-        },
-        orderBy: { createdAt: "desc" }
+          },
+          orderBy: { createdAt: "desc" },
+          skip: (page - 1) * take,
+          take
+        }),
+        prisma3.user.count({ where })
+      ]);
+      const verifications = await prisma3.emailVerification.findMany({
+        where: { email: { in: users.map((u) => u.email) }, isVerified: true },
+        select: { email: true }
       });
-      const verifications = await prisma3.emailVerification.findMany();
-      const verifiedEmails = new Set(verifications.filter((v) => v.isVerified).map((v) => v.email));
+      const verifiedEmails = new Set(verifications.map((v) => v.email));
       const sanitized = users.map(({ password: _, ...u }) => ({
         ...u,
         isEmailVerified: verifiedEmails.has(u.email)
       }));
-      res.json(sanitized);
+      res.json({ data: sanitized, total, page, limit: take });
     } catch (err) {
       console.error("GET /api/admin/users error:", err);
       res.status(500).json({ error: "Failed to fetch users" });
@@ -13933,7 +13980,6 @@ async function startServer() {
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u2705 Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${userName}</strong>, we have received your request for the <strong>${domain}</strong> collection. Our team will contact you shortly to finalize the setup.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4CB} Your Request Summary</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Domain:</span> <strong style="color:#fff;">${domain}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Organization:</span> <span style="color:#e2e8f0;">${organization || "\u2014"}</span></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Notes:</span> <span style="color:#e2e8f0;">${notes || "\u2014"}</span></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} What Happens Next?</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our team reviews your request within 24 hrs</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We confirm subscription &amp; payment details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Full-text access is activated instantly</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
         )
       };
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
       res.json({ success: true, requestId: request.id, message: "Your request has been received. We will contact you shortly." });
     } catch (err) {
@@ -17664,7 +17710,6 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F44B} Demo Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for showing interest in a personalized demo. Our team will contact you within 24 hours to schedule a convenient walkthrough of the platform.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} Next Steps</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our experts review your request details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We reach out via email/WhatsApp to fix a slot</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; A guided platform tour tailored for your needs</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Need immediate assistance? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a></p></td></tr>`
         )
       };
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
       res.json({ status: "success", message: "Demo request submitted successfully" });
     } catch (error) {
@@ -17846,7 +17891,6 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F3DB}\uFE0F Trial Request Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${fullName}</strong>, thank you for requesting an institutional trial for <strong>${institutionName}</strong> \u2014 <strong>${department}</strong>. Our team is reviewing your request and will get in touch shortly to set up the access.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#15803d;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F550} What Happens Next?</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">1</span>&nbsp; Our institutional access team verifies your details</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">2</span>&nbsp; We discuss IP-based or remote access setup</p><p style="margin:5px 0;font-size:13px;color:#1e293b;"><span style="background:#15803d;color:#fff;font-size:10px;font-weight:700;border-radius:50%;padding:2px 6px;">3</span>&nbsp; Your institution gets seamless trial access</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
         )
       };
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
       res.json({ status: "success", message: "Trial request submitted successfully" });
     } catch (error) {
@@ -17917,7 +17961,6 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           ).join("") + `</td></tr></table>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F4DE} Reach Us Directly</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F4E7} <a href="mailto:${COMPANY_DETAILS.email}" style="color:#93c5fd;">${COMPANY_DETAILS.email}</a></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F4DE} +91-120-4781200</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;">\u{1F310} <a href="https://journalslibrary.com" style="color:#93c5fd;">journalslibrary.com</a></p></td></tr></table></td></tr>`
         )
       };
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
       res.json({ status: "success", message: "Inquiry submitted successfully" });
     } catch (error) {
@@ -19822,7 +19865,6 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">\u{1F31F} Application Received!</p><p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Dear <strong>${contactPerson}</strong>, thank you for applying to become a certified partner of <strong>STM Digital Library</strong>. Your application for <strong>${agencyName}</strong> is under review.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#1e3a6e;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 20px;"><p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">\u{1F4BC} Application Summary</p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Agency:</span> <strong style="color:#fff;">${agencyName}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Region:</span> <strong style="color:#86efac;">${region || "Not specified"}</strong></p><p style="margin:3px 0;font-size:13px;color:#e2e8f0;"><span style="color:#93c5fd;">Status:</span> <strong style="color:#fde68a;">\u23F3 Under Review</strong></p></td></tr></table><table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;margin-bottom:18px;"><tr><td style="padding:18px 20px;"><p style="color:#7e22ce;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F3C6} What Partners Get</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Exclusive reseller pricing &amp; margins</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Dedicated partner support &amp; training</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Co-branded marketing materials</p><p style="margin:4px 0;font-size:13px;color:#1e293b;">\u2726 Access to 50,000+ academic journals &amp; content</p></td></tr></table><p style="font-size:12px;color:#64748b;margin:0;">We'll respond within <strong>2\u20133 business days</strong> at <strong>${email}</strong>. For urgent queries: <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a></p></td></tr>`
         )
       };
-      await sendMail(adminMailOptions);
       await sendMail(userMailOptions);
       res.json({ success: true, inquiry });
     } catch (error) {
@@ -20241,11 +20283,46 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/leads", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const leads = await prisma3.lead.findMany({
-        orderBy: { createdAt: "desc" },
-        include: { assignedTo: { select: { id: true, displayName: true, email: true } } }
+      const { status, source, assignedToId, search } = req.query;
+      const take = Math.min(Math.max(parseInt(String(req.query.limit)) || 50, 1), 200);
+      const page = Math.max(parseInt(String(req.query.page)) || 1, 1);
+      const where = {};
+      if (status && status !== "All") where.status = status;
+      if (source) where.source = source;
+      if (assignedToId) where.assignedToId = assignedToId;
+      if (req.query.state && req.query.state !== "All") where.state = String(req.query.state);
+      if (search) {
+        where.OR = [
+          { email: { contains: String(search), mode: "insensitive" } },
+          { name: { contains: String(search), mode: "insensitive" } },
+          { phone: { contains: String(search), mode: "insensitive" } },
+          { organization: { contains: String(search), mode: "insensitive" } }
+        ];
+      }
+      const { status: _s, ...whereWithoutStatus } = where;
+      const [leads, total, byStatus, sources, states] = await Promise.all([
+        prisma3.lead.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          include: { assignedTo: { select: { id: true, displayName: true, email: true } } },
+          skip: (page - 1) * take,
+          take
+        }),
+        prisma3.lead.count({ where }),
+        prisma3.lead.groupBy({ by: ["status"], where: whereWithoutStatus, _count: { _all: true } }),
+        prisma3.lead.groupBy({ by: ["source"] }),
+        prisma3.lead.groupBy({ by: ["state"] })
+      ]);
+      res.json({
+        data: leads,
+        total,
+        page,
+        limit: take,
+        counts: Object.fromEntries(byStatus.map((g) => [g.status, g._count._all])),
+        countAll: byStatus.reduce((n, g) => n + g._count._all, 0),
+        sources: sources.map((g) => g.source).filter(Boolean).sort(),
+        states: states.map((g) => g.state).filter(Boolean).sort()
       });
-      res.json(leads);
     } catch (error) {
       console.error("Fetch leads error:", error);
       res.status(500).json({ error: "Failed to fetch leads" });
