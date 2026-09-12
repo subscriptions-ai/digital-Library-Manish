@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell, FileText } from 'lucide-react';
+import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell, FileText, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -128,6 +128,17 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
           >
             <Users size={18} /> My Leads
             {notif.total > 0 && <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{notif.total > 9 ? '9+' : notif.total}</span>}
+          </button>
+
+          <button
+            onClick={() => navigate('/sales/pro-applications')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
+              location.pathname.startsWith('/sales/pro-applications')
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            <Sparkles size={18} /> Pro Applications
           </button>
 
           <button

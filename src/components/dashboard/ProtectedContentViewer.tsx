@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { ReadingLimitNotice } from '../membership/ReadingClock';
 import {
   ArrowLeft,
   Loader2,
@@ -181,6 +182,8 @@ export function ProtectedContentViewer() {
   const [railOpen, setRailOpen] = useState(() => window.innerWidth >= 1280);
   const [loadingMeta, setLoadingMeta] = useState(true);
   const [metaError, setMetaError] = useState<string | null>(null);
+  /** Set when the answer was "not now" rather than "not you". */
+  const [limit, setLimit] = useState<any>(null);
 
   // PDF state
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -237,15 +240,24 @@ export function ProtectedContentViewer() {
     fetch(`/api/content/${id}/view`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     })
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) {
+          // A free member out of reading time is not a refusal of access — they
+          // may read this, just not this minute. It carries its own reply so the
+          // screen can say when, rather than "access denied", which reads as
+          // "you are not allowed" and sends people away for good.
+          const body = await res.json().catch(() => null);
+          if (res.status === 403 && body?.code === 'FREE_LIMIT') {
+            setLimit(body);
+            throw new Error('');
+          }
           if (res.status === 403) throw new Error('Access denied. Please upgrade your subscription.');
           throw new Error('Failed to load content');
         }
         return res.json();
       })
-      .then((data) => setContent(data))
-      .catch((err) => setMetaError(err.message))
+      .then((data) => data && setContent(data))
+      .catch((err) => err.message && setMetaError(err.message))
       .finally(() => setLoadingMeta(false));
   }, [id]);
 
@@ -464,6 +476,21 @@ export function ProtectedContentViewer() {
             <p className="mt-1 text-[13.5px] text-muted">Establishing a secure reading session…</p>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // ────────────────────────────────────────────────────
+  //  Render: the free member's clock has run out
+  // ────────────────────────────────────────────────────
+  if (limit) {
+    return (
+      <div className="flex min-h-[80vh] items-center justify-center bg-ground px-4">
+        <ReadingLimitNotice
+          allowance={{ plan: 'Free', timed: true, ...limit }}
+          msUntil={limit.nextOpensAt ? Math.max(0, Date.parse(limit.nextOpensAt) - Date.now()) : null}
+          compact
+        />
       </div>
     );
   }

@@ -13,7 +13,7 @@ interface AuthContextType {
   isInstitutionAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string, organization?: string, contact?: string, designation?: string, interestedDomains?: string[]) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   fetchProfile: () => Promise<void>;
 }
 
@@ -54,7 +54,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(response.user as UserProfile);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Signing out is the one action that stops a free member's clock, and until
+    // now it happened entirely in the browser — the side that keeps the clock
+    // was never told. Failure is not worth blocking on: the clock runs out on
+    // its own half an hour later either way.
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+    } catch { /* offline, or already gone */ }
     authApi.logout();
     setUser(null);
     setProfile(null);

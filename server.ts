@@ -730,6 +730,135 @@ async function startServer() {
   });
 
   /**
+   * Applying for Pro.
+   *
+   * The moment this needs to work is the moment the clock runs out, so it is
+   * one of the few things a member can still do while locked out — the form is
+   * reachable from the lock screen itself.
+   *
+   * It writes a subscription request like any other, with one difference that
+   * matters: it sets `userId`. The public domain-request form does not, so
+   * approving one of those creates a subscription attached to nobody, and the
+   * member it was meant for goes on being timed.
+   *
+   * Approving it is the existing flow untouched — the subscription that comes
+   * out carries no domains, which the access rules already read as everything,
+   * and having any active subscription is what lifts the clock. Nothing here
+   * needs to know that.
+   */
+  app.post("/api/me/pro-application", authenticateJWT, async (req: any, res) => {
+    try {
+      const u = await prisma.user.findUnique({ where: { id: req.user.uid } });
+      if (!u) return res.status(404).json({ error: "Account not found" });
+
+      const waiting = await (prisma as any).subscriptionRequest.findFirst({
+        where: { userId: u.id, planType: 'Pro', status: 'Pending' },
+      });
+      if (waiting) {
+        return res.status(409).json({ error: "You already have an application waiting.", application: waiting });
+      }
+
+      const { organization, contact, designation, purpose } = req.body || {};
+      const interests: string[] = Array.isArray(u.interestedDomains) ? (u.interestedDomains as any) : [];
+
+      // What the member has been doing is the most useful thing sales can be
+      // told: somebody who spends all four sessions a day is asking for Pro
+      // with their feet, whatever the form says.
+      const sessions = await (prisma as any).freeSession.count({ where: { userId: u.id } });
+
+      const notes = [
+        `Applying for: Pro membership (no reading limit)`,
+        designation || u.designation ? `Designation: ${designation || u.designation}` : null,
+        interests.length ? `Wants to read: ${interests.join(', ')}` : null,
+        `Free sessions used so far: ${sessions}`,
+        purpose ? `In their words: ${String(purpose).slice(0, 600)}` : null,
+      ].filter(Boolean).join('\n');
+
+      const application = await (prisma as any).subscriptionRequest.create({
+        data: {
+          userId: u.id,
+          userName: u.displayName || u.email,
+          email: u.email,
+          planType: 'Pro',
+          durationMonths: 12,
+          planDescription: 'Pro membership',
+          notes,
+          status: 'Pending',
+        },
+      });
+
+      if (organization || contact) {
+        await prisma.user.update({
+          where: { id: u.id },
+          data: {
+            organization: organization || u.organization,
+            contact: contact || u.contact,
+            designation: designation || u.designation,
+          },
+        }).catch(() => {});
+      }
+
+      // Sales work leads, not requests, so the same application lands in both
+      // places: the request for whoever grants access, the lead for whoever
+      // picks up the phone.
+      prisma.lead.upsert({
+        where: { id: (await prisma.lead.findFirst({ where: { email: u.email }, select: { id: true } }))?.id || '—' },
+        update: { status: 'In Progress', notes, source: 'Pro application', assignmentSeen: false },
+        create: {
+          name: u.displayName || u.email, email: u.email,
+          phone: contact || u.contact || null,
+          organization: organization || u.organization || null,
+          source: 'Pro application', status: 'In Progress', notes,
+        },
+      }).catch((e: any) => console.error('pro application: could not file the lead', e?.message));
+
+      // Told to whoever can grant it and whoever will call about it.
+      (async () => {
+        const team = await prisma.user.findMany({
+          where: { role: { in: ['SuperAdmin', 'SubscriptionManager', 'SalesManager', 'SalesExecutive'] } },
+          select: { email: true },
+        });
+        const to = [...new Set([process.env.ADMIN_EMAIL || COMPANY_DETAILS.email, ...team.map(t => t.email)])]
+          .filter(Boolean).join(', ');
+        await sendMail({
+          to,
+          subject: `⭐ Pro membership application — ${u.displayName || u.email}`,
+          html: buildEmail(
+            `<tr><td style="padding:28px 40px 24px;">` +
+            `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">⭐ Someone wants Pro</p>` +
+            `<p style="margin:0 0 18px;font-size:13px;color:#475569;">A free member has asked for a membership without a reading limit.</p>` +
+            `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:18px;">` +
+            `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;width:34%;border-bottom:1px solid #f1f5f9;">Name</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${u.displayName || '—'}</td></tr>` +
+            `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${u.email}</td></tr>` +
+            `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organisation</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${organization || u.organization || '—'}</td></tr>` +
+            `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Contact</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;">${contact || u.contact || '—'}</td></tr>` +
+            `</table>` +
+            `<pre style="margin:0 0 18px;font-family:inherit;white-space:pre-wrap;font-size:13px;color:#334155;background:#f8fafc;border-radius:10px;padding:14px 16px;">${notes}</pre>` +
+            `<div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;">` +
+            `<p style="margin:0;font-size:13px;color:#1e3a6e;">Approve it under <strong>Subscription Requests</strong> to lift their reading limit.</p></div>` +
+            `</td></tr>`),
+        });
+      })().catch((e: any) => console.error('pro application: could not send the alert', e?.message));
+
+      res.json({ application });
+    } catch (e: any) {
+      console.error('pro application:', e?.message);
+      res.status(500).json({ error: "Could not send your application" });
+    }
+  });
+
+  /** Where a member's own application stands, for their dashboard. */
+  app.get("/api/me/pro-application", authenticateJWT, async (req: any, res) => {
+    try {
+      const application = await (prisma as any).subscriptionRequest.findFirst({
+        where: { userId: req.user.uid, planType: 'Pro' },
+        orderBy: { createdAt: 'desc' },
+      });
+      res.json({ application: application || null });
+    } catch { res.status(500).json({ error: "Failed to load your application" }); }
+  });
+
+  /**
    * How much reading time is left. Polled by the screen, so it must never spend
    * any: it asks with `start: false`, which is the difference between a clock
    * and a meter that reads itself.
@@ -10786,6 +10915,37 @@ async function startServer() {
 
 
   // 2. SALES EXECUTIVE ROUTES
+
+  /**
+   * Pro applications for the sales team.
+   *
+   * They have no way to see one otherwise: a sales executive is only shown the
+   * leads assigned to them, and the requests screen belongs to administrators.
+   * These are shown to the whole team, unassigned, because the first person
+   * free to call should be able to.
+   */
+  app.get("/api/sales/pro-applications", authenticateJWT, requireSalesRole, async (req: any, res) => {
+    try {
+      const status = String(req.query.status || '');
+      const rows = await (prisma as any).subscriptionRequest.findMany({
+        where: { planType: 'Pro', ...(status ? { status } : {}) },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      });
+      const users = await prisma.user.findMany({
+        where: { id: { in: rows.map((r: any) => r.userId).filter(Boolean) } },
+        select: { id: true, displayName: true, email: true, organization: true, contact: true, interestedDomains: true, createdAt: true },
+      });
+      const byId = new Map(users.map(u => [u.id, u]));
+      res.json({
+        pending: rows.filter((r: any) => r.status === 'Pending').length,
+        applications: rows.map((r: any) => ({ ...r, member: byId.get(r.userId) || null })),
+      });
+    } catch (e: any) {
+      console.error('pro applications:', e?.message);
+      res.status(500).json({ error: "Failed to load applications" });
+    }
+  });
 
   app.get("/api/sales/my-leads", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {

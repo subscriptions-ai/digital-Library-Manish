@@ -255,6 +255,55 @@ const completed = async (count, holdEndedMinutesAgo) => {
     }
   }
 
+  // ── asking for more ───────────────────────────────────────────────────────
+  console.log('\nAsking for Pro');
+  {
+    await p.subscriptionRequest.deleteMany({ where: { userId: user.id } });
+    const r = await post('/api/me/pro-application', token, {
+      organization: 'Test College', contact: '+91 90000 00001', designation: 'Researcher',
+      purpose: 'Finishing a thesis',
+    });
+    is('an application can be sent', r.status, 200);
+
+    const req = await p.subscriptionRequest.findFirst({ where: { userId: user.id } });
+    req ? is('it is filed against the member', [req.planType, req.status, !!req.userId], ['Pro', 'Pending', true])
+        : bad('it is filed against the member', 'no request');
+
+    const again = await post('/api/me/pro-application', token, {});
+    is('a second one is refused while the first waits', again.status, 409);
+
+    const mine = await get('/api/me/pro-application', token);
+    is('the member can see where it stands', mine.body?.application?.status, 'Pending');
+
+    const lead = await p.lead.findFirst({ where: { email: EMAIL } });
+    lead ? is('sales get a lead too', lead.source, 'Pro application')
+         : bad('sales get a lead too', 'no lead');
+
+    // A sales executive is shown only leads assigned to them, so without its own
+    // page an application would be visible to nobody who could ring them.
+    const salesUser = await p.user.findFirst({
+      where: { role: { in: ['SalesExecutive', 'SalesManager'] } },
+      select: { id: true, email: true, role: true },
+    });
+    if (!salesUser) console.log(`  ${D}skip  the sales team sees it — no sales user to test with${O}`);
+    else {
+      const st = jwt.sign({ uid: salesUser.id, email: salesUser.email, role: salesUser.role }, SECRET, { expiresIn: '1h' });
+      const list = await get('/api/sales/pro-applications?status=Pending', st);
+      const found = (list.body?.applications || []).some(a => a.email === EMAIL);
+      is('the sales team sees it without it being assigned', [list.status, found], [200, true]);
+    }
+
+    // Approving is the existing flow untouched; what it produces must lift the clock.
+    const admin = await p.user.findFirst({ where: { role: 'SuperAdmin' }, select: { id: true, email: true, role: true } });
+    const at = jwt.sign({ uid: admin.id, email: admin.email, role: 'SuperAdmin' }, SECRET, { expiresIn: '1h' });
+    await completed(4, 1);                               // out of time, if it applied
+    const approved = await post(`/api/admin/subscription-requests/${req.id}/approve`, at, {});
+    is('an administrator can approve it', approved.status, 200);
+    const a = await get('/api/me/allowance', token);
+    is('and the clock lifts at once', [a.body?.plan, a.body?.timed], ['Unlimited', false]);
+    is('the reader opens with the day already spent', (await view()).status, 200);
+  }
+
   console.log('\nWhat a member may see');
   {
     const a = await get('/api/library/articles?limit=5', token);
@@ -274,6 +323,8 @@ const completed = async (count, holdEndedMinutesAgo) => {
     if (user) {
       await p.freeSession.deleteMany({ where: { userId: user.id } }).catch(() => {});
       await p.subscription.deleteMany({ where: { userId: user.id } }).catch(() => {});
+      await p.subscriptionRequest.deleteMany({ where: { userId: user.id } }).catch(() => {});
+      await p.lead.deleteMany({ where: { email: EMAIL } }).catch(() => {});
       await p.readEvent.deleteMany({ where: { userId: user.id } }).catch(() => {});
       await p.libraryEvent.deleteMany({ where: { userId: user.id } }).catch(() => {});
       await p.user.delete({ where: { id: user.id } }).catch(() => {});

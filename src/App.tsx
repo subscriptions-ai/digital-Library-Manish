@@ -52,6 +52,8 @@ import { MediaLibrary } from "./components/admin/MediaLibrary";
 import { PublisherReviewQueue } from "./components/admin/PublisherReviewQueue";
 import { DataIngestion } from "./components/admin/DataIngestion";
 import { StructuredLibrary } from "./components/StructuredLibrary";
+import { ProMembership } from "./components/membership/ProMembership";
+import { ProApplications } from "./components/sales/ProApplications";
 import { PublisherLayout } from "./components/publisher/PublisherLayout";
 import { PublisherDashboard } from "./components/publisher/PublisherDashboard";
 import { UserCreationPanel } from "./components/admin/UserCreationPanel";
@@ -162,6 +164,7 @@ export default function App() {
                 {/* Subscriber Dashboard routes with DashboardLayout */}
                 <Route path="/dashboard" element={<DashboardLayout><LMSDashboard /></DashboardLayout>} />
                 <Route path="/dashboard/content/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
+                <Route path="/dashboard/pro" element={<DashboardLayout><ProMembership /></DashboardLayout>} />
                 <Route path="/dashboard/library" element={<DashboardLayout><LibraryHome tab="browse" /></DashboardLayout>} />
                 <Route path="/dashboard/library/access" element={<DashboardLayout><LibraryHome tab="access" /></DashboardLayout>} />
                 <Route path="/dashboard/library/saved" element={<DashboardLayout><LibraryHome tab="saved" /></DashboardLayout>} />
@@ -289,6 +292,7 @@ export default function App() {
                 {/* Sales Executive Routes */}
                 <Route path="/sales" element={<SalesLayout><SalesDashboard /></SalesLayout>} />
                 <Route path="/sales/leads" element={<SalesLayout><SalesLeadTable /></SalesLayout>} />
+                <Route path="/sales/pro-applications" element={<SalesLayout><ProApplications /></SalesLayout>} />
                 <Route path="/sales/activity" element={<SalesLayout><SalesActivityLog /></SalesLayout>} />
                 <Route path="/sales/performance" element={<SalesLayout><SalesPerformance /></SalesLayout>} />
                 <Route path="/sales/leads/:id" element={<SalesLayout><SalesLeadDetails /></SalesLayout>} />

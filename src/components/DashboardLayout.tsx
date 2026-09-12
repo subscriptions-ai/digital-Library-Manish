@@ -14,9 +14,11 @@ import {
   PlaySquare,
   MessageSquareHeart,
   Sun,
-  Moon
+  Moon,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { ReadingClock } from './membership/ReadingClock';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FeedbackWidget } from './dashboard/FeedbackWidget';
 
@@ -32,6 +34,7 @@ const sidebarItems: SidebarItem[] = [
   // Browsing, entitlements and saved items are the same library seen three
   // ways; they are tabs inside it now rather than three sidebar entries.
   { label: 'Library', icon: Library, path: '/dashboard/library', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  { label: 'Membership', icon: Sparkles, path: '/dashboard/pro', roles: ['Subscriber'] },
   { label: 'My Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Video Library', icon: PlaySquare, path: '/dashboard/videos', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'My Feedbacks', icon: MessageSquareHeart, path: '/dashboard/feedbacks', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
@@ -184,6 +187,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </h2>
           </div>
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            {/* A limit nobody can see is indistinguishable from a broken site. */}
+            <ReadingClock />
             <div className="text-right hidden sm:flex flex-col items-end">
               <div className="flex items-center gap-2 text-[13.5px] font-medium text-ink">
                 {profile?.isDemoAccount && (
