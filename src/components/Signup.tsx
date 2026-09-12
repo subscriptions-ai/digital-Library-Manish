@@ -94,303 +94,331 @@ export function Signup() {
     }
   };
 
+  const field =
+    'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white';
+  const withIcon =
+    'w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white';
+
+  /** A small heading with a rule, so the form reads as four short questions. */
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <fieldset className="space-y-4">
+      <legend className="mb-3 flex w-full items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+        {title}
+        <span className="h-px flex-1 bg-slate-100" />
+      </legend>
+      {children}
+    </fieldset>
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-20">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <Link to="/" className="inline-flex items-center gap-3 mb-8">
-            <img src="/logo.png" alt="STM Digital Library Logo" className="h-12 w-12 object-contain" />
+    <div className="min-h-screen bg-slate-50 px-4 py-14">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="mb-8 text-center">
+          <Link to="/" className="mb-6 inline-flex items-center gap-3">
+            <img src="/logo.png" alt="STM Digital Library Logo" className="h-11 w-11 object-contain" />
             <div className="flex flex-col text-left leading-none">
               <span className="text-xl font-bold tracking-tight text-slate-900">STM Library</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">Digital Access</span>
+              <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-blue-600">Digital Access</span>
             </div>
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">Create Your Account</h1>
-          <p className="mt-2 text-sm text-slate-500">Join thousands of researchers worldwide</p>
+          <p className="mt-2 text-sm text-slate-500">Free membership — the whole library, half an hour at a time.</p>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50">
-          <form className="space-y-5" onSubmit={handleSignup}>
-            <div className="space-y-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-9">
+          <form className="space-y-8" onSubmit={handleSignup}>
+
+            {/* The address gates everything after it, so it stands alone. */}
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
               <EmailVerificationInput
                 value={formData.email}
                 onChange={(email) => setFormData({ ...formData, email })}
                 onVerified={setIsEmailVerified}
               />
             </div>
-            
-            <div className={`space-y-5 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
-              {/* Asked first, because it decides what the rest of the form
-                  means — a Dean and a Product Manager are both "Director" to a
-                  free-text box, and neither can be counted afterwards. */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">I am registering as a: *</label>
-                <div className="grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1">
-                  {REGISTRANT_TYPES.map(t => {
-                    const Icon = t.id === 'Institute' ? Building2 : t.id === 'Corporate' ? Briefcase : GraduationCap;
-                    const on = formData.registrantType === t.id;
+
+            <div className={`space-y-8 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'pointer-events-none opacity-50'}`}>
+
+              <Section title="About you">
+                {/* Asked first, because it decides what everything after it
+                    means — a Dean and a Product Manager are both "Director" to
+                    a free-text box, and neither can be counted afterwards. */}
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">I am registering as a *</label>
+                  <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+                    {REGISTRANT_TYPES.map(t => {
+                      const Icon = t.id === 'Institute' ? Building2 : t.id === 'Corporate' ? Briefcase : GraduationCap;
+                      const on = formData.registrantType === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          title={t.hint}
+                          disabled={!isEmailVerified}
+                          onClick={() => setFormData(f => ({ ...f, registrantType: t.id, designation: '' }))}
+                          className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center text-[12px] font-bold leading-tight transition-all ${
+                            on ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200'
+                               : 'text-slate-500 hover:bg-white/70 hover:text-slate-700'}`}
+                        >
+                          <Icon size={18} className={on ? 'text-blue-600' : 'text-slate-400'} />
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Full Name *</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input
+                        type="text" autoComplete="name" required={isEmailVerified}
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="Dr. John Doe"
+                        disabled={!isEmailVerified}
+                        className={withIcon}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Organization / University *</label>
+                    <div className="relative">
+                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input
+                        type="text" autoComplete="organization" required={isEmailVerified}
+                        value={formData.organization}
+                        onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                        placeholder="Harvard University"
+                        disabled={!isEmailVerified}
+                        className={withIcon}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Designation / Role *</label>
+                  <select
+                    required={isEmailVerified}
+                    value={formData.designation}
+                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                    disabled={!isEmailVerified || !formData.registrantType}
+                    className={`${field} disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    <option value="">
+                      {formData.registrantType ? 'Choose your role' : 'Choose what you are registering as, first'}
+                    </option>
+                    {(DESIGNATIONS_BY_TYPE[formData.registrantType] || []).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              </Section>
+
+              <Section title="Where you are">
+                {/* Indian states are a known list and are offered as one;
+                    everywhere else is typed, because it is not. */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Country *</label>
+                    <select
+                      required={isEmailVerified} autoComplete="country-name"
+                      value={formData.country}
+                      onChange={(e) => setFormData({ ...formData, country: e.target.value, state: '' })}
+                      disabled={!isEmailVerified}
+                      className={field}
+                    >
+                      {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">State *</label>
+                    {formData.country === 'India' ? (
+                      <select
+                        required={isEmailVerified} autoComplete="address-level1"
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                        disabled={!isEmailVerified}
+                        className={field}
+                      >
+                        <option value="">Choose your state</option>
+                        {INDIAN_STATES.map(st => <option key={st} value={st}>{st}</option>)}
+                      </select>
+                    ) : (
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type="text" autoComplete="address-level1" required={isEmailVerified}
+                          value={formData.state}
+                          onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                          placeholder="State or province"
+                          disabled={!isEmailVerified}
+                          className={withIcon}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Section>
+
+              <Section title="How we reach you">
+                {/* One number fills the row; a second one splits it. A half-empty
+                    row reads as something missing rather than something optional. */}
+                <div className={`grid gap-4 ${contactIsWhatsapp ? '' : 'sm:grid-cols-2'}`}>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Contact Number *</label>
+                    <input
+                      type="tel" autoComplete="tel" required={isEmailVerified}
+                      value={formData.contact}
+                      onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                      placeholder="+91 98765 43210"
+                      disabled={!isEmailVerified}
+                      className={field}
+                    />
+                    <label className="flex items-center gap-2 pt-0.5 text-xs text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={contactIsWhatsapp}
+                        disabled={!isEmailVerified}
+                        onChange={(e) => setContactIsWhatsapp(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300"
+                      />
+                      <MessageCircle size={13} className="text-emerald-600" />
+                      This is also my WhatsApp number
+                    </label>
+                  </div>
+
+                  {!contactIsWhatsapp && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">WhatsApp Number *</label>
+                      <div className="relative">
+                        <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600" size={18} />
+                        <input
+                          type="tel" autoComplete="tel" required={isEmailVerified}
+                          value={formData.whatsapp}
+                          onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                          placeholder="+91 90000 11111"
+                          disabled={!isEmailVerified}
+                          className={withIcon}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Section>
+
+              <Section title="Departments Relevant to Your Institution">
+                <p className="-mt-1 text-xs text-slate-500">
+                  Select the departments relevant to your institution. Your selection helps us identify
+                  areas where additional resources and materials are needed.
+                </p>
+                {/* Interests, not permissions. Every member reads the whole
+                    library whatever they pick here; this only tells us where to
+                    collect more. Note that the wording no longer says so — it
+                    used to, and if members start believing their choices narrow
+                    what they can read, that reassurance is the line to put back. */}
+                <div className="flex max-h-52 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  {[...DOMAINS].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
+                    const chosen = formData.interestedDomains.includes(d.name);
                     return (
                       <button
-                        key={t.id}
+                        key={d.id}
                         type="button"
-                        title={t.hint}
                         disabled={!isEmailVerified}
-                        onClick={() => setFormData(f => ({ ...f, registrantType: t.id, designation: '' }))}
-                        className={`flex items-center justify-center gap-1.5 rounded-lg px-1 py-2.5 text-xs font-bold transition-all ${
-                          on ? 'border border-slate-200 bg-white text-blue-600 shadow-sm'
-                             : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                        onClick={() => setFormData(f => ({
+                          ...f,
+                          interestedDomains: chosen
+                            ? f.interestedDomains.filter(x => x !== d.name)
+                            : [...f.interestedDomains, d.name],
+                        }))}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                          chosen ? 'bg-blue-600 text-white'
+                                 : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
                       >
-                        <Icon size={14} />
-                        <span>{t.label}</span>
+                        {d.name}
                       </button>
                     );
                   })}
                 </div>
-              </div>
+                <p className="-mt-1 text-[11px] text-slate-400">
+                  {formData.interestedDomains.length
+                    ? `${formData.interestedDomains.length} chosen`
+                    : 'Choose at least one'}
+                </p>
+              </Section>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Full Name *</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type="text" 
-                    required={isEmailVerified}
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Dr. John Doe"
-                    disabled={!isEmailVerified}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                  />
+              <Section title="Your password">
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Password *</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        required={isEmailVerified}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="••••••••"
+                        disabled={!isEmailVerified}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={!isEmailVerified}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Organization / University *</label>
-              <div className="relative">
-                <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="text" 
-                  required={isEmailVerified}
-                  value={formData.organization}
-                  onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                  placeholder="Harvard University"
-                  disabled={!isEmailVerified}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                />
-              </div>
+              </Section>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Contact Number *</label>
-              <div className="relative">
-                <input 
-                  type="tel" 
-                  required={isEmailVerified}
-                  value={formData.contact}
-                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                  placeholder="+91 98765 43210"
-                  disabled={!isEmailVerified}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                />
-              </div>
 
-              <label className="flex items-center gap-2 pt-1 text-xs text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={contactIsWhatsapp}
-                  disabled={!isEmailVerified}
-                  onChange={(e) => setContactIsWhatsapp(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
-                <MessageCircle size={13} className="text-emerald-600" />
-                This is also my WhatsApp number
-              </label>
-
-              {!contactIsWhatsapp && (
-                <div className="relative pt-1">
-                  <MessageCircle className="absolute left-3 top-1/2 translate-y-[2px] text-emerald-600" size={18} />
+            <div className={`transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'pointer-events-none opacity-50'}`}>
+              <div className="mb-5 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <label className="group flex cursor-pointer items-start gap-3">
                   <input
-                    type="tel"
-                    required={isEmailVerified}
-                    value={formData.whatsapp}
-                    onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                    placeholder="WhatsApp number"
-                    disabled={!isEmailVerified}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Designation / Role *</label>
-              <select
-                required={isEmailVerified}
-                value={formData.designation}
-                onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                disabled={!isEmailVerified || !formData.registrantType}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">
-                  {formData.registrantType ? 'Choose your role' : 'Choose what you are registering as, first'}
-                </option>
-                {(DESIGNATIONS_BY_TYPE[formData.registrantType] || []).map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Where they are. Indian states are a known list; everywhere else
-                is not, so it is typed rather than guessed at. */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Country *</label>
-                <select
-                  required={isEmailVerified}
-                  value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value, state: '' })}
-                  disabled={!isEmailVerified}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                >
-                  {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">State *</label>
-                {formData.country === 'India' ? (
-                  <select
-                    required={isEmailVerified}
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    disabled={!isEmailVerified}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                  >
-                    <option value="">Choose your state</option>
-                    {INDIAN_STATES.map(st => <option key={st} value={st}>{st}</option>)}
-                  </select>
-                ) : (
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      required={isEmailVerified}
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      placeholder="State or province"
-                      disabled={!isEmailVerified}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* Interests, not permissions. Every member reads the whole library
-                whatever they pick here; this only tells us where to collect
-                more. Note that the wording no longer says so — it used to, and
-                if members start believing their choices narrow what they can
-                read, that reassurance is the line to put back. */}
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Departments Relevant to Your Institution *</label>
-              <p className="text-xs text-slate-500">
-                Select the departments relevant to your institution. Your selection helps us identify
-                areas where additional resources and materials are needed.
-              </p>
-              <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-                {/* Alphabetical: the constant is ordered by how the departments were
-                    added, which is no order at all to a person looking for one. */}
-                {[...DOMAINS].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
-                  const chosen = formData.interestedDomains.includes(d.name);
-                  return (
-                    <button
-                      key={d.id}
-                      type="button"
-                      disabled={!isEmailVerified}
-                      onClick={() => setFormData(f => ({
-                        ...f,
-                        interestedDomains: chosen
-                          ? f.interestedDomains.filter(x => x !== d.name)
-                          : [...f.interestedDomains, d.name],
-                      }))}
-                      className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                        chosen
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
-                    >
-                      {d.name}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[11px] text-slate-400">
-                {formData.interestedDomains.length
-                  ? `${formData.interestedDomains.length} chosen`
-                  : 'Choose at least one'}
-              </p>
-            </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Password *</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    required={isEmailVerified}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="••••••••"
-                    disabled={!isEmailVerified}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
-                    disabled={!isEmailVerified}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div className={`pt-2 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
-              <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <div className="pt-0.5">
-                    <input 
-                      type="checkbox" 
-                      checked={acceptedTerms}
-                      onChange={(e) => setAcceptedTerms(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                  </div>
-                  <span className="text-xs text-slate-600 leading-snug">
+                  <span className="text-xs leading-snug text-slate-600">
                     I explicitly consent and agree to the <Link to="/terms-and-conditions" className="font-bold text-blue-600 hover:underline">Terms of Service</Link>.
                   </span>
                 </label>
-                
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <div className="pt-0.5">
-                    <input 
-                      type="checkbox" 
-                      checked={acceptedPrivacy}
-                      onChange={(e) => setAcceptedPrivacy(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                  </div>
-                  <span className="text-xs text-slate-600 leading-snug">
+
+                <label className="group flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={acceptedPrivacy}
+                    onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-xs leading-snug text-slate-600">
                     I explicitly consent to the collection, processing, and storage of my personal data as described in the <Link to="/privacy-policy" className="font-bold text-blue-600 hover:underline">Privacy Policy</Link> (in compliance with GDPR and DPDP Act).
                   </span>
                 </label>
               </div>
-              <button 
+
+              <button
                 type="submit"
                 disabled={loading || !isEmailVerified || !acceptedTerms || !acceptedPrivacy}
-                className="w-full rounded-xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? 'Creating Account...' : 'Create Account'} <ArrowRight size={16} />
+                {loading ? 'Creating Account…' : 'Create Account'} <ArrowRight size={16} />
               </button>
             </div>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-slate-100 text-center">
+          <div className="mt-8 border-t border-slate-100 pt-6 text-center">
             <p className="text-sm text-slate-500">
               Already have an account? <Link to="/login" className="font-bold text-blue-600 hover:text-blue-700">Sign in</Link>
             </p>
