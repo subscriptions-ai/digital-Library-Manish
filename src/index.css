@@ -44,6 +44,16 @@
   --caution-soft: #fbf0e0;
   --alarm: #a3302a;
   --alarm-soft: #fbeceb;
+
+  /* Charts only. Three shelves — articles, books, everything else — so three
+     hues that stay apart for a colourblind reader as well as for everyone
+     else, checked rather than chosen by eye (OKLCH lightness 0.43–0.77, chroma
+     >= 0.1, worst adjacent CVD deltaE 14.9). The brand teal itself is too grey to
+     carry a series: at chroma 0.07 it reads as a neutral beside a real hue, so
+     the chart gets a brighter sibling and the interface keeps the original. */
+  --series-1: #00909c;
+  --series-2: #b5651a;
+  --series-3: #7050d0;
 }
 
 .dark {
@@ -75,6 +85,12 @@
   --caution-soft: #33250f;
   --alarm: #d9736b;
   --alarm-soft: #2c1513;
+
+  /* Dark is stepped, not flipped: the same three hues re-chosen against the
+     dark surface (L 0.48–0.67 there) so they neither glow nor sink. */
+  --series-1: #22a0aa;
+  --series-2: #c4863a;
+  --series-3: #8d78e8;
 }
 
 /* `inline` makes Tailwind emit var(--ground) rather than the resolved colour,
@@ -101,6 +117,10 @@
   --color-caution-soft: var(--caution-soft);
   --color-alarm: var(--alarm);
   --color-alarm-soft: var(--alarm-soft);
+
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
 }
 
 /* Three faces, three jobs: the serif carries titles, the sans carries the

@@ -6697,21 +6697,45 @@ async function startServer() {
       const aWhere: any = { status: 'Published' };
       if (covered.length) { jWhere.domain = { in: covered }; aWhere.domain = { in: covered }; }
 
-      const domainFilter = covered.length
-        ? `and a."domain" = any($1)` : '';
+      const domainFilter = (t: string) => covered.length ? `and ${t}."domain" = any($1)` : '';
       const args: any[] = covered.length ? [covered] : [];
 
       const since = new Date(Date.now() - 30 * 864e5);
       // The same count as everywhere else, narrowed to what this college covers.
       const [counts, byDeptRows, newJournals, recent, readSubjects, unanswered, readers, spark] = await Promise.all([
         collectionCounts(covered.length ? covered : undefined),
+        // How much there is in each department — all of it, not the articles
+        // alone. A librarian reading "6,164 articles" next to a library of
+        // 61,706 items has been handed a number that does not add up to
+        // anything they were told elsewhere. The three shelves are counted the
+        // same way `collectionCounts` counts them, so a department's total and
+        // the library's total are the same arithmetic.
         (prisma as any).$queryRawUnsafe(
-          `select a."domain" as domain,
-                  count(distinct a."journalId")::int as journals,
-                  count(*)::int as articles
-           from "Article" a
-           where a.status = 'Published' and a."domain" is not null ${domainFilter}
-           group by 1 order by 2 desc, 3 desc`, ...args),
+          `select domain,
+                  sum(articles)::int as articles,
+                  sum(books)::int as books,
+                  sum(other)::int as other
+           from (
+             select a."domain" as domain, count(*)::int as articles, 0 as books, 0 as other
+               from "Article" a
+              where a.status = 'Published' and a."domain" is not null ${domainFilter('a')}
+              group by 1
+             union all
+             select b."domain", 0, count(*)::int, 0
+               from "Book" b
+              where b.status = 'Published' and b."domain" is not null ${domainFilter('b')}
+              group by 1
+             union all
+             select c."domain",
+                    count(*) filter (where c."contentType" = 'Periodicals')::int,
+                    count(*) filter (where c."contentType" = 'Books')::int,
+                    count(*) filter (where c."contentType" not in ('Periodicals', 'Books'))::int
+               from "Content" c
+              where c.status <> 'Draft' and c."domain" is not null ${domainFilter('c')}
+              group by 1
+           ) t
+           group by 1
+           order by (sum(articles) + sum(books) + sum(other)) desc`, ...args),
         (prisma as any).journal.findMany({
           where: jWhere, orderBy: { createdAt: 'desc' }, take: 5,
           select: { id: true, title: true, issn: true, domain: true, articleCount: true },
@@ -6799,9 +6823,10 @@ async function startServer() {
           articles: counts.articles,
           books: counts.books,
           total: counts.total,
-          byDepartment: byDeptRows.map((d: any) => ({
-            name: d.domain, journals: Number(d.journals), articles: Number(d.articles),
-          })),
+          byDepartment: byDeptRows.map((d: any) => {
+            const articles = Number(d.articles), books = Number(d.books), other = Number(d.other);
+            return { name: d.domain, articles, books, other, total: articles + books + other };
+          }),
         },
         hasActiveSubscription: subs.length > 0,
         sparkline: spark.map((r: any) => Number(r.reads)),

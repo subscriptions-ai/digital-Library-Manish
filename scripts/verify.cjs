@@ -323,6 +323,31 @@ const catalogueSize = async () => {
       return true;
     });
 
+    // The department chart plots each department's whole holding, so the
+    // departments have to add up to the library — a chart that sums to more
+    // than the collection it is drawn from is counting something twice, and a
+    // librarian reading it would never know.
+    {
+      const b = (await get(`/api/institution/overview?institutionId=${inst.id}`, A)).body;
+      const rows = b?.collection?.byDepartment || [];
+      if (!rows.length) meh('departments add up to the library', 'no departments');
+      else {
+        const part = k => rows.reduce((t, r) => t + Number(r[k] || 0), 0);
+        const bad1 = rows.find(r => r.total !== r.articles + r.books + r.other);
+        const total = part('total');
+        bad1 ? bad('departments add up to the library',
+                `${bad1.name} says ${bad1.total} but its shelves are ${bad1.articles}+${bad1.books}+${bad1.other}`)
+          : total > b.collection.total
+            ? bad('departments add up to the library',
+                `departments hold ${n(total)} of a library of ${n(b.collection.total)}`)
+            : part('articles') > b.collection.articles || part('books') > b.collection.books
+              ? bad('departments add up to the library',
+                  `shelves disagree: ${n(part('articles'))}/${n(part('books'))} by department vs ${n(b.collection.articles)}/${n(b.collection.books)} in all`)
+              : ok('departments add up to the library',
+                  `${rows.length} departments · ${n(total)} of ${n(b.collection.total)}`);
+      }
+    }
+
     await check('institution analytics', `/api/analytics/institution?institutionId=${inst.id}&days=90`, A, b => {
       const u = b.usage;
       if (!u) return 'no usage block';
