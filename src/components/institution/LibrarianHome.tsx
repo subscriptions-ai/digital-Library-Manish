@@ -28,7 +28,7 @@ type Overview = {
   students: { total: number; neverSignedIn: number; activeLast30: number };
   subscription: { departments: string[]; fullAccess: boolean; onFreeAllowance?: boolean; endsOn: string | null; daysLeft: number | null };
   collection: {
-    journals: number; articles: number; books: number;
+    journals: number; articles: number; books: number; total: number;
     byDepartment: { name: string; journals: number; articles: number }[];
   };
   newJournals: { id: string; title: string; issn: string | null; domain: string | null; articleCount: number }[];
@@ -349,10 +349,12 @@ export function LibrarianHome() {
             </p>
           )}
           <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-ink-2">
+            {/* The whole of it, counted once — articles, books and everything on
+                the archived shelf — rather than two of its parts. */}
             {sub.onFreeAllowance
-              ? <>The whole library — <b className="text-ink">{n(col.journals)} journals</b> and <b className="text-ink">{n(col.articles)} articles</b> — open to you and your students, half an hour at a time.</>
+              ? <>The whole library — <b className="text-ink">{n(col.total)} items</b> across <b className="text-ink">{n(col.journals)} journals</b> — open to you and your students, half an hour at a time.</>
               : sub.fullAccess
-              ? <>Full access to <b className="text-ink">{n(col.journals)} journals</b> and <b className="text-ink">{n(col.articles)} articles</b>.</>
+              ? <>Full access to <b className="text-ink">{n(col.total)} items</b> across <b className="text-ink">{n(col.journals)} journals</b>.</>
               : depts.length
                 ? <>
                     <b className="text-ink">{n(col.journals)} journals</b> and <b className="text-ink">{n(col.articles)} articles</b>

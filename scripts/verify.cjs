@@ -266,10 +266,13 @@ const catalogueSize = async () => {
       get('/api/library/stats', null),
     ]);
     const [pub, lib] = surfaces.map(r => r.body || {});
-    const same = ['journals', 'articles', 'books'].every(k => pub[k] === lib[k]);
+    // The total went the same way the parts did: written out separately in
+    // each place, and so free to disagree.
+    const same = ['journals', 'articles', 'books'].every(k => pub[k] === lib[k])
+      && pub.totalContent === lib.total;
     same
       ? ok('every screen quotes the same collection',
-          `${n(pub.journals)} journals · ${n(pub.articles)} articles · ${n(pub.books)} books`)
+          `${n(pub.totalContent)} items · ${n(pub.journals)} journals · ${n(pub.articles)} articles · ${n(pub.books)} books`)
       : bad('every screen quotes the same collection',
           `home says ${pub.articles} articles / ${pub.books} books, the library says ${lib.articles} / ${lib.books}`);
   }

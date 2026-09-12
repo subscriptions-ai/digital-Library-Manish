@@ -11305,7 +11305,7 @@ async function startServer() {
   const collectionCounts = async (domains) => {
     const inDomains = domains?.length ? { domain: { in: domains } } : {};
     const live = { status: { not: "Draft" } };
-    const [journalRows, newArticles, legacyPeriodicals, newBooks, legacyBooks] = await Promise.all([
+    const [journalRows, newArticles, legacyPeriodicals, newBooks, legacyBooks, legacyOther] = await Promise.all([
       prisma3.$queryRawUnsafe(
         domains?.length ? `select count(distinct a."journalId")::int as n from "Article" a
              where a.status = 'Published' and a."journalId" is not null and a.domain = any($1)` : `select count(distinct "journalId")::int as n from "Article"
@@ -11315,12 +11315,19 @@ async function startServer() {
       prisma3.article.count({ where: { status: "Published", ...inDomains } }),
       prisma3.content.count({ where: { contentType: "Periodicals", ...live, ...inDomains } }),
       prisma3.book.count({ where: { status: "Published", ...inDomains } }),
-      prisma3.content.count({ where: { contentType: "Books", ...live, ...inDomains } })
+      prisma3.content.count({ where: { contentType: "Books", ...live, ...inDomains } }),
+      prisma3.content.count({
+        where: { contentType: { notIn: ["Periodicals", "Books"] }, ...live, ...inDomains }
+      })
     ]);
+    const articles = newArticles + legacyPeriodicals;
+    const books = newBooks + legacyBooks;
     return {
       journals: Number(journalRows?.[0]?.n || 0),
-      articles: newArticles + legacyPeriodicals,
-      books: newBooks + legacyBooks
+      articles,
+      books,
+      /** Everything a reader can open, counted once. */
+      total: articles + books + legacyOther
     };
   };
   app.get("/api/public/counts", async (req, res) => {
@@ -16864,6 +16871,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           journals: counts.journals,
           articles: counts.articles,
           books: counts.books,
+          total: counts.total,
           byDepartment: byDeptRows.map((d) => ({
             name: d.domain,
             journals: Number(d.journals),

@@ -360,7 +360,10 @@ async function startServer() {
     const inDomains = domains?.length ? { domain: { in: domains } } : {};
     const live = { status: { not: "Draft" } };
 
-    const [journalRows, newArticles, legacyPeriodicals, newBooks, legacyBooks] = await Promise.all([
+    // Everything else on the archived shelf — theses, magazines, case reports,
+    // proceedings, videos, newsletters. A reader opens those too, so a figure
+    // called "the whole library" has to count them.
+    const [journalRows, newArticles, legacyPeriodicals, newBooks, legacyBooks, legacyOther] = await Promise.all([
       (prisma as any).$queryRawUnsafe(
         domains?.length
           ? `select count(distinct a."journalId")::int as n from "Article" a
@@ -372,12 +375,19 @@ async function startServer() {
       prisma.content.count({ where: { contentType: "Periodicals", ...live, ...inDomains } }),
       (prisma as any).book.count({ where: { status: 'Published', ...inDomains } }),
       prisma.content.count({ where: { contentType: "Books", ...live, ...inDomains } }),
+      prisma.content.count({
+        where: { contentType: { notIn: ["Periodicals", "Books"] }, ...live, ...inDomains },
+      }),
     ]);
 
+    const articles = newArticles + legacyPeriodicals;
+    const books = newBooks + legacyBooks;
     return {
       journals: Number(journalRows?.[0]?.n || 0),
-      articles: newArticles + legacyPeriodicals,
-      books: newBooks + legacyBooks,
+      articles,
+      books,
+      /** Everything a reader can open, counted once. */
+      total: articles + books + legacyOther,
     };
   };
 
@@ -6788,6 +6798,7 @@ async function startServer() {
           journals: counts.journals,
           articles: counts.articles,
           books: counts.books,
+          total: counts.total,
           byDepartment: byDeptRows.map((d: any) => ({
             name: d.domain, journals: Number(d.journals), articles: Number(d.articles),
           })),
