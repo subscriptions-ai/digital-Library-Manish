@@ -189,8 +189,11 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           {/* Search where the hand expects it, and the member named on the
               right — the two things every dashboard of this shape has and this
               one did not. */}
+          {/* The library reads its search from `q`. I sent `search`, so every
+              term typed up here arrived at a page that ignored it and showed the
+              whole catalogue as though nothing had been asked. */}
           <form
-            onSubmit={(e) => { e.preventDefault(); if (q.trim()) navigate(`/institution/explore?search=${encodeURIComponent(q.trim())}`); }}
+            onSubmit={(e) => { e.preventDefault(); if (q.trim()) navigate(`/institution/explore?q=${encodeURIComponent(q.trim())}`); }}
             className="hidden min-w-0 flex-1 items-center gap-2 rounded-xl border border-rule bg-surface-2 px-3 py-2 md:flex lg:max-w-md"
           >
             <Search size={16} className="shrink-0 text-faint" />
