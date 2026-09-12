@@ -186,7 +186,25 @@ export function Signup() {
                             it cannot be styled, it covers the page, and it asks
                             for two clicks to answer a question the member can
                             answer at a glance. Eighteen roles fit here, grouped,
-                            and take one. */}
+                            and take one.
+                            Once one is taken the list folds away to the answer.
+                            Left open it is three hundred pixels of a form that
+                            is already four screens long on a phone, all of it
+                            about a question that has been settled. */}
+                        {formData.designation ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11.5px] font-semibold text-white">
+                              {formData.designation}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setFormData(f => ({ ...f, designation: '' }))}
+                              className="text-[11.5px] font-semibold text-slate-500 underline underline-offset-2 hover:text-slate-700"
+                            >
+                              Change
+                            </button>
+                          </div>
+                        ) : (
                         <div className="space-y-2.5">
                           {(DESIGNATION_GROUPS[chosenType.id] || []).map(g => (
                             <div key={g.label}>
@@ -214,6 +232,7 @@ export function Signup() {
                             </div>
                           ))}
                         </div>
+                        )}
                       </div>
                     ) : (
                       <p className="px-3 py-3 text-center text-xs text-slate-400">
@@ -359,7 +378,10 @@ export function Signup() {
                     collect more. Note that the wording no longer says so — it
                     used to, and if members start believing their choices narrow
                     what they can read, that reassurance is the line to put back. */}
-                <div className="flex max-h-52 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+                {/* The inner scroll only exists where there is a mouse. On a
+                    phone a short scrolling box inside a long scrolling page
+                    catches the finger and holds it. */}
+                <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:max-h-52 sm:overflow-y-auto">
                   {[...DOMAINS].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
                     const chosen = formData.interestedDomains.includes(d.name);
                     return (
