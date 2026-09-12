@@ -39,6 +39,14 @@ COPY seed-admin.ts ./
 COPY prisma/ ./prisma/
 COPY public/ ./public/
 
+# One-off maintenance scripts, so they can be run against production from inside
+# the container rather than from somebody's laptop over the open internet. The
+# image had no scripts/ at all, which meant a backfill the deploy depends on —
+# scripts/backfill-member-activity.cjs — could not be run where it was needed.
+# The .cjs ones run on plain node; the .ts ones need tsx, which is not installed
+# here, and that is fine: nothing in production should need them.
+COPY scripts/ ./scripts/
+
 # Copy the generated Prisma client from builder stage
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
