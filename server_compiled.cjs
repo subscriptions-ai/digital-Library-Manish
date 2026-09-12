@@ -11302,25 +11302,39 @@ async function startServer() {
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
+  const collectionCounts = async (domains) => {
+    const inDomains = domains?.length ? { domain: { in: domains } } : {};
+    const live = { status: { not: "Draft" } };
+    const [journalRows, newArticles, legacyPeriodicals, newBooks, legacyBooks] = await Promise.all([
+      prisma3.$queryRawUnsafe(
+        domains?.length ? `select count(distinct a."journalId")::int as n from "Article" a
+             where a.status = 'Published' and a."journalId" is not null and a.domain = any($1)` : `select count(distinct "journalId")::int as n from "Article"
+             where status = 'Published' and "journalId" is not null`,
+        ...domains?.length ? [domains] : []
+      ),
+      prisma3.article.count({ where: { status: "Published", ...inDomains } }),
+      prisma3.content.count({ where: { contentType: "Periodicals", ...live, ...inDomains } }),
+      prisma3.book.count({ where: { status: "Published", ...inDomains } }),
+      prisma3.content.count({ where: { contentType: "Books", ...live, ...inDomains } })
+    ]);
+    return {
+      journals: Number(journalRows?.[0]?.n || 0),
+      articles: newArticles + legacyPeriodicals,
+      books: newBooks + legacyBooks
+    };
+  };
   app.get("/api/public/counts", async (req, res) => {
     try {
       const live = { status: { not: "Draft" } };
       const pub = { status: "Published" };
-      const [journalRows, articles, legacyPeriodicals, legacyBooks, newBooks, theses, legacyTotal] = await Promise.all([
-        prisma3.$queryRawUnsafe(
-          `select count(distinct "journalId")::int as n from "Article"
-             where status = 'Published' and "journalId" is not null`
-        ),
+      const [counts, articles, newBooks, theses, legacyTotal] = await Promise.all([
+        collectionCounts(),
         prisma3.article.count({ where: pub }),
-        prisma3.content.count({ where: { contentType: "Periodicals", ...live } }),
-        prisma3.content.count({ where: { contentType: "Books", ...live } }),
         prisma3.book.count({ where: pub }),
         prisma3.content.count({ where: { contentType: "Theses", ...live } }),
         prisma3.content.count({ where: live })
       ]);
-      const journals = Number(journalRows?.[0]?.n || 0);
-      const allArticles = articles + legacyPeriodicals;
-      const allBooks = legacyBooks + newBooks;
+      const { journals, articles: allArticles, books: allBooks } = counts;
       res.json({
         categories: [
           { label: "Journals", value: `${journals}+` },
@@ -16752,15 +16766,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const domainFilter = covered.length ? `and a."domain" = any($1)` : "";
       const args = covered.length ? [covered] : [];
       const since = new Date(Date.now() - 30 * 864e5);
-      const [journalRows, articles, books, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
-        prisma3.$queryRawUnsafe(
-          `select count(distinct a."journalId")::int as n
-           from "Article" a
-           where a.status = 'Published' and a."journalId" is not null ${domainFilter}`,
-          ...args
-        ),
-        prisma3.article.count({ where: aWhere }),
-        prisma3.book.count({ where: covered.length ? { status: "Published", domain: { in: covered } } : { status: "Published" } }),
+      const [counts, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
+        collectionCounts(covered.length ? covered : void 0),
         prisma3.$queryRawUnsafe(
           `select a."domain" as domain,
                   count(distinct a."journalId")::int as journals,
@@ -16842,9 +16849,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           daysLeft
         },
         collection: {
-          journals: Number(journalRows?.[0]?.n || 0),
-          articles,
-          books,
+          journals: counts.journals,
+          articles: counts.articles,
+          books: counts.books,
           byDepartment: byDeptRows.map((d) => ({
             name: d.domain,
             journals: Number(d.journals),
@@ -16871,11 +16878,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/library/stats", async (_req, res) => {
     try {
-      const [journals, byDomain, articles, books, authors] = await Promise.all([
-        prisma3.$queryRawUnsafe(
-          `select count(distinct "journalId")::int as n from "Article"
-           where status = 'Published' and "journalId" is not null`
-        ).then((r2) => Number(r2?.[0]?.n || 0)),
+      const [counts, byDomain, authors] = await Promise.all([
+        collectionCounts(),
         prisma3.$queryRawUnsafe(`
           select a."domain" as domain,
                  count(distinct a."journalId")::int as journals,
@@ -16884,11 +16888,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           from "Article" a
           where a.status = 'Published' and a."domain" is not null
           group by 1 order by 2 desc`),
-        prisma3.article.count({ where: { status: "Published" } }),
-        prisma3.book.count({ where: { status: "Published" } }),
         prisma3.author.count()
       ]);
-      res.json({ journals, articles, books, authors, departments: byDomain });
+      res.json({ ...counts, authors, departments: byDomain });
     } catch (e2) {
       console.error("GET library/stats error:", e2?.message);
       res.status(500).json({ error: "Failed to load stats" });

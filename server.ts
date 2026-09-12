@@ -344,27 +344,57 @@ async function startServer() {
   // Journals and articles lead, because that is the pair a college asks about
   // before anything else. "Periodicals" named a storage category rather than
   // anything a librarian would recognise.
+  /**
+   * How much there is, counted once.
+   *
+   * Three screens were counting this three ways and disagreeing in public: the
+   * home page said 50,307 articles and 5,982 books, the library said 49,701 and
+   * 5,797, and the librarian's dashboard agreed with the library. The difference
+   * was the archived collection — the public count added it and the other two
+   * did not — so the same product quoted two figures for the same shelf.
+   *
+   * A reader can open all of it, so all of it is counted. One definition, in one
+   * place, and nothing downstream gets to hold an opinion about it.
+   */
+  const collectionCounts = async (domains?: string[]) => {
+    const inDomains = domains?.length ? { domain: { in: domains } } : {};
+    const live = { status: { not: "Draft" } };
+
+    const [journalRows, newArticles, legacyPeriodicals, newBooks, legacyBooks] = await Promise.all([
+      (prisma as any).$queryRawUnsafe(
+        domains?.length
+          ? `select count(distinct a."journalId")::int as n from "Article" a
+             where a.status = 'Published' and a."journalId" is not null and a.domain = any($1)`
+          : `select count(distinct "journalId")::int as n from "Article"
+             where status = 'Published' and "journalId" is not null`,
+        ...(domains?.length ? [domains] : [])),
+      (prisma as any).article.count({ where: { status: 'Published', ...inDomains } }),
+      prisma.content.count({ where: { contentType: "Periodicals", ...live, ...inDomains } }),
+      (prisma as any).book.count({ where: { status: 'Published', ...inDomains } }),
+      prisma.content.count({ where: { contentType: "Books", ...live, ...inDomains } }),
+    ]);
+
+    return {
+      journals: Number(journalRows?.[0]?.n || 0),
+      articles: newArticles + legacyPeriodicals,
+      books: newBooks + legacyBooks,
+    };
+  };
+
   app.get("/api/public/counts", async (req, res) => {
     try {
       const live = { status: { not: "Draft" } };
       const pub = { status: "Published" };
 
-      const [journalRows, articles, legacyPeriodicals, legacyBooks, newBooks, theses, legacyTotal] =
-        await Promise.all([
-          (prisma as any).$queryRawUnsafe(
-            `select count(distinct "journalId")::int as n from "Article"
-             where status = 'Published' and "journalId" is not null`),
-          (prisma as any).article.count({ where: pub }),
-          prisma.content.count({ where: { contentType: "Periodicals", ...live } }),
-          prisma.content.count({ where: { contentType: "Books", ...live } }),
-          (prisma as any).book.count({ where: pub }),
-          prisma.content.count({ where: { contentType: "Theses", ...live } }),
-          prisma.content.count({ where: live }),
-        ]);
+      const [counts, articles, newBooks, theses, legacyTotal] = await Promise.all([
+        collectionCounts(),
+        (prisma as any).article.count({ where: pub }),
+        (prisma as any).book.count({ where: pub }),
+        prisma.content.count({ where: { contentType: "Theses", ...live } }),
+        prisma.content.count({ where: live }),
+      ]);
 
-      const journals = Number(journalRows?.[0]?.n || 0);
-      const allArticles = articles + legacyPeriodicals;
-      const allBooks = legacyBooks + newBooks;
+      const { journals, articles: allArticles, books: allBooks } = counts;
 
       res.json({
         categories: [
@@ -6662,13 +6692,9 @@ async function startServer() {
       const args: any[] = covered.length ? [covered] : [];
 
       const since = new Date(Date.now() - 30 * 864e5);
-      const [journalRows, articles, books, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
-        (prisma as any).$queryRawUnsafe(
-          `select count(distinct a."journalId")::int as n
-           from "Article" a
-           where a.status = 'Published' and a."journalId" is not null ${domainFilter}`, ...args),
-        (prisma as any).article.count({ where: aWhere }),
-        (prisma as any).book.count({ where: covered.length ? { status: 'Published', domain: { in: covered } } : { status: 'Published' } }),
+      // The same count as everywhere else, narrowed to what this college covers.
+      const [counts, byDeptRows, newJournals, recent, unanswered, readers, spark] = await Promise.all([
+        collectionCounts(covered.length ? covered : undefined),
         (prisma as any).$queryRawUnsafe(
           `select a."domain" as domain,
                   count(distinct a."journalId")::int as journals,
@@ -6750,8 +6776,9 @@ async function startServer() {
           daysLeft,
         },
         collection: {
-          journals: Number(journalRows?.[0]?.n || 0),
-          articles, books,
+          journals: counts.journals,
+          articles: counts.articles,
+          books: counts.books,
           byDepartment: byDeptRows.map((d: any) => ({
             name: d.domain, journals: Number(d.journals), articles: Number(d.articles),
           })),
@@ -6780,11 +6807,10 @@ async function startServer() {
       // These are the figures the homepage and every department heading share,
       // so they come from the articles rather than from a counter that two
       // separate jobs are responsible for keeping current.
-      const [journals, byDomain, articles, books, authors] = await Promise.all([
-        (prisma as any).$queryRawUnsafe(
-          `select count(distinct "journalId")::int as n from "Article"
-           where status = 'Published' and "journalId" is not null`)
-          .then((r: any) => Number(r?.[0]?.n || 0)),
+      // Counted where everything else counts it, so the home page and this
+      // page cannot quote different figures for the same shelf.
+      const [counts, byDomain, authors] = await Promise.all([
+        collectionCounts(),
         (prisma as any).$queryRawUnsafe(`
           select a."domain" as domain,
                  count(distinct a."journalId")::int as journals,
@@ -6793,11 +6819,9 @@ async function startServer() {
           from "Article" a
           where a.status = 'Published' and a."domain" is not null
           group by 1 order by 2 desc`),
-        (prisma as any).article.count({ where: { status: 'Published' } }),
-        (prisma as any).book.count({ where: { status: 'Published' } }),
         (prisma as any).author.count(),
       ]);
-      res.json({ journals, articles, books, authors, departments: byDomain });
+      res.json({ ...counts, authors, departments: byDomain });
     } catch (e: any) {
       console.error('GET library/stats error:', e?.message);
       res.status(500).json({ error: "Failed to load stats" });

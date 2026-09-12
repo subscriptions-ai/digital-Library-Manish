@@ -29,6 +29,7 @@ const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', D = '\x1b[2m', O = '\x1b[0
 let pass = 0, fail = 0, skip = 0;
 const failures = [];
 
+const n = x => Number(x || 0).toLocaleString();
 const ok = (name, detail = '') => { pass++; console.log(`  ${G}pass${O}  ${name}${detail ? D + '  ' + detail + O : ''}`); };
 const bad = (name, detail) => { fail++; failures.push(`${name} — ${detail}`); console.log(`  ${R}FAIL${O}  ${name}\n        ${R}${detail}${O}`); };
 const meh = (name, why) => { skip++; console.log(`  ${Y}skip${O}  ${name}${D}  ${why}${O}`); };
@@ -235,6 +236,25 @@ const catalogueSize = async () => {
     }
     wrong ? bad('department pages show what they hold', wrong)
           : ok('department pages show what they hold', `${held.length} checked`);
+  }
+
+  // Three screens counted the same shelf three ways and disagreed in public:
+  // the home page said 50,307 articles and 5,982 books while the library and
+  // the librarian's dashboard said 49,701 and 5,797. The difference was the
+  // archived collection, which only one of them was adding. Whatever the
+  // definition is, it has to be one definition.
+  {
+    const surfaces = await Promise.all([
+      get('/api/public/counts', null),
+      get('/api/library/stats', null),
+    ]);
+    const [pub, lib] = surfaces.map(r => r.body || {});
+    const same = ['journals', 'articles', 'books'].every(k => pub[k] === lib[k]);
+    same
+      ? ok('every screen quotes the same collection',
+          `${n(pub.journals)} journals · ${n(pub.articles)} articles · ${n(pub.books)} books`)
+      : bad('every screen quotes the same collection',
+          `home says ${pub.articles} articles / ${pub.books} books, the library says ${lib.articles} / ${lib.books}`);
   }
 
   await check('the library leads with journals and articles', '/api/public/content-type-counts', null, b => {
