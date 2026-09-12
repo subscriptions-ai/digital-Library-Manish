@@ -313,6 +313,42 @@ const catalogueSize = async () => {
     }
   }
 
+  // ── the admin's members screen ────────────────────────────────────────────
+  console.log('\nMembers');
+  {
+    // The screen used to filter and export the fifty rows it had in hand. The
+    // filters are the database's job now, and these figures are what a mailing
+    // is judged by — so they have to agree with the database and with each
+    // other. The first version of the summary strip did not: filtering to
+    // "never opened anything" and then counting "have read something" threw the
+    // filter away, and the fourth tile read minus one hundred and six.
+    const all = (await get('/api/admin/users?limit=1', A)).body || {};
+    const never = (await get('/api/admin/users?limit=1&active=never', A)).body || {};
+    const trueTotal = await p.user.count();
+    const trueNever = await p.user.count({ where: { lastReadAt: null } });
+
+    const wrong =
+      all.counts?.matching !== trueTotal ? `says ${all.counts?.matching} members, the database has ${trueTotal}`
+      : all.counts.everRead + all.counts.neverRead !== all.counts.matching
+        ? `${all.counts.everRead} read + ${all.counts.neverRead} never ≠ ${all.counts.matching} matching`
+      : never.counts?.matching !== trueNever ? `filtering to never-read gives ${never.counts?.matching}, the database says ${trueNever}`
+      : never.counts.everRead !== 0 ? `among members who never read anything, ${never.counts.everRead} are counted as having read`
+      : null;
+    wrong ? bad('the members screen counts the database', wrong)
+          : ok('the members screen counts the database',
+              `${n(trueTotal)} members · ${n(all.counts.everRead)} have read something · ${n(trueNever)} never did`);
+
+    // The export is the artefact that leaves the building — a mailing list, a
+    // report to somebody. It must be the whole answer, not the page.
+    const csv = await fetch(`${BASE}/api/admin/users?format=csv&active=never`, {
+      headers: { Authorization: `Bearer ${A}` },
+    }).then(r => r.text()).catch(() => '');
+    const lines = csv.trim().split('\n').length - 1; // less the header
+    lines === trueNever
+      ? ok('the export is the whole answer', `${n(lines)} rows for a filter matching ${n(trueNever)}`)
+      : bad('the export is the whole answer', `exported ${lines} rows for a filter matching ${trueNever}`);
+  }
+
   // ── 3. the dashboards ─────────────────────────────────────────────────────
   console.log('\nDashboards');
   if (inst) {

@@ -1,3 +1,4 @@
+import { getAttribution, clearAttribution } from './attribution';
 const API_URL = '/api/auth';
 
 export interface AuthResponse {
@@ -14,7 +15,8 @@ export const authApi = {
     const response = await fetch(`${API_URL}/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, organization, contact, designation, interestedDomains, ...(extra || {}) }),
+      // Whatever link brought them here, travelling with the account it made.
+      body: JSON.stringify({ email, password, name, organization, contact, designation, interestedDomains, ...(extra || {}), attribution: getAttribution() }),
     });
     
     if (!response.ok) {
@@ -24,6 +26,9 @@ export const authApi = {
     
     const data = await response.json();
     this.setToken(data.token);
+    // Recorded on the account now, so a shared machine cannot credit the next
+    // person who signs up on it to the same mailing.
+    clearAttribution();
     return data;
   },
 

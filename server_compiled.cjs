@@ -11528,6 +11528,11 @@ async function startServer() {
         where: { email },
         data: { isVerified: true, otp: null, otpExpiry: null }
       });
+      await prisma3.user.updateMany({
+        where: { email, emailVerifiedAt: null },
+        data: { emailVerifiedAt: /* @__PURE__ */ new Date() }
+      }).catch(() => {
+      });
       res.json({ success: true });
     } catch (err) {
       console.error("OTP verify error:", err);
@@ -11567,15 +11572,16 @@ async function startServer() {
         registrantType,
         state,
         country,
-        whatsapp
+        whatsapp,
+        attribution
       } = req.body;
       const existingUser = await prisma3.user.findUnique({ where: { email } });
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
       }
+      const proof = await prisma3.emailVerification.findUnique({ where: { email } });
       if (getSystemSettings().emailVerificationEnabled) {
-        const verification = await prisma3.emailVerification.findUnique({ where: { email } });
-        if (!verification?.isVerified) {
+        if (!proof?.isVerified) {
           return res.status(400).json({ error: "Please verify your email address before creating an account." });
         }
       }
@@ -11592,6 +11598,18 @@ async function startServer() {
         newInstitutionId = created.id;
         accountRole = "Institution";
       }
+      const clean = (v, max = 120) => {
+        const t2 = String(v ?? "").trim();
+        return t2 ? t2.slice(0, max) : null;
+      };
+      const tags = {};
+      if (attribution && typeof attribution === "object") {
+        for (const k of ["ref", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "landing"]) {
+          const v = clean(attribution[k], k === "landing" ? 300 : 120);
+          if (v) tags[k] = v;
+        }
+      }
+      const signupSource = tags.ref || tags.utm_campaign || tags.utm_source || null;
       const hashedPassword = await import_bcryptjs.default.hash(password, 10);
       const userObj = await prisma3.user.create({
         data: {
@@ -11615,7 +11633,10 @@ async function startServer() {
           role: accountRole,
           institutionId: newInstitutionId,
           status: "Active",
-          interestedDomains: interests
+          interestedDomains: interests,
+          signupSource,
+          signupTags: Object.keys(tags).length ? tags : void 0,
+          emailVerifiedAt: proof?.isVerified ? /* @__PURE__ */ new Date() : null
         }
       });
       if (!STAFF_ROLES.includes(userObj.role)) {
@@ -11625,7 +11646,10 @@ async function startServer() {
             email,
             phone: contact || null,
             organization: organization || null,
-            source: "Free signup",
+            // Sales reads leads by where they came from. Every free signup
+            // used to arrive under one word, so a mailing of four thousand
+            // colleges and a stray visitor were the same row.
+            source: signupSource ? `Free signup \xB7 ${signupSource}` : "Free signup",
             status: "All",
             state: state || null,
             notes: [
@@ -13028,11 +13052,21 @@ async function startServer() {
       return null;
     }
   };
+  const lastReadWrites = /* @__PURE__ */ new Map();
+  const markRead = (uid) => {
+    const now = Date.now();
+    if ((lastReadWrites.get(uid) || 0) > now - 5 * 6e4) return;
+    lastReadWrites.set(uid, now);
+    if (lastReadWrites.size > 5e4) lastReadWrites.clear();
+    prisma3.user.update({ where: { id: uid }, data: { lastReadAt: /* @__PURE__ */ new Date() } }).catch(() => {
+    });
+  };
   const logEvent = (req, e2) => {
     void (async () => {
       try {
         const user = identify(req);
         const uid = user?.uid || user?.id || null;
+        if (uid && e2.kind === "view") markRead(uid);
         let dedupeKey = null;
         if (e2.dedupeWindowMs) {
           const bucket = Math.floor(Date.now() / e2.dedupeWindowMs);
@@ -13737,11 +13771,36 @@ async function startServer() {
   };
   app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const { role: filterRole, search } = req.query;
-      const take = Math.min(Math.max(parseInt(String(req.query.limit)) || 50, 1), 200);
-      const page = Math.max(parseInt(String(req.query.page)) || 1, 1);
+      const q = req.query;
+      const str = (v) => v === void 0 || v === null || v === "" || v === "all" ? null : String(v);
       const where = {};
-      if (filterRole && filterRole !== "all") where.role = filterRole;
+      const role = str(q.role);
+      if (role) where.role = role;
+      const type = str(q.registrantType);
+      if (type) where.registrantType = type;
+      const designation = str(q.designation);
+      if (designation) where.designation = designation;
+      const state = str(q.state);
+      if (state) where.state = state;
+      const country = str(q.country);
+      if (country) where.country = country;
+      const source = str(q.source);
+      if (source) where.signupSource = source === "none" ? null : source;
+      const verified = str(q.verified);
+      if (verified === "yes") where.emailVerifiedAt = { not: null };
+      if (verified === "no") where.emailVerifiedAt = null;
+      const active = str(q.active);
+      if (active === "read") where.lastReadAt = { not: null };
+      if (active === "never") where.lastReadAt = null;
+      const from = str(q.joinedFrom), to = str(q.joinedTo);
+      if (from || to) {
+        where.createdAt = {};
+        if (from) where.createdAt.gte = new Date(from);
+        if (to) where.createdAt.lte = new Date(new Date(to).setHours(23, 59, 59, 999));
+      }
+      const domain = str(q.domain);
+      if (domain) where.interestedDomains = { array_contains: [domain] };
+      const search = str(q.search);
       if (search) {
         where.OR = [
           { email: { contains: search, mode: "insensitive" } },
@@ -13749,38 +13808,132 @@ async function startServer() {
           { organization: { contains: search, mode: "insensitive" } }
         ];
       }
-      const [users, total] = await Promise.all([
+      const columns = {
+        id: true,
+        email: true,
+        displayName: true,
+        organization: true,
+        contact: true,
+        whatsapp: true,
+        designation: true,
+        registrantType: true,
+        state: true,
+        country: true,
+        role: true,
+        status: true,
+        isBlocked: true,
+        interestedDomains: true,
+        signupSource: true,
+        emailVerifiedAt: true,
+        lastReadAt: true,
+        createdAt: true,
+        institutionId: true
+      };
+      if (str(q.format) === "csv") {
+        const cols = [
+          "Name",
+          "Email",
+          "Phone",
+          "WhatsApp",
+          "Organisation",
+          "Registering as",
+          "Designation",
+          "State",
+          "Country",
+          "Departments",
+          "Came from",
+          "Verified",
+          "Last read",
+          "Role",
+          "Status",
+          "Joined"
+        ];
+        const cell = (v) => {
+          const t2 = v === null || v === void 0 ? "" : String(v);
+          return /[",\n]/.test(t2) ? `"${t2.replace(/"/g, '""')}"` : t2;
+        };
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="members-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.csv"`);
+        res.write("\uFEFF" + cols.join(",") + "\n");
+        const date = (d) => d ? new Date(d).toISOString().slice(0, 10) : "";
+        let cursor = null;
+        for (; ; ) {
+          const batch = await prisma3.user.findMany({
+            where,
+            select: columns,
+            orderBy: { id: "asc" },
+            take: 1e3,
+            ...cursor ? { cursor: { id: cursor }, skip: 1 } : {}
+          });
+          if (!batch.length) break;
+          for (const u of batch) {
+            res.write([
+              u.displayName,
+              u.email,
+              u.contact,
+              u.whatsapp,
+              u.organization,
+              u.registrantType,
+              u.designation,
+              u.state,
+              u.country,
+              Array.isArray(u.interestedDomains) ? u.interestedDomains.join("; ") : "",
+              u.signupSource || "",
+              u.emailVerifiedAt ? "yes" : "no",
+              date(u.lastReadAt),
+              u.role,
+              u.isBlocked ? "Blocked" : u.status,
+              date(u.createdAt)
+            ].map(cell).join(",") + "\n");
+          }
+          cursor = batch[batch.length - 1].id;
+          if (batch.length < 1e3) break;
+        }
+        return res.end();
+      }
+      const take = Math.min(Math.max(parseInt(String(q.limit)) || 50, 1), 200);
+      const page = Math.max(parseInt(String(q.page)) || 1, 1);
+      const sort = str(q.sort);
+      const [users, total, byType, bySource, byState, verifiedCount, readCount] = await Promise.all([
         prisma3.user.findMany({
           where,
-          include: {
-            subscriptions: { where: { status: "Active" }, take: 3 },
-            payments: { orderBy: { createdAt: "desc" }, take: 3 },
-            institution: {
-              include: {
-                subscriptions: {
-                  where: { status: "Active" },
-                  orderBy: { createdAt: "desc" },
-                  take: 5
-                }
-              }
-            }
+          select: {
+            ...columns,
+            subscriptions: { where: { status: "Active" }, take: 3, select: { id: true, planName: true, endDate: true, domains: true } },
+            institution: { select: { id: true, name: true } }
           },
-          orderBy: { createdAt: "desc" },
+          orderBy: sort === "name" ? { displayName: "asc" } : sort === "oldest" ? { createdAt: "asc" } : { createdAt: "desc" },
           skip: (page - 1) * take,
           take
         }),
-        prisma3.user.count({ where })
+        prisma3.user.count({ where }),
+        // The counts beside the filters, counted under the filters already set
+        // — so narrowing by state and then reading the type counts gives the
+        // types in that state, which is the only reading that is any use.
+        prisma3.user.groupBy({ by: ["registrantType"], where, _count: { _all: true } }),
+        prisma3.user.groupBy({ by: ["signupSource"], where, _count: { _all: true } }),
+        prisma3.user.groupBy({ by: ["state"], where, _count: { _all: true } }),
+        prisma3.user.count({ where: { AND: [where, { emailVerifiedAt: { not: null } }] } }),
+        prisma3.user.count({ where: { AND: [where, { lastReadAt: { not: null } }] } })
       ]);
-      const verifications = await prisma3.emailVerification.findMany({
-        where: { email: { in: users.map((u) => u.email) }, isVerified: true },
-        select: { email: true }
+      const facet = (rows, key) => rows.map((r2) => ({ value: r2[key] || null, count: r2._count._all })).sort((a, b) => b.count - a.count);
+      res.json({
+        data: users.map((u) => ({ ...u, isEmailVerified: !!u.emailVerifiedAt })),
+        total,
+        page,
+        limit: take,
+        counts: {
+          matching: total,
+          verified: verifiedCount,
+          everRead: readCount,
+          neverRead: total - readCount
+        },
+        facets: {
+          registrantType: facet(byType, "registrantType"),
+          source: facet(bySource, "signupSource"),
+          state: facet(byState, "state").slice(0, 20)
+        }
       });
-      const verifiedEmails = new Set(verifications.map((v) => v.email));
-      const sanitized = users.map(({ password: _, ...u }) => ({
-        ...u,
-        isEmailVerified: verifiedEmails.has(u.email)
-      }));
-      res.json({ data: sanitized, total, page, limit: take });
     } catch (err) {
       console.error("GET /api/admin/users error:", err);
       res.status(500).json({ error: "Failed to fetch users" });

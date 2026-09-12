@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, ShieldAlert, ShieldCheck, Mail, Calendar, CreditCard,
   ChevronDown, Pencil, Trash2, RefreshCw, X, Save, Loader2,
-  UserPlus, Filter, Building2, Download
+  UserPlus, Filter, Building2, Download, BookOpen
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { REGISTRANT_TYPES, DOMAINS } from '../../constants';
 
 const ROLES = ['SuperAdmin', 'SubscriptionManager', 'Institution', 'Student', 'Subscriber'];
 
@@ -20,6 +19,14 @@ const ROLE_COLORS: Record<string, string> = {
   Subscriber: 'bg-blue-100 text-blue-700',
 };
 
+/** The filters, as the server's question. */
+function queryFor(f: Record<string, string>, search: string) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(f)) if (v && v !== 'all') params.set(k, v);
+  if (search) params.set('search', search);
+  return params;
+}
+
 function authHeader() {
   return { Authorization: `Bearer ${localStorage.getItem('token')}` };
 }
@@ -29,8 +36,16 @@ export function UserManager() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
-  const [filterVerification, setFilterVerification] = useState('all'); // 'all', 'verified', 'unverified'
+  // Every one of these is a question for the database now. Two of them used to
+  // be answered by sifting the fifty rows already on screen, which reads as a
+  // filter and behaves as a lie once there is more than one page.
+  const [filters, setFilters] = useState({
+    role: 'all', registrantType: 'all', state: 'all', source: 'all',
+    verified: 'all', active: 'all', domain: 'all', joinedFrom: '',
+  });
+  const [counts, setCounts] = useState<any>(null);
+  const [facets, setFacets] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -57,9 +72,7 @@ export function UserManager() {
   const fetchUsers = async (toPage = page) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filterRole !== 'all') params.set('role', filterRole);
-      if (search) params.set('search', search);
+      const params = queryFor(filters, search);
       params.set('page', String(toPage));
       params.set('limit', String(PER_PAGE));
       const res = await fetch(`/api/admin/users?${params}`, { headers: authHeader() });
@@ -67,6 +80,8 @@ export function UserManager() {
       try { data = await res.json(); } catch {}
       setUsers(Array.isArray(data) ? data : (data?.data ?? []));
       setTotal(Array.isArray(data) ? data.length : (data?.total ?? 0));
+      setCounts(data?.counts ?? null);
+      setFacets(data?.facets ?? null);
       setPage(toPage);
     } catch {
       toast.error('Could not fetch users');
@@ -77,7 +92,7 @@ export function UserManager() {
 
   // Searching is the server's job now, so it is asked again when the text
   // settles rather than filtering whatever happens to be in hand.
-  useEffect(() => { fetchUsers(1); }, [filterRole]);
+  useEffect(() => { fetchUsers(1); }, [filters]);
   useEffect(() => {
     const t = setTimeout(() => fetchUsers(1), 350);
     return () => clearTimeout(t);
@@ -177,71 +192,38 @@ export function UserManager() {
     }
   };
 
-  // Searching happens on the server now — repeating it here would quietly drop
-  // the matches it finds that this does not, such as an organisation name.
-  // Verification is still sifted here, and so applies to the page in hand.
-  const filtered = users.filter(u =>
-    filterVerification === 'all'
-    || (filterVerification === 'verified' && u.isEmailVerified)
-    || (filterVerification === 'unverified' && !u.isEmailVerified));
 
-  const exportCSV = () => {
-    const headers = [
-      'ID', 'Name', 'Email', 'Role', 'Organization', 'Contact', 
-      'Designation', 'State', 'Status', 'Blocked', 'Demo Account', 
-      'Demo Expires', 'Created At', 'Email Verified'
-    ];
-    const rows = filtered.map(u => [
-      `"${u.id || ''}"`,
-      `"${u.displayName || ''}"`,
-      `"${u.email || ''}"`,
-      `"${u.role || ''}"`,
-      `"${u.organization || ''}"`,
-      `"${u.contact || ''}"`,
-      `"${u.designation || ''}"`,
-      `"${u.state || ''}"`,
-      `"${u.status || ''}"`,
-      `"${u.isBlocked ? 'Yes' : 'No'}"`,
-      `"${u.isDemoAccount ? 'Yes' : 'No'}"`,
-      `"${u.demoExpiresAt ? new Date(u.demoExpiresAt).toLocaleDateString() : ''}"`,
-      `"${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ''}"`,
-      `"${u.isEmailVerified ? 'Yes' : 'No'}"`
-    ]);
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'users_export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    setShowExportMenu(false);
-  };
 
-  const exportPDF = () => {
-    const doc = new jsPDF('landscape');
-    doc.text('User Management Export', 14, 15);
-    const headers = [
-      'Name', 'Email', 'Role', 'Organization', 'Contact', 'State', 'Blocked', 'Verified'
-    ];
-    const tableData = filtered.map(u => [
-      u.displayName || 'Unnamed',
-      u.email || '',
-      u.role || '',
-      u.organization || '',
-      u.contact || '',
-      u.state || '',
-      u.isBlocked ? 'Yes' : 'No',
-      u.isEmailVerified ? 'Yes' : 'No'
-    ]);
-    autoTable(doc, {
-      head: [headers],
-      body: tableData,
-      startY: 20,
-      styles: { fontSize: 8 },
-    });
-    doc.save('users_export.pdf');
+  /**
+   * The whole answer, not the page of it.
+   *
+   * Both exports wrote out the fifty rows in hand under the name
+   * users_export.csv. On a membership of one, that file is right; on a
+   * membership of twenty thousand it is right about fifty of them and silent
+   * about the rest, which is the worst way for a number to be wrong. The
+   * server streams every member matching the filters that are set.
+   */
+  const exportMembers = async () => {
     setShowExportMenu(false);
+    setExporting(true);
+    try {
+      const params = queryFor(filters, search);
+      params.set('format', 'csv');
+      const res = await fetch(`/api/admin/users?${params}`, { headers: authHeader() });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `members-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${total.toLocaleString()} members`);
+    } catch {
+      toast.error('Could not export');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -260,59 +242,106 @@ export function UserManager() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
-            type="text"
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && fetchUsers()}
-            className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none transition-all"
-          />
-        </div>
-        <div className="relative">
-          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-          <select
-            value={filterRole}
-            onChange={e => setFilterRole(e.target.value)}
-            className="pl-9 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 outline-none appearance-none"
-          >
-            <option value="all">All Roles</option>
-            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-        </div>
-        <div className="relative">
-          <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-          <select
-            value={filterVerification}
-            onChange={e => setFilterVerification(e.target.value)}
-            className="pl-9 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-blue-500 outline-none appearance-none"
-          >
-            <option value="all">All Verification</option>
-            <option value="verified">Verified Emails</option>
-            <option value="unverified">Unverified Emails</option>
-          </select>
-        </div>
-        <button onClick={() => fetchUsers(page)} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
-          <RefreshCw size={15} />
-        </button>
-        <div className="relative">
-          <button 
-            onClick={() => setShowExportMenu(!showExportMenu)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors text-slate-700"
-          >
-            <Download size={15} /> Export
+      {/* Filters — every one of them a question to the database */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder="Name, email or organisation…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && fetchUsers(1)}
+              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none transition-all"
+            />
+          </div>
+          <button onClick={() => fetchUsers(page)} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
+            <RefreshCw size={15} />
           </button>
-          {showExportMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
-              <button onClick={exportCSV} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 font-medium text-slate-700 border-b border-slate-100">Export as CSV</button>
-              <button onClick={exportPDF} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 font-medium text-slate-700">Export as PDF</button>
-            </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={exporting}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors text-slate-700 disabled:opacity-60"
+            >
+              {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Export
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-50">
+                <button onClick={exportMembers} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 font-medium text-slate-700">
+                  Export all {total.toLocaleString()} matching members
+                  <span className="block text-[11px] font-normal text-slate-400">CSV · every filter below applied</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {[
+            { k: 'role', label: 'All roles', options: ROLES.map(r => [r, r]) },
+            { k: 'registrantType', label: 'Registering as', options: REGISTRANT_TYPES.map((t: any) => [t.value, t.label]) },
+            { k: 'active', label: 'Read anything?', options: [['read', 'Has read something'], ['never', 'Never opened anything']] },
+            { k: 'verified', label: 'Email', options: [['yes', 'Verified'], ['no', 'Not verified']] },
+            { k: 'source', label: 'Came from', options: [
+              ...(facets?.source || []).filter((f: any) => f.value).map((f: any) => [f.value, `${f.value} (${f.count})`]),
+              ['none', 'No campaign tag'],
+            ] },
+            { k: 'state', label: 'Any state', options: (facets?.state || []).filter((f: any) => f.value).map((f: any) => [f.value, `${f.value} (${f.count})`]) },
+            { k: 'domain', label: 'Any department', options: DOMAINS.map((d: any) => [d.name, d.name]) },
+          ].map(f => (
+            <select
+              key={f.k}
+              value={(filters as any)[f.k]}
+              onChange={e => setFilters(v => ({ ...v, [f.k]: e.target.value }))}
+              className={`px-3 py-2 rounded-xl text-sm font-medium outline-none appearance-none border transition-colors ${
+                (filters as any)[f.k] !== 'all'
+                  ? 'bg-blue-50 border-blue-300 text-blue-700'
+                  : 'bg-white border-slate-200 text-slate-600'}`}
+            >
+              <option value="all">{f.label}</option>
+              {f.options.map(([v, label]: any) => <option key={v} value={v}>{label}</option>)}
+            </select>
+          ))}
+          <input
+            type="date"
+            value={filters.joinedFrom}
+            onChange={e => setFilters(v => ({ ...v, joinedFrom: e.target.value }))}
+            title="Joined on or after"
+            className={`px-3 py-2 rounded-xl text-sm font-medium outline-none border ${
+              filters.joinedFrom ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}
+          />
+          {(Object.values(filters).some(v => v && v !== 'all') || search) && (
+            <button
+              onClick={() => { setSearch(''); setFilters({ role: 'all', registrantType: 'all', state: 'all', source: 'all', verified: 'all', active: 'all', domain: 'all', joinedFrom: '' }); }}
+              className="px-3 py-2 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-800"
+            >
+              Clear
+            </button>
           )}
         </div>
+
+        {/* What the filters add up to. The one figure a campaign turns on —
+            how many of the people who registered ever opened anything — did
+            not exist on this screen before. */}
+        {counts && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white">
+            {[
+              { label: 'Matching', value: counts.matching, hint: 'these filters' },
+              { label: 'Have read something', value: counts.everRead,
+                hint: counts.matching ? `${Math.round((counts.everRead / counts.matching) * 100)}% of them` : '' },
+              { label: 'Never opened anything', value: counts.neverRead, hint: 'registered only' },
+              { label: 'Verified email', value: counts.verified, hint: '' },
+            ].map(c => (
+              <div key={c.label} className="p-4">
+                <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">{c.label}</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{Number(c.value || 0).toLocaleString()}</p>
+                {c.hint && <p className="mt-0.5 text-[11px] text-slate-400">{c.hint}</p>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -323,19 +352,23 @@ export function UserManager() {
               <tr>
                 <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-widest">User</th>
                 <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-widest">Role</th>
+                {/* The signup form has been collecting these for weeks and no
+                    screen has ever shown them. */}
+                <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-widest">Registered as</th>
+                <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-widest">Activity</th>
                 <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Status</th>
                 <th className="px-6 py-4 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={4} className="px-6 py-16 text-center text-slate-500">
+                <tr><td colSpan={6} className="px-6 py-16 text-center text-slate-500">
                   <Loader2 className="animate-spin mx-auto mb-2 text-blue-500" size={24} />
                   Loading users…
                 </td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-16 text-center text-slate-400">No users found.</td></tr>
-              ) : filtered.map(user => (
+              ) : users.length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-16 text-center text-slate-400">No users found.</td></tr>
+              ) : users.map(user => (
                 <React.Fragment key={user.id}>
                   <tr className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-6 py-4">
@@ -383,6 +416,39 @@ export function UserManager() {
                         {user.role}
                       </span>
                     </td>
+                    <td className="px-6 py-4">
+                      <div className="text-xs">
+                        <p className="font-semibold text-slate-700">{user.registrantType || <span className="text-slate-300">—</span>}</p>
+                        {user.designation && <p className="text-slate-500">{user.designation}</p>}
+                        {(user.state || user.country) && (
+                          <p className="mt-0.5 text-slate-400">{[user.state, user.country].filter(Boolean).join(', ')}</p>
+                        )}
+                        {Array.isArray(user.interestedDomains) && user.interestedDomains.length > 0 && (
+                          <p className="mt-0.5 text-slate-400" title={user.interestedDomains.join(', ')}>
+                            {user.interestedDomains.length} department{user.interestedDomains.length > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-xs">
+                        {user.lastReadAt ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 font-bold uppercase tracking-wider text-[9px] text-emerald-700">
+                            <BookOpen size={10} /> read {new Date(user.lastReadAt).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-bold uppercase tracking-wider text-[9px] text-slate-500">
+                            never opened anything
+                          </span>
+                        )}
+                        <p className="mt-1 text-slate-400">
+                          {user.signupSource ? <>via <b className="text-slate-600">{user.signupSource}</b></> : 'no campaign tag'}
+                        </p>
+                        {user.createdAt && (
+                          <p className="text-slate-400">joined {new Date(user.createdAt).toLocaleDateString()}</p>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                         user.isBlocked ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
@@ -429,7 +495,7 @@ export function UserManager() {
                   {/* Expanded details */}
                   {expandedRow === user.id && (
                     <tr className="bg-slate-50/50">
-                      <td colSpan={4} className="px-6 py-5 border-b border-slate-100">
+                      <td colSpan={6} className="px-6 py-5 border-b border-slate-100">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
                             <h4 className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3 flex items-center gap-2">

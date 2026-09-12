@@ -448,6 +448,29 @@ model User {
   /// Institute | Corporate | Solo — see REGISTRANT_TYPES. What they registered
   /// as, which is what makes `designation` mean anything.
   registrantType String?
+
+  /// Where this member came from — the `ref` or `utm_campaign` on the link they
+  /// arrived by, carried from the landing page to the signup. Nullable because
+  /// most people arrive without one, and because it cannot be worked out later:
+  /// a mail sent without a tag is a batch whose result is never knowable.
+  signupSource String?
+  /// The full set of tags from that arrival — source, medium, campaign, term —
+  /// kept whole so a question nobody has thought of yet can still be asked.
+  signupTags   Json?
+
+  /// The last time this member opened anything. Written from the event log as
+  /// it happens, because the question the admin screens are built around —
+  /// how many of the people who registered ever actually read something — is a
+  /// filter over every member, and answering it from the event log means
+  /// carrying a list of twenty thousand ids into a query.
+  lastReadAt   DateTime?
+
+  /// When this address was proved. Verification is recorded on EmailVerification,
+  /// which is keyed by address and written before the account exists — fine for
+  /// the signup flow, useless for "show me everyone unverified", which is a
+  /// question about members. Denormalised here so that filter is an index and
+  /// not a scan of two tables.
+  emailVerifiedAt DateTime?
   role         String         @default("Subscriber")
   status       String         @default("Active")
   isBlocked    Boolean        @default(false)
@@ -493,6 +516,14 @@ model User {
   @@index([role, createdAt])
   @@index([createdAt])
   @@index([institutionId])
+  /// The admin members screen filters on these, and at twenty thousand rows a
+  /// filter without an index is a table scan on every keystroke.
+  @@index([signupSource, createdAt])
+  @@index([registrantType, createdAt])
+  @@index([state])
+  @@index([country])
+  @@index([emailVerifiedAt])
+  @@index([lastReadAt])
 }
 
 model Payment {
