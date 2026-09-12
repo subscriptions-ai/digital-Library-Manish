@@ -13,6 +13,11 @@
  * It creates one throwaway member, moves its clock by editing its own rows
  * rather than waiting two hours, and deletes everything it made at the end —
  * including on failure.
+ *
+ * Run the server without AWS credentials while testing this, or joining will
+ * send a real welcome email and a real alert to the admin address:
+ *
+ *   AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= npm run dev
  */
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -22,6 +27,7 @@ const p = new PrismaClient();
 const BASE = process.argv[2] || 'http://localhost:3000';
 const SECRET = process.env.JWT_SECRET || 'your-fallback-secret-for-dev-only';
 const EMAIL = 'free-clock-test@example.invalid';
+const JOIN_EMAIL = 'free-join-test@example.invalid';
 const PASSWORD = 'Test-Clock-9f2a!';
 const MIN = 60_000;
 
@@ -48,6 +54,7 @@ const post = async (path, token, data) => {
 };
 
 let user = null;
+let joined = null;
 
 const wipeSessions = () => p.freeSession.deleteMany({ where: { userId: user.id } });
 const istDay = at => new Date(at + 5.5 * 3600e3).toISOString().slice(0, 10);
@@ -92,6 +99,42 @@ const completed = async (count, holdEndedMinutesAgo) => {
   });
   const token = jwt.sign({ uid: user.id, email: EMAIL, role: 'Subscriber' }, SECRET, { expiresIn: '1h' });
   const view = () => get(`/api/content/${article.id}/view`, token);
+
+  // ── joining ───────────────────────────────────────────────────────────────
+  console.log('\nJoining');
+  await p.user.deleteMany({ where: { email: JOIN_EMAIL } });
+  await p.emailVerification.deleteMany({ where: { email: JOIN_EMAIL } });
+  await p.lead.deleteMany({ where: { email: JOIN_EMAIL } });
+  {
+    const body = {
+      email: JOIN_EMAIL, password: PASSWORD, name: 'Join Test',
+      organization: 'Test College', contact: '+91 90000 00000', designation: 'Student',
+      interestedDomains: ['Nursing', 'Law', 'Not A Real Department'],
+    };
+    // An address nobody has to own would be an endless supply of accounts, and
+    // so an endless supply of hours.
+    const unverified = await post('/api/auth/signup', null, body);
+    is('an unverified address cannot open an account', unverified.status, 400);
+    is('and no account was made', await p.user.count({ where: { email: JOIN_EMAIL } }), 0);
+
+    await p.emailVerification.create({ data: { email: JOIN_EMAIL, isVerified: true } });
+    const r = await post('/api/auth/signup', null, body);
+    is('a verified address can', r.status, 200);
+
+    joined = await p.user.findUnique({ where: { email: JOIN_EMAIL } });
+    if (!joined) bad('the member exists afterwards', 'no row');
+    else {
+      is('the subjects they named are kept', joined.interestedDomains, ['Nursing', 'Law']);
+      ok('and anything invented is dropped');
+      const a = await get('/api/me/allowance', r.body?.token);
+      is('they arrive on the free membership', [a.body?.plan, a.body?.timed], ['Free', true]);
+    }
+    const lead = await p.lead.findFirst({ where: { email: JOIN_EMAIL } });
+    lead ? is('they are filed as a lead for sales', lead.source, 'Free signup')
+         : bad('they are filed as a lead for sales', 'no lead');
+    if (lead) (/Nursing, Law/.test(lead.notes || '')
+      ? ok('with what they came to read') : bad('with what they came to read', lead.notes));
+  }
 
   // ── arriving ──────────────────────────────────────────────────────────────
   console.log('\nArriving');
@@ -222,6 +265,12 @@ const completed = async (count, holdEndedMinutesAgo) => {
 })()
   .catch(e => bad('the run itself', String(e?.message || e)))
   .finally(async () => {
+    if (joined) {
+      await p.freeSession.deleteMany({ where: { userId: joined.id } }).catch(() => {});
+      await p.lead.deleteMany({ where: { email: JOIN_EMAIL } }).catch(() => {});
+      await p.emailVerification.deleteMany({ where: { email: JOIN_EMAIL } }).catch(() => {});
+      await p.user.delete({ where: { id: joined.id } }).catch(() => {});
+    }
     if (user) {
       await p.freeSession.deleteMany({ where: { userId: user.id } }).catch(() => {});
       await p.subscription.deleteMany({ where: { userId: user.id } }).catch(() => {});

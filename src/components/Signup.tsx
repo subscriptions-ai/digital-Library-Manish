@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 
 import { EmailVerificationInput } from "./EmailVerificationInput";
+import { DOMAINS } from "../constants";
 
 export function Signup() {
   const navigate = useNavigate();
@@ -15,7 +16,8 @@ export function Signup() {
     organization: '',
     contact: '',
     designation: '',
-    password: ''
+    password: '',
+    interestedDomains: [] as string[],
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +28,7 @@ export function Signup() {
   const proceedWithSignup = async () => {
     setLoading(true);
     try {
-      await signup(formData.email, formData.password, formData.name, formData.organization, formData.contact, formData.designation);
+      await signup(formData.email, formData.password, formData.name, formData.organization, formData.contact, formData.designation, formData.interestedDomains);
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error: any) {
@@ -40,6 +42,10 @@ export function Signup() {
     e.preventDefault();
     if (!formData.email || !formData.password || !formData.name) {
       toast.error('Please fill in all fields');
+      return;
+    }
+    if (!formData.interestedDomains.length) {
+      toast.error('Please choose at least one subject you would like to read');
       return;
     }
     if (!acceptedTerms || !acceptedPrivacy) {
@@ -141,6 +147,48 @@ export function Signup() {
                 />
               </div>
             </div>
+            {/* Interests, not permissions.
+                Every member reads the whole library — this asks what they came
+                for so we know what to collect more of, and the wording says so
+                plainly rather than letting anyone think they are choosing a
+                smaller library for themselves. */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Subjects you want to read *</label>
+              <p className="text-xs text-slate-500">
+                You will be able to read everything we hold whatever you pick. This just tells us
+                what to collect more of.
+              </p>
+              <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+                {DOMAINS.map(d => {
+                  const chosen = formData.interestedDomains.includes(d.name);
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      disabled={!isEmailVerified}
+                      onClick={() => setFormData(f => ({
+                        ...f,
+                        interestedDomains: chosen
+                          ? f.interestedDomains.filter(x => x !== d.name)
+                          : [...f.interestedDomains, d.name],
+                      }))}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                        chosen
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
+                    >
+                      {d.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                {formData.interestedDomains.length
+                  ? `${formData.interestedDomains.length} chosen`
+                  : 'Choose at least one'}
+              </p>
+            </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700">Password *</label>
                 <div className="relative">

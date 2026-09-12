@@ -511,7 +511,7 @@ async function startServer() {
   // Auth: Signup
   app.post("/api/auth/signup", async (req, res) => {
     try {
-      const { email, password, name, organization, contact, designation } = req.body;
+      const { email, password, name, organization, contact, designation, interestedDomains } = req.body;
       
       // Check if user already exists in PostgreSQL
       const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -519,6 +519,25 @@ async function startServer() {
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
       }
+
+      // The form will not submit until a code sent to the address has been
+      // entered — but the form is not the only way in, and this endpoint has
+      // always made an account for whatever address it was given. That was a
+      // small thing while an account granted nothing. It grants the whole
+      // library now, two hours a day, so an address nobody has to own is an
+      // endless supply of accounts and therefore an endless supply of hours.
+      const verification = await (prisma as any).emailVerification.findUnique({ where: { email } });
+      if (!verification?.isVerified) {
+        return res.status(400).json({ error: "Please verify your email address before creating an account." });
+      }
+
+      // Interests, not permissions. Kept to the departments we actually hold so
+      // the field stays answerable later, and capped so it cannot be used as
+      // somewhere to write whatever one likes.
+      const departmentNames = new Set(DOMAINS.map((d: any) => d.name));
+      const interests: string[] = Array.isArray(interestedDomains)
+        ? [...new Set(interestedDomains.filter((d: any) => departmentNames.has(d)))].slice(0, 40)
+        : [];
 
       const hashedPassword = await bcrypt.hash(password, 10);
       
@@ -532,8 +551,28 @@ async function startServer() {
           designation: designation || "",
           role: email === "info@celnet.in" ? "SuperAdmin" : "Subscriber",
           status: "Active",
+          interestedDomains: interests,
         }
       });
+
+      // Every free member is someone who might want Pro, and the subjects they
+      // named are the opening line of that conversation. Not awaited — a lead
+      // that fails to file must never cost somebody their account.
+      if (userObj.role === 'Subscriber') {
+        prisma.lead.create({
+          data: {
+            name, email,
+            phone: contact || null,
+            organization: organization || null,
+            source: 'Free signup',
+            status: 'All',
+            notes: [
+              designation ? `Designation: ${designation}` : null,
+              interests.length ? `Wants to read: ${interests.join(', ')}` : 'No subjects chosen',
+            ].filter(Boolean).join('\n'),
+          },
+        }).catch((e: any) => console.error('signup: could not file the lead', e?.message));
+      }
 
       const token = jwt.sign({ uid: userObj.id, email, role: userObj.role }, JWT_SECRET, { expiresIn: '24h' });
       
@@ -552,10 +591,11 @@ async function startServer() {
           `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e3a6e;border-bottom:1px solid #f1f5f9;">${email}</td></tr>` +
           `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Contact</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${contact || 'Not provided'}</td></tr>` +
           `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Designation</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${designation || 'Not provided'}</td></tr>` +
-          `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;">${organization || 'Not provided'}</td></tr>` +
+          `<tr><td style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">Organization</td><td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">${organization || 'Not provided'}</td></tr>` +
+          `<tr style="background:#fafbfc;"><td style="padding:10px 16px;font-size:12px;color:#94a3b8;">Wants to read</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1e293b;">${interests.length ? interests.join(', ') : 'Not stated'}</td></tr>` +
           `</table>` +
           `<div style="background:#eff6ff;border-left:4px solid #1e3a6e;border-radius:0 8px 8px 0;padding:12px 16px;">` +
-          `<p style="margin:0;font-size:13px;color:#1e3a6e;">⚡ <strong>Action:</strong> Review the new subscriber and assign a plan if needed.</p></div>` +
+          `<p style="margin:0;font-size:13px;color:#1e3a6e;">⚡ <strong>Action:</strong> Filed as a lead in the sales CRM. They have a free membership; the subjects above are where a Pro conversation starts.</p></div>` +
           `</td></tr>`)
       };
 
@@ -565,20 +605,18 @@ async function startServer() {
         subject: `🎉 Welcome to STM Digital Library, ${name}!`,
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">` +
-          `<h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome aboard, ${name}! 🎓</h3>` +
-          `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.7;">Your account is ready. You now have access to STM Digital Library — your gateway to peer-reviewed journals, e-books, conference proceedings &amp; more.</p>` +
-          `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr>` +
-          `<td style="text-align:center;padding:14px 8px;background:#f0f9ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">📚</div><p style="margin:0;font-size:11px;font-weight:700;color:#0369a1;">50,000+<br/>Journals</p></td>` +
-          `<td width="4"></td>` +
-          `<td style="text-align:center;padding:14px 8px;background:#f0fdf4;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">🎥</div><p style="margin:0;font-size:11px;font-weight:700;color:#15803d;">Educational<br/>Videos</p></td>` +
-          `<td width="4"></td>` +
-          `<td style="text-align:center;padding:14px 8px;background:#fdf4ff;border-radius:10px;"><div style="font-size:24px;margin-bottom:6px;">📖</div><p style="margin:0;font-size:11px;font-weight:700;color:#7e22ce;">E-Books &amp;<br/>Theses</p></td>` +
-          `</tr></table>` +
+          `<h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome, ${name} 🎓</h3>` +
+          `<p style="margin:0 0 18px;font-size:13px;color:#475569;line-height:1.7;">Your free membership is ready, and it opens the whole library — every subject we hold, journals, books and articles alike. Nothing is held back by subject; what a free membership limits is time.</p>` +
+          `<div style="background:#f0f9ff;border-left:4px solid #0369a1;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:18px;">` +
+          `<p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0369a1;">How your reading time works</p>` +
+          `<p style="margin:5px 0;font-size:13px;color:#334155;">You read in <strong>30-minute sessions</strong>, with a two-hour gap after each — <strong>four sessions, two hours, every day</strong>.</p>` +
+          `<p style="margin:5px 0;font-size:13px;color:#334155;">The clock starts when you sign in and stops when you sign out. Closing the tab does not stop it, so <strong>sign out when you are finished</strong> and the rest of the session is kept for you.</p>` +
+          `</div>` +
           `<div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;">` +
-          `<p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">🚀 Getting Started</p>` +
-          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Log in at <strong>journalslibrary.com</strong></p>` +
-          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Browse domains &amp; subscribe to your field</p>` +
-          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Access full-text content instantly</p>` +
+          `<p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">🚀 Getting started</p>` +
+          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Sign in at <strong>journalslibrary.com</strong></p>` +
+          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Search or browse — the catalogue is open to you in full</p>` +
+          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Want unlimited reading? Apply for Pro from your dashboard</p>` +
           `</div>` +
           `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p>` +
           `</td></tr>`)
