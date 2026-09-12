@@ -627,9 +627,17 @@ async function startServer() {
       // small thing while an account granted nothing. It grants the whole
       // library now, two hours a day, so an address nobody has to own is an
       // endless supply of accounts and therefore an endless supply of hours.
-      const verification = await (prisma as any).emailVerification.findUnique({ where: { email } });
-      if (!verification?.isVerified) {
-        return res.status(400).json({ error: "Please verify your email address before creating an account." });
+      //
+      // It follows the switch in settings rather than insisting on its own.
+      // With verification turned off, /api/verify/check-or-send answers
+      // "verified" without writing anything down — so demanding a record here
+      // refused every new member while telling them to do a thing the site had
+      // already decided not to ask of them.
+      if (getSystemSettings().emailVerificationEnabled) {
+        const verification = await (prisma as any).emailVerification.findUnique({ where: { email } });
+        if (!verification?.isVerified) {
+          return res.status(400).json({ error: "Please verify your email address before creating an account." });
+        }
       }
 
       // Interests, not permissions. Kept to the departments we actually hold so

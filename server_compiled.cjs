@@ -11419,9 +11419,11 @@ async function startServer() {
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
       }
-      const verification = await prisma3.emailVerification.findUnique({ where: { email } });
-      if (!verification?.isVerified) {
-        return res.status(400).json({ error: "Please verify your email address before creating an account." });
+      if (getSystemSettings().emailVerificationEnabled) {
+        const verification = await prisma3.emailVerification.findUnique({ where: { email } });
+        if (!verification?.isVerified) {
+          return res.status(400).json({ error: "Please verify your email address before creating an account." });
+        }
       }
       const departmentNames = new Set(DOMAINS.map((d) => d.name));
       const interests = Array.isArray(interestedDomains) ? [...new Set(interestedDomains.filter((d) => departmentNames.has(d)))].slice(0, 40) : [];

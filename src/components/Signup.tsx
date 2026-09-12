@@ -153,13 +153,15 @@ export function Signup() {
                 plainly rather than letting anyone think they are choosing a
                 smaller library for themselves. */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Subjects you want to read *</label>
+              <label className="text-sm font-bold text-slate-700">Subjects based on market demand and university/institute requirements *</label>
               <p className="text-xs text-slate-500">
                 You will be able to read everything we hold whatever you pick. This just tells us
                 what to collect more of.
               </p>
               <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-                {DOMAINS.map(d => {
+                {/* Alphabetical: the constant is ordered by how the departments were
+                    added, which is no order at all to a person looking for one. */}
+                {[...DOMAINS].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
                   const chosen = formData.interestedDomains.includes(d.name);
                   return (
                     <button

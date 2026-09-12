@@ -111,15 +111,26 @@ const completed = async (count, holdEndedMinutesAgo) => {
       organization: 'Test College', contact: '+91 90000 00000', designation: 'Student',
       interestedDomains: ['Nursing', 'Law', 'Not A Real Department'],
     };
-    // An address nobody has to own would be an endless supply of accounts, and
-    // so an endless supply of hours.
-    const unverified = await post('/api/auth/signup', null, body);
-    is('an unverified address cannot open an account', unverified.status, 400);
-    is('and no account was made', await p.user.count({ where: { email: JOIN_EMAIL } }), 0);
+    // Signup follows the switch in settings rather than its own opinion — with
+    // verification turned off, check-or-send answers "verified" without writing
+    // anything down, and demanding a record here refuses everybody.
+    const settings = await get('/api/public/settings', null);
+    const verifying = settings.body?.emailVerificationEnabled !== false;
 
-    await p.emailVerification.create({ data: { email: JOIN_EMAIL, isVerified: true } });
+    if (verifying) {
+      // An address nobody has to own would be an endless supply of accounts,
+      // and so an endless supply of hours.
+      const unverified = await post('/api/auth/signup', null, body);
+      is('an unverified address cannot open an account', unverified.status, 400);
+      is('and no account was made', await p.user.count({ where: { email: JOIN_EMAIL } }), 0);
+      await p.emailVerification.create({ data: { email: JOIN_EMAIL, isVerified: true } });
+    } else {
+      console.log(`  ${D}note  email verification is switched off, so the limit is one`);
+      console.log(`        account per address only by convention${O}`);
+    }
+
     const r = await post('/api/auth/signup', null, body);
-    is('a verified address can', r.status, 200);
+    is(verifying ? 'a verified address can' : 'an address can open an account', r.status, 200);
 
     joined = await p.user.findUnique({ where: { email: JOIN_EMAIL } });
     if (!joined) bad('the member exists afterwards', 'no row');
