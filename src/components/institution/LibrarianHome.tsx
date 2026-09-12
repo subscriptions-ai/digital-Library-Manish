@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardTitle, affiliation } from '../../lib/identity';
+import { useAllowance, countdown } from '../membership/ReadingClock';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, BarChart3, BookOpen, Loader2, Search, UserPlus, Users,
@@ -41,51 +42,113 @@ type Overview = {
 
 
 /**
- * Seats in use, as a part of the whole.
+ * A figure worth looking at, on its own card.
  *
- * This is the renewal number — how much of what the college pays for is being
- * used — and it is genuinely two parts of one total, which is the only case
- * where a ring beats a bar. Two colours, so no categorical palette to get wrong.
+ * Four numbers with no relationship to each other are four headlines, not a
+ * chart — there is nothing to compare and nothing to plot. The skill's own
+ * answer to "is it even a chart" is no, and these are stat tiles.
  */
-function Seats({ used, total }: { used: number; total: number }) {
-  const pct = total ? Math.min(used / total, 1) : 0;
-  const R = 30, C = 2 * Math.PI * R;
+function Stat({ label, value, note, accent = false }: {
+  label: string; value: number; note?: string; accent?: boolean;
+}) {
   return (
-    <div className="flex items-center gap-4">
-      <svg width="76" height="76" viewBox="0 0 76 76" className="-rotate-90 shrink-0" role="img"
-        aria-label={`${used} of ${total} students reading`}>
-        <circle cx="38" cy="38" r={R} fill="none" stroke="var(--rule)" strokeWidth="7" />
-        <circle cx="38" cy="38" r={R} fill="none" stroke="var(--accent)" strokeWidth="7"
-          strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - pct)} />
-      </svg>
-      <div>
-        <p className="tnum font-mono text-[24px] leading-none text-ink">
-          {n(used)}<span className="text-[15px] text-muted"> of {n(total)}</span>
-        </p>
-        <p className="mt-1.5 text-[13px] leading-snug text-muted">
-          students have read something in the last month
-        </p>
+    <div className={`rounded-2xl border p-5 ${accent
+      ? 'border-accent bg-accent text-white'
+      : 'border-rule bg-surface'}`}>
+      <p className={`font-mono text-[10.5px] uppercase tracking-wider ${accent ? 'text-white/70' : 'text-faint'}`}>
+        {label}
+      </p>
+      <p className={`tnum mt-2 font-mono text-[30px] leading-none ${accent ? 'text-white' : 'text-ink'}`}>
+        {n(value)}
+      </p>
+      {note && (
+        <p className={`mt-2 text-[11.5px] ${accent ? 'text-white/80' : 'text-muted'}`}>{note}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Twelve weeks of reading, one bar a week.
+ *
+ * One series, so no legend — the heading names it — and one colour. The most
+ * recent week is picked out because it is a particular week, not because it is
+ * the tallest; colour that followed rank would move every time the data did.
+ * Only the peak is labelled: a number over every bar is a table with extra
+ * steps.
+ */
+function Weeks({ data }: { data: number[] }) {
+  const [over, setOver] = useState<number | null>(null);
+  if (!data?.length) return null;
+  const max = Math.max(...data, 1);
+  const peak = data.indexOf(max);
+
+  return (
+    <div>
+      <div className="flex h-[120px] items-end gap-[3px]">
+        {data.map((v, i) => {
+          const last = i === data.length - 1;
+          return (
+            <div
+              key={i}
+              className="group relative flex h-full flex-1 items-end"
+              onMouseEnter={() => setOver(i)}
+              onMouseLeave={() => setOver(null)}
+            >
+              {/* A hit target taller than the bar, so a short week is still
+                  easy to point at. */}
+              <div className="absolute inset-0" />
+              <div
+                className={`w-full rounded-t-[4px] transition-colors ${
+                  last ? 'bg-accent' : over === i ? 'bg-accent/70' : 'bg-accent-soft'}`}
+                style={{ height: `${Math.max(3, (v / max) * 100)}%` }}
+              />
+              {over === i && (
+                <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-rule bg-surface px-2 py-1 text-[11px] text-ink shadow-lg">
+                  <b className="tnum font-mono">{n(v)}</b> {v === 1 ? 'read' : 'reads'}
+                  <span className="text-faint"> · {i === data.length - 1 ? 'this week' : `${data.length - 1 - i} weeks ago`}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex items-baseline justify-between font-mono text-[10.5px] text-faint">
+        <span>12 weeks ago</span>
+        <span>{max > 0 ? `peak ${n(max)} in week ${peak + 1}` : 'nothing read yet'}</span>
+        <span>this week</span>
       </div>
     </div>
   );
 }
 
-/** Twelve weeks of reading, at a glance. One series, so no legend and no labels. */
-function Spark({ values }: { values: number[] }) {
-  if (values.length < 3) return null;
-  const W = 150, H = 34, max = Math.max(...values, 1);
-  const x = (i: number) => (i / (values.length - 1)) * W;
-  const y = (v: number) => H - 3 - (v / max) * (H - 6);
-  const d = values.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+/**
+ * How much of the college is actually reading — a ring, because it is genuinely
+ * two parts of one whole, which is the only case where a ring beats a bar.
+ */
+function Ring({ used, total, size = 132 }: { used: number; total: number; size?: number }) {
+  const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+  const r = (size - 16) / 2;
+  const c = 2 * Math.PI * r;
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="shrink-0" role="img"
-      aria-label="Reads over the last twelve weeks">
-      <path d={`${d} L${W},${H} L0,${H} Z`} fill="var(--accent)" opacity="0.10" />
-      <path d={d} fill="none" stroke="var(--accent)" strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={x(values.length - 1)} cy={y(values[values.length - 1])} r="2.5" fill="var(--accent)" />
-    </svg>
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} className="fill-none stroke-rule" strokeWidth={11} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          className="fill-none stroke-accent" strokeWidth={11} strokeLinecap="round"
+          strokeDasharray={`${(pct / 100) * c} ${c}`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="tnum font-mono text-[24px] leading-none text-ink">{pct}%</span>
+        <span className="mt-1 text-[10.5px] text-faint">of {n(total)}</span>
+      </div>
+    </div>
   );
 }
+
+
 
 /** Something the librarian can act on, with the action attached to it. */
 function Todo({ tone, text, cta, to }: {
@@ -124,6 +187,7 @@ function Door({ to, icon: Icon, label, note }: {
 
 export function LibrarianHome() {
   const { profile } = useAuth();
+  const { allowance, msLeft, msUntil } = useAllowance();
   const [d, setD] = useState<Overview | null>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
   const [error, setError] = useState('');
@@ -215,17 +279,6 @@ export function LibrarianHome() {
                 : <>No departments are covered by an active subscription yet.</>}
           </p>
 
-          {st.total > 0 && (
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-6 border-t border-rule pt-6">
-              <Seats used={st.activeLast30} total={st.total} />
-              {d.sparkline?.length >= 3 && (
-                <div className="text-right">
-                  <p className={LABEL}>Last 12 weeks</p>
-                  <div className="mt-1.5"><Spark values={d.sparkline} /></div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </header>
 
@@ -272,19 +325,71 @@ export function LibrarianHome() {
               </Link>
             </div>
           )}
-          <dl className="mt-2.5 grid grid-cols-2 divide-rule overflow-hidden rounded-md border border-rule bg-surface sm:grid-cols-4 sm:divide-x">
-            {([
-              ['Journals', col.journals],
-              ['Articles', col.articles],
-              ...(col.books > 0 ? [['Books', col.books] as const] : []),
-              ['Departments', depts.length],
-            ] as const).map(([label, v]) => (
-              <div key={label} className="border-b border-rule p-4 sm:border-b-0">
-                <dt className={LABEL}>{label}</dt>
-                <dd className="tnum mt-1.5 font-mono text-[26px] leading-none text-ink">{n(v as number)}</dd>
+          <div className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat label="Journals" value={col.journals} accent
+              note={d.newJournals.length ? `${d.newJournals.length} added lately` : undefined} />
+            <Stat label="Articles" value={col.articles} />
+            <Stat label="Books" value={col.books} />
+            <Stat label="Departments" value={depts.length} />
+          </div>
+
+          {/* Reading, who is doing it, and how long is left — the three things a
+              librarian on the free allowance actually wants on one screen. */}
+          <div className="mt-3 grid gap-3 lg:grid-cols-[1.6fr_1fr_1fr]">
+            <div className="rounded-2xl border border-rule bg-surface p-5">
+              <p className={LABEL}>Reading, by week</p>
+              <div className="mt-4">
+                {d.sparkline?.some(x => x > 0)
+                  ? <Weeks data={d.sparkline} />
+                  : <p className="py-10 text-center text-[13px] text-faint">
+                      Nothing has been read yet. It will show here as soon as it is.
+                    </p>}
               </div>
-            ))}
-          </dl>
+            </div>
+
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-rule bg-surface p-5">
+              <p className={`${LABEL} self-start`}>Who is reading</p>
+              <div className="my-3"><Ring used={st.activeLast30} total={st.total} /></div>
+              <p className="text-center text-[12px] leading-snug text-muted">
+                {st.total === 0
+                  ? 'No students enrolled yet'
+                  : <>{n(st.activeLast30)} of {n(st.total)} read something in the last month</>}
+              </p>
+            </div>
+
+            {/* The clock, given the weight the thing deserves. */}
+            <div className="flex flex-col justify-between rounded-2xl border border-accent bg-accent p-5 text-white">
+              <p className="font-mono text-[10.5px] uppercase tracking-wider text-white/70">
+                {allowance?.timed ? 'Your reading session' : 'Your access'}
+              </p>
+              {allowance?.timed ? (
+                <>
+                  <p className="tnum my-3 font-mono text-[34px] leading-none">
+                    {allowance.state === 'running' ? countdown(msLeft ?? 0)
+                      : allowance.state === 'waiting' || allowance.state === 'spent' ? countdown(msUntil ?? 0)
+                      : '30:00'}
+                  </p>
+                  <p className="text-[12px] leading-snug text-white/80">
+                    {allowance.state === 'running' ? <>left in this session · {allowance.sessionsLeft} more today</>
+                      : allowance.state === 'waiting' ? <>until the next session opens</>
+                      : allowance.state === 'spent' ? <>until tomorrow — today’s two hours are used</>
+                      : <>ready when you are · four sessions a day</>}
+                  </p>
+                  <Link to="/dashboard/pro"
+                    className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-white underline-offset-4 hover:underline">
+                    Read without a limit <ArrowRight size={12} />
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="tnum my-3 font-mono text-[34px] leading-none">∞</p>
+                  <p className="text-[12px] leading-snug text-white/80">
+                    No session limit on this account.
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
 
           {col.byDepartment.length > 0 && (
             <ul className="mt-2.5 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-surface">
