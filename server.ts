@@ -3546,7 +3546,7 @@ async function startServer() {
         whatsapp: true, designation: true, registrantType: true, state: true, country: true,
         role: true, status: true, isBlocked: true, interestedDomains: true,
         signupSource: true, emailVerifiedAt: true, lastReadAt: true, createdAt: true,
-        institutionId: true,
+        institutionId: true, isDemoAccount: true, demoExpiresAt: true, institutionProfile: true,
       };
 
       // The whole answer, not the page of it. Written out in batches so a file
@@ -3566,7 +3566,7 @@ async function startServer() {
         let cursor: string | null = null;
         for (;;) {
           const batch: any[] = await prisma.user.findMany({
-            where, select: columns, orderBy: { id: 'asc' }, take: 1000,
+            where, select: { ...columns, institutionProfile: false }, orderBy: { id: 'asc' }, take: 1000,
             ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
           });
           if (!batch.length) break;
@@ -3594,7 +3594,8 @@ async function startServer() {
           where,
           select: {
             ...columns,
-            subscriptions: { where: { status: 'Active' }, take: 3, select: { id: true, planName: true, endDate: true, domains: true } },
+            subscriptions: { where: { status: 'Active' }, take: 3, select: { id: true, planName: true, endDate: true, domains: true, domainName: true, status: true } },
+            payments: { orderBy: { createdAt: 'desc' }, take: 3, select: { id: true, amount: true, status: true, createdAt: true } },
             institution: { select: { id: true, name: true } },
           },
           orderBy: sort === 'name' ? { displayName: 'asc' } : sort === 'oldest' ? { createdAt: 'asc' } : { createdAt: 'desc' },

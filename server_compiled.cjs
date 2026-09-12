@@ -13827,7 +13827,10 @@ async function startServer() {
         emailVerifiedAt: true,
         lastReadAt: true,
         createdAt: true,
-        institutionId: true
+        institutionId: true,
+        isDemoAccount: true,
+        demoExpiresAt: true,
+        institutionProfile: true
       };
       if (str(q.format) === "csv") {
         const cols = [
@@ -13860,7 +13863,7 @@ async function startServer() {
         for (; ; ) {
           const batch = await prisma3.user.findMany({
             where,
-            select: columns,
+            select: { ...columns, institutionProfile: false },
             orderBy: { id: "asc" },
             take: 1e3,
             ...cursor ? { cursor: { id: cursor }, skip: 1 } : {}
@@ -13899,7 +13902,8 @@ async function startServer() {
           where,
           select: {
             ...columns,
-            subscriptions: { where: { status: "Active" }, take: 3, select: { id: true, planName: true, endDate: true, domains: true } },
+            subscriptions: { where: { status: "Active" }, take: 3, select: { id: true, planName: true, endDate: true, domains: true, domainName: true, status: true } },
+            payments: { orderBy: { createdAt: "desc" }, take: 3, select: { id: true, amount: true, status: true, createdAt: true } },
             institution: { select: { id: true, name: true } }
           },
           orderBy: sort === "name" ? { displayName: "asc" } : sort === "oldest" ? { createdAt: "asc" } : { createdAt: "desc" },
