@@ -12,6 +12,7 @@ import {
   Library,
   Receipt,
   PlaySquare,
+  History,
   MessageSquareHeart,
   Sun,
   Moon,
@@ -35,6 +36,10 @@ const sidebarItems: SidebarItem[] = [
   // Browsing, entitlements and saved items are the same library seen three
   // ways; they are tabs inside it now rather than three sidebar entries.
   { label: 'Library', icon: Library, path: '/dashboard/library', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
+  // The page existed and only the dashboard's own "View history" link reached
+  // it, so a reader who had scrolled past that link could not find what they
+  // had read.
+  { label: 'Reading History', icon: History, path: '/dashboard/history', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Membership', icon: Sparkles, path: '/dashboard/pro', roles: ['Subscriber'] },
   { label: 'My Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Video Library', icon: PlaySquare, path: '/dashboard/videos', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },

@@ -160,20 +160,12 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           </div>
         )}
 
-        <div className="space-y-0.5 border-t border-rule px-3 pb-5 pt-4">
+        {/* Who is signed in is named in the top bar, on every page. Saying it
+            a second time at the foot of the rail cost the height that pushed
+            the menu into a scroll. */}
+        <div className="border-t border-rule px-3 pb-4 pt-3">
           <NavButton icon={<LogOut size={18} />} label="Sign Out" active={false} collapsed={!isSidebarOpen}
             onClick={handleSignOut} danger />
-                  <div className={`flex items-center gap-3 px-3 py-2 ${!isSidebarOpen && 'justify-center'} mt-2`}>
-            <div className="h-8 w-8 rounded-full bg-ink-2 flex items-center justify-center text-xs font-bold shrink-0">
-              {(profile.organization || profile.displayName || 'IN').substring(0, 2).toUpperCase()}
-            </div>
-            {isSidebarOpen && (
-              <div className="overflow-hidden">
-                <div className="text-xs font-bold truncate">{profile.displayName || 'Institution Head'}</div>
-                <div className="text-[10px] text-faint truncate">{affiliation(profile as any) || 'University Portal'}</div>
-              </div>
-            )}
-          </div>
         </div>
       </aside>
 
