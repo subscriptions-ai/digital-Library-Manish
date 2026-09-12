@@ -175,28 +175,45 @@ export function Signup() {
                     </div>
 
                     {chosenType ? (
-                      <div className="space-y-2 px-3 pb-3 pt-4">
+                      <div className="space-y-3 rounded-xl bg-white px-4 pb-4 pt-3.5">
                         <label className="flex flex-wrap items-baseline gap-x-2 text-sm font-bold text-slate-700">
                           Designation / Role *
                           <span className="text-[11px] font-medium text-slate-400">{chosenType.hint}</span>
                         </label>
-                        <select
-                          required={isEmailVerified}
-                          value={formData.designation}
-                          onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                          disabled={!isEmailVerified}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition-all focus:border-blue-500"
-                        >
-                          <option value="">Choose your role</option>
-                          {/* Grouped so an eighteen-item list can be read rather
-                              than guessed at. The value stored is the same
-                              either way. */}
+
+                        {/* Laid out rather than hidden behind a dropdown.
+                            A native select is drawn by the operating system —
+                            it cannot be styled, it covers the page, and it asks
+                            for two clicks to answer a question the member can
+                            answer at a glance. Eighteen roles fit here, grouped,
+                            and take one. */}
+                        <div className="space-y-2.5">
                           {(DESIGNATION_GROUPS[chosenType.id] || []).map(g => (
-                            <optgroup key={g.label} label={g.label}>
-                              {g.roles.map(r => <option key={r} value={r}>{r}</option>)}
-                            </optgroup>
+                            <div key={g.label}>
+                              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                {g.label}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {g.roles.map(r => {
+                                  const on = formData.designation === r;
+                                  return (
+                                    <button
+                                      key={r}
+                                      type="button"
+                                      disabled={!isEmailVerified}
+                                      onClick={() => setFormData(f => ({ ...f, designation: on ? '' : r }))}
+                                      className={`rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold transition-colors ${
+                                        on ? 'bg-blue-600 text-white shadow-sm'
+                                           : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700'}`}
+                                    >
+                                      {r}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
                           ))}
-                        </select>
+                        </div>
                       </div>
                     ) : (
                       <p className="px-3 py-3 text-center text-xs text-slate-400">
