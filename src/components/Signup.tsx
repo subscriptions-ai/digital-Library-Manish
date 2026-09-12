@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 
 import { EmailVerificationInput } from "./EmailVerificationInput";
-import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, COUNTRIES } from "../constants";
+import { DOMAINS, REGISTRANT_TYPES, DESIGNATION_GROUPS, COUNTRIES } from "../constants";
 import { INDIAN_STATES } from "../lib/gstUtils";
 
 export function Signup() {
@@ -94,6 +94,8 @@ export function Signup() {
     }
   };
 
+  const chosenType = REGISTRANT_TYPES.find(t => t.id === formData.registrantType) || null;
+
   const field =
     'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white';
   const withIcon =
@@ -143,28 +145,64 @@ export function Signup() {
                 {/* Asked first, because it decides what everything after it
                     means — a Dean and a Product Manager are both "Director" to
                     a free-text box, and neither can be counted afterwards. */}
+                {/* One question, not two. The role only means anything once we
+                    know what kind of place it is in, so it lives inside the same
+                    panel and appears the moment that is answered — rather than
+                    sitting three fields further down with a note telling the
+                    member to go back up. */}
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700">I am registering as a *</label>
-                  <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-                    {REGISTRANT_TYPES.map(t => {
-                      const Icon = t.id === 'Institute' ? Building2 : t.id === 'Corporate' ? Briefcase : GraduationCap;
-                      const on = formData.registrantType === t.id;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          title={t.hint}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+                    <div className="grid grid-cols-3 gap-2">
+                      {REGISTRANT_TYPES.map(t => {
+                        const Icon = t.id === 'Institute' ? Building2 : t.id === 'Corporate' ? Briefcase : GraduationCap;
+                        const on = formData.registrantType === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            disabled={!isEmailVerified}
+                            onClick={() => setFormData(f => ({ ...f, registrantType: t.id, designation: '' }))}
+                            className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center text-[12px] font-bold leading-tight transition-all ${
+                              on ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200'
+                                 : 'text-slate-500 hover:bg-white/70 hover:text-slate-700'}`}
+                          >
+                            <Icon size={18} className={on ? 'text-blue-600' : 'text-slate-400'} />
+                            {t.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {chosenType ? (
+                      <div className="space-y-2 px-3 pb-3 pt-4">
+                        <label className="flex flex-wrap items-baseline gap-x-2 text-sm font-bold text-slate-700">
+                          Designation / Role *
+                          <span className="text-[11px] font-medium text-slate-400">{chosenType.hint}</span>
+                        </label>
+                        <select
+                          required={isEmailVerified}
+                          value={formData.designation}
+                          onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                           disabled={!isEmailVerified}
-                          onClick={() => setFormData(f => ({ ...f, registrantType: t.id, designation: '' }))}
-                          className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center text-[12px] font-bold leading-tight transition-all ${
-                            on ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200'
-                               : 'text-slate-500 hover:bg-white/70 hover:text-slate-700'}`}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition-all focus:border-blue-500"
                         >
-                          <Icon size={18} className={on ? 'text-blue-600' : 'text-slate-400'} />
-                          {t.label}
-                        </button>
-                      );
-                    })}
+                          <option value="">Choose your role</option>
+                          {/* Grouped so an eighteen-item list can be read rather
+                              than guessed at. The value stored is the same
+                              either way. */}
+                          {(DESIGNATION_GROUPS[chosenType.id] || []).map(g => (
+                            <optgroup key={g.label} label={g.label}>
+                              {g.roles.map(r => <option key={r} value={r}>{r}</option>)}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <p className="px-3 py-3 text-center text-xs text-slate-400">
+                        Choose one above, and the roles for it appear here.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -200,23 +238,6 @@ export function Signup() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Designation / Role *</label>
-                  <select
-                    required={isEmailVerified}
-                    value={formData.designation}
-                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                    disabled={!isEmailVerified || !formData.registrantType}
-                    className={`${field} disabled:cursor-not-allowed disabled:opacity-60`}
-                  >
-                    <option value="">
-                      {formData.registrantType ? 'Choose your role' : 'Choose what you are registering as, first'}
-                    </option>
-                    {(DESIGNATIONS_BY_TYPE[formData.registrantType] || []).map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
               </Section>
 
               <Section title="Where you are">

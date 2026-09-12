@@ -531,6 +531,34 @@ export const DESIGNATIONS_BY_TYPE: Record<string, string[]> = {
   ],
 };
 
+/**
+ * The same roles, gathered into the handful of kinds a person recognises.
+ *
+ * Eighteen options in one flat list is a list nobody reads to the end of — they
+ * pick whatever is near the top that is close enough, which is exactly the bad
+ * data the dropdown was meant to stop. Grouping changes only what is shown; the
+ * value stored is the same string either way, so removing this affects nothing
+ * already recorded.
+ */
+export const DESIGNATION_GROUPS: Record<string, { label: string; roles: string[] }[]> = {
+  Institute: [
+    { label: 'Library', roles: ['Librarian'] },
+    { label: 'Leadership', roles: ['Principal', 'Vice Principal', 'Dean', 'Director', 'Head of Department (HOD)'] },
+    { label: 'Faculty', roles: ['Professor', 'Associate Professor', 'Assistant Professor', 'Faculty Member'] },
+    { label: 'Research', roles: ['Research Scientist', 'Research Associate', 'Principal Investigator (PI)', 'Research / Academic Coordinator'] },
+  ],
+  Corporate: [
+    { label: 'Leadership', roles: ['CEO / Managing Director', 'Director', 'Vice President (VP)', 'General Manager', 'Department Head'] },
+    { label: 'Research & development', roles: ['R&D Head', 'R&D Manager', 'Research Scientist', 'Research Associate'] },
+    { label: 'Management', roles: ['Senior Manager', 'Manager', 'HR Manager', 'Accounts Manager', 'Product Manager', 'Engineering Manager', 'Technical Lead / Manager', 'Training & Development Manager', 'Procurement / Purchase Manager'] },
+  ],
+  Solo: [
+    { label: 'Studying', roles: ['Undergraduate Student', "Master's Student", 'PhD Scholar', 'Postdoctoral Researcher'] },
+    { label: 'Research & academia', roles: ['Researcher / Scientist', 'Faculty / Academic Professional', 'Independent Researcher'] },
+    { label: 'Working', roles: ['Working Professional', 'Industry Professional', 'Entrepreneur / Founder', 'Consultant', 'Freelancer'] },
+  ],
+};
+
 /** Every designation there is, for checking one that arrives from a form. */
 export const ALL_DESIGNATIONS: string[] =
   Object.values(DESIGNATIONS_BY_TYPE).flat();
