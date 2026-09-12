@@ -440,6 +440,14 @@ model User {
   contact      String?
   designation  String?
   state        String?
+  country      String?
+  /// A number that can be reached on WhatsApp. Equal to `contact` when the
+  /// member says it is the same one, so anything reading this finds a usable
+  /// number rather than having to know the rule.
+  whatsapp     String?
+  /// Institute | Corporate | Solo — see REGISTRANT_TYPES. What they registered
+  /// as, which is what makes `designation` mean anything.
+  registrantType String?
   role         String         @default("Subscriber")
   status       String         @default("Active")
   isBlocked    Boolean        @default(false)

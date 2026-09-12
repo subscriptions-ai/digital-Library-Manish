@@ -108,7 +108,9 @@ const completed = async (count, holdEndedMinutesAgo) => {
   {
     const body = {
       email: JOIN_EMAIL, password: PASSWORD, name: 'Join Test',
-      organization: 'Test College', contact: '+91 90000 00000', designation: 'Student',
+      organization: 'Test College', contact: '+91 90000 00000',
+      registrantType: 'Institute', designation: 'Librarian',
+      state: 'Delhi', country: 'India', whatsapp: '+91 90000 11111',
       interestedDomains: ['Nursing', 'Law', 'Not A Real Department'],
     };
     // Signup follows the switch in settings rather than its own opinion — with
@@ -137,6 +139,25 @@ const completed = async (count, holdEndedMinutesAgo) => {
     else {
       is('the subjects they named are kept', joined.interestedDomains, ['Nursing', 'Law']);
       ok('and anything invented is dropped');
+      is('what they registered as is kept, and where they are',
+        [joined.registrantType, joined.designation, joined.state, joined.country],
+        ['Institute', 'Librarian', 'Delhi', 'India']);
+      is('and a number that can be reached on WhatsApp', joined.whatsapp, '+91 90000 11111');
+
+      // The designation column exists to be counted, so only the listed ones
+      // may enter it — including one borrowed from the wrong list.
+      const strays = [
+        { email: 'stray-a@example.invalid', registrantType: 'Institute', designation: 'Supreme Overlord' },
+        { email: 'stray-b@example.invalid', registrantType: 'Institute', designation: 'R&D Head' },
+      ];
+      for (const stray of strays) await post('/api/auth/signup', null, { ...body, ...stray });
+      const kept = await p.user.findMany({
+        where: { email: { in: strays.map(x => x.email) } }, select: { designation: true },
+      });
+      is('a designation that is not on the list is not recorded as one',
+        kept.map(k => k.designation), kept.map(() => ''));
+      await p.lead.deleteMany({ where: { email: { in: strays.map(x => x.email) } } });
+      await p.user.deleteMany({ where: { email: { in: strays.map(x => x.email) } } });
       const a = await get('/api/me/allowance', r.body?.token);
       is('they arrive on the free membership', [a.body?.plan, a.body?.timed], ['Free', true]);
     }

@@ -10271,6 +10271,64 @@ var DOMAINS = [
     themeColor: "sky"
   }
 ];
+var REGISTRANT_TYPES = [
+  { id: "Institute", label: "Institute", hint: "College, university or school" },
+  { id: "Corporate", label: "Corporate / Industry", hint: "Company or R&D organisation" },
+  { id: "Solo", label: "Solo Learner", hint: "Registering on your own" }
+];
+var DESIGNATIONS_BY_TYPE = {
+  Institute: [
+    "Librarian",
+    "Principal",
+    "Vice Principal",
+    "Dean",
+    "Director",
+    "Head of Department (HOD)",
+    "Professor",
+    "Associate Professor",
+    "Assistant Professor",
+    "Faculty Member",
+    "Research Scientist",
+    "Research Associate",
+    "Principal Investigator (PI)",
+    "Research / Academic Coordinator"
+  ],
+  Corporate: [
+    "HR Manager",
+    "CEO / Managing Director",
+    "Director",
+    "Vice President (VP)",
+    "General Manager",
+    "Senior Manager",
+    "Accounts Manager",
+    "Manager",
+    "Department Head",
+    "R&D Head",
+    "R&D Manager",
+    "Research Scientist",
+    "Research Associate",
+    "Technical Lead / Manager",
+    "Engineering Manager",
+    "Product Manager",
+    "Training & Development Manager",
+    "Procurement / Purchase Manager"
+  ],
+  Solo: [
+    "Undergraduate Student",
+    "Master's Student",
+    "PhD Scholar",
+    "Postdoctoral Researcher",
+    "Researcher / Scientist",
+    "Faculty / Academic Professional",
+    "Working Professional",
+    "Industry Professional",
+    "Entrepreneur / Founder",
+    "Consultant",
+    "Freelancer",
+    "Independent Researcher"
+  ]
+};
+var ALL_DESIGNATIONS = Object.values(DESIGNATIONS_BY_TYPE).flat();
 
 // src/lib/ingestionWorker.ts
 var import_client2 = require("@prisma/client");
@@ -11414,7 +11472,19 @@ async function startServer() {
   });
   app.post("/api/auth/signup", async (req, res) => {
     try {
-      const { email, password, name, organization, contact, designation, interestedDomains } = req.body;
+      const {
+        email,
+        password,
+        name,
+        organization,
+        contact,
+        designation,
+        interestedDomains,
+        registrantType,
+        state,
+        country,
+        whatsapp
+      } = req.body;
       const existingUser = await prisma3.user.findUnique({ where: { email } });
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
@@ -11427,6 +11497,8 @@ async function startServer() {
       }
       const departmentNames = new Set(DOMAINS.map((d) => d.name));
       const interests = Array.isArray(interestedDomains) ? [...new Set(interestedDomains.filter((d) => departmentNames.has(d)))].slice(0, 40) : [];
+      const type = REGISTRANT_TYPES.some((t2) => t2.id === registrantType) ? registrantType : null;
+      const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
       const hashedPassword = await import_bcryptjs.default.hash(password, 10);
       const userObj = await prisma3.user.create({
         data: {
@@ -11435,7 +11507,18 @@ async function startServer() {
           displayName: name,
           organization: organization || "",
           contact: contact || "",
-          designation: designation || "",
+          // Only a designation from the list. Falling back to whatever was sent
+          // would put the free-text mess straight back into the field that
+          // exists to be counted — and counting is the whole reason it stopped
+          // being a text box. Anything else still reaches sales in the lead's
+          // notes, so nothing is lost, only kept out of the column.
+          designation: role || "",
+          registrantType: type,
+          state: state ? String(state).slice(0, 80) : null,
+          country: country ? String(country).slice(0, 80) : null,
+          // The same number when they said it was the same, so nothing
+          // downstream has to know the rule to reach them.
+          whatsapp: whatsapp || contact ? String(whatsapp || contact).slice(0, 40) : null,
           role: email === "info@celnet.in" ? "SuperAdmin" : "Subscriber",
           status: "Active",
           interestedDomains: interests
@@ -11450,9 +11533,13 @@ async function startServer() {
             organization: organization || null,
             source: "Free signup",
             status: "All",
+            state: state || null,
             notes: [
-              designation ? `Designation: ${designation}` : null,
-              interests.length ? `Wants to read: ${interests.join(", ")}` : "No subjects chosen"
+              type ? `Registering as: ${type}` : null,
+              role ? `Designation: ${role}` : designation ? `Designation as given: ${designation}` : null,
+              [state, country].filter(Boolean).length ? `Where: ${[state, country].filter(Boolean).join(", ")}` : null,
+              whatsapp && whatsapp !== contact ? `WhatsApp: ${whatsapp}` : null,
+              interests.length ? `Departments: ${interests.join(", ")}` : "No departments chosen"
             ].filter(Boolean).join("\n")
           }
         }).catch((e2) => console.error("signup: could not file the lead", e2?.message));

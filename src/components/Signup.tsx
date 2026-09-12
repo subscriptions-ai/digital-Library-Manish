@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, Lock, ArrowRight, Eye, EyeOff, Mail, User, Building } from "lucide-react";
+import { BookOpen, Lock, ArrowRight, Eye, EyeOff, Mail, User, Building, Building2, Briefcase, GraduationCap, MapPin, MessageCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 
 import { EmailVerificationInput } from "./EmailVerificationInput";
-import { DOMAINS } from "../constants";
+import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, COUNTRIES } from "../constants";
+import { INDIAN_STATES } from "../lib/gstUtils";
 
 export function Signup() {
   const navigate = useNavigate();
@@ -18,7 +19,14 @@ export function Signup() {
     designation: '',
     password: '',
     interestedDomains: [] as string[],
+    registrantType: '',
+    state: '',
+    country: 'India',
+    whatsapp: '',
   });
+  // Most people give one number. The box asks rather than assuming, and only
+  // asks for a second when the answer is no.
+  const [contactIsWhatsapp, setContactIsWhatsapp] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -28,7 +36,14 @@ export function Signup() {
   const proceedWithSignup = async () => {
     setLoading(true);
     try {
-      await signup(formData.email, formData.password, formData.name, formData.organization, formData.contact, formData.designation, formData.interestedDomains);
+      await signup(formData.email, formData.password, formData.name, formData.organization, formData.contact, formData.designation, formData.interestedDomains, {
+        registrantType: formData.registrantType,
+        state: formData.state.trim(),
+        country: formData.country,
+        // Stored as a number that can actually be used, not as a flag somebody
+        // downstream has to remember to interpret.
+        whatsapp: contactIsWhatsapp ? formData.contact : formData.whatsapp.trim(),
+      });
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error: any) {
@@ -42,6 +57,22 @@ export function Signup() {
     e.preventDefault();
     if (!formData.email || !formData.password || !formData.name) {
       toast.error('Please fill in all fields');
+      return;
+    }
+    if (!formData.registrantType) {
+      toast.error('Please tell us what you are registering as');
+      return;
+    }
+    if (!formData.designation) {
+      toast.error('Please choose your role');
+      return;
+    }
+    if (!formData.country || !formData.state.trim()) {
+      toast.error('Please give your state and country');
+      return;
+    }
+    if (!contactIsWhatsapp && !formData.whatsapp.trim()) {
+      toast.error('Please give a WhatsApp number, or tick that your contact number is one');
       return;
     }
     if (!formData.interestedDomains.length) {
@@ -89,6 +120,34 @@ export function Signup() {
             </div>
             
             <div className={`space-y-5 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+              {/* Asked first, because it decides what the rest of the form
+                  means — a Dean and a Product Manager are both "Director" to a
+                  free-text box, and neither can be counted afterwards. */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">I am registering as a: *</label>
+                <div className="grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1">
+                  {REGISTRANT_TYPES.map(t => {
+                    const Icon = t.id === 'Institute' ? Building2 : t.id === 'Corporate' ? Briefcase : GraduationCap;
+                    const on = formData.registrantType === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        title={t.hint}
+                        disabled={!isEmailVerified}
+                        onClick={() => setFormData(f => ({ ...f, registrantType: t.id, designation: '' }))}
+                        className={`flex items-center justify-center gap-1.5 rounded-lg px-1 py-2.5 text-xs font-bold transition-all ${
+                          on ? 'border border-slate-200 bg-white text-blue-600 shadow-sm'
+                             : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                      >
+                        <Icon size={14} />
+                        <span>{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700">Full Name *</label>
                 <div className="relative">
@@ -127,24 +186,99 @@ export function Signup() {
                   required={isEmailVerified}
                   value={formData.contact}
                   onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="+91 98765 43210"
                   disabled={!isEmailVerified}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
               </div>
+
+              <label className="flex items-center gap-2 pt-1 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={contactIsWhatsapp}
+                  disabled={!isEmailVerified}
+                  onChange={(e) => setContactIsWhatsapp(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                <MessageCircle size={13} className="text-emerald-600" />
+                This is also my WhatsApp number
+              </label>
+
+              {!contactIsWhatsapp && (
+                <div className="relative pt-1">
+                  <MessageCircle className="absolute left-3 top-1/2 translate-y-[2px] text-emerald-600" size={18} />
+                  <input
+                    type="tel"
+                    required={isEmailVerified}
+                    value={formData.whatsapp}
+                    onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                    placeholder="WhatsApp number"
+                    disabled={!isEmailVerified}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700">Designation / Role *</label>
-              <div className="relative">
-                <input 
-                  type="text" 
+              <select
+                required={isEmailVerified}
+                value={formData.designation}
+                onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                disabled={!isEmailVerified || !formData.registrantType}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">
+                  {formData.registrantType ? 'Choose your role' : 'Choose what you are registering as, first'}
+                </option>
+                {(DESIGNATIONS_BY_TYPE[formData.registrantType] || []).map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Where they are. Indian states are a known list; everywhere else
+                is not, so it is typed rather than guessed at. */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Country *</label>
+                <select
                   required={isEmailVerified}
-                  value={formData.designation}
-                  onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                  placeholder="e.g. Researcher, Student, Professor"
+                  value={formData.country}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value, state: '' })}
                   disabled={!isEmailVerified}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                />
+                >
+                  {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">State *</label>
+                {formData.country === 'India' ? (
+                  <select
+                    required={isEmailVerified}
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    disabled={!isEmailVerified}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  >
+                    <option value="">Choose your state</option>
+                    {INDIAN_STATES.map(st => <option key={st} value={st}>{st}</option>)}
+                  </select>
+                ) : (
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      required={isEmailVerified}
+                      value={formData.state}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      placeholder="State or province"
+                      disabled={!isEmailVerified}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    />
+                  </div>
+                )}
               </div>
             </div>
             {/* Interests, not permissions. Every member reads the whole library

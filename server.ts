@@ -22,7 +22,7 @@ import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
-import { DOMAINS } from "./src/constants.js";
+import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
 import {
@@ -612,7 +612,8 @@ async function startServer() {
 
   app.post("/api/auth/signup", async (req, res) => {
     try {
-      const { email, password, name, organization, contact, designation, interestedDomains } = req.body;
+      const { email, password, name, organization, contact, designation, interestedDomains,
+              registrantType, state, country, whatsapp } = req.body;
       
       // Check if user already exists in PostgreSQL
       const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -648,6 +649,12 @@ async function startServer() {
         ? [...new Set(interestedDomains.filter((d: any) => departmentNames.has(d)))].slice(0, 40)
         : [];
 
+      // Kept to the lists the form offers. A designation that is not one of
+      // ours cannot be counted, and counting them is the only reason the field
+      // stopped being a text box.
+      const type = REGISTRANT_TYPES.some(t => t.id === registrantType) ? registrantType : null;
+      const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
+
       const hashedPassword = await bcrypt.hash(password, 10);
       
       const userObj = await prisma.user.create({
@@ -657,7 +664,18 @@ async function startServer() {
           displayName: name,
           organization: organization || "",
           contact: contact || "",
-          designation: designation || "",
+          // Only a designation from the list. Falling back to whatever was sent
+          // would put the free-text mess straight back into the field that
+          // exists to be counted — and counting is the whole reason it stopped
+          // being a text box. Anything else still reaches sales in the lead's
+          // notes, so nothing is lost, only kept out of the column.
+          designation: role || "",
+          registrantType: type,
+          state: state ? String(state).slice(0, 80) : null,
+          country: country ? String(country).slice(0, 80) : null,
+          // The same number when they said it was the same, so nothing
+          // downstream has to know the rule to reach them.
+          whatsapp: (whatsapp || contact) ? String(whatsapp || contact).slice(0, 40) : null,
           role: email === "info@celnet.in" ? "SuperAdmin" : "Subscriber",
           status: "Active",
           interestedDomains: interests,
@@ -675,9 +693,13 @@ async function startServer() {
             organization: organization || null,
             source: 'Free signup',
             status: 'All',
+            state: state || null,
             notes: [
-              designation ? `Designation: ${designation}` : null,
-              interests.length ? `Wants to read: ${interests.join(', ')}` : 'No subjects chosen',
+              type ? `Registering as: ${type}` : null,
+              role ? `Designation: ${role}` : (designation ? `Designation as given: ${designation}` : null),
+              [state, country].filter(Boolean).length ? `Where: ${[state, country].filter(Boolean).join(', ')}` : null,
+              whatsapp && whatsapp !== contact ? `WhatsApp: ${whatsapp}` : null,
+              interests.length ? `Departments: ${interests.join(', ')}` : 'No departments chosen',
             ].filter(Boolean).join('\n'),
           },
         }).catch((e: any) => console.error('signup: could not file the lead', e?.message));

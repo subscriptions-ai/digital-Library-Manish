@@ -460,3 +460,92 @@ export function contentEditPath(contentType?: string | null, id?: string): strin
   const m = CONTENT_MODULES.find(x => x.contentType === contentType);
   return m && id ? `/admin/${m.slug}/${id}` : null;
 }
+
+/**
+ * Who is registering, and what such a person is called.
+ *
+ * Hardcoded on purpose. A free-text "Designation" box collected "Prof.",
+ * "professor", "Asst. Prof" and "faculty" as four different things, which
+ * cannot be counted, grouped or sold to. These can. The consequence is that
+ * changing a line later reinterprets everyone already recorded under it, so
+ * they are chosen to last rather than to be exhaustive.
+ */
+export const REGISTRANT_TYPES = [
+  { id: 'Institute', label: 'Institute', hint: 'College, university or school' },
+  { id: 'Corporate', label: 'Corporate / Industry', hint: 'Company or R&D organisation' },
+  { id: 'Solo', label: 'Solo Learner', hint: 'Registering on your own' },
+] as const;
+
+export type RegistrantType = typeof REGISTRANT_TYPES[number]['id'];
+
+export const DESIGNATIONS_BY_TYPE: Record<string, string[]> = {
+  Institute: [
+    'Librarian',
+    'Principal',
+    'Vice Principal',
+    'Dean',
+    'Director',
+    'Head of Department (HOD)',
+    'Professor',
+    'Associate Professor',
+    'Assistant Professor',
+    'Faculty Member',
+    'Research Scientist',
+    'Research Associate',
+    'Principal Investigator (PI)',
+    'Research / Academic Coordinator',
+  ],
+  Corporate: [
+    'HR Manager',
+    'CEO / Managing Director',
+    'Director',
+    'Vice President (VP)',
+    'General Manager',
+    'Senior Manager',
+    'Accounts Manager',
+    'Manager',
+    'Department Head',
+    'R&D Head',
+    'R&D Manager',
+    'Research Scientist',
+    'Research Associate',
+    'Technical Lead / Manager',
+    'Engineering Manager',
+    'Product Manager',
+    'Training & Development Manager',
+    'Procurement / Purchase Manager',
+  ],
+  Solo: [
+    'Undergraduate Student',
+    "Master's Student",
+    'PhD Scholar',
+    'Postdoctoral Researcher',
+    'Researcher / Scientist',
+    'Faculty / Academic Professional',
+    'Working Professional',
+    'Industry Professional',
+    'Entrepreneur / Founder',
+    'Consultant',
+    'Freelancer',
+    'Independent Researcher',
+  ],
+};
+
+/** Every designation there is, for checking one that arrives from a form. */
+export const ALL_DESIGNATIONS: string[] =
+  Object.values(DESIGNATIONS_BY_TYPE).flat();
+
+/** Where a member is. India first, because that is where nearly all of them are. */
+export const COUNTRIES = [
+  'India',
+  'Afghanistan', 'Australia', 'Bangladesh', 'Bhutan', 'Brazil', 'Canada', 'China',
+  'Egypt', 'Ethiopia', 'France', 'Germany', 'Ghana', 'Indonesia', 'Iran', 'Iraq',
+  'Ireland', 'Israel', 'Italy', 'Japan', 'Jordan', 'Kenya', 'Kuwait', 'Malaysia',
+  'Maldives', 'Mauritius', 'Mexico', 'Morocco', 'Myanmar', 'Nepal', 'Netherlands',
+  'New Zealand', 'Nigeria', 'Oman', 'Pakistan', 'Philippines', 'Poland', 'Portugal',
+  'Qatar', 'Russia', 'Saudi Arabia', 'Singapore', 'South Africa', 'South Korea',
+  'Spain', 'Sri Lanka', 'Sweden', 'Switzerland', 'Tanzania', 'Thailand', 'Turkey',
+  'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States',
+  'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe',
+  'Other',
+];
