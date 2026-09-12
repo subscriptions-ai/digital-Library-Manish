@@ -131,9 +131,9 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             <NavButton
               icon={<Sparkles size={18} />}
               label="Membership"
-              active={false}
+              active={location.pathname === '/institution/membership'}
               collapsed={!isSidebarOpen}
-              onClick={() => navigate('/dashboard/pro')}
+              onClick={() => navigate('/institution/membership')}
             />
           )}
         </nav>
@@ -148,7 +148,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
               Pro removes the half-hour sessions, for you and your students.
             </p>
             <button
-              onClick={() => navigate('/dashboard/pro')}
+              onClick={() => navigate('/institution/membership')}
               className="mt-3 w-full rounded-xl bg-white/15 py-2 text-[12px] font-bold hover:bg-white/25"
             >
               Apply for Pro

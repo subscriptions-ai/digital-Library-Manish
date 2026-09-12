@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Clock, Lock, Sparkles } from 'lucide-react';
 
 /**
@@ -65,6 +65,21 @@ export function useAllowance(pollMs = 30_000) {
   };
 }
 
+/**
+ * Where "Apply for Pro" goes from here.
+ *
+ * There are two shells and one membership page, and the link was hard-coded to
+ * the reader's copy of it. A librarian who clicked Membership was thrown
+ * straight back to their own dashboard, because `/dashboard/*` sends an
+ * Institution account home on sight — a menu item that did nothing, with
+ * nothing on screen to say why. The shell you are standing in decides.
+ */
+export function useProPath(): string {
+  return useLocation().pathname.startsWith('/institution')
+    ? '/institution/membership'
+    : '/dashboard/pro';
+}
+
 const two = (n: number) => String(Math.floor(n)).padStart(2, '0');
 
 /** 23:07 while it matters to the second; 1h 40m when it does not. */
@@ -87,6 +102,7 @@ export const clockTime = (iso?: string | null) =>
 export function ReadingClock({ allowance, msLeft, msUntil, className = '' }: {
   allowance: Allowance | null; msLeft: number | null; msUntil: number | null; className?: string;
 }) {
+  const proPath = useProPath();
   if (!allowance?.timed) return null;
 
   const s = allowance.state;
@@ -111,7 +127,7 @@ export function ReadingClock({ allowance, msLeft, msUntil, className = '' }: {
 
   return (
     <Link
-      to="/dashboard/pro"
+      to={proPath}
       title={title}
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold tabular-nums transition-colors hover:opacity-80 ${tone} ${className}`}
     >
@@ -131,6 +147,7 @@ export function ReadingClock({ allowance, msLeft, msUntil, className = '' }: {
 export function ReadingLimitNotice({
   allowance, msUntil, compact = false,
 }: { allowance: Allowance; msUntil?: number | null; compact?: boolean }) {
+  const proPath = useProPath();
   const spent = allowance.state === 'spent';
   return (
     <div className={`mx-auto w-full max-w-lg rounded-2xl border border-rule bg-surface p-6 text-center ${compact ? '' : 'my-10'}`}>
@@ -161,7 +178,7 @@ export function ReadingLimitNotice({
       )}
 
       <Link
-        to="/dashboard/pro"
+        to={proPath}
         className="mt-5 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
       >
         <Sparkles size={15} /> Apply for Pro — read without a limit

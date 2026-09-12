@@ -289,6 +289,11 @@ export default function App() {
                 <Route path="/institution/videos/player/:id" element={<InstitutionLayout><LmsVideoPlayer /></InstitutionLayout>} />
                 <Route path="/institution/subscriptions" element={<InstitutionLayout><InstitutionSubscriptions /></InstitutionLayout>} />
                 <Route path="/institution/profile" element={<InstitutionLayout><InstitutionProfile /></InstitutionLayout>} />
+                {/* The same membership page, in the shell the librarian is
+                    standing in. It used to live only under /dashboard, which
+                    bounces an Institution account back to /institution — so the
+                    menu item led nowhere. */}
+                <Route path="/institution/membership" element={<InstitutionLayout><ProMembership /></InstitutionLayout>} />
                 <Route path="/institution/feedbacks" element={<InstitutionLayout><MyFeedbacksPage /></InstitutionLayout>} />
 
                 {/* Subscription Manager Routes */}

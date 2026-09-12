@@ -312,7 +312,7 @@ export function LibrarianAnalytics({
               month to month. It is all here — Pro membership opens it.
             </p>
             <Link
-              to="/dashboard/pro"
+              to="/institution/membership"
               className="mt-5 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
             >
               <Sparkles size={15} /> Apply for Pro

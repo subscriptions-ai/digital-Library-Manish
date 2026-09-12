@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { Sparkles, Check, Clock, Infinity as InfinityIcon, Send, Receipt, History } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,6 +27,10 @@ const daysLeft = (end: string) =>
 
 export function ProMembership() {
   const { profile } = useAuth();
+  // The page is reached from two shells. Invoices only exist under /dashboard,
+  // and that shell sends an Institution account straight home — so from the
+  // institution side the payment record is stated rather than linked.
+  const inInstitution = useLocation().pathname.startsWith('/institution');
   const { allowance, msLeft, msUntil } = useAllowance();
   const [membership, setMembership] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -280,16 +284,26 @@ export function ProMembership() {
 
       {/* ── 5. billing, only if there has ever been any ───────────────────── */}
       {payments?.count > 0 && (
-        <Link
-          to="/dashboard/invoices"
-          className="flex items-center justify-between rounded-2xl border border-rule bg-surface p-5 hover:bg-surface-2"
-        >
-          <span className="flex items-center gap-2 text-sm text-ink">
-            <Receipt size={16} className="text-muted" />
-            {payments.count} payment{payments.count > 1 ? 's' : ''} on record
-          </span>
-          <span className="font-mono text-xs text-muted">Invoices &amp; payments →</span>
-        </Link>
+        inInstitution ? (
+          <div className="flex items-center justify-between rounded-2xl border border-rule bg-surface p-5">
+            <span className="flex items-center gap-2 text-sm text-ink">
+              <Receipt size={16} className="text-muted" />
+              {payments.count} payment{payments.count > 1 ? 's' : ''} on record
+            </span>
+            <span className="font-mono text-xs text-faint">Ask us for a copy</span>
+          </div>
+        ) : (
+          <Link
+            to="/dashboard/invoices"
+            className="flex items-center justify-between rounded-2xl border border-rule bg-surface p-5 hover:bg-surface-2"
+          >
+            <span className="flex items-center gap-2 text-sm text-ink">
+              <Receipt size={16} className="text-muted" />
+              {payments.count} payment{payments.count > 1 ? 's' : ''} on record
+            </span>
+            <span className="font-mono text-xs text-muted">Invoices &amp; payments →</span>
+          </Link>
+        )
       )}
     </div>
   );

@@ -549,6 +549,25 @@ const catalogueSize = async () => {
   }
 
   // ── 5. nothing points at nothing ──────────────────────────────────────────
+  // A menu item that leads out of its own shell is a dead end no request can
+  // report: /dashboard/* sends an Institution account straight back to
+  // /institution, so "Membership" looked like a broken page rather than a link
+  // pointing at the wrong copy of a working one. This is the one check here
+  // that reads the source, because the failure never reaches the server.
+  {
+    const fs = require('fs'), path = require('path');
+    const dir = 'src/components/institution';
+    const offenders = [];
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.tsx')) continue;
+      const src = fs.readFileSync(path.join(dir, f), 'utf8');
+      for (const m of src.matchAll(/['"`](\/dashboard\/[a-z-]*)['"`]/g)) offenders.push(`${f} → ${m[1]}`);
+    }
+    offenders.length
+      ? bad('the institution shell keeps to itself', offenders.join(', '))
+      : ok('the institution shell keeps to itself', 'no links into /dashboard');
+  }
+
   console.log('\nDead ends');
   for (const [name, path] of [
     ['unknown article', '/api/library/article/does-not-exist'],

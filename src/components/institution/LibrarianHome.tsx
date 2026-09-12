@@ -524,7 +524,7 @@ export function LibrarianHome() {
                 All of it is open to you now, in <b className="text-ink">half-hour sessions — four a day</b>.
                 Pro removes the sessions, for you and for your students.
               </p>
-              <Link to="/dashboard/pro"
+              <Link to="/institution/membership"
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-accent-hover">
                 Apply for Pro <ArrowRight size={13} />
               </Link>
@@ -580,7 +580,7 @@ export function LibrarianHome() {
                       : allowance.state === 'spent' ? <>until tomorrow — today’s two hours are used</>
                       : <>ready when you are · four sessions a day</>}
                   </p>
-                  <Link to="/dashboard/pro"
+                  <Link to="/institution/membership"
                     className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-white underline-offset-4 hover:underline">
                     Read without a limit <ArrowRight size={12} />
                   </Link>
