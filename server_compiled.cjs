@@ -16832,7 +16832,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         },
         subscription: {
           departments: covered,
-          fullAccess: covered.length === 0 && subs.length > 0,
+          // No plan is not no access — it is the whole library on the free
+          // clock, which is the rule everywhere else and was not the rule here.
+          // This page was telling a librarian that nothing was being held for
+          // their students while the library sat open behind it.
+          fullAccess: covered.length === 0,
+          onFreeAllowance: subs.length === 0,
           endsOn: soonest,
           daysLeft
         },

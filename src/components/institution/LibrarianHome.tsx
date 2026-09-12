@@ -27,7 +27,7 @@ const n = (x: number) => Number(x || 0).toLocaleString();
 type Overview = {
   institution: { id: string; name: string };
   students: { total: number; neverSignedIn: number; activeLast30: number };
-  subscription: { departments: string[]; fullAccess: boolean; endsOn: string | null; daysLeft: number | null };
+  subscription: { departments: string[]; fullAccess: boolean; onFreeAllowance?: boolean; endsOn: string | null; daysLeft: number | null };
   collection: {
     journals: number; articles: number; books: number;
     byDepartment: { name: string; journals: number; articles: number }[];
@@ -203,7 +203,9 @@ export function LibrarianHome() {
             </p>
           )}
           <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-ink-2">
-            {sub.fullAccess
+            {sub.onFreeAllowance
+              ? <>The whole library — <b className="text-ink">{n(col.journals)} journals</b> and <b className="text-ink">{n(col.articles)} articles</b> — open to you and your students, half an hour at a time.</>
+              : sub.fullAccess
               ? <>Full access to <b className="text-ink">{n(col.journals)} journals</b> and <b className="text-ink">{n(col.articles)} articles</b>.</>
               : depts.length
                 ? <>
@@ -254,18 +256,22 @@ export function LibrarianHome() {
             </Link>
           </div>
 
-          {!d.hasActiveSubscription ? (
-            <div className="mt-2.5 rounded-md border border-caution bg-caution-soft px-4 py-3.5">
+          {/* The numbers are true whether or not anything has been bought.
+              This used to hide them behind "nothing is being held for your
+              students yet" — which stopped being true the day a membership
+              without a plan came to mean the whole library. */}
+          {sub.onFreeAllowance && (
+            <div className="mt-2.5 rounded-md border border-accent bg-accent-soft px-4 py-3.5">
               <p className="text-[14px] leading-snug text-ink-2">
-                No active subscription is on this account, so nothing is being held for your
-                students yet.
+                All of it is open to you now, in half-hour sessions — four a day.
+                Pro removes the sessions, for you and for your students.
               </p>
-              <Link to="/contact"
+              <Link to="/dashboard/pro"
                 className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
-                Talk to us <ArrowRight size={12} />
+                Apply for Pro <ArrowRight size={12} />
               </Link>
             </div>
-          ) : (<>
+          )}
           <dl className="mt-2.5 grid grid-cols-2 divide-rule overflow-hidden rounded-md border border-rule bg-surface sm:grid-cols-4 sm:divide-x">
             {([
               ['Journals', col.journals],
@@ -295,7 +301,6 @@ export function LibrarianHome() {
               ))}
             </ul>
           )}
-          </>)}
         </section>
 
         {/* 03 — the things done most often */}

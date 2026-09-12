@@ -5,6 +5,8 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { FeedbackWidget } from '../dashboard/FeedbackWidget';
 import { dashboardTitle, affiliation } from '../../lib/identity';
+import { ReadingClock, useAllowance } from '../membership/ReadingClock';
+import { Sparkles } from 'lucide-react';
 
 interface InstitutionLayoutProps {
   children: React.ReactNode;
@@ -14,6 +16,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, logout, loading, isInstitutionAdmin } = useAuth();
+  const { allowance, msLeft, msUntil } = useAllowance();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
@@ -119,6 +122,15 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/institution/feedbacks')}
           />
+          {allowance?.timed && (
+            <NavButton
+              icon={<Sparkles size={18} />}
+              label="Membership"
+              active={false}
+              collapsed={!isSidebarOpen}
+              onClick={() => navigate('/dashboard/pro')}
+            />
+          )}
         </nav>
 
         <div className="pt-4 pb-5 px-3 border-t border-white/10 space-y-0.5">
@@ -151,13 +163,19 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             : location.pathname === '/institution/feedbacks' ? 'My Feedbacks'
             : 'Dashboard'}
           </h1>
-          <button 
-            onClick={handleSignOut}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-alarm bg-alarm-soft hover:bg-alarm-soft rounded-lg transition-colors"
-          >
-            <LogOut size={16} />
-            <span className="hidden sm:inline">Sign Out</span>
-          </button>
+          <div className="flex items-center gap-3">
+            {/* The same clock the readers carry. A librarian on the free
+                allowance is on it too, and a limit nobody can see is
+                indistinguishable from a site that has stopped working. */}
+            <ReadingClock allowance={allowance} msLeft={msLeft} msUntil={msUntil} />
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-alarm bg-alarm-soft hover:bg-alarm-soft rounded-lg transition-colors"
+            >
+              <LogOut size={16} />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto p-6 md:p-8">
           {children}
