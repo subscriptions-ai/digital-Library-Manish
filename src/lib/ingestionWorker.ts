@@ -433,29 +433,56 @@ async function discoverBooksPage(sweep: any) {
   return { ...r, added, skippedHeld, skippedFailed, more: full, error: firstFailure };
 }
 
-/** Fetch one slice of articles for the journal refreshed longest ago. */
-async function fetchArticlesForOneJournal(state: any) {
-  // Only journals we discovered externally. Our own titles are filled from our
-  // own records — pulling their articles back in from OpenAlex would mix
-  // ingested rows into a journal whose rights basis says "our own".
-  // A journal still being walked comes first; one that has given up everything
-  // in the window is only revisited after a week, to pick up newly published
-  // work. Otherwise a finished journal would take a turn every pass and spend it
-  // asking a question already answered.
+/**
+ * The journal whose articles are fetched next.
+ *
+ * Only journals we discovered externally. Our own titles are filled from our own
+ * records — pulling their articles back in from OpenAlex would mix ingested rows
+ * into a journal whose rights basis says "our own". A journal still being walked
+ * comes first; one that has given up everything in the window is only revisited
+ * after a week, to pick up newly published work.
+ *
+ * `departments` narrows the choice, and until it did the department chooser
+ * governed discovery and nothing else. Articles were picked from every journal
+ * in the catalogue, never-fetched first — so a large pull for one department
+ * left thousands of its journals untouched at the head of the queue, and an
+ * operator who then chose Law or Energy watched the engine go on fetching the
+ * first department for days, with the chooser showing their choice the whole
+ * time. Passed as undefined it means every department, which also keeps the
+ * handful of journals that carry no department in the rotation.
+ */
+export async function nextJournalForArticles(departments?: string[]) {
+  const inScope = departments?.length ? { domain: { in: departments } } : {};
   const staleAfter = new Date(Date.now() - 7 * 864e5);
-  const journal =
+  return (
     await p.journal.findFirst({
-      where: { status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration', exhaustedAt: null },
+      where: { status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration', exhaustedAt: null, ...inScope },
       orderBy: [{ lastIngestedAt: { sort: 'asc', nulls: 'first' } }],
     })
     ?? await p.journal.findFirst({
       where: {
         status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration',
-        exhaustedAt: { lt: staleAfter },
+        exhaustedAt: { lt: staleAfter }, ...inScope,
       },
       orderBy: [{ lastIngestedAt: { sort: 'asc', nulls: 'first' } }],
-    });
-  if (!journal) return { journal: null, added: 0, skipped: 0, note: 'every journal is up to date' };
+    })
+  );
+}
+
+/** Fetch one slice of articles for the journal refreshed longest ago. */
+async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
+  const journal = await nextJournalForArticles(departments);
+  if (!journal) {
+    // Said plainly, because "every journal is up to date" was also the answer
+    // when the chosen departments had no journal to fetch from at all — which
+    // reads as done when it means not started.
+    return {
+      journal: null, added: 0, skipped: 0,
+      note: departments?.length
+        ? `no journal left to fetch in ${departments.join(', ')} — discover journals there first (focus: Journals or Auto)`
+        : 'every journal is up to date',
+    };
+  }
 
   const fromYear = new Date().getFullYear() - (state.yearsBack - 1);
 
@@ -625,6 +652,7 @@ export async function runIngestionPass(
       : (state.departments as string[])?.length
         ? (state.departments as string[])
         : departments;
+    const narrowed = Boolean(opts.departments?.length || (state.departments as string[])?.length);
 
     // How the pass is spent.
     //
@@ -721,7 +749,7 @@ export async function runIngestionPass(
       }
     }
 
-    const r = await fetchArticlesForOneJournal(state);
+    const r = await fetchArticlesForOneJournal(state, narrowed ? wanted : undefined);
     await p.ingestionState.update({
       where: { id: 'singleton' },
       data: {

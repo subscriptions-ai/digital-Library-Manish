@@ -10639,21 +10639,33 @@ async function discoverBooksPage(sweep) {
   await closeSweep(sweep, r2, offset, full);
   return { ...r2, added, skippedHeld, skippedFailed, more: full, error: firstFailure };
 }
-async function fetchArticlesForOneJournal(state) {
+async function nextJournalForArticles(departments) {
+  const inScope = departments?.length ? { domain: { in: departments } } : {};
   const staleAfter = new Date(Date.now() - 7 * 864e5);
-  const journal = await p.journal.findFirst({
-    where: { status: "Accepted", issn: { not: null }, rightsBasis: "DOAJ declaration", exhaustedAt: null },
+  return await p.journal.findFirst({
+    where: { status: "Accepted", issn: { not: null }, rightsBasis: "DOAJ declaration", exhaustedAt: null, ...inScope },
     orderBy: [{ lastIngestedAt: { sort: "asc", nulls: "first" } }]
   }) ?? await p.journal.findFirst({
     where: {
       status: "Accepted",
       issn: { not: null },
       rightsBasis: "DOAJ declaration",
-      exhaustedAt: { lt: staleAfter }
+      exhaustedAt: { lt: staleAfter },
+      ...inScope
     },
     orderBy: [{ lastIngestedAt: { sort: "asc", nulls: "first" } }]
   });
-  if (!journal) return { journal: null, added: 0, skipped: 0, note: "every journal is up to date" };
+}
+async function fetchArticlesForOneJournal(state, departments) {
+  const journal = await nextJournalForArticles(departments);
+  if (!journal) {
+    return {
+      journal: null,
+      added: 0,
+      skipped: 0,
+      note: departments?.length ? `no journal left to fetch in ${departments.join(", ")} \u2014 discover journals there first (focus: Journals or Auto)` : "every journal is up to date"
+    };
+  }
   const fromYear = (/* @__PURE__ */ new Date()).getFullYear() - (state.yearsBack - 1);
   const cursor = journal.fetchCursor || "*";
   const url = `https://api.openalex.org/works?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)},from_publication_date:${fromYear}-01-01,open_access.is_oa:true&per-page=${Math.min(state.batchSize, 200)}&sort=publication_date:desc&cursor=${encodeURIComponent(cursor)}`;
@@ -10763,6 +10775,7 @@ async function runIngestionPass(departments, opts = {}) {
   });
   try {
     const wanted = opts.departments?.length ? opts.departments : state.departments?.length ? state.departments : departments;
+    const narrowed = Boolean(opts.departments?.length || state.departments?.length);
     const n = await p.ingestionState.update({
       where: { id: "singleton" },
       data: { passCount: { increment: 1 } },
@@ -10841,7 +10854,7 @@ async function runIngestionPass(departments, opts = {}) {
         return { phase: "Idle", note };
       }
     }
-    const r2 = await fetchArticlesForOneJournal(state);
+    const r2 = await fetchArticlesForOneJournal(state, narrowed ? wanted : void 0);
     await p.ingestionState.update({
       where: { id: "singleton" },
       data: {
