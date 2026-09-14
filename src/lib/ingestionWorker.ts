@@ -152,7 +152,15 @@ async function claimSweep(source: string, departments: string[]) {
 
   // Creating forty rows on every pass would be forty writes a minute to say
   // nothing new, so they are only created when some are missing.
-  const held = await p.departmentSweep.count({ where: { source } });
+  //
+  // Missing *for these departments*. This counted the rows of every department
+  // against the terms of the ones asked for, so once a table held rows for Bio
+  // Technology and Energy, choosing Law compared two rows with Law's one term,
+  // decided nothing was missing, and never created Law's row. With no row there
+  // was nothing to sweep, the pass reported every source "walked out" for a
+  // department that had never been searched once, and the engine stayed that
+  // way for as long as anyone left it running.
+  const held = await p.departmentSweep.count({ where: { source, department: { in: departments } } });
   if (held < wanted.length) {
     for (const w of wanted) {
       await p.departmentSweep.upsert({
@@ -479,7 +487,7 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
     return {
       journal: null, added: 0, skipped: 0,
       note: departments?.length
-        ? `no journal left to fetch in ${departments.join(', ')} — discover journals there first (focus: Journals or Auto)`
+        ? `no journal to fetch from in ${departments.join(', ')} yet`
         : 'every journal is up to date',
     };
   }
@@ -506,7 +514,7 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
       where: { id: journal.id },
       data: { lastIngestedAt: new Date(), fetchCursor: null },
     });
-    return { journal: journal.title, added: 0, skipped: 0, note: 'the source did not answer' };
+    return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: 'the source did not answer' };
   }
 
   const next = d.meta?.next_cursor ?? null;
@@ -517,7 +525,7 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
       where: { id: journal.id },
       data: { lastIngestedAt: new Date(), fetchCursor: null, exhaustedAt: new Date() },
     });
-    return { journal: journal.title, added: 0, skipped: 0, note: 'nothing new in this journal' };
+    return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: 'nothing new in this journal' };
   }
 
   // Two unrelated things used to share one counter. Already held is the engine
@@ -596,6 +604,7 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
 
   return {
     journal: journal.title,
+    department: journal.domain,
     journalId: journal.id,
     added,
     skippedHeld,
@@ -679,8 +688,11 @@ export async function runIngestionPass(
     // DOAJ and DOAB alternate, so books are not queued behind every journal.
     const bookTurn = only === 'books' || (only !== 'journals' && n % (every * 2) === 0);
 
-    if (wantsDiscovery) {
-      const order: ('DOAB' | 'DOAJ')[] = bookTurn ? ['DOAB', 'DOAJ'] : ['DOAJ', 'DOAB'];
+    // Discovery, callable from either side of the pass. The rotation gives it one
+    // pass in `discoverEvery` and articles the rest — right while every chosen
+    // department has journals to fetch from, and four wasted passes in five while
+    // one has none, each saying so and doing nothing.
+    const discover = async (order: ('DOAB' | 'DOAJ')[]) => {
       for (const source of order) {
         if (only === 'journals' && source !== 'DOAJ') continue;
         if (only === 'books' && source !== 'DOAB') continue;
@@ -729,6 +741,12 @@ export async function runIngestionPass(
         });
         return { phase: 'Books', source, department: sweep.department, term: sweep.term, ...r };
       }
+      return null;
+    };
+
+    if (wantsDiscovery) {
+      const found = await discover(bookTurn ? ['DOAB', 'DOAJ'] : ['DOAJ', 'DOAB']);
+      if (found) return found;
       // Every sweep is exhausted and none is due to reopen. Fetch instead —
       // unless this pass was asked for one kind of work in particular, in which
       // case silently doing a different kind is the wrong answer.
@@ -750,10 +768,24 @@ export async function runIngestionPass(
     }
 
     const r = await fetchArticlesForOneJournal(state, narrowed ? wanted : undefined);
+
+    // Nothing to fetch from in the chosen departments: spend the pass finding
+    // journals there instead of reporting the absence once a minute. Not when
+    // one kind of work was asked for — that choice is the operator's to change.
+    if (!r.journal && !only && !wantsDiscovery) {
+      const found = await discover(['DOAJ', 'DOAB']);
+      if (found) return found;
+    }
+    if (!r.journal && narrowed) {
+      (r as any).note = only === 'articles'
+        ? `no journal to fetch from in ${wanted.join(', ')} — choose "Everything" or "Journals only" so the engine can find some`
+        : `nothing to fetch or discover in ${wanted.join(', ')} right now — every search there has been walked out, and they reopen within 30 days`;
+    }
     await p.ingestionState.update({
       where: { id: 'singleton' },
       data: {
-        phase: 'Articles', currentJournal: r.journal, lastRunAt: new Date(), lastError: null,
+        phase: 'Articles', currentJournal: r.journal, currentDepartment: (r as any).department ?? null,
+        lastRunAt: new Date(), lastError: null,
         articlesAdded: { increment: r.added },
         articlesSkipped: { increment: r.skipped },
       },

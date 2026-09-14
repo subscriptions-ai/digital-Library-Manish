@@ -10438,7 +10438,7 @@ async function getState() {
 async function claimSweep(source, departments) {
   const wanted = [];
   for (const dep of departments) for (const term of searchTermsFor(dep)) wanted.push({ department: dep, term });
-  const held = await p.departmentSweep.count({ where: { source } });
+  const held = await p.departmentSweep.count({ where: { source, department: { in: departments } } });
   if (held < wanted.length) {
     for (const w of wanted) {
       await p.departmentSweep.upsert({
@@ -10663,7 +10663,7 @@ async function fetchArticlesForOneJournal(state, departments) {
       journal: null,
       added: 0,
       skipped: 0,
-      note: departments?.length ? `no journal left to fetch in ${departments.join(", ")} \u2014 discover journals there first (focus: Journals or Auto)` : "every journal is up to date"
+      note: departments?.length ? `no journal to fetch from in ${departments.join(", ")} yet` : "every journal is up to date"
     };
   }
   const fromYear = (/* @__PURE__ */ new Date()).getFullYear() - (state.yearsBack - 1);
@@ -10675,7 +10675,7 @@ async function fetchArticlesForOneJournal(state, departments) {
       where: { id: journal.id },
       data: { lastIngestedAt: /* @__PURE__ */ new Date(), fetchCursor: null }
     });
-    return { journal: journal.title, added: 0, skipped: 0, note: "the source did not answer" };
+    return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: "the source did not answer" };
   }
   const next = d.meta?.next_cursor ?? null;
   if (!d.results?.length) {
@@ -10683,7 +10683,7 @@ async function fetchArticlesForOneJournal(state, departments) {
       where: { id: journal.id },
       data: { lastIngestedAt: /* @__PURE__ */ new Date(), fetchCursor: null, exhaustedAt: /* @__PURE__ */ new Date() }
     });
-    return { journal: journal.title, added: 0, skipped: 0, note: "nothing new in this journal" };
+    return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: "nothing new in this journal" };
   }
   let added = 0, skippedHeld = 0, skippedFailed = 0;
   let firstFailure = null;
@@ -10756,6 +10756,7 @@ async function fetchArticlesForOneJournal(state, departments) {
   });
   return {
     journal: journal.title,
+    department: journal.domain,
     journalId: journal.id,
     added,
     skippedHeld,
@@ -10785,8 +10786,7 @@ async function runIngestionPass(departments, opts = {}) {
     const every = Math.max(1, state.discoverEvery || 5);
     const wantsDiscovery = only ? only !== "articles" : n % every === 0;
     const bookTurn = only === "books" || only !== "journals" && n % (every * 2) === 0;
-    if (wantsDiscovery) {
-      const order = bookTurn ? ["DOAB", "DOAJ"] : ["DOAJ", "DOAB"];
+    const discover = async (order) => {
       for (const source of order) {
         if (only === "journals" && source !== "DOAJ") continue;
         if (only === "books" && source !== "DOAB") continue;
@@ -10843,6 +10843,11 @@ async function runIngestionPass(departments, opts = {}) {
         });
         return { phase: "Books", source, department: sweep.department, term: sweep.term, ...r3 };
       }
+      return null;
+    };
+    if (wantsDiscovery) {
+      const found = await discover(bookTurn ? ["DOAB", "DOAJ"] : ["DOAJ", "DOAB"]);
+      if (found) return found;
       if (only) {
         const note = `nothing left to sweep for ${only} \u2014 every source has been walked out`;
         await p.ingestionState.update({
@@ -10855,11 +10860,19 @@ async function runIngestionPass(departments, opts = {}) {
       }
     }
     const r2 = await fetchArticlesForOneJournal(state, narrowed ? wanted : void 0);
+    if (!r2.journal && !only && !wantsDiscovery) {
+      const found = await discover(["DOAJ", "DOAB"]);
+      if (found) return found;
+    }
+    if (!r2.journal && narrowed) {
+      r2.note = only === "articles" ? `no journal to fetch from in ${wanted.join(", ")} \u2014 choose "Everything" or "Journals only" so the engine can find some` : `nothing to fetch or discover in ${wanted.join(", ")} right now \u2014 every search there has been walked out, and they reopen within 30 days`;
+    }
     await p.ingestionState.update({
       where: { id: "singleton" },
       data: {
         phase: "Articles",
         currentJournal: r2.journal,
+        currentDepartment: r2.department ?? null,
         lastRunAt: /* @__PURE__ */ new Date(),
         lastError: null,
         articlesAdded: { increment: r2.added },
