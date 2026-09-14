@@ -324,11 +324,6 @@ export default function App() {
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/digital-library" element={<DigitalLibrary />} />
-                      {/* The demo is gone, but the address outlived it — it has
-                          been in mails and may be in a search result. Sending
-                          those people to the free account is kinder than a 404,
-                          which is what they were getting. */}
-                      <Route path="/request-demo" element={<Navigate to="/signup" replace />} />
                       <Route path="/for-institutions" element={<ForInstitutions />} />
                       <Route path="/for-students" element={<ForStudents />} />
 
