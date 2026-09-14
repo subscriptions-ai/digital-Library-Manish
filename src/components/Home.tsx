@@ -491,10 +491,6 @@ export function Home() {
             <Link to="/signup" className="rounded-full border border-white/20 bg-white/5 backdrop-blur-md px-10 py-4 text-sm font-bold text-white hover:bg-white/10 transition-all hover:scale-105">
               Create Account
             </Link>
-            <Link to="/request-demo" className="rounded-full border border-white/10 bg-transparent px-10 py-4 text-sm font-bold text-white/70 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 hover:scale-105">
-              <FileText size={18} />
-              Request a Demo
-            </Link>
           </div>
         </div>
       </section>

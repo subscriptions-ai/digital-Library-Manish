@@ -78,7 +78,6 @@ import { DemoRequestsPage } from "./components/admin/DemoRequestsPage";
 import { CouponsManager } from './components/admin/CouponsManager';
 import { CouponDetails } from './components/admin/CouponDetails';
 import { AdminPayments } from './components/admin/AdminPayments';
-import { RequestDemo } from './components/RequestDemo';
 import { ExtractionDashboard } from './components/admin/ExtractionDashboard';
 import { ExtractionJobDetails } from './components/admin/ExtractionJobDetails';
 import { EmailVerificationsPage } from './components/admin/EmailVerificationsPage';
@@ -325,6 +324,11 @@ export default function App() {
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/digital-library" element={<DigitalLibrary />} />
+                      {/* The demo is gone, but the address outlived it — it has
+                          been in mails and may be in a search result. Sending
+                          those people to the free account is kinder than a 404,
+                          which is what they were getting. */}
+                      <Route path="/request-demo" element={<Navigate to="/signup" replace />} />
                       <Route path="/for-institutions" element={<ForInstitutions />} />
                       <Route path="/for-students" element={<ForStudents />} />
 
@@ -347,7 +351,6 @@ export default function App() {
                       <Route path="/content-removal" element={<ContentRemoval />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
-                      <Route path="/request-demo" element={<RequestDemo />} />
                       <Route path="/domain/:domainId" element={<DomainLandingPage />} />
                       <Route path="/preview/:id" element={<PublicContentPreview />} />
                       <Route path="/search" element={<SearchResults />} />

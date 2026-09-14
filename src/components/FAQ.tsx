@@ -39,7 +39,7 @@ const FAQ_DATA: FAQCategory[] = [
     items: [
       {
         question: "How do I get access?",
-        answer: "Get in touch through our Contact page or request a demo. Our team will understand your requirements and set up access for you or your institution."
+        answer: "Create a free account and you can start reading straight away, or get in touch through our Contact page. Our team will understand your requirements and set up access for you or your institution."
       },
       {
         question: "What kinds of access are available?",

@@ -151,10 +151,10 @@ export function DigitalLibrary() {
               
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link 
-                  to="/request-demo" 
+                  to="/signup" 
                   className="group relative flex items-center gap-2 rounded-full bg-blue-600 px-8 py-4 text-sm font-bold text-white transition-all hover:bg-blue-500 hover:shadow-[0_0_20px_rgba(59,130,246,0.4)]"
                 >
-                  Experience the Demo
+                  Create a Free Account
                   <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
                 </Link>
                 <a 
@@ -395,10 +395,10 @@ export function DigitalLibrary() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link 
-              to="/request-demo" 
+              to="/signup" 
               className="rounded-full bg-blue-600 px-10 py-4 text-base font-bold text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/30 transition-all"
             >
-              Request a Guided Demo
+              Create a Free Account
             </Link>
             <Link
               to="/institutional-access"

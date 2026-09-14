@@ -54,8 +54,8 @@ export function InstitutionalAccess() {
                 Provide seamless, unlimited access to STM Digital Library for your students, faculty, and researchers. Trusted by 1,200+ universities worldwide.
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
-                <Link to="/request-demo" className="rounded-full bg-white px-8 py-4 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all">
-                  Request Trial Access
+                <Link to="/signup" className="rounded-full bg-white px-8 py-4 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all">
+                  Create a Free Account
                 </Link>
                 <button 
                   onClick={handleDownloadBrochure}
@@ -154,16 +154,16 @@ export function InstitutionalAccess() {
               <div className="h-16 w-16 rounded-full bg-blue-500/20 flex items-center justify-center mb-6">
                 <PlayCircle className="text-blue-500" size={32} />
               </div>
-              <h3 className="text-2xl font-bold mb-4">Start Your Institutional Trial</h3>
+              <h3 className="text-2xl font-bold mb-4">Open the library today</h3>
               <p className="text-slate-400 text-sm mb-8 max-w-sm">
-                Ready to explore the STM Digital Library? Click the button below to request your personalized demo and trial access.
+                Create a free account and start reading straight away — the whole collection, every subject. Bring your students in when you are ready.
               </p>
               
               <Link 
-                to="/request-demo"
+                to="/signup"
                 className="w-full max-w-sm rounded-xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
               >
-                Request a Demo Session <ArrowRight size={18} />
+                Create a Free Account <ArrowRight size={18} />
               </Link>
             </div>
           </div>
