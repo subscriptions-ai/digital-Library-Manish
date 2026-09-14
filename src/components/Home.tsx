@@ -485,11 +485,8 @@ export function Home() {
             Join thousands of researchers and students who trust STM Digital Library for their academic needs.
           </p>
           <div className="mt-12 flex flex-wrap justify-center gap-4">
-            <Link to="/contact" className="rounded-full bg-white px-10 py-4 text-sm font-bold text-slate-900 hover:bg-slate-100 transition-all shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:scale-105 hover:shadow-[0_0_60px_rgba(59,130,246,0.5)]">
-              Request Access
-            </Link>
-            <Link to="/signup" className="rounded-full border border-white/20 bg-white/5 backdrop-blur-md px-10 py-4 text-sm font-bold text-white hover:bg-white/10 transition-all hover:scale-105">
-              Create Account
+            <Link to="/signup" className="rounded-full bg-white px-10 py-4 text-sm font-bold text-slate-900 hover:bg-slate-100 transition-all shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:scale-105 hover:shadow-[0_0_60px_rgba(59,130,246,0.5)]">
+              Register Free
             </Link>
           </div>
         </div>

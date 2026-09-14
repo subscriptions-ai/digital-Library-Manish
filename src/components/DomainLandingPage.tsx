@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { DOMAINS } from "../constants";
 import { Helmet } from "react-helmet-async";
 import * as Icons from "lucide-react";
 import {
-  BookOpen, ChevronRight, Loader2, Check,
+  BookOpen, ChevronRight, Check,
   AlertCircle, Zap, Download, Search, Users, Shield, Globe,
-  RefreshCw, CheckCircle2, Send, ArrowLeft, ArrowRight,
+  RefreshCw, CheckCircle2, ArrowLeft, ArrowRight,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -98,12 +98,6 @@ export function DomainLandingPage() {
   const [apiLoading, setApiLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
 
-  /* Contact form state */
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", organization: "", notes: "" });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-
   const fetchDomainData = useCallback(async () => {
     if (!domain) return;
     setDomainData(null);
@@ -123,31 +117,6 @@ export function DomainLandingPage() {
 
   useEffect(() => { fetchDomainData(); }, [fetchDomainData]);
 
-  const handleContactSales = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.email) { toast.error("Name and email are required"); return; }
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/domain-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userName: form.name, email: form.email,
-          organization: form.organization, domain: domain?.name,
-          selectedModules: [], planType: "Access Request", totalPrice: 0,
-          notes: form.notes,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      setSubmitted(true);
-      toast.success("Request submitted! We'll contact you soon.");
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   /* ---------- derive displayed data ---------- */
   // What this department actually holds, in the order a college asks about it.
@@ -239,10 +208,10 @@ export function DomainLandingPage() {
 
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  to="/contact"
+                  to="/signup"
                   className="rounded-full bg-indigo-600 hover:bg-indigo-700 px-7 py-3.5 text-sm font-bold text-white shadow-md transition-all"
                 >
-                  Request Access
+                  Register Free
                 </Link>
                 <a
                   href="#content-types"
@@ -487,19 +456,13 @@ export function DomainLandingPage() {
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900">Access {domain.name} content</h2>
           <p className="mt-3 text-slate-500 max-w-xl mx-auto">
-            Get full access to this department's journals, articles and resources.
-            Tell us what you need and our team will set you up.
+            Register free and start reading this department's journals, articles
+            and resources straight away.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link to="/contact" className="inline-block rounded-full bg-indigo-600 hover:bg-indigo-700 px-8 py-3.5 text-sm font-bold text-white shadow-md transition-all">
-              Request Access
+            <Link to="/signup" className="inline-block rounded-full bg-indigo-600 hover:bg-indigo-700 px-8 py-3.5 text-sm font-bold text-white shadow-md transition-all">
+              Register Free
             </Link>
-            <button
-              onClick={() => setFormOpen(true)}
-              className="rounded-full bg-slate-900 hover:bg-slate-800 px-8 py-3.5 text-sm font-bold text-white transition-all"
-            >
-              Talk to our team
-            </button>
           </div>
         </div>
       </section>
@@ -537,110 +500,6 @@ export function DomainLandingPage() {
         </div>
       </section>
 
-      {/* ══ CONTACT MODAL ════════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {formOpen && !submitted && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
-            >
-              {/* Header */}
-              <div className="bg-indigo-600 px-6 py-5 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-lg">Contact Sales Team</h3>
-                    <p className="text-indigo-200 text-sm mt-0.5">{domain.name}</p>
-                  </div>
-                  <button onClick={() => setFormOpen(false)} className="text-indigo-200 hover:text-white">
-                    <Icons.X size={20} />
-                  </button>
-                </div>
-              </div>
-              <form onSubmit={handleContactSales} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name *</label>
-                  <input
-                    required value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder="Dr. Priya Sharma"
-                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email *</label>
-                  <input
-                    required type="email" value={form.email}
-                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    placeholder="librarian@university.edu"
-                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Institution / Organization</label>
-                  <input
-                    value={form.organization}
-                    onChange={(e) => setForm((f) => ({ ...f, organization: e.target.value }))}
-                    placeholder="IIT Bombay / AIIMS Delhi"
-                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Additional Notes</label>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                    placeholder="Departments needed, number of users, access period…"
-                    rows={3}
-                    className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 outline-none resize-none"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFormOpen(false)}
-                    className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 transition-all"
-                  >
-                    {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-                    {submitting ? "Sending…" : "Submit"}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-
-        {formOpen && submitted && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-2xl w-full max-w-sm p-10 text-center shadow-2xl"
-            >
-              <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 size={32} className="text-emerald-600" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">Request Received!</h3>
-              <p className="text-slate-500 mt-2 text-sm">Our team will reach out at <strong>{form.email}</strong> within 24 hours.</p>
-              <button
-                onClick={() => { setSubmitted(false); setFormOpen(false); setForm({ name: "", email: "", organization: "", notes: "" }); }}
-                className="mt-6 rounded-full bg-indigo-600 hover:bg-indigo-700 px-6 py-2.5 text-sm font-bold text-white transition-all"
-              >
-                Close
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -400,12 +400,6 @@ export function DigitalLibrary() {
             >
               Create a Free Account
             </Link>
-            <Link
-              to="/institutional-access"
-              className="rounded-full border-2 border-slate-200 bg-white px-10 py-4 text-base font-bold text-slate-700 hover:border-blue-600 hover:text-blue-600 transition-all"
-            >
-              Request Institutional Access
-            </Link>
           </div>
         </div>
       </section>

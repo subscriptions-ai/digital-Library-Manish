@@ -81,9 +81,6 @@ export function ForInstitutions() {
               <button onClick={() => navigate('/signup')} className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5">
                 Create a Free Account <ArrowRight size={20} />
               </button>
-              <button onClick={() => navigate('/contact')} className="px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2">
-                Request Institutional Access
-              </button>
             </motion.div>
           </div>
 

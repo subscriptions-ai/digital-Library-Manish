@@ -61,8 +61,8 @@ export function JournalDetail() {
                 <img src={journal.coverImage} alt={journal.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
               </div>
               <div className="mt-8 space-y-4">
-                <Link to="/contact" className="block text-center w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 transition-all">
-                  Request Access
+                <Link to="/signup" className="block text-center w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 transition-all">
+                  Register Free
                 </Link>
                 <button 
                   onClick={handleDownload}
