@@ -45,6 +45,9 @@ export const TYPE_FIELDS: Record<string, FieldDef[]> = {
   'Books': [
     { key: 'publisherName', label: 'Publisher' }, { key: 'isbn', label: 'ISBN-13' },
     { key: 'year', label: 'Publication Year', type: 'number' }, { key: 'edition', label: 'Edition' }, { key: 'pages', label: 'Total Pages' },
+    // Not shown before, and saving the form wrote it back as empty — every save
+    // of an ingested book erased the DOI its link is built from.
+    { key: 'doi', label: 'DOI' },
   ],
   'Educational Videos': [
     { key: 'publisherName', label: 'Publisher / Producer' },
@@ -70,7 +73,7 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
 
   const [form, setForm] = useState<Record<string, any>>({
     title: '', description: '', authors: '', domain: DOMAINS[0]?.name || '',
-    subjectArea: '', fileUrl: '', thumbnailUrl: '', tags: '',
+    subjectArea: '', fileUrl: '', thumbnailUrl: '', originalUrl: '', tags: '',
     accessType: 'Subscription', status: 'Published',
   });
   const [chapters, setChapters] = useState<any[]>([]);
@@ -102,6 +105,7 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
           title: item.title || '', description: item.abstract || item.description || '', authors: item.authors || '',
           domain: item.domain || DOMAINS[0]?.name || '', subjectArea: item.subject || '',
           fileUrl: item.pdfUrl || '', thumbnailUrl: item.coverUrl || meta.thumbnailUrl || '',
+          originalUrl: item.originalUrl || '',
           tags: Array.isArray(meta.tags) ? meta.tags.join(', ') : '',
           accessType: item.accessType || 'Subscription', status: item.status || 'Published',
         };
@@ -159,7 +163,10 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
         tags: tagsArr,
         ...cols, metadata,
       };
-      if (kind === 'book') payload.chapters = chapters.filter(c => c.title?.trim());
+      if (kind === 'book') {
+        payload.chapters = chapters.filter(c => c.title?.trim());
+        payload.originalUrl = form.originalUrl;
+      }
 
       const url = isEditing ? `/api/admin/library/items/${kind}/${id}` : '/api/admin/library/items';
       const res = await fetch(url, {
@@ -293,6 +300,22 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
         {/* Files */}
         <div className="p-6 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Files & Media</h3>
+          {kind === 'book' && (
+            // Where a reader actually goes. The ingestion engine has always filled
+            // this in — the book at OAPEN Library, its DOI, or its DOAB page — and
+            // the form never showed it, so an ingested book looked as though the
+            // engine had found no link at all.
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Link to the book</label>
+              <div className="flex items-center gap-3">
+                <input value={form.originalUrl} onChange={e => set('originalUrl', e.target.value)} className={`flex-1 ${inputCls}`} placeholder="https://… (publisher, DOI, or OAPEN Library)" />
+                {form.originalUrl && (
+                  <a href={form.originalUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-xs font-bold text-blue-600 hover:underline">Open ↗</a>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Where readers go to read it. Filled in by the ingestion engine; the PDF field below is only for a file we host ourselves.</p>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5"><UploadCloud size={13} className="inline mr-1" />{kind === 'book' ? 'Book PDF URL (optional if chapters)' : 'Document / PDF URL'}</label>
             <input value={form.fileUrl} onChange={e => set('fileUrl', e.target.value)} className={inputCls} placeholder="https://... (PDF, S3 link)" />

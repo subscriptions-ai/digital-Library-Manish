@@ -265,7 +265,9 @@ export function ProtectedContentViewer() {
   // The rail renders whichever sections it is given.
   useEffect(() => {
     setRecord(null);
-    if (!id || !content) return;
+    // Books carry what the card needs on the view itself; the article record
+    // endpoint only ever answered them with a 404.
+    if (!id || !content || content.kind === 'book') return;
     const url = content.kind === 'content'
       ? `/api/library/content/${id}`
       : `/api/library/article/${id}`;
@@ -335,7 +337,14 @@ export function ProtectedContentViewer() {
   // ── Load PDF once we have the URL ───────────────────
   useEffect(() => {
     let isMounted = true;
-    if (!content?.url) return;
+    // No file we can show here — every DOAB book, and any article held as a link.
+    // This returned without a word, so the body stayed empty: no document, no
+    // error, and the card with the way out never rendered because it waits for
+    // an error. Nothing to load is the external case, and is shown as one.
+    if (!content?.url) {
+      if (content) { setLoadingPdf(false); setPdfError('external'); }
+      return;
+    }
     const isVideo = !!content.url.toLowerCase().match(/\.(mp4|webm|ogg)$/i);
     if (isVideo || iframeFallback) return;
 
@@ -521,6 +530,13 @@ export function ProtectedContentViewer() {
   const isVideo = !!content?.url?.toLowerCase().match(/\.(mp4|webm|ogg)$/i);
   const isPdf = !isVideo && !iframeFallback;
 
+  // Where the card sends a reader, taken from the full record when there is one
+  // and from the view otherwise — a book has no record endpoint, so for books the
+  // view is the only place these ever arrive.
+  const wayOut: string | null = record?.originalUrl || content?.originalUrl || content?.url || null;
+  const doi: string | null = record?.doi || content?.doi || null;
+  const isOapenPdf = /library\.oapen\.org\/rest\/bitstreams\//.test(wayOut || '');
+
   // ────────────────────────────────────────────────────
   //  Render: Main viewer
   // ────────────────────────────────────────────────────
@@ -698,7 +714,9 @@ export function ProtectedContentViewer() {
         {pdfError && !iframeFallback && (
           <div className="mx-auto max-w-2xl px-5 py-10">
             <p className="font-mono text-[11px] uppercase tracking-wider text-caution">
-              {pdfError === 'restricted' ? 'Full text unavailable' : 'Full text opens at the publisher'}
+              {pdfError === 'restricted' ? 'Full text unavailable'
+                : isOapenPdf ? 'Full text opens at OAPEN Library'
+                : 'Full text opens at the publisher'}
             </p>
             <h2 className="mt-2 font-serif text-2xl font-medium leading-snug text-ink">
               {content?.title}
@@ -713,8 +731,8 @@ export function ProtectedContentViewer() {
                   </React.Fragment>
                 ))}
               </p>
-            ) : record?.authors ? (
-              <p className="mt-2 text-sm text-ink-2">{record.authors}</p>
+            ) : (record?.authors || content?.authors) ? (
+              <p className="mt-2 text-sm text-ink-2">{record?.authors || content?.authors}</p>
             ) : null}
 
             <p className="tnum mt-2 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
@@ -737,20 +755,22 @@ export function ProtectedContentViewer() {
             )}
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              {(record?.originalUrl || content?.url) && (
-                <a href={record?.originalUrl || content.url} target="_blank" rel="noreferrer"
+              {wayOut && (
+                <a href={wayOut} target="_blank" rel="noreferrer"
                   className="inline-flex items-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
-                  <ExternalLink size={15} /> Read at publisher
+                  <ExternalLink size={15} />
+                  {/* Said for what it is: an OAPEN link downloads the book itself. */}
+                  {isOapenPdf ? 'Download PDF · OAPEN Library' : 'Read at publisher'}
                 </a>
               )}
-              {record?.doi && (
-                <a href={`https://doi.org/${String(record.doi).replace(/^https?:\/\/(dx\.)?doi\.org\//i, '')}`}
+              {doi && (
+                <a href={`https://doi.org/${String(doi).replace(/^https?:\/\/(dx\.)?doi\.org\//i, '')}`}
                   target="_blank" rel="noreferrer"
                   className="inline-flex items-center gap-2 rounded-md border border-rule-2 px-4 py-2.5 font-mono text-[12px] text-muted hover:border-accent hover:text-accent">
-                  DOI {record.doi}
+                  DOI {doi}
                 </a>
               )}
-              {record && (
+              {record && content?.kind !== 'book' && (
                 <Link to={`${libBase}/article/${id}`}
                   className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline">
                   Full record
@@ -761,7 +781,9 @@ export function ProtectedContentViewer() {
             <p className="mt-6 text-[12.5px] leading-relaxed text-faint">
               {pdfError === 'restricted'
                 ? 'We hold this record and its metadata. The publisher\u2019s copy did not respond, so the link above may not work either.'
-                : 'We hold this record and its metadata. The publisher hosts the file and does not permit it to be served from here.'}
+                : isOapenPdf
+                  ? 'OAPEN Library holds this book as an open-access PDF; the button above downloads it from there.'
+                  : 'We hold this record and its metadata. The publisher hosts the file and does not permit it to be served from here.'}
             </p>
           </div>
         )}

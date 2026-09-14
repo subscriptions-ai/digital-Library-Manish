@@ -10535,6 +10535,12 @@ async function doabPage(term, offset) {
   );
   return meta.map((r2) => ({ ...r2, bitstreams: r2?.uuid && byUuid.get(r2.uuid) || [] }));
 }
+async function oapenPdfFor(handle) {
+  const d = await getJson(`https://library.oapen.org/rest/handle/${handle}?expand=bitstreams`);
+  const pdf = (d?.bitstreams || []).find((b) => b?.bundleName === "ORIGINAL" && /pdf/i.test(b?.mimeType || "") && b?.retrieveLink);
+  return pdf ? `https://library.oapen.org${pdf.retrieveLink}` : null;
+}
+var oapenHandleIn = (identifiers) => identifiers.map((v) => String(v).match(/library\.oapen\.org\/handle\/([0-9.]+\/[0-9]+)/i)?.[1]).find(Boolean) || null;
 function doabFields(rec) {
   const m2 = /* @__PURE__ */ new Map();
   for (const row of rec?.metadata || []) {
@@ -10571,13 +10577,20 @@ async function discoverBooksPage(sweep) {
       const doi = (f3.one("oapen.identifier.doi") || "").replace(/^https?:\/\/(dx\.)?doi\.org\//i, "") || null;
       const isbn = f3.one("dc.identifier.isbn") || null;
       const handle = rec.handle || null;
+      const oapenHandle = oapenHandleIn(f3.all("dc.identifier"));
       const fingerprint = doi ? `doab:doi:${doi.toLowerCase()}` : handle ? `doab:handle:${handle}` : `doab:t:${String(title).toLowerCase().replace(/\W+/g, " ").trim().slice(0, 180)}`;
       const cover = (rec.bitstreams || []).find((b) => /^image\//i.test(b?.mimeType || ""));
       const coverUrl = cover?.retrieveLink ? `https://directory.doabooks.org${cover.retrieveLink}` : null;
-      const existing = await p.book.findFirst({ where: { fingerprint }, select: { id: true, coverUrl: true } });
+      const existing = await p.book.findFirst({ where: { fingerprint }, select: { id: true, coverUrl: true, originalUrl: true } });
       if (existing) {
-        if (coverUrl && coverUrl !== existing.coverUrl) {
-          await p.book.update({ where: { id: existing.id }, data: { coverUrl } }).catch(() => {
+        const repair = {};
+        if (coverUrl && coverUrl !== existing.coverUrl) repair.coverUrl = coverUrl;
+        if (oapenHandle && !String(existing.originalUrl || "").includes("library.oapen.org")) {
+          const pdf = await oapenPdfFor(oapenHandle);
+          if (pdf) repair.originalUrl = pdf;
+        }
+        if (Object.keys(repair).length) {
+          await p.book.update({ where: { id: existing.id }, data: repair }).catch(() => {
           });
         }
         skippedHeld++;
@@ -10585,6 +10598,7 @@ async function discoverBooksPage(sweep) {
       }
       const licence = licenceFromProse(f3.one("publisher.oalicense"));
       const commercialOk = licenceAllowsCommercialUse(licence);
+      const oapenPdf = oapenHandle ? await oapenPdfFor(oapenHandle) : null;
       commercialOk ? r2.accepted++ : r2.rejected++;
       const year = Number(String(f3.one("dc.date.issued") || "").slice(0, 4)) || null;
       const authors = [...f3.all("dc.contributor.author"), ...f3.all("dc.contributor.editor")].filter(Boolean).join(", ") || null;
@@ -10618,7 +10632,8 @@ async function discoverBooksPage(sweep) {
           rightsVerifiedBy: "ingestion",
           rightsStatus: "MetadataOnly",
           accessStatus: "LinkOnly",
-          originalUrl: doi ? `https://doi.org/${doi}` : handle ? `https://directory.doabooks.org/handle/${handle}` : null,
+          // The book itself first; its DOI landing page or DOAB record if not.
+          originalUrl: oapenPdf || (doi ? `https://doi.org/${doi}` : handle ? `https://directory.doabooks.org/handle/${handle}` : null),
           rightsHolder: f3.one("publisher.name") || null,
           source: "DOAB",
           ownershipSource: "Ingested",
@@ -13181,7 +13196,15 @@ async function startServer() {
         journalIssn: normaliseIssn(it.journalIssn) ?? null,
         year: it.year ?? null,
         volume: it.volume ?? null,
-        issue: it.issue ?? null
+        issue: it.issue ?? null,
+        // The way out, sent with the item rather than left to a second request.
+        // The reader fetched it from the *article* record endpoint whatever the
+        // item was, so for a book that request was a 404, the link never arrived,
+        // and every one of the DOAB books — none of which has a file we serve —
+        // opened onto a blank page.
+        originalUrl: it.originalUrl ?? null,
+        doi: it.doi ?? null,
+        authors: it.authors ?? null
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to view content" });
@@ -17332,6 +17355,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     description: b.description || null,
     coverUrl: b.thumbnailUrl || null,
     pdfUrl: b.fileUrl || b.pdfUrl || null,
+    originalUrl: b.originalUrl || null,
     accessType: b.accessType || "OpenAccess",
     status: b.status || "Published",
     source: "Admin",
@@ -17474,6 +17498,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         return res.json(aliasItem(updated2));
       }
       const data = kind === "book" ? buildAdminBook(req.body, by) : buildAdminArticle(req.body, by);
+      if (kind === "book") {
+        delete data.source;
+        delete data.ownershipSource;
+        delete data.createdBy;
+        if (!("doi" in req.body)) delete data.doi;
+        if (!("originalUrl" in req.body)) delete data.originalUrl;
+      }
       if (kind === "article") {
         const publisher = await upsertPublisherByName(data.publisherName, "Admin");
         const journal = await upsertJournalByIssn(data.journalIssn, {

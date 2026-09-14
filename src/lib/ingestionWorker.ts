@@ -307,6 +307,30 @@ async function doabPage(term: string, offset: number) {
   return meta.map((r: any) => ({ ...r, bitstreams: (r?.uuid && byUuid.get(r.uuid)) || [] }));
 }
 
+/**
+ * The book's own PDF, where OAPEN Library holds it.
+ *
+ * DOAB carries no file, but most of its records point at OAPEN Library in
+ * `dc.identifier` — seventy of a hundred in a sample of law titles — and OAPEN
+ * does hold the book: an ORIGINAL bitstream, application/pdf, downloadable with
+ * no login and no browser check through its DSpace REST path (the HTML handle
+ * page sits behind a bot wall; the retrieve link does not). That was being read
+ * past, so readers got a DOI landing page when the book itself was one link away.
+ *
+ * Used as the link out, never as `pdfUrl`: a DOAB licence is a publisher's
+ * sentence about its catalogue, and that is not grounds to serve the file
+ * through this site. Returns null on any failure so the DOI link still stands.
+ */
+async function oapenPdfFor(handle: string): Promise<string | null> {
+  const d = await getJson(`https://library.oapen.org/rest/handle/${handle}?expand=bitstreams`);
+  const pdf = (d?.bitstreams || []).find((b: any) =>
+    b?.bundleName === 'ORIGINAL' && /pdf/i.test(b?.mimeType || '') && b?.retrieveLink);
+  return pdf ? `https://library.oapen.org${pdf.retrieveLink}` : null;
+}
+
+const oapenHandleIn = (identifiers: string[]) =>
+  identifiers.map(v => String(v).match(/library\.oapen\.org\/handle\/([0-9.]+\/[0-9]+)/i)?.[1]).find(Boolean) || null;
+
 /** DOAB returns metadata as a flat list of key/value rows, with keys repeating. */
 function doabFields(rec: any) {
   const m = new Map<string, string[]>();
@@ -358,6 +382,7 @@ async function discoverBooksPage(sweep: any) {
         .replace(/^https?:\/\/(dx\.)?doi\.org\//i, '') || null;
       const isbn = f.one('dc.identifier.isbn') || null;
       const handle = rec.handle || null;
+      const oapenHandle = oapenHandleIn(f.all('dc.identifier'));
 
       const fingerprint = doi ? `doab:doi:${doi.toLowerCase()}`
         : handle ? `doab:handle:${handle}`
@@ -367,13 +392,21 @@ async function discoverBooksPage(sweep: any) {
       const coverUrl = cover?.retrieveLink
         ? `https://directory.doabooks.org${cover.retrieveLink}` : null;
 
-      const existing = await p.book.findFirst({ where: { fingerprint }, select: { id: true, coverUrl: true } });
+      const existing = await p.book.findFirst({ where: { fingerprint }, select: { id: true, coverUrl: true, originalUrl: true } });
       if (existing) {
         // A second sweep is worth something: it repairs what the first got wrong.
         // Covers were attached by a join that could not work, so walking past a
         // book we already hold would have left every one of them wrong for ever.
-        if (coverUrl && coverUrl !== existing.coverUrl) {
-          await p.book.update({ where: { id: existing.id }, data: { coverUrl } }).catch(() => {});
+        // The same goes for the link: books swept before OAPEN was read get
+        // their PDF the next time the sweep passes them.
+        const repair: any = {};
+        if (coverUrl && coverUrl !== existing.coverUrl) repair.coverUrl = coverUrl;
+        if (oapenHandle && !String(existing.originalUrl || '').includes('library.oapen.org')) {
+          const pdf = await oapenPdfFor(oapenHandle);
+          if (pdf) repair.originalUrl = pdf;
+        }
+        if (Object.keys(repair).length) {
+          await p.book.update({ where: { id: existing.id }, data: repair }).catch(() => {});
         }
         skippedHeld++;
         continue;
@@ -381,6 +414,7 @@ async function discoverBooksPage(sweep: any) {
 
       const licence = licenceFromProse(f.one('publisher.oalicense'));
       const commercialOk = licenceAllowsCommercialUse(licence);
+      const oapenPdf = oapenHandle ? await oapenPdfFor(oapenHandle) : null;
       commercialOk ? r.accepted++ : r.rejected++;
 
       const year = Number(String(f.one('dc.date.issued') || '').slice(0, 4)) || null;
@@ -418,8 +452,10 @@ async function discoverBooksPage(sweep: any) {
           rightsVerifiedBy: 'ingestion',
           rightsStatus: 'MetadataOnly',
           accessStatus: 'LinkOnly',
-          originalUrl: doi ? `https://doi.org/${doi}`
-            : handle ? `https://directory.doabooks.org/handle/${handle}` : null,
+          // The book itself first; its DOI landing page or DOAB record if not.
+          originalUrl: oapenPdf
+            || (doi ? `https://doi.org/${doi}`
+            : handle ? `https://directory.doabooks.org/handle/${handle}` : null),
           rightsHolder: f.one('publisher.name') || null,
           source: 'DOAB',
           ownershipSource: 'Ingested',

@@ -2758,6 +2758,14 @@ async function startServer() {
         year: it.year ?? null,
         volume: it.volume ?? null,
         issue: it.issue ?? null,
+        // The way out, sent with the item rather than left to a second request.
+        // The reader fetched it from the *article* record endpoint whatever the
+        // item was, so for a book that request was a 404, the link never arrived,
+        // and every one of the DOAB books — none of which has a file we serve —
+        // opened onto a blank page.
+        originalUrl: it.originalUrl ?? null,
+        doi: it.doi ?? null,
+        authors: it.authors ?? null,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to view content" });
@@ -7269,6 +7277,7 @@ async function startServer() {
     description: b.description || null,
     coverUrl: b.thumbnailUrl || null,
     pdfUrl: b.fileUrl || b.pdfUrl || null,
+    originalUrl: b.originalUrl || null,
     accessType: b.accessType || 'OpenAccess',
     status: b.status || 'Published',
     source: 'Admin',
@@ -7399,6 +7408,17 @@ async function startServer() {
         return res.json(aliasItem(updated));
       }
       const data: any = kind === 'book' ? buildAdminBook(req.body, by) : buildAdminArticle(req.body, by);
+      if (kind === 'book') {
+        // An edit is not a new entry. buildAdminBook was written for creating
+        // books by hand, and used here it stamped every book it saved as
+        // source 'Admin', AdminEntered — so correcting a typo in a DOAB title
+        // erased where the book came from and on what rights basis it is held.
+        delete data.source; delete data.ownershipSource; delete data.createdBy;
+        // And a field the form did not send is a field nobody meant to clear.
+        // The form had no DOI or link input, so each save wrote both as empty.
+        if (!('doi' in req.body)) delete data.doi;
+        if (!('originalUrl' in req.body)) delete data.originalUrl;
+      }
       if (kind === 'article') {
         const publisher = await upsertPublisherByName(data.publisherName, 'Admin');
         const journal = await upsertJournalByIssn(data.journalIssn, {
