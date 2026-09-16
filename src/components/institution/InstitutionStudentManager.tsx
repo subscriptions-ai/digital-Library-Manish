@@ -172,7 +172,7 @@ export function InstitutionStudentManager() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-ink">User Directory</h1>
-          <p className="text-sm text-muted mt-0.5">Faculty and researchers you have added. Students are not added here.</p>
+          <p className="text-sm text-muted mt-0.5">Everyone you have added to this institution.</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-60">
@@ -211,8 +211,9 @@ export function InstitutionStudentManager() {
         <div className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-5 py-3.5 ${
           atCap ? 'border-caution bg-caution-soft' : 'border-rule bg-surface'}`}>
           <p className="text-[13.5px] text-ink-2">
-            <b className="text-ink">You can add up to {FREE_INSTITUTION_MEMBER_CAP} users</b> on the free dashboard —
-            faculty and researchers only. Students cannot be added here.
+            <b className="text-ink">You can add up to {FREE_INSTITUTION_MEMBER_CAP} users</b> on the free dashboard.
+            Faculty and researchers get the most out of these seats, so they are worth adding first.
+            On Pro we agree the number of students with you.
           </p>
           <span className={`tnum shrink-0 font-mono text-[12px] ${atCap ? 'text-caution' : 'text-muted'}`}>
             {students.length} of {FREE_INSTITUTION_MEMBER_CAP} used
@@ -452,7 +453,7 @@ export function InstitutionStudentManager() {
               </div>
               <div className="p-6 space-y-4">
                 <p className="text-sm text-ink-2">Upload a CSV file containing multiple users to register them all at once. The file must include the headers: <strong>name, email, password, designation</strong>. Optional headers: <strong>mobile, branch, department</strong>.</p>
-                <p className="mt-2 text-xs text-muted">Designation must be one of: {INSTITUTION_MEMBER_ROLES.join(', ')}. Students cannot be added{onFree ? `, and a free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users in all` : ''}.</p>
+                <p className="mt-2 text-xs text-muted">Designation must be one of: {INSTITUTION_MEMBER_ROLES.join(', ')}{onFree ? `. A free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users in all` : ''}.</p>
                 
                 <div className="flex justify-center my-4">
                   <a href="data:text/csv;charset=utf-8,name,email,password,mobile,designation,branch,department%0AJohn%20Doe,john@example.com,pass123,9876543210,Student,CSE,Engineering" 

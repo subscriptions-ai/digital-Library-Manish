@@ -9734,10 +9734,11 @@ async function startServer() {
   /**
    * What a librarian may add, and how many.
    *
-   * Faculty and researchers — a closed list, checked here rather than trusted
-   * from the form, because the form is not the only way in. A free dashboard
-   * holds twenty of them; an institution with a subscription is not capped
-   * here, since what it may add was agreed on the call.
+   * A closed list of roles, checked here rather than trusted from the form,
+   * because the form is not the only way in — faculty and researchers are what
+   * we recommend, but a student is a perfectly good answer. A free dashboard
+   * holds twenty members in all; an institution with a subscription is not
+   * capped here, since how many it may add is agreed with it.
    *
    * `incoming` is how many the request wants to create, so a bulk import of
    * thirty into an empty institution is refused as thirty rather than letting
@@ -9809,7 +9810,7 @@ async function startServer() {
       const role = memberRole(designation);
       if (!role) {
         return res.status(400).json({
-          error: `Choose a role from the list — faculty and researchers only. Students cannot be added here.`,
+          error: `Choose a role from the list: ${INSTITUTION_MEMBER_ROLES.join(', ')}.`,
           code: 'MEMBER_ROLE', allowed: INSTITUTION_MEMBER_ROLES,
         });
       }

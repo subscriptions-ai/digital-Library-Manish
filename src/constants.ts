@@ -473,12 +473,13 @@ export function contentEditPath(contentType?: string | null, id?: string): strin
 /**
  * Who a librarian may add to their institution, and how many.
  *
- * Faculty and researchers only. The people who read on an institution's behalf
- * are the ones it wants counted — a student roll is a different product, and
- * putting one behind a free dashboard turns twenty seats into a campus.
+ * Faculty and researchers first, because those are the people who get the most
+ * out of twenty seats — but it is advice, not a rule: a librarian who wants to
+ * add a student may. Librarian is not on the list; this is the librarian's own
+ * dashboard, and there is nothing to add.
  *
  * The cap is on the free dashboard. An institution with a subscription is not
- * limited here; what it may add is whatever was agreed on the call.
+ * limited here; what it may add is agreed with it, per institution.
  */
 export const INSTITUTION_MEMBER_ROLES = [
   'Professor',
@@ -488,7 +489,7 @@ export const INSTITUTION_MEMBER_ROLES = [
   'Faculty',
   'Researcher',
   'Research Scholar',
-  'Librarian',
+  'Student',
 ] as const;
 
 export const FREE_INSTITUTION_MEMBER_CAP = 20;

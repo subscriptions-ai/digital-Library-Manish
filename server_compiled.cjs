@@ -10279,7 +10279,7 @@ var INSTITUTION_MEMBER_ROLES = [
   "Faculty",
   "Researcher",
   "Research Scholar",
-  "Librarian"
+  "Student"
 ];
 var FREE_INSTITUTION_MEMBER_CAP = 20;
 var REGISTRANT_TYPES = [
@@ -19541,7 +19541,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const role = memberRole(designation);
       if (!role) {
         return res.status(400).json({
-          error: `Choose a role from the list \u2014 faculty and researchers only. Students cannot be added here.`,
+          error: `Choose a role from the list: ${INSTITUTION_MEMBER_ROLES.join(", ")}.`,
           code: "MEMBER_ROLE",
           allowed: INSTITUTION_MEMBER_ROLES
         });
