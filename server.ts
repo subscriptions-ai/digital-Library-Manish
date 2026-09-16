@@ -22,7 +22,8 @@ import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
-import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, opensInstitutionDashboard } from "./src/constants.js";
+import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, opensInstitutionDashboard,
+  INSTITUTION_MEMBER_ROLES, FREE_INSTITUTION_MEMBER_CAP } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
 import {
@@ -9730,6 +9731,35 @@ async function startServer() {
     return { id: explicit, name: inst.name || '' };
   };
 
+  /**
+   * What a librarian may add, and how many.
+   *
+   * Faculty and researchers — a closed list, checked here rather than trusted
+   * from the form, because the form is not the only way in. A free dashboard
+   * holds twenty of them; an institution with a subscription is not capped
+   * here, since what it may add was agreed on the call.
+   *
+   * `incoming` is how many the request wants to create, so a bulk import of
+   * thirty into an empty institution is refused as thirty rather than letting
+   * the first twenty through and failing the rest one at a time.
+   */
+  const institutionMemberGate = async (req: any, institutionId: string, incoming: number) => {
+    const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, institutionId);
+    if (subs.length) return null;
+    const held = await prisma.user.count({ where: { institutionId, role: 'Student' } });
+    if (held + incoming <= FREE_INSTITUTION_MEMBER_CAP) return null;
+    return {
+      error: `A free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users. You have ${held}`
+        + `${incoming > 1 ? ` and asked to add ${incoming}` : ''} — apply for Pro to add more.`,
+      code: 'MEMBER_LIMIT', held, cap: FREE_INSTITUTION_MEMBER_CAP,
+    };
+  };
+
+  const memberRole = (given: any) => {
+    const wanted = String(given || '').trim();
+    return (INSTITUTION_MEMBER_ROLES as readonly string[]).includes(wanted) ? wanted : null;
+  };
+
   app.get("/api/institution/students", authenticateJWT, async (req: any, res) => {
     try {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });
@@ -9776,6 +9806,16 @@ async function startServer() {
       const institutionName = target.name;
       const targetInstitutionId = target.id;
 
+      const role = memberRole(designation);
+      if (!role) {
+        return res.status(400).json({
+          error: `Choose a role from the list — faculty and researchers only. Students cannot be added here.`,
+          code: 'MEMBER_ROLE', allowed: INSTITUTION_MEMBER_ROLES,
+        });
+      }
+      const over = await institutionMemberGate(req, targetInstitutionId!, 1);
+      if (over) return res.status(409).json(over);
+
       const student = await (prisma as any).user.create({
         data: {
           email,
@@ -9783,7 +9823,7 @@ async function startServer() {
           displayName: name,
           role: 'Student', // Preserve existing logic
           contact: mobile || null,
-          designation: designation || 'Student',
+          designation: role,
           organization: institutionName,
           institutionId: targetInstitutionId,
           institutionProfile: {
@@ -9817,6 +9857,9 @@ async function startServer() {
       const institutionName = target.name;
       const targetInstitutionId = target.id;
 
+      const over = await institutionMemberGate(req, targetInstitutionId!, users.length);
+      if (over) return res.status(409).json(over);
+
       let successCount = 0;
       let errorCount = 0;
       const errors = [];
@@ -9836,6 +9879,13 @@ async function startServer() {
             continue;
           }
 
+          const uRole = memberRole(u.designation);
+          if (!uRole) {
+            errorCount++;
+            errors.push({ email: u.email, error: `Role must be one of: ${INSTITUTION_MEMBER_ROLES.join(', ')}` });
+            continue;
+          }
+
           const hashed = await bcrypt.hash(u.password, 10);
           await (prisma as any).user.create({
             data: {
@@ -9844,7 +9894,7 @@ async function startServer() {
               displayName: u.name,
               role: 'Student', // Preserve existing logic
               contact: u.mobile || null,
-              designation: u.designation || 'Student',
+              designation: uRole,
               organization: institutionName,
               institutionId: targetInstitutionId,
               institutionProfile: {

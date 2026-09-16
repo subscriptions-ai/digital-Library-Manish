@@ -215,8 +215,8 @@ export function LibrarianHome() {
   if (st.total === 0) {
     todos.push(
       <Todo key="nostu" tone="accent"
-        text={<>No students are enrolled yet. Add them and they can start reading straight away.</>}
-        cta="Add students" to="/institution/students" />
+        text={<>No users have been added yet. Add your faculty and researchers and they can start reading straight away.</>}
+        cta="Add users" to="/institution/students" />
     );
   }
 
@@ -237,7 +237,7 @@ export function LibrarianHome() {
             <div className="flex shrink-0 flex-wrap gap-2">
               <Link to="/institution/students"
                 className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover">
-                <UserPlus size={15} /> Add students
+                <UserPlus size={15} /> Add users
               </Link>
               <Link to="/institution/explore"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-rule bg-surface px-4 py-2.5 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-2">
@@ -415,7 +415,7 @@ export function LibrarianHome() {
         <section>
           <p className={LABEL}>Go to</p>
           <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-            <Door to="/institution/students" icon={UserPlus} label="Students"
+            <Door to="/institution/students" icon={UserPlus} label="Users"
               note={`${n(st.total)} enrolled · ${n(st.activeLast30)} read something this month`} />
             <Door to="/institution/explore" icon={BookOpen} label="The library"
               note="Search everything your subscription covers" />
@@ -465,7 +465,7 @@ export function LibrarianHome() {
                 <p className="text-[13px] text-muted">Nobody has opened anything yet.</p>
                 <Link to="/institution/students"
                   className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
-                  Add students
+                  Add users
                 </Link>
               </div>
             ) : (

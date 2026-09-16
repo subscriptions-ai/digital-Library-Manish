@@ -4,6 +4,7 @@ import {
   ChevronDown, Pencil, Trash2, X, Save, Loader2, Activity, RefreshCw, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { INSTITUTION_MEMBER_ROLES, FREE_INSTITUTION_MEMBER_CAP } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function authHeader() {
@@ -12,6 +13,9 @@ function authHeader() {
 
 export function InstitutionStudentManager() {
   const [students, setStudents] = useState<any[]>([]);
+  // Whether the cap applies at all: an institution with a subscription is not
+  // limited here, and must not be shown a notice about a limit it does not have.
+  const [onFree, setOnFree] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -51,6 +55,13 @@ export function InstitutionStudentManager() {
   };
 
   useEffect(() => { fetchStudents(); }, []);
+
+  useEffect(() => {
+    fetch('/api/institution/overview', { headers: authHeader() })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => d && setOnFree(!!d.subscription?.onFreeAllowance))
+      .catch(() => {});
+  }, []);
 
   /* ── ADD STUDENT ── */
   const handleAddStudent = async (e: React.FormEvent) => {
@@ -148,6 +159,8 @@ export function InstitutionStudentManager() {
     }
   };
 
+  const atCap = onFree && students.length >= FREE_INSTITUTION_MEMBER_CAP;
+
   const filtered = students.filter(s =>
     s.email?.toLowerCase().includes(search.toLowerCase()) ||
     (s.displayName?.toLowerCase() || '').includes(search.toLowerCase())
@@ -159,7 +172,7 @@ export function InstitutionStudentManager() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-ink">User Directory</h1>
-          <p className="text-sm text-muted mt-0.5">Manage, edit and remove enrolled users.</p>
+          <p className="text-sm text-muted mt-0.5">Faculty and researchers you have added. Students are not added here.</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-60">
@@ -183,12 +196,29 @@ export function InstitutionStudentManager() {
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-md text-sm font-bold hover:bg-accent-hover shadow-md "
+            disabled={atCap}
+            title={atCap ? `A free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users.` : undefined}
+            className="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-md text-sm font-bold hover:bg-accent-hover shadow-md disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus size={16} /> Add User
           </button>
         </div>
       </div>
+
+      {/* What the free dashboard allows, said before anyone fills in a form and
+          is turned away by the server at the end of it. */}
+      {onFree && (
+        <div className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-5 py-3.5 ${
+          atCap ? 'border-caution bg-caution-soft' : 'border-rule bg-surface'}`}>
+          <p className="text-[13.5px] text-ink-2">
+            <b className="text-ink">You can add up to {FREE_INSTITUTION_MEMBER_CAP} users</b> on the free dashboard —
+            faculty and researchers only. Students cannot be added here.
+          </p>
+          <span className={`tnum shrink-0 font-mono text-[12px] ${atCap ? 'text-caution' : 'text-muted'}`}>
+            {students.length} of {FREE_INSTITUTION_MEMBER_CAP} used
+          </span>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden">
@@ -315,7 +345,7 @@ export function InstitutionStudentManager() {
           </table>
         </div>
         <div className="px-6 py-3 border-t border-rule bg-surface-2 text-xs text-faint">
-          {filtered.length} student{filtered.length !== 1 ? 's' : ''} enrolled
+          {filtered.length} user{filtered.length !== 1 ? 's' : ''}{onFree ? ` · ${Math.max(0, FREE_INSTITUTION_MEMBER_CAP - students.length)} of ${FREE_INSTITUTION_MEMBER_CAP} left` : ''}
         </div>
       </div>
 
@@ -355,15 +385,11 @@ export function InstitutionStudentManager() {
                       className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Designation</label>
-                    <select value={newStudent.designation} onChange={e => setNewStudent({ ...newStudent, designation: e.target.value })}
+                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Designation *</label>
+                    <select required value={newStudent.designation} onChange={e => setNewStudent({ ...newStudent, designation: e.target.value })}
                       className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none">
                       <option value="">Select Role...</option>
-                      <option value="Student">Student</option>
-                      <option value="Professor">Professor</option>
-                      <option value="HOD">HOD</option>
-                      <option value="Librarian">Librarian</option>
-                      <option value="Staff">Staff</option>
+                      {INSTITUTION_MEMBER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
                 </div>
@@ -425,7 +451,8 @@ export function InstitutionStudentManager() {
                 <button onClick={() => setShowImportModal(false)} className="text-faint hover:text-white"><X size={20} /></button>
               </div>
               <div className="p-6 space-y-4">
-                <p className="text-sm text-ink-2">Upload a CSV file containing multiple users to register them all at once. The file must include the headers: <strong>name, email, password</strong>. Optional headers: <strong>mobile, designation, branch, department</strong>.</p>
+                <p className="text-sm text-ink-2">Upload a CSV file containing multiple users to register them all at once. The file must include the headers: <strong>name, email, password, designation</strong>. Optional headers: <strong>mobile, branch, department</strong>.</p>
+                <p className="mt-2 text-xs text-muted">Designation must be one of: {INSTITUTION_MEMBER_ROLES.join(', ')}. Students cannot be added{onFree ? `, and a free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users in all` : ''}.</p>
                 
                 <div className="flex justify-center my-4">
                   <a href="data:text/csv;charset=utf-8,name,email,password,mobile,designation,branch,department%0AJohn%20Doe,john@example.com,pass123,9876543210,Student,CSE,Engineering" 
@@ -527,11 +554,7 @@ export function InstitutionStudentManager() {
                     <select value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
                       className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none">
                       <option value="">Select Role...</option>
-                      <option value="Student">Student</option>
-                      <option value="Professor">Professor</option>
-                      <option value="HOD">HOD</option>
-                      <option value="Librarian">Librarian</option>
-                      <option value="Staff">Staff</option>
+                      {INSTITUTION_MEMBER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
                 </div>

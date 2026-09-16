@@ -470,6 +470,29 @@ export function contentEditPath(contentType?: string | null, id?: string): strin
  * changing a line later reinterprets everyone already recorded under it, so
  * they are chosen to last rather than to be exhaustive.
  */
+/**
+ * Who a librarian may add to their institution, and how many.
+ *
+ * Faculty and researchers only. The people who read on an institution's behalf
+ * are the ones it wants counted — a student roll is a different product, and
+ * putting one behind a free dashboard turns twenty seats into a campus.
+ *
+ * The cap is on the free dashboard. An institution with a subscription is not
+ * limited here; what it may add is whatever was agreed on the call.
+ */
+export const INSTITUTION_MEMBER_ROLES = [
+  'Professor',
+  'Associate Professor',
+  'Assistant Professor',
+  'HOD / Dean',
+  'Faculty',
+  'Researcher',
+  'Research Scholar',
+  'Librarian',
+] as const;
+
+export const FREE_INSTITUTION_MEMBER_CAP = 20;
+
 export const REGISTRANT_TYPES = [
   { id: 'Institute', label: 'Institute', hint: 'College, university or school' },
   { id: 'Corporate', label: 'Corporate / Industry', hint: 'Company or R&D organisation' },

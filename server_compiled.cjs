@@ -10271,6 +10271,17 @@ var DOMAINS = [
     themeColor: "sky"
   }
 ];
+var INSTITUTION_MEMBER_ROLES = [
+  "Professor",
+  "Associate Professor",
+  "Assistant Professor",
+  "HOD / Dean",
+  "Faculty",
+  "Researcher",
+  "Research Scholar",
+  "Librarian"
+];
+var FREE_INSTITUTION_MEMBER_CAP = 20;
 var REGISTRANT_TYPES = [
   { id: "Institute", label: "Institute", hint: "College, university or school" },
   { id: "Corporate", label: "Corporate / Industry", hint: "Company or R&D organisation" },
@@ -19473,6 +19484,22 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     if (!inst) return { name: "", error: "That institution does not exist." };
     return { id: explicit, name: inst.name || "" };
   };
+  const institutionMemberGate = async (req, institutionId, incoming) => {
+    const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, institutionId);
+    if (subs.length) return null;
+    const held = await prisma3.user.count({ where: { institutionId, role: "Student" } });
+    if (held + incoming <= FREE_INSTITUTION_MEMBER_CAP) return null;
+    return {
+      error: `A free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users. You have ${held}${incoming > 1 ? ` and asked to add ${incoming}` : ""} \u2014 apply for Pro to add more.`,
+      code: "MEMBER_LIMIT",
+      held,
+      cap: FREE_INSTITUTION_MEMBER_CAP
+    };
+  };
+  const memberRole = (given) => {
+    const wanted = String(given || "").trim();
+    return INSTITUTION_MEMBER_ROLES.includes(wanted) ? wanted : null;
+  };
   app.get("/api/institution/students", authenticateJWT, async (req, res) => {
     try {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
@@ -19511,6 +19538,16 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (target.error) return res.status(400).json({ error: target.error });
       const institutionName = target.name;
       const targetInstitutionId = target.id;
+      const role = memberRole(designation);
+      if (!role) {
+        return res.status(400).json({
+          error: `Choose a role from the list \u2014 faculty and researchers only. Students cannot be added here.`,
+          code: "MEMBER_ROLE",
+          allowed: INSTITUTION_MEMBER_ROLES
+        });
+      }
+      const over = await institutionMemberGate(req, targetInstitutionId, 1);
+      if (over) return res.status(409).json(over);
       const student = await prisma3.user.create({
         data: {
           email,
@@ -19519,7 +19556,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           role: "Student",
           // Preserve existing logic
           contact: mobile || null,
-          designation: designation || "Student",
+          designation: role,
           organization: institutionName,
           institutionId: targetInstitutionId,
           institutionProfile: {
@@ -19548,6 +19585,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (target.error) return res.status(400).json({ error: target.error });
       const institutionName = target.name;
       const targetInstitutionId = target.id;
+      const over = await institutionMemberGate(req, targetInstitutionId, users.length);
+      if (over) return res.status(409).json(over);
       let successCount = 0;
       let errorCount = 0;
       const errors = [];
@@ -19564,6 +19603,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             errors.push({ email: u.email, error: "Email already exists" });
             continue;
           }
+          const uRole = memberRole(u.designation);
+          if (!uRole) {
+            errorCount++;
+            errors.push({ email: u.email, error: `Role must be one of: ${INSTITUTION_MEMBER_ROLES.join(", ")}` });
+            continue;
+          }
           const hashed = await import_bcryptjs.default.hash(u.password, 10);
           await prisma3.user.create({
             data: {
@@ -19573,7 +19618,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
               role: "Student",
               // Preserve existing logic
               contact: u.mobile || null,
-              designation: u.designation || "Student",
+              designation: uRole,
               organization: institutionName,
               institutionId: targetInstitutionId,
               institutionProfile: {
