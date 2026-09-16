@@ -192,7 +192,7 @@ export function LibrarianHome() {
   if (st.neverSignedIn > 0) {
     todos.push(
       <Todo key="never" tone="caution"
-        text={<><b className="text-ink">{n(st.neverSignedIn)} of {n(st.total)} students</b> have never opened the library.</>}
+        text={<><b className="text-ink">{n(st.neverSignedIn)} of {n(st.total)} users</b> have never opened the library.</>}
         cta="See who" to="/institution/analytics" />
     );
   }
@@ -254,13 +254,13 @@ export function LibrarianHome() {
             {/* The whole of it, counted once — articles, books and everything on
                 the archived shelf — rather than two of its parts. */}
             {sub.onFreeAllowance
-              ? <>The whole library — <b className="text-ink">{n(col.total)} items</b> — open to you and your students, half an hour at a time.</>
+              ? <>The whole library — <b className="text-ink">{n(col.total)} items</b> — open to you and everyone you add, half an hour at a time.</>
               : sub.fullAccess
               ? <>Full access to <b className="text-ink">{n(col.total)} items</b>.</>
               : depts.length
                 ? <>
                     <b className="text-ink">{n(col.total)} items</b>
-                    {' '}across {depts.length} {depts.length === 1 ? 'department' : 'departments'}, for {n(st.total)} {st.total === 1 ? 'student' : 'students'}.
+                    {' '}across {depts.length} {depts.length === 1 ? 'department' : 'departments'}, for {n(st.total)} {st.total === 1 ? 'user' : 'users'}.
                   </>
                 : <>No departments are covered by an active subscription yet.</>}
           </p>
@@ -308,7 +308,7 @@ export function LibrarianHome() {
               </span>
               <p className="min-w-0 flex-1 text-[14px] leading-snug text-ink-2">
                 All of it is open to you now, in <b className="text-ink">half-hour sessions — four a day</b>.
-                Pro removes the sessions, for you and for your students.
+                Pro removes the sessions, for you and for everyone you add.
               </p>
               <Link to="/institution/membership"
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-accent-hover">
@@ -343,7 +343,7 @@ export function LibrarianHome() {
               <div className="my-3"><Ring used={st.activeLast30} total={st.total} /></div>
               <p className="text-center text-[12px] leading-snug text-muted">
                 {st.total === 0
-                  ? 'No students enrolled yet'
+                  ? 'No users added yet'
                   : <>{n(st.activeLast30)} of {n(st.total)} read something in the last month</>}
               </p>
             </div>
@@ -387,7 +387,7 @@ export function LibrarianHome() {
               colour, and the labels read across rather than on their side. */}
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             <div className="rounded-2xl border border-rule bg-surface p-5">
-              <p className={LABEL}>What your students read</p>
+              <p className={LABEL}>What your users read</p>
               <p className="mt-1 text-[12px] text-faint">by subject, last 30 days</p>
               <div className="mt-4">
                 {d.readByDepartment?.length

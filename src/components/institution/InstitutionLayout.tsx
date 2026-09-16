@@ -149,7 +149,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/70">Free membership</p>
             <p className="mt-1.5 text-[13px] font-semibold leading-snug">Read without a limit</p>
             <p className="mt-1 text-[11.5px] leading-snug text-white/80">
-              Pro removes the half-hour sessions, for you and your students.
+              Pro removes the half-hour sessions, for you and everyone you add.
             </p>
             <button
               onClick={() => navigate('/institution/membership')}
@@ -173,7 +173,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
         <header className="sticky top-0 z-10 flex h-[68px] shrink-0 items-center justify-between gap-6 border-b border-rule bg-surface px-6 lg:px-8">
           <h1 className="shrink-0 text-[17px] font-bold text-ink">
             {location.pathname === '/institution' ? dashboardTitle(profile as any)
-            : location.pathname.startsWith('/institution/students') ? 'Student Directory'
+            : location.pathname.startsWith('/institution/students') ? 'User Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
             : location.pathname === '/institution/library' ? 'Content Library'
             : location.pathname === '/institution/explore' ? 'Content Library'
