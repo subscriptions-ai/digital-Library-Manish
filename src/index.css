@@ -157,6 +157,13 @@
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* The hero slider's progress line: fills across the time a slide is shown. */
+@keyframes slider-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.slider-progress { animation-name: slider-progress; animation-timing-function: linear; animation-fill-mode: forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .slider-progress { animation: none; }
+}
+
 /* The locked-role tooltip on the librarian's add-user chips.
    Plain :hover rather than Tailwind's group-hover, which v4 only applies inside
    @media (hover: hover) — so it never appeared on a touch laptop, never for a

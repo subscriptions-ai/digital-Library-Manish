@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
-  ArrowRight, BookMarked, Building2, ChevronRight, GraduationCap, Layers,
-  RefreshCw, Search, ShieldCheck, Users,
+  ArrowRight, BookMarked, Building2, ChevronLeft, ChevronRight, GraduationCap, Layers,
+  Pause, Play, RefreshCw, Search, ShieldCheck, Users,
 } from 'lucide-react';
 import { Bars, Collection, Columns, Donut, type DeptRow } from './charts';
 
@@ -80,6 +80,284 @@ function Principle({ icon: Icon, title, children, proof }: {
       {proof && <div className="mt-4 border-t border-rule pt-3">{proof}</div>}
     </div>
   );
+}
+
+/**
+ * One total split into its parts, as a single bar — the compact form of the
+ * donuts further down, sized for a slide. Parts sit in their given order with a
+ * 2px surface gap and rounded outer ends; the legend under it carries every
+ * label and share, so colour is never the only thing that identifies a part.
+ */
+function Split({ parts }: { parts: { key: string; label: string; value: number; color: string }[] }) {
+  const total = parts.reduce((t, p) => t + p.value, 0) || 1;
+  const shown = parts.filter(p => p.value > 0);
+  const pct = (v: number) => { const x = (v / total) * 100; return x > 0 && x < 1 ? '<1%' : `${Math.round(x)}%`; };
+  return (
+    <div>
+      <div className="flex h-3 gap-[2px]">
+        {shown.map((p, i) => (
+          <div key={p.key} style={{ flex: `${p.value} 1 0%`, background: p.color }}
+            className={`${i === 0 ? 'rounded-l-[4px]' : ''} ${i === shown.length - 1 ? 'rounded-r-[4px]' : ''}`} />
+        ))}
+      </div>
+      <ul className="mt-4 space-y-1.5">
+        {parts.map(p => (
+          <li key={p.key} className="flex items-center gap-2 text-[12.5px]">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: p.color }} />
+            <span className="min-w-0 flex-1 truncate text-ink-2">{p.label}</span>
+            <span className="tnum font-mono text-[12px] text-ink">{n(p.value)}</span>
+            <span className="tnum w-9 text-right font-mono text-[11px] text-faint">{pct(p.value)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+type SlideData = {
+  stats: Stats | null; insights: Insights | null; articles: NewArticle[];
+  publishers: Publisher[]; depts: DeptRow[];
+};
+
+const SLIDE_MS = 7000;
+
+/**
+ * The hero's right-hand panel, as a run of slides — each one a single fact
+ * about the library with the figure that proves it.
+ *
+ * Only the panel moves. The headline, the search box and Register Now stay
+ * where the eye left them, because a carousel that carries the main action away
+ * is a carousel people stop trusting.
+ *
+ * It advances on its own, and stops when a reader points at it, focuses it,
+ * or has asked their system for reduced motion — a slide that changes while it
+ * is being read is worse than no slide. Arrows, dots, the keyboard and a swipe
+ * all move it by hand. Every slide is drawn at the same height so the page
+ * underneath never jumps.
+ */
+function HeroSlider(d: SlideData) {
+  const [i, setI] = useState(0);
+  const [hover, setHover] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  const touch = useRef<number | null>(null);
+
+  useEffect(() => {
+    const m = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(m.matches);
+    const on = () => setReduced(m.matches);
+    m.addEventListener?.('change', on);
+    return () => m.removeEventListener?.('change', on);
+  }, []);
+
+  const slides = buildSlides(d);
+  const count = slides.length;
+  const go = useCallback((to: number) => setI(((to % count) + count) % count), [count]);
+  const running = !hover && !paused && !reduced;
+
+  useEffect(() => {
+    if (!running) return;
+    const t = setTimeout(() => go(i + 1), SLIDE_MS);
+    return () => clearTimeout(t);
+  }, [i, running, go]);
+
+  return (
+    <div
+      role="region" aria-roledescription="carousel" aria-label="Facts about the library"
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)} onBlur={() => setHover(false)}
+      onKeyDown={e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); }}
+      onTouchStart={e => { touch.current = e.touches[0].clientX; }}
+      onTouchEnd={e => {
+        if (touch.current === null) return;
+        const dx = e.changedTouches[0].clientX - touch.current;
+        if (Math.abs(dx) > 40) go(dx < 0 ? i + 1 : i - 1);
+        touch.current = null;
+      }}
+      className="relative overflow-hidden rounded-2xl border border-rule bg-ground shadow-sm"
+    >
+      {/* how long this slide has left */}
+      <div className="h-[2px] w-full bg-rule">
+        <div key={`${i}-${running}`}
+          className={`h-full origin-left bg-accent ${running ? 'slider-progress' : ''}`}
+          style={{ animationDuration: `${SLIDE_MS}ms`, transform: running ? undefined : 'scaleX(0)' }} />
+      </div>
+
+      <div className="relative h-[452px]" aria-live={running ? 'off' : 'polite'}>
+        {slides.map((sl, k) => (
+          <div key={sl.key}
+            role="group" aria-roledescription="slide" aria-label={`${k + 1} of ${count}: ${sl.label}`}
+            aria-hidden={k !== i}
+            className={`absolute inset-0 flex flex-col p-5 transition-all duration-500 ${
+              k === i ? 'translate-x-0 opacity-100' : k < i ? '-translate-x-6 opacity-0 pointer-events-none' : 'translate-x-6 opacity-0 pointer-events-none'}`}>
+            <p className={LABEL}>{sl.label}</p>
+            {sl.body}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between border-t border-rule bg-surface px-4 py-2.5">
+        <div className="flex items-center gap-1.5">
+          {slides.map((sl, k) => (
+            <button key={sl.key} type="button" onClick={() => go(k)}
+              aria-label={`Show slide ${k + 1}: ${sl.label}`} aria-current={k === i}
+              className={`h-1.5 rounded-full transition-all ${k === i ? 'w-6 bg-accent' : 'w-1.5 bg-rule-2 hover:bg-muted'}`} />
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="tnum mr-1 font-mono text-[10.5px] text-faint">{i + 1} / {count}</span>
+          <button type="button" onClick={() => setPaused(p => !p)} aria-label={paused ? 'Play slides' : 'Pause slides'}
+            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink">
+            {paused ? <Play size={14} /> : <Pause size={14} />}
+          </button>
+          <button type="button" onClick={() => go(i - 1)} aria-label="Previous slide"
+            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink"><ChevronLeft size={16} /></button>
+          <button type="button" onClick={() => go(i + 1)} aria-label="Next slide"
+            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink"><ChevronRight size={16} /></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The slides, each built only from data already on the page. */
+function buildSlides({ stats, insights, articles, publishers, depts }: SlideData) {
+  const Big = ({ value, suffix }: { value?: number; suffix?: string }) => (
+    <p className="mt-3 font-mono text-[44px] leading-none text-ink">
+      <Figure value={value} />{suffix && typeof value === 'number' && <span className="text-[28px] text-muted">{suffix}</span>}
+    </p>
+  );
+  const Line = ({ children }: { children: React.ReactNode }) => (
+    <p className="mt-2 text-[13px] leading-snug text-muted">{children}</p>
+  );
+  const Frame = ({ children }: { children: React.ReactNode }) => (
+    <div className="mt-5 flex flex-1 flex-col overflow-hidden rounded-xl border border-rule bg-surface p-4">{children}</div>
+  );
+  // A closing line pinned to the foot of a slide's frame: what the figure above means.
+  const Footnote = ({ children }: { children: React.ReactNode }) => (
+    <p className="mt-auto flex items-start gap-2 border-t border-rule pt-3 text-[12px] leading-snug text-muted">
+      <ShieldCheck size={14} className="mt-[1px] shrink-0 text-accent" /><span>{children}</span>
+    </p>
+  );
+
+  const acc = insights?.access;
+  const accTotal = acc ? acc.readHere + acc.atPublisher + acc.recordOnly : 0;
+  const readPct = acc && accTotal ? Math.round((acc.readHere / accTotal) * 100) : undefined;
+  const years = insights?.years || [];
+  const thisYear = years[years.length - 1];
+  const licTotal = insights ? insights.licences.reduce((t, l) => t + l.n, 0) : undefined;
+  // Of the articles we did not publish ourselves, the share under CC BY or
+  // CC BY-SA — the two licences that allow reuse, commercial included, with credit.
+  const licOf = (k: string) => insights?.licences.find(l => l.key === k)?.n || 0;
+  const outside = licTotal !== undefined ? licTotal - licOf('own') : 0;
+  const reusePct = outside ? Math.round(((licOf('by') + licOf('bysa')) / outside) * 100) : undefined;
+
+  return [
+    {
+      key: 'catalogue', label: 'Live catalogue',
+      body: (
+        <>
+          <Big value={stats?.total} />
+          <Line>items across {depts.length || '—'} departments — read from the database as this page loaded</Line>
+          <dl className="mt-4 grid grid-cols-3 divide-x divide-rule rounded-xl border border-rule bg-surface">
+            {([['Articles', stats?.articles], ['Books', stats?.books], ['Authors', stats?.authors]] as const).map(([label, value]) => (
+              <div key={label} className="px-3 py-2.5">
+                <dt className="font-mono text-[10px] uppercase tracking-wider text-faint">{label}</dt>
+                <dd className="mt-1 font-mono text-[16px] text-ink"><Figure value={value} /></dd>
+              </div>
+            ))}
+          </dl>
+          <Frame>
+            <p className="mb-3 text-[12px] font-semibold text-ink-2">Largest departments</p>
+            {depts.length ? <Bars rows={depts.slice(0, 4).map(x => ({ name: x.name, value: x.total }))} unit="items" /> : null}
+          </Frame>
+        </>
+      ),
+    },
+    {
+      key: 'access', label: 'Where you read it',
+      body: (
+        <>
+          <Big value={readPct} suffix="%" />
+          <Line>of the {n(accTotal || undefined)} articles and books in the catalogue open right here in the library — the rest link to the publisher's own copy.</Line>
+          <Frame>
+            {acc ? <Split parts={[
+              { key: 'here', label: 'Read here, in the library', value: acc.readHere, color: 'var(--acc-1)' },
+              { key: 'pub', label: "At the publisher's site", value: acc.atPublisher, color: 'var(--acc-2)' },
+              { key: 'rec', label: 'Catalogue record only', value: acc.recordOnly, color: 'var(--acc-3)' },
+            ]} /> : null}
+            <Footnote>
+              Full text is served here only where its licence allows. Everything else stays in the
+              catalogue, with a link to the publisher's own copy.
+            </Footnote>
+          </Frame>
+        </>
+      ),
+    },
+    {
+      key: 'new', label: 'Just added',
+      body: (
+        <>
+          <p className="mt-3 font-serif text-[26px] leading-tight text-ink">The shelves move every day.</p>
+          <Line>The newest articles to reach the catalogue, with their journal and department.</Line>
+          <Frame>
+            <ul className="divide-y divide-rule">
+              {articles.slice(0, 3).map(a => (
+                <li key={a.id} className="py-2.5 first:pt-0 last:pb-0">
+                  <Link to={`/library/article/${a.id}`} className="group block" tabIndex={-1}>
+                    <p className="line-clamp-2 text-[13px] leading-snug text-ink-2 group-hover:text-accent">{a.title}</p>
+                    <p className="mt-0.5 truncate font-mono text-[10.5px] text-faint">{[a.journalName, a.domain].filter(Boolean).join(' · ')}</p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Frame>
+        </>
+      ),
+    },
+    {
+      key: 'recency', label: 'How current it is',
+      body: (
+        <>
+          <Big value={thisYear?.n} />
+          <Line>articles published in {thisYear?.year ?? 'this year'} so far — the collection leans recent, not archival.</Line>
+          <Frame>
+            {years.length ? <Columns unit="articles" data={years.map(y => ({ label: String(y.year), value: y.n }))} /> : null}
+          </Frame>
+        </>
+      ),
+    },
+    {
+      key: 'licences', label: 'On what terms',
+      body: (
+        <>
+          <Big value={licTotal} />
+          <Line>catalogue articles, and every one of them carries its licence — from our own publications to the most restricted Creative Commons terms.</Line>
+          <Frame>
+            {insights ? <Split parts={insights.licences.map((l, k) => ({ key: l.key, label: l.label, value: l.n, color: `var(--lic-${k + 1})` }))} /> : null}
+            {typeof reusePct === 'number' && (
+              <Footnote>
+                Of the {n(outside)} articles we did not publish ourselves, {reusePct}% are under CC BY or
+                CC BY-SA — licences that allow reuse, commercial included, with credit.
+              </Footnote>
+            )}
+          </Frame>
+        </>
+      ),
+    },
+    {
+      key: 'publishers', label: 'Where it comes from',
+      body: (
+        <>
+          <Big value={publishers.length || undefined} />
+          <Line>publishers contribute to the collection. The largest of them:</Line>
+          <Frame>
+            {publishers.length ? <Bars rows={publishers.slice(0, 5).map(p => ({ name: p.name, value: p.count }))} unit="articles" /> : null}
+          </Frame>
+        </>
+      ),
+    },
+  ];
 }
 
 function ChartCard({ label, title, children, note }: {
@@ -181,39 +459,8 @@ export function HomePreview() {
             </p>
           </div>
 
-          {/* The catalogue itself, as the product sees it. */}
-          <div className="rounded-2xl border border-rule bg-ground p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className={LABEL}>Live catalogue</p>
-              <span className="flex items-center gap-1.5 font-mono text-[10.5px] text-muted">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" /> read from the database
-              </span>
-            </div>
-            <p className="mt-4 font-mono text-[44px] leading-none text-ink">
-              <Figure value={stats?.total} />
-            </p>
-            <p className="mt-1.5 text-[12.5px] text-muted">items across {depts.length || '—'} departments</p>
-
-            <dl className="mt-5 grid grid-cols-3 divide-x divide-rule rounded-xl border border-rule bg-surface">
-              {[
-                ['Articles', stats?.articles],
-                ['Books', stats?.books],
-                ['Authors', stats?.authors],
-              ].map(([label, value]) => (
-                <div key={label as string} className="px-3 py-3">
-                  <dt className="font-mono text-[10px] uppercase tracking-wider text-faint">{label}</dt>
-                  <dd className="mt-1 font-mono text-[17px] text-ink"><Figure value={value as number | undefined} /></dd>
-                </div>
-              ))}
-            </dl>
-
-            <div className="mt-5 rounded-xl border border-rule bg-surface p-4">
-              <p className="mb-3 text-[12px] font-semibold text-ink-2">Largest departments</p>
-              {topDepts.length
-                ? <Bars rows={topDepts} unit="items" />
-                : <div className="space-y-3">{[0, 1, 2, 3].map(i => <div key={i} className="h-6 animate-pulse rounded bg-surface-2" />)}</div>}
-            </div>
-          </div>
+          {/* The catalogue itself, as the product sees it — one fact a slide. */}
+          <HeroSlider stats={stats} insights={insights} articles={articles} publishers={publishers} depts={depts} />
         </div>
       </section>
 
