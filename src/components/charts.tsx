@@ -229,3 +229,124 @@ export function Collection({ rows }: { rows: DeptRow[] }) {
   );
 }
 
+
+/**
+ * Parts of one whole, when there are few of them.
+ *
+ * A donut rather than bars only because each of these is genuinely one total
+ * split into two to five parts — what the collection is made of, where it is
+ * read, on what terms — and a reader wants the share before the count. More
+ * slices than that and a bar chart is the honest choice.
+ *
+ * Colour is passed in per slice so it follows the entity, not the rank. The
+ * legend carries every label, count and share, so identity never rests on
+ * colour alone; pointing at a slice or its legend row lifts that slice and puts
+ * its figure in the centre.
+ */
+export type Slice = { key: string; label: string; value: number; color: string };
+
+export function Donut({ slices, centerLabel, unit = 'items', size = 184 }: {
+  slices: Slice[]; centerLabel: string; unit?: string; size?: number;
+}) {
+  const [over, setOver] = useState<string | null>(null);
+  const total = slices.reduce((t, s) => t + s.value, 0);
+  if (!total) return null;
+
+  const stroke = 22;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const gap = slices.filter(s => s.value > 0).length > 1 ? 2 : 0; // a 2px surface gap between slices
+  let offset = 0;
+  const hot = slices.find(s => s.key === over) || null;
+  const pct = (v: number) => (v / total) * 100;
+  const pctText = (v: number) => {
+    const p = pct(v);
+    return p > 0 && p < 1 ? '<1%' : `${Math.round(p)}%`;
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" role="img"
+          aria-label={slices.map(s => `${s.label} ${n(s.value)}`).join(', ')}>
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={stroke} />
+          {slices.map(s => {
+            if (!s.value) return null;
+            const len = (s.value / total) * c;
+            const drawn = Math.max(0.75, len - gap);
+            const el = (
+              <circle key={s.key} cx={size / 2} cy={size / 2} r={r} fill="none"
+                stroke={s.color} strokeWidth={stroke}
+                strokeDasharray={`${drawn} ${c - drawn}`} strokeDashoffset={-offset}
+                style={{ opacity: over && over !== s.key ? 0.28 : 1, transition: 'opacity 120ms' }}
+                onMouseEnter={() => setOver(s.key)} onMouseLeave={() => setOver(null)}
+                className="cursor-default" />
+            );
+            offset += len;
+            return el;
+          })}
+        </svg>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+          <span className="tnum font-mono text-[22px] leading-none text-ink">{n(hot ? hot.value : total)}</span>
+          <span className="mt-1.5 text-[11px] leading-tight text-muted">
+            {hot ? `${hot.label} · ${pctText(hot.value)}` : centerLabel}
+          </span>
+        </div>
+      </div>
+
+      <ul className="mt-5 w-full space-y-1.5">
+        {slices.map(s => (
+          <li key={s.key}
+            onMouseEnter={() => setOver(s.key)} onMouseLeave={() => setOver(null)}
+            className={`flex cursor-default items-center gap-2 rounded-md px-2 py-1 transition-colors ${over === s.key ? 'bg-surface-2' : ''}`}>
+            <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: s.color }} />
+            <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2">{s.label}</span>
+            <span className="tnum shrink-0 font-mono text-[12px] text-ink">{n(s.value)}</span>
+            <span className="tnum w-10 shrink-0 text-right font-mono text-[11px] text-faint">{pctText(s.value)}</span>
+          </li>
+        ))}
+      </ul>
+      <span className="sr-only">{unit}</span>
+    </div>
+  );
+}
+
+/**
+ * A count over an ordered run — years, here.
+ *
+ * One series, one colour, so no legend; the heading names it. Bars stand on the
+ * baseline with rounded tops, the one under the pointer is lifted, and only the
+ * two ends and the peak are labelled beneath.
+ */
+export function Columns({ data, unit }: { data: { label: string; value: number }[]; unit: string }) {
+  const [over, setOver] = useState<number | null>(null);
+  if (!data.length) return null;
+  const max = Math.max(...data.map(d => d.value), 1);
+  const peak = data.findIndex(d => d.value === max);
+
+  return (
+    <div>
+      <div className="flex h-[168px] items-end gap-[4px]">
+        {data.map((d, i) => (
+          <div key={d.label} className="relative flex h-full flex-1 items-end"
+            onMouseEnter={() => setOver(i)} onMouseLeave={() => setOver(null)}>
+            <div className="absolute inset-0" />
+            <div className={`w-full rounded-t-[4px] transition-colors ${over === i ? 'bg-accent' : 'bg-accent/55'}`}
+              style={{ height: `${Math.max(2, (d.value / max) * 100)}%` }} />
+            {over === i && (
+              <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-rule bg-surface px-2 py-1 text-[11px] text-ink shadow-lg">
+                <b className="tnum font-mono">{n(d.value)}</b> {unit}
+                <span className="text-faint"> · {d.label}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-baseline justify-between border-t border-rule pt-2 font-mono text-[10.5px] text-faint">
+        <span>{data[0].label}</span>
+        <span>peak {n(max)} in {data[peak].label}</span>
+        <span>{data[data.length - 1].label}</span>
+      </div>
+    </div>
+  );
+}

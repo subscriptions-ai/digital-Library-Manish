@@ -54,6 +54,20 @@
   --series-1: #00909c;
   --series-2: #b5651a;
   --series-3: #7050d0;
+
+  /* Ordinal ramps for charts whose parts have an order — licences from most open
+     to most restricted, access from read-here to record-only. One hue, stepping
+     lighter; validated (monotone lightness, adjacent step >= 0.06, light end
+     >= 2:1 on the surface, single hue) rather than picked by eye. The first
+     candidate's light end sat at 1.41:1 and would have vanished on white. */
+  --lic-1: #083a3f;
+  --lic-2: #0c5f67;
+  --lic-3: #1c828b;
+  --lic-4: #43a0a7;
+  --lic-5: #72b2b7;
+  --acc-1: #0a4a50;
+  --acc-2: #238c95;
+  --acc-3: #6fb0b5;
 }
 
 .dark {
@@ -91,6 +105,17 @@
   --series-1: #22a0aa;
   --series-2: #c4863a;
   --series-3: #8d78e8;
+
+  /* The same ramps re-stepped for the dark surface, anchor flipped: the first
+     step is the brightest, so the leading part still leads. */
+  --lic-1: #bfe6e7;
+  --lic-2: #8fd6d9;
+  --lic-3: #5cb3aa;
+  --lic-4: #3f9199;
+  --lic-5: #2b6f76;
+  --acc-1: #bfe6e7;
+  --acc-2: #5cb3aa;
+  --acc-3: #2b6f76;
 }
 
 /* `inline` makes Tailwind emit var(--ground) rather than the resolved colour,

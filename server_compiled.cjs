@@ -17283,6 +17283,74 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to load overview" });
     }
   });
+  let insightsCache = null;
+  app.get("/api/library/insights", async (_req, res) => {
+    try {
+      if (insightsCache && Date.now() - insightsCache.at < 10 * 6e4) return res.json(insightsCache.body);
+      const [counts, otherTypes, access, licences, years] = await Promise.all([
+        collectionCounts(),
+        prisma3.$queryRawUnsafe(
+          `select "contentType" as type, count(*)::int as n from "Content"
+           where status <> 'Draft' and "contentType" not in ('Periodicals', 'Books')
+           group by 1 order by 2 desc`
+        ),
+        prisma3.$queryRawUnsafe(
+          `select coalesce("accessStatus", 'MetadataOnly') as s, count(*)::int as n from (
+             select "accessStatus" from "Article" where status = 'Published'
+             union all select "accessStatus" from "Book" where status = 'Published'
+           ) t group by 1`
+        ),
+        prisma3.$queryRawUnsafe(
+          `select coalesce(licence, '') as l, count(*)::int as n from "Article"
+           where status = 'Published' group by 1`
+        ),
+        prisma3.$queryRawUnsafe(
+          `select year::int as year, count(*)::int as n from "Article"
+           where status = 'Published' and year is not null
+             and year between extract(year from now())::int - 14 and extract(year from now())::int
+           group by 1 order by 1`
+        )
+      ]);
+      const byAccess = new Map(access.map((r2) => [r2.s, Number(r2.n)]));
+      const group = (l) => {
+        const t2 = l.toLowerCase();
+        if (t2.includes("our own")) return "own";
+        if (t2 === "cc-by") return "by";
+        if (t2 === "cc-by-sa") return "bysa";
+        if (t2.includes("-nc")) return "nc";
+        return "other";
+      };
+      const lic = { own: 0, by: 0, bysa: 0, nc: 0, other: 0 };
+      for (const r2 of licences) lic[group(String(r2.l))] += Number(r2.n);
+      const body = {
+        composition: {
+          total: counts.total,
+          articles: counts.articles,
+          books: counts.books,
+          other: counts.total - counts.articles - counts.books,
+          otherTypes: otherTypes.map((r2) => ({ type: r2.type, n: Number(r2.n) }))
+        },
+        access: {
+          readHere: byAccess.get("ViewableHere") || 0,
+          atPublisher: byAccess.get("LinkOnly") || 0,
+          recordOnly: byAccess.get("MetadataOnly") || 0
+        },
+        licences: [
+          { key: "own", label: "Our own publications", n: lic.own },
+          { key: "by", label: "CC BY", n: lic.by },
+          { key: "bysa", label: "CC BY-SA", n: lic.bysa },
+          { key: "nc", label: "Non-commercial CC", n: lic.nc },
+          { key: "other", label: "Other or not stated", n: lic.other }
+        ],
+        years: years.map((r2) => ({ year: Number(r2.year), n: Number(r2.n) }))
+      };
+      insightsCache = { at: Date.now(), body };
+      res.json(body);
+    } catch (e2) {
+      console.error("GET library/insights error:", e2?.message);
+      res.status(500).json({ error: "Failed to load insights" });
+    }
+  });
   app.get("/api/library/stats", async (_req, res) => {
     try {
       const [counts, byDomain, authors, departmentTotals] = await Promise.all([

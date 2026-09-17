@@ -5,7 +5,7 @@ import {
   ArrowRight, BookMarked, Building2, ChevronRight, GraduationCap, Layers,
   RefreshCw, Search, ShieldCheck, Users,
 } from 'lucide-react';
-import { Bars, Collection, type DeptRow } from './charts';
+import { Bars, Collection, Columns, Donut, type DeptRow } from './charts';
 
 /**
  * A second draft of the home page, at /home-preview, for side-by-side review.
@@ -25,6 +25,13 @@ type Stats = {
   departmentTotals: DeptRow[];
 };
 type Publisher = { name: string; count: number };
+type Insights = {
+  composition: { total: number; articles: number; books: number; other: number; otherTypes: { type: string; n: number }[] };
+  access: { readHere: number; atPublisher: number; recordOnly: number };
+  licences: { key: string; label: string; n: number }[];
+  years: { year: number; n: number }[];
+};
+type Subject = { name: string; slug: string; journals: number; articles: number };
 type NewArticle = { id: string; title: string; journalName: string | null; domain: string | null; createdAt: string };
 type NewBook = { id: string; title: string; publisherName: string | null; domain: string | null; coverUrl: string | null };
 
@@ -36,6 +43,8 @@ function useLibrary() {
   const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [articles, setArticles] = useState<NewArticle[]>([]);
   const [books, setBooks] = useState<NewBook[]>([]);
+  const [insights, setInsights] = useState<Insights | null>(null);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
 
   useEffect(() => {
     const get = (u: string) => fetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null);
@@ -43,9 +52,11 @@ function useLibrary() {
     get('/api/library/publishers').then(d => Array.isArray(d) && setPublishers(d));
     get('/api/library/articles?limit=6&sort=newest').then(d => d?.data && setArticles(d.data));
     get('/api/library/books?limit=4&sort=newest').then(d => d?.data && setBooks(d.data));
+    get('/api/library/insights').then(d => d?.composition && setInsights(d));
+    get('/api/library/subjects').then(d => Array.isArray(d) && setSubjects(d));
   }, []);
 
-  return { stats, publishers, articles, books };
+  return { stats, publishers, articles, books, insights, subjects };
 }
 
 /** A figure that is still loading shows a quiet bar, never a made-up number. */
@@ -71,6 +82,23 @@ function Principle({ icon: Icon, title, children, proof }: {
   );
 }
 
+function ChartCard({ label, title, children, note }: {
+  label: string; title: string; children: React.ReactNode; note?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col rounded-2xl border border-rule bg-surface p-6">
+      <p className={LABEL}>{label}</p>
+      <h3 className="mt-2 text-[15px] font-semibold text-ink">{title}</h3>
+      <div className="mt-5 flex-1">{children}</div>
+      {note && <div className="mt-4 border-t border-rule pt-3 text-[12px] leading-relaxed text-muted">{note}</div>}
+    </div>
+  );
+}
+
+const ChartSkeleton = ({ h = 260 }: { h?: number }) => (
+  <div className="animate-pulse rounded-xl bg-surface-2" style={{ height: h }} />
+);
+
 function Audience({ icon: Icon, who, points }: { icon: any; who: string; points: string[] }) {
   return (
     <div className="rounded-2xl border border-rule bg-surface p-6">
@@ -94,7 +122,7 @@ function Audience({ icon: Icon, who, points }: { icon: any; who: string; points:
 
 export function HomePreview() {
   const navigate = useNavigate();
-  const { stats, publishers, articles, books } = useLibrary();
+  const { stats, publishers, articles, books, insights, subjects } = useLibrary();
   const [q, setQ] = useState('');
 
   const depts = stats?.departmentTotals || [];
@@ -206,6 +234,73 @@ export function HomePreview() {
             </div>
           ))}
         </dl>
+      </section>
+
+      {/* ── At a glance: what, where, on what terms ──────────────────────── */}
+      <section className="mx-auto max-w-6xl px-5 pt-20">
+        <p className={LABEL}>The collection at a glance</p>
+        <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
+          What it is, where you read it, and on what terms.
+        </h2>
+        <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <ChartCard label="Composition" title="What the library is made of"
+            note={insights?.composition.otherTypes.length ? (
+              <>Other: {insights.composition.otherTypes.map(t => `${t.type} ${n(t.n)}`).join(' · ')}</>
+            ) : undefined}>
+            {insights ? (
+              <Donut centerLabel="items in all" slices={[
+                { key: 'articles', label: 'Articles', value: insights.composition.articles, color: 'var(--series-1)' },
+                { key: 'books', label: 'Books', value: insights.composition.books, color: 'var(--series-2)' },
+                { key: 'other', label: 'Other kinds', value: insights.composition.other, color: 'var(--series-3)' },
+              ]} />
+            ) : <ChartSkeleton />}
+          </ChartCard>
+
+          <ChartCard label="Access" title="Where you read it"
+            note={insights ? (
+              <>Full text is shown here only where the licence allows; otherwise the reader goes to the
+              publisher's own copy. Counts the {n(insights.access.readHere + insights.access.atPublisher + insights.access.recordOnly)} articles
+              and books in the structured catalogue — archived items carry no access record.</>
+            ) : undefined}>
+            {insights ? (
+              <Donut centerLabel="in the catalogue" slices={[
+                { key: 'here', label: 'Read here, in the library', value: insights.access.readHere, color: 'var(--acc-1)' },
+                { key: 'publisher', label: "At the publisher's site", value: insights.access.atPublisher, color: 'var(--acc-2)' },
+                { key: 'record', label: 'Catalogue record only', value: insights.access.recordOnly, color: 'var(--acc-3)' },
+              ]} />
+            ) : <ChartSkeleton />}
+          </ChartCard>
+
+          <ChartCard label="Licences" title="On what terms"
+            note={insights ? (
+              <>Ordered from most open to most restricted. Every one of the{' '}
+              {n(insights.licences.reduce((t, l) => t + l.n, 0))} catalogue articles carries its licence;
+              archived periodicals carry no licence record.</>
+            ) : undefined}>
+            {insights ? (
+              <Donut centerLabel="catalogue articles" slices={insights.licences.map((l, i) => ({
+                key: l.key, label: l.label, value: l.n, color: `var(--lic-${i + 1})`,
+              }))} />
+            ) : <ChartSkeleton />}
+          </ChartCard>
+        </div>
+      </section>
+
+      {/* ── How current, and in which subjects ───────────────────────────── */}
+      <section className="mx-auto max-w-6xl px-5 pt-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_1fr]">
+          <ChartCard label="Recency" title="Articles by year of publication"
+            note={insights?.years.length ? `${insights.years[insights.years.length - 1].year} counts the year so far.` : undefined}>
+            {insights?.years.length
+              ? <Columns unit="articles" data={insights.years.map(y => ({ label: String(y.year), value: y.n }))} />
+              : <ChartSkeleton h={200} />}
+          </ChartCard>
+          <ChartCard label="Subjects" title="Largest subjects by articles">
+            {subjects.length
+              ? <Bars rows={subjects.slice(0, 7).map(x => ({ name: x.name, value: x.articles }))} unit="articles" />
+              : <ChartSkeleton h={200} />}
+          </ChartCard>
+        </div>
       </section>
 
       {/* ── How the library is built ──────────────────────────────────────── */}

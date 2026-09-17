@@ -7190,6 +7190,86 @@ async function startServer() {
   // ── One query behind every count on the site ────────────────────────────
   // The homepage figure and the department figure have to agree, which they
   // cannot if each screen counts for itself.
+  /**
+   * What the collection is made of, where it is read, and on what terms — the
+   * figures behind the charts on the home page.
+   *
+   * Public, so it is held for ten minutes: a home page asks this of every
+   * visitor, and the answer changes when ingestion runs, not per request.
+   *
+   * Every slice is counted the way the rest of the site counts it. Composition
+   * comes from collectionCounts; the archive's other kinds are listed by name so
+   * "Other" is never a mystery; access and licence cover the articles and books
+   * that carry those fields — the archive does not, and is not guessed at.
+   */
+  let insightsCache: { at: number; body: any } | null = null;
+  app.get("/api/library/insights", async (_req: any, res: any) => {
+    try {
+      if (insightsCache && Date.now() - insightsCache.at < 10 * 60_000) return res.json(insightsCache.body);
+
+      const [counts, otherTypes, access, licences, years] = await Promise.all([
+        collectionCounts(),
+        (prisma as any).$queryRawUnsafe(
+          `select "contentType" as type, count(*)::int as n from "Content"
+           where status <> 'Draft' and "contentType" not in ('Periodicals', 'Books')
+           group by 1 order by 2 desc`),
+        (prisma as any).$queryRawUnsafe(
+          `select coalesce("accessStatus", 'MetadataOnly') as s, count(*)::int as n from (
+             select "accessStatus" from "Article" where status = 'Published'
+             union all select "accessStatus" from "Book" where status = 'Published'
+           ) t group by 1`),
+        (prisma as any).$queryRawUnsafe(
+          `select coalesce(licence, '') as l, count(*)::int as n from "Article"
+           where status = 'Published' group by 1`),
+        (prisma as any).$queryRawUnsafe(
+          `select year::int as year, count(*)::int as n from "Article"
+           where status = 'Published' and year is not null
+             and year between extract(year from now())::int - 14 and extract(year from now())::int
+           group by 1 order by 1`),
+      ]);
+
+      const byAccess = new Map<string, number>((access as any[]).map(r => [r.s, Number(r.n)]));
+
+      // Licences grouped from most open to least, in the words a librarian uses.
+      const group = (l: string) => {
+        const t = l.toLowerCase();
+        if (t.includes('our own')) return 'own';
+        if (t === 'cc-by') return 'by';
+        if (t === 'cc-by-sa') return 'bysa';
+        if (t.includes('-nc')) return 'nc';
+        return 'other';
+      };
+      const lic: Record<string, number> = { own: 0, by: 0, bysa: 0, nc: 0, other: 0 };
+      for (const r of licences as any[]) lic[group(String(r.l))] += Number(r.n);
+
+      const body = {
+        composition: {
+          total: counts.total, articles: counts.articles, books: counts.books,
+          other: counts.total - counts.articles - counts.books,
+          otherTypes: (otherTypes as any[]).map(r => ({ type: r.type, n: Number(r.n) })),
+        },
+        access: {
+          readHere: byAccess.get('ViewableHere') || 0,
+          atPublisher: byAccess.get('LinkOnly') || 0,
+          recordOnly: (byAccess.get('MetadataOnly') || 0),
+        },
+        licences: [
+          { key: 'own', label: 'Our own publications', n: lic.own },
+          { key: 'by', label: 'CC BY', n: lic.by },
+          { key: 'bysa', label: 'CC BY-SA', n: lic.bysa },
+          { key: 'nc', label: 'Non-commercial CC', n: lic.nc },
+          { key: 'other', label: 'Other or not stated', n: lic.other },
+        ],
+        years: (years as any[]).map(r => ({ year: Number(r.year), n: Number(r.n) })),
+      };
+      insightsCache = { at: Date.now(), body };
+      res.json(body);
+    } catch (e: any) {
+      console.error('GET library/insights error:', e?.message);
+      res.status(500).json({ error: "Failed to load insights" });
+    }
+  });
+
   app.get("/api/library/stats", async (_req: any, res: any) => {
     try {
       // These are the figures the homepage and every department heading share,
