@@ -148,9 +148,6 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           <div className="mx-3 mb-3 rounded-2xl bg-accent p-4 text-white">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/70">Free membership</p>
             <p className="mt-1.5 text-[13px] font-semibold leading-snug">Read without a limit</p>
-            <p className="mt-1 text-[11.5px] leading-snug text-white/80">
-              Pro removes the half-hour sessions, for you and everyone you add.
-            </p>
             <button
               onClick={() => navigate('/institution/membership')}
               className="mt-3 w-full rounded-xl bg-white/15 py-2 text-[12px] font-bold hover:bg-white/25"
