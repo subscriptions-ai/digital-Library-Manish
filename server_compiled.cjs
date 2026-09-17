@@ -10281,7 +10281,7 @@ var INSTITUTION_MEMBER_ROLES = [
   "Research Scholar",
   "Student"
 ];
-var FREE_INSTITUTION_MEMBER_CAP = 20;
+var PRO_ONLY_MEMBER_ROLES = ["Student"];
 var REGISTRANT_TYPES = [
   { id: "Institute", label: "Institute", hint: "College, university or school" },
   { id: "Corporate", label: "Corporate / Industry", hint: "Company or R&D organisation" },
@@ -19484,18 +19484,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     if (!inst) return { name: "", error: "That institution does not exist." };
     return { id: explicit, name: inst.name || "" };
   };
-  const institutionMemberGate = async (req, institutionId, incoming) => {
-    const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, institutionId);
-    if (subs.length) return null;
-    const held = await prisma3.user.count({ where: { institutionId, role: "Student" } });
-    if (held + incoming <= FREE_INSTITUTION_MEMBER_CAP) return null;
-    return {
-      error: `A free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users. You have ${held}${incoming > 1 ? ` and asked to add ${incoming}` : ""} \u2014 apply for Pro to add more.`,
-      code: "MEMBER_LIMIT",
-      held,
-      cap: FREE_INSTITUTION_MEMBER_CAP
-    };
-  };
+  const institutionOnPro = async (req, institutionId) => (await getUserActiveSubscriptions(req.user.uid, req.user.role, institutionId)).length > 0;
+  const STUDENT_NEEDS_PRO = "Students are not allowed to be added on this plan. Upgrade to Pro to add students.";
   const memberRole = (given) => {
     const wanted = String(given || "").trim();
     return INSTITUTION_MEMBER_ROLES.includes(wanted) ? wanted : null;
@@ -19546,8 +19536,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           allowed: INSTITUTION_MEMBER_ROLES
         });
       }
-      const over = await institutionMemberGate(req, targetInstitutionId, 1);
-      if (over) return res.status(409).json(over);
+      if (PRO_ONLY_MEMBER_ROLES.includes(role) && !await institutionOnPro(req, targetInstitutionId)) {
+        return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: "STUDENT_NEEDS_PRO" });
+      }
       const student = await prisma3.user.create({
         data: {
           email,
@@ -19585,8 +19576,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (target.error) return res.status(400).json({ error: target.error });
       const institutionName = target.name;
       const targetInstitutionId = target.id;
-      const over = await institutionMemberGate(req, targetInstitutionId, users.length);
-      if (over) return res.status(409).json(over);
+      const onPro = await institutionOnPro(req, targetInstitutionId);
       let successCount = 0;
       let errorCount = 0;
       const errors = [];
@@ -19607,6 +19597,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           if (!uRole) {
             errorCount++;
             errors.push({ email: u.email, error: `Role must be one of: ${INSTITUTION_MEMBER_ROLES.join(", ")}` });
+            continue;
+          }
+          if (PRO_ONLY_MEMBER_ROLES.includes(uRole) && !onPro) {
+            errorCount++;
+            errors.push({ email: u.email, error: STUDENT_NEEDS_PRO });
             continue;
           }
           const hashed = await import_bcryptjs.default.hash(u.password, 10);
@@ -19680,6 +19675,15 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         const caller = await prisma3.user.findUnique({ where: { id: callerId } });
         if (!caller?.institutionId || existing.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
+        }
+      }
+      if (designation !== void 0 && designation !== existing.designation) {
+        const next = memberRole(designation);
+        if (!next) {
+          return res.status(400).json({ error: `Choose a role from the list: ${INSTITUTION_MEMBER_ROLES.join(", ")}.`, code: "MEMBER_ROLE" });
+        }
+        if (PRO_ONLY_MEMBER_ROLES.includes(next) && existing.institutionId && !await institutionOnPro(req, existing.institutionId)) {
+          return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: "STUDENT_NEEDS_PRO" });
         }
       }
       let newInstitutionProfile = existing.institutionProfile || {};

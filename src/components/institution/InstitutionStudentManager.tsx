@@ -1,14 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import {
   Search, Plus, ShieldCheck, ShieldAlert, BookOpen, Clock,
-  ChevronDown, Pencil, Trash2, X, Save, Loader2, Activity, RefreshCw, Eye, EyeOff
+  ChevronDown, Pencil, Trash2, X, Save, Loader2, Activity, RefreshCw, Eye, EyeOff, Lock
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { INSTITUTION_MEMBER_ROLES, FREE_INSTITUTION_MEMBER_CAP } from '../../constants';
+import { INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function authHeader() {
   return { Authorization: `Bearer ${localStorage.getItem('token')}` };
+}
+
+const STUDENT_NEEDS_PRO = 'Students are not allowed to be added on this plan. Upgrade to Pro to add students.';
+
+/**
+ * The role, as chips rather than a dropdown.
+ *
+ * A dropdown was the obvious control, but a disabled <option> cannot carry a
+ * tooltip — the browser draws that list itself and shows nothing on hover — and
+ * the one thing a locked Student has to do is say why it is locked. A chip can.
+ * It is not `disabled` either, for the same reason: a disabled button fires no
+ * hover in Chrome. It simply refuses the click and says so.
+ */
+function RolePicker({ value, onChange, onFree }: {
+  value: string; onChange: (role: string) => void; onFree: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {INSTITUTION_MEMBER_ROLES.map(r => {
+        const locked = onFree && PRO_ONLY_MEMBER_ROLES.includes(r);
+        const on = value === r;
+        return (
+          <span key={r} className="role-chip relative">
+            <button
+              type="button"
+              aria-disabled={locked}
+              aria-pressed={on}
+              title={locked ? STUDENT_NEEDS_PRO : undefined}
+              onClick={() => { if (locked) { toast.error(STUDENT_NEEDS_PRO); return; } onChange(on ? '' : r); }}
+              className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                locked ? 'cursor-not-allowed border-dashed border-rule bg-surface-2 text-faint'
+                : on ? 'border-accent bg-accent text-white'
+                : 'border-rule bg-surface text-ink-2 hover:border-accent hover:text-accent'}`}
+            >
+              {locked && <Lock size={11} />}{r}
+              {locked && <span className="ml-0.5 rounded bg-accent-soft px-1 text-[9.5px] font-bold uppercase tracking-wider text-accent">Pro</span>}
+            </button>
+            {locked && (
+              <span role="tooltip"
+                className="pointer-events-none absolute bottom-full left-0 z-20 mb-2 w-60 rounded-md bg-ink px-3 py-2 text-left text-[11.5px] leading-snug text-white shadow-lg">
+                {STUDENT_NEEDS_PRO}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 export function InstitutionStudentManager() {
@@ -66,6 +114,7 @@ export function InstitutionStudentManager() {
   /* ── ADD STUDENT ── */
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newStudent.designation) { toast.error('Choose a role'); return; }
     setAddLoading(true);
     try {
       const res = await fetch('/api/institution/students', {
@@ -159,8 +208,6 @@ export function InstitutionStudentManager() {
     }
   };
 
-  const atCap = onFree && students.length >= FREE_INSTITUTION_MEMBER_CAP;
-
   const filtered = students.filter(s =>
     s.email?.toLowerCase().includes(search.toLowerCase()) ||
     (s.displayName?.toLowerCase() || '').includes(search.toLowerCase())
@@ -196,30 +243,12 @@ export function InstitutionStudentManager() {
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            disabled={atCap}
-            title={atCap ? `A free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users.` : undefined}
-            className="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-md text-sm font-bold hover:bg-accent-hover shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-md text-sm font-bold hover:bg-accent-hover shadow-md"
           >
             <Plus size={16} /> Add User
           </button>
         </div>
       </div>
-
-      {/* What the free dashboard allows, said before anyone fills in a form and
-          is turned away by the server at the end of it. */}
-      {onFree && (
-        <div className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-5 py-3.5 ${
-          atCap ? 'border-caution bg-caution-soft' : 'border-rule bg-surface'}`}>
-          <p className="text-[13.5px] text-ink-2">
-            <b className="text-ink">You can add up to {FREE_INSTITUTION_MEMBER_CAP} users</b> on the free dashboard.
-            Faculty and researchers get the most out of these seats, so they are worth adding first.
-            On Pro we agree the number of students with you.
-          </p>
-          <span className={`tnum shrink-0 font-mono text-[12px] ${atCap ? 'text-caution' : 'text-muted'}`}>
-            {students.length} of {FREE_INSTITUTION_MEMBER_CAP} used
-          </span>
-        </div>
-      )}
 
       {/* Table */}
       <div className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden">
@@ -346,7 +375,7 @@ export function InstitutionStudentManager() {
           </table>
         </div>
         <div className="px-6 py-3 border-t border-rule bg-surface-2 text-xs text-faint">
-          {filtered.length} user{filtered.length !== 1 ? 's' : ''}{onFree ? ` · ${Math.max(0, FREE_INSTITUTION_MEMBER_CAP - students.length)} of ${FREE_INSTITUTION_MEMBER_CAP} left` : ''}
+          {filtered.length} user{filtered.length !== 1 ? 's' : ''}
         </div>
       </div>
 
@@ -385,13 +414,10 @@ export function InstitutionStudentManager() {
                       placeholder="+91 9876543210"
                       className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Designation *</label>
-                    <select required value={newStudent.designation} onChange={e => setNewStudent({ ...newStudent, designation: e.target.value })}
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none">
-                      <option value="">Select Role...</option>
-                      {INSTITUTION_MEMBER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
+                    <RolePicker value={newStudent.designation} onFree={onFree}
+                      onChange={role => setNewStudent({ ...newStudent, designation: role })} />
                   </div>
                 </div>
 
@@ -453,10 +479,10 @@ export function InstitutionStudentManager() {
               </div>
               <div className="p-6 space-y-4">
                 <p className="text-sm text-ink-2">Upload a CSV file containing multiple users to register them all at once. The file must include the headers: <strong>name, email, password, designation</strong>. Optional headers: <strong>mobile, branch, department</strong>.</p>
-                <p className="mt-2 text-xs text-muted">Designation must be one of: {INSTITUTION_MEMBER_ROLES.join(', ')}{onFree ? `. A free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users in all` : ''}.</p>
+                <p className="mt-2 text-xs text-muted">Designation must be one of: {INSTITUTION_MEMBER_ROLES.join(', ')}.{onFree ? ' Student rows are refused on this plan — upgrade to Pro to add students.' : ''}</p>
                 
                 <div className="flex justify-center my-4">
-                  <a href="data:text/csv;charset=utf-8,name,email,password,mobile,designation,branch,department%0AJohn%20Doe,john@example.com,pass123,9876543210,Student,CSE,Engineering" 
+                  <a href="data:text/csv;charset=utf-8,name,email,password,mobile,designation,branch,department%0AJohn%20Doe,john@example.com,pass123,9876543210,Professor,CSE,Engineering" 
                      download="sample_users.csv"
                      className="text-accent text-sm font-bold hover:underline">
                     Download Sample CSV
@@ -553,9 +579,16 @@ export function InstitutionStudentManager() {
                   <div>
                     <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Designation</label>
                     <select value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
+                      title={onFree ? STUDENT_NEEDS_PRO : undefined}
                       className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none">
                       <option value="">Select Role...</option>
-                      {INSTITUTION_MEMBER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      {editStudent?.designation && !(INSTITUTION_MEMBER_ROLES as readonly string[]).includes(editStudent.designation) && (
+                        <option value={editStudent.designation}>{editStudent.designation}</option>
+                      )}
+                      {INSTITUTION_MEMBER_ROLES.map(r => {
+                        const locked = onFree && PRO_ONLY_MEMBER_ROLES.includes(r) && editStudent?.designation !== r;
+                        return <option key={r} value={r} disabled={locked}>{locked ? `${r} — Pro only` : r}</option>;
+                      })}
                     </select>
                   </div>
                 </div>

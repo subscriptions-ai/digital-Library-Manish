@@ -473,13 +473,10 @@ export function contentEditPath(contentType?: string | null, id?: string): strin
 /**
  * Who a librarian may add to their institution, and how many.
  *
- * Faculty and researchers first, because those are the people who get the most
- * out of twenty seats — but it is advice, not a rule: a librarian who wants to
- * add a student may. Librarian is not on the list; this is the librarian's own
- * dashboard, and there is nothing to add.
+ * Librarian is not on the list: this is the librarian's own dashboard, and there
+ * is nothing to add. There is no cap on how many.
  *
- * The cap is on the free dashboard. An institution with a subscription is not
- * limited here; what it may add is agreed with it, per institution.
+ * Students are on the list but belong to Pro — see PRO_ONLY_MEMBER_ROLES.
  */
 export const INSTITUTION_MEMBER_ROLES = [
   'Professor',
@@ -492,7 +489,12 @@ export const INSTITUTION_MEMBER_ROLES = [
   'Student',
 ] as const;
 
-export const FREE_INSTITUTION_MEMBER_CAP = 20;
+/**
+ * Roles a free dashboard can see but not add. Shown rather than hidden, so a
+ * librarian knows students are possible and what it takes — the server refuses
+ * them on a free plan whatever the form does.
+ */
+export const PRO_ONLY_MEMBER_ROLES: readonly string[] = ['Student'];
 
 export const REGISTRANT_TYPES = [
   { id: 'Institute', label: 'Institute', hint: 'College, university or school' },

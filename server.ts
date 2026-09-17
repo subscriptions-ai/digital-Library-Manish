@@ -23,7 +23,7 @@ import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, opensInstitutionDashboard,
-  INSTITUTION_MEMBER_ROLES, FREE_INSTITUTION_MEMBER_CAP } from "./src/constants.js";
+  INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
 import {
@@ -9732,29 +9732,17 @@ async function startServer() {
   };
 
   /**
-   * What a librarian may add, and how many.
+   * What a librarian may add.
    *
    * A closed list of roles, checked here rather than trusted from the form,
-   * because the form is not the only way in — faculty and researchers are what
-   * we recommend, but a student is a perfectly good answer. A free dashboard
-   * holds twenty members in all; an institution with a subscription is not
-   * capped here, since how many it may add is agreed with it.
-   *
-   * `incoming` is how many the request wants to create, so a bulk import of
-   * thirty into an empty institution is refused as thirty rather than letting
-   * the first twenty through and failing the rest one at a time.
+   * because the form is not the only way in. No cap on how many. Students are
+   * the one exception: they belong to Pro, and a free institution is refused
+   * them here — in the single add, the import and an edit alike.
    */
-  const institutionMemberGate = async (req: any, institutionId: string, incoming: number) => {
-    const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, institutionId);
-    if (subs.length) return null;
-    const held = await prisma.user.count({ where: { institutionId, role: 'Student' } });
-    if (held + incoming <= FREE_INSTITUTION_MEMBER_CAP) return null;
-    return {
-      error: `A free dashboard holds ${FREE_INSTITUTION_MEMBER_CAP} users. You have ${held}`
-        + `${incoming > 1 ? ` and asked to add ${incoming}` : ''} — apply for Pro to add more.`,
-      code: 'MEMBER_LIMIT', held, cap: FREE_INSTITUTION_MEMBER_CAP,
-    };
-  };
+  const institutionOnPro = async (req: any, institutionId: string) =>
+    (await getUserActiveSubscriptions(req.user.uid, req.user.role, institutionId)).length > 0;
+
+  const STUDENT_NEEDS_PRO = 'Students are not allowed to be added on this plan. Upgrade to Pro to add students.';
 
   const memberRole = (given: any) => {
     const wanted = String(given || '').trim();
@@ -9814,8 +9802,9 @@ async function startServer() {
           code: 'MEMBER_ROLE', allowed: INSTITUTION_MEMBER_ROLES,
         });
       }
-      const over = await institutionMemberGate(req, targetInstitutionId!, 1);
-      if (over) return res.status(409).json(over);
+      if (PRO_ONLY_MEMBER_ROLES.includes(role) && !(await institutionOnPro(req, targetInstitutionId!))) {
+        return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
+      }
 
       const student = await (prisma as any).user.create({
         data: {
@@ -9858,8 +9847,7 @@ async function startServer() {
       const institutionName = target.name;
       const targetInstitutionId = target.id;
 
-      const over = await institutionMemberGate(req, targetInstitutionId!, users.length);
-      if (over) return res.status(409).json(over);
+      const onPro = await institutionOnPro(req, targetInstitutionId!);
 
       let successCount = 0;
       let errorCount = 0;
@@ -9884,6 +9872,11 @@ async function startServer() {
           if (!uRole) {
             errorCount++;
             errors.push({ email: u.email, error: `Role must be one of: ${INSTITUTION_MEMBER_ROLES.join(', ')}` });
+            continue;
+          }
+          if (PRO_ONLY_MEMBER_ROLES.includes(uRole) && !onPro) {
+            errorCount++;
+            errors.push({ email: u.email, error: STUDENT_NEEDS_PRO });
             continue;
           }
 
@@ -9968,6 +9961,19 @@ async function startServer() {
         const caller = await (prisma as any).user.findUnique({ where: { id: callerId } });
         if (!caller?.institutionId || existing.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
+        }
+      }
+
+      // Only a real change of role is checked, so a member added before the
+      // list existed keeps whatever they were called when their record is saved.
+      if (designation !== undefined && designation !== existing.designation) {
+        const next = memberRole(designation);
+        if (!next) {
+          return res.status(400).json({ error: `Choose a role from the list: ${INSTITUTION_MEMBER_ROLES.join(', ')}.`, code: 'MEMBER_ROLE' });
+        }
+        if (PRO_ONLY_MEMBER_ROLES.includes(next) && existing.institutionId
+            && !(await institutionOnPro(req, existing.institutionId))) {
+          return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
         }
       }
 

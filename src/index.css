@@ -132,6 +132,14 @@
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* The locked-role tooltip on the librarian's add-user chips.
+   Plain :hover rather than Tailwind's group-hover, which v4 only applies inside
+   @media (hover: hover) — so it never appeared on a touch laptop, never for a
+   keyboard user, and could not be tested at all. Shown on hover and on focus. */
+.role-chip > [role="tooltip"] { display: none; }
+.role-chip:hover > [role="tooltip"],
+.role-chip:focus-within > [role="tooltip"] { display: block; }
+
 body {
   background: var(--ground);
   color: var(--ink);
