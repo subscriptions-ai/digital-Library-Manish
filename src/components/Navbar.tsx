@@ -122,7 +122,7 @@ export function Navbar() {
             ) : (
               <>
                 <Link to="/login" className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors px-2">Login</Link>
-                <Link to="/signup" className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">Get Started</Link>
+                <Link to="/signup" className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">Register Now</Link>
               </>
             )}
           </div>
@@ -291,7 +291,7 @@ export function Navbar() {
             ) : (
               <>
                 <Link to="/login" className="flex items-center justify-center rounded-xl border border-slate-200 py-4 text-base font-bold text-slate-700" onClick={() => setIsMenuOpen(false)}>Login</Link>
-                <Link to="/signup" className="flex items-center justify-center rounded-xl bg-slate-900 py-4 text-base font-bold text-white shadow-lg shadow-slate-200" onClick={() => setIsMenuOpen(false)}>Get Started</Link>
+                <Link to="/signup" className="flex items-center justify-center rounded-xl bg-slate-900 py-4 text-base font-bold text-white shadow-lg shadow-slate-200" onClick={() => setIsMenuOpen(false)}>Register Now</Link>
               </>
             )}
           </div>
