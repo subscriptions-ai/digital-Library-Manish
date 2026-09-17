@@ -35,10 +35,28 @@ export function Home() {
     });
   };
 
+  // The figures under the hero, from the collection itself. These were typed
+  // in — 250+ journals, 1,200+ institutions — and nothing in the database
+  // stood behind either. The live counts are the same ones the library and the
+  // librarian's dashboard quote, rounded down so the "+" is always true.
+  const [counts, setCounts] = useState<{ totalContent: number; articles: number; books: number } | null>(null);
+  useEffect(() => {
+    fetch('/api/public/counts')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => d && setCounts(d))
+      .catch(() => {});
+  }, []);
+
+  const atLeast = (n?: number) => {
+    if (typeof n !== 'number' || n <= 0) return '—';
+    const step = n >= 10_000 ? 1_000 : n >= 1_000 ? 100 : 1;
+    return `${(Math.floor(n / step) * step).toLocaleString('en-IN')}+`;
+  };
+
   const statsData = [
-    { label: "Journals Indexed", value: "250+" },
-    { label: "Resources", value: "Curated" },
-    { label: "Institutions", value: "1,200+" },
+    { label: "Items of Content", value: atLeast(counts?.totalContent) },
+    { label: "Research Articles", value: atLeast(counts?.articles) },
+    { label: "Books", value: atLeast(counts?.books) },
     { label: "Years of Trust", value: "21+" }
   ];
 
