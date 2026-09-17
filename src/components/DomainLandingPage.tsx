@@ -16,6 +16,8 @@ interface ContentSummaryItem { type: string; count: number; }
 
 interface DomainData {
   content_summary: ContentSummaryItem[];
+  /** Everything held in the department, counted as the library counts it. */
+  total?: number;
 }
 
 // ─── Domain → Unsplash hero image map ────────────────────────────────────────
@@ -358,35 +360,43 @@ export function DomainLandingPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {contentCounts.map((ct, i) => {
-              const meta = CT_META[ct.type] || { icon: Icons.BookOpen, desc: "" };
-              const CTIcon = meta.icon;
-              const ctInfo = domain.contentTypes.find(c => c.type === ct.type);
-              const desc = ctInfo?.description || meta.desc;
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: i * 0.05 }}
-                  className="rounded-2xl border border-slate-200 bg-white p-6 hover:shadow-lg transition-all"
-                >
-                  {/* Icon in purplish circle */}
-                  <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mb-5">
-                    <CTIcon size={22} className="text-indigo-500" />
-                  </div>
-                  <div className="text-base font-bold text-slate-900">{ct.type}</div>
-                  <div className="text-sm font-semibold mt-1">
-                    {apiLoading
-                      ? <span className="inline-block h-4 w-20 bg-slate-200 rounded animate-pulse" />
-                      : <span className="text-indigo-600">{ct.count.toLocaleString("en-IN")} held</span>}
-                  </div>
-                  <p className="mt-3 text-xs text-slate-500 leading-relaxed">{desc}</p>
-                </motion.div>
-              );
-            })}
-          </div>
+          {/* One figure, not a card per shelf. The cards quoted journals, articles
+              and books side by side, which invited adding them up — and journals
+              hold the articles, so the sum was wrong by design. The types are
+              named underneath so a visitor knows what kinds of material there are. */}
+          {(apiLoading || contentCounts.length > 0) && (
+            <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center">
+              {apiLoading ? (
+                <span className="mx-auto block h-12 w-48 animate-pulse rounded-lg bg-slate-200" />
+              ) : (
+                <p className="text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl">
+                  {Number(domainData?.total ?? 0).toLocaleString('en-IN')}
+                </p>
+              )}
+              <p className="mt-2 text-sm font-semibold text-slate-500">
+                items of content in {domain.name}
+              </p>
+
+              {!apiLoading && contentCounts.length > 0 && (
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                  {/* The three shelves most people come for first, then the rest as held. */}
+                  {[...contentCounts].sort((a, b) => {
+                    const lead = ['Journals', 'Articles', 'Books'];
+                    const ia = lead.indexOf(a.type), ib = lead.indexOf(b.type);
+                    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.type.localeCompare(b.type);
+                  }).map(ct => {
+                    const CTIcon = (CT_META[ct.type] || { icon: Icons.BookOpen }).icon;
+                    return (
+                      <span key={ct.type}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50 px-3.5 py-1.5 text-sm font-semibold text-indigo-700">
+                        <CTIcon size={14} className="text-indigo-500" /> {ct.type}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

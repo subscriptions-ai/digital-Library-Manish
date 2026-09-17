@@ -4168,9 +4168,11 @@ async function startServer() {
       //    Counting only the legacy table left departments advertising nothing
       //    while holding thousands of articles.
       const [contentGroups, deptArticles, deptBooks, deptJournalRows] = await Promise.all([
+        // The archived shelf counted as everywhere else: anything but Draft.
+        // Published alone made this page's shelves smaller than the library's.
         prisma.content.groupBy({
           by: ['contentType'],
-          where: { domain, status: { in: ['Published', 'published'] } },
+          where: { domain, status: { not: 'Draft' } },
           _count: { id: true },
           orderBy: { contentType: 'asc' },
         }),
@@ -4193,6 +4195,12 @@ async function startServer() {
       const content_summary = Object.entries(byType)
         .filter(([, count]) => count > 0)
         .map(([type, count]) => ({ type, count }));
+
+      // One figure for the department — the same arithmetic as the library and
+      // the librarian's chart, so a department never quotes a number the rest of
+      // the site disagrees with. Journals are not added in: they hold the
+      // articles, and counting both would count every article twice.
+      const total = (await collectionByDepartment([domain]))[0]?.total ?? 0;
 
       // 2. Pricing modules — active modules for this domain, optionally filtered by userType
       const { userType } = req.query as { userType?: string };
@@ -4217,7 +4225,7 @@ async function startServer() {
         visible: m.isActive
       }));
 
-      res.json({ domain, content_summary, pricing_modules, userTypes: USER_TYPES });
+      res.json({ domain, content_summary, total, pricing_modules, userTypes: USER_TYPES });
     } catch (err) {
       console.error("GET /api/domain-data error:", err);
       res.status(500).json({ error: "Failed to fetch domain data" });

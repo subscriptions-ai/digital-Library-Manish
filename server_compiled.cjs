@@ -14435,9 +14435,11 @@ async function startServer() {
       const domain = req.query.domain;
       if (!domain) return res.status(400).json({ error: "domain query param required" });
       const [contentGroups, deptArticles, deptBooks, deptJournalRows] = await Promise.all([
+        // The archived shelf counted as everywhere else: anything but Draft.
+        // Published alone made this page's shelves smaller than the library's.
         prisma3.content.groupBy({
           by: ["contentType"],
-          where: { domain, status: { in: ["Published", "published"] } },
+          where: { domain, status: { not: "Draft" } },
           _count: { id: true },
           orderBy: { contentType: "asc" }
         }),
@@ -14458,6 +14460,7 @@ async function startServer() {
       byType["Books"] = (byType["Books"] || 0) + deptBooks;
       delete byType["Periodicals"];
       const content_summary = Object.entries(byType).filter(([, count]) => count > 0).map(([type, count]) => ({ type, count }));
+      const total = (await collectionByDepartment([domain]))[0]?.total ?? 0;
       const { userType } = req.query;
       const moduleWhere = { domain, isActive: true };
       if (userType) moduleWhere.userType = userType;
@@ -14478,7 +14481,7 @@ async function startServer() {
         totalCount: m2.totalCount,
         visible: m2.isActive
       }));
-      res.json({ domain, content_summary, pricing_modules, userTypes: USER_TYPES });
+      res.json({ domain, content_summary, total, pricing_modules, userTypes: USER_TYPES });
     } catch (err) {
       console.error("GET /api/domain-data error:", err);
       res.status(500).json({ error: "Failed to fetch domain data" });
