@@ -11,6 +11,7 @@ import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { Home } from "./components/Home";
 import { HomePreview } from "./components/HomePreview";
+import { PreviewHeader, PreviewFooter } from "./components/HomePreviewChrome";
 import { NotFound } from "./components/NotFound";
 
 import { DigitalLibrary } from "./components/DigitalLibrary";
@@ -317,6 +318,18 @@ export default function App() {
                 <Route path="/sales/quotations" element={<SalesLayout><MyQuotations /></SalesLayout>} />
                 <Route path="/sales/quotations/create" element={<SalesLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></SalesLayout>} />
 
+                {/* A second draft of the home page, with a header and footer of its
+                    own, for review beside the live one. Declared ahead of the shared
+                    layout so the site's own header and footer never wrap it. Not
+                    linked from anywhere; remove it or promote it to "/". */}
+                <Route path="/home-preview" element={
+                  <>
+                    <PreviewHeader />
+                    <main className="flex-1"><HomePreview /></main>
+                    <PreviewFooter />
+                  </>
+                } />
+
                 {/* Main Layout routes */}
               <Route path="*" element={
                 <>
@@ -324,9 +337,6 @@ export default function App() {
                   <main className="flex-1">
                     <Routes>
                       <Route path="/" element={<Home />} />
-                      {/* A second draft of the home page, for review beside the live one.
-                          Not linked from anywhere; remove it or promote it to "/". */}
-                      <Route path="/home-preview" element={<HomePreview />} />
                       <Route path="/digital-library" element={<DigitalLibrary />} />
                       <Route path="/for-institutions" element={<ForInstitutions />} />
                       <Route path="/for-students" element={<ForStudents />} />
