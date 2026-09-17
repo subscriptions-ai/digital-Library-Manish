@@ -269,7 +269,7 @@ export function InstitutionStudentManager() {
                   Loading students…
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={3} className="px-6 py-14 text-center text-faint">No students found.</td></tr>
+                <tr><td colSpan={3} className="px-6 py-14 text-center text-faint">No users found.</td></tr>
               ) : filtered.map(student => (
                 <React.Fragment key={student.id}>
                   <tr className="hover:bg-surface-2/70 transition-colors">

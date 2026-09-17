@@ -60,7 +60,10 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           of software bolted to the left of this one; against a light page the
           weight belongs on the content, not on the furniture. */}
       <aside className={`sticky top-0 flex h-screen shrink-0 flex-col self-start border-r border-rule bg-surface transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
-        <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
+        {/* Everything below is sized so the rail fits a 1366×768 laptop without a
+            scrollbar: the menu overflowed by 33px there, and the last item sat
+            half out of sight. The nav still scrolls, but only on a shorter screen. */}
+        <div className={`flex items-center gap-2 px-5 py-4 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
             <div className="flex min-w-0 items-center gap-2.5 font-extrabold tracking-tight text-ink">
               {profile.institutionProfile?.logoUrl ? (
@@ -80,8 +83,8 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           </button>
         </div>
 
-        <nav className="mt-2 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-          {isSidebarOpen && <p className="px-3 pb-2 pt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">Menu</p>}
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-2">
+          {isSidebarOpen && <p className="px-3 pb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">Menu</p>}
           <NavButton
             icon={<LayoutDashboard size={18} />}
             label="Dashboard Overview"
@@ -145,12 +148,12 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
         {/* The reference put a promotion here; ours is the thing we actually
             want them to take, and only while it would mean something. */}
         {isSidebarOpen && allowance?.timed && (
-          <div className="mx-3 mb-3 rounded-2xl bg-accent p-4 text-white">
+          <div className="mx-3 mb-2 rounded-2xl bg-accent px-4 py-3 text-white">
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/70">Free membership</p>
-            <p className="mt-1.5 text-[13px] font-semibold leading-snug">Read without a limit</p>
+            <p className="mt-1 text-[13px] font-semibold leading-snug">Read without a limit</p>
             <button
               onClick={() => navigate('/institution/membership')}
-              className="mt-3 w-full rounded-xl bg-white/15 py-2 text-[12px] font-bold hover:bg-white/25"
+              className="mt-2.5 w-full rounded-xl bg-white/15 py-1.5 text-[12px] font-bold hover:bg-white/25"
             >
               Apply for Pro
             </button>
@@ -160,7 +163,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
         {/* Who is signed in is named in the top bar, on every page. Saying it
             a second time at the foot of the rail cost the height that pushed
             the menu into a scroll. */}
-        <div className="border-t border-rule px-3 pb-4 pt-3">
+        <div className="border-t border-rule px-3 py-2">
           <NavButton icon={<LogOut size={18} />} label="Sign Out" active={false} collapsed={!isSidebarOpen}
             onClick={handleSignOut} danger />
         </div>
@@ -232,7 +235,7 @@ function NavButton({ icon, label, active, collapsed, onClick, danger = false }: 
 }) {
   return (
     <button onClick={onClick}
-      className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold transition-colors ${
+      className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13.5px] font-semibold transition-colors ${
         active ? 'bg-accent-soft text-accent'
         : danger ? 'text-muted hover:bg-alarm-soft hover:text-alarm'
         : 'text-muted hover:bg-surface-2 hover:text-ink'
