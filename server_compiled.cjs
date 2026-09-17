@@ -17285,7 +17285,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/library/stats", async (_req, res) => {
     try {
-      const [counts, byDomain, authors] = await Promise.all([
+      const [counts, byDomain, authors, departmentTotals] = await Promise.all([
         collectionCounts(),
         prisma3.$queryRawUnsafe(`
           select a."domain" as domain,
@@ -17295,9 +17295,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           from "Article" a
           where a.status = 'Published' and a."domain" is not null
           group by 1 order by 2 desc`),
-        prisma3.author.count()
+        prisma3.author.count(),
+        // Every shelf by department — the same figures the department pages and
+        // the librarian's chart quote, for anything that needs the whole picture.
+        collectionByDepartment()
       ]);
-      res.json({ ...counts, authors, departments: byDomain });
+      res.json({ ...counts, authors, departments: byDomain, departmentTotals });
     } catch (e2) {
       console.error("GET library/stats error:", e2?.message);
       res.status(500).json({ error: "Failed to load stats" });

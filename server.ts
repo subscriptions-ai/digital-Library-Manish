@@ -7197,7 +7197,7 @@ async function startServer() {
       // separate jobs are responsible for keeping current.
       // Counted where everything else counts it, so the home page and this
       // page cannot quote different figures for the same shelf.
-      const [counts, byDomain, authors] = await Promise.all([
+      const [counts, byDomain, authors, departmentTotals] = await Promise.all([
         collectionCounts(),
         (prisma as any).$queryRawUnsafe(`
           select a."domain" as domain,
@@ -7208,8 +7208,11 @@ async function startServer() {
           where a.status = 'Published' and a."domain" is not null
           group by 1 order by 2 desc`),
         (prisma as any).author.count(),
+        // Every shelf by department — the same figures the department pages and
+        // the librarian's chart quote, for anything that needs the whole picture.
+        collectionByDepartment(),
       ]);
-      res.json({ ...counts, authors, departments: byDomain });
+      res.json({ ...counts, authors, departments: byDomain, departmentTotals });
     } catch (e: any) {
       console.error('GET library/stats error:', e?.message);
       res.status(500).json({ error: "Failed to load stats" });
