@@ -324,6 +324,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             onClick={() => navigate('/admin/ingestion')}
           />
 
+          {/* Journals */}
+          <NavButton
+            icon={<BookOpen size={17} />}
+            label="Journals"
+            active={location.pathname === '/admin/journals'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/journals')}
+          />
+
           {/* Publishers */}
           <NavButton
             icon={<Building2 size={17} />}

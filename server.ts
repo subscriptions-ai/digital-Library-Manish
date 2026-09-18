@@ -4790,6 +4790,88 @@ async function startServer() {
     next();
   };
 
+  // --- Admin: every journal in the catalogue, with department counts ---
+  //
+  // The catalogue holds ten thousand titles and more, so the list is paged and
+  // searched here, not in the browser. The department and status counts each
+  // ignore their own filter and honour the rest: with "Law" chosen, the
+  // department list still shows every department's figure for the search typed.
+  app.get("/api/admin/journals", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const str = (v: any) => (typeof v === 'string' ? v.trim() : '');
+      const q = str(req.query.q);
+      const domain = str(req.query.domain);
+      const status = str(req.query.status);
+      const articles = str(req.query.articles);
+      const sort = str(req.query.sort) || 'title';
+      const page = Math.max(1, parseInt(str(req.query.page)) || 1);
+      const limit = Math.min(200, Math.max(10, parseInt(str(req.query.limit)) || 50));
+
+      const searchWhere: any = q ? { OR: [
+        { title: { contains: q, mode: 'insensitive' } },
+        { issn: { contains: q, mode: 'insensitive' } },
+        { eissn: { contains: q, mode: 'insensitive' } },
+        { publisherName: { contains: q, mode: 'insensitive' } },
+      ] } : {};
+      // "__none" is the journals no department was ever given.
+      const domainWhere: any = domain ? { domain: domain === '__none' ? null : domain } : {};
+      const statusWhere: any = status ? { status } : {};
+      const articlesWhere: any = articles === 'with' ? { articleCount: { gt: 0 } }
+        : articles === 'without' ? { articleCount: 0 } : {};
+
+      const where = { AND: [searchWhere, domainWhere, statusWhere, articlesWhere] };
+      const orderBy: any = sort === 'articles' ? [{ articleCount: 'desc' }, { title: 'asc' }]
+        : sort === 'newest' ? [{ createdAt: 'desc' }]
+        : [{ title: 'asc' }];
+      const select = {
+        id: true, title: true, issn: true, eissn: true, publisherName: true, domain: true,
+        status: true, licence: true, articleCount: true, firstYear: true, lastYear: true,
+        homepage: true, createdAt: true,
+      };
+
+      if (str(req.query.format) === 'csv') {
+        const cell = (v: any) => {
+          const t = v === null || v === undefined ? '' : String(v);
+          return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+        };
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="journals-${new Date().toISOString().slice(0, 10)}.csv"`);
+        res.write('﻿' + ['Title', 'ISSN', 'eISSN', 'Publisher', 'Department', 'Full text', 'Licence', 'Articles held', 'First year', 'Last year', 'Homepage'].join(',') + '\n');
+        let skip = 0;
+        for (;;) {
+          const batch: any[] = await prisma.journal.findMany({ where, select, orderBy, skip, take: 1000 });
+          for (const j of batch) {
+            res.write([j.title, j.issn, j.eissn, j.publisherName, j.domain, j.status === 'Accepted' ? 'Yes' : 'Metadata only',
+              j.licence, j.articleCount, j.firstYear, j.lastYear, j.homepage].map(cell).join(',') + '\n');
+          }
+          if (batch.length < 1000) break;
+          skip += 1000;
+        }
+        return res.end();
+      }
+
+      const [journals, total, byDomain, byStatus, catalogue] = await Promise.all([
+        prisma.journal.findMany({ where, select, orderBy, skip: (page - 1) * limit, take: limit }),
+        prisma.journal.count({ where }),
+        prisma.journal.groupBy({ by: ['domain'], where: { AND: [searchWhere, statusWhere, articlesWhere] }, _count: { _all: true } }),
+        prisma.journal.groupBy({ by: ['status'], where: { AND: [searchWhere, domainWhere, articlesWhere] }, _count: { _all: true } }),
+        prisma.journal.count(),
+      ]);
+      const withArticles = await prisma.journal.count({ where: { AND: [where, { articleCount: { gt: 0 } }] } });
+
+      res.json({
+        journals, total, page, limit, catalogue, withArticles,
+        departments: byDomain
+          .map((g: any) => ({ name: g.domain as string | null, count: g._count._all as number }))
+          .sort((a: any, b: any) => b.count - a.count),
+        statuses: Object.fromEntries(byStatus.map((g: any) => [g.status, g._count._all])),
+      });
+    } catch (error) {
+      console.error("Admin journals error:", error);
+      res.status(500).json({ error: "Failed to load journals" });
+    }
+  });
+
   // --- Admin: list publishers with counts ---
   app.get("/api/admin/publishers", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {

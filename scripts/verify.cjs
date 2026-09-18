@@ -700,6 +700,34 @@ const catalogueSize = async () => {
       : ok('the institution shell keeps to itself', 'no links into /dashboard');
   }
 
+  console.log('\nAdmin journal directory');
+  {
+    const inDb = await p.journal.count();
+    const all = (await get('/api/admin/journals?limit=10', A)).body || {};
+    all.catalogue === inDb && all.total === inDb
+      ? ok('lists every journal in the database', `${inDb} journals`)
+      : bad('lists every journal in the database', `database ${inDb}, page says ${all.catalogue}/${all.total}`);
+    const summed = (all.departments || []).reduce((s, d) => s + d.count, 0);
+    summed === inDb
+      ? ok('department counts add up to the whole', `${(all.departments || []).length} departments`)
+      : bad('department counts add up to the whole', `${summed} vs ${inDb}`);
+    const top = (all.departments || []).find(d => d.name);
+    if (top) {
+      const one = (await get(`/api/admin/journals?limit=10&domain=${encodeURIComponent(top.name)}`, A)).body || {};
+      const inDept = await p.journal.count({ where: { domain: top.name } });
+      one.total === inDept && one.total === top.count && (one.journals || []).every(j => j.domain === top.name)
+        ? ok('the department filter matches its count', `${top.name}: ${inDept}`)
+        : bad('the department filter matches its count', `${top.name}: list ${one.total}, panel ${top.count}, database ${inDept}`);
+      const csv = await fetch(`${BASE}/api/admin/journals?format=csv&domain=${encodeURIComponent(top.name)}`, { headers: { Authorization: `Bearer ${A}` } });
+      const rows = (await csv.text()).trim().split('\n').length - 1;
+      rows >= inDept
+        ? ok('the export holds the whole department', `${rows} rows`)
+        : bad('the export holds the whole department', `${rows} rows for ${inDept} journals`);
+    }
+    const r = await get('/api/admin/journals', S || R);
+    r.status === 403 ? ok('readers cannot open it', 'HTTP 403') : bad('readers cannot open it', `HTTP ${r.status}`);
+  }
+
   console.log('\nDead ends');
   for (const [name, path] of [
     ['unknown article', '/api/library/article/does-not-exist'],

@@ -65,6 +65,7 @@ import { AdminFeedbackDetails } from "./components/admin/AdminFeedbackDetails";
 import { AdminSalesTeam } from "./components/admin/AdminSalesTeam";
 import { AdminExecutivePipeline } from "./components/admin/AdminExecutivePipeline";
 import { AdminLeadManager } from "./components/admin/AdminLeadManager";
+import { AdminJournalDirectory } from "./components/admin/AdminJournalDirectory";
 import { SalesLayout } from "./components/sales/SalesLayout";
 import { SalesDashboard } from "./components/sales/SalesDashboard";
 import { SalesLeadTable } from "./components/sales/SalesLeadTable";
@@ -206,6 +207,7 @@ export default function App() {
                 <Route path="/admin/quotations/create" element={<AdminLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></AdminLayout>} />
                 <Route path="/admin/receipts" element={<AdminLayout><ReceiptManager /></AdminLayout>} />
                 <Route path="/admin/publishers" element={<AdminLayout><PublisherManager /></AdminLayout>} />
+                <Route path="/admin/journals" element={<AdminLayout><AdminJournalDirectory /></AdminLayout>} />
                 <Route path="/admin/media" element={<AdminLayout><MediaLibrary /></AdminLayout>} />
                 <Route path="/admin/review" element={<AdminLayout><PublisherReviewQueue /></AdminLayout>} />
                 <Route path="/admin/ingestion" element={<AdminLayout><DataIngestion /></AdminLayout>} />
