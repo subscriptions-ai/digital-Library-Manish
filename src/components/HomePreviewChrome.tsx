@@ -4,6 +4,9 @@ import {
   ChevronDown, Facebook, LayoutGrid, Linkedin, LogOut, Mail, MapPin, Menu, Phone, Search, X,
 } from 'lucide-react';
 import { DOMAINS } from '../constants';
+
+// The departments menu lists them A to Z, so a visitor can find theirs at a glance.
+const DEPARTMENTS_AZ = [...DOMAINS].sort((a, b) => a.name.localeCompare(b.name));
 import { COMPANY_DETAILS } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { usePublisherSafeMode } from '../lib/publicSettings';
@@ -125,7 +128,7 @@ export function PreviewHeader() {
                       className="font-mono text-[10.5px] uppercase tracking-wider text-accent hover:underline">View all →</Link>
                   </div>
                   <div className="grid max-h-[60vh] grid-cols-3 gap-x-5 gap-y-0.5 overflow-y-auto">
-                    {DOMAINS.map(d => {
+                    {DEPARTMENTS_AZ.map(d => {
                       const count = totals?.byName[d.name];
                       return (
                         <Link key={d.id} to={`/domain/${d.id}`} onClick={() => setDeptOpen(false)}
@@ -230,7 +233,7 @@ export function PreviewHeader() {
               <div className="border-b border-rule py-2">
                 <Link to="/digital-library" onClick={() => setMenuOpen(false)}
                   className="block py-2 font-mono text-[11px] uppercase tracking-wider text-accent">View all departments</Link>
-                {DOMAINS.map(d => (
+                {DEPARTMENTS_AZ.map(d => (
                   <Link key={d.id} to={`/domain/${d.id}`} onClick={() => setMenuOpen(false)}
                     className="flex items-baseline justify-between py-2 text-[14px] text-ink-2">
                     <span>{d.name}</span>

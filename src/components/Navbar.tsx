@@ -3,6 +3,9 @@ import { Search, Menu, X, ChevronDown, LayoutGrid, User, LogOut } from "lucide-r
 import { useState, useEffect, useRef } from "react";
 import { cn } from "../lib/utils";
 import { DOMAINS } from "../constants";
+
+// The departments menu lists them A to Z, so a visitor can find theirs at a glance.
+const DEPARTMENTS_AZ = [...DOMAINS].sort((a, b) => a.name.localeCompare(b.name));
 import { useAuth } from "../contexts/AuthContext";
 import { usePublisherSafeMode } from "../lib/publicSettings";
 
@@ -171,7 +174,7 @@ export function Navbar() {
                       <Link to="/digital-library" className="text-sm font-bold text-blue-600 hover:underline">View All</Link>
                     </div>
                     <div className="grid grid-cols-3 gap-x-8 gap-y-3">
-                      {DOMAINS.map((domain) => {
+                      {DEPARTMENTS_AZ.map((domain) => {
                         const count = domainCounts ? (domainCounts[domain.name] || 0) : null;
                         return (
                           <Link 
@@ -246,7 +249,7 @@ export function Navbar() {
                   {isDepartmentsOpen && (
                     <div className="flex flex-col gap-3 pl-4 border-l-2 border-slate-100 py-2 mt-1">
                       <Link to="/digital-library" className="text-sm font-bold text-blue-600" onClick={() => setIsMenuOpen(false)}>View All Departments</Link>
-                      {DOMAINS.map((domain) => (
+                      {DEPARTMENTS_AZ.map((domain) => (
                         <Link 
                           key={domain.id} 
                           to={`/domain/${domain.id}`}
