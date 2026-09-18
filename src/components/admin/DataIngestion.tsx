@@ -39,6 +39,95 @@ function ago(iso?: string | null) {
  * The last is the one that matters. A department could sit on the first page of
  * a source holding a thousand more titles and nothing here would have said so.
  */
+/**
+ * Every journal DOAJ lists, in one go. Searching by department stops at 1,000
+ * results a term, so it plateaued near ten thousand of DOAJ's twenty-three
+ * thousand; the full list is one file. "Check first" reads it and says what an
+ * import would add without writing anything.
+ */
+function DoajCatalogueImport({ onDone }: { onDone: () => void }) {
+  const [job, setJob] = React.useState<any>(null);
+  const auth = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' });
+
+  const poll = React.useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin/ingest/doaj-catalogue', { headers: auth() });
+      const d = await r.json();
+      setJob(d.job);
+      return d.job;
+    } catch { return null; }
+  }, []);
+
+  React.useEffect(() => { poll(); }, [poll]);
+  React.useEffect(() => {
+    if (!job?.running) return;
+    const t = setInterval(async () => {
+      const j = await poll();
+      if (j && !j.running) {
+        if (j.error) toast.error(`Import failed: ${j.error}`);
+        else if (j.dryRun) toast.success(`${j.result.inFile - j.result.alreadyHeld} new journals would be added`);
+        else { toast.success(`${j.result.added.toLocaleString()} new journals added`); onDone(); }
+      }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [job?.running, poll, onDone]);
+
+  const start = async (dryRun: boolean) => {
+    const r = await fetch('/api/admin/ingest/doaj-catalogue', { method: 'POST', headers: auth(), body: JSON.stringify({ dryRun }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast.error(d.error || 'Could not start'); return; }
+    setJob(d.job);
+  };
+
+  const res = job?.result;
+  const depts = res ? Object.entries(res.byDepartment as Record<string, number>).sort((a, b) => b[1] - a[1]) : [];
+  return (
+    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="max-w-xl">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Every DOAJ journal, at once</p>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-slate-500">
+            Reads DOAJ's full list of about 23,000 journals and adds the ones not held yet, each placed in a
+            department by its subject class. Licences are decided the usual way: full text only where every
+            licence allows commercial use. Journals already held are not touched.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => start(true)} disabled={job?.running}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+            Check first
+          </button>
+          <button onClick={() => start(false)} disabled={job?.running}
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+            {job?.running && <Loader2 size={13} className="animate-spin" />} Import all journals
+          </button>
+        </div>
+      </div>
+      {job?.running && (
+        <p className="mt-3 text-[11.5px] text-slate-600">
+          {job.dryRun ? 'Checking' : 'Importing'} — started {ago(job.startedAt)}. This takes a minute or two; the screen can be left.
+        </p>
+      )}
+      {job && !job.running && job.error && (
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-[11.5px] text-red-700">Failed: {job.error}</p>
+      )}
+      {res && !job.running && (
+        <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-slate-600">
+          <p>
+            <b className="text-slate-800">{job.dryRun ? 'Would add' : 'Added'} {(job.dryRun ? res.inFile - res.alreadyHeld : res.added).toLocaleString()}</b> journals
+            {' '}— {res.accepted.toLocaleString()} full text, {res.metadataOnly.toLocaleString()} metadata only.
+            {' '}{res.alreadyHeld.toLocaleString()} of DOAJ's {res.inFile.toLocaleString()} were already held.
+            {job.finishedAt && <span className="text-slate-400"> · {ago(job.finishedAt)}</span>}
+          </p>
+          {depts.length > 0 && (
+            <p className="mt-1 text-slate-500">{depts.map(([d, n]) => `${d} ${n.toLocaleString()}`).join(' · ')}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
   const token = () => localStorage.getItem('token');
   const [state, setState] = React.useState<any>(null);
@@ -188,6 +277,8 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
               {' '}when you are done.</>}
         </p>
       </div>
+
+      <DoajCatalogueImport onDone={load} />
 
       <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-3 lg:grid-cols-6">
         {[
@@ -344,6 +435,13 @@ function ContinuousEngine({ deptNames }: { deptNames: string[] }) {
             onChange={e => save({ batchSize: parseInt(e.target.value) || 50 })}
             className="w-24 rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-blue-500" />
           <span className="mt-1 block text-[10px] text-slate-400">Keeps one big journal from starving the rest</span>
+        </label>
+        <label className="text-xs">
+          <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500">Articles per journal</span>
+          <input type="number" min={0} max={10000} value={state.articlesPerJournal ?? 0} disabled={busy}
+            onChange={e => save({ articlesPerJournal: Math.max(0, parseInt(e.target.value) || 0) })}
+            className="w-24 rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-blue-500" />
+          <span className="mt-1 block text-[10px] text-slate-400">Most kept per journal, so more journals get some. 0 = no limit</span>
         </label>
         <label className="text-xs">
           <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500">Look for more every</span>

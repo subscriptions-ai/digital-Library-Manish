@@ -1250,6 +1250,13 @@ model IngestionState {
   /// How many articles to pull per journal per pass, so one big journal cannot
   /// starve the rest.
   batchSize   Int     @default(200)
+  /// The most articles held for any one journal; 0 means no limit.
+  ///
+  /// The catalogue is shown by how many journals it covers, and a pass spent
+  /// taking a journal's two-thousandth article is a pass not spent giving the
+  /// next journal its first. With a limit the article phase takes each journal
+  /// to this many in one request and moves on.
+  articlesPerJournal Int @default(30)
 
   // ── Progress, cumulative ────────────────────────────────
   phase            String @default("Idle")   // Idle | Journals | Articles

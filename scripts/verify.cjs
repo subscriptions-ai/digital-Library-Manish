@@ -728,6 +728,24 @@ const catalogueSize = async () => {
     r.status === 403 ? ok('readers cannot open it', 'HTTP 403') : bad('readers cannot open it', `HTTP ${r.status}`);
   }
 
+  console.log('\nIngestion: the whole DOAJ list, and the per-journal limit');
+  {
+    const st = (await get('/api/admin/ingest/state', A)).body || {};
+    Number.isInteger(st.articlesPerJournal)
+      ? ok('the engine has a per-journal limit', `${st.articlesPerJournal || 'no limit'}`)
+      : bad('the engine has a per-journal limit', 'articlesPerJournal missing from the state');
+    if (st.articlesPerJournal > 0) {
+      const over = await p.journal.count({ where: { articleCount: { gt: st.articlesPerJournal }, lastIngestedAt: { gte: new Date(Date.now() - 864e5) }, exhaustedAt: null } });
+      over === 0 ? ok('no journal fetched today is still open past the limit')
+        : bad('no journal fetched today is still open past the limit', `${over} journals`);
+    }
+    const job = await get('/api/admin/ingest/doaj-catalogue', A);
+    job.status === 200 ? ok('the DOAJ import reports its status', job.body?.job ? (job.body.job.running ? 'running' : 'finished') : 'not run since start')
+      : bad('the DOAJ import reports its status', `HTTP ${job.status}`);
+    const r = await get('/api/admin/ingest/doaj-catalogue', S || R);
+    r.status === 403 ? ok('readers cannot start an import', 'HTTP 403') : bad('readers cannot start an import', `HTTP ${r.status}`);
+  }
+
   console.log('\nDead ends');
   for (const [name, path] of [
     ['unknown article', '/api/library/article/does-not-exist'],

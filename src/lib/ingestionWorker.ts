@@ -17,6 +17,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const p = prisma as any;
+/** The worker's connection, shared with the catalogue import rather than opening a second pool. */
+export const ingestionDb = p;
 
 const CONTACT = process.env.OPENALEX_CONTACT || 'info@celnet.in';
 const UA = { 'User-Agent': `STM Digital Library (mailto:${CONTACT})` };
@@ -201,6 +203,10 @@ async function closeSweep(sweep: any, r: { seen: number; accepted: number; rejec
 }
 
 const DOAJ_PAGE = 100;
+
+/** With a per-journal limit, how many journals one pass may fill, and for how long. */
+const ARTICLE_JOURNALS_PER_PASS = 10;
+const ARTICLE_PASS_BUDGET_MS = 40_000;
 
 /** One page of DOAJ journals for one department term; each title's licence decided here. */
 async function discoverJournalsPage(sweep: any) {
@@ -495,8 +501,12 @@ async function discoverBooksPage(sweep: any) {
  * time. Passed as undefined it means every department, which also keeps the
  * handful of journals that carry no department in the rotation.
  */
-export async function nextJournalForArticles(departments?: string[]) {
-  const inScope = departments?.length ? { domain: { in: departments } } : {};
+export async function nextJournalForArticles(departments?: string[], cap = 0) {
+  // A journal that already holds its share is finished, not merely resting.
+  const inScope = {
+    ...(departments?.length ? { domain: { in: departments } } : {}),
+    ...(cap > 0 ? { articleCount: { lt: cap } } : {}),
+  };
   const staleAfter = new Date(Date.now() - 7 * 864e5);
   return (
     await p.journal.findFirst({
@@ -515,7 +525,8 @@ export async function nextJournalForArticles(departments?: string[]) {
 
 /** Fetch one slice of articles for the journal refreshed longest ago. */
 async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
-  const journal = await nextJournalForArticles(departments);
+  const cap = Math.max(0, state.articlesPerJournal ?? 0);
+  const journal = await nextJournalForArticles(departments, cap);
   if (!journal) {
     // Said plainly, because "every journal is up to date" was also the answer
     // when the chosen departments had no journal to fetch from at all — which
@@ -538,7 +549,8 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
   const url = `https://api.openalex.org/works`
     + `?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)}`
     + `,from_publication_date:${fromYear}-01-01,open_access.is_oa:true`
-    + `&per-page=${Math.min(state.batchSize, 200)}&sort=publication_date:desc`
+    + `&per-page=${cap > 0 ? Math.min(200, Math.max(1, cap - (journal.articleCount || 0))) : Math.min(state.batchSize, 200)}`
+    + `&sort=publication_date:desc`
     + `&cursor=${encodeURIComponent(cursor)}`;
 
   const d = await getJson(url);
@@ -628,13 +640,16 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
   // Where to resume. No next cursor means the source has no more to give inside
   // the window, so the journal is marked finished and drops into the weekly
   // rotation instead of taking a turn every pass.
+  //
+  // A journal that has reached the limit is finished the same way.
+  const full = cap > 0 && s.a >= cap;
   await p.journal.update({
     where: { id: journal.id },
     data: {
       articleCount: s.a, volumeCount: s.v, issueCount: s.i, firstYear: s.f, lastYear: s.l,
       lastIngestedAt: new Date(),
-      fetchCursor: next,
-      exhaustedAt: next ? null : new Date(),
+      fetchCursor: full ? null : next,
+      exhaustedAt: next && !full ? null : new Date(),
     },
   });
 
@@ -646,9 +661,9 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
     skippedHeld,
     skippedFailed,
     skipped: skippedHeld + skippedFailed,   // kept so existing callers still read
-    more: Boolean(next),
+    more: Boolean(next) && !full,
     error: firstFailure,
-    note: next ? undefined : 'reached the end of this journal',
+    note: full ? `holds ${s.a} articles, the limit set` : next ? undefined : 'reached the end of this journal',
   };
 }
 
@@ -804,6 +819,28 @@ export async function runIngestionPass(
     }
 
     const r = await fetchArticlesForOneJournal(state, narrowed ? wanted : undefined);
+
+    // With a limit set, each journal is one small request, and one a minute
+    // would take a fortnight to give ten thousand journals their first articles.
+    // So the pass carries on to the next journal, and the next, until it has
+    // done ARTICLE_JOURNALS_PER_PASS of them or used its time. Each leaves its
+    // own row in the run log.
+    if (r.journal && (state.articlesPerJournal ?? 0) > 0) {
+      for (let k = 1; k < ARTICLE_JOURNALS_PER_PASS && Date.now() - startedAt < ARTICLE_PASS_BUDGET_MS; k++) {
+        const more = await fetchArticlesForOneJournal(state, narrowed ? wanted : undefined);
+        if (!more.journal) break;
+        await p.ingestionState.update({
+          where: { id: 'singleton' },
+          data: { articlesAdded: { increment: more.added }, articlesSkipped: { increment: more.skipped } },
+        });
+        await record({
+          phase: 'Articles', source: 'OpenAlex',
+          journalId: (more as any).journalId ?? null, journalTitle: more.journal,
+          added: more.added, skippedHeld: (more as any).skippedHeld ?? 0, skippedFailed: (more as any).skippedFailed ?? 0,
+          more: Boolean((more as any).more), note: (more as any).note ?? null, error: (more as any).error ?? null,
+        });
+      }
+    }
 
     // Nothing to fetch from in the chosen departments: spend the pass finding
     // journals there instead of reporting the absence once a minute. Not when

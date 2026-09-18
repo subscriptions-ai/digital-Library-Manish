@@ -25,6 +25,7 @@ import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, opensInstitutionDashboard,
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
+import { importDoajCatalogue } from "./src/lib/doajCatalogue.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
@@ -6146,7 +6147,7 @@ async function startServer() {
 
   app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      const { enabled, yearsBack, departments, batchSize, discoverEvery, focus } = req.body || {};
+      const { enabled, yearsBack, departments, batchSize, discoverEvery, focus, articlesPerJournal } = req.body || {};
       const data: any = {};
       if (typeof enabled === 'boolean') data.enabled = enabled;
       if (Number.isInteger(yearsBack) && yearsBack > 0 && yearsBack <= 50) data.yearsBack = yearsBack;
@@ -6156,6 +6157,7 @@ async function startServer() {
       // an article, which is the failure this setting exists to prevent.
       if (Number.isInteger(discoverEvery) && discoverEvery > 0 && discoverEvery <= 50) data.discoverEvery = discoverEvery;
       if (['auto', 'journals', 'books', 'articles'].includes(focus)) data.focus = focus;
+      if (Number.isInteger(articlesPerJournal) && articlesPerJournal >= 0 && articlesPerJournal <= 10000) data.articlesPerJournal = articlesPerJournal;
       await getIngestionState();
       res.json(await (prisma as any).ingestionState.update({ where: { id: 'singleton' }, data }));
     } catch { res.status(500).json({ error: "Failed to update ingestion state" }); }
@@ -6246,6 +6248,48 @@ async function startServer() {
       console.error('GET ingest/history error:', e?.message);
       res.status(500).json({ error: "Failed to load history" });
     }
+  });
+
+  // POST /api/admin/ingest/doaj-catalogue — every journal DOAJ lists, in one go.
+  //
+  // DOAJ's search stops at 1,000 results a query, so searching by department
+  // cannot get past about ten thousand of its twenty-three thousand journals.
+  // Its full journal list is one public CSV; reading it takes a minute or two,
+  // so it runs in the background and the screen asks how it is getting on.
+  let doajCatalogueJob: { running: boolean; startedAt: string; finishedAt?: string; result?: any; error?: string; dryRun: boolean } | null = null;
+  app.post("/api/admin/ingest/doaj-catalogue", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    if (doajCatalogueJob?.running) return res.status(409).json({ error: 'An import is already running', job: doajCatalogueJob });
+    const dryRun = req.body?.dryRun === true;
+    const job = doajCatalogueJob = { running: true, startedAt: new Date().toISOString(), dryRun };
+    res.status(202).json({ job });
+    const started = Date.now();
+    try {
+      const r = await importDoajCatalogue({ dryRun });
+      Object.assign(job, { running: false, finishedAt: new Date().toISOString(), result: r });
+      if (!dryRun) {
+        await (prisma as any).ingestionState.update({
+          where: { id: 'singleton' },
+          data: {
+            journalsSeen: { increment: r.inFile }, journalsAccepted: { increment: r.accepted },
+            journalsRejected: { increment: r.metadataOnly }, lastRunAt: new Date(),
+          },
+        }).catch(() => {});
+        await (prisma as any).ingestionRun.create({ data: {
+          phase: 'Journals', source: 'DOAJ catalogue',
+          journalsSeen: r.inFile, journalsAccepted: r.accepted, journalsRefused: r.metadataOnly,
+          durationMs: Date.now() - started,
+          note: `full DOAJ list: ${r.added} new journals added (${r.accepted} full text, ${r.metadataOnly} metadata only), ${r.alreadyHeld} already held`,
+        } }).catch(() => {});
+      }
+    } catch (e: any) {
+      Object.assign(job, { running: false, finishedAt: new Date().toISOString(), error: String(e?.message || e) });
+      await (prisma as any).ingestionRun.create({ data: {
+        phase: 'Error', source: 'DOAJ catalogue', error: String(e?.message || e).slice(0, 1000), durationMs: Date.now() - started,
+      } }).catch(() => {});
+    }
+  });
+  app.get("/api/admin/ingest/doaj-catalogue", authenticateJWT, requireSuperAdmin, (_req: any, res: any) => {
+    res.json({ job: doajCatalogueJob });
   });
 
   app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
