@@ -68,6 +68,41 @@
   --acc-1: #0a4a50;
   --acc-2: #238c95;
   --acc-3: #6fb0b5;
+
+  /* Decoration, not data.
+
+     The home page had one hue for everything and read as grey. These six are
+     for the furniture — the tile behind an icon, the pill over a heading, the
+     badge on a card — so a section can be told apart at a glance. They never
+     encode a value: a chart's colours come from the series and ramp tokens
+     above, which are validated for colourblind separation; these are not, and
+     nothing on the page depends on telling them apart.
+
+     Each is a pair: a soft ground and the ink that sits on it, every pair over
+     7:1 so a label on the tile is as readable as body text. */
+  --t1-bg: #ebe7fd; --t1-ink: #4c2aa8;   /* violet  */
+  --t2-bg: #fdefd4; --t2-ink: #8a4b06;   /* amber   */
+  --t3-bg: #d9efee; --t3-ink: #0b5259;   /* teal    */
+  --t4-bg: #fde5e8; --t4-ink: #9c1c3d;   /* rose    */
+  --t5-bg: #d9f2e3; --t5-ink: #0a5c3c;   /* emerald */
+  --t6-bg: #dfeefd; --t6-ink: #0d4f7c;   /* sky     */
+
+  /* The hero's ground: a dark field with a little colour in it rather than a
+     flat near-black, and the warm note the headline's underline picks up. */
+  --hero-1: #16295c;
+  --hero-2: #0e5561;
+  --hero-3: #3a2478;
+  --hero-warm: #f2b544;
+
+  /* The same six for anything drawn on a dark field — the hero, the closing
+     band — where the light theme's dark ink would disappear. Defined once and
+     not redefined for the dark theme: the field is dark in both. */
+  --on-dark-1: #c3b5f5;
+  --on-dark-2: #f0c47c;
+  --on-dark-3: #83d2cb;
+  --on-dark-4: #f2a6b4;
+  --on-dark-5: #86d7ac;
+  --on-dark-6: #93c8ef;
 }
 
 .dark {
@@ -116,6 +151,21 @@
   --acc-1: #bfe6e7;
   --acc-2: #5cb3aa;
   --acc-3: #2b6f76;
+
+  /* The same six re-chosen against the dark surface: a low-saturation ground
+     that still reads as coloured, and a light ink on it. Flipping the light
+     pair would have given a glowing tile with dark text on it. */
+  --t1-bg: #241f3e; --t1-ink: #c3b5f5;
+  --t2-bg: #382a14; --t2-ink: #f0c47c;
+  --t3-bg: #14302f; --t3-ink: #83d2cb;
+  --t4-bg: #3a1f26; --t4-ink: #f2a6b4;
+  --t5-bg: #143026; --t5-ink: #86d7ac;
+  --t6-bg: #17293a; --t6-ink: #93c8ef;
+
+  --hero-1: #0b111b;
+  --hero-2: #0c2228;
+  --hero-3: #141329;
+  --hero-warm: #f2b544;
 }
 
 /* `inline` makes Tailwind emit var(--ground) rather than the resolved colour,
@@ -156,6 +206,18 @@
   --font-serif: "Spectral", Georgia, "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
+
+/* Anything drawn on a dark field — the hero, the department panel's header,
+   the walkthrough card, the closing band. These fields are dark in both
+   themes, so their text cannot be text-surface: that token flips with the
+   theme, and in dark mode the heading went dark-on-dark and disappeared. */
+.on-dark        { color: #eef2f6; }
+.on-dark-2      { color: rgba(238, 242, 246, 0.78); }
+.on-dark-3      { color: rgba(238, 242, 246, 0.55); }
+.on-dark-edge   { border-color: rgba(238, 242, 246, 0.22); }
+.on-dark-fill   { background: rgba(238, 242, 246, 0.07); }
+.on-dark-fill:hover { background: rgba(238, 242, 246, 0.14); }
+.on-dark-dot    { background: rgba(238, 242, 246, 0.25); }
 
 /* The hero slider's progress line: fills across the time a slide is shown. */
 @keyframes slider-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }

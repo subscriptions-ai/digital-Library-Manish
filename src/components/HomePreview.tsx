@@ -47,6 +47,29 @@ type Department = {
 const n = (x?: number) => (typeof x === 'number' ? x.toLocaleString('en-IN') : '—');
 const LABEL = 'font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint';
 
+/**
+ * The page's decorative colours, six of them, defined in index.css for both
+ * themes. They dress the furniture — the tile behind an icon, the pill over a
+ * heading, the badge on a card — and never stand for a value; the charts keep
+ * their own validated palettes. A page with one hue for everything read as
+ * grey, which is the whole reason these exist.
+ */
+type Tone = 1 | 2 | 3 | 4 | 5 | 6;
+const tone = (t: Tone) => ({ background: `var(--t${t}-bg)`, color: `var(--t${t}-ink)` });
+const toneInk = (t: Tone) => ({ color: `var(--t${t}-ink)` });
+/** The same six, for text and icons drawn on the dark hero or closing band. */
+const onDark = (t: Tone) => ({ color: `var(--on-dark-${t})` });
+
+/** A section's eyebrow: a dot and a word, in that section's colour. */
+function Eyebrow({ t, children }: { t: Tone; children: React.ReactNode }) {
+  return (
+    <p style={tone(t)} className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em]">
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
+      {children}
+    </p>
+  );
+}
+
 /** "Added today", "Added 3 days ago" — vague on purpose past a fortnight. */
 function added(iso?: string) {
   if (!iso) return null;
@@ -385,58 +408,67 @@ function buildSlides({ stats, insights, articles, publishers, depts }: SlideData
 }
 
 /**
- * The backdrop of the hero: the covers we actually hold, tiled and turned
- * almost all the way down. The reference uses stock photography of people in
- * labs; a library's own shelf is both truer and cheaper.
+ * The hero's ground.
+ *
+ * It used to be a wall of the covers we hold, turned down behind a scrim. Two
+ * things were wrong with that: the scrim had to be so dark to keep the
+ * headline readable that the covers barely showed, and DOAB serves covers at
+ * full size — one of the three on this page is 1.9 MB and takes twenty
+ * seconds — so the page pulled megabytes before it had said anything. The
+ * colour now comes from the gradient, and the covers appear further down,
+ * lazily, where they are actually looked at.
  */
-function CoverWall({ books }: { books: NewBook[] }) {
-  const covers = books.filter(b => b.coverUrl).slice(0, 18);
-  if (!covers.length) return null;
+function HeroGlow() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 flex flex-wrap gap-3 p-3 opacity-[0.16] blur-[1px]">
-        {covers.concat(covers).map((b, i) => (
-          <img key={`${b.id}-${i}`} src={b.coverUrl as string} alt="" loading="lazy"
-            className="h-40 w-28 shrink-0 rounded object-cover" />
-        ))}
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/95 to-ink/70" />
+      <div className="absolute -left-24 -top-32 h-[420px] w-[420px] rounded-full opacity-40 blur-3xl"
+        style={{ background: 'var(--hero-2)' }} />
+      <div className="absolute -bottom-40 right-[-6rem] h-[460px] w-[460px] rounded-full opacity-45 blur-3xl"
+        style={{ background: 'var(--hero-3)' }} />
     </div>
   );
 }
 
 /** A book with no cover still gets one: its own title, set on a tinted panel. */
-function Cover({ book, className = '' }: { book: NewBook; className?: string }) {
+function Cover({ book, className = '', tone: t = 3 }: { book: NewBook; className?: string; tone?: Tone }) {
+  // The cover is fetched from DOAB, which takes about a second a file. Behind
+  // it sits the card's own colour, so a cover on its way looks like a cover
+  // rather than a hole in the page.
   if (book.coverUrl) {
-    return <img src={book.coverUrl} alt="" loading="lazy" className={`object-cover ${className}`} />;
+    return (
+      <span style={tone(t)} className={`block ${className}`}>
+        <img src={book.coverUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+      </span>
+    );
   }
   return (
-    <div className={`flex flex-col justify-between bg-accent-soft p-3 ${className}`}>
-      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-accent">{book.domain || 'Book'}</span>
-      <span className="line-clamp-4 font-serif text-[13px] leading-tight text-ink">{book.title}</span>
-      <span className="truncate font-mono text-[9px] text-muted">{book.publisherName || ''}</span>
+    <div style={tone(t)} className={`flex flex-col justify-between p-3 ${className}`}>
+      <span className="font-mono text-[9px] uppercase tracking-[0.14em] opacity-80">{book.domain || 'Book'}</span>
+      <span className="line-clamp-4 font-serif text-[15px] leading-tight">{book.title}</span>
+      <span className="truncate font-mono text-[9px] opacity-70">{book.publisherName || ''}</span>
     </div>
   );
 }
 
 /** The card of ways in, laid over the foot of the hero. */
-const WAYS_IN: { to: string; icon: any; title: string; sub: string }[] = [
-  { to: '/digital-library?kind=articles', icon: FileText, title: 'Articles', sub: 'Peer-reviewed research' },
-  { to: '/digital-library?kind=books', icon: BookOpen, title: 'Books', sub: 'Open-access monographs' },
-  { to: '/journals', icon: Library, title: 'Journals', sub: 'By volume and issue' },
-  { to: '/digital-library', icon: Layers, title: 'Departments', sub: 'Browse like a shelf' },
-  { to: '/digital-library', icon: Building2, title: 'Publishers', sub: 'Who published it' },
-  { to: '/digital-library?sort=newest', icon: Sparkles, title: 'Newest first', sub: 'What arrived today' },
-  { to: '/digital-library?oa=1', icon: Tags, title: 'Open access only', sub: 'Read here, in full' },
-  { to: '/for-institutions', icon: UserSquare2, title: 'For institutions', sub: 'Add your people' },
+const WAYS_IN: { to: string; icon: any; title: string; sub: string; t: Tone }[] = [
+  { to: '/digital-library?kind=articles', icon: FileText, title: 'Articles', sub: 'Peer-reviewed research', t: 1 },
+  { to: '/digital-library?kind=books', icon: BookOpen, title: 'Books', sub: 'Open-access monographs', t: 2 },
+  { to: '/journals', icon: Library, title: 'Journals', sub: 'By volume and issue', t: 3 },
+  { to: '/digital-library', icon: Layers, title: 'Departments', sub: 'Browse like a shelf', t: 6 },
+  { to: '/digital-library', icon: Building2, title: 'Publishers', sub: 'Who published it', t: 5 },
+  { to: '/digital-library?sort=newest', icon: Sparkles, title: 'Newest first', sub: 'What arrived today', t: 4 },
+  { to: '/digital-library?oa=1', icon: Tags, title: 'Open access only', sub: 'Read here, in full', t: 5 },
+  { to: '/for-institutions', icon: UserSquare2, title: 'For institutions', sub: 'Add your people', t: 1 },
 ];
 
-function Principle({ icon: Icon, title, children, proof }: {
-  icon: any; title: string; children: React.ReactNode; proof?: React.ReactNode;
+function Principle({ icon: Icon, title, children, proof, t }: {
+  icon: any; title: string; children: React.ReactNode; proof?: React.ReactNode; t: Tone;
 }) {
   return (
-    <div className="flex flex-col rounded-2xl border border-rule bg-surface p-6">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-rule bg-surface p-6">
+      <span aria-hidden className="-mx-6 -mt-6 mb-6 block h-1" style={{ background: `var(--t${t}-ink)` }} />
+      <span style={tone(t)} className="flex h-10 w-10 items-center justify-center rounded-xl">
         <Icon size={19} />
       </span>
       <h3 className="mt-4 text-[15px] font-semibold text-ink">{title}</h3>
@@ -498,10 +530,11 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-rule bg-surface">
-        <div className="border-b border-rule bg-ink px-6 py-7 text-surface">
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-surface/60">Department</p>
+        <div className="on-dark border-b border-rule px-6 py-7"
+          style={{ background: 'linear-gradient(115deg, var(--hero-1) 0%, var(--hero-2) 55%, var(--hero-3) 100%)' }}>
+          <p className="on-dark-3 font-mono text-[10.5px] uppercase tracking-[0.14em]">Department</p>
           <h3 className="mt-2 font-serif text-[30px] font-medium leading-tight">{current || '—'}</h3>
-          <p className="mt-2 text-[13.5px] text-surface/70">
+          <p className="on-dark-2 mt-2 text-[13.5px]">
             {row ? <>{n(row.total)} items held</> : 'Reading the catalogue…'}
             {d?.firstYear ? <> · published {d.firstYear}–{d.lastYear}</> : null}
           </p>
@@ -580,12 +613,12 @@ const ChartSkeleton = ({ h = 260 }: { h?: number }) => (
   <div className="animate-pulse rounded-xl bg-surface-2" style={{ height: h }} />
 );
 
-function Audience({ icon: Icon, who, blurb, points, to }: {
-  icon: any; who: string; blurb: string; points: string[]; to: string;
+function Audience({ icon: Icon, who, blurb, points, to, t }: {
+  icon: any; who: string; blurb: string; points: string[]; to: string; t: Tone;
 }) {
   return (
     <div className="flex flex-col rounded-2xl border border-rule bg-surface p-6">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-2 text-ink-2">
+      <span style={tone(t)} className="flex h-10 w-10 items-center justify-center rounded-xl">
         <Icon size={18} />
       </span>
       <h3 className="mt-4 font-serif text-[20px] font-medium text-ink">{who}</h3>
@@ -593,11 +626,11 @@ function Audience({ icon: Icon, who, blurb, points, to }: {
       <ul className="mt-4 flex-1 space-y-2">
         {points.map(p => (
           <li key={p} className="flex gap-2 text-[13px] leading-snug text-ink-2">
-            <ChevronRight size={14} className="mt-[2px] shrink-0 text-accent" /><span>{p}</span>
+            <ChevronRight size={14} className="mt-[2px] shrink-0" style={toneInk(t)} /><span>{p}</span>
           </li>
         ))}
       </ul>
-      <Link to={to} className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent hover:underline">
+      <Link to={to} style={toneInk(t)} className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold hover:underline">
         Learn more <ArrowRight size={14} />
       </Link>
     </div>
@@ -607,11 +640,11 @@ function Audience({ icon: Icon, who, blurb, points, to }: {
 /** Where the collection comes from, as the reference shows its affiliations. */
 function Provenance({ publishers }: { publishers: Publisher[] }) {
   const [tab, setTab] = useState<'publishers' | 'sources'>('publishers');
-  const sources = [
-    { name: 'DOAJ', what: 'Directory of Open Access Journals', gives: 'Journals, and the licence each one declares' },
-    { name: 'DOAB', what: 'Directory of Open Access Books', gives: 'Books, catalogued with a link to the publisher' },
-    { name: 'OpenAlex', what: 'Open catalogue of scholarly work', gives: 'Articles, with their journal, volume and issue' },
-    { name: 'OAPEN Library', what: 'Open-access book library', gives: 'The book files themselves, where they exist' },
+  const sources: { name: string; what: string; gives: string; t: Tone }[] = [
+    { name: 'DOAJ', what: 'Directory of Open Access Journals', gives: 'Journals, and the licence each one declares', t: 3 },
+    { name: 'DOAB', what: 'Directory of Open Access Books', gives: 'Books, catalogued with a link to the publisher', t: 2 },
+    { name: 'OpenAlex', what: 'Open catalogue of scholarly work', gives: 'Articles, with their journal, volume and issue', t: 1 },
+    { name: 'OAPEN Library', what: 'Open-access book library', gives: 'The book files themselves, where they exist', t: 5 },
   ];
   return (
     <div className="rounded-2xl border border-rule bg-surface p-6">
@@ -627,10 +660,11 @@ function Provenance({ publishers }: { publishers: Publisher[] }) {
 
       {tab === 'publishers' ? (
         <div className="mt-5 flex flex-wrap gap-2">
-          {publishers.slice(0, 24).map(p => (
-            <span key={p.name} className="inline-flex max-w-full items-center gap-2 rounded-full border border-rule bg-ground px-3.5 py-1.5 text-[12.5px] text-ink-2">
+          {publishers.slice(0, 24).map((p, i) => (
+            <span key={p.name} style={tone(((i % 6) + 1) as Tone)}
+              className="inline-flex max-w-full items-center gap-2 rounded-full px-3.5 py-1.5 text-[12.5px]">
               <span className="truncate">{p.name}</span>
-              <span className="tnum shrink-0 font-mono text-[11px] text-faint">{n(p.count)}</span>
+              <span className="tnum shrink-0 font-mono text-[11px] opacity-70">{n(p.count)}</span>
             </span>
           ))}
           {!publishers.length && <div className="h-24 w-full animate-pulse rounded-xl bg-surface-2" />}
@@ -638,8 +672,9 @@ function Provenance({ publishers }: { publishers: Publisher[] }) {
       ) : (
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {sources.map(s => (
-            <div key={s.name} className="rounded-xl border border-rule bg-ground p-4">
-              <p className="font-mono text-[12px] uppercase tracking-wider text-accent">{s.name}</p>
+            <div key={s.name} className="overflow-hidden rounded-xl border border-rule bg-ground p-4"
+              style={{ borderLeft: `3px solid var(--t${s.t}-ink)` }}>
+              <p style={toneInk(s.t)} className="font-mono text-[12px] uppercase tracking-wider">{s.name}</p>
               <p className="mt-1 text-[13.5px] text-ink">{s.what}</p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{s.gives}</p>
             </div>
@@ -676,22 +711,30 @@ export function HomePreview() {
           column sized itself to the longest truncated line — a journal title —
           and the page came out 411px wide on a 390px screen, cutting the hero
           text off at the right. */}
-      <section className="relative overflow-hidden bg-ink">
-        <CoverWall books={books} />
+      <section className="relative overflow-hidden"
+        style={{
+          background:
+            'radial-gradient(1100px 520px at 12% 8%, color-mix(in srgb, var(--hero-2) 75%, transparent), transparent 60%),'
+            + 'radial-gradient(900px 480px at 88% 92%, color-mix(in srgb, var(--hero-3) 85%, transparent), transparent 62%),'
+            + 'linear-gradient(115deg, var(--hero-1) 0%, var(--hero-2) 48%, var(--hero-3) 100%)',
+        }}>
+        <HeroGlow />
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 pb-28 pt-14 lg:grid-cols-[1.1fr_1fr] lg:pb-32 lg:pt-20">
           <div className="min-w-0">
-            <p className="inline-flex items-center gap-2 rounded-full bg-surface/10 px-3 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em] text-surface/80">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" /> The collection
+            <p className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em]"
+              style={{ background: 'color-mix(in srgb, var(--hero-warm) 18%, transparent)', color: 'var(--hero-warm)' }}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--hero-warm)' }} /> The collection
             </p>
-            <h1 className="mt-5 font-serif text-[40px] font-medium leading-[1.08] tracking-tight text-surface sm:text-[54px]">
+            <h1 className="on-dark mt-5 font-serif text-[40px] font-medium leading-[1.08] tracking-tight sm:text-[54px]">
               An academic library your whole institution can{' '}
-              <span className="relative whitespace-nowrap text-accent">
+              <span className="relative whitespace-nowrap" style={{ color: 'var(--hero-warm)' }}>
                 open
-                <span aria-hidden className="absolute inset-x-0 -bottom-1 h-[3px] rounded-full bg-accent/70" />
+                <span aria-hidden className="absolute inset-x-0 -bottom-1 h-[3px] rounded-full"
+                  style={{ background: 'var(--hero-warm)', opacity: 0.75 }} />
               </span>.
             </h1>
-            <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-surface/75">
-              <b className="text-surface"><Figure value={stats?.total} /> items</b> of research —{' '}
+            <p className="on-dark-2 mt-5 max-w-xl text-[16px] leading-relaxed">
+              <b className="on-dark"><Figure value={stats?.total} /> items</b> of research —{' '}
               <Figure value={stats?.articles} /> articles and <Figure value={stats?.books} /> books —
               catalogued by department, journal, volume and issue, with every licence checked
               before anything is served.
@@ -699,7 +742,7 @@ export function HomePreview() {
 
             <form
               onSubmit={e => { e.preventDefault(); if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`); }}
-              className="mt-7 flex max-w-xl items-center gap-2 rounded-xl border border-surface/15 bg-surface/95 p-1.5 shadow-xl focus-within:border-accent"
+              className="on-dark-edge mt-7 flex max-w-xl items-center gap-2 rounded-xl border bg-surface p-1.5 shadow-xl focus-within:border-accent"
             >
               <Search size={18} className="ml-2.5 shrink-0 text-faint" />
               <input
@@ -715,14 +758,14 @@ export function HomePreview() {
             {/* Who the library is for, as the reference sets out its audiences. */}
             <div className="mt-6 flex flex-wrap gap-2">
               {[
-                { label: 'Students', to: '/for-students', icon: GraduationCap },
-                { label: 'Faculty & researchers', to: '/for-students', icon: UserSquare2 },
-                { label: 'Librarians', to: '/for-institutions', icon: Library },
-                { label: 'Institutions', to: '/for-institutions', icon: Building2 },
+                { label: 'Students', to: '/for-students', icon: GraduationCap, t: 1 as Tone },
+                { label: 'Faculty & researchers', to: '/for-students', icon: UserSquare2, t: 5 as Tone },
+                { label: 'Librarians', to: '/for-institutions', icon: Library, t: 2 as Tone },
+                { label: 'Institutions', to: '/for-institutions', icon: Building2, t: 6 as Tone },
               ].map(a => (
                 <Link key={a.label} to={a.to}
-                  className="inline-flex items-center gap-2 rounded-full border border-surface/20 bg-surface/5 px-3.5 py-1.5 text-[12.5px] text-surface/85 hover:bg-surface/15">
-                  <a.icon size={14} className="text-accent" /> {a.label}
+                  className="on-dark-2 on-dark-edge on-dark-fill inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12.5px]">
+                  <a.icon size={14} style={onDark(a.t)} /> {a.label}
                 </Link>
               ))}
             </div>
@@ -731,11 +774,11 @@ export function HomePreview() {
               <Link to="/signup" className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-[14px] font-semibold text-white hover:bg-accent-hover">
                 Register Now <ArrowRight size={16} />
               </Link>
-              <Link to="/digital-library" className="inline-flex items-center gap-2 rounded-xl border border-surface/25 px-5 py-3 text-[14px] font-semibold text-surface hover:bg-surface/10">
+              <Link to="/digital-library" className="on-dark on-dark-edge on-dark-fill inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-semibold">
                 Browse the collection
               </Link>
             </div>
-            <p className="mt-4 text-[12.5px] text-surface/55">
+            <p className="on-dark-3 mt-4 text-[12.5px]">
               Free to register · the whole library in half-hour sessions · Pro removes the limit
             </p>
           </div>
@@ -750,7 +793,7 @@ export function HomePreview() {
         <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-rule bg-rule shadow-xl sm:grid-cols-2 lg:grid-cols-4">
           {WAYS_IN.map(w => (
             <Link key={w.title} to={w.to} className="group flex items-center gap-3 bg-surface px-5 py-4 hover:bg-surface-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+              <span style={tone(w.t)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
                 <w.icon size={17} />
               </span>
               <span className="min-w-0">
@@ -765,14 +808,15 @@ export function HomePreview() {
       {/* ── The publishers, walking past ─────────────────────────────────── */}
       <section className="mt-16 border-y border-rule bg-surface py-6">
         <div className="mx-auto mb-4 max-w-6xl px-5">
-          <p className={LABEL}>Published by {n(publishers.length || undefined)} publishers, among them</p>
+          <Eyebrow t={5}>Published by {n(publishers.length || undefined)} publishers, among them</Eyebrow>
         </div>
         <div className="marquee relative overflow-hidden">
           <div className="marquee-track flex w-max gap-3">
             {(publishers.length ? publishers.slice(0, 30).concat(publishers.slice(0, 30)) : []).map((p, i) => (
-              <span key={`${p.name}-${i}`} className="inline-flex shrink-0 items-center gap-2.5 rounded-full border border-rule bg-ground px-4 py-2 text-[13px] text-ink-2">
+              <span key={`${p.name}-${i}`} style={tone(((i % 6) + 1) as Tone)}
+                className="inline-flex shrink-0 items-center gap-2.5 rounded-full px-4 py-2 text-[13px]">
                 {p.name}
-                <span className="tnum font-mono text-[11px] text-faint">{n(p.count)}</span>
+                <span className="tnum font-mono text-[11px] opacity-70">{n(p.count)}</span>
               </span>
             ))}
           </div>
@@ -783,19 +827,19 @@ export function HomePreview() {
 
       {/* ── What the library adds up to ──────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-5 py-20">
-        <p className={LABEL}>Built for trust, not for the brochure</p>
+        <Eyebrow t={3}>Built for trust, not for the brochure</Eyebrow>
         <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
           Every figure on this page is read from the catalogue as it loads.
         </h2>
         <dl className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { icon: Layers, value: stats?.total, label: 'Items of content', hint: `Articles, books and archived material across ${depts.length || '—'} departments` },
-            { icon: FileText, value: stats?.articles, label: 'Research articles', hint: 'Each one in its journal, volume and issue' },
-            { icon: BookOpen, value: stats?.books, label: 'Books', hint: 'Open-access monographs and edited volumes' },
-            { icon: Users, value: stats?.authors, label: 'Authors indexed', hint: 'Searchable by name, with everything they wrote' },
+            { icon: Layers, value: stats?.total, label: 'Items of content', t: 1 as Tone, hint: `Articles, books and archived material across ${depts.length || '—'} departments` },
+            { icon: FileText, value: stats?.articles, label: 'Research articles', t: 3 as Tone, hint: 'Each one in its journal, volume and issue' },
+            { icon: BookOpen, value: stats?.books, label: 'Books', t: 2 as Tone, hint: 'Open-access monographs and edited volumes' },
+            { icon: Users, value: stats?.authors, label: 'Authors indexed', t: 6 as Tone, hint: 'Searchable by name, with everything they wrote' },
           ].map(s => (
             <div key={s.label}>
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-soft text-accent">
+              <span style={tone(s.t)} className="flex h-11 w-11 items-center justify-center rounded-xl">
                 <s.icon size={20} />
               </span>
               <dd className="mt-4 font-mono text-[32px] leading-none text-ink"><Figure value={s.value} /></dd>
@@ -809,7 +853,7 @@ export function HomePreview() {
       {/* ── Department explorer ──────────────────────────────────────────── */}
       <section className="border-y border-rule bg-ground">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <p className={LABEL}>Core departments</p>
+          <Eyebrow t={1}>Core departments</Eyebrow>
           <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
             Explore the collection department by department.
           </h2>
@@ -823,12 +867,12 @@ export function HomePreview() {
 
       {/* ── Why it reads like a library ──────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-5 py-20">
-        <p className={LABEL}>How it is built</p>
+        <Eyebrow t={2}>How it is built</Eyebrow>
         <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
           Not a pile of PDFs. A catalogue, kept the way a library keeps one.
         </h2>
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Principle icon={Layers} title="Structured like a library"
+          <Principle t={1} icon={Layers} title="Structured like a library"
             proof={
               <div className="flex flex-wrap items-center gap-1 font-mono text-[10.5px] text-muted">
                 {['Department', 'Journal', 'Volume', 'Issue', 'Article'].map((s, i) => (
@@ -842,17 +886,17 @@ export function HomePreview() {
             Every article sits in its journal, volume and issue, under a department — so a reader can
             browse the way they would walk a shelf, not only search.
           </Principle>
-          <Principle icon={ShieldCheck} title="Every licence checked"
+          <Principle t={5} icon={ShieldCheck} title="Every licence checked"
             proof={<p className="font-mono text-[10.5px] text-muted">Served here · or linked to the publisher's copy</p>}>
             Full text is shown inside the library only where its licence allows it. Where it does not,
             the record is kept and the reader is sent to the publisher's own copy.
           </Principle>
-          <Principle icon={RefreshCw} title="Always growing"
+          <Principle t={2} icon={RefreshCw} title="Always growing"
             proof={<p className="font-mono text-[10.5px] text-muted">DOAJ · DOAB · OpenAlex</p>}>
             New titles arrive continuously from open scholarly sources, and each is checked for its
             licence and its department on the way in.
           </Principle>
-          <Principle icon={BookMarked} title="Picks up where you left off"
+          <Principle t={6} icon={BookMarked} title="Picks up where you left off"
             proof={<p className="font-mono text-[10.5px] text-muted">Resume · history · what to open next</p>}>
             The reader remembers the page you stopped on, keeps your reading history, and suggests what
             to open next in the departments you care about.
@@ -865,7 +909,7 @@ export function HomePreview() {
         <div className="mx-auto max-w-6xl px-5 py-20">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className={LABEL}>Just added</p>
+              <Eyebrow t={4}>Just added</Eyebrow>
               <h2 className="mt-3 font-serif text-[32px] font-medium leading-tight text-ink">
                 The shelves move every day.
               </h2>
@@ -883,9 +927,10 @@ export function HomePreview() {
               b ? (
                 <Link key={b.id} to={browse('books', b.title)}
                   className="group flex flex-col overflow-hidden rounded-2xl border border-rule bg-ground transition-shadow hover:shadow-lg">
-                  <Cover book={b} className="h-52 w-full" />
+                  <Cover book={b} className="h-52 w-full" tone={((i % 6) + 1) as Tone} />
                   <div className="flex flex-1 flex-col p-5">
-                    <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-accent">
+                    <p style={tone(((i % 6) + 1) as Tone)}
+                      className="inline-flex w-fit rounded-full px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em]">
                       {added(b.createdAt) || 'Book'}{b.domain ? ` · ${b.domain}` : ''}
                     </p>
                     <h3 className="mt-2 line-clamp-2 font-serif text-[19px] font-medium leading-tight text-ink group-hover:text-accent">
@@ -894,7 +939,7 @@ export function HomePreview() {
                     <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-muted">
                       {[b.authors, b.publisherName].filter(Boolean).join(' · ') || 'Open-access book'}
                     </p>
-                    <span className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-accent">
+                    <span style={toneInk(((i % 6) + 1) as Tone)} className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold">
                       View details <ArrowRight size={13} />
                     </span>
                   </div>
@@ -928,7 +973,7 @@ export function HomePreview() {
 
       {/* ── At a glance: what, where, on what terms ──────────────────────── */}
       <section className="mx-auto max-w-6xl px-5 pt-20">
-        <p className={LABEL}>The collection at a glance</p>
+        <Eyebrow t={6}>The collection at a glance</Eyebrow>
         <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
           What it is, where you read it, and on what terms.
         </h2>
@@ -997,7 +1042,7 @@ export function HomePreview() {
       <section className="mx-auto max-w-6xl px-5 py-20">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-center">
           <div>
-            <p className={LABEL}>How reading works</p>
+            <Eyebrow t={5}>How reading works</Eyebrow>
             <h2 className="mt-3 font-serif text-[32px] font-medium leading-tight text-ink">
               From a search box to the page you stopped on.
             </h2>
@@ -1026,12 +1071,13 @@ export function HomePreview() {
 
           {/* The product, drawn rather than photographed: the reader's own
               furniture, with this library's real figures in it. */}
-          <div className="overflow-hidden rounded-2xl border border-rule bg-ink p-5 shadow-xl">
+          <div className="overflow-hidden rounded-2xl border border-rule p-5 shadow-xl"
+            style={{ background: 'linear-gradient(140deg, var(--hero-1) 0%, var(--hero-3) 60%, var(--hero-2) 100%)' }}>
             <div className="flex items-center gap-2 pb-4">
-              <span className="h-2.5 w-2.5 rounded-full bg-surface/25" />
-              <span className="h-2.5 w-2.5 rounded-full bg-surface/25" />
-              <span className="h-2.5 w-2.5 rounded-full bg-surface/25" />
-              <span className="ml-2 font-mono text-[10.5px] text-surface/50">the reader</span>
+              <span className="on-dark-dot h-2.5 w-2.5 rounded-full" />
+              <span className="on-dark-dot h-2.5 w-2.5 rounded-full" />
+              <span className="on-dark-dot h-2.5 w-2.5 rounded-full" />
+              <span className="on-dark-3 ml-2 font-mono text-[10.5px]">the reader</span>
             </div>
             <div className="rounded-xl bg-surface p-4">
               <div className="flex items-center gap-2 rounded-lg border border-rule bg-ground px-3 py-2">
@@ -1079,8 +1125,8 @@ export function HomePreview() {
                 ['Open', span ? `Covers ${span}` : 'Recent work'],
               ].map(([t, s]) => (
                 <div key={t}>
-                  <p className="text-[12.5px] font-semibold text-surface">{t}</p>
-                  <p className="mt-0.5 text-[11.5px] leading-snug text-surface/60">{s}</p>
+                  <p className="on-dark text-[12.5px] font-semibold">{t}</p>
+                  <p className="on-dark-3 mt-0.5 text-[11.5px] leading-snug">{s}</p>
                 </div>
               ))}
             </div>
@@ -1091,21 +1137,21 @@ export function HomePreview() {
       {/* ── Who we serve ─────────────────────────────────────────────────── */}
       <section className="border-y border-rule bg-surface">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <p className={LABEL}>Who it is for</p>
+          <Eyebrow t={1}>Who it is for</Eyebrow>
           <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
             One library, four ways in.
           </h2>
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Audience icon={GraduationCap} who="Students" to="/for-students"
+            <Audience t={1} icon={GraduationCap} who="Students" to="/for-students"
               blurb="Everything the department holds, from the first year onwards."
               points={['Search the whole library from one box', 'Read in the browser, nothing to install', 'Added by your librarian on Pro']} />
-            <Audience icon={UserSquare2} who="Faculty & researchers" to="/for-students"
+            <Audience t={5} icon={UserSquare2} who="Faculty & researchers" to="/for-students"
               blurb="Browse the way you would walk a shelf, and pick up where you stopped."
               points={[`Search ${stats ? n(stats.total) : 'the whole'} items`, 'Department, journal, volume, issue', 'History kept, with suggestions']} />
-            <Audience icon={Library} who="Librarians" to="/for-institutions"
+            <Audience t={2} icon={Library} who="Librarians" to="/for-institutions"
               blurb="Run access for the whole institution from one screen."
               points={['Add faculty and researchers yourself', 'See reading by week and subject', 'Find the searches that came back empty']} />
-            <Audience icon={Building2} who="Institutions" to="/for-institutions"
+            <Audience t={6} icon={Building2} who="Institutions" to="/for-institutions"
               blurb="Free to start, and Pro when the sessions get in the way."
               points={['Free: the whole library, in half-hour sessions', 'Pro: no session limit for anyone you add', 'Pro: students added, in agreed numbers']} />
           </div>
@@ -1116,7 +1162,7 @@ export function HomePreview() {
       <section className="mx-auto max-w-6xl px-5 py-20">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className={LABEL}>Where the collection is deep</p>
+            <Eyebrow t={3}>Where the collection is deep</Eyebrow>
             <h2 className="mt-3 font-serif text-[32px] font-medium leading-tight text-ink">
               Everything held, department by department.
             </h2>
@@ -1134,7 +1180,7 @@ export function HomePreview() {
 
       {/* ── Where it comes from ──────────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-5 pb-20">
-        <p className={LABEL}>Where the collection comes from</p>
+        <Eyebrow t={2}>Where the collection comes from</Eyebrow>
         <h2 className="mt-3 mb-8 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
           Open scholarship, with its paperwork.
         </h2>
@@ -1142,13 +1188,14 @@ export function HomePreview() {
       </section>
 
       {/* ── Close ────────────────────────────────────────────────────────── */}
-      <section className="border-t border-rule bg-ink">
+      <section className="border-t border-rule"
+        style={{ background: 'linear-gradient(115deg, var(--hero-1) 0%, var(--hero-2) 50%, var(--hero-3) 100%)' }}>
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-5 py-16 md:flex-row md:items-center">
           <div>
-            <h2 className="font-serif text-[30px] font-medium leading-tight text-surface">
+            <h2 className="on-dark font-serif text-[30px] font-medium leading-tight">
               Open the library for your institution.
             </h2>
-            <p className="mt-2 text-[14px] text-surface/70">
+            <p className="on-dark-2 mt-2 text-[14px]">
               Register free, add your faculty and researchers, and start reading today.
             </p>
           </div>
@@ -1156,7 +1203,7 @@ export function HomePreview() {
             <Link to="/signup" className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-[14px] font-semibold text-white hover:bg-accent-hover">
               Register Now <ArrowRight size={16} />
             </Link>
-            <Link to="/digital-library" className="inline-flex items-center gap-2 rounded-xl border border-surface/25 px-5 py-3 text-[14px] font-semibold text-surface hover:bg-surface/10">
+            <Link to="/digital-library" className="on-dark on-dark-edge on-dark-fill inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-semibold">
               Browse the collection
             </Link>
           </div>
