@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Sparkles, Check, Clock, Infinity as InfinityIcon, Send, Receipt, History } from 'lucide-react';
+import {
+  Sparkles, Check, Clock, Infinity as InfinityIcon, Send, Receipt, History, Minus, Users,
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAllowance, countdown, clockTime } from './ReadingClock';
 
@@ -24,6 +26,82 @@ const date = (d?: string | null) =>
 
 const daysLeft = (end: string) =>
   Math.max(0, Math.ceil((new Date(end).getTime() - Date.now()) / 864e5));
+
+/**
+ * Free beside Pro.
+ *
+ * A member on the free plan can read the whole library — the clock is the only
+ * limit there is, and on the institution side, who may be added. So the two
+ * columns say exactly that and nothing more: no invented feature, nothing about
+ * price, and the line a reader actually meets mid-article stated first.
+ */
+function PlanComparison({ pro, institution, sessionsPerDay }: {
+  pro: boolean; institution: boolean; sessionsPerDay: number;
+}) {
+  const hours = Math.round((sessionsPerDay * 30) / 60);
+  type Row = { free: string; proText: string; freeHas: boolean };
+  const rows: Row[] = [
+    { freeHas: true, free: 'The whole library — every subject, every kind of material', proText: 'The whole library — the same, unchanged' },
+    { freeHas: false, free: `Half an hour at a time, ${sessionsPerDay} times a day — ${hours} hours`, proText: 'No session clock — read for as long as the work takes' },
+    { freeHas: false, free: 'Two hours between one session and the next', proText: 'Come and go as you please, all day' },
+    { freeHas: true, free: 'The clock stops when you sign out; what is left is kept', proText: 'Nothing to keep — there is no clock' },
+    ...(institution ? [
+      { freeHas: true, free: 'Add faculty and researchers — as many as you like', proText: 'Add faculty and researchers — as many as you like' },
+      { freeHas: false, free: 'Students cannot be added on this plan', proText: 'Students can be added to your account too' },
+      { freeHas: false, free: 'Everyone you add reads in half-hour sessions', proText: 'Everyone you add reads without the clock' },
+    ] as Row[] : []),
+    { freeHas: true, free: 'Never expires, nothing to pay', proText: 'Runs for an agreed term, and can be renewed' },
+  ];
+
+  const Card = ({ title, tag, active, tone, items }: {
+    title: string; tag: string; active: boolean; tone: 'free' | 'pro';
+    items: { text: string; yes: boolean }[];
+  }) => (
+    <div className={`rounded-2xl border p-5 ${active ? 'border-accent bg-accent-soft/40' : 'border-rule bg-surface'}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {tone === 'pro' ? <Sparkles size={16} className="text-accent" /> : <Clock size={16} className="text-muted" />}
+          <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
+        </div>
+        {active && (
+          <span className="rounded-full bg-accent px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-white">
+            You are here
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-[12.5px] text-muted">{tag}</p>
+      <ul className="mt-4 space-y-2.5">
+        {items.map(i => (
+          <li key={i.text} className="flex gap-2.5 text-[13.5px] leading-snug">
+            {i.yes
+              ? <Check size={15} className="mt-0.5 shrink-0 text-accent" />
+              : <Minus size={15} className="mt-0.5 shrink-0 text-faint" />}
+            <span className={i.yes ? 'text-ink-2' : 'text-muted'}>{i.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
+  return (
+    <section>
+      <div className="mb-3 flex items-center gap-2">
+        <Users size={15} className="text-faint" />
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Free beside Pro</p>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Card title="Free membership" tag="What you have now" active={!pro} tone="free"
+          items={rows.map(r => ({ text: r.free, yes: r.freeHas }))} />
+        <Card title="Pro membership" tag="What changes" active={pro} tone="pro"
+          items={rows.map(r => ({ text: r.proText, yes: true }))} />
+      </div>
+      <p className="mt-3 text-[12px] leading-relaxed text-faint">
+        Pro takes nothing away and adds no extra shelf: the library is the same on both.
+        What it removes is the clock{institution ? ', for you and for everyone you add' : ''}.
+      </p>
+    </section>
+  );
+}
 
 export function ProMembership() {
   const { profile } = useAuth();
@@ -184,7 +262,10 @@ export function ProMembership() {
         )}
       </section>
 
-      {/* ── 3. asking for more ────────────────────────────────────────────── */}
+      {/* ── 3. what the two plans actually differ on ──────────────────────── */}
+      <PlanComparison pro={pro} institution={inInstitution} sessionsPerDay={allowance?.sessionsPerDay ?? 4} />
+
+      {/* ── 4. asking for more ────────────────────────────────────────────── */}
       {!pro && !loading && (
         waiting ? (
           <section className="rounded-2xl border border-accent bg-accent-soft p-5">
