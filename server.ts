@@ -245,8 +245,14 @@ async function startServer() {
     const region = settings.awsRegion || process.env.AWS_REGION || "us-west-2";
 
     if (!accessKey || !secretKey) {
-      // Fallback to dev mode if no keys
-      return { transporter: null, isDev: true };
+      // No keys: dev mode, over the throwaway test inbox. It still needs a
+      // sender — without one every local send died on "501 Bad sender address
+      // syntax", which is why nothing could be tested on a laptop.
+      return {
+        transporter: null,
+        isDev: true,
+        emailFrom: settings.emailFrom || process.env.EMAIL_FROM || COMPANY_DETAILS.email,
+      };
     }
 
     const dynamicSes = new sesv2.SESv2Client({
@@ -324,8 +330,13 @@ async function startServer() {
         }).catch(e => console.error("Failed to log email error", e));
       }
       
-      // Throw error if this is a test email, else swallow to avoid crashing forms
-      if (mailOptions._isTestEmail) {
+      // Throw error if this is a test email, else swallow to avoid crashing forms.
+      //
+      // `_throwOnError` is for callers that record the outcome themselves. The
+      // marketing mail recorded every send as Sent because this returned null
+      // on failure and the caller read null as "no info, fine" — a screen full
+      // of Sent beside a log full of Failed.
+      if (mailOptions._isTestEmail || mailOptions._throwOnError) {
         throw error;
       }
       return null;
@@ -1618,7 +1629,7 @@ async function startServer() {
     const ctx = await contextFor(user, opts.extra);
     const { subject, html } = renderTemplate(opts.templateKey, ctx);
     try {
-      const info: any = await sendMail({ to: user.email, subject, html }, true);
+      const info: any = await sendMail({ to: user.email, subject, html, _throwOnError: true }, true);
       await record('Sent', { subject, providerId: info?.messageId || null, error: null, reason: null, context: { ref: ctx.ref || null, note: ctx.note || null } });
       await prisma.user.update({ where: { id: user.id }, data: { lastMarketingAt: new Date() } }).catch(() => {});
       return { status: 'Sent', subject };
