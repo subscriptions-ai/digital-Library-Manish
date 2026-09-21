@@ -793,6 +793,23 @@ const catalogueSize = async () => {
     carried ? ok('each member carries their own mails', gm.length ? `up to ${Math.max(...gm.map(r => r.total))} for one member` : 'none yet')
       : bad('each member carries their own mails', 'a row\'s count does not match the mails under it');
 
+    // No mail may carry a link to whatever machine sent it. APP_URL on a
+    // laptop is http://localhost:3000, and those links went out to real
+    // inboxes, dead for everyone but the sender.
+    {
+      const bad_links = [];
+      for (const t of (list.body || [])) {
+        const pv = await get(`/api/admin/email-templates/${t.key}/preview`, A);
+        const html = pv.body?.html || '';
+        const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map(m => m[1]);
+        const local = hrefs.filter(h => /localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.|10\.\d+\.|::1/i.test(h));
+        if (local.length) bad_links.push(`${t.key}: ${local[0]}`);
+      }
+      bad_links.length
+        ? bad('no mail links back to this machine', bad_links.join(' · '))
+        : ok('no mail links back to this machine', `${(list.body || []).length} templates checked`);
+    }
+
     const hist = await get('/api/admin/email-sends?limit=10', A);
     hist.status === 200 && Array.isArray(hist.body?.sends)
       ? ok('the send history answers', `${n(hist.body.total)} records`)

@@ -10129,7 +10129,9 @@ async function startServer() {
 
       // Save to PostgreSQL (fire-and-forget, never blocks the response)
       // Replace cid:stm-logo with a public URL so it renders in browser previews
-      const PUBLIC_BASE = process.env.APP_URL || 'https://journals.stmjournals.com';
+      // Stored on the quotation and rendered in a browser and in mail, so it
+      // needs an address other people can reach — not this machine's.
+      const PUBLIC_BASE = MAIL_BASE;
       const htmlForDb = htmlBody.replace(
         /src="cid:stm-logo"/g,
         `src="${PUBLIC_BASE}/assets/stm-logo.png"`

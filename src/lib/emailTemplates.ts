@@ -10,9 +10,38 @@ import { COMPANY_DETAILS } from '../config';
  * and eyeballed without booting the server — see scripts/preview-emails.ts.
  */
 
-/** Public base URL for links inside emails. Falls back to the live site so a
- *  missing APP_URL never produces a dead "#" link in a customer's inbox. */
-export const MAIL_BASE = (process.env.APP_URL || 'https://journalslibrary.com').replace(/\/+$/, '');
+/** The public site, as the fallback for everything below. */
+const PUBLIC_SITE = 'https://journalslibrary.com';
+
+/**
+ * Where a link in an email points.
+ *
+ * APP_URL is whatever machine the code is running on, and on a laptop that is
+ * http://localhost:3000. A mail sent from there carried localhost links into
+ * real inboxes, where they are dead for everyone but the person who sent them.
+ * An address nobody else can reach is not a candidate, whatever the environment
+ * says, so anything local or private is refused and the live site used instead.
+ *
+ * To point mail at a staging site, set APP_URL to that site's public address.
+ */
+export function publicBase(raw = process.env.APP_URL): string {
+  const value = String(raw || '').trim().replace(/\/+$/, '');
+  if (!value) return PUBLIC_SITE;
+  let url: URL;
+  try { url = new URL(value); } catch { return PUBLIC_SITE; }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return PUBLIC_SITE;
+  const host = url.hostname.toLowerCase();
+  const unreachable =
+    host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
+    host === '::1' || host === '0.0.0.0' ||
+    /^127\./.test(host) || /^10\./.test(host) || /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    !host.includes('.');                       // a bare machine name on a LAN
+  return unreachable ? PUBLIC_SITE : value;
+}
+
+/** Public base URL for links inside emails. */
+export const MAIL_BASE = publicBase();
 
 /** Escape anything user-supplied before it goes into an HTML email — publisher
  *  names, message bodies and decline reasons are all attacker-controllable. */
