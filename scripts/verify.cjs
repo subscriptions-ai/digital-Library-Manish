@@ -869,6 +869,17 @@ const catalogueSize = async () => {
         ? ok('a dry run sends nothing', `${n(dry?.wouldSend || 0)} would go out`)
         : bad('a dry run sends nothing', `${after - before} rows were written`);
 
+      // One member, one mail a pass: somebody who qualifies for three journeys
+      // must not be offered three mails the cap would then refuse.
+      const seen = new Map();
+      for (const j of (dry?.journeys || [])) for (const e of (j.examples || [])) {
+        seen.set(e.email, (seen.get(e.email) || 0) + 1);
+      }
+      const doubled = [...seen.entries()].filter(([, n2]) => n2 > 1).map(([e]) => e);
+      doubled.length
+        ? bad('nobody is due two mails at once', doubled.slice(0, 3).join(', '))
+        : ok('nobody is due two mails at once', `${seen.size} members named`);
+
       const named = (dry?.journeys || []).every(j => typeof j.due === 'number' && j.name);
       named ? ok('the dry run names who is due', `${(dry?.journeys || []).length} journeys examined`)
         : bad('the dry run names who is due', 'a journey came back without a count');

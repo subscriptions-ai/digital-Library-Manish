@@ -1709,12 +1709,21 @@ async function startServer() {
    * out, not blocked — and then mailEligibility() decides each one, so the
    * engine and the member's file can never disagree about who qualifies.
    */
-  const dueFor = async (rule: any, limit: number) => {
+  const dueFor = async (rule: any, limit: number, claimed?: Set<string>) => {
     const key = rule.templateKey as TemplateKey;
     const since = new Date(Date.now() - rule.delayDays * 864e5);
     const base: any = {
       marketingOptOut: false, isBlocked: false, status: 'Active',
       email: { not: '' }, role: { notIn: STAFF_ROLES },
+      // Somebody who had a marketing mail this week cannot have another,
+      // whichever journey they qualify for. Left in, they were counted as due,
+      // offered in the dry run, and then refused at the moment of sending —
+      // a list that promises more than it can do, and a Skipped row to explain
+      // it. One person is due one mail at a time; the rest wait their turn.
+      OR: [
+        { lastMarketingAt: null },
+        { lastMarketingAt: { lte: new Date(Date.now() - MARKETING_MIN_GAP_DAYS * 864e5) } },
+      ],
     };
     const narrow: any =
       key === 'profile-incomplete' ? { role: 'Institution', createdAt: { lte: since } }
@@ -1735,6 +1744,11 @@ async function startServer() {
     const due: any[] = [];
     for (const u of candidates) {
       if (due.length >= limit) break;
+      // Already down for a mail in this pass, under another journey. Somebody
+      // who qualifies for three of them gets one today and the others in their
+      // own time; otherwise the second and third are chosen, offered in the
+      // dry run, and then refused by the cap a moment later.
+      if (claimed?.has(u.id)) continue;
       const sends = await (prisma as any).emailSend.findMany({
         where: { userId: u.id, templateKey: key, status: 'Sent' },
         orderBy: { createdAt: 'desc' }, select: { createdAt: true },
@@ -1781,6 +1795,8 @@ async function startServer() {
     if (!budget) reasons.push(`the day's cap of ${state.dailyCap} is used up`);
 
     const journeys: any[] = [];
+    // One member, one mail a pass — see dueFor().
+    const claimedThisPass = new Set<string>();
     let sent = 0, skipped = 0;
 
     for (const rule of rules) {
@@ -1799,7 +1815,8 @@ async function startServer() {
         },
       });
       const room = Math.min(rule.dailyCap - todayForRule, dryRun ? 50 : Math.min(budget, 50));
-      const due = await dueFor(rule, Math.max(0, room));
+      const due = await dueFor(rule, Math.max(0, room), claimedThisPass);
+      for (const d of due) claimedThisPass.add(d.user.id);
       const record: any = {
         templateKey: rule.templateKey, name: template.name, enabled: rule.enabled,
         due: due.length, sent: 0,
