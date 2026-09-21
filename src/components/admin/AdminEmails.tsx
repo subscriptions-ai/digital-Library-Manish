@@ -19,6 +19,10 @@ type Template = {
   kind: 'lifecycle' | 'broadcast'; sent: number; failed: number;
 };
 type Member = { id: string; displayName?: string | null; email: string; role: string; organization?: string | null };
+type Preview = {
+  subject: string; html: string; to: string; optedOut: boolean;
+  member?: { id: string; name?: string | null; email: string; role: string; organization?: string | null };
+};
 
 const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const jsonHeaders = () => ({ ...authHeader(), 'Content-Type': 'application/json' });
@@ -89,7 +93,7 @@ function SendPanel({ templates, chosen, onChoose, onSent }: {
   const [members, setMembers] = useState<Member[]>([]);
   const [member, setMember] = useState<Member | null>(null);
   const [note, setNote] = useState('');
-  const [preview, setPreview] = useState<{ subject: string; html: string; to: string; optedOut: boolean } | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -108,10 +112,18 @@ function SendPanel({ templates, chosen, onChoose, onSent }: {
     return () => clearTimeout(t);
   }, [search]);
 
+  /**
+   * Render the mail.
+   *
+   * With nobody chosen it renders against a stand-in member the server picks,
+   * so choosing a template shows the mail at once. An empty panel saying
+   * "choose a member" told an admin nothing about what any of these mails say.
+   */
   const load = useCallback(() => {
-    if (!chosen || !member) { setPreview(null); return; }
+    if (!chosen) { setPreview(null); return; }
     setLoading(true);
-    const p = new URLSearchParams({ userId: member.id });
+    const p = new URLSearchParams();
+    if (member) p.set('userId', member.id);
     if (note.trim()) p.set('note', note.trim());
     fetch(`/api/admin/email-templates/${chosen}/preview?${p}`, { headers: authHeader() })
       .then(r => (r.ok ? r.json() : Promise.reject()))
@@ -142,41 +154,55 @@ function SendPanel({ templates, chosen, onChoose, onSent }: {
     }
   };
 
-  return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
-      <div className="space-y-4">
-        {/* Which mail */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-          <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">The ready mails</p>
-          {templates.map(t => (
-            <button key={t.key} onClick={() => onChoose(t.key)}
-              className={`block w-full rounded-xl px-3.5 py-3 text-left transition-colors ${
-                t.key === chosen ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
-              <span className="flex items-center justify-between gap-2">
-                <span className={`text-sm font-bold ${t.key === chosen ? 'text-blue-700' : 'text-slate-800'}`}>{t.name}</span>
-                <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase ${
-                  t.kind === 'lifecycle' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                  {t.kind === 'lifecycle' ? 'Automatic' : 'By hand'}
-                </span>
-              </span>
-              <span className="mt-1 block text-[12px] leading-relaxed text-slate-500">{t.description}</span>
-              <span className="mt-1.5 block text-[11px] text-slate-400">
-                {t.audience} · {n(t.sent)} sent{t.failed ? `, ${n(t.failed)} failed` : ''}
-              </span>
-            </button>
-          ))}
-          {!templates.length && <div className="m-2 h-28 animate-pulse rounded-xl bg-slate-100" />}
-        </div>
+  const standIn = !member && preview?.member;
 
-        {/* Which member */}
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+      {/* Which mail */}
+      <div className="h-fit rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">The ready mails</p>
+        {templates.map(t => (
+          <button key={t.key} onClick={() => onChoose(t.key)}
+            className={`block w-full rounded-xl px-3.5 py-3 text-left transition-colors ${
+              t.key === chosen ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+            <span className="flex items-center justify-between gap-2">
+              <span className={`text-sm font-bold ${t.key === chosen ? 'text-blue-700' : 'text-slate-800'}`}>{t.name}</span>
+              <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                t.kind === 'lifecycle' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                {t.kind === 'lifecycle' ? 'Automatic' : 'By hand'}
+              </span>
+            </span>
+            <span className="mt-1 block text-[12px] leading-relaxed text-slate-500">{t.description}</span>
+            <span className="mt-1.5 block text-[11px] text-slate-400">
+              {t.audience} · {n(t.sent)} sent{t.failed ? `, ${n(t.failed)} failed` : ''}
+            </span>
+          </button>
+        ))}
+        {!templates.length && <div className="m-2 h-28 animate-pulse rounded-xl bg-slate-100" />}
+      </div>
+
+      <div className="min-w-0 space-y-4">
+        {/* Who it goes to — above the mail, because it is the one thing that
+            has to be filled in before Send does anything. */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Send to</p>
-          <div className="relative mt-2">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name, email or institution…"
-              className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500" />
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="min-w-[260px] flex-1">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Send to</span>
+              <span className="relative mt-1 block">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search by name, email or institution…"
+                  className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500" />
+              </span>
+            </label>
+            <button onClick={send} disabled={!member || sending}
+              title={member ? '' : 'Choose a member first'}
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
+              {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+              Send this mail
+            </button>
           </div>
+
           {members.length > 0 && (
             <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-slate-100">
               {members.map(m => (
@@ -188,61 +214,65 @@ function SendPanel({ templates, chosen, onChoose, onSent }: {
               ))}
             </div>
           )}
+
           {member && (
             <div className="mt-3 flex items-start justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
               <span className="min-w-0">
                 <span className="block truncate text-[13px] font-bold text-slate-800">{member.displayName || member.email}</span>
                 <span className="block truncate text-[11.5px] text-slate-500">{member.email} · {member.role}</span>
               </span>
-              <button onClick={() => { setMember(null); setPreview(null); }} className="shrink-0 text-[11px] font-bold text-slate-400 hover:text-slate-700">Change</button>
+              <button onClick={() => setMember(null)} className="shrink-0 text-[11px] font-bold text-slate-400 hover:text-slate-700">Change</button>
             </div>
           )}
 
           {template?.kind === 'broadcast' && (
             <label className="mt-3 block">
               <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">What to say (optional)</span>
-              <textarea value={note} onChange={e => setNote(e.target.value)} rows={4}
+              <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
                 placeholder="What shipped, in your words. Left blank, the template's own wording is used."
                 className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
             </label>
           )}
 
-          <button onClick={send} disabled={!member || sending || !preview}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
-            {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-            Send this mail
-          </button>
-          {preview?.optedOut && (
+          {preview?.optedOut && member && (
             <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800">
               This member has unsubscribed from updates. The send will be recorded and skipped.
             </p>
           )}
-          <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+          <p className="mt-2 text-[11px] text-slate-400">
             Sending by hand ignores the frequency cap but never the unsubscribe.
           </p>
         </div>
-      </div>
 
-      {/* The mail itself */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Exactly what will arrive</p>
-            <p className="mt-0.5 truncate text-sm font-bold text-slate-800">{preview?.subject || '—'}</p>
+        {/* The mail itself */}
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                {member ? 'Exactly what will arrive' : 'How this mail reads'}
+              </p>
+              <p className="mt-0.5 truncate text-sm font-bold text-slate-800">{preview?.subject || '—'}</p>
+            </div>
+            <button onClick={load} title="Render again"
+              className="shrink-0 rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50">
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            </button>
           </div>
-          <button onClick={load} disabled={!member} title="Render again"
-            className="shrink-0 rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 disabled:opacity-40">
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-          </button>
+          {standIn && (
+            <p className="border-b border-slate-100 bg-amber-50/60 px-5 py-2 text-[11.5px] text-amber-800">
+              Filled in with <b>{preview?.member?.name || preview?.member?.email}</b>'s details as an example.
+              Choose a member above to see theirs — and to send.
+            </p>
+          )}
+          {preview ? (
+            <iframe title="Email preview" srcDoc={preview.html} className="h-[700px] w-full bg-slate-100" />
+          ) : (
+            <div className="flex h-[420px] flex-col items-center justify-center gap-2 text-slate-400">
+              {loading ? <Loader2 size={22} className="animate-spin" /> : <Mail size={26} />}
+              <p className="text-sm">{loading ? 'Rendering…' : 'Choose one of the mails on the left.'}</p>
+            </div>
+          )}
         </div>
-        {preview ? (
-          <iframe title="Email preview" srcDoc={preview.html} className="h-[720px] w-full bg-slate-100" />
-        ) : (
-          <div className="flex h-[420px] flex-col items-center justify-center gap-2 text-slate-400">
-            <Mail size={26} />
-            <p className="text-sm">Choose a member to see the mail they would get.</p>
-          </div>
-        )}
       </div>
     </div>
   );

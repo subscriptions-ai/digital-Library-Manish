@@ -1662,10 +1662,21 @@ async function startServer() {
       const key = req.params.key as TemplateKey;
       if (!TEMPLATES[key]) return res.status(404).json({ error: "No such template" });
       const userId = String(req.query.userId || '');
+      // With nobody named, stand somebody in who fits this mail's audience, so
+      // the example reads the way the real thing will: a librarian for the
+      // profile mail, somebody who has never read for the never-read one.
+      const standIn: any = {
+        'profile-incomplete': { role: 'Institution' },
+        'librarian-add-users': { role: 'Institution' },
+        'never-read': { lastReadAt: null, role: { notIn: STAFF_ROLES } },
+        'pro-benefits': { lastReadAt: { not: null }, role: { notIn: STAFF_ROLES } },
+        'new-features': { role: { notIn: STAFF_ROLES } },
+      }[key] || { role: { notIn: STAFF_ROLES } };
       const user = userId
         ? await prisma.user.findUnique({ where: { id: userId } })
-        : await prisma.user.findFirst({ where: { role: 'Institution' } });
-      if (!user) return res.status(404).json({ error: "Choose a member to preview against" });
+        : (await prisma.user.findFirst({ where: standIn, orderBy: { createdAt: 'desc' } })
+          || await prisma.user.findFirst({ where: { role: { notIn: STAFF_ROLES } } }));
+      if (!user) return res.status(404).json({ error: "There is no member to show this against yet" });
       const ctx = await contextFor(user, {
         note: typeof req.query.note === 'string' ? req.query.note : undefined,
         ref: typeof req.query.ref === 'string' ? req.query.ref : undefined,

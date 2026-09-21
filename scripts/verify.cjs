@@ -767,6 +767,13 @@ const catalogueSize = async () => {
         ? ok('a mail renders for a member, with a way out', `"${String(pv.body.subject).slice(0, 44)}…"`)
         : bad('a mail renders for a member, with a way out', `HTTP ${pv.status} — ${JSON.stringify(pv.body).slice(0, 90)}`);
 
+      // With nobody named it still renders, against a stand-in who fits that
+      // mail's audience — the screen shows the mail before a member is picked.
+      const blind = await get('/api/admin/email-templates/never-read/preview', A);
+      blind.status === 200 && blind.body?.html && blind.body?.member
+        ? ok('a mail renders before a member is chosen', `stood in: ${blind.body.member.email}`)
+        : bad('a mail renders before a member is chosen', `HTTP ${blind.status}`);
+
       const after = await p.user.findUnique({ where: { id: member.id }, select: { unsubscribeToken: true } });
       after.unsubscribeToken === member.unsubscribeToken
         ? ok('a preview writes nothing to the member')
