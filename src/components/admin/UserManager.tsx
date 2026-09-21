@@ -459,6 +459,12 @@ export function UserManager() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
+                        {/* Their mail: what has gone to them, and what is still due */}
+                        <button onClick={() => navigate(`/admin/emails?user=${user.id}`)}
+                          className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Emails sent to this member">
+                          <Mail size={15} />
+                        </button>
                         {/* Edit */}
                         <button onClick={() => openEdit(user)}
                           className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

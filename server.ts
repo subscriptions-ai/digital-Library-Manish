@@ -1701,6 +1701,140 @@ async function startServer() {
     }
   });
 
+  /**
+   * Whether a member is due a given mail, and if not, why not.
+   *
+   * The rule lives here, once, and is read by three things that must agree:
+   * this screen's "still to go", the send button beside it, and (when it is
+   * built) the engine that sends without being asked. A screen that computes
+   * eligibility its own way is a screen that disagrees with the sender.
+   */
+  const mailEligibility = async (user: any, key: TemplateKey): Promise<{ due: boolean; why: string }> => {
+    const days = (d: any) => (d ? Math.floor((Date.now() - new Date(d).getTime()) / 864e5) : null);
+    const age = days(user.createdAt) ?? 0;
+    const isInstitution = user.role === 'Institution';
+
+    switch (key) {
+      case 'profile-incomplete': {
+        if (!isInstitution) return { due: false, why: 'only institution accounts have this profile' };
+        if (age < 2) return { due: false, why: `registered ${age === 0 ? 'today' : 'yesterday'} — the mail waits 2 days` };
+        const missing = missingInstitutionFields(user);
+        return missing.length
+          ? { due: true, why: `${missing.length} field${missing.length === 1 ? '' : 's'} still blank` }
+          : { due: false, why: 'the profile is complete' };
+      }
+      case 'never-read': {
+        if (user.lastReadAt) return { due: false, why: `has read something — last ${days(user.lastReadAt)} days ago` };
+        if (age < 3) return { due: false, why: `registered ${age} day${age === 1 ? '' : 's'} ago — the mail waits 3 days` };
+        return { due: true, why: 'registered and has never opened anything' };
+      }
+      case 'pro-benefits': {
+        if (!user.lastReadAt) return { due: false, why: 'has not read anything yet — nothing to feel the session limit against' };
+        const subs = await getUserActiveSubscriptions(user.id, user.role, user.institutionId).catch(() => []);
+        return subs.length
+          ? { due: false, why: 'already on an active subscription' }
+          : { due: true, why: `has read, and is on free membership` };
+      }
+      case 'librarian-add-users': {
+        if (!isInstitution) return { due: false, why: 'only librarians add members' };
+        if (!user.institutionId) return { due: false, why: 'this account has no institution attached yet' };
+        const last = await prisma.user.findFirst({
+          where: { institutionId: user.institutionId, role: { not: 'Institution' } },
+          orderBy: { createdAt: 'desc' }, select: { createdAt: true },
+        });
+        const since = days(last?.createdAt);
+        if (since !== null && since < 30) return { due: false, why: `added someone ${since} day${since === 1 ? '' : 's'} ago` };
+        return { due: true, why: since === null ? 'has never added anyone' : `nobody added in ${since} days` };
+      }
+      case 'new-features':
+      default:
+        return { due: false, why: 'sent by hand, when there is something to say' };
+    }
+  };
+
+  /**
+   * One member's whole mail file: what has gone, what is still to go and why,
+   * and every other mail they have had.
+   *
+   * The timeline deliberately includes the transactional mail from EmailLog —
+   * OTPs, receipts, the welcome — because "what has this member been sent" is
+   * not a question about marketing, and an admin looking at a complaint needs
+   * the whole picture rather than the half this system happens to own.
+   */
+  app.get("/api/admin/members/:id/mail", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+      if (!user) return res.status(404).json({ error: "No such member" });
+
+      const [sends, logs, monthCount] = await Promise.all([
+        (prisma as any).emailSend.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 200 }),
+        prisma.emailLog.findMany({
+          where: { to: { contains: user.email, mode: 'insensitive' } },
+          orderBy: { createdAt: 'desc' }, take: 100,
+          select: { id: true, subject: true, status: true, error: true, createdAt: true },
+        }),
+        (prisma as any).emailSend.count({
+          where: { userId: user.id, status: 'Sent', createdAt: { gte: new Date(Date.now() - 30 * 864e5) } },
+        }),
+      ]);
+
+      const templates = await Promise.all(TEMPLATE_LIST.map(async t => {
+        const mine = sends.filter((s: any) => s.templateKey === t.key);
+        const lastSent = mine.find((s: any) => s.status === 'Sent');
+        const el = await mailEligibility(user, t.key);
+        return {
+          key: t.key, name: t.name, kind: t.kind, description: t.description,
+          sentCount: mine.filter((s: any) => s.status === 'Sent').length,
+          lastSentAt: lastSent?.createdAt || null,
+          lastOutcome: mine[0] ? { status: mine[0].status, reason: mine[0].reason, error: mine[0].error, at: mine[0].createdAt } : null,
+          due: el.due, why: el.why,
+        };
+      }));
+
+      const last = (user as any).lastMarketingAt as Date | null;
+      const gapDays = last ? Math.floor((Date.now() - new Date(last).getTime()) / 864e5) : null;
+
+      res.json({
+        member: {
+          id: user.id, name: user.displayName, email: user.email, role: user.role,
+          organization: user.organization, createdAt: user.createdAt, lastReadAt: user.lastReadAt,
+          optedOut: !!(user as any).marketingOptOut,
+        },
+        cap: {
+          lastMarketingAt: last, gapDays,
+          sentThisMonth: monthCount,
+          perMonth: MARKETING_PER_MONTH, minGapDays: MARKETING_MIN_GAP_DAYS,
+          blockedByCap: !!(last && Date.now() - new Date(last).getTime() < MARKETING_MIN_GAP_DAYS * 864e5) || monthCount >= MARKETING_PER_MONTH,
+        },
+        templates,
+        // Every template send also leaves an EmailLog row — sendMail writes one
+        // for everything that leaves the building — so the same mail would
+        // appear twice, once as itself and once as "account mail". The log row
+        // is dropped where a template send already covers that subject at that
+        // minute.
+        timeline: (() => {
+          const minute = (d: any) => new Date(d).toISOString().slice(0, 16);
+          const covered = new Set(sends.map((s: any) => `${s.subject}|${minute(s.createdAt)}`));
+          return [
+            ...sends.map((s: any) => ({
+              kind: 'template', id: s.id, at: s.createdAt, title: s.subject, templateKey: s.templateKey,
+              status: s.status, reason: s.reason, error: s.error, sentBy: s.sentBy,
+            })),
+            ...logs
+              .filter(l => !covered.has(`${l.subject}|${minute(l.createdAt)}`))
+              .map(l => ({
+                kind: 'other', id: l.id, at: l.createdAt, title: l.subject,
+                status: l.status, error: l.error,
+              })),
+          ].sort((a: any, b: any) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 200);
+        })(),
+      });
+    } catch (e: any) {
+      console.error('member mail file error', e?.message);
+      res.status(500).json({ error: "Failed to read this member's mail" });
+    }
+  });
+
   /** Who got what, when — filterable, and the timeline for one member. */
   app.get("/api/admin/email-sends", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {

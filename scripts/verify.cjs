@@ -778,6 +778,33 @@ const catalogueSize = async () => {
       ? ok('the send history answers', `${n(hist.body.total)} records`)
       : bad('the send history answers', `HTTP ${hist.status}`);
 
+    // One member's file: what has gone, what is still due, and why.
+    const anyone = await p.user.findFirst({
+      where: { role: { notIn: ['SuperAdmin', 'Admin'] } }, select: { id: true },
+    });
+    if (!anyone) meh("a member's mail file", 'no member to read');
+    else {
+      const f = await get(`/api/admin/members/${anyone.id}/mail`, A);
+      const ts = f.body?.templates || [];
+      ts.length >= 5 && ts.every(t => typeof t.due === 'boolean' && t.why)
+        ? ok("a member's mail file says what is still due", `${ts.filter(t => t.due).length} of ${ts.length} due`)
+        : bad("a member's mail file says what is still due", `HTTP ${f.status} — ${JSON.stringify(f.body).slice(0, 90)}`);
+
+      // Every template send also writes an EmailLog row; the file must not
+      // show that mail twice.
+      const seen = new Set();
+      const dupe = (f.body?.timeline || []).find(r => {
+        const k = `${r.title}|${String(r.at).slice(0, 16)}`;
+        if (seen.has(k)) return true;
+        seen.add(k); return false;
+      });
+      dupe ? bad('the file shows each mail once', `"${String(dupe.title).slice(0, 40)}" appears twice`)
+        : ok('the file shows each mail once', `${(f.body?.timeline || []).length} mails`);
+
+      const shut = await get(`/api/admin/members/${anyone.id}/mail`, S || R);
+      shut.status === 403 ? ok('readers cannot read it', 'HTTP 403') : bad('readers cannot read it', `HTTP ${shut.status}`);
+    }
+
     const bogus = await get('/api/public/unsubscribe/not-a-real-token');
     bogus.status === 404 ? ok('a bogus unsubscribe link is refused', 'HTTP 404') : bad('a bogus unsubscribe link is refused', `HTTP ${bogus.status}`);
   }
