@@ -808,6 +808,13 @@ const catalogueSize = async () => {
       bad_links.length
         ? bad('no mail links back to this machine', bad_links.join(' · '))
         : ok('no mail links back to this machine', `${(list.body || []).length} templates checked`);
+
+      // The logo travels as an attachment, which a browser cannot resolve —
+      // the preview has to be given the hosted copy or it shows a broken image.
+      const withCid = await get('/api/admin/email-templates/profile-incomplete/preview', A);
+      String(withCid.body?.html || '').includes('cid:')
+        ? bad('the preview shows the logo', 'the preview still carries cid:, which a browser cannot render')
+        : ok('the preview shows the logo', 'no cid: left in the preview');
     }
 
     const hist = await get('/api/admin/email-sends?limit=10', A);

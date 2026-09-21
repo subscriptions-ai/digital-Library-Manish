@@ -1694,8 +1694,15 @@ async function startServer() {
         ref: typeof req.query.ref === 'string' ? req.query.ref : undefined,
       }, false);
       const { subject, html } = renderTemplate(key, ctx);
+      // The mail carries its logo as an attachment (cid:), which a mail client
+      // resolves and a preview in a browser cannot — so the preview showed a
+      // broken image where the logo is. Swapped for the hosted copy here only;
+      // what is sent still carries the attachment.
+      // Same origin as the admin screen, so the page's own content policy does
+      // not block it the way it blocks the live site's copy.
+      const shown = html.replace(/cid:stm-logo-email/g, '/assets/stm-logo-email.png');
       res.json({
-        subject, html,
+        subject, html: shown,
         to: user.email,
         member: { id: user.id, name: user.displayName, email: user.email, role: user.role, organization: user.organization },
         optedOut: !!(user as any).marketingOptOut,
