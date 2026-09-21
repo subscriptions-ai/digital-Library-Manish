@@ -145,6 +145,7 @@ function SendPanel({ templates, chosen, onChoose, onSent }: {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { toast.error(d.error || d.reason || 'Could not send'); return; }
       if (d.status === 'Skipped') toast(`Not sent — ${d.reason}`, { icon: '⏭️' });
+      else if (d.live === false) toast(`Sent to a test inbox — no mail provider is configured here, so ${member.email} will not receive it`, { icon: '🧪', duration: 8000 });
       else toast.success(`Sent to ${member.email}`);
       onSent();
     } catch {
@@ -333,6 +334,7 @@ function MemberMail({ userId, onPick }: { userId: string; onPick: (id: string) =
       const d = await res.json().catch(() => ({}));
       if (!res.ok) toast.error(d.error || d.reason || 'Could not send');
       else if (d.status === 'Skipped') toast(`Not sent — ${d.reason}`, { icon: '⏭️' });
+      else if (d.live === false) toast('Sent to a test inbox — no mail provider is configured here', { icon: '🧪', duration: 8000 });
       else toast.success('Sent');
       load(file.member.id);
     } catch {

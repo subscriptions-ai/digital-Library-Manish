@@ -1628,9 +1628,21 @@ async function startServer() {
 
     const ctx = await contextFor(user, opts.extra);
     const { subject, html } = renderTemplate(opts.templateKey, ctx);
+    // With no provider configured the mail goes to a throwaway test inbox and
+    // reaches nobody. It is still a send, and still worth recording, but the
+    // screen must not report it as delivered: "Sent" beside an inbox that never
+    // rang is how an operator loses faith in the whole record.
+    const st = getSystemSettings();
+    const live = Boolean(
+      (st.awsAccessKeyId || process.env.AWS_ACCESS_KEY_ID) &&
+      (st.awsSecretAccessKey || process.env.AWS_SECRET_ACCESS_KEY));
     try {
       const info: any = await sendMail({ to: user.email, subject, html, _throwOnError: true }, true);
-      await record('Sent', { subject, providerId: info?.messageId || null, error: null, reason: null, context: { ref: ctx.ref || null, note: ctx.note || null } });
+      await record('Sent', {
+        subject, providerId: info?.messageId || null, error: null,
+        reason: live ? null : 'test inbox only — no mail provider configured here',
+        context: { ref: ctx.ref || null, note: ctx.note || null, live },
+      });
       await prisma.user.update({ where: { id: user.id }, data: { lastMarketingAt: new Date() } }).catch(() => {});
       return { status: 'Sent', subject };
     } catch (e: any) {
@@ -1706,7 +1718,11 @@ async function startServer() {
         extra: { note: note || undefined, ref: ref || `mail-${key}` },
       });
       if (out.status === 'Failed') return res.status(502).json(out);
-      res.json(out);
+      const st = getSystemSettings();
+      const live = Boolean(
+        (st.awsAccessKeyId || process.env.AWS_ACCESS_KEY_ID) &&
+        (st.awsSecretAccessKey || process.env.AWS_SECRET_ACCESS_KEY));
+      res.json({ ...out, live });
     } catch (e: any) {
       res.status(500).json({ error: String(e?.message || e) });
     }
