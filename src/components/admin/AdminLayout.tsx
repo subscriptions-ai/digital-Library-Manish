@@ -324,6 +324,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             onClick={() => navigate('/admin/ingestion')}
           />
 
+          {/* Emails */}
+          <NavButton
+            icon={<Mail size={17} />}
+            label="Emails"
+            active={location.pathname === '/admin/emails'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/emails')}
+          />
+
           {/* Journals */}
           <NavButton
             icon={<BookOpen size={17} />}

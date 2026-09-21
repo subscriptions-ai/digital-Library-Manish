@@ -66,6 +66,8 @@ import { AdminSalesTeam } from "./components/admin/AdminSalesTeam";
 import { AdminExecutivePipeline } from "./components/admin/AdminExecutivePipeline";
 import { AdminLeadManager } from "./components/admin/AdminLeadManager";
 import { AdminJournalDirectory } from "./components/admin/AdminJournalDirectory";
+import { AdminEmails } from "./components/admin/AdminEmails";
+import { Unsubscribe } from "./components/Unsubscribe";
 import { SalesLayout } from "./components/sales/SalesLayout";
 import { SalesDashboard } from "./components/sales/SalesDashboard";
 import { SalesLeadTable } from "./components/sales/SalesLeadTable";
@@ -237,6 +239,7 @@ export default function App() {
                 <Route path="/admin/extraction/jobs/:id" element={<AdminLayout><ExtractionJobDetails /></AdminLayout>} />
                 <Route path="/admin/email-verifications" element={<AdminLayout><EmailVerificationsPage /></AdminLayout>} />
                 <Route path="/admin/email-settings" element={<AdminLayout><AdminEmailSettings /></AdminLayout>} />
+                <Route path="/admin/emails" element={<AdminLayout><AdminEmails /></AdminLayout>} />
 
                 {/* Per Content Type Module Routes (8 modules × 3 pages each) */}
                 {CONTENT_MODULES.map(({ slug, contentType }) => (
@@ -365,6 +368,8 @@ export default function App() {
                       <Route path="/domain/:domainId" element={<DomainLandingPage />} />
                       <Route path="/preview/:id" element={<PublicContentPreview />} />
                       <Route path="/search" element={<SearchResults />} />
+                      {/* Opened from a link in an email, by whoever is holding the phone. */}
+                      <Route path="/unsubscribe/:token" element={<Unsubscribe />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>

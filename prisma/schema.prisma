@@ -21,49 +21,49 @@ datasource db {
 // =====================================================================
 
 model Publisher {
-  id            String   @id @default(uuid())
+  id            String  @id @default(uuid())
   name          String
-  legalName     String?                       // registered legal entity name
-  slug          String?  @unique
+  legalName     String? // registered legal entity name
+  slug          String? @unique
   email         String?
   contactNumber String?
   website       String?
   country       String?
   address       String?
   logoUrl       String?
-  verified      Boolean  @default(false)      // "verified partner" badge
+  verified      Boolean @default(false) // "verified partner" badge
 
   // Organisation hierarchy — a self-referencing tree of arbitrary depth.
   // orgType: Group (parent/consortium) | Publisher | Imprint
   // e.g. "Consortium e-Learning Network" (Group) -> "JournalsPub" (Imprint) -> journals
-  orgType       String   @default("Publisher")
-  parentId      String?
-  parent        Publisher?  @relation("PublisherTree", fields: [parentId], references: [id])
-  children      Publisher[] @relation("PublisherTree")
+  orgType  String      @default("Publisher")
+  parentId String?
+  parent   Publisher?  @relation("PublisherTree", fields: [parentId], references: [id])
+  children Publisher[] @relation("PublisherTree")
 
   // Discovered = auto-found from ingestion, not yet contacted
   // Invited     = tie-up invitation + credentials sent
   // Active      = tie-up live (publisher can log in)
   // Inactive    = disabled
-  tieUpStatus   String   @default("Discovered")
-  agreementNote String?  @db.Text            // partnership summary (no revenue terms)
-  allowedContentTypes Json? @default("[\"Journals\",\"Books\"]")
+  tieUpStatus         String  @default("Discovered")
+  agreementNote       String? @db.Text // partnership summary (no revenue terms)
+  allowedContentTypes Json?   @default("[\"Journals\",\"Books\"]")
 
-  source        String?                       // where first discovered (DOAJ/DOAB/OpenAlex/Manual)
-  userId        String?  @unique              // linked Publisher-role User login (scalar, set on tie-up)
+  source String? // where first discovered (DOAJ/DOAB/OpenAlex/Manual)
+  userId String? @unique // linked Publisher-role User login (scalar, set on tie-up)
 
-  discoveredAt  DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  discoveredAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  journals      Journal[]
-  articles      Article[]
-  books         Book[]
-  locations     PublisherLocation[]
-  contacts      PublisherContact[]
-  agreements    PublisherAgreement[]
-  uploads       PublisherUpload[]
-  messages      PublisherMessage[]
+  journals   Journal[]
+  articles   Article[]
+  books      Book[]
+  locations  PublisherLocation[]
+  contacts   PublisherContact[]
+  agreements PublisherAgreement[]
+  uploads    PublisherUpload[]
+  messages   PublisherMessage[]
 
   @@index([name])
   @@index([tieUpStatus])
@@ -73,34 +73,34 @@ model Publisher {
 
 // A publisher's physical presence — supports multi-country / multi-office giants.
 model PublisherLocation {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
   publisherId String
-  label       String?                          // e.g. "Global HQ", "APAC Office"
-  type        String   @default("Office")      // HQ | Regional | Editorial | Office
+  label       String? // e.g. "Global HQ", "APAC Office"
+  type        String    @default("Office") // HQ | Regional | Editorial | Office
   country     String?
   city        String?
-  address     String?  @db.Text
-  isPrimary   Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  address     String?   @db.Text
+  isPrimary   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
 
   @@index([publisherId])
 }
 
 // People at a publisher. Each contact can optionally be a login seat (multi-seat teams).
 model PublisherContact {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
   publisherId String
   name        String
   email       String?
-  title       String?                          // job title / role
+  title       String? // job title / role
   phone       String?
-  isPrimary   Boolean  @default(false)
-  userId      String?                          // linked User login if this contact is a seat
-  scopeNodeId String?                          // publisher node this seat may see (default: own subtree)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isPrimary   Boolean   @default(false)
+  userId      String? // linked User login if this contact is a seat
+  scopeNodeId String? // publisher node this seat may see (default: own subtree)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([publisherId])
   @@index([userId])
@@ -108,30 +108,30 @@ model PublisherContact {
 
 // A partnership agreement + its in-app e-signature record and audit trail.
 model PublisherAgreement {
-  id            String   @id @default(uuid())
-  publisher     Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
-  publisherId   String
-  title         String
-  documentUrl   String?                        // uploaded contract PDF (S3)
-  version       String?  @default("1.0")
-  body          String?  @db.Text              // optional inline terms (if no PDF)
-  note          String?  @db.Text
+  id              String    @id @default(uuid())
+  publisher       Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  publisherId     String
+  title           String
+  documentUrl     String? // uploaded contract PDF (S3)
+  version         String?   @default("1.0")
+  body            String?   @db.Text // optional inline terms (if no PDF)
+  note            String?   @db.Text
   // Draft | Sent | Viewed | Accepted | Declined
-  status        String   @default("Draft")
-  sentAt        DateTime?
-  viewedAt      DateTime?
-  decidedAt     DateTime?
+  status          String    @default("Draft")
+  sentAt          DateTime?
+  viewedAt        DateTime?
+  decidedAt       DateTime?
   acceptedByName  String?
   acceptedByEmail String?
-  signatureType String?                         // typed | drawn
-  signatureData String?  @db.Text               // typed name or drawn-signature data URL
-  declineReason String?  @db.Text
-  ipAddress     String?
-  userAgent     String?
-  auditTrail    Json?    @default("[]")          // [{event, at, by, ip}]
-  createdBy     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  signatureType   String? // typed | drawn
+  signatureData   String?   @db.Text // typed name or drawn-signature data URL
+  declineReason   String?   @db.Text
+  ipAddress       String?
+  userAgent       String?
+  auditTrail      Json?     @default("[]") // [{event, at, by, ip}]
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([publisherId])
   @@index([status])
@@ -149,15 +149,15 @@ model AgreementTemplate {
 
 // Two-way message thread between the STM team and a publisher (with read receipts).
 model PublisherMessage {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   publisher     Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
   publisherId   String
-  sender        String                             // 'admin' | 'publisher'
+  sender        String // 'admin' | 'publisher'
   senderName    String?
-  body          String   @db.Text
+  body          String    @db.Text
   attachmentUrl String?
-  readAt        DateTime?                           // when the other party read it (receipt)
-  createdAt     DateTime @default(now())
+  readAt        DateTime? // when the other party read it (receipt)
+  createdAt     DateTime  @default(now())
 
   @@index([publisherId])
 }
@@ -165,7 +165,7 @@ model PublisherMessage {
 // One row per read of a new-dataset item — powers the reads time-series.
 model ReadEvent {
   id          String   @id @default(uuid())
-  itemType    String                               // 'article' | 'book'
+  itemType    String // 'article' | 'book'
   itemId      String
   publisherId String?
   userId      String?
@@ -177,58 +177,58 @@ model ReadEvent {
 
 // Tracks each bulk data-sharing batch a publisher (or admin) submits.
 model PublisherUpload {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
   publisherId String
-  kind        String   @default("article")     // article | book
+  kind        String    @default("article") // article | book
   fileName    String?
-  fileUrl     String?                            // stored CSV / manifest (S3)
-  rows        Int      @default(0)
-  accepted    Int      @default(0)
-  rejected    Int      @default(0)
-  status      String   @default("Pending")       // Pending | Processed | Failed
-  note        String?  @db.Text
+  fileUrl     String? // stored CSV / manifest (S3)
+  rows        Int       @default(0)
+  accepted    Int       @default(0)
+  rejected    Int       @default(0)
+  status      String    @default("Pending") // Pending | Processed | Failed
+  note        String?   @db.Text
   createdBy   String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([publisherId])
 }
 
 model Journal {
-  id            String   @id @default(uuid())
-  issn          String?  @unique             // canonical key — groups articles reliably
-  eissn         String?
-  title         String
+  id    String  @id @default(uuid())
+  issn  String? @unique // canonical key — groups articles reliably
+  eissn String?
+  title String
 
   publisher     Publisher? @relation(fields: [publisherId], references: [id])
   publisherId   String?
-  publisherName String?                       // denormalized for display
+  publisherName String? // denormalized for display
 
-  subject       String?
-  domain        String?                       // department (from DOMAINS)
-  language      String?
-  country       String?
-  startYear     Int?                          // founding year — powers "new journals in last N years"
-  openAccess    Boolean  @default(true)
+  subject    String?
+  domain     String? // department (from DOMAINS)
+  language   String?
+  country    String?
+  startYear  Int? // founding year — powers "new journals in last N years"
+  openAccess Boolean @default(true)
 
   // ── Rights ────────────────────────────────────────────────
   // Decided once, at the journal, before any article is fetched. DOAJ declares
   // the licence at this level with an explicit non-commercial flag, so a whole
   // title can be accepted or refused without judging its articles one by one.
-  licence          String?                    // "CC BY", "CC BY-NC", "Publisher's own"
-  licenceIsNC      Boolean?                   // true → never serve full text
-  rightsBasis      String?                    // DOAJ declaration | publisher agreement | our own
+  licence          String? // "CC BY", "CC BY-NC", "Publisher's own"
+  licenceIsNC      Boolean? // true → never serve full text
+  rightsBasis      String? // DOAJ declaration | publisher agreement | our own
   rightsVerifiedAt DateTime?
   rightsVerifiedBy String?
   /// Accepted → full text may be served. MetadataOnly → catalogue entry and a
   /// link to the publisher, nothing more. Rejected → not shown at all.
-  status           String   @default("MetadataOnly")
+  status           String    @default("MetadataOnly")
 
   // ── Catalogue identity ────────────────────────────────────
-  description   String?  @db.Text
-  homepage      String?
-  coverUrl      String?
-  subjects      Json?    @default("[]")
+  description String? @db.Text
+  homepage    String?
+  coverUrl    String?
+  subjects    Json?   @default("[]")
 
   // ── Coverage, denormalised ────────────────────────────────
   // A librarian filtering 29 departments cannot wait on a live aggregate over
@@ -236,9 +236,9 @@ model Journal {
   // same place as the department figure. The ingest job refreshes these.
   firstYear      Int?
   lastYear       Int?
-  articleCount   Int      @default(0)
-  volumeCount    Int      @default(0)
-  issueCount     Int      @default(0)
+  articleCount   Int       @default(0)
+  volumeCount    Int       @default(0)
+  issueCount     Int       @default(0)
   lastIngestedAt DateTime?
 
   /// Where the last fetch of this journal reached.
@@ -248,16 +248,16 @@ model Journal {
   /// and sixty-eight it actually has — and every pass after the first
   /// re-downloaded work already held. Nine of every ten requests the engine
   /// made were spent that way.
-  fetchCursor    String?
+  fetchCursor String?
   /// Set when a journal has given up everything inside the year window. It then
   /// moves to a slower rotation and is checked for newly published work rather
   /// than walked again from the start.
-  exhaustedAt    DateTime?
+  exhaustedAt DateTime?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  articles      Article[]
+  articles Article[]
 
   @@index([publisherId])
   @@index([domain])
@@ -267,49 +267,49 @@ model Journal {
 }
 
 model Article {
-  id            String   @id @default(uuid())
-  contentType   String?  @default("Periodicals") // Periodicals | Magazines | Case Reports | Theses | Conference Proceedings | Newsletters | Educational Videos
-  metadata      Json?    @default("{}")           // type-specific extras (hospital, specialty, university, degree, supervisor, location, sponsor, issueDate, releaseDate, speaker, duration, tags, thumbnailUrl...)
-  title         String
-  authors       String?
-  abstract      String?  @db.Text
-  doi           String?
-  pdfUrl        String?
+  id          String  @id @default(uuid())
+  contentType String? @default("Periodicals") // Periodicals | Magazines | Case Reports | Theses | Conference Proceedings | Newsletters | Educational Videos
+  metadata    Json?   @default("{}") // type-specific extras (hospital, specialty, university, degree, supervisor, location, sponsor, issueDate, releaseDate, speaker, duration, tags, thumbnailUrl...)
+  title       String
+  authors     String?
+  abstract    String? @db.Text
+  doi         String?
+  pdfUrl      String?
 
-  journal       Journal? @relation(fields: [journalId], references: [id])
-  journalId     String?
-  journalName   String?                       // denormalized
-  journalIssn   String?                       // denormalized
+  journal     Journal? @relation(fields: [journalId], references: [id])
+  journalId   String?
+  journalName String? // denormalized
+  journalIssn String? // denormalized
 
   publisher     Publisher? @relation(fields: [publisherId], references: [id])
   publisherId   String?
   publisherName String?
 
-  volume        String?
-  issue         String?
-  year          Int?                          // publication year of this article/volume
-  pages         String?
+  volume String?
+  issue  String?
+  year   Int? // publication year of this article/volume
+  pages  String?
 
-  domain        String?                       // department (denormalized for filtering)
-  subject       String?
-  language      String?
-  country       String?
+  domain   String? // department (denormalized for filtering)
+  subject  String?
+  language String?
+  country  String?
 
-  accessType    String   @default("OpenAccess")   // OpenAccess | Subscription
-  status        String   @default("Draft")         // Draft | Published | Rejected
-  rejectionNote String?                            // shown to publisher when rejected
-  source        String?                            // DOAJ | OpenAlex | Manual | ...
-  fingerprint   String?  @unique                    // dedup (doi or issn+title+vol+issue)
+  accessType    String  @default("OpenAccess") // OpenAccess | Subscription
+  status        String  @default("Draft") // Draft | Published | Rejected
+  rejectionNote String? // shown to publisher when rejected
+  source        String? // DOAJ | OpenAlex | Manual | ...
+  fingerprint   String? @unique // dedup (doi or issn+title+vol+issue)
 
   // Who this content originated from. CRITICAL for stealth: publisher-facing
   // queries only ever return PublisherSubmitted — pre-scraped Ingested rows
   // are never visible to a tied-up publisher.
-  ownershipSource String @default("Ingested")       // Ingested | PublisherSubmitted | AdminEntered
+  ownershipSource String @default("Ingested") // Ingested | PublisherSubmitted | AdminEntered
 
   // ── Rights, inherited from the parent but overridable ─────
-  licence       String?
-  licenceIsNC   Boolean?
-  rightsHolder  String?                            // the publisher, never us
+  licence      String?
+  licenceIsNC  Boolean?
+  rightsHolder String? // the publisher, never us
 
   /// ViewableHere | LinkOnly | MetadataOnly.
   ///
@@ -318,24 +318,24 @@ model Article {
   /// as before" — if there is a file, it opens — so a failed or half-finished
   /// backfill breaks nothing. Fail towards the old behaviour, never towards a
   /// locked library.
-  accessStatus  String?
+  accessStatus String?
 
-  originalUrl   String?                            // the publisher's page for this work
-  originalDate  DateTime?                          // real publication date, never ingestion time
+  originalUrl  String? // the publisher's page for this work
+  originalDate DateTime? // real publication date, never ingestion time
 
   /// What this item hangs from. A journal article belongs to a journal, a
   /// thesis to an institution, a conference paper to its conference — forcing
   /// them all under journals would be wrong for most of the collection.
-  parentKind    String?                            // Journal | Book | Conference | Institution | None
-  parentId      String?
+  parentKind String? // Journal | Book | Conference | Institution | None
+  parentId   String?
 
-  authorLinks   ArticleAuthor[]
-  uploadId      String?                            // PublisherUpload batch, if bulk-submitted
-  views         Int      @default(0)               // read count (impact analytics)
+  authorLinks ArticleAuthor[]
+  uploadId    String? // PublisherUpload batch, if bulk-submitted
+  views       Int             @default(0) // read count (impact analytics)
 
-  createdBy     String?                            // publisher id/email or admin
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdBy String? // publisher id/email or admin
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([journalId])
   @@index([publisherId])
@@ -349,30 +349,30 @@ model Article {
 }
 
 model Book {
-  id            String   @id @default(uuid())
-  title         String
-  authors       String?
+  id      String  @id @default(uuid())
+  title   String
+  authors String?
 
   publisher     Publisher? @relation(fields: [publisherId], references: [id])
   publisherId   String?
   publisherName String?
 
-  isbn          String?
-  doi           String?
-  year          Int?                          // publication / starting year
-  edition       String?
-  pages         String?
-  metadata      Json?    @default("{}")
-  subject       String?
-  domain        String?                       // department
-  language      String?
-  country       String?
-  description   String?  @db.Text
-  coverUrl      String?
-  pdfUrl        String?                        // whole-book PDF (optional; chapters below)
+  isbn        String?
+  doi         String?
+  year        Int? // publication / starting year
+  edition     String?
+  pages       String?
+  metadata    Json?   @default("{}")
+  subject     String?
+  domain      String? // department
+  language    String?
+  country     String?
+  description String? @db.Text
+  coverUrl    String?
+  pdfUrl      String? // whole-book PDF (optional; chapters below)
 
-  accessType    String   @default("OpenAccess")
-  status        String   @default("Draft")         // Draft | Published | Rejected
+  accessType String @default("OpenAccess")
+  status     String @default("Draft") // Draft | Published | Rejected
 
   // ── Rights, same gate as journals ─────────────────────────
   // A book carrying a non-commercial licence is catalogued and linked to its
@@ -383,27 +383,27 @@ model Book {
   rightsVerifiedAt DateTime?
   rightsVerifiedBy String?
   /// Accepted | MetadataOnly | Rejected
-  rightsStatus     String   @default("MetadataOnly")
+  rightsStatus     String    @default("MetadataOnly")
 
-  accessStatus     String?                        // ViewableHere | LinkOnly | MetadataOnly — nullable, see Article
-  originalUrl      String?
-  originalDate     DateTime?
-  rightsHolder     String?
-  chapterCount     Int      @default(0)
-  lastIngestedAt   DateTime?
-  rejectionNote String?                            // shown to publisher when rejected
-  source        String?
-  fingerprint   String?  @unique
+  accessStatus   String? // ViewableHere | LinkOnly | MetadataOnly — nullable, see Article
+  originalUrl    String?
+  originalDate   DateTime?
+  rightsHolder   String?
+  chapterCount   Int       @default(0)
+  lastIngestedAt DateTime?
+  rejectionNote  String? // shown to publisher when rejected
+  source         String?
+  fingerprint    String?   @unique
 
-  ownershipSource String @default("Ingested")       // Ingested | PublisherSubmitted | AdminEntered
-  uploadId      String?
-  views         Int      @default(0)               // read count (impact analytics)
+  ownershipSource String  @default("Ingested") // Ingested | PublisherSubmitted | AdminEntered
+  uploadId        String?
+  views           Int     @default(0) // read count (impact analytics)
 
-  createdBy     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  chapters      Chapter[]
+  chapters Chapter[]
 
   @@index([publisherId])
   @@index([domain])
@@ -414,37 +414,37 @@ model Book {
 }
 
 model Chapter {
-  id            String   @id @default(uuid())
-  book          Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  id            String  @id @default(uuid())
+  book          Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
   bookId        String
-  bookTitle     String?                        // denormalized
+  bookTitle     String? // denormalized
   chapterNumber Int?
   title         String
   authors       String?
   pdfUrl        String?
   pages         String?
-  status        String   @default("Draft")
+  status        String  @default("Draft")
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([bookId])
 }
 
 model User {
-  id           String         @id @default(uuid())
-  email        String         @unique
-  password     String
-  displayName  String?
-  organization String?
-  contact      String?
-  designation  String?
-  state        String?
-  country      String?
+  id             String  @id @default(uuid())
+  email          String  @unique
+  password       String
+  displayName    String?
+  organization   String?
+  contact        String?
+  designation    String?
+  state          String?
+  country        String?
   /// A number that can be reached on WhatsApp. Equal to `contact` when the
   /// member says it is the same one, so anything reading this finds a usable
   /// number rather than having to know the rule.
-  whatsapp     String?
+  whatsapp       String?
   /// Institute | Corporate | Solo — see REGISTRANT_TYPES. What they registered
   /// as, which is what makes `designation` mean anything.
   registrantType String?
@@ -453,17 +453,29 @@ model User {
   /// arrived by, carried from the landing page to the signup. Nullable because
   /// most people arrive without one, and because it cannot be worked out later:
   /// a mail sent without a tag is a batch whose result is never knowable.
-  signupSource String?
+  signupSource     String?
+  /// Marketing mail only. A reader who opts out still gets their OTP, their
+  /// receipt and anything else they asked for by doing something.
+  marketingOptOut  Boolean     @default(false)
+  /// The one-click unsubscribe link's secret. Minted when the first marketing
+  /// mail is sent, so a link in an old mail keeps working. Indexed, not unique:
+  /// a unique constraint on a new column makes `prisma db push` demand
+  /// --accept-data-loss, which the deploy deliberately does not pass. The value
+  /// is a uuid, and the lookup refuses anything matching more than one row.
+  unsubscribeToken String?
+  /// When the last marketing mail went, for the frequency cap.
+  lastMarketingAt  DateTime?
+  emailSends       EmailSend[]
   /// The full set of tags from that arrival — source, medium, campaign, term —
   /// kept whole so a question nobody has thought of yet can still be asked.
-  signupTags   Json?
+  signupTags       Json?
 
   /// The last time this member opened anything. Written from the event log as
   /// it happens, because the question the admin screens are built around —
   /// how many of the people who registered ever actually read something — is a
   /// filter over every member, and answering it from the event log means
   /// carrying a list of twenty thousand ids into a query.
-  lastReadAt   DateTime?
+  lastReadAt DateTime?
 
   /// When this address was proved. Verification is recorded on EmailVerification,
   /// which is keyed by address and written before the account exists — fine for
@@ -471,18 +483,18 @@ model User {
   /// question about members. Denormalised here so that filter is an index and
   /// not a scan of two tables.
   emailVerifiedAt DateTime?
-  role         String         @default("Subscriber")
-  status       String         @default("Active")
-  isBlocked    Boolean        @default(false)
-  isFirstLogin Boolean        @default(false)
-  
-  isDemoAccount Boolean       @default(false)
+  role            String    @default("Subscriber")
+  status          String    @default("Active")
+  isBlocked       Boolean   @default(false)
+  isFirstLogin    Boolean   @default(false)
+
+  isDemoAccount Boolean   @default(false)
   demoExpiresAt DateTime?
 
-  institution  Institution?   @relation(fields: [institutionId], references: [id])
+  institution   Institution? @relation(fields: [institutionId], references: [id])
   institutionId String?
-  
-  institutionProfile Json?    @default("{}")
+
+  institutionProfile Json? @default("{}")
 
   /// Departments the member said they wanted to read, chosen at signup.
   ///
@@ -490,24 +502,24 @@ model User {
   /// whole library; what differs is time, not subject. Assigning individuals a
   /// set of domains is the model this replaces, so nothing may ever read this
   /// field to decide access — only to learn what people came for.
-  interestedDomains Json      @default("[]")
-  
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  
-  payments              Payment[]
-  subscriptions         Subscription[]
-  quotations            Quotation[]
-  submissions           Submission[]
-  usageLogs             UsageLog[]
-  subscriptionRequests  SubscriptionRequest[]
-  activities            StudentActivity[]
-  couponUsages          CouponUsage[]
-  favorites             Favorite[]
-  feedbacks             Feedback[]
-  
-  assignedLeads         Lead[]            @relation("AssignedLeads")
-  leadInteractions      LeadInteraction[] @relation("UserInteractions")
+  interestedDomains Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments             Payment[]
+  subscriptions        Subscription[]
+  quotations           Quotation[]
+  submissions          Submission[]
+  usageLogs            UsageLog[]
+  subscriptionRequests SubscriptionRequest[]
+  activities           StudentActivity[]
+  couponUsages         CouponUsage[]
+  favorites            Favorite[]
+  feedbacks            Feedback[]
+
+  assignedLeads    Lead[]            @relation("AssignedLeads")
+  leadInteractions LeadInteraction[] @relation("UserInteractions")
 
   // The admin screens filter by role and read newest-first, and every page a
   // member loads looks their institution up. None of that was indexed, which
@@ -524,391 +536,390 @@ model User {
   @@index([country])
   @@index([emailVerifiedAt])
   @@index([lastReadAt])
+  @@index([unsubscribeToken])
 }
 
 model Payment {
-  id        String   @id @default(uuid())
-  orderId   String?  @unique
-  paymentId String?  @unique
+  id        String  @id @default(uuid())
+  orderId   String? @unique
+  paymentId String? @unique
   amount    Float
-  status    String   @default("Pending")
-  method    String?  @default("Razorpay")
-  
-  user      User?    @relation(fields: [userId], references: [id])
-  userId    String?
-  
+  status    String  @default("Pending")
+  method    String? @default("Razorpay")
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
   items     Json
   createdAt DateTime @default(now())
 }
 
 model Feedback {
-  id        String   @id @default(uuid())
-  rating    Int
-  comment   String?  @db.Text
-  type      String   @default("General")
-  
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  
+  id      String  @id @default(uuid())
+  rating  Int
+  comment String? @db.Text
+  type    String  @default("General")
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
   createdAt DateTime @default(now())
 }
 
 model Subscription {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   domainId       String?
   domainName     String?
   planName       String
-  planType       String   @default("Monthly")   // Monthly | Yearly | Custom
-  durationMonths Int      @default(1)
-  duration       String?  // deprecated label field (kept for compat)
-  status         String   @default("Active")   // Active | Expired | Cancelled
-  
-  domains        Json?    @default("[]")
-  contentTypes   Json?    @default("[]")
+  planType       String  @default("Monthly") // Monthly | Yearly | Custom
+  durationMonths Int     @default(1)
+  duration       String? // deprecated label field (kept for compat)
+  status         String  @default("Active") // Active | Expired | Cancelled
+
+  domains             Json? @default("[]")
+  contentTypes        Json? @default("[]")
   allowedContentTypes Json? @default("[]") // Adding for legacy compatibility
-  
-  user           User?    @relation(fields: [userId], references: [id])
-  userId         String?
-  
-  institution    Institution? @relation(fields: [institutionId], references: [id])
-  institutionId  String?
-  
-  request        SubscriptionRequest? @relation(fields: [requestId], references: [id])
-  requestId      String?  @unique
-  
-  startDate      DateTime @default(now())
-  endDate        DateTime
-  cancelledAt    DateTime?
-  createdAt      DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  institutionId String?
+
+  request   SubscriptionRequest? @relation(fields: [requestId], references: [id])
+  requestId String?              @unique
+
+  startDate   DateTime  @default(now())
+  endDate     DateTime
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
 }
 
 model SubscriptionRequest {
-  id             String   @id @default(uuid())
-  userName       String
-  email          String
-  planType       String   @default("Monthly")   // Monthly | Yearly | Custom
-  durationMonths Int      @default(1)
+  id              String  @id @default(uuid())
+  userName        String
+  email           String
+  planType        String  @default("Monthly") // Monthly | Yearly | Custom
+  durationMonths  Int     @default(1)
   planDescription String? // e.g. "All Domains Package"
-  paymentRef     String?  // screenshot URL or payment reference
-  notes          String?
-  status         String   @default("Pending")   // Pending | Approved | Rejected
-  rejectionNote  String?
-  
-  user           User?    @relation(fields: [userId], references: [id])
-  userId         String?
-  
-  subscription   Subscription?
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  paymentRef      String? // screenshot URL or payment reference
+  notes           String?
+  status          String  @default("Pending") // Pending | Approved | Rejected
+  rejectionNote   String?
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  subscription Subscription?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Quotation {
-  id                String   @id @default(uuid())
-  userEmail         String
-  userName          String
-  organization      String?
-  state             String?
-  items             Json
-  subtotal          Float
-  gstAmount         Float
-  total             Float
-  status            String   @default("Pending")  // Pending | Approved | Paid | Cancelled
+  id           String  @id @default(uuid())
+  userEmail    String
+  userName     String
+  organization String?
+  state        String?
+  items        Json
+  subtotal     Float
+  gstAmount    Float
+  total        Float
+  status       String  @default("Pending") // Pending | Approved | Paid | Cancelled
 
   // Dynamic pricing fields
-  selectedModules   Json?    @default("[]")       // Array of ContentModule IDs selected
-  pricingBreakdown  Json?    @default("{}")        // { modules: [{id, domain, contentType, price}], planType, subtotal, gst, total }
-  planType          String?  @default("Monthly")   // Monthly | Quarterly | Yearly
-  allowedDomain     String?  // null means all domains
-  notes             String?
+  selectedModules  Json?   @default("[]") // Array of ContentModule IDs selected
+  pricingBreakdown Json?   @default("{}") // { modules: [{id, domain, contentType, price}], planType, subtotal, gst, total }
+  planType         String? @default("Monthly") // Monthly | Quarterly | Yearly
+  allowedDomain    String? // null means all domains
+  notes            String?
 
-  user              User?    @relation(fields: [userId], references: [id])
-  userId            String?
-  
-  createdBy         String?  // The user ID or email of the person who generated the quotation (Admin or Self)
-  sentEmailHtml     String?  // The exact HTML template that was emailed to the user
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
 
-  createdAt         DateTime @default(now())
-  expiresAt         DateTime
-  
-  discountAmount    Float?   @default(0.0)
-  couponCode        String?
+  createdBy     String? // The user ID or email of the person who generated the quotation (Admin or Self)
+  sentEmailHtml String? // The exact HTML template that was emailed to the user
 
-  mobile            String?
-  designation       String?
-  address           String?
-  pincode           String?
-  city              String?
-  country           String?
-  gstNumber         String?
-  userCategory      String?
-  deliveryMethod    String?  @default("Email") // Email | Download
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  discountAmount Float?  @default(0.0)
+  couponCode     String?
+
+  mobile         String?
+  designation    String?
+  address        String?
+  pincode        String?
+  city           String?
+  country        String?
+  gstNumber      String?
+  userCategory   String?
+  deliveryMethod String? @default("Email") // Email | Download
 
   /// Who issued this document, snapshotted at creation. Documents render from
   /// this rather than from live config, so changing the operating entity never
   /// rewrites the history of who actually issued what.
-  issuer         Json?
+  issuer Json?
 }
 
 model Receipt {
-  id             String    @id @default(uuid())
-  receiptNumber  String    @unique                 // RCP-YYYY-MM-NN
+  id            String @id @default(uuid())
+  receiptNumber String @unique // RCP-YYYY-MM-NN
 
   // Soft links (scalar, no FK constraints) — a receipt is an immutable snapshot
-  quotationId    String?
-  userId         String?
+  quotationId String?
+  userId      String?
 
   // Bill-to snapshot (copied from the quotation at payment time)
-  userEmail      String
-  userName       String
-  organization   String?
-  state          String?
-  address        String?
-  pincode        String?
-  gstNumber      String?
-  mobile         String?
-  userCategory   String?
+  userEmail    String
+  userName     String
+  organization String?
+  state        String?
+  address      String?
+  pincode      String?
+  gstNumber    String?
+  mobile       String?
+  userCategory String?
 
   // Amount snapshot
   items          Json
   subtotal       Float
   gstAmount      Float
   total          Float
-  discountAmount Float?    @default(0.0)
+  discountAmount Float?  @default(0.0)
   couponCode     String?
   planType       String?
   allowedDomain  String?
 
   // Payment details
-  paymentMethod  String    @default("Bank Transfer") // Bank Transfer | UPI | Razorpay | Cheque | Cash
-  paymentRef     String?                              // transaction / reference number
-  paymentDate    DateTime  @default(now())
+  paymentMethod String   @default("Bank Transfer") // Bank Transfer | UPI | Razorpay | Cheque | Cash
+  paymentRef    String? // transaction / reference number
+  paymentDate   DateTime @default(now())
 
-  createdBy      String?
-  emailSentAt    DateTime?
-  createdAt      DateTime  @default(now())
+  createdBy   String?
+  emailSentAt DateTime?
+  createdAt   DateTime  @default(now())
 
   /// Who issued this document, snapshotted at creation. Documents render from
   /// this rather than from live config, so changing the operating entity never
   /// rewrites the history of who actually issued what.
-  issuer         Json?
-
+  issuer Json?
 }
 
 model ContentModule {
-  id                String   @id @default(uuid())
+  id                String  @id @default(uuid())
   domain            String
   contentType       String
-  userType          String   @default("General")   // General | Student Scholar | College Excellence | University Global | Corporate Innovator
-  totalCount        Int      @default(0)
-  monthlyPrice      Float    @default(0)
-  quarterlyPrice    Float    @default(0)
-  halfYearlyPrice   Float    @default(0)
-  yearlyPrice       Float    @default(0)
-  yearlyDiscountPct Float    @default(0)   // e.g. 20 means 20% off yearly
-  isActive          Boolean  @default(true)
+  userType          String  @default("General") // General | Student Scholar | College Excellence | University Global | Corporate Innovator
+  totalCount        Int     @default(0)
+  monthlyPrice      Float   @default(0)
+  quarterlyPrice    Float   @default(0)
+  halfYearlyPrice   Float   @default(0)
+  yearlyPrice       Float   @default(0)
+  yearlyDiscountPct Float   @default(0) // e.g. 20 means 20% off yearly
+  isActive          Boolean @default(true)
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@unique([domain, contentType, userType])
 }
 
 model Submission {
+  id             String  @id @default(uuid())
+  title          String
+  authors        String
+  contentType    String
+  subjectArea    String? @default("General")
+  fileUrl        String?
+  publishingMode String
+  status         String  @default("Pending")
 
-  id              String   @id @default(uuid())
-  title           String
-  authors         String
-  contentType     String
-  subjectArea     String?  @default("General")
-  fileUrl         String?
-  publishingMode  String
-  status          String   @default("Pending")
-  
-  user            User?    @relation(fields: [userId], references: [id])
-  userId          String?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  content         Content?
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  content Content?
 }
 
 model Content {
-  id              String   @id @default(uuid())
-  title           String
-  description     String?
-  authors         String
-  domain          String?
-  contentType     String
-  subjectArea     String?  @default("General")
-  fileUrl         String?
-  thumbnailUrl    String?
-  tags            Json?    @default("[]")
-  price           Float?   @default(0.0)
-  accessType      String   @default("Subscription")
-  status          String   @default("Published")
-  publishingMode  String   @default("Direct")
-  views           Int      @default(0)
+  id             String  @id @default(uuid())
+  title          String
+  description    String?
+  authors        String
+  domain         String?
+  contentType    String
+  subjectArea    String? @default("General")
+  fileUrl        String?
+  thumbnailUrl   String?
+  tags           Json?   @default("[]")
+  price          Float?  @default(0.0)
+  accessType     String  @default("Subscription")
+  status         String  @default("Published")
+  publishingMode String  @default("Direct")
+  views          Int     @default(0)
 
   // ── Viewer-Based Validation ─────────────────────────────
-  validationStatus  String?   @default("Not Validated") // "Not Validated" | "VALID_VIEWABLE" | "FLAGGED_CONTENT"
-  viewerStatus      String?                              // "Rendered OK" | "Load Failed" | "Timeout" | "No File" | "Not PDF/Video"
-  isViewable        Boolean?  @default(false)
-  flaggedReason     String?
-  lastValidatedAt   DateTime?
+  validationStatus String?   @default("Not Validated") // "Not Validated" | "VALID_VIEWABLE" | "FLAGGED_CONTENT"
+  viewerStatus     String? // "Rendered OK" | "Load Failed" | "Timeout" | "No File" | "Not PDF/Video"
+  isViewable       Boolean?  @default(false)
+  flaggedReason    String?
+  lastValidatedAt  DateTime?
 
-  fingerprint     String?   @unique  // SHA-256 of normalized title+authors
+  fingerprint String? @unique // SHA-256 of normalized title+authors
 
-  submission      Submission? @relation(fields: [submissionId], references: [id])
-  submissionId    String?     @unique
-  
-  publishedAt     DateTime @default(now())
-  updatedAt       DateTime @updatedAt @default(now())
-  
+  submission   Submission? @relation(fields: [submissionId], references: [id])
+  submissionId String?     @unique
+
+  publishedAt DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
   studentActivities StudentActivity[]
 }
 
 model AccessRequest {
-  id            String   @id @default(uuid())
+  id            String @id @default(uuid())
   institution   String
   contactPerson String
   email         String
   phone         String
-  requestType   String   @default("Trial")
-  status        String   @default("Pending")
-  
-  createdAt     DateTime @default(now())
+  requestType   String @default("Trial")
+  status        String @default("Pending")
+
+  createdAt DateTime @default(now())
 }
 
 model UsageLog {
-  id            String   @id @default(uuid())
-  action        String
-  details       String?
-  points        Int?     @default(0)
-  
-  user          User?    @relation(fields: [userId], references: [id])
-  userId        String?
-  
-  createdAt     DateTime @default(now())
+  id      String  @id @default(uuid())
+  action  String
+  details String?
+  points  Int?    @default(0)
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  createdAt DateTime @default(now())
 }
 
 model Institution {
-  id              String   @id @default(uuid())
-  name            String
-  subscriptionId  String?  @unique
-  status          String   @default("Active")
-  
-  users           User[]
-  subscriptions   Subscription[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String  @id @default(uuid())
+  name           String
+  subscriptionId String? @unique
+  status         String  @default("Active")
+
+  users         User[]
+  subscriptions Subscription[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model StudentActivity {
-  id          String   @id @default(uuid())
-  
-  user        User?    @relation(fields: [userId], references: [id])
-  userId      String?
-  
-  content     Content? @relation(fields: [contentId], references: [id])
-  contentId   String?
-  
-  timeSpent   Int      @default(0)
-  lastPage    Int      @default(1)
-  accessedAt  DateTime @default(now()) @updatedAt
+  id String @id @default(uuid())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  content   Content? @relation(fields: [contentId], references: [id])
+  contentId String?
+
+  timeSpent  Int      @default(0)
+  lastPage   Int      @default(1)
+  accessedAt DateTime @default(now()) @updatedAt
 
   @@index([userId, contentId])
 }
 
 model Bundle {
-  id              String   @id @default(uuid())
-  name            String   @unique
-  description     String?
-  domains         Json     @default("[]")
-  contentTypes    Json     @default("[]")
-  price           Float    @default(0.0)
-  durationMonths  Int      @default(1)
-  status          String   @default("Active")
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String  @id @default(uuid())
+  name           String  @unique
+  description    String?
+  domains        Json    @default("[]")
+  contentTypes   Json    @default("[]")
+  price          Float   @default(0.0)
+  durationMonths Int     @default(1)
+  status         String  @default("Active")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ValidationReport {
-  id                 String   @id @default(uuid())
-  type               String   // "Manual" | "Automatic"
-  validationType     String   @default("Metadata")  // "Metadata" | "ViewerBased" | "Full"
-  status             String   @default("Draft") // "Draft" | "Reviewing" | "Resolved"
-  totalItemsScanned  Int      @default(0)
-  issuesFound        Int      @default(0)
-  validCount         Int      @default(0)   // Items confirmed VALID_VIEWABLE
-  flaggedCount       Int      @default(0)   // Items confirmed FLAGGED_CONTENT
-  issues             Json     // Array of issue details { contentId, title, issueType, description }
-  draftedContentIds  Json     @default("[]") // Persisted list of content IDs moved to Draft
-  timeline           Json     @default("[]") // Audit trail: [{ action, by, at, count, note }]
+  id                String @id @default(uuid())
+  type              String // "Manual" | "Automatic"
+  validationType    String @default("Metadata") // "Metadata" | "ViewerBased" | "Full"
+  status            String @default("Draft") // "Draft" | "Reviewing" | "Resolved"
+  totalItemsScanned Int    @default(0)
+  issuesFound       Int    @default(0)
+  validCount        Int    @default(0) // Items confirmed VALID_VIEWABLE
+  flaggedCount      Int    @default(0) // Items confirmed FLAGGED_CONTENT
+  issues            Json // Array of issue details { contentId, title, issueType, description }
+  draftedContentIds Json   @default("[]") // Persisted list of content IDs moved to Draft
+  timeline          Json   @default("[]") // Audit trail: [{ action, by, at, count, note }]
 
-  startedAt          DateTime @default(now())
-  completedAt        DateTime?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
 }
 
 model AgencyInquiry {
-  id             String   @id @default(uuid())
-  agencyName     String
-  contactPerson  String
-  email          String
-  phone          String
-  region         String
-  experience     String
-  message        String?
-  status         String   @default("Pending") // Pending | Accepted | Rejected
-  discount       Int?     // 30 or 40
-  validUntil     DateTime? // Expiration date for the partnership
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String    @id @default(uuid())
+  agencyName    String
+  contactPerson String
+  email         String
+  phone         String
+  region        String
+  experience    String
+  message       String?
+  status        String    @default("Pending") // Pending | Accepted | Rejected
+  discount      Int? // 30 or 40
+  validUntil    DateTime? // Expiration date for the partnership
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ContactInquiry {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   fullName     String
   email        String
   mobile       String?
   whatsapp     String?
   designation  String?
-  departments  Json?    @default("[]")   // Array of department strings
+  departments  Json?     @default("[]") // Array of department strings
   state        String?
   organization String?
   message      String
-  status       String   @default("New")  // New | Read | Replied | Resolved | Archived
+  status       String    @default("New") // New | Read | Replied | Resolved | Archived
   adminNotes   String?
   replyText    String?
   repliedAt    DateTime?
 
-  isArchived    Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Lead {
-  id           String   @id @default(uuid())
+  id           String  @id @default(uuid())
   name         String
   email        String
   phone        String?
   organization String?
   state        String?
-  source       String   @default("Manual") // Demo Request, Contact Inquiry, Manual
-  status       String   @default("All")    // All, Positive, No Response, Subscriber, In Progress, Negative, Repeated
-  notes        String?  @db.Text
-  
-  assignedToId String?
-  assignedTo   User?    @relation("AssignedLeads", fields: [assignedToId], references: [id])
-  assignedAt   DateTime?                          // when last assigned to an executive
-  assignmentSeen Boolean @default(true)           // false = executive hasn't seen this new assignment yet
+  source       String  @default("Manual") // Demo Request, Contact Inquiry, Manual
+  status       String  @default("All") // All, Positive, No Response, Subscriber, In Progress, Negative, Repeated
+  notes        String? @db.Text
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  assignedToId   String?
+  assignedTo     User?     @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  assignedAt     DateTime? // when last assigned to an executive
+  assignmentSeen Boolean   @default(true) // false = executive hasn't seen this new assignment yet
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   interactions LeadInteraction[]
 
@@ -923,54 +934,54 @@ model Lead {
 }
 
 model LeadInteraction {
-  id        String   @id @default(uuid())
-  leadId    String
-  lead      Lead     @relation(fields: [leadId], references: [id])
-  
-  userId    String
-  user      User     @relation("UserInteractions", fields: [userId], references: [id])
-  
-  type      String   @default("Note") // Call, Email, Meeting, Note, StatusChange
-  notes     String   @db.Text
-  
+  id     String @id @default(uuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id])
+
+  userId String
+  user   User   @relation("UserInteractions", fields: [userId], references: [id])
+
+  type  String @default("Note") // Call, Email, Meeting, Note, StatusChange
+  notes String @db.Text
+
   createdAt DateTime @default(now())
 }
 
 model Coupon {
-  id                 String        @id @default(uuid())
-  code               String        @unique
-  discountType       String        @default("percentage") // "percentage" | "fixed"
+  id                 String    @id @default(uuid())
+  code               String    @unique
+  discountType       String    @default("percentage") // "percentage" | "fixed"
   discountValue      Float
-  maxUses            Int?          // null means unlimited
-  usedCount          Int           @default(0)
+  maxUses            Int? // null means unlimited
+  usedCount          Int       @default(0)
   validFrom          DateTime?
   validUntil         DateTime?
-  isActive           Boolean       @default(true)
+  isActive           Boolean   @default(true)
   minimumOrderAmount Float?
 
-  usages             CouponUsage[]
-  
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  usages CouponUsage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CouponUsage {
-  id         String   @id @default(uuid())
-  
-  coupon     Coupon   @relation(fields: [couponId], references: [id])
-  couponId   String
-  
-  user       User?    @relation(fields: [userId], references: [id])
-  userId     String?
-  
-  orderId    String?  // Reference to Quotation ID or Payment ID
-  discount   Float    // The actual discount amount applied
-  
-  usedAt     DateTime @default(now())
+  id String @id @default(uuid())
+
+  coupon   Coupon @relation(fields: [couponId], references: [id])
+  couponId String
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  orderId  String? // Reference to Quotation ID or Payment ID
+  discount Float // The actual discount amount applied
+
+  usedAt DateTime @default(now())
 }
 
 model DemoRequest {
-  id                 String   @id @default(uuid())
+  id                 String  @id @default(uuid())
   fullName           String
   institutionalEmail String
   institutionName    String
@@ -979,87 +990,87 @@ model DemoRequest {
   city               String?
   state              String?
   department         String
-  requestType        String?  @default("Institution") // Institution | Student | Corporate
-  status             String   @default("Pending") // Pending | Contacted | Completed
+  requestType        String? @default("Institution") // Institution | Student | Corporate
+  status             String  @default("Pending") // Pending | Contacted | Completed
   adminNotes         String?
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ExtractionJob {
-  id              String   @id @default(uuid())
-  name            String                        // "Medical Sciences OJS Import"
-  sourceType      String                        // "OJS" | "URL" | "CSV" | "Manual"
-  sourceConfig    Json                          // { baseUrl, domain hints, etc. }
-  targetDomain    String?                       // Pre-filter domain, or null for auto-classify
-  targetContentType String?                     // Pre-filter type, or null for auto-classify
-  
-  status          String   @default("Pending")  // Pending | Running | Completed | Failed
-  
-  totalDiscovered Int      @default(0)
-  totalProcessed  Int      @default(0)
-  totalInserted   Int      @default(0)
-  totalDuplicates Int      @default(0)
-  totalFailed     Int      @default(0)
-  totalFlagged    Int      @default(0)          // Low-confidence items for review
-  
-  errorLog        Json     @default("[]")       // Array of error details
-  
-  startedAt       DateTime?
-  completedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  items           ExtractionItem[]
+  id                String  @id @default(uuid())
+  name              String // "Medical Sciences OJS Import"
+  sourceType        String // "OJS" | "URL" | "CSV" | "Manual"
+  sourceConfig      Json // { baseUrl, domain hints, etc. }
+  targetDomain      String? // Pre-filter domain, or null for auto-classify
+  targetContentType String? // Pre-filter type, or null for auto-classify
+
+  status String @default("Pending") // Pending | Running | Completed | Failed
+
+  totalDiscovered Int @default(0)
+  totalProcessed  Int @default(0)
+  totalInserted   Int @default(0)
+  totalDuplicates Int @default(0)
+  totalFailed     Int @default(0)
+  totalFlagged    Int @default(0) // Low-confidence items for review
+
+  errorLog Json @default("[]") // Array of error details
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  items ExtractionItem[]
 }
 
 model ExtractionItem {
-  id              String   @id @default(uuid())
-  
-  job             ExtractionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  jobId           String
-  
-  rawData         Json                          // Original scraped data
-  aiResult        Json?                         // AI classification output
-  fingerprint     String?                       // Dedup fingerprint
-  
-  status          String   @default("Pending")  // Pending | Classified | Validated | Inserted | Duplicate | Failed | Flagged
-  
+  id String @id @default(uuid())
+
+  job   ExtractionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId String
+
+  rawData     Json // Original scraped data
+  aiResult    Json? // AI classification output
+  fingerprint String? // Dedup fingerprint
+
+  status String @default("Pending") // Pending | Classified | Validated | Inserted | Duplicate | Failed | Flagged
+
   // Final mapped fields (after AI processing)
-  title           String?
-  authors         String?
-  description     String?
-  domain          String?
-  contentType     String?
-  subjectArea     String?
-  fileUrl         String?
-  tags            Json?    @default("[]")
-  
-  confidence      Float?   @default(0)          // AI confidence score
-  validationResult Json?                        // PDF validation details
-  errorMessage    String?
-  
-  contentId       String?                       // ID of inserted Content record (if successful)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  title       String?
+  authors     String?
+  description String?
+  domain      String?
+  contentType String?
+  subjectArea String?
+  fileUrl     String?
+  tags        Json?   @default("[]")
+
+  confidence       Float?  @default(0) // AI confidence score
+  validationResult Json? // PDF validation details
+  errorMessage     String?
+
+  contentId String? // ID of inserted Content record (if successful)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([jobId, status])
   @@index([fingerprint])
 }
 
 model Favorite {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 
   // A wish list has to hold anything a reader can open, so this points at
   // Content, Article or Book rather than at one table. Same shape as ReadEvent.
   // The column keeps its old name so existing rows survive untouched; only the
   // foreign key to Content goes, which is what stopped articles being saved.
-  itemType  String   @default("Content")   // Content | Article | Book
+  itemType  String @default("Content") // Content | Article | Book
   contentId String
 
   createdAt DateTime @default(now())
@@ -1069,34 +1080,72 @@ model Favorite {
 }
 
 model EmailVerification {
-  id          String   @id @default(uuid())
-  email       String   @unique
-  isVerified  Boolean  @default(false)
-  otp         String?
-  otpExpiry   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String    @id @default(uuid())
+  email      String    @unique
+  isVerified Boolean   @default(false)
+  otp        String?
+  otpExpiry  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model PageVisit {
   id        String   @id @default(uuid())
-  path      String   
-  userId    String?  
-  userRole  String?  
-  ipAddress String?  
-  userAgent String?  
+  path      String
+  userId    String?
+  userRole  String?
+  ipAddress String?
+  userAgent String?
   sessionId String?
   createdAt DateTime @default(now())
 }
 
+/// One marketing or lifecycle mail, to one person, from one template.
+///
+/// EmailLog already records what left the building, but only as an address and
+/// a subject — it cannot answer "which mails has this member had, and when",
+/// which is the question the whole system exists to answer. This can: it holds
+/// the member, the template, why it was sent and by whom.
+model EmailSend {
+  id           String    @id @default(uuid())
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId       String?
+  /// Copied at write time: the address it actually went to, which survives the
+  /// member changing theirs or the account being deleted.
+  email        String
+  templateKey  String
+  /// What makes this send unique. An automatic rule passes something stable —
+  /// "auto:1", "2026-09" — so a cron that runs twice cannot mail twice; a
+  /// manual send passes its own timestamp, because an admin who sends the same
+  /// template again means it.
+  dedupeKey    String
+  subject      String
+  status       String // Sent | Failed | Skipped
+  /// Why a send was skipped: opted out, capped, already sent, no address.
+  reason       String?
+  /// "auto" for the engine, otherwise the id of the admin who pressed send.
+  sentBy       String?
+  providerId   String? // the provider's message id
+  openedAt     DateTime?
+  firstClickAt DateTime?
+  error        String?   @db.Text
+  context      Json? // what the template was given
+  createdAt    DateTime  @default(now())
+
+  @@unique([userId, templateKey, dedupeKey])
+  @@index([userId, createdAt])
+  @@index([templateKey, createdAt])
+  @@index([status])
+}
+
 model EmailLog {
-  id        String   @id @default(uuid())
-  to        String
-  subject   String
-  status    String   // "Sent" | "Failed"
-  error     String?  @db.Text
-  htmlContent String? @db.Text
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  to          String
+  subject     String
+  status      String // "Sent" | "Failed"
+  error       String?  @db.Text
+  htmlContent String?  @db.Text
+  createdAt   DateTime @default(now())
 }
 
 // =====================================================================
@@ -1106,20 +1155,20 @@ model EmailLog {
 // =====================================================================
 model MediaAsset {
   id           String   @id @default(uuid())
-  fileName     String                          // stored (sanitised, unique) name on disk
-  originalName String                          // name the admin uploaded it as
-  url          String                          // public path, e.g. /uploads/media/1712-abc-report.pdf
+  fileName     String // stored (sanitised, unique) name on disk
+  originalName String // name the admin uploaded it as
+  url          String // public path, e.g. /uploads/media/1712-abc-report.pdf
   mimeType     String
   ext          String?
-  kind         String   @default("other")      // image | pdf | document | spreadsheet | presentation | video | audio | archive | other
-  size         Int      @default(0)            // bytes
-  width        Int?                            // images only (best effort)
+  kind         String   @default("other") // image | pdf | document | spreadsheet | presentation | video | audio | archive | other
+  size         Int      @default(0) // bytes
+  width        Int? // images only (best effort)
   height       Int?
   title        String?
   altText      String?
   caption      String?  @db.Text
-  folder       String?                         // optional grouping label
-  uploadedBy   String?                         // admin display name
+  folder       String? // optional grouping label
+  uploadedBy   String? // admin display name
   uploadedById String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -1132,51 +1181,51 @@ model MediaAsset {
 /// Kept as a first-class record (not just an email) so that we can evidence
 /// *when* a notice arrived and *what* we did about it, within a stated SLA.
 model TakedownRequest {
-  id                   String   @id @default(uuid())
-  reference            String   @unique                 // human-facing ticket ref, e.g. TDN-2026-0007
+  id        String @id @default(uuid())
+  reference String @unique // human-facing ticket ref, e.g. TDN-2026-0007
 
   // ── Who is complaining ────────────────────────────────
-  requesterName        String
-  requesterEmail       String
-  requesterPhone       String?
-  organization         String?
-  capacity             String                            // RightsHolder | AuthorisedAgent | Author | Other
-  capacityOther        String?
+  requesterName  String
+  requesterEmail String
+  requesterPhone String?
+  organization   String?
+  capacity       String // RightsHolder | AuthorisedAgent | Author | Other
+  capacityOther  String?
 
   // ── What they are complaining about ───────────────────
-  contentUrl           String                            // exact URL on our platform
-  contentTitle         String?
-  identifier           String?                           // DOI / ISSN / ISBN
-  matchedContentId     String?                           // internal id, if we can resolve it
-  matchedKind          String?                           // content | article | book
-  ownershipSource      String?                           // Ingested | PublisherSubmitted | AdminEntered (snapshot at intake)
+  contentUrl       String // exact URL on our platform
+  contentTitle     String?
+  identifier       String? // DOI / ISSN / ISBN
+  matchedContentId String? // internal id, if we can resolve it
+  matchedKind      String? // content | article | book
+  ownershipSource  String? // Ingested | PublisherSubmitted | AdminEntered (snapshot at intake)
 
   // ── The claim ─────────────────────────────────────────
-  ownershipBasis       String   @db.Text                 // why they hold the rights
-  requestedAction      String                            // RemoveEntirely | RemoveFileKeepMetadata | AddAttribution | Other
+  ownershipBasis       String  @db.Text // why they hold the rights
+  requestedAction      String // RemoveEntirely | RemoveFileKeepMetadata | AddAttribution | Other
   requestedActionOther String?
-  additionalInfo       String?  @db.Text
+  additionalInfo       String? @db.Text
 
   // ── Declarations made at submission ───────────────────
-  goodFaithDeclared    Boolean  @default(false)
-  accuracyDeclared     Boolean  @default(false)
+  goodFaithDeclared Boolean @default(false)
+  accuracyDeclared  Boolean @default(false)
 
   // ── Handling ──────────────────────────────────────────
-  status               String   @default("New")          // New | UnderReview | ActionTaken | Rejected | Withdrawn
-  dueAt                DateTime                          // intake + SLA window
-  acknowledgedAt       DateTime?
-  resolvedAt           DateTime?
-  actionTaken          String?  @db.Text
-  adminNotes           String?  @db.Text
-  handledBy            String?
+  status         String    @default("New") // New | UnderReview | ActionTaken | Rejected | Withdrawn
+  dueAt          DateTime // intake + SLA window
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+  actionTaken    String?   @db.Text
+  adminNotes     String?   @db.Text
+  handledBy      String?
 
   // ── Evidence ──────────────────────────────────────────
-  ipAddress            String?
-  userAgent            String?
-  auditTrail           Json?    @default("[]")            // [{event, at, by, detail}]
+  ipAddress  String?
+  userAgent  String?
+  auditTrail Json?   @default("[]") // [{event, at, by, detail}]
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([createdAt])
@@ -1194,22 +1243,22 @@ model TakedownRequest {
 /// Every name is clickable regardless of how certain we are. Half-interactive
 /// reads as broken software, and consistency matters more here than precision.
 model Author {
-  id             String   @id @default(uuid())
-  name           String                          // as printed
-  nameNormalised String                          // lowercased, punctuation stripped — the grouping key
-  orcid          String?  @unique
-  openAlexId     String?  @unique
+  id             String  @id @default(uuid())
+  name           String // as printed
+  nameNormalised String // lowercased, punctuation stripped — the grouping key
+  orcid          String? @unique
+  openAlexId     String? @unique
 
   /// ORCID | OpenAlex | NameMatch — how confident we are this is one person
-  identitySource String   @default("NameMatch")
+  identitySource String @default("NameMatch")
 
-  affiliation    String?                         // most recent seen, for display
-  articleCount   Int      @default(0)
+  affiliation  String? // most recent seen, for display
+  articleCount Int     @default(0)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  articleLinks   ArticleAuthor[]
+  articleLinks ArticleAuthor[]
 
   @@index([nameNormalised])
   @@index([identitySource])
@@ -1223,7 +1272,7 @@ model ArticleAuthor {
   articleId String
   author    Author  @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId  String
-  position  Int                                  // 0-based, as credited
+  position  Int // 0-based, as credited
 
   @@id([articleId, authorId])
   @@index([authorId])
@@ -1239,32 +1288,32 @@ model ArticleAuthor {
 /// its next slice, and stamps `lastIngestedAt`. That is self-balancing, needs
 /// no extra bookkeeping, and resumes correctly after any interruption.
 model IngestionState {
-  id          String  @id @default("singleton")
-  enabled     Boolean @default(false)
+  id      String  @id @default("singleton")
+  enabled Boolean @default(false)
 
   /// Only material published within this many years is worth holding — older
   /// runs have little value to a college library and cost the most to fetch.
-  yearsBack   Int     @default(7)
+  yearsBack          Int  @default(7)
   /// Departments to cover; empty means all of them.
-  departments Json    @default("[]")
+  departments        Json @default("[]")
   /// How many articles to pull per journal per pass, so one big journal cannot
   /// starve the rest.
-  batchSize   Int     @default(200)
+  batchSize          Int  @default(200)
   /// The most articles held for any one journal; 0 means no limit.
   ///
   /// The catalogue is shown by how many journals it covers, and a pass spent
   /// taking a journal's two-thousandth article is a pass not spent giving the
   /// next journal its first. With a limit the article phase takes each journal
   /// to this many in one request and moves on.
-  articlesPerJournal Int @default(30)
+  articlesPerJournal Int  @default(30)
 
   // ── Progress, cumulative ────────────────────────────────
-  phase            String @default("Idle")   // Idle | Journals | Articles
+  phase            String @default("Idle") // Idle | Journals | Articles
   journalsSeen     Int    @default(0)
   journalsAccepted Int    @default(0)
-  journalsRejected Int    @default(0)        // non-commercial or unusable licence
+  journalsRejected Int    @default(0) // non-commercial or unusable licence
   articlesAdded    Int    @default(0)
-  articlesSkipped  Int    @default(0)        // duplicates and out-of-window
+  articlesSkipped  Int    @default(0) // duplicates and out-of-window
   booksAdded       Int    @default(0)
   booksSkipped     Int    @default(0)
 
@@ -1276,8 +1325,8 @@ model IngestionState {
   /// page for ever; discovery that ran whenever it had work to do would starve
   /// articles, which is where the volume actually is. One pass in five looks for
   /// more; the other four fetch.
-  passCount        Int    @default(0)
-  discoverEvery    Int    @default(5)
+  passCount     Int @default(0)
+  discoverEvery Int @default(5)
 
   /// What the engine should spend its passes on: auto | journals | books | articles.
   ///
@@ -1285,13 +1334,13 @@ model IngestionState {
   /// date. It is wrong for a library being filled: books get one pass in ten,
   /// so an operator who wants five thousand of them has no way to ask for that
   /// except to press a button five hundred times.
-  focus            String @default("auto")
+  focus String @default("auto")
 
   currentDepartment String?
   currentJournal    String?
   lastRunAt         DateTime?
-  lastError         String?  @db.Text
-  updatedAt         DateTime @updatedAt
+  lastError         String?   @db.Text
+  updatedAt         DateTime  @updatedAt
 }
 
 /// One row per thing that happened, written once and never updated.
@@ -1305,11 +1354,11 @@ model IngestionState {
 ///
 /// Both stay exactly as they are; nothing that reads them today changes.
 model LibraryEvent {
-  id            String   @id @default(uuid())
-  at            DateTime @default(now())
+  id String   @id @default(uuid())
+  at DateTime @default(now())
 
   /// view | read | search | download | save | finish
-  kind          String
+  kind String
 
   userId        String?
   /// Copied at write time, not derived later: March's usage must stay March's
@@ -1317,25 +1366,25 @@ model LibraryEvent {
   institutionId String?
   role          String?
 
-  itemType      String?                            // article | book | content
-  itemId        String?
-  journalId     String?
-  journalIssn   String?
-  domain        String?
+  itemType    String? // article | book | content
+  itemId      String?
+  journalId   String?
+  journalIssn String?
+  domain      String?
 
   /// What was typed, and how many results came back. A search that returned
   /// nothing is the acquisition signal the librarian's page is built around.
-  query         String?  @db.Text
-  resultCount   Int?
+  query       String? @db.Text
+  resultCount Int?
 
   /// Time on the document, sent when the reader closes, so "opened" and
   /// "actually read" stop being the same number.
-  durationMs    Int?
-  sessionId     String?
+  durationMs Int?
+  sessionId  String?
 
   /// Makes the double-count impossible rather than merely unlikely. Nullable,
   /// and Postgres permits many nulls in a unique index.
-  dedupeKey     String?  @unique
+  dedupeKey String? @unique
 
   @@index([institutionId, at])
   @@index([userId, at])
@@ -1352,32 +1401,32 @@ model LibraryEvent {
 /// unrelated events, an article already held and a write that failed, with the
 /// failure's reason thrown away.
 model IngestionRun {
-  id            String   @id @default(uuid())
-  at            DateTime @default(now())
+  id String   @id @default(uuid())
+  at DateTime @default(now())
 
   /// Journals | Articles | Books
-  phase         String
-  source        String?                          // OpenAlex | DOAJ | DOAB
-  department    String?
-  journalId     String?
-  journalTitle  String?
+  phase        String
+  source       String? // OpenAlex | DOAJ | DOAB
+  department   String?
+  journalId    String?
+  journalTitle String?
 
-  added         Int      @default(0)
+  added         Int @default(0)
   /// Split apart so the number means something. Already held is the engine
   /// working correctly; failed to write is not, and used to look identical.
-  skippedHeld   Int      @default(0)
-  skippedFailed Int      @default(0)
+  skippedHeld   Int @default(0)
+  skippedFailed Int @default(0)
 
   // Discovery passes report on titles rather than articles.
-  journalsSeen     Int   @default(0)
-  journalsAccepted Int   @default(0)
-  journalsRefused  Int   @default(0)
+  journalsSeen     Int @default(0)
+  journalsAccepted Int @default(0)
+  journalsRefused  Int @default(0)
 
-  durationMs    Int?
+  durationMs Int?
   /// True while the journal still has pages left to walk.
-  more          Boolean  @default(false)
-  note          String?
-  error         String?  @db.Text
+  more       Boolean @default(false)
+  note       String?
+  error      String? @db.Text
 
   @@index([at])
   @@index([phase, at])
@@ -1395,23 +1444,23 @@ model IngestionRun {
 /// One row per department per search term per source, because a department is
 /// searched under several terms and each runs out at its own page.
 model DepartmentSweep {
-  id          String    @id @default(uuid())
-  department  String
-  source      String                          // DOAJ | DOAB
-  term        String                          // the search term within the department
+  id         String @id @default(uuid())
+  department String
+  source     String // DOAJ | DOAB
+  term       String // the search term within the department
 
   /// Where to resume. DOAJ counts pages from one, DOAB counts records from zero;
   /// each source reads this in its own terms.
-  position    Int       @default(0)
+  position Int @default(0)
 
   /// Set when the source returned less than a full page — nothing more to give
   /// today. Cleared when the sweep is started again.
   exhaustedAt DateTime?
   lastSweptAt DateTime?
 
-  seen        Int       @default(0)
-  accepted    Int       @default(0)
-  refused     Int       @default(0)
+  seen     Int @default(0)
+  accepted Int @default(0)
+  refused  Int @default(0)
 
   @@unique([department, source, term])
   @@index([source, exhaustedAt])
@@ -1431,13 +1480,13 @@ model DepartmentSweep {
 /// afterwards — who used all four, and how often — which is the difference
 /// between a limit and a lead.
 model FreeSession {
-  id           String    @id @default(uuid())
-  userId       String
+  id     String @id @default(uuid())
+  userId String
   /// The day this stretch belongs to, as YYYY-MM-DD in IST. A stretch counts
   /// against the day it began on, even if it runs past midnight.
-  day          String
+  day    String
   /// 1 to 4 within that day.
-  number       Int
+  number Int
 
   /// Time banked from stretches of running already stopped.
   usedMs       Int       @default(0)
@@ -1445,11 +1494,11 @@ model FreeSession {
   runningSince DateTime?
 
   /// When the thirty minutes ran out, and when the wait ends.
-  completedAt  DateTime?
-  holdUntil    DateTime?
+  completedAt DateTime?
+  holdUntil   DateTime?
 
-  startedAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  startedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, day, number])
   @@index([userId, startedAt])

@@ -746,6 +746,42 @@ const catalogueSize = async () => {
     r.status === 403 ? ok('readers cannot start an import', 'HTTP 403') : bad('readers cannot start an import', `HTTP ${r.status}`);
   }
 
+  console.log('\nMarketing mail');
+  {
+    const list = await get('/api/admin/email-templates', A);
+    Array.isArray(list.body) && list.body.length >= 5
+      ? ok('the ready mails are listed', `${list.body.length} templates`)
+      : bad('the ready mails are listed', `HTTP ${list.status} — ${JSON.stringify(list.body).slice(0, 90)}`);
+
+    const closed = await get('/api/admin/email-templates', S || R);
+    closed.status === 403 ? ok('readers cannot list them', 'HTTP 403') : bad('readers cannot list them', `HTTP ${closed.status}`);
+
+    // Rendered against a real member, and it must not write anything.
+    const member = await p.user.findFirst({ where: { role: 'Institution' }, select: { id: true, unsubscribeToken: true } })
+      || await p.user.findFirst({ where: { role: { notIn: ['SuperAdmin', 'Admin'] } }, select: { id: true, unsubscribeToken: true } });
+    if (!member) meh('a mail renders for a member', 'no member to render for');
+    else {
+      const pv = await get(`/api/admin/email-templates/profile-incomplete/preview?userId=${member.id}`, A);
+      const html = pv.body?.html || '';
+      pv.status === 200 && pv.body?.subject && html.includes('unsubscribe/')
+        ? ok('a mail renders for a member, with a way out', `"${String(pv.body.subject).slice(0, 44)}…"`)
+        : bad('a mail renders for a member, with a way out', `HTTP ${pv.status} — ${JSON.stringify(pv.body).slice(0, 90)}`);
+
+      const after = await p.user.findUnique({ where: { id: member.id }, select: { unsubscribeToken: true } });
+      after.unsubscribeToken === member.unsubscribeToken
+        ? ok('a preview writes nothing to the member')
+        : bad('a preview writes nothing to the member', 'the unsubscribe token changed while previewing');
+    }
+
+    const hist = await get('/api/admin/email-sends?limit=10', A);
+    hist.status === 200 && Array.isArray(hist.body?.sends)
+      ? ok('the send history answers', `${n(hist.body.total)} records`)
+      : bad('the send history answers', `HTTP ${hist.status}`);
+
+    const bogus = await get('/api/public/unsubscribe/not-a-real-token');
+    bogus.status === 404 ? ok('a bogus unsubscribe link is refused', 'HTTP 404') : bad('a bogus unsubscribe link is refused', `HTTP ${bogus.status}`);
+  }
+
   console.log('\nDead ends');
   for (const [name, path] of [
     ['unknown article', '/api/library/article/does-not-exist'],

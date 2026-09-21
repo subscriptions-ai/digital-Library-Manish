@@ -26,6 +26,10 @@ import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, opensInstitutionDashbo
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { importDoajCatalogue } from "./src/lib/doajCatalogue.js";
+import {
+  TEMPLATES, TEMPLATE_LIST, renderTemplate, missingInstitutionFields,
+  type TemplateKey, type MailContext,
+} from "./src/lib/marketingEmails.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
@@ -1448,6 +1452,297 @@ async function startServer() {
       res.json({ success: true, message: "Test email sent successfully!" });
     } catch (err: any) {
       res.status(500).json({ error: err.message || "Failed to send test email" });
+    }
+  });
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Marketing and lifecycle mail.
+
+     One way in for every such mail — the five templates, sent by the engine or
+     by an admin from the screen — so that three things are true of all of them
+     and cannot be forgotten at one call site: a member who opted out is never
+     mailed, nobody is mailed more often than the cap allows, and every send
+     leaves a row saying who got what, when, and who sent it.
+
+     Transactional mail — OTP, receipts, credentials — does not come through
+     here and is not subject to any of it. A reader who unsubscribes from news
+     still gets the code they just asked for.
+     ──────────────────────────────────────────────────────────────────────── */
+
+  /** No more than one marketing mail in this many days, or this many a month. */
+  const MARKETING_MIN_GAP_DAYS = 5;
+  const MARKETING_PER_MONTH = 4;
+
+  /** The library's own figures, which most of the templates quote. Cached for
+   *  ten minutes: a send of two thousand mails must not count the shelf twice
+   *  a second. */
+  let libraryFigures: { at: number; value: any } | null = null;
+  const figuresForMail = async () => {
+    if (libraryFigures && Date.now() - libraryFigures.at < 10 * 60_000) return libraryFigures.value;
+    const counts = await collectionCounts();
+    const byDept = await collectionByDepartment();
+    const value = {
+      total: counts.total, articles: counts.articles, books: counts.books,
+      departments: byDept.length,
+    };
+    libraryFigures = { at: Date.now(), value };
+    return value;
+  };
+
+  /**
+   * The member's one-click way out, minted on first use.
+   *
+   * `persist: false` is for a preview, which must not write: an admin looking
+   * at what a mail would say should not thereby change the member's record.
+   */
+  const unsubscribeUrlFor = async (user: any, persist = true) => {
+    let token = user.unsubscribeToken;
+    if (!token) {
+      token = crypto.randomUUID();
+      if (persist) await prisma.user.update({ where: { id: user.id }, data: { unsubscribeToken: token } }).catch(() => {});
+    }
+    return `${MAIL_BASE}/unsubscribe/${token}`;
+  };
+
+  /** Everything a template might quote about this member, gathered once. */
+  const contextFor = async (user: any, extra: Partial<MailContext> = {}, persist = true): Promise<MailContext> => {
+    const isInstitution = user.role === 'Institution' || !!user.institutionId;
+    const [library, reads, members, lastMember] = await Promise.all([
+      figuresForMail(),
+      (prisma as any).libraryEvent.count({ where: { userId: user.id, kind: { in: ['view', 'read', 'finish'] } } }).catch(() => 0),
+      user.role === 'Institution' && user.institutionId
+        ? prisma.user.count({ where: { institutionId: user.institutionId, role: { not: 'Institution' } } }).catch(() => 0)
+        : Promise.resolve(0),
+      user.role === 'Institution' && user.institutionId
+        ? prisma.user.findFirst({
+            where: { institutionId: user.institutionId, role: { not: 'Institution' } },
+            orderBy: { createdAt: 'desc' }, select: { createdAt: true },
+          }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    const readers = user.role === 'Institution' && user.institutionId
+      ? await prisma.user.count({ where: { institutionId: user.institutionId, role: { not: 'Institution' }, lastReadAt: { not: null } } }).catch(() => 0)
+      : 0;
+
+    const chosen = Array.isArray(user.interestedDomains) ? user.interestedDomains as string[] : [];
+    return {
+      user: {
+        id: user.id, email: user.email, displayName: user.displayName, role: user.role,
+        organization: user.organization, createdAt: user.createdAt,
+        institutionProfile: user.institutionProfile, lastReadAt: user.lastReadAt,
+      },
+      library,
+      departments: chosen.length ? chosen : undefined,
+      missingFields: isInstitution ? missingInstitutionFields(user) : undefined,
+      institution: members
+        ? {
+            members,
+            readers,
+            lastAddedDays: lastMember?.createdAt
+              ? Math.floor((Date.now() - new Date(lastMember.createdAt).getTime()) / 864e5)
+              : null,
+          }
+        : undefined,
+      reading: { items: reads, lastReadDays: user.lastReadAt ? Math.floor((Date.now() - new Date(user.lastReadAt).getTime()) / 864e5) : null },
+      unsubscribeUrl: await unsubscribeUrlFor(user, persist),
+      ...extra,
+    };
+  };
+
+  type SendOutcome = { status: 'Sent' | 'Skipped' | 'Failed'; reason?: string; subject?: string; id?: string };
+
+  /**
+   * Send one template to one member.
+   *
+   * `dedupeKey` is what makes a send unique. The engine passes something stable
+   * — "auto:1", "2026-09" — so a cron that runs twice cannot mail twice; an
+   * admin's send passes its own timestamp, because an admin sending the same
+   * template again means it.
+   */
+  const sendMarketingEmail = async (opts: {
+    userId: string; templateKey: TemplateKey; dedupeKey: string;
+    sentBy: string;                    // "auto" or an admin's id
+    extra?: Partial<MailContext>;
+    ignoreCap?: boolean;               // an admin sending by hand
+  }): Promise<SendOutcome> => {
+    const template = TEMPLATES[opts.templateKey];
+    if (!template) return { status: 'Failed', reason: 'no such template' };
+
+    const user = await prisma.user.findUnique({ where: { id: opts.userId } });
+    if (!user) return { status: 'Failed', reason: 'no such member' };
+
+    const record = async (status: SendOutcome['status'], fields: any = {}) => {
+      const row = await (prisma as any).emailSend.upsert({
+        where: { userId_templateKey_dedupeKey: { userId: user.id, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey } },
+        update: { status, ...fields },
+        create: {
+          userId: user.id, email: user.email, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey,
+          status, sentBy: opts.sentBy, subject: fields.subject || template.name, ...fields,
+        },
+      }).catch((e: any) => { console.error('emailSend write failed', e?.message); return null; });
+      return row;
+    };
+
+    if (!user.email) return { status: 'Skipped', reason: 'no address' };
+    if ((user as any).marketingOptOut) {
+      await record('Skipped', { reason: 'unsubscribed' });
+      return { status: 'Skipped', reason: 'this member has unsubscribed from updates' };
+    }
+    if (user.isBlocked || user.status !== 'Active') {
+      await record('Skipped', { reason: 'account not active' });
+      return { status: 'Skipped', reason: 'account is blocked or inactive' };
+    }
+
+    // Already sent this exact thing.
+    const already = await (prisma as any).emailSend.findFirst({
+      where: { userId: user.id, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey, status: 'Sent' },
+      select: { id: true },
+    });
+    if (already) return { status: 'Skipped', reason: 'already sent', id: already.id };
+
+    if (!opts.ignoreCap) {
+      const last = (user as any).lastMarketingAt as Date | null;
+      if (last && Date.now() - new Date(last).getTime() < MARKETING_MIN_GAP_DAYS * 864e5) {
+        await record('Skipped', { reason: 'too soon after the last one' });
+        return { status: 'Skipped', reason: `capped — last marketing mail was under ${MARKETING_MIN_GAP_DAYS} days ago` };
+      }
+      const month = await (prisma as any).emailSend.count({
+        where: { userId: user.id, status: 'Sent', createdAt: { gte: new Date(Date.now() - 30 * 864e5) } },
+      });
+      if (month >= MARKETING_PER_MONTH) {
+        await record('Skipped', { reason: 'monthly cap reached' });
+        return { status: 'Skipped', reason: `capped — ${month} marketing mails already this month` };
+      }
+    }
+
+    const ctx = await contextFor(user, opts.extra);
+    const { subject, html } = renderTemplate(opts.templateKey, ctx);
+    try {
+      const info: any = await sendMail({ to: user.email, subject, html }, true);
+      await record('Sent', { subject, providerId: info?.messageId || null, error: null, reason: null, context: { ref: ctx.ref || null, note: ctx.note || null } });
+      await prisma.user.update({ where: { id: user.id }, data: { lastMarketingAt: new Date() } }).catch(() => {});
+      return { status: 'Sent', subject };
+    } catch (e: any) {
+      await record('Failed', { subject, error: String(e?.message || e).slice(0, 1000) });
+      return { status: 'Failed', reason: String(e?.message || e).slice(0, 200) };
+    }
+  };
+
+  // ── What an admin can see and send ────────────────────────────────────────
+
+  app.get("/api/admin/email-templates", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try {
+      const counts = await (prisma as any).emailSend.groupBy({
+        by: ['templateKey', 'status'], _count: { _all: true },
+      }).catch(() => []);
+      res.json(TEMPLATE_LIST.map(t => ({
+        key: t.key, name: t.name, description: t.description, audience: t.audience, kind: t.kind,
+        sent: counts.filter((c: any) => c.templateKey === t.key && c.status === 'Sent').reduce((n: number, c: any) => n + c._count._all, 0),
+        failed: counts.filter((c: any) => c.templateKey === t.key && c.status === 'Failed').reduce((n: number, c: any) => n + c._count._all, 0),
+      })));
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to list templates" });
+    }
+  });
+
+  /** The mail exactly as it would arrive, for one member. */
+  app.get("/api/admin/email-templates/:key/preview", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const key = req.params.key as TemplateKey;
+      if (!TEMPLATES[key]) return res.status(404).json({ error: "No such template" });
+      const userId = String(req.query.userId || '');
+      const user = userId
+        ? await prisma.user.findUnique({ where: { id: userId } })
+        : await prisma.user.findFirst({ where: { role: 'Institution' } });
+      if (!user) return res.status(404).json({ error: "Choose a member to preview against" });
+      const ctx = await contextFor(user, {
+        note: typeof req.query.note === 'string' ? req.query.note : undefined,
+        ref: typeof req.query.ref === 'string' ? req.query.ref : undefined,
+      }, false);
+      const { subject, html } = renderTemplate(key, ctx);
+      res.json({
+        subject, html,
+        to: user.email,
+        member: { id: user.id, name: user.displayName, email: user.email, role: user.role, organization: user.organization },
+        optedOut: !!(user as any).marketingOptOut,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: String(e?.message || e) });
+    }
+  });
+
+  /** Send one template to one member, now, by hand. */
+  app.post("/api/admin/email-templates/:key/send", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const key = req.params.key as TemplateKey;
+      if (!TEMPLATES[key]) return res.status(404).json({ error: "No such template" });
+      const { userId, note, ref } = req.body || {};
+      if (!userId) return res.status(400).json({ error: "Choose a member" });
+      const out = await sendMarketingEmail({
+        userId, templateKey: key, dedupeKey: `manual:${new Date().toISOString()}`,
+        sentBy: req.user.uid, ignoreCap: true,
+        extra: { note: note || undefined, ref: ref || `mail-${key}` },
+      });
+      if (out.status === 'Failed') return res.status(502).json(out);
+      res.json(out);
+    } catch (e: any) {
+      res.status(500).json({ error: String(e?.message || e) });
+    }
+  });
+
+  /** Who got what, when — filterable, and the timeline for one member. */
+  app.get("/api/admin/email-sends", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const str = (v: any) => (typeof v === 'string' ? v.trim() : '');
+      const where: any = {};
+      if (str(req.query.userId)) where.userId = str(req.query.userId);
+      if (str(req.query.templateKey)) where.templateKey = str(req.query.templateKey);
+      if (str(req.query.status)) where.status = str(req.query.status);
+      if (str(req.query.q)) where.email = { contains: str(req.query.q), mode: 'insensitive' };
+      const page = Math.max(1, parseInt(str(req.query.page)) || 1);
+      const limit = Math.min(200, Math.max(10, parseInt(str(req.query.limit)) || 50));
+
+      const [rows, total, byStatus] = await Promise.all([
+        (prisma as any).emailSend.findMany({
+          where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit,
+          include: { user: { select: { id: true, displayName: true, email: true, role: true, organization: true } } },
+        }),
+        (prisma as any).emailSend.count({ where }),
+        (prisma as any).emailSend.groupBy({ by: ['status'], where, _count: { _all: true } }),
+      ]);
+      res.json({
+        sends: rows, total, page, limit,
+        counts: Object.fromEntries(byStatus.map((g: any) => [g.status, g._count._all])),
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to read the send history" });
+    }
+  });
+
+  // ── One click out, no login ───────────────────────────────────────────────
+
+  app.get("/api/public/unsubscribe/:token", async (req: any, res: any) => {
+    try {
+      const token = String(req.params.token || '');
+      const users = await prisma.user.findMany({ where: { unsubscribeToken: token }, take: 2, select: { id: true, email: true, marketingOptOut: true } as any });
+      if (users.length !== 1) return res.status(404).json({ error: "This link is no longer valid" });
+      const u: any = users[0];
+      res.json({ email: u.email, alreadyOut: !!u.marketingOptOut });
+    } catch {
+      res.status(500).json({ error: "Could not read that link" });
+    }
+  });
+
+  app.post("/api/public/unsubscribe/:token", async (req: any, res: any) => {
+    try {
+      const token = String(req.params.token || '');
+      const resubscribe = req.body?.resubscribe === true;
+      const users = await prisma.user.findMany({ where: { unsubscribeToken: token }, take: 2, select: { id: true, email: true } });
+      if (users.length !== 1) return res.status(404).json({ error: "This link is no longer valid" });
+      await prisma.user.update({ where: { id: users[0].id }, data: { marketingOptOut: !resubscribe } as any });
+      res.json({ email: users[0].email, optedOut: !resubscribe });
+    } catch {
+      res.status(500).json({ error: "Could not change that" });
     }
   });
 
