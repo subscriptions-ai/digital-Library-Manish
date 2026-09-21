@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, RefreshCw, Copy, Check, Eye, EyeOff, Mail, Lock, User, Building2, GraduationCap, CheckCircle2, AlertCircle } from 'lucide-react';
+import { PenLine, UserPlus, RefreshCw, Copy, Check, Eye, EyeOff, Mail, Lock, User, Building2, GraduationCap, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const ROLES = [
@@ -7,6 +7,9 @@ const ROLES = [
   { value: 'Student', label: 'Student', icon: GraduationCap, color: 'text-purple-600 bg-purple-50', desc: 'Linked to an institution, accesses granted content' },
   { value: 'Subscriber', label: 'Normal User / Subscriber', icon: User, color: 'text-blue-600 bg-blue-50', desc: 'Individual subscriber accessing personal subscription' },
   { value: 'SubscriptionManager', label: 'Subscription Manager', icon: User, color: 'text-emerald-600 bg-emerald-50', desc: 'Sales role — manages requests, quotations and approvals' },
+  // Without this the blog had no way to get a writer: the role existed, the
+  // dashboard existed, and nobody could be given either.
+  { value: 'ContentManager', label: 'Editor (blog)', icon: PenLine, color: 'text-amber-600 bg-amber-50', desc: 'Writes and publishes the blog at /studio — no access to members, leads or payments' },
 ];
 
 function generateStrongPassword(length = 14): string {

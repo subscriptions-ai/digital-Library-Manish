@@ -203,6 +203,7 @@ export function Navbar() {
                 )}
               </div>
 
+              <Link to="/blog" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Blog</Link>
               {!safeMode && <Link to="/faq" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">FAQ</Link>}
               <Link to="/contact" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Contact Us</Link>
             </nav>
@@ -266,6 +267,7 @@ export function Navbar() {
                   )}
                 </div>
 
+                <Link to="/blog" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Blog</Link>
                 {!safeMode && <Link to="/faq" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>FAQ</Link>}
                 <Link to="/contact" className="text-base font-semibold text-slate-700" onClick={() => setIsMenuOpen(false)}>Contact Us</Link>
               </div>

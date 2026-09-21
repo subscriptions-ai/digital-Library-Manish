@@ -63,6 +63,10 @@ export function Login() {
         navigate('/sales');
       } else if (role === 'Publisher') {
         navigate('/publisher');
+      } else if (role === 'ContentManager') {
+        // The editor writes the blog and does nothing else here; the admin
+        // dashboard would only bounce them.
+        navigate('/studio');
       } else {
         // Student, Subscriber, Normal User → shared dashboard
         navigate('/dashboard');

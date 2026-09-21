@@ -892,6 +892,54 @@ const catalogueSize = async () => {
     bogus.status === 404 ? ok('a bogus unsubscribe link is refused', 'HTTP 404') : bad('a bogus unsubscribe link is refused', `HTTP ${bogus.status}`);
   }
 
+  console.log('\nThe blog');
+  {
+    const editor = await p.user.findFirst({ where: { role: 'ContentManager' }, select: { id: true, email: true, role: true } });
+    const E = editor ? tok(editor) : null;
+    const published = await p.blogPost.findFirst({ where: { status: 'Published' }, select: { slug: true, body: true } });
+    const draft = await p.blogPost.findFirst({ where: { status: 'Draft' }, select: { slug: true } });
+
+    const list = await get('/api/blog/posts?limit=3');
+    list.status === 200 && Array.isArray(list.body?.posts)
+      ? ok('the blog lists its posts', `${n(list.body.total)} published`)
+      : bad('the blog lists its posts', `HTTP ${list.status}`);
+
+    if (!published) meh('a post reads publicly', 'nothing published yet');
+    else {
+      const one = await get(`/api/blog/posts/${published.slug}`);
+      one.status === 200 && one.body?.post?.title
+        ? ok('a post reads publicly, with what the library holds beside it', `${(one.body.fromLibrary || []).length} library items`)
+        : bad('a post reads publicly', `HTTP ${one.status}`);
+
+      // The body is stored cleaned; a script that reached the page would run
+      // in every reader's browser.
+      const dirty = /<script|onerror=|onclick=|javascript:/i.test(String(published.body || ''));
+      dirty ? bad('no post carries a script', 'a published post contains executable markup')
+        : ok('no post carries a script');
+    }
+
+    if (!draft) meh('a draft stays private', 'no draft to try');
+    else {
+      const leak = await get(`/api/blog/posts/${draft.slug}`);
+      leak.status === 404 ? ok('a draft stays private', 'HTTP 404 in public') : bad('a draft stays private', `HTTP ${leak.status} — a draft is readable`);
+    }
+
+    const shut = await get('/api/studio/posts', S || R);
+    shut.status === 403 ? ok('readers cannot reach the studio', 'HTTP 403') : bad('readers cannot reach the studio', `HTTP ${shut.status}`);
+
+    if (!E) meh('an editor reaches the studio', 'no ContentManager account');
+    else {
+      const mine = await get('/api/studio/posts', E);
+      mine.status === 200 ? ok('an editor reaches the studio', `${(mine.body?.posts || []).length} posts`) : bad('an editor reaches the studio', `HTTP ${mine.status}`);
+      // …and nowhere else.
+      const members = await get('/api/admin/users?limit=1', E);
+      members.status === 403 ? ok('an editor cannot read the members', 'HTTP 403') : bad('an editor cannot read the members', `HTTP ${members.status}`);
+    }
+
+    const map = await fetch(`${BASE}/sitemap-blog.xml`).then(r => r.text()).catch(() => '');
+    map.includes('/blog') ? ok('the blog is in the sitemap') : bad('the blog is in the sitemap', 'sitemap-blog.xml is empty');
+  }
+
   console.log('\nDead ends');
   for (const [name, path] of [
     ['unknown article', '/api/library/article/does-not-exist'],

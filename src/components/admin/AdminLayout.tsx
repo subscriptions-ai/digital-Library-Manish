@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon, ShieldAlert
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, PenLine, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon, ShieldAlert
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -322,6 +322,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             active={location.pathname === '/admin/ingestion'}
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/admin/ingestion')}
+          />
+
+          {/* Blog */}
+          <NavButton
+            icon={<PenLine size={17} />}
+            label="Blog"
+            active={location.pathname === '/admin/blog'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/blog')}
           />
 
           {/* Emails */}

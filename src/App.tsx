@@ -68,6 +68,11 @@ import { AdminLeadManager } from "./components/admin/AdminLeadManager";
 import { AdminJournalDirectory } from "./components/admin/AdminJournalDirectory";
 import { AdminEmails } from "./components/admin/AdminEmails";
 import { Unsubscribe } from "./components/Unsubscribe";
+import { StudioLayout } from "./components/studio/StudioLayout";
+import { PostList } from "./components/studio/PostList";
+import { PostEditor } from "./components/studio/PostEditor";
+import { BlogList, BlogPost } from "./components/blog/Blog";
+import { AdminBlog } from "./components/admin/AdminBlog";
 import { SalesLayout } from "./components/sales/SalesLayout";
 import { SalesDashboard } from "./components/sales/SalesDashboard";
 import { SalesLeadTable } from "./components/sales/SalesLeadTable";
@@ -240,6 +245,7 @@ export default function App() {
                 <Route path="/admin/email-verifications" element={<AdminLayout><EmailVerificationsPage /></AdminLayout>} />
                 <Route path="/admin/email-settings" element={<AdminLayout><AdminEmailSettings /></AdminLayout>} />
                 <Route path="/admin/emails" element={<AdminLayout><AdminEmails /></AdminLayout>} />
+                <Route path="/admin/blog" element={<AdminLayout><AdminBlog /></AdminLayout>} />
 
                 {/* Per Content Type Module Routes (8 modules × 3 pages each) */}
                 {CONTENT_MODULES.map(({ slug, contentType }) => (
@@ -313,6 +319,11 @@ export default function App() {
                 {/* Admin User Management */}
                 <Route path="/admin/users/create" element={<AdminLayout><UserCreationPanel /></AdminLayout>} />
 
+                {/* The writer's own dashboard — the blog and nothing else. */}
+                <Route path="/studio" element={<StudioLayout><PostList /></StudioLayout>} />
+                <Route path="/studio/new" element={<StudioLayout><PostEditor /></StudioLayout>} />
+                <Route path="/studio/posts/:id" element={<StudioLayout><PostEditor /></StudioLayout>} />
+
                 {/* Sales Executive Routes */}
                 <Route path="/sales" element={<SalesLayout><SalesDashboard /></SalesLayout>} />
                 <Route path="/sales/leads" element={<SalesLayout><SalesLeadTable /></SalesLayout>} />
@@ -370,6 +381,8 @@ export default function App() {
                       <Route path="/search" element={<SearchResults />} />
                       {/* Opened from a link in an email, by whoever is holding the phone. */}
                       <Route path="/unsubscribe/:token" element={<Unsubscribe />} />
+                      <Route path="/blog" element={<BlogList />} />
+                      <Route path="/blog/:slug" element={<BlogPost />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>

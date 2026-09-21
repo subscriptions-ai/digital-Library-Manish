@@ -26,6 +26,7 @@ import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, opensInstitutionDashbo
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { importDoajCatalogue } from "./src/lib/doajCatalogue.js";
+import sanitizeHtml from "sanitize-html";
 import {
   TEMPLATES, TEMPLATE_LIST, renderTemplate, missingInstitutionFields,
   type TemplateKey, type MailContext,
@@ -1413,6 +1414,22 @@ async function startServer() {
     next();
   };
 
+  /**
+   * The blog's editor.
+   *
+   * ContentManager existed in the roles and in the content permissions but had
+   * no screen of its own, so anybody given it landed on a reader's dashboard.
+   * It is the right role for this: staff, already trusted with content, and
+   * with no reach into members, leads or payments.
+   */
+  const requireEditor = (req: any, res: any, next: any) => {
+    const role = req.user?.role;
+    if (role !== 'SuperAdmin' && role !== 'ContentManager') {
+      return res.status(403).json({ error: "Editors and admins only" });
+    }
+    next();
+  };
+
   const requireSalesRole = (req: any, res: any, next: any) => {
     const r = req.user?.role;
     if (r === "SuperAdmin" || r === "SubscriptionManager" || r === "SalesExecutive" || r === "SalesManager") {
@@ -1463,6 +1480,277 @@ async function startServer() {
       res.json({ success: true, message: "Test email sent successfully!" });
     } catch (err: any) {
       res.status(500).json({ error: err.message || "Failed to send test email" });
+    }
+  });
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     The blog.
+
+     Written in the editor's own dashboard, published by whoever wrote it. The
+     admin does not stand between a writer and their post — but every post
+     carries who published it and when, and the admin screen reads that.
+
+     Three rules hold everywhere below:
+       · The body is cleaned on the way in. It arrives as HTML from a rich
+         editor, and an editor's account is not a reason to store a <script>.
+       · The slug is fixed once published. A link that has been shared must
+         keep working, whatever the title becomes.
+       · The public endpoints never see a draft.
+     ──────────────────────────────────────────────────────────────────────── */
+
+  /** What the editor may leave in a post's body, and nothing else. */
+  const cleanBody = (html: string) => sanitizeHtml(String(html || ''), {
+    allowedTags: [
+      'p', 'br', 'strong', 'em', 'u', 's', 'code', 'pre', 'blockquote',
+      'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'figure', 'figcaption',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td',
+    ],
+    allowedAttributes: {
+      a: ['href', 'title', 'target', 'rel'],
+      img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
+      '*': ['class'],
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    transformTags: {
+      // Anything leaving the site opens elsewhere and carries no referrer
+      // privileges with it.
+      a: (tagName, attribs) => ({
+        tagName,
+        attribs: /^https?:\/\//i.test(attribs.href || '') && !String(attribs.href).includes('journalslibrary.com')
+          ? { ...attribs, target: '_blank', rel: 'noopener nofollow' }
+          : attribs,
+      }),
+    },
+  });
+
+  /** "Why open access matters" → "why-open-access-matters", never a clash. */
+  const slugify = (t: string) => String(t || '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80) || 'post';
+  const freeSlug = async (title: string, exceptId?: string) => {
+    const base = slugify(title);
+    for (let i = 0; i < 50; i++) {
+      const slug = i ? `${base}-${i + 1}` : base;
+      const held = await (prisma as any).blogPost.findFirst({ where: { slug }, select: { id: true } });
+      if (!held || held.id === exceptId) return slug;
+    }
+    return `${base}-${Date.now().toString(36)}`;
+  };
+
+  /** Reading time from the words actually in the body, at 200 a minute. */
+  const readingMinutes = (html: string) => {
+    const words = String(html || '').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+    return Math.max(1, Math.round(words / 200));
+  };
+
+  const postFromBody = async (b: any, existing?: any) => {
+    const title = String(b.title || '').trim() || 'Untitled post';
+    const body = cleanBody(b.body || '');
+    return {
+      title,
+      // Fixed once it has been published — see above.
+      ...(existing?.publishedAt ? {} : { slug: await freeSlug(b.slug || title, existing?.id) }),
+      excerpt: String(b.excerpt || '').trim().slice(0, 500) || null,
+      body,
+      coverUrl: b.coverUrl || null,
+      category: b.category || null,
+      tags: Array.isArray(b.tags) ? b.tags.slice(0, 12) : [],
+      domains: Array.isArray(b.domains) ? b.domains.slice(0, 6) : [],
+      seoTitle: String(b.seoTitle || '').trim().slice(0, 120) || null,
+      seoDescription: String(b.seoDescription || '').trim().slice(0, 300) || null,
+      ogImage: b.ogImage || b.coverUrl || null,
+      readMinutes: readingMinutes(body),
+    };
+  };
+
+  // ── The editor's own endpoints ────────────────────────────────────────────
+
+  app.get("/api/studio/posts", authenticateJWT, requireEditor, async (req: any, res: any) => {
+    try {
+      const status = typeof req.query.status === 'string' && req.query.status !== 'all' ? req.query.status : null;
+      const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+      const where: any = {
+        ...(status ? { status } : {}),
+        ...(q ? { OR: [{ title: { contains: q, mode: 'insensitive' } }, { excerpt: { contains: q, mode: 'insensitive' } }] } : {}),
+      };
+      const [posts, counts] = await Promise.all([
+        (prisma as any).blogPost.findMany({
+          where, orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }], take: 100,
+          select: {
+            id: true, slug: true, title: true, excerpt: true, coverUrl: true, status: true,
+            category: true, authorName: true, publishedAt: true, updatedAt: true, readMinutes: true, views: true,
+          },
+        }),
+        (prisma as any).blogPost.groupBy({ by: ['status'], _count: { _all: true } }),
+      ]);
+      res.json({ posts, counts: Object.fromEntries(counts.map((c: any) => [c.status, c._count._all])) });
+    } catch (e: any) {
+      console.error('studio posts error', e?.message);
+      res.status(500).json({ error: "Failed to read the posts" });
+    }
+  });
+
+  app.get("/api/studio/posts/:id", authenticateJWT, requireEditor, async (req: any, res: any) => {
+    try {
+      const post = await (prisma as any).blogPost.findUnique({ where: { id: req.params.id } });
+      if (!post) return res.status(404).json({ error: "No such post" });
+      res.json(post);
+    } catch {
+      res.status(500).json({ error: "Failed to read that post" });
+    }
+  });
+
+  app.post("/api/studio/posts", authenticateJWT, requireEditor, async (req: any, res: any) => {
+    try {
+      const me = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { displayName: true, email: true } });
+      const data = await postFromBody(req.body || {});
+      const post = await (prisma as any).blogPost.create({
+        data: { ...data, status: 'Draft', authorId: req.user.uid, authorName: me?.displayName || me?.email || 'STM Digital Library' },
+      });
+      res.status(201).json(post);
+    } catch (e: any) {
+      console.error('create post error', e?.message);
+      res.status(500).json({ error: "Failed to create that post" });
+    }
+  });
+
+  app.put("/api/studio/posts/:id", authenticateJWT, requireEditor, async (req: any, res: any) => {
+    try {
+      const existing = await (prisma as any).blogPost.findUnique({ where: { id: req.params.id } });
+      if (!existing) return res.status(404).json({ error: "No such post" });
+      const data = await postFromBody(req.body || {}, existing);
+      res.json(await (prisma as any).blogPost.update({ where: { id: existing.id }, data }));
+    } catch (e: any) {
+      console.error('update post error', e?.message);
+      res.status(500).json({ error: "Failed to save that post" });
+    }
+  });
+
+  /** Publish or take down. Either way it is recorded against a person. */
+  app.post("/api/studio/posts/:id/status", authenticateJWT, requireEditor, async (req: any, res: any) => {
+    try {
+      const publish = req.body?.publish !== false;
+      const existing = await (prisma as any).blogPost.findUnique({ where: { id: req.params.id } });
+      if (!existing) return res.status(404).json({ error: "No such post" });
+      const me = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { displayName: true, email: true } });
+      const who = me?.displayName || me?.email || req.user.uid;
+      const post = await (prisma as any).blogPost.update({
+        where: { id: existing.id },
+        data: publish
+          ? {
+              status: 'Published',
+              // The first publish sets the date; taking it down and putting it
+              // back does not make it new again.
+              publishedAt: existing.publishedAt || new Date(),
+              publishedBy: who,
+            }
+          : { status: 'Draft' },
+      });
+      res.json(post);
+    } catch {
+      res.status(500).json({ error: "Failed to change that post" });
+    }
+  });
+
+  app.delete("/api/studio/posts/:id", authenticateJWT, requireEditor, async (req: any, res: any) => {
+    try {
+      await (prisma as any).blogPost.delete({ where: { id: req.params.id } });
+      res.json({ message: "Deleted" });
+    } catch {
+      res.status(500).json({ error: "Failed to delete that post" });
+    }
+  });
+
+  // ── What the admin sees: who published what, and when ─────────────────────
+
+  app.get("/api/admin/blog", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try {
+      const [posts, counts, authors] = await Promise.all([
+        (prisma as any).blogPost.findMany({
+          orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }], take: 200,
+          select: {
+            id: true, slug: true, title: true, status: true, category: true, authorName: true,
+            publishedBy: true, publishedAt: true, updatedAt: true, createdAt: true, views: true, readMinutes: true,
+          },
+        }),
+        (prisma as any).blogPost.groupBy({ by: ['status'], _count: { _all: true } }),
+        (prisma as any).blogPost.groupBy({ by: ['authorName'], _count: { _all: true } }),
+      ]);
+      res.json({
+        posts,
+        counts: Object.fromEntries(counts.map((c: any) => [c.status, c._count._all])),
+        authors: authors.map((a: any) => ({ name: a.authorName || 'Unknown', posts: a._count._all }))
+          .sort((a: any, b: any) => b.posts - a.posts),
+      });
+    } catch {
+      res.status(500).json({ error: "Failed to read the blog" });
+    }
+  });
+
+  // ── The public side ───────────────────────────────────────────────────────
+
+  app.get("/api/blog/posts", async (req: any, res: any) => {
+    try {
+      const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1);
+      const limit = Math.min(24, Math.max(3, parseInt(String(req.query.limit || '9')) || 9));
+      const category = typeof req.query.category === 'string' && req.query.category ? req.query.category : null;
+      const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+      const where: any = {
+        status: 'Published',
+        ...(category ? { category } : {}),
+        ...(q ? { OR: [
+          { title: { contains: q, mode: 'insensitive' } },
+          { excerpt: { contains: q, mode: 'insensitive' } },
+        ] } : {}),
+      };
+      const [posts, total, cats] = await Promise.all([
+        (prisma as any).blogPost.findMany({
+          where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * limit, take: limit,
+          select: {
+            slug: true, title: true, excerpt: true, coverUrl: true, category: true,
+            authorName: true, publishedAt: true, readMinutes: true,
+          },
+        }),
+        (prisma as any).blogPost.count({ where }),
+        (prisma as any).blogPost.groupBy({ by: ['category'], where: { status: 'Published' }, _count: { _all: true } }),
+      ]);
+      res.json({
+        posts, total, page, limit,
+        categories: cats.filter((c: any) => c.category).map((c: any) => ({ name: c.category, posts: c._count._all })),
+      });
+    } catch {
+      res.status(500).json({ error: "Failed to read the blog" });
+    }
+  });
+
+  app.get("/api/blog/posts/:slug", async (req: any, res: any) => {
+    try {
+      const post = await (prisma as any).blogPost.findFirst({
+        where: { slug: req.params.slug, status: 'Published' },
+      });
+      if (!post) return res.status(404).json({ error: "No such post" });
+      (prisma as any).blogPost.update({ where: { id: post.id }, data: { views: { increment: 1 } } }).catch(() => {});
+
+      // What the library actually holds on the subject this post is about. A
+      // post that sends nobody into the library is a post that did half its job.
+      const domains: string[] = Array.isArray(post.domains) ? post.domains as string[] : [];
+      const [related, fromLibrary] = await Promise.all([
+        (prisma as any).blogPost.findMany({
+          where: { status: 'Published', id: { not: post.id }, ...(post.category ? { category: post.category } : {}) },
+          orderBy: { publishedAt: 'desc' }, take: 3,
+          select: { slug: true, title: true, excerpt: true, coverUrl: true, publishedAt: true, readMinutes: true },
+        }),
+        domains.length
+          ? (prisma as any).article.findMany({
+              where: { status: 'Published', domain: { in: domains } },
+              orderBy: { originalDate: 'desc' }, take: 5,
+              select: { id: true, title: true, journalName: true, domain: true, year: true },
+            })
+          : Promise.resolve([]),
+      ]);
+      res.json({ post, related, fromLibrary });
+    } catch (e: any) {
+      console.error('blog post error', e?.message);
+      res.status(500).json({ error: "Failed to read that post" });
     }
   });
 
@@ -4624,7 +4912,7 @@ async function startServer() {
       const { role } = req.body;
       const { id } = req.params;
 
-      const allowedRoles = ['SuperAdmin', 'SubscriptionManager', 'Institution', 'Student', 'Subscriber'];
+      const allowedRoles = ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'Institution', 'Student', 'Subscriber'];
       if (!allowedRoles.includes(role)) {
         return res.status(400).json({ error: "Invalid role value" });
       }
@@ -6083,7 +6371,7 @@ async function startServer() {
   };
 
   // POST /api/admin/media — upload one file (base64 data URL) and get its public link back
-  app.post("/api/admin/media", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+  app.post("/api/admin/media", authenticateJWT, requireEditor, async (req: any, res: any) => {
     try {
       const { dataUrl, filename, title, altText, caption, folder } = req.body || {};
       if (!dataUrl || typeof dataUrl !== 'string') return res.status(400).json({ error: "No file provided" });
@@ -6140,7 +6428,7 @@ async function startServer() {
   });
 
   // GET /api/admin/media — paginated list with search + kind filter
-  app.get("/api/admin/media", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+  app.get("/api/admin/media", authenticateJWT, requireEditor, async (req: any, res: any) => {
     try {
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
       const take = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 40));
@@ -6180,7 +6468,7 @@ async function startServer() {
   });
 
   // PUT /api/admin/media/:id — edit metadata (title / alt / caption / folder)
-  app.put("/api/admin/media/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+  app.put("/api/admin/media/:id", authenticateJWT, requireEditor, async (req: any, res: any) => {
     try {
       const { title, altText, caption, folder } = req.body || {};
       const data: any = {};
@@ -12923,6 +13211,8 @@ async function startServer() {
       
       // Static sitemap
       xml += `  <sitemap>\n    <loc>${baseUrl}/sitemap-static.xml</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </sitemap>\n`;
+      // The blog, which is written to be found
+      xml += `  <sitemap>\n    <loc>${baseUrl}/sitemap-blog.xml</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </sitemap>\n`;
       
       // Dynamic content sitemaps
       for (let i = 1; i <= totalPages; i++) {
@@ -12957,7 +13247,7 @@ async function startServer() {
     // "/subscriptions" was removed from the site when public pricing came down.
     // Leaving it here advertised a URL that renders a not-found screen, which is
     // the soft-404 the external audit flagged (COM-02 / SEO-01).
-    const staticRoutes = ["/", "/journals", "/contact", "/about", "/signup"];
+    const staticRoutes = ["/", "/journals", "/contact", "/about", "/signup", "/blog"];
     for (const route of staticRoutes) {
       const loc = route === "/" ? baseUrl : `${baseUrl}${route}`;
       xml += `  <url>\n    <loc>${loc}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
@@ -12970,6 +13260,55 @@ async function startServer() {
   });
 
   // 3. PAGINATED CONTENT SITEMAPS
+  /** Every published post, newest first. Drafts are not in here. */
+  app.get("/sitemap-blog.xml", async (_req: any, res: any) => {
+    try {
+      const baseUrl = "https://journalslibrary.com";
+      const posts = await (prisma as any).blogPost.findMany({
+        where: { status: 'Published' }, orderBy: { publishedAt: 'desc' }, take: 5000,
+        select: { slug: true, updatedAt: true },
+      });
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+      xml += `  <url>\n    <loc>${baseUrl}/blog</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
+      for (const p2 of posts) {
+        xml += `  <url>\n    <loc>${baseUrl}/blog/${p2.slug}</loc>\n`
+          + `    <lastmod>${new Date(p2.updatedAt).toISOString()}</lastmod>\n`
+          + `    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+      }
+      xml += `</urlset>`;
+      res.type('application/xml').send(xml);
+    } catch (e) {
+      console.error('blog sitemap error', e);
+      res.status(500).send("Error generating blog sitemap");
+    }
+  });
+
+  /** The blog as a feed, for anyone who still reads them. */
+  app.get("/blog/rss.xml", async (_req: any, res: any) => {
+    try {
+      const baseUrl = "https://journalslibrary.com";
+      const posts = await (prisma as any).blogPost.findMany({
+        where: { status: 'Published' }, orderBy: { publishedAt: 'desc' }, take: 50,
+        select: { slug: true, title: true, excerpt: true, publishedAt: true, authorName: true },
+      });
+      const esc2 = (t: any) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>\n`;
+      xml += `<title>STM Digital Library — Blog</title>\n<link>${baseUrl}/blog</link>\n`;
+      xml += `<description>Writing from STM Digital Library.</description>\n`;
+      for (const p2 of posts) {
+        xml += `<item>\n<title>${esc2(p2.title)}</title>\n<link>${baseUrl}/blog/${p2.slug}</link>\n`
+          + `<guid>${baseUrl}/blog/${p2.slug}</guid>\n`
+          + (p2.publishedAt ? `<pubDate>${new Date(p2.publishedAt).toUTCString()}</pubDate>\n` : '')
+          + (p2.authorName ? `<author>${esc2(p2.authorName)}</author>\n` : '')
+          + `<description>${esc2(p2.excerpt || '')}</description>\n</item>\n`;
+      }
+      xml += `</channel></rss>`;
+      res.type('application/rss+xml').send(xml);
+    } catch {
+      res.status(500).send("Error generating the feed");
+    }
+  });
+
   app.get("/sitemap-content-:page.xml", async (req: any, res) => {
     try {
       const page = parseInt(req.params.page) || 1;

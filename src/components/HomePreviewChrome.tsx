@@ -147,6 +147,7 @@ export function PreviewHeader() {
           </div>
 
           {!safeMode && <NavLink to="/faq" className={navLinkClass}>FAQ</NavLink>}
+          <NavLink to="/blog" className={navLinkClass}>Blog</NavLink>
           <NavLink to="/contact" className={navLinkClass}>Contact</NavLink>
         </nav>
 

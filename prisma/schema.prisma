@@ -1100,6 +1100,53 @@ model PageVisit {
   createdAt DateTime @default(now())
 }
 
+/// A post on the library's blog.
+///
+/// Written in the editor's own dashboard, published by whoever wrote it, and
+/// recorded here with who did that and when — the admin's screen reads this
+/// rather than being asked to trust anybody's word for it.
+model BlogPost {
+  id       String  @id @default(uuid())
+  /// The public address, /blog/<slug>. Fixed once published, because a link
+  /// that stops working is worse than a title that reads oddly.
+  slug     String  @unique
+  title    String
+  /// The line under the title, and the description search engines show.
+  excerpt  String? @db.Text
+  /// The body as HTML from the editor, cleaned on the way in.
+  body     String  @db.Text
+  coverUrl String?
+
+  /// Draft — nobody but the writer sees it. Published — it is on the site.
+  status   String  @default("Draft")
+  category String?
+  tags     Json    @default("[]")
+  /// The library departments this post belongs beside, so a reader who
+  /// finishes it is shown what the library actually holds on the subject.
+  domains  Json    @default("[]")
+
+  /// Search engines, and the card a link shows on WhatsApp or LinkedIn.
+  seoTitle       String?
+  seoDescription String? @db.Text
+  ogImage        String?
+
+  authorId    String?
+  /// Copied at write time: the byline survives the account being renamed.
+  authorName  String?
+  publishedAt DateTime?
+  publishedBy String?
+  /// Roughly how long it takes to read, from the words in the body.
+  readMinutes Int       @default(1)
+  views       Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([authorId])
+  @@index([category])
+}
+
 /// The engine's own switches: one row, id "singleton".
 ///
 /// Kept in the database rather than in the code so an operator can stop it
