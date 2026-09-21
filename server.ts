@@ -1864,6 +1864,76 @@ async function startServer() {
     }
   });
 
+  /**
+   * The same history, one row per member.
+   *
+   * A flat list answers "what went out"; an admin looking at it asks "who has
+   * had what", and three rows for one member three mails deep is the wrong
+   * shape for that question. This groups by member, newest activity first,
+   * and carries each member's mails with them.
+   */
+  app.get("/api/admin/email-sends/by-member", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const str = (v: any) => (typeof v === 'string' ? v.trim() : '');
+      const where: any = { userId: { not: null } };
+      if (str(req.query.templateKey)) where.templateKey = str(req.query.templateKey);
+      if (str(req.query.status)) where.status = str(req.query.status);
+      if (str(req.query.q)) where.email = { contains: str(req.query.q), mode: 'insensitive' };
+      const page = Math.max(1, parseInt(str(req.query.page)) || 1);
+      const limit = Math.min(100, Math.max(5, parseInt(str(req.query.limit)) || 25));
+
+      // Who has been mailed at all under these filters, most recent first.
+      const groups = await (prisma as any).emailSend.groupBy({
+        by: ['userId'], where,
+        _count: { _all: true },
+        _max: { createdAt: true },
+        orderBy: { _max: { createdAt: 'desc' } },
+        skip: (page - 1) * limit, take: limit,
+      });
+      const allGroups = await (prisma as any).emailSend.groupBy({ by: ['userId'], where, _count: { _all: true } });
+
+      const ids = groups.map((g: any) => g.userId);
+      const [members, sends, totals] = await Promise.all([
+        ids.length ? prisma.user.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, displayName: true, email: true, role: true, organization: true, marketingOptOut: true, lastReadAt: true } as any,
+        }) : [],
+        ids.length ? (prisma as any).emailSend.findMany({
+          where: { ...where, userId: { in: ids } }, orderBy: { createdAt: 'desc' },
+        }) : [],
+        (prisma as any).emailSend.groupBy({ by: ['status'], where, _count: { _all: true } }),
+      ]);
+
+      const byId = new Map<string, any>(members.map((m: any) => [m.id, m] as [string, any]));
+      const rows = groups.map((g: any) => {
+        const mine = sends.filter((s: any) => s.userId === g.userId);
+        return {
+          member: byId.get(g.userId) || { id: g.userId, email: mine[0]?.email, displayName: null, role: '—' },
+          total: g._count._all,
+          lastAt: g._max.createdAt,
+          sent: mine.filter((s: any) => s.status === 'Sent').length,
+          skipped: mine.filter((s: any) => s.status === 'Skipped').length,
+          failed: mine.filter((s: any) => s.status === 'Failed').length,
+          sends: mine.map((s: any) => ({
+            id: s.id, templateKey: s.templateKey, subject: s.subject, status: s.status,
+            reason: s.reason, error: s.error, sentBy: s.sentBy, createdAt: s.createdAt,
+          })),
+        };
+      });
+
+      res.json({
+        members: rows,
+        memberCount: allGroups.length,
+        total: allGroups.reduce((n: number, g: any) => n + g._count._all, 0),
+        page, limit,
+        counts: Object.fromEntries(totals.map((g: any) => [g.status, g._count._all])),
+      });
+    } catch (e: any) {
+      console.error('by-member history error', e?.message);
+      res.status(500).json({ error: "Failed to read the send history" });
+    }
+  });
+
   // ── One click out, no login ───────────────────────────────────────────────
 
   app.get("/api/public/unsubscribe/:token", async (req: any, res: any) => {

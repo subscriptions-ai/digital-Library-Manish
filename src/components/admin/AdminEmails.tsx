@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle, CheckCircle2, Clock, Loader2, Mail, MailX, RefreshCw, Search, Send, User2, XCircle,
+  AlertTriangle, CheckCircle2, ChevronRight, Clock, Loader2, Mail, MailX, RefreshCw, Search, Send, User2, XCircle,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -19,11 +19,6 @@ type Template = {
   kind: 'lifecycle' | 'broadcast'; sent: number; failed: number;
 };
 type Member = { id: string; displayName?: string | null; email: string; role: string; organization?: string | null };
-type SendRow = {
-  id: string; createdAt: string; email: string; templateKey: string; subject: string;
-  status: string; reason?: string | null; sentBy?: string | null; error?: string | null;
-  user?: Member | null;
-};
 
 const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const jsonHeaders = () => ({ ...authHeader(), 'Content-Type': 'application/json' });
@@ -75,7 +70,12 @@ export function AdminEmails() {
           onPick={id => { const next = new URLSearchParams(sp); if (id) next.set('user', id); else next.delete('user'); setSp(next, { replace: true }); }}
         />
       )}
-      {tab === 'history' && <History templates={templates} />}
+      {tab === 'history' && (
+        <History
+          templates={templates}
+          onOpenMember={id => { const next = new URLSearchParams(sp); next.set('user', id); setSp(next, { replace: true }); setTab('member'); }}
+        />
+      )}
     </div>
   );
 }
@@ -469,15 +469,22 @@ function MemberMail({ userId, onPick }: { userId: string; onPick: (id: string) =
   );
 }
 
-// ── History ─────────────────────────────────────────────────────────────────
+// ── History, a row per member ───────────────────────────────────────────────
 
-function History({ templates }: { templates: Template[] }) {
+type MemberRow = {
+  member: Member & { marketingOptOut?: boolean };
+  total: number; lastAt: string; sent: number; skipped: number; failed: number;
+  sends: { id: string; templateKey: string; subject: string; status: string; reason?: string | null; error?: string | null; sentBy?: string | null; createdAt: string }[];
+};
+
+function History({ templates, onOpenMember }: { templates: Template[]; onOpenMember: (id: string) => void }) {
   const [templateKey, setTemplateKey] = useState('');
   const [status, setStatus] = useState('');
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<{ sends: SendRow[]; total: number; limit: number; counts: Record<string, number> } | null>(null);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [data, setData] = useState<{ members: MemberRow[]; memberCount: number; total: number; limit: number; counts: Record<string, number> } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { const t = setTimeout(() => { setQ(search.trim()); setPage(1); }, 350); return () => clearTimeout(t); }, [search]);
@@ -494,24 +501,24 @@ function History({ templates }: { templates: Template[] }) {
     setLoading(true);
     const p = new URLSearchParams(params);
     p.set('page', String(page));
-    fetch(`/api/admin/email-sends?${p}`, { headers: authHeader() })
+    fetch(`/api/admin/email-sends/by-member?${p}`, { headers: authHeader() })
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(setData)
       .catch(() => toast.error('Could not load the history'))
       .finally(() => setLoading(false));
   }, [params, page]);
 
-  const pages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
+  const pages = data ? Math.max(1, Math.ceil(data.memberCount / data.limit)) : 1;
   const name = (k: string) => templates.find(t => t.key === k)?.name || k;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white sm:grid-cols-4">
         {[
-          ['All records', data?.total],
+          ['Members mailed', data?.memberCount],
+          ['Mails in all', data?.total],
           ['Sent', data?.counts?.Sent],
-          ['Skipped', data?.counts?.Skipped],
-          ['Failed', data?.counts?.Failed],
+          ['Skipped or failed', (data?.counts?.Skipped || 0) + (data?.counts?.Failed || 0)],
         ].map(([label, value]) => (
           <div key={label as string} className="p-4">
             <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
@@ -543,56 +550,73 @@ function History({ templates }: { templates: Template[] }) {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
-            <thead className="bg-slate-50 text-xs font-bold uppercase tracking-widest text-slate-500">
-              <tr>
-                <th className="border-b border-slate-200 px-5 py-3.5">Member</th>
-                <th className="border-b border-slate-200 px-5 py-3.5">Mail</th>
-                <th className="border-b border-slate-200 px-5 py-3.5">Outcome</th>
-                <th className="border-b border-slate-200 px-5 py-3.5">Sent by</th>
-                <th className="border-b border-slate-200 px-5 py-3.5 text-right">When</th>
-              </tr>
-            </thead>
-            <tbody className={loading ? 'opacity-50' : ''}>
-              {(data?.sends || []).map(r => (
-                <tr key={r.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                  <td className="max-w-[260px] px-5 py-3">
-                    <p className="truncate text-[13.5px] font-semibold text-slate-800">{r.user?.displayName || r.email}</p>
-                    <p className="truncate text-[11.5px] text-slate-400">{r.email}{r.user?.organization ? ` · ${r.user.organization}` : ''}</p>
-                  </td>
-                  <td className="max-w-[300px] px-5 py-3">
-                    <p className="truncate text-[13px] text-slate-700">{name(r.templateKey)}</p>
-                    <p className="truncate text-[11.5px] text-slate-400">{r.subject}</p>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-bold ${
-                      r.status === 'Sent' ? 'bg-emerald-50 text-emerald-700'
-                        : r.status === 'Skipped' ? 'bg-slate-100 text-slate-600' : 'bg-rose-50 text-rose-700'}`}>
-                      {r.status === 'Sent' ? <CheckCircle2 size={12} /> : r.status === 'Skipped' ? <Clock size={12} /> : <XCircle size={12} />}
-                      {r.status}
+        <div className={loading ? 'opacity-50' : ''}>
+          {(data?.members || []).map(row => {
+            const isOpen = !!open[row.member.id];
+            return (
+              <div key={row.member.id} className="border-b border-slate-100 last:border-0">
+                <div className="flex flex-wrap items-center gap-3 px-5 py-3.5">
+                  <button onClick={() => setOpen(o => ({ ...o, [row.member.id]: !isOpen }))}
+                    aria-expanded={isOpen} aria-label={isOpen ? 'Hide mails' : 'Show mails'}
+                    className="flex min-w-[220px] flex-1 items-center gap-3 text-left">
+                    <ChevronRight size={16} className={`shrink-0 text-slate-400 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13.5px] font-bold text-slate-800">
+                        {row.member.displayName || row.member.email}
+                        {row.member.marketingOptOut && <span className="ml-2 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">Unsubscribed</span>}
+                      </span>
+                      <span className="block truncate text-[11.5px] text-slate-500">
+                        {row.member.email}{row.member.organization ? ` · ${row.member.organization}` : ''} · {row.member.role}
+                      </span>
                     </span>
-                    {(r.reason || r.error) && (
-                      <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-slate-400" title={r.error || r.reason || ''}>
-                        {r.reason || r.error}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-[12.5px] text-slate-500">{r.sentBy === 'auto' ? 'Automatic' : 'By hand'}</td>
-                  <td className="whitespace-nowrap px-5 py-3 text-right text-[12.5px] text-slate-500">{when(r.createdAt)}</td>
-                </tr>
-              ))}
-              {!loading && data && !data.sends.length && (
-                <tr><td colSpan={5} className="px-5 py-14 text-center text-sm text-slate-400">
-                  <Mail size={22} className="mx-auto mb-2 text-slate-300" />No mail has gone out under these filters yet.
-                </td></tr>
-              )}
-            </tbody>
-          </table>
+                  </button>
+
+                  <span className="text-[12.5px] text-slate-600">
+                    <b className="text-slate-900">{n(row.total)}</b> mail{row.total === 1 ? '' : 's'}
+                    <span className="ml-2 text-[11.5px] text-slate-400">
+                      {row.sent} sent{row.skipped ? `, ${row.skipped} skipped` : ''}{row.failed ? `, ${row.failed} failed` : ''}
+                    </span>
+                  </span>
+                  <span className="w-[130px] shrink-0 text-right text-[12px] text-slate-500">Last {when(row.lastAt)}</span>
+                  <button onClick={() => onOpenMember(row.member.id)}
+                    className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50">
+                    Open file
+                  </button>
+                </div>
+
+                {isOpen && (
+                  <ul className="border-t border-slate-100 bg-slate-50/60 px-5 py-2">
+                    {row.sends.map(sd => (
+                      <li key={sd.id} className="flex flex-wrap items-center gap-3 border-b border-slate-100 py-2.5 last:border-0">
+                        <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
+                          sd.status === 'Sent' ? 'bg-emerald-50 text-emerald-600'
+                            : sd.status === 'Skipped' ? 'bg-slate-200 text-slate-500' : 'bg-rose-50 text-rose-600'}`}>
+                          {sd.status === 'Sent' ? <CheckCircle2 size={13} /> : sd.status === 'Skipped' ? <Clock size={13} /> : <XCircle size={13} />}
+                        </span>
+                        <span className="min-w-[200px] flex-1">
+                          <span className="block truncate text-[13px] font-semibold text-slate-800">{name(sd.templateKey)}</span>
+                          <span className="block truncate text-[11.5px] text-slate-500">
+                            {sd.subject}{sd.reason || sd.error ? ` · ${sd.reason || sd.error}` : ''}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-[11.5px] text-slate-400">{sd.sentBy === 'auto' ? 'Automatic' : 'By hand'}</span>
+                        <span className="w-[130px] shrink-0 text-right text-[12px] text-slate-500">{when(sd.createdAt)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+          {!loading && data && !data.members.length && (
+            <div className="px-5 py-14 text-center text-sm text-slate-400">
+              <Mail size={22} className="mx-auto mb-2 text-slate-300" />No mail has gone out under these filters yet.
+            </div>
+          )}
         </div>
-        {data && data.total > 0 && (
+        {data && data.memberCount > 0 && (
           <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
-            <span>{n(data.total)} record{data.total === 1 ? '' : 's'}</span>
+            <span>{n(data.memberCount)} member{data.memberCount === 1 ? '' : 's'} · {n(data.total)} mails</span>
             <div className="flex items-center gap-2">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
                 className="rounded-lg border border-slate-200 px-2 py-1 hover:bg-slate-50 disabled:opacity-40">Previous</button>

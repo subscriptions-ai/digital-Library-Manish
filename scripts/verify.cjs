@@ -773,6 +773,19 @@ const catalogueSize = async () => {
         : bad('a preview writes nothing to the member', 'the unsubscribe token changed while previewing');
     }
 
+    // The history an admin actually reads: one row per member, their mails
+    // carried with them.
+    const grouped = await get('/api/admin/email-sends/by-member?limit=25', A);
+    const gm = grouped.body?.members || [];
+    const ids = gm.map(r => r.member?.id);
+    const once = new Set(ids).size === ids.length;
+    grouped.status === 200 && once
+      ? ok('the history groups by member, each listed once', `${gm.length} members, ${n(grouped.body?.total)} mails`)
+      : bad('the history groups by member, each listed once', grouped.status !== 200 ? `HTTP ${grouped.status}` : 'a member appears twice');
+    const carried = gm.every(r => Array.isArray(r.sends) && r.sends.length === r.total);
+    carried ? ok('each member carries their own mails', gm.length ? `up to ${Math.max(...gm.map(r => r.total))} for one member` : 'none yet')
+      : bad('each member carries their own mails', 'a row\'s count does not match the mails under it');
+
     const hist = await get('/api/admin/email-sends?limit=10', A);
     hist.status === 200 && Array.isArray(hist.body?.sends)
       ? ok('the send history answers', `${n(hist.body.total)} records`)
