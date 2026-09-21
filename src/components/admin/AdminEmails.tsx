@@ -35,7 +35,7 @@ export function AdminEmails() {
   const [sp, setSp] = useSearchParams();
   // Opened from a member's row on the Users screen: ?user=<id> lands on that
   // member's file rather than on a search box they have to fill in again.
-  const [tab, setTab] = useState<'send' | 'member' | 'history'>(sp.get('user') ? 'member' : 'send');
+  const [tab, setTab] = useState<'send' | 'member' | 'history' | 'auto'>(sp.get('user') ? 'member' : 'send');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [chosen, setChosen] = useState<string>('');
   const [reload, setReload] = useState(0);
@@ -57,7 +57,7 @@ export function AdminEmails() {
           </p>
         </div>
         <div className="flex gap-1.5 rounded-xl border border-slate-200 bg-white p-1">
-          {([['send', 'Send a mail'], ['member', "A member's mail"], ['history', 'Who got what']] as const).map(([id, label]) => (
+          {([['send', 'Send a mail'], ['member', "A member's mail"], ['history', 'Who got what'], ['auto', 'Automatic']] as const).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
               className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
                 tab === id ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
@@ -74,6 +74,7 @@ export function AdminEmails() {
           onPick={id => { const next = new URLSearchParams(sp); if (id) next.set('user', id); else next.delete('user'); setSp(next, { replace: true }); }}
         />
       )}
+      {tab === 'auto' && <Automations />}
       {tab === 'history' && (
         <History
           templates={templates}
@@ -275,6 +276,214 @@ function SendPanel({ templates, chosen, onChoose, onSent }: {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── The automatic journeys ──────────────────────────────────────────────────
+
+type Rule = {
+  templateKey: string; name: string; audience: string; enabled: boolean;
+  delayDays: number; repeatAfterDays: number; maxSends: number; dailyCap: number;
+  due: number; lastRunAt: string | null; lastDue: number; lastSent: number;
+};
+type EngineState = {
+  enabled: boolean; startHour: number; endHour: number; dailyCap: number; hour: number;
+  sentToday: number; lastRunAt: string | null; lastDryRunAt: string | null;
+  lastSent: number; lastSkipped: number; lastNote: string | null;
+};
+type DryRun = {
+  wouldSend: number; note: string; inWindow: boolean; hour: number; sentToday: number; dailyCap: number;
+  journeys: { templateKey: string; name: string; enabled: boolean; due: number; sent: number; note?: string;
+    examples?: { email: string; name?: string | null; why: string; attempt: number }[] }[];
+};
+
+/**
+ * The engine's switches, and the dry run.
+ *
+ * The dry run is the point of this screen: it works out exactly who is due,
+ * shows them, and writes nothing — so "turn it on" is a decision taken with
+ * the list in front of you rather than a leap.
+ */
+function Automations() {
+  const [state, setState] = useState<EngineState | null>(null);
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [dry, setDry] = useState<DryRun | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    fetch('/api/admin/email-engine', { headers: authHeader() })
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(d => { setState(d.state); setRules(d.rules); })
+      .catch(() => toast.error('Could not read the engine'));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const saveState = async (patch: Partial<EngineState>) => {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/admin/email-engine', { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(patch) });
+      if (!r.ok) throw new Error();
+      load();
+    } catch { toast.error('Could not change that'); } finally { setBusy(false); }
+  };
+
+  const saveRule = async (key: string, patch: Partial<Rule>) => {
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/email-rules/${key}`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(patch) });
+      if (!r.ok) throw new Error();
+      load();
+    } catch { toast.error('Could not change that journey'); } finally { setBusy(false); }
+  };
+
+  const runDry = async () => {
+    setBusy(true); setDry(null);
+    try {
+      const r = await fetch('/api/admin/email-engine/run', { method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ dryRun: true }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error();
+      setDry(d);
+      toast.success(`${n(d.wouldSend)} mails would go out`);
+      load();
+    } catch { toast.error('Could not run the check'); } finally { setBusy(false); }
+  };
+
+  if (!state) return <div className="h-64 animate-pulse rounded-2xl bg-slate-100" />;
+  const on = state.enabled;
+
+  return (
+    <div className="space-y-5">
+      {/* The switch */}
+      <div className={`rounded-2xl border p-5 shadow-sm ${on ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-white'}`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">The engine</p>
+            <h2 className="mt-1 flex items-center gap-2 text-lg font-bold text-slate-900">
+              <span className={`inline-block h-2 w-2 rounded-full ${on ? 'animate-pulse bg-emerald-500' : 'bg-slate-300'}`} />
+              {on ? 'Sending automatically' : 'Off — nothing is sent on its own'}
+            </h2>
+            <p className="mt-1 max-w-2xl text-[12.5px] leading-relaxed text-slate-500">
+              While it is off you can still see exactly who is due, and send by hand. Switched on, it
+              looks every quarter of an hour, sends only inside the window below, and stops at the day's cap.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={runDry} disabled={busy}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+              {busy ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} Check who is due
+            </button>
+            <button onClick={() => saveState({ enabled: !on })} disabled={busy}
+              className={`rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-50 ${on ? 'bg-slate-700 hover:bg-slate-800' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+              {on ? 'Switch off' : 'Switch on'}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-end gap-5 border-t border-slate-200 pt-4">
+          <label className="text-xs">
+            <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500">Sends between (IST)</span>
+            <span className="flex items-center gap-2">
+              <input type="number" min={0} max={23} value={state.startHour} disabled={busy}
+                onChange={e => saveState({ startHour: parseInt(e.target.value) })}
+                className="w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500" />
+              <span className="text-slate-400">and</span>
+              <input type="number" min={1} max={24} value={state.endHour} disabled={busy}
+                onChange={e => saveState({ endHour: parseInt(e.target.value) })}
+                className="w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500" />
+            </span>
+            <span className="mt-1 block text-[10px] text-slate-400">It is {state.hour}:00 in India now</span>
+          </label>
+          <label className="text-xs">
+            <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500">Most in a day</span>
+            <input type="number" min={0} max={20000} value={state.dailyCap} disabled={busy}
+              onChange={e => saveState({ dailyCap: parseInt(e.target.value) })}
+              className="w-24 rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-blue-500" />
+            <span className="mt-1 block text-[10px] text-slate-400">{n(state.sentToday)} sent automatically today · mails you send by hand do not count</span>
+          </label>
+          {state.lastRunAt && (
+            <p className="text-[11.5px] text-slate-500">
+              Last pass {when(state.lastRunAt)} — {state.lastNote || `${state.lastSent} sent`}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* The journeys */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <p className="border-b border-slate-100 px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+          The journeys — each can be switched on by itself
+        </p>
+        {rules.map(r => (
+          <div key={r.templateKey} className="border-b border-slate-100 px-5 py-4 last:border-0">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-[240px] flex-1">
+                <p className="text-[14px] font-bold text-slate-800">{r.name}</p>
+                <p className="mt-0.5 text-[11.5px] text-slate-500">{r.audience}</p>
+                <p className="mt-1 text-[12px] font-semibold text-blue-700">{n(r.due)} due right now</p>
+              </div>
+              <button onClick={() => saveRule(r.templateKey, { enabled: !r.enabled })} disabled={busy}
+                className={`rounded-lg px-4 py-1.5 text-[12px] font-bold ${
+                  r.enabled ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                {r.enabled ? 'On' : 'Off'}
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-4">
+              {([
+                ['delayDays', 'Wait (days)', 0, 365],
+                ['repeatAfterDays', 'Repeat after (days)', 0, 365],
+                ['maxSends', 'Most per member', 1, 20],
+                ['dailyCap', 'Most a day', 0, 5000],
+              ] as const).map(([field, label, min, max]) => (
+                <label key={field} className="text-[11px]">
+                  <span className="mb-1 block font-bold uppercase tracking-wide text-slate-400">{label}</span>
+                  <input type="number" min={min} max={max} value={(r as any)[field]} disabled={busy}
+                    onChange={e => saveRule(r.templateKey, { [field]: parseInt(e.target.value) } as any)}
+                    className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500" />
+                </label>
+              ))}
+              {r.lastRunAt && (
+                <p className="self-end text-[11px] text-slate-400">Last pass {when(r.lastRunAt)} — {r.lastSent} sent of {r.lastDue} due</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* What a pass would do */}
+      {dry && (
+        <div className="overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/40 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 px-5 py-3">
+            <p className="text-[13px] font-bold text-slate-800">
+              {n(dry.wouldSend)} mails would go out — nothing was sent
+            </p>
+            <p className="text-[11.5px] text-slate-500">
+              {dry.inWindow ? 'Inside the sending window' : `Outside the window (it is ${dry.hour}:00 IST)`} ·
+              {' '}{n(dry.sentToday)} of {n(dry.dailyCap)} used today
+            </p>
+          </div>
+          {dry.journeys.map(j => (
+            <div key={j.templateKey} className="border-b border-blue-100 px-5 py-3 last:border-0">
+              <p className="text-[13px] font-bold text-slate-800">
+                {j.name} — {n(j.due)} due
+                <span className="ml-2 text-[11.5px] font-normal text-slate-500">{j.note}</span>
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {(j.examples || []).map(e => (
+                  <li key={e.email} className="text-[12px] text-slate-600">
+                    <span className="font-semibold text-slate-800">{e.name || e.email}</span>
+                    <span className="text-slate-400"> · {e.email}</span> — {e.why}
+                    {e.attempt > 1 && <span className="text-slate-400"> · reminder {e.attempt}</span>}
+                  </li>
+                ))}
+                {j.due > (j.examples?.length || 0) && (
+                  <li className="text-[11.5px] text-slate-400">…and {n(j.due - (j.examples?.length || 0))} more</li>
+                )}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

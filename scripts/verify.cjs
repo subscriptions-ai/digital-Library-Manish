@@ -849,6 +849,34 @@ const catalogueSize = async () => {
       shut.status === 403 ? ok('readers cannot read it', 'HTTP 403') : bad('readers cannot read it', `HTTP ${shut.status}`);
     }
 
+    // The engine that sends without being asked: its switches, and a dry run
+    // that must report who is due and write nothing.
+    {
+      const eng = await get('/api/admin/email-engine', A);
+      const rules = eng.body?.rules || [];
+      eng.status === 200 && rules.length >= 3
+        ? ok('the engine reports its journeys', `${rules.length} journeys, ${rules.filter(r => r.enabled).length} on`)
+        : bad('the engine reports its journeys', `HTTP ${eng.status} — ${JSON.stringify(eng.body).slice(0, 80)}`);
+
+      const before = await p.emailSend.count();
+      const r = await fetch(`${BASE}/api/admin/email-engine/run`, {
+        method: 'POST', headers: { Authorization: `Bearer ${A}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: true }),
+      });
+      const dry = await r.json().catch(() => null);
+      const after = await p.emailSend.count();
+      after === before
+        ? ok('a dry run sends nothing', `${n(dry?.wouldSend || 0)} would go out`)
+        : bad('a dry run sends nothing', `${after - before} rows were written`);
+
+      const named = (dry?.journeys || []).every(j => typeof j.due === 'number' && j.name);
+      named ? ok('the dry run names who is due', `${(dry?.journeys || []).length} journeys examined`)
+        : bad('the dry run names who is due', 'a journey came back without a count');
+
+      const shut = await get('/api/admin/email-engine', S || R);
+      shut.status === 403 ? ok('readers cannot reach the engine', 'HTTP 403') : bad('readers cannot reach the engine', `HTTP ${shut.status}`);
+    }
+
     const bogus = await get('/api/public/unsubscribe/not-a-real-token');
     bogus.status === 404 ? ok('a bogus unsubscribe link is refused', 'HTTP 404') : bad('a bogus unsubscribe link is refused', `HTTP ${bogus.status}`);
   }

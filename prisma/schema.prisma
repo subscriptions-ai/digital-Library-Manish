@@ -1100,6 +1100,55 @@ model PageVisit {
   createdAt DateTime @default(now())
 }
 
+/// The engine's own switches: one row, id "singleton".
+///
+/// Kept in the database rather than in the code so an operator can stop it
+/// from the admin screen at two in the morning without a deploy.
+model EmailEngine {
+  id      String  @id @default("singleton")
+  /// Nothing is sent automatically while this is off; the engine still works
+  /// out who is due, which is what the dry run reports.
+  enabled Boolean @default(false)
+
+  /// Marketing mail goes out during the working day, in IST. Nobody wants a
+  /// nudge about their profile at 3am.
+  startHour Int @default(10)
+  endHour   Int @default(18)
+
+  /// Across every journey, in a day. A ceiling on how wrong one mistake can go.
+  dailyCap Int @default(200)
+
+  lastRunAt    DateTime?
+  lastDryRunAt DateTime?
+  /// What the last pass did, for the screen.
+  lastSent     Int       @default(0)
+  lastSkipped  Int       @default(0)
+  lastNote     String?
+  updatedAt    DateTime  @updatedAt
+}
+
+/// One automatic journey: which mail, to whom, how often, how many.
+model EmailRule {
+  id              String  @id @default(uuid())
+  templateKey     String  @unique
+  enabled         Boolean @default(false)
+  /// How long after the member qualifies the first mail goes.
+  delayDays       Int     @default(3)
+  /// How long before the same mail may go again; 0 means never.
+  repeatAfterDays Int     @default(7)
+  /// The most this mail may ever go to one member.
+  maxSends        Int     @default(2)
+  /// The most this journey may send in a day.
+  dailyCap        Int     @default(100)
+
+  lastRunAt DateTime?
+  lastDue   Int       @default(0)
+  lastSent  Int       @default(0)
+  updatedAt DateTime  @updatedAt
+
+  @@index([enabled])
+}
+
 /// One marketing or lifecycle mail, to one person, from one template.
 ///
 /// EmailLog already records what left the building, but only as an address and

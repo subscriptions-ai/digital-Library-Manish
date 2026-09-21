@@ -1651,6 +1651,285 @@ async function startServer() {
     }
   };
 
+  /* ─────────────────────────────────────────────────────────────────────────
+     The engine: the lifecycle mails, sent without being asked.
+
+     Everything it sends goes through sendMarketingEmail, so a member who
+     opted out is never mailed and the frequency cap still holds. What this
+     adds is the part nobody should have to do by hand: working out who is due
+     today, and stopping well short of doing damage.
+
+     Four brakes, in order of how badly they are needed:
+       1. `enabled` off  → it works out who is due and sends nothing. This is
+          also what the dry run reports, so "what would happen" and "what will
+          happen" are computed by the same code.
+       2. The working day, in IST. Nobody wants a nudge at three in the morning.
+       3. A daily ceiling, per journey and across all of them, so one mistaken
+          rule cannot mail the whole membership before anyone notices.
+       4. A per-member limit — maxSends, and repeatAfterDays before the same
+          mail may go again.
+     ──────────────────────────────────────────────────────────────────────── */
+
+  /** Which mails the engine may send on its own, and how they start out. */
+  const AUTOMATIC: { key: TemplateKey; delayDays: number; repeatAfterDays: number; maxSends: number; dailyCap: number }[] = [
+    { key: 'profile-incomplete', delayDays: 2, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
+    { key: 'never-read', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
+    { key: 'librarian-add-users', delayDays: 30, repeatAfterDays: 30, maxSends: 6, dailyCap: 50 },
+    // 'pro-benefits' and 'new-features' are deliberately absent: both are sent
+    // by hand, because both are announcements rather than nudges.
+  ];
+
+  const emailEngineState = async () =>
+    (prisma as any).emailEngine.upsert({ where: { id: 'singleton' }, update: {}, create: { id: 'singleton' } });
+
+  const emailRules = async () => {
+    const held = await (prisma as any).emailRule.findMany();
+    const missing = AUTOMATIC.filter(a => !held.some((r: any) => r.templateKey === a.key));
+    if (missing.length) {
+      for (const m of missing) {
+        await (prisma as any).emailRule.upsert({
+          where: { templateKey: m.key }, update: {},
+          create: { templateKey: m.key, delayDays: m.delayDays, repeatAfterDays: m.repeatAfterDays, maxSends: m.maxSends, dailyCap: m.dailyCap },
+        }).catch(() => {});
+      }
+      return (prisma as any).emailRule.findMany();
+    }
+    return held;
+  };
+
+  /** The hour in India, whatever the server thinks it is. */
+  const istHour = () => Number(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata', hour: '2-digit', hour12: false,
+  }).format(new Date()));
+
+  /**
+   * Who is due this mail right now.
+   *
+   * A cheap query narrows the field — the right role, old enough, not opted
+   * out, not blocked — and then mailEligibility() decides each one, so the
+   * engine and the member's file can never disagree about who qualifies.
+   */
+  const dueFor = async (rule: any, limit: number) => {
+    const key = rule.templateKey as TemplateKey;
+    const since = new Date(Date.now() - rule.delayDays * 864e5);
+    const base: any = {
+      marketingOptOut: false, isBlocked: false, status: 'Active',
+      email: { not: '' }, role: { notIn: STAFF_ROLES },
+    };
+    const narrow: any =
+      key === 'profile-incomplete' ? { role: 'Institution', createdAt: { lte: since } }
+      : key === 'never-read' ? { lastReadAt: null, createdAt: { lte: since } }
+      : key === 'librarian-add-users' ? { role: 'Institution', institutionId: { not: null } }
+      : key === 'pro-benefits' ? { lastReadAt: { not: null } }
+      : {};
+
+    // Ask for more than are needed: some will fall at the eligibility check or
+    // at their own send limit, and a pass that returns fewer than it could have
+    // looks like the engine has run out of work.
+    const candidates = await prisma.user.findMany({
+      where: { ...base, ...narrow },
+      orderBy: { createdAt: 'asc' },
+      take: Math.max(limit * 5, 50),
+    });
+
+    const due: any[] = [];
+    for (const u of candidates) {
+      if (due.length >= limit) break;
+      const sends = await (prisma as any).emailSend.findMany({
+        where: { userId: u.id, templateKey: key, status: 'Sent' },
+        orderBy: { createdAt: 'desc' }, select: { createdAt: true },
+      });
+      if (sends.length >= rule.maxSends) continue;
+      if (sends.length && (!rule.repeatAfterDays
+        || Date.now() - new Date(sends[0].createdAt).getTime() < rule.repeatAfterDays * 864e5)) continue;
+      const el = await mailEligibility(u, key);
+      if (!el.due) continue;
+      due.push({ user: u, attempt: sends.length + 1, why: el.why });
+    }
+    return due;
+  };
+
+  /**
+   * How many mails the engine has sent today, across every journey.
+   *
+   * The engine's own sends only: an admin who deliberately sends five mails by
+   * hand should not thereby stop the automatic ones, and a cap meant to limit
+   * what happens unattended should not be spent by what happens on purpose.
+   */
+  const sentToday = async () => {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    return (prisma as any).emailSend.count({ where: { status: 'Sent', sentBy: 'auto', createdAt: { gte: start } } });
+  };
+
+  /**
+   * One pass. With `dryRun` it reports who would be mailed and writes nothing,
+   * which is how this is meant to be read before it is ever switched on.
+   */
+  const runEmailEngine = async (opts: { dryRun?: boolean; force?: boolean } = {}) => {
+    const state = await emailEngineState();
+    const rules = await emailRules();
+    const dryRun = !!opts.dryRun;
+
+    const hour = istHour();
+    const inWindow = hour >= state.startHour && hour < state.endHour;
+    const reasons: string[] = [];
+    if (!state.enabled) reasons.push('the engine is switched off');
+    if (!inWindow) reasons.push(`outside the sending window (${state.startHour}:00–${state.endHour}:00 IST, it is ${hour}:00)`);
+
+    const already = await sentToday();
+    let budget = Math.max(0, state.dailyCap - already);
+    if (!budget) reasons.push(`the day's cap of ${state.dailyCap} is used up`);
+
+    const journeys: any[] = [];
+    let sent = 0, skipped = 0;
+
+    for (const rule of rules) {
+      const template = TEMPLATES[rule.templateKey as TemplateKey];
+      if (!template) continue;
+      // A dry run works out a switched-off journey too: "who would get this if
+      // I turned it on" is the question it exists to answer.
+      if (!rule.enabled && !opts.force && !dryRun) {
+        journeys.push({ templateKey: rule.templateKey, name: template.name, enabled: false, due: 0, sent: 0, note: 'switched off' });
+        continue;
+      }
+      const todayForRule = await (prisma as any).emailSend.count({
+        where: {
+          templateKey: rule.templateKey, status: 'Sent', sentBy: 'auto',
+          createdAt: { gte: (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })() },
+        },
+      });
+      const room = Math.min(rule.dailyCap - todayForRule, dryRun ? 50 : Math.min(budget, 50));
+      const due = await dueFor(rule, Math.max(0, room));
+      const record: any = {
+        templateKey: rule.templateKey, name: template.name, enabled: rule.enabled,
+        due: due.length, sent: 0,
+        examples: due.slice(0, 5).map((d: any) => ({ email: d.user.email, name: d.user.displayName, why: d.why, attempt: d.attempt })),
+      };
+
+      if (dryRun || reasons.length) {
+        record.note = dryRun
+          ? (rule.enabled ? 'dry run — nothing sent' : 'switched off — this is what it would send')
+          : reasons[0];
+        journeys.push(record);
+        continue;
+      }
+
+      for (const d of due) {
+        const out = await sendMarketingEmail({
+          userId: d.user.id, templateKey: rule.templateKey, dedupeKey: `auto:${d.attempt}`,
+          sentBy: 'auto', extra: { ref: `mail-${rule.templateKey}` },
+        });
+        if (out.status === 'Sent') { record.sent++; sent++; budget--; }
+        else skipped++;
+        if (budget <= 0) break;
+      }
+      await (prisma as any).emailRule.update({
+        where: { templateKey: rule.templateKey },
+        data: { lastRunAt: new Date(), lastDue: due.length, lastSent: record.sent },
+      }).catch(() => {});
+      journeys.push(record);
+    }
+
+    const note = reasons.length ? reasons.join(' · ') : dryRun ? 'dry run' : `${sent} sent, ${skipped} skipped`;
+    if (!dryRun) {
+      await (prisma as any).emailEngine.update({
+        where: { id: 'singleton' },
+        data: reasons.length
+          ? { lastRunAt: new Date(), lastNote: note }
+          : { lastRunAt: new Date(), lastSent: sent, lastSkipped: skipped, lastNote: note },
+      }).catch(() => {});
+    } else {
+      await (prisma as any).emailEngine.update({ where: { id: 'singleton' }, data: { lastDryRunAt: new Date() } }).catch(() => {});
+    }
+
+    return {
+      dryRun, wouldSend: journeys.reduce((n: number, j: any) => n + j.due, 0),
+      sent, skipped, note, inWindow, hour, sentToday: already, dailyCap: state.dailyCap,
+      journeys,
+    };
+  };
+
+  // The timer. Every quarter of an hour is often enough for mail that is not
+  // urgent, and rare enough that a mistake is caught before it has run far.
+  let emailEngineBusy = false;
+  cron.schedule('*/15 * * * *', async () => {
+    if (emailEngineBusy) return;
+    emailEngineBusy = true;
+    try {
+      const state = await emailEngineState();
+      if (state.enabled) await runEmailEngine({});
+    } catch (e: any) {
+      console.error('[email engine] pass failed:', e?.message);
+    } finally {
+      emailEngineBusy = false;
+    }
+  });
+
+  app.get("/api/admin/email-engine", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try {
+      const [state, rules] = await Promise.all([emailEngineState(), emailRules()]);
+      // How many are waiting for each journey, whether it is on or off.
+      const due = await Promise.all(rules.map(async (r: any) => ({
+        templateKey: r.templateKey,
+        due: (await dueFor(r, 500)).length,
+      })));
+      res.json({
+        state: { ...state, hour: istHour(), sentToday: await sentToday() },
+        rules: rules.map((r: any) => ({
+          ...r,
+          name: TEMPLATES[r.templateKey as TemplateKey]?.name || r.templateKey,
+          audience: TEMPLATES[r.templateKey as TemplateKey]?.audience || '',
+          due: due.find(d => d.templateKey === r.templateKey)?.due ?? 0,
+        })),
+      });
+    } catch (e: any) {
+      console.error('email engine read failed', e?.message);
+      res.status(500).json({ error: "Failed to read the engine" });
+    }
+  });
+
+  app.post("/api/admin/email-engine", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const { enabled, startHour, endHour, dailyCap } = req.body || {};
+      const data: any = {};
+      if (typeof enabled === 'boolean') data.enabled = enabled;
+      if (Number.isInteger(startHour) && startHour >= 0 && startHour <= 23) data.startHour = startHour;
+      if (Number.isInteger(endHour) && endHour >= 1 && endHour <= 24) data.endHour = endHour;
+      if (Number.isInteger(dailyCap) && dailyCap >= 0 && dailyCap <= 20000) data.dailyCap = dailyCap;
+      await emailEngineState();
+      res.json(await (prisma as any).emailEngine.update({ where: { id: 'singleton' }, data }));
+    } catch {
+      res.status(500).json({ error: "Failed to change the engine" });
+    }
+  });
+
+  app.post("/api/admin/email-rules/:key", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const key = req.params.key;
+      if (!AUTOMATIC.some(a => a.key === key)) return res.status(400).json({ error: "That mail is not sent automatically" });
+      const { enabled, delayDays, repeatAfterDays, maxSends, dailyCap } = req.body || {};
+      const data: any = {};
+      if (typeof enabled === 'boolean') data.enabled = enabled;
+      if (Number.isInteger(delayDays) && delayDays >= 0 && delayDays <= 365) data.delayDays = delayDays;
+      if (Number.isInteger(repeatAfterDays) && repeatAfterDays >= 0 && repeatAfterDays <= 365) data.repeatAfterDays = repeatAfterDays;
+      if (Number.isInteger(maxSends) && maxSends >= 1 && maxSends <= 20) data.maxSends = maxSends;
+      if (Number.isInteger(dailyCap) && dailyCap >= 0 && dailyCap <= 5000) data.dailyCap = dailyCap;
+      await emailRules();
+      res.json(await (prisma as any).emailRule.update({ where: { templateKey: key }, data }));
+    } catch {
+      res.status(500).json({ error: "Failed to change that journey" });
+    }
+  });
+
+  /** Run a pass now. `dryRun` reports who would be mailed and writes nothing. */
+  app.post("/api/admin/email-engine/run", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      res.json(await runEmailEngine({ dryRun: req.body?.dryRun !== false }));
+    } catch (e: any) {
+      res.status(500).json({ error: String(e?.message || e) });
+    }
+  });
+
   // ── What an admin can see and send ────────────────────────────────────────
 
   app.get("/api/admin/email-templates", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
