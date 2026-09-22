@@ -37,12 +37,7 @@ export const ContentSources: React.FC = () => {
               <CheckCircle className="w-5 h-5 text-blue-600" />
               <h2 className="text-xl font-bold m-0">2. Open Access Content</h2>
             </div>
-            <p>The Platform may include content sourced from publicly available open-access repositories and other lawful sources, including:</p>
-            <ul className="list-disc pl-6 space-y-2 mt-4">
-              <li>DOAJ (Directory of Open Access Journals)</li>
-              <li>PubMed Central</li>
-              <li>arXiv and similar repositories</li>
-            </ul>
+            <p>The Platform may include content sourced from publicly available open-access repositories, institutional archives and other lawful sources. Every such item is published under an open licence, and is carried here in accordance with that licence.</p>
             <p className="mt-4">Where applicable, such content is used in accordance with the relevant license terms, permissions, and usage conditions. In some cases, the Platform may rely on publicly available materials without formal agreements with every source or rights holder, and users should understand that availability on the Platform does not imply ownership or exclusive rights by the Platform.</p>
           </section>
 

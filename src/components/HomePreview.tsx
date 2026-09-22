@@ -6,7 +6,7 @@ import {
   FileText, GraduationCap, Layers, Library, Minus, Pause, Play, RefreshCw, Search,
   ShieldCheck, Sparkles, Tags, Users, UserSquare2,
 } from 'lucide-react';
-import { Bars, Collection, Columns, Donut, type DeptRow } from './charts';
+import { type DeptRow } from './charts';
 
 /**
  * A second draft of the home page, at /home-preview.
@@ -208,7 +208,7 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
       lead: 'Research published this year, already on the',
       highlight: 'shelf.',
       body: `${n(thisYear?.n)} articles published in ${thisYear?.year ?? 'this year'} are in the library. The collection leans recent, not archival.`,
-      chips: [`${n(thisYear?.n)} from ${thisYear?.year ?? ''}`, 'Added every day', 'DOAJ · DOAB · OpenAlex'],
+      chips: [`${n(thisYear?.n)} from ${thisYear?.year ?? ''}`, 'Added every day', 'Recent, not archival'],
     },
     {
       key: 'licence',
@@ -872,133 +872,7 @@ function WithUs({ inst }: { inst: Institutions | null }) {
   );
 }
 
-// ── 11. The collection at a glance ──────────────────────────────────────────
-
-function ChartCard({ label, title, children, note }: {
-  label: string; title: string; children: React.ReactNode; note?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
-      <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>{label}</p>
-      <h3 className="np-strong mt-2 text-[15px]" style={{ color: 'var(--np-ink)' }}>{title}</h3>
-      <div className="mt-5 flex-1">{children}</div>
-      {note && (
-        <div className="mt-4 border-t pt-3 text-[12px] leading-relaxed" style={{ borderColor: 'var(--np-line)', color: 'var(--np-body)' }}>
-          {note}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const ChartSkeleton = ({ h = 260 }: { h?: number }) => (
-  <div className="animate-pulse rounded-xl" style={{ height: h, background: 'var(--np-line)' }} />
-);
-
-function AtAGlance({ insights, subjects, depts }: { insights: Insights | null; subjects: Subject[]; depts: DeptRow[] }) {
-  const years = insights?.years || [];
-  return (
-    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
-      <div className="mx-auto max-w-6xl px-5">
-        <Eyebrow>The collection at a glance</Eyebrow>
-        <Heading className="max-w-3xl">What it is, where you read it, and on what terms.</Heading>
-
-        <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <ChartCard label="Composition" title="What the library is made of"
-            note={insights?.composition.otherTypes.length
-              ? <>Other: {insights.composition.otherTypes.map(t => `${t.type} ${n(t.n)}`).join(' · ')}</> : undefined}>
-            {insights ? (
-              <Donut centerLabel="items in all" slices={[
-                { key: 'articles', label: 'Articles', value: insights.composition.articles, color: 'var(--series-1)' },
-                { key: 'books', label: 'Books', value: insights.composition.books, color: 'var(--series-2)' },
-                { key: 'other', label: 'Other kinds', value: insights.composition.other, color: 'var(--series-3)' },
-              ]} />
-            ) : <ChartSkeleton />}
-          </ChartCard>
-
-          <ChartCard label="Access" title="Where you read it"
-            note={insights ? <>Full text is shown here only where the licence allows; otherwise the reader goes to the publisher's own copy.</> : undefined}>
-            {insights ? (
-              <Donut centerLabel="in the catalogue" slices={[
-                { key: 'here', label: 'Read here, in the library', value: insights.access.readHere, color: 'var(--acc-1)' },
-                { key: 'publisher', label: "At the publisher's site", value: insights.access.atPublisher, color: 'var(--acc-2)' },
-                { key: 'record', label: 'Catalogue record only', value: insights.access.recordOnly, color: 'var(--acc-3)' },
-              ]} />
-            ) : <ChartSkeleton />}
-          </ChartCard>
-
-          <ChartCard label="Licences" title="On what terms"
-            note={insights ? <>Ordered from most open to most restricted. Every catalogue article carries its licence.</> : undefined}>
-            {insights ? (
-              <Donut centerLabel="catalogue articles" slices={insights.licences.map((l, k) => ({
-                key: l.key, label: l.label, value: l.n, color: `var(--lic-${k + 1})`,
-              }))} />
-            ) : <ChartSkeleton />}
-          </ChartCard>
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.3fr_1fr]">
-          <ChartCard label="Recency" title="Articles by year of publication"
-            note={years.length ? `${years[years.length - 1].year} counts the year so far.` : undefined}>
-            {years.length
-              ? <Columns unit="articles" data={years.map(y => ({ label: String(y.year), value: y.n }))} />
-              : <ChartSkeleton h={200} />}
-          </ChartCard>
-          <ChartCard label="Subjects" title="Largest subjects by articles">
-            {subjects.length
-              ? <Bars rows={subjects.slice(0, 7).map(x => ({ name: x.name, value: x.articles }))} unit="articles" />
-              : <ChartSkeleton h={200} />}
-          </ChartCard>
-        </div>
-
-        <div className="mt-5 rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
-            Everything held, department by department
-          </p>
-          <div className="mt-5">
-            {depts.length
-              ? <Collection rows={depts} />
-              : <div className="space-y-4">{[0, 1, 2, 3, 4].map(k => <div key={k} className="h-7 animate-pulse rounded" style={{ background: 'var(--np-line)' }} />)}</div>}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── 12. Where the collection comes from ─────────────────────────────────────
-
-const SOURCES = [
-  { name: 'DOAJ', what: 'Directory of Open Access Journals', gives: 'Journals, and the licence each one declares', tone: 3 },
-  { name: 'DOAB', what: 'Directory of Open Access Books', gives: 'Books, catalogued with a link to the publisher', tone: 2 },
-  { name: 'OpenAlex', what: 'Open catalogue of scholarly work', gives: 'Articles, with their journal, volume and issue', tone: 1 },
-  { name: 'OAPEN Library', what: 'Open-access book library', gives: 'The book files themselves, where they exist', tone: 5 },
-];
-
-function Sources() {
-  return (
-    <section className="mx-auto max-w-6xl px-5 py-20">
-      <Eyebrow>Where it comes from</Eyebrow>
-      <Heading className="max-w-3xl">Open scholarship, with its paperwork.</Heading>
-      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {SOURCES.map(s => (
-          <div key={s.name} className="rounded-2xl border bg-surface p-6"
-            style={{ borderColor: 'var(--np-line)', borderLeft: `3px solid var(--t${s.tone}-ink)` }}>
-            <p className="np-strong text-[15px]" style={{ color: `var(--t${s.tone}-ink)` }}>{s.name}</p>
-            <p className="mt-1 text-[13px]" style={{ color: 'var(--np-ink)' }}>{s.what}</p>
-            <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>{s.gives}</p>
-          </div>
-        ))}
-      </div>
-      <p className="mt-5 text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
-        Every journal's licence is decided once, at the journal, before a single article is fetched
-        from it. Nothing is served here unless that licence allows it.
-      </p>
-    </section>
-  );
-}
-
-// ── 13. Questions ───────────────────────────────────────────────────────────
+// ── 11. Questions ───────────────────────────────────────────────────────────
 
 const FAQS: [string, string][] = [
   ['Is it really free?',
@@ -1009,8 +883,8 @@ const FAQS: [string, string][] = [
     'Each work carries the licence it was published under. Where that licence allows it, the full text opens in the reader here. Where it does not, we keep the catalogue record and send you to the publisher\'s own copy — and say so on the page, rather than letting you find out after a click.'],
   ['Can my college add its own people?',
     'Yes. A librarian adds faculty and researchers themselves, as many as they like, at no extra cost and without waiting for us to approve anyone. Students can be added on Pro.'],
-  ['Where does the content come from?',
-    'Open scholarly sources — DOAJ for journals, DOAB and OAPEN for books, OpenAlex for articles — checked for licence and department on the way in. Nothing is scraped from behind a paywall.'],
+  ['How current is the library?',
+    'New work arrives every day and is catalogued the same way as the rest — department, journal, volume, issue. Most of what you will find was published in the last few years, and the oldest reaches back decades.'],
   ['What do you do with my reading history?',
     'It is used to show you where you stopped and to suggest what to open next, and your librarian sees reading by week and by subject for the institution. It is not sold, and it is not shared with publishers.'],
 ];
@@ -1047,7 +921,7 @@ function Questions() {
   );
 }
 
-// ── 14. The closing band, and the notice ────────────────────────────────────
+// ── 12. The closing band, and the notice ────────────────────────────────────
 
 function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | null }) {
   return (
@@ -1113,8 +987,6 @@ export function HomePreview() {
       <Walkthrough stats={stats} depts={depts} subjects={subjects} articles={articles} />
       <Audiences stats={stats} />
       <WithUs inst={institutions} />
-      <AtAGlance insights={insights} subjects={subjects} depts={depts} />
-      <Sources />
       <Questions />
       <Closing stats={stats} inst={institutions} />
     </div>

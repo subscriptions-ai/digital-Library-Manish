@@ -715,7 +715,7 @@ export function ProtectedContentViewer() {
           <div className="mx-auto max-w-2xl px-5 py-10">
             <p className="font-mono text-[11px] uppercase tracking-wider text-caution">
               {pdfError === 'restricted' ? 'Full text unavailable'
-                : isOapenPdf ? 'Full text opens at OAPEN Library'
+                : isOapenPdf ? 'Full text opens outside the library'
                 : 'Full text opens at the publisher'}
             </p>
             <h2 className="mt-2 font-serif text-2xl font-medium leading-snug text-ink">
@@ -759,8 +759,8 @@ export function ProtectedContentViewer() {
                 <a href={wayOut} target="_blank" rel="noreferrer"
                   className="inline-flex items-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
                   <ExternalLink size={15} />
-                  {/* Said for what it is: an OAPEN link downloads the book itself. */}
-                  {isOapenPdf ? 'Download PDF · OAPEN Library' : 'Read at publisher'}
+                  {/* Said for what it is: this link downloads the book itself. */}
+                  {isOapenPdf ? 'Download the full text' : 'Read at publisher'}
                 </a>
               )}
               {doi && (
@@ -782,7 +782,7 @@ export function ProtectedContentViewer() {
               {pdfError === 'restricted'
                 ? 'We hold this record and its metadata. The publisher\u2019s copy did not respond, so the link above may not work either.'
                 : isOapenPdf
-                  ? 'OAPEN Library holds this book as an open-access PDF; the button above downloads it from there.'
+                  ? 'This book is published open access, and the button above downloads the full text.'
                   : 'We hold this record and its metadata. The publisher hosts the file and does not permit it to be served from here.'}
             </p>
           </div>
