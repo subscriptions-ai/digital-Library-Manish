@@ -892,6 +892,30 @@ const catalogueSize = async () => {
     bogus.status === 404 ? ok('a bogus unsubscribe link is refused', 'HTTP 404') : bad('a bogus unsubscribe link is refused', `HTTP ${bogus.status}`);
   }
 
+  console.log('\nWho is with us');
+  {
+    const inst = await get('/api/library/institutions');
+    const body = inst.body || {};
+    const held = await p.institution.count({ where: { status: 'Active' } });
+    inst.status === 200 && typeof body.total === 'number'
+      ? ok('the institutions answer', `${n(body.total)} shown of ${n(held)} accounts · ${n(body.members)} members`)
+      : bad('the institutions answer', `HTTP ${inst.status}`);
+
+    // Only institutions whose people have actually joined, because that is what
+    // the page says underneath the list.
+    const empty = (body.institutions || []).filter(i => !i.members).length;
+    empty === 0 ? ok('every institution shown has members') : bad('every institution shown has members', `${empty} with none`);
+
+    // The kind is guessed from the name; the guess must at least be one of the
+    // kinds the page knows how to label.
+    const kinds = new Set(['University', 'College', 'Institute', 'School', 'Organisation']);
+    const odd = (body.institutions || []).find(i => !kinds.has(i.kind));
+    odd ? bad('every institution has a known kind', `${odd.name}: ${odd.kind}`) : ok('every institution has a known kind');
+
+    const summed = Object.values(body.byKind || {}).reduce((a, b) => a + b, 0);
+    summed === body.total ? ok('the kinds add up to the total', `${summed}`) : bad('the kinds add up to the total', `${summed} vs ${body.total}`);
+  }
+
   console.log('\nThe blog');
   {
     const editor = await p.user.findFirst({ where: { role: 'ContentManager' }, select: { id: true, email: true, role: true } });

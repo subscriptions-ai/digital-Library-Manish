@@ -2,29 +2,31 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
-  ArrowRight, BookMarked, BookOpen, Building2, ChevronLeft, ChevronRight, FileText,
-  GraduationCap, Layers, Library, Pause, Play, RefreshCw, Search, ShieldCheck, Sparkles, Tags,
-  Users, UserSquare2,
+  ArrowRight, BookMarked, BookOpen, Building2, ChevronDown, ChevronLeft, ChevronRight,
+  FileText, GraduationCap, Layers, Library, Minus, Pause, Play, RefreshCw, Search,
+  ShieldCheck, Sparkles, Tags, Users, UserSquare2,
 } from 'lucide-react';
 import { Bars, Collection, Columns, Donut, type DeptRow } from './charts';
 
 /**
- * A second draft of the home page, at /home-preview, for side-by-side review.
+ * A second draft of the home page, at /home-preview.
  *
- * The shape follows a reference the user chose — a hero that slides, a card of
- * ways in laid over it, a strip of names, a band of figures, a department
- * explorer, what is new, a walkthrough, who it is for. What fills that shape is
- * ours and only ours: every figure is read from the catalogue as the page
- * loads, every name and title is a real row, and where the reference uses
- * photography this uses the book covers we actually hold. A number nobody can
- * stand behind undoes the rest of the page.
+ * The shape is a reference the user chose — a hero that slides, a card of ways
+ * in laid over it, a strip of names, a band of figures, a department explorer,
+ * what is new, a walkthrough, who it is for, who is with us, questions, and a
+ * closing band. It borrows that page's furniture and its type (Sora over
+ * Inter), and nothing else.
+ *
+ * What fills it is ours and only ours. Every figure is read from the catalogue
+ * as the page loads. Publishers are deliberately absent: where the reference
+ * names its partners, this names the institutions whose people actually read
+ * here, which is the fact a college wants from a library.
  */
 
 type Stats = {
   total: number; articles: number; books: number; authors: number;
   departmentTotals: DeptRow[];
 };
-type Publisher = { name: string; count: number };
 type Insights = {
   composition: { total: number; articles: number; books: number; other: number; otherTypes: { type: string; n: number }[] };
   access: { readHere: number; atPublisher: number; recordOnly: number };
@@ -37,147 +39,160 @@ type NewBook = {
   id: string; title: string; authors: string | null; publisherName: string | null;
   domain: string | null; coverUrl: string | null; year: number | null; createdAt: string;
 };
+type Institutions = {
+  total: number; members: number; organisations: number; states: number;
+  byKind: Record<string, number>;
+  institutions: { name: string; kind: string; members: number }[];
+};
 type Department = {
   domain: string; slug: string; articles: number; books: number;
   firstYear: number | null; lastYear: number | null;
-  journals: { id: string; title: string; publisherName: string | null; articleCount: number; firstYear: number | null; lastYear: number | null }[];
+  journals: { id: string; title: string; publisherName: string | null; articleCount: number }[];
   publishers: { name: string; journals: number }[];
 };
 
 const n = (x?: number) => (typeof x === 'number' ? x.toLocaleString('en-IN') : '—');
-const LABEL = 'font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint';
+/** "University" → "Universities", "School" → "Schools". */
+const plural = (word: string, count: number) =>
+  count === 1 ? word : /y$/.test(word) ? `${word.slice(0, -1)}ies` : `${word}s`;
+const named = (t?: string) => Boolean(t && t.trim() && t.trim().toLowerCase() !== 'untitled');
 
-/**
- * The page's decorative colours, six of them, defined in index.css for both
- * themes. They dress the furniture — the tile behind an icon, the pill over a
- * heading, the badge on a card — and never stand for a value; the charts keep
- * their own validated palettes. A page with one hue for everything read as
- * grey, which is the whole reason these exist.
- */
-type Tone = 1 | 2 | 3 | 4 | 5 | 6;
-const tone = (t: Tone) => ({ background: `var(--t${t}-bg)`, color: `var(--t${t}-ink)` });
-const toneInk = (t: Tone) => ({ color: `var(--t${t}-ink)` });
-/** The same six, for text and icons drawn on the dark hero or closing band. */
-const onDark = (t: Tone) => ({ color: `var(--on-dark-${t})` });
+/** Where a title on this page leads: the public browse screen, never a login. */
+const browse = (kind: 'articles' | 'books', title: string) =>
+  `/digital-library?kind=${kind}&q=${encodeURIComponent(title)}`;
 
-/** A section's eyebrow: a dot and a word, in that section's colour. */
-function Eyebrow({ t, children }: { t: Tone; children: React.ReactNode }) {
-  return (
-    <p style={tone(t)} className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em]">
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
-      {children}
-    </p>
-  );
-}
-
-/** "Added today", "Added 3 days ago" — vague on purpose past a fortnight. */
-function added(iso?: string) {
+const added = (iso?: string) => {
   if (!iso) return null;
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
   if (days <= 0) return 'Added today';
   if (days === 1) return 'Added yesterday';
   if (days < 14) return `Added ${days} days ago`;
   return `Added ${new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
-}
-
-/** OpenAlex sends the occasional issue record with no title of its own. */
-const named = (t?: string) => Boolean(t && t.trim() && t.trim().toLowerCase() !== 'untitled');
-
-/**
- * Where a title on this page leads.
- *
- * The reader's own pages live behind a login, and a home page that bounces a
- * first-time visitor to a sign-in form has wasted the click. The browse screen
- * is public and takes a search, so a title opens there, found and waiting.
- */
-const browse = (kind: 'articles' | 'books', title: string) =>
-  `/digital-library?kind=${kind}&q=${encodeURIComponent(title)}`;
+};
 
 function useLibrary() {
   const [stats, setStats] = useState<Stats | null>(null);
-  const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [articles, setArticles] = useState<NewArticle[]>([]);
   const [books, setBooks] = useState<NewBook[]>([]);
   const [insights, setInsights] = useState<Insights | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [institutions, setInstitutions] = useState<Institutions | null>(null);
 
   useEffect(() => {
     const get = (u: string) => fetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null);
     get('/api/library/stats').then(d => d && setStats(d));
-    get('/api/library/publishers').then(d => Array.isArray(d) && setPublishers(d));
     get('/api/library/articles?limit=12&sort=newest').then(d => d?.data && setArticles(d.data.filter((a: NewArticle) => named(a.title))));
-    // More than are shown: fewer than half the books carry a cover, and the
-    // cards want covers.
     get('/api/library/books?limit=36&sort=newest').then(d => d?.data && setBooks(d.data));
     get('/api/library/insights').then(d => d?.composition && setInsights(d));
     get('/api/library/subjects').then(d => Array.isArray(d) && setSubjects(d));
+    get('/api/library/institutions').then(d => d?.total !== undefined && setInstitutions(d));
   }, []);
 
-  return { stats, publishers, articles, books, insights, subjects };
+  return { stats, articles, books, insights, subjects, institutions };
 }
 
-/** A figure that is still loading shows a quiet bar, never a made-up number. */
-function Figure({ value, className = '' }: { value?: number; className?: string }) {
-  if (typeof value !== 'number') {
-    return <span className={`inline-block h-[0.8em] w-24 animate-pulse rounded bg-surface-2 align-middle ${className}`} />;
-  }
-  return <span className={`tnum ${className}`}>{n(value)}</span>;
-}
+// ── The furniture the reference is built from ───────────────────────────────
 
-/**
- * One total split into its parts, as a single bar — the compact form of the
- * donuts further down, sized for a slide. Parts sit in their given order with a
- * 2px surface gap and rounded outer ends; the legend under it carries every
- * label and share, so colour is never the only thing that identifies a part.
- */
-function Split({ parts }: { parts: { key: string; label: string; value: number; color: string }[] }) {
-  const total = parts.reduce((t, p) => t + p.value, 0) || 1;
-  const shown = parts.filter(p => p.value > 0);
-  const pct = (v: number) => { const x = (v / total) * 100; return x > 0 && x < 1 ? '<1%' : `${Math.round(x)}%`; };
+/** The small uppercase line over every heading, with its amber dot. */
+function Eyebrow({ children, onDark = false }: { children: React.ReactNode; onDark?: boolean }) {
   return (
-    <div>
-      <div className="flex h-3 gap-[2px]">
-        {shown.map((p, i) => (
-          <div key={p.key} style={{ flex: `${p.value} 1 0%`, background: p.color }}
-            className={`${i === 0 ? 'rounded-l-[4px]' : ''} ${i === shown.length - 1 ? 'rounded-r-[4px]' : ''}`} />
-        ))}
-      </div>
-      <ul className="mt-4 space-y-1.5">
-        {parts.map(p => (
-          <li key={p.key} className="flex items-center gap-2 text-[12.5px]">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: p.color }} />
-            <span className="min-w-0 flex-1 truncate text-ink-2">{p.label}</span>
-            <span className="tnum font-mono text-[12px] text-ink">{n(p.value)}</span>
-            <span className="tnum w-9 text-right font-mono text-[11px] text-faint">{pct(p.value)}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <p className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] ${
+      onDark ? 'bg-white/10 text-white/80' : 'bg-[color:var(--np-soft)] text-[color:var(--np-body)]'}`}>
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--np-amber)' }} />
+      {children}
+    </p>
   );
 }
 
-type SlideData = {
-  stats: Stats | null; insights: Insights | null; articles: NewArticle[];
-  publishers: Publisher[]; depts: DeptRow[];
-};
+function Heading({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <h2 className={`np-display mt-4 text-[30px] leading-[1.15] sm:text-[38px] ${className}`}
+      style={{ color: 'var(--np-ink)' }}>{children}</h2>
+  );
+}
+
+/** A figure still loading shows a quiet bar, never a made-up number. */
+function Figure({ value, className = '' }: { value?: number; className?: string }) {
+  if (typeof value !== 'number') {
+    return <span className={`inline-block h-[0.75em] w-20 animate-pulse rounded bg-[color:var(--np-soft)] align-middle ${className}`} />;
+  }
+  return <span className={className}>{n(value)}</span>;
+}
+
+const btnPrimary = 'inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[14px] font-bold text-white transition-opacity hover:opacity-90';
+const btnGhost = 'inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-bold transition-colors';
+
+// ── 1. The hero, which slides ───────────────────────────────────────────────
 
 const SLIDE_MS = 7000;
 
-/**
- * The hero's right-hand panel, as a run of slides — each one a single fact
- * about the library with the figure that proves it.
- *
- * Only the panel moves. The headline, the search box and Register Now stay
- * where the eye left them, because a carousel that carries the main action away
- * is a carousel people stop trusting.
- *
- * It advances on its own, and stops when a reader points at it, focuses it,
- * or has asked their system for reduced motion — a slide that changes while it
- * is being read is worse than no slide. Arrows, dots, the keyboard and a swipe
- * all move it by hand. Every slide is drawn at the same height so the page
- * underneath never jumps.
- */
-function HeroSlider(d: SlideData) {
+type Slide = { key: string; eyebrow: string; lead: string; highlight: string; body: string; chips: string[] };
+
+function buildSlides(stats: Stats | null, insights: Insights | null, inst: Institutions | null, depts: DeptRow[]): Slide[] {
+  const acc = insights?.access;
+  const accTotal = acc ? acc.readHere + acc.atPublisher + acc.recordOnly : 0;
+  const readPct = acc && accTotal ? Math.round((acc.readHere / accTotal) * 100) : undefined;
+  const years = insights?.years || [];
+  const thisYear = years[years.length - 1];
+  const licTotal = insights ? insights.licences.reduce((t, l) => t + l.n, 0) : 0;
+
+  return [
+    {
+      key: 'collection',
+      eyebrow: 'STM Digital Library',
+      lead: 'An academic library your whole institution can',
+      highlight: 'open.',
+      body: `${n(stats?.total)} items of research — ${n(stats?.articles)} articles and ${n(stats?.books)} books — catalogued by department, journal, volume and issue.`,
+      chips: [`${n(stats?.total)} items`, `${depts.length || '—'} departments`, `${n(stats?.articles)} articles`],
+    },
+    {
+      key: 'access',
+      eyebrow: 'Where you read it',
+      lead: 'Most of it opens right here, in the',
+      highlight: 'browser.',
+      body: `${readPct ?? '—'}% of the ${n(accTotal || undefined)} catalogued works open in the reader itself. The rest link to the publisher's own copy, and say so.`,
+      chips: [`${readPct ?? '—'}% read here`, 'No download needed', 'Licence checked first'],
+    },
+    {
+      key: 'institutions',
+      eyebrow: 'Who is with us',
+      lead: 'Colleges and universities already reading',
+      highlight: 'here.',
+      body: `${n(inst?.total)} institutions have their people on the library, and members name ${n(inst?.organisations)} organisations between them.`,
+      chips: [`${n(inst?.total)} institutions`, `${n(inst?.members)} members`, `${n(inst?.organisations)} organisations`],
+    },
+    {
+      key: 'recency',
+      eyebrow: 'How current it is',
+      lead: 'Research published this year, already on the',
+      highlight: 'shelf.',
+      body: `${n(thisYear?.n)} articles published in ${thisYear?.year ?? 'this year'} are in the library. The collection leans recent, not archival.`,
+      chips: [`${n(thisYear?.n)} from ${thisYear?.year ?? ''}`, 'Added every day', 'DOAJ · DOAB · OpenAlex'],
+    },
+    {
+      key: 'licence',
+      eyebrow: 'On what terms',
+      lead: 'Every item carries the licence it was published',
+      highlight: 'under.',
+      body: `All ${n(licTotal)} catalogue articles carry their licence, from the most open to the most restricted — decided before anything is served.`,
+      chips: ['CC BY · CC BY-SA', 'Checked per journal', 'Nothing served without it'],
+    },
+    {
+      key: 'free',
+      eyebrow: 'What it costs',
+      lead: 'Free to register, and the whole library is',
+      highlight: 'yours.',
+      body: 'Free membership reads the entire collection in half-hour sessions. Pro removes the clock, for you and for everyone your institution adds.',
+      chips: ['Free to register', 'No request forms', 'Pro removes the clock'],
+    },
+  ];
+}
+
+function Hero({ stats, insights, institutions, depts }: {
+  stats: Stats | null; insights: Insights | null; institutions: Institutions | null; depts: DeptRow[];
+}) {
+  const navigate = useNavigate();
+  const [q, setQ] = useState('');
   const [i, setI] = useState(0);
   const [hover, setHover] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -192,7 +207,7 @@ function HeroSlider(d: SlideData) {
     return () => m.removeEventListener?.('change', on);
   }, []);
 
-  const slides = buildSlides(d);
+  const slides = buildSlides(stats, insights, institutions, depts);
   const count = slides.length;
   const go = useCallback((to: number) => setI(((to % count) + count) % count), [count]);
   const running = !hover && !paused && !reduced;
@@ -203,11 +218,12 @@ function HeroSlider(d: SlideData) {
     return () => clearTimeout(t);
   }, [i, running, go]);
 
+  const s = slides[i];
+
   return (
-    <div
-      role="region" aria-roledescription="carousel" aria-label="Facts about the library"
+    <section
+      role="region" aria-roledescription="carousel" aria-label="What the library is"
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      onFocus={() => setHover(true)} onBlur={() => setHover(false)}
       onKeyDown={e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); }}
       onTouchStart={e => { touch.current = e.touches[0].clientX; }}
       onTouchEnd={e => {
@@ -216,274 +232,186 @@ function HeroSlider(d: SlideData) {
         if (Math.abs(dx) > 40) go(dx < 0 ? i + 1 : i - 1);
         touch.current = null;
       }}
-      className="relative self-start overflow-hidden rounded-2xl border border-rule bg-ground shadow-2xl"
+      className="relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, var(--np-navy) 0%, var(--np-navy-2) 55%, #1b2f63 100%)' }}
     >
-      {/* how long this slide has left */}
-      <div className="h-[2px] w-full bg-rule">
-        <div key={`${i}-${running}`}
-          className={`h-full origin-left bg-accent ${running ? 'slider-progress' : ''}`}
-          style={{ animationDuration: `${SLIDE_MS}ms`, transform: running ? undefined : 'scaleX(0)' }} />
-      </div>
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60"
+        style={{ background: 'radial-gradient(900px 420px at 15% 0%, rgba(245,179,1,0.10), transparent 60%), radial-gradient(700px 400px at 85% 100%, rgba(99,102,241,0.18), transparent 60%)' }} />
 
-      <div className="relative h-[452px]" aria-live={running ? 'off' : 'polite'}>
-        {slides.map((sl, k) => (
-          <div key={sl.key}
-            role="group" aria-roledescription="slide" aria-label={`${k + 1} of ${count}: ${sl.label}`}
-            aria-hidden={k !== i}
-            className={`absolute inset-0 flex flex-col p-5 transition-all duration-500 ${
-              k === i ? 'translate-x-0 opacity-100' : k < i ? '-translate-x-6 opacity-0 pointer-events-none' : 'translate-x-6 opacity-0 pointer-events-none'}`}>
-            <p className={LABEL}>{sl.label}</p>
-            {sl.body}
+      <div className="relative mx-auto max-w-6xl px-5 pb-32 pt-14 sm:pt-20">
+        <div className="min-h-[330px] max-w-3xl" aria-live={running ? 'off' : 'polite'}>
+          <Eyebrow onDark>{s.eyebrow}</Eyebrow>
+          <h1 className="np-display mt-5 text-[38px] leading-[1.08] text-white sm:text-[52px]">
+            {s.lead}{' '}
+            <span style={{ color: 'var(--np-amber)' }}>{s.highlight}</span>
+          </h1>
+          <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-white/75">{s.body}</p>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            {s.chips.map(c => (
+              <span key={c} className="rounded-full border border-white/20 bg-white/5 px-3.5 py-1.5 text-[12.5px] font-semibold text-white/85">
+                {c}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <form
+          onSubmit={e => { e.preventDefault(); if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`); }}
+          className="mt-8 flex max-w-xl items-center gap-2 rounded-2xl bg-white p-1.5 shadow-2xl"
+        >
+          <Search size={18} className="ml-3 shrink-0 text-slate-400" />
+          <input value={q} onChange={e => setQ(e.target.value)}
+            placeholder="Search articles, books, journals, authors…"
+            className="min-w-0 flex-1 bg-transparent px-1 py-2.5 text-[14.5px] text-slate-900 outline-none placeholder:text-slate-400" />
+          <button type="submit" className={btnPrimary} style={{ background: 'var(--np-navy)' }}>Search</button>
+        </form>
+
+        <div className="mt-7 flex flex-wrap items-center gap-3">
+          <Link to="/signup" className={btnPrimary} style={{ background: 'var(--np-amber)', color: '#1a1200' }}>
+            Register free <ArrowRight size={16} />
+          </Link>
+          <Link to="/digital-library" className={`${btnGhost} border-white/25 text-white hover:bg-white/10`}>
+            Explore the library
+          </Link>
+        </div>
+
+        {/* The run of slides, counted the way the reference counts it */}
+        <div className="mt-10 flex flex-wrap items-center gap-4">
+          <span className="np-display text-[20px] text-white">{String(i + 1).padStart(2, '0')}</span>
+          <span className="text-[12px] text-white/50">/ {String(count).padStart(2, '0')}</span>
+          <div className="h-[3px] w-40 overflow-hidden rounded-full bg-white/20">
+            <div key={`${i}-${running}`}
+              className={`h-full origin-left rounded-full ${running ? 'slider-progress' : ''}`}
+              style={{ background: 'var(--np-amber)', animationDuration: `${SLIDE_MS}ms`, transform: running ? undefined : 'scaleX(1)' }} />
+          </div>
+          <div className="flex items-center gap-1.5">
+            {slides.map((sl, k) => (
+              <button key={sl.key} type="button" onClick={() => go(k)} aria-label={`Slide ${k + 1}: ${sl.eyebrow}`}
+                aria-current={k === i}
+                className={`h-1.5 rounded-full transition-all ${k === i ? 'w-6 bg-white' : 'w-1.5 bg-white/35 hover:bg-white/60'}`} />
+            ))}
+          </div>
+          <div className="ml-auto flex items-center gap-1">
+            <button type="button" onClick={() => setPaused(p => !p)} aria-label={paused ? 'Play' : 'Pause'}
+              className="rounded-lg border border-white/20 p-2 text-white/80 hover:bg-white/10">
+              {paused ? <Play size={14} /> : <Pause size={14} />}
+            </button>
+            <button type="button" onClick={() => go(i - 1)} aria-label="Previous slide"
+              className="rounded-lg border border-white/20 p-2 text-white/80 hover:bg-white/10"><ChevronLeft size={16} /></button>
+            <button type="button" onClick={() => go(i + 1)} aria-label="Next slide"
+              className="rounded-lg border border-white/20 p-2 text-white/80 hover:bg-white/10"><ChevronRight size={16} /></button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── 2. The card of ways in, laid over the hero ──────────────────────────────
+
+const WAYS_IN: { to: string; icon: any; title: string; sub: string; tone: number }[] = [
+  { to: '/digital-library?kind=articles', icon: FileText, title: 'Articles', sub: 'Peer-reviewed research', tone: 1 },
+  { to: '/digital-library?kind=books', icon: BookOpen, title: 'Books', sub: 'Open-access monographs', tone: 2 },
+  { to: '/journals', icon: Library, title: 'Journals', sub: 'By volume and issue', tone: 3 },
+  { to: '/digital-library', icon: Layers, title: 'Departments', sub: 'Browse like a shelf', tone: 6 },
+  { to: '/digital-library?sort=newest', icon: Sparkles, title: 'Newest first', sub: 'What arrived today', tone: 4 },
+  { to: '/digital-library?oa=1', icon: Tags, title: 'Open access', sub: 'Read here, in full', tone: 5 },
+  { to: '/for-institutions', icon: Building2, title: 'For institutions', sub: 'Add your people', tone: 1 },
+  { to: '/signup', icon: UserSquare2, title: 'Register free', sub: 'Two minutes', tone: 3 },
+];
+
+function WaysIn() {
+  return (
+    <section className="relative z-10 mx-auto -mt-24 max-w-6xl px-5">
+      <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border bg-[color:var(--np-line)] shadow-xl sm:grid-cols-2 lg:grid-cols-4"
+        style={{ borderColor: 'var(--np-line)' }}>
+        {WAYS_IN.map(w => (
+          <Link key={w.title} to={w.to} className="group flex items-center gap-3 bg-surface px-5 py-4 hover:bg-[color:var(--np-soft)]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: `var(--t${w.tone}-bg)`, color: `var(--t${w.tone}-ink)` }}>
+              <w.icon size={18} />
+            </span>
+            <span className="min-w-0">
+              <span className="np-strong block truncate text-[14px]" style={{ color: 'var(--np-ink)' }}>{w.title}</span>
+              <span className="block truncate text-[11.5px]" style={{ color: 'var(--np-body)' }}>{w.sub}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── 3. Who is with us, walking past ─────────────────────────────────────────
+
+function InstitutionStrip({ inst }: { inst: Institutions | null }) {
+  const list = inst?.institutions || [];
+  if (!list.length) return null;
+  const row = list.length < 8 ? [...list, ...list, ...list] : list;
+  return (
+    <section className="border-y py-7" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+      <div className="mx-auto mb-4 max-w-6xl px-5">
+        <p className="text-[12.5px]" style={{ color: 'var(--np-body)' }}>
+          <b className="np-strong" style={{ color: 'var(--np-ink)' }}>{n(inst?.total)} institutions</b> have their faculty and
+          researchers on the library{inst?.states ? ` — across ${n(inst.states)} state${inst.states === 1 ? '' : 's'}` : ''}.
+        </p>
+      </div>
+      <div className="marquee relative overflow-hidden">
+        <div className="marquee-track flex w-max gap-3">
+          {row.concat(row).map((x, k) => (
+            <span key={`${x.name}-${k}`}
+              className="inline-flex shrink-0 items-center gap-2.5 rounded-full border bg-surface px-4 py-2 text-[13px]"
+              style={{ borderColor: 'var(--np-line)', color: 'var(--np-ink)' }}>
+              <Building2 size={13} style={{ color: 'var(--np-amber)' }} />
+              {x.name}
+              <span className="text-[11px]" style={{ color: 'var(--np-body)' }}>{x.kind}</span>
+            </span>
+          ))}
+        </div>
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-16"
+          style={{ background: 'linear-gradient(90deg, var(--np-soft), transparent)' }} />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-16"
+          style={{ background: 'linear-gradient(270deg, var(--np-soft), transparent)' }} />
+      </div>
+    </section>
+  );
+}
+
+// ── 4. The figures ──────────────────────────────────────────────────────────
+
+function Impact({ stats, depts, inst }: { stats: Stats | null; depts: DeptRow[]; inst: Institutions | null }) {
+  const cards = [
+    { icon: Layers, value: stats?.total, label: 'Items of content', hint: `Across ${depts.length || '—'} departments`, tone: 1 },
+    { icon: FileText, value: stats?.articles, label: 'Research articles', hint: 'Each in its journal, volume and issue', tone: 3 },
+    { icon: BookOpen, value: stats?.books, label: 'Books', hint: 'Open-access monographs and volumes', tone: 2 },
+    { icon: Building2, value: inst?.total, label: 'Institutions with us', hint: `${n(inst?.members)} members between them`, tone: 6 },
+  ];
+  return (
+    <section className="mx-auto max-w-6xl px-5 py-20">
+      <Eyebrow>Built for trust</Eyebrow>
+      <Heading className="max-w-3xl">Every figure here is read from the catalogue as the page loads.</Heading>
+      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map(c => (
+          <div key={c.label} className="rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl"
+              style={{ background: `var(--t${c.tone}-bg)`, color: `var(--t${c.tone}-ink)` }}>
+              <c.icon size={21} />
+            </span>
+            <p className="np-display mt-5 text-[32px] leading-none" style={{ color: 'var(--np-ink)' }}>
+              <Figure value={c.value} />
+            </p>
+            <p className="np-strong mt-2 text-[14px]" style={{ color: 'var(--np-ink)' }}>{c.label}</p>
+            <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>{c.hint}</p>
           </div>
         ))}
       </div>
-
-      {/* The counter reads like the reference's — this slide, of how many, with
-          the run of them drawn as a rule that fills. */}
-      <div className="flex items-center justify-between border-t border-rule bg-surface px-4 py-2.5">
-        <div className="flex items-center gap-3">
-          <span className="tnum font-mono text-[15px] text-ink">{String(i + 1).padStart(2, '0')}</span>
-          <span className="font-mono text-[11px] text-faint">/ {String(count).padStart(2, '0')}</span>
-          <div className="flex items-center gap-1.5">
-            {slides.map((sl, k) => (
-              <button key={sl.key} type="button" onClick={() => go(k)}
-                aria-label={`Show slide ${k + 1}: ${sl.label}`} aria-current={k === i}
-                className={`h-1.5 rounded-full transition-all ${k === i ? 'w-6 bg-accent' : 'w-1.5 bg-rule-2 hover:bg-muted'}`} />
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setPaused(p => !p)} aria-label={paused ? 'Play slides' : 'Pause slides'}
-            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink">
-            {paused ? <Play size={14} /> : <Pause size={14} />}
-          </button>
-          <button type="button" onClick={() => go(i - 1)} aria-label="Previous slide"
-            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink"><ChevronLeft size={16} /></button>
-          <button type="button" onClick={() => go(i + 1)} aria-label="Next slide"
-            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink"><ChevronRight size={16} /></button>
-        </div>
-      </div>
-    </div>
+    </section>
   );
 }
 
-/** The slides, each built only from data already on the page. */
-function buildSlides({ stats, insights, articles, publishers, depts }: SlideData) {
-  const Big = ({ value, suffix }: { value?: number; suffix?: string }) => (
-    <p className="mt-3 font-mono text-[44px] leading-none text-ink">
-      <Figure value={value} />{suffix && typeof value === 'number' && <span className="text-[28px] text-muted">{suffix}</span>}
-    </p>
-  );
-  const Line = ({ children }: { children: React.ReactNode }) => (
-    <p className="mt-2 text-[13px] leading-snug text-muted">{children}</p>
-  );
-  const Frame = ({ children }: { children: React.ReactNode }) => (
-    <div className="mt-5 flex flex-1 flex-col overflow-hidden rounded-xl border border-rule bg-surface p-4">{children}</div>
-  );
-  // A closing line pinned to the foot of a slide's frame: what the figure above means.
-  const Footnote = ({ children }: { children: React.ReactNode }) => (
-    <p className="mt-auto flex items-start gap-2 border-t border-rule pt-3 text-[12px] leading-snug text-muted">
-      <ShieldCheck size={14} className="mt-[1px] shrink-0 text-accent" /><span>{children}</span>
-    </p>
-  );
+// ── 5. The departments, as the reference shows its domains ──────────────────
 
-  const acc = insights?.access;
-  const accTotal = acc ? acc.readHere + acc.atPublisher + acc.recordOnly : 0;
-  const readPct = acc && accTotal ? Math.round((acc.readHere / accTotal) * 100) : undefined;
-  const years = insights?.years || [];
-  const thisYear = years[years.length - 1];
-  const licTotal = insights ? insights.licences.reduce((t, l) => t + l.n, 0) : undefined;
-  // Of the articles we did not publish ourselves, the share under CC BY or
-  // CC BY-SA — the two licences that allow reuse, commercial included, with credit.
-  const licOf = (k: string) => insights?.licences.find(l => l.key === k)?.n || 0;
-  const outside = licTotal !== undefined ? licTotal - licOf('own') : 0;
-  const reusePct = outside ? Math.round(((licOf('by') + licOf('bysa')) / outside) * 100) : undefined;
-
-  return [
-    {
-      key: 'catalogue', label: 'Live catalogue',
-      body: (
-        <>
-          <Big value={stats?.total} />
-          <Line>items across {depts.length || '—'} departments — read from the database as this page loaded</Line>
-          <dl className="mt-4 grid grid-cols-3 divide-x divide-rule rounded-xl border border-rule bg-surface">
-            {([['Articles', stats?.articles], ['Books', stats?.books], ['Authors', stats?.authors]] as const).map(([label, value]) => (
-              <div key={label} className="px-3 py-2.5">
-                <dt className="font-mono text-[10px] uppercase tracking-wider text-faint">{label}</dt>
-                <dd className="mt-1 font-mono text-[16px] text-ink"><Figure value={value} /></dd>
-              </div>
-            ))}
-          </dl>
-          <Frame>
-            <p className="mb-3 text-[12px] font-semibold text-ink-2">Largest departments</p>
-            {depts.length ? <Bars rows={depts.slice(0, 4).map(x => ({ name: x.name, value: x.total }))} unit="items" /> : null}
-          </Frame>
-        </>
-      ),
-    },
-    {
-      key: 'access', label: 'Where you read it',
-      body: (
-        <>
-          <Big value={readPct} suffix="%" />
-          <Line>of the {n(accTotal || undefined)} articles and books in the catalogue open right here in the library — the rest link to the publisher's own copy.</Line>
-          <Frame>
-            {acc ? <Split parts={[
-              { key: 'here', label: 'Read here, in the library', value: acc.readHere, color: 'var(--acc-1)' },
-              { key: 'pub', label: "At the publisher's site", value: acc.atPublisher, color: 'var(--acc-2)' },
-              { key: 'rec', label: 'Catalogue record only', value: acc.recordOnly, color: 'var(--acc-3)' },
-            ]} /> : null}
-            <Footnote>
-              Full text is served here only where its licence allows. Everything else stays in the
-              catalogue, with a link to the publisher's own copy.
-            </Footnote>
-          </Frame>
-        </>
-      ),
-    },
-    {
-      key: 'new', label: 'Just added',
-      body: (
-        <>
-          <p className="mt-3 font-serif text-[26px] leading-tight text-ink">The shelves move every day.</p>
-          <Line>The newest articles to reach the catalogue, with their journal and department.</Line>
-          <Frame>
-            <ul className="divide-y divide-rule">
-              {articles.slice(0, 3).map(a => (
-                <li key={a.id} className="py-2.5 first:pt-0 last:pb-0">
-                  <Link to={browse('articles', a.title)} className="group block" tabIndex={-1}>
-                    <p className="line-clamp-2 text-[13px] leading-snug text-ink-2 group-hover:text-accent">{a.title}</p>
-                    <p className="mt-0.5 truncate font-mono text-[10.5px] text-faint">{[a.journalName, a.domain].filter(Boolean).join(' · ')}</p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Frame>
-        </>
-      ),
-    },
-    {
-      key: 'recency', label: 'How current it is',
-      body: (
-        <>
-          <Big value={thisYear?.n} />
-          <Line>articles published in {thisYear?.year ?? 'this year'} so far — the collection leans recent, not archival.</Line>
-          <Frame>
-            {years.length ? <Columns unit="articles" data={years.map(y => ({ label: String(y.year), value: y.n }))} /> : null}
-          </Frame>
-        </>
-      ),
-    },
-    {
-      key: 'licences', label: 'On what terms',
-      body: (
-        <>
-          <Big value={licTotal} />
-          <Line>catalogue articles, and every one of them carries its licence — from our own publications to the most restricted Creative Commons terms.</Line>
-          <Frame>
-            {insights ? <Split parts={insights.licences.map((l, k) => ({ key: l.key, label: l.label, value: l.n, color: `var(--lic-${k + 1})` }))} /> : null}
-            {typeof reusePct === 'number' && (
-              <Footnote>
-                Of the {n(outside)} articles we did not publish ourselves, {reusePct}% are under CC BY or
-                CC BY-SA — licences that allow reuse, commercial included, with credit.
-              </Footnote>
-            )}
-          </Frame>
-        </>
-      ),
-    },
-    {
-      key: 'publishers', label: 'Where it comes from',
-      body: (
-        <>
-          <Big value={publishers.length || undefined} />
-          <Line>publishers contribute to the collection. The largest of them:</Line>
-          <Frame>
-            {publishers.length ? <Bars rows={publishers.slice(0, 5).map(p => ({ name: p.name, value: p.count }))} unit="articles" /> : null}
-          </Frame>
-        </>
-      ),
-    },
-  ];
-}
-
-/**
- * The hero's ground.
- *
- * It used to be a wall of the covers we hold, turned down behind a scrim. Two
- * things were wrong with that: the scrim had to be so dark to keep the
- * headline readable that the covers barely showed, and DOAB serves covers at
- * full size — one of the three on this page is 1.9 MB and takes twenty
- * seconds — so the page pulled megabytes before it had said anything. The
- * colour now comes from the gradient, and the covers appear further down,
- * lazily, where they are actually looked at.
- */
-function HeroGlow() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute -left-24 -top-32 h-[420px] w-[420px] rounded-full opacity-40 blur-3xl"
-        style={{ background: 'var(--hero-2)' }} />
-      <div className="absolute -bottom-40 right-[-6rem] h-[460px] w-[460px] rounded-full opacity-45 blur-3xl"
-        style={{ background: 'var(--hero-3)' }} />
-    </div>
-  );
-}
-
-/** A book with no cover still gets one: its own title, set on a tinted panel. */
-function Cover({ book, className = '', tone: t = 3 }: { book: NewBook; className?: string; tone?: Tone }) {
-  // The cover is fetched from DOAB, which takes about a second a file. Behind
-  // it sits the card's own colour, so a cover on its way looks like a cover
-  // rather than a hole in the page.
-  if (book.coverUrl) {
-    return (
-      <span style={tone(t)} className={`block ${className}`}>
-        <img src={book.coverUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-      </span>
-    );
-  }
-  return (
-    <div style={tone(t)} className={`flex flex-col justify-between p-3 ${className}`}>
-      <span className="font-mono text-[9px] uppercase tracking-[0.14em] opacity-80">{book.domain || 'Book'}</span>
-      <span className="line-clamp-4 font-serif text-[15px] leading-tight">{book.title}</span>
-      <span className="truncate font-mono text-[9px] opacity-70">{book.publisherName || ''}</span>
-    </div>
-  );
-}
-
-/** The card of ways in, laid over the foot of the hero. */
-const WAYS_IN: { to: string; icon: any; title: string; sub: string; t: Tone }[] = [
-  { to: '/digital-library?kind=articles', icon: FileText, title: 'Articles', sub: 'Peer-reviewed research', t: 1 },
-  { to: '/digital-library?kind=books', icon: BookOpen, title: 'Books', sub: 'Open-access monographs', t: 2 },
-  { to: '/journals', icon: Library, title: 'Journals', sub: 'By volume and issue', t: 3 },
-  { to: '/digital-library', icon: Layers, title: 'Departments', sub: 'Browse like a shelf', t: 6 },
-  { to: '/digital-library', icon: Building2, title: 'Publishers', sub: 'Who published it', t: 5 },
-  { to: '/digital-library?sort=newest', icon: Sparkles, title: 'Newest first', sub: 'What arrived today', t: 4 },
-  { to: '/digital-library?oa=1', icon: Tags, title: 'Open access only', sub: 'Read here, in full', t: 5 },
-  { to: '/for-institutions', icon: UserSquare2, title: 'For institutions', sub: 'Add your people', t: 1 },
-];
-
-function Principle({ icon: Icon, title, children, proof, t }: {
-  icon: any; title: string; children: React.ReactNode; proof?: React.ReactNode; t: Tone;
-}) {
-  return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-rule bg-surface p-6">
-      <span aria-hidden className="-mx-6 -mt-6 mb-6 block h-1" style={{ background: `var(--t${t}-ink)` }} />
-      <span style={tone(t)} className="flex h-10 w-10 items-center justify-center rounded-xl">
-        <Icon size={19} />
-      </span>
-      <h3 className="mt-4 text-[15px] font-semibold text-ink">{title}</h3>
-      <p className="mt-2 flex-1 text-[13.5px] leading-relaxed text-muted">{children}</p>
-      {proof && <div className="mt-4 border-t border-rule pt-3">{proof}</div>}
-    </div>
-  );
-}
-
-/**
- * The department explorer: every department on the left with what it holds, the
- * chosen one opened on the right. The list is the figure the reference gives to
- * three domains — we have twenty-eight, so the list scrolls and the panel is
- * fetched for whichever is chosen, rather than all of them at load.
- */
 function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [cache, setCache] = useState<Record<string, Department>>({});
@@ -509,479 +437,432 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
   const max = depts[0]?.total || 1;
 
   return (
-    <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <div className="max-h-[560px] overflow-y-auto rounded-2xl border border-rule bg-surface p-2">
-        {(depts.length ? depts : Array.from({ length: 8 }) as any[]).map((x: DeptRow | undefined, i) => (
-          x ? (
-            <button key={x.name} type="button" onClick={() => setChosen(x.name)}
-              aria-current={x.name === current}
-              className={`block w-full rounded-xl px-3.5 py-3 text-left transition-colors ${
-                x.name === current ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
-              <span className="flex items-baseline justify-between gap-3">
-                <span className={`truncate text-[13.5px] ${x.name === current ? 'font-semibold text-accent' : 'text-ink-2'}`}>{x.name}</span>
-                <span className={`tnum shrink-0 font-mono text-[11.5px] ${x.name === current ? 'text-accent' : 'text-faint'}`}>{n(x.total)}</span>
-              </span>
-              <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-rule">
-                <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.max(3, (x.total / max) * 100)}%` }} />
-              </span>
-            </button>
-          ) : <div key={i} className="m-1 h-10 animate-pulse rounded-xl bg-surface-2" />
-        ))}
-      </div>
+    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+      <div className="mx-auto max-w-6xl px-5">
+        <Eyebrow>Core departments</Eyebrow>
+        <Heading className="max-w-3xl">Explore the collection department by department.</Heading>
+        <p className="mt-4 max-w-2xl text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
+          Choose a department to see what it holds — how many articles and books, which journals carry
+          the most, and how far back it reaches.
+        </p>
 
-      <div className="overflow-hidden rounded-2xl border border-rule bg-surface">
-        <div className="on-dark border-b border-rule px-6 py-7"
-          style={{ background: 'linear-gradient(115deg, var(--hero-1) 0%, var(--hero-2) 55%, var(--hero-3) 100%)' }}>
-          <p className="on-dark-3 font-mono text-[10.5px] uppercase tracking-[0.14em]">Department</p>
-          <h3 className="mt-2 font-serif text-[30px] font-medium leading-tight">{current || '—'}</h3>
-          <p className="on-dark-2 mt-2 text-[13.5px]">
-            {row ? <>{n(row.total)} items held</> : 'Reading the catalogue…'}
-            {d?.firstYear ? <> · published {d.firstYear}–{d.lastYear}</> : null}
-          </p>
-        </div>
+        <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="max-h-[560px] overflow-y-auto rounded-2xl border bg-surface p-2" style={{ borderColor: 'var(--np-line)' }}>
+            {(depts.length ? depts : Array.from({ length: 8 }) as any[]).map((x: DeptRow | undefined, k) => (
+              x ? (
+                <button key={x.name} type="button" onClick={() => setChosen(x.name)} aria-current={x.name === current}
+                  className="block w-full rounded-xl px-3.5 py-3 text-left transition-colors"
+                  style={x.name === current ? { background: 'var(--t1-bg)' } : undefined}>
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="np-strong truncate text-[13.5px]"
+                      style={{ color: x.name === current ? 'var(--t1-ink)' : 'var(--np-ink)' }}>{x.name}</span>
+                    <span className="shrink-0 text-[11.5px]" style={{ color: 'var(--np-body)' }}>{n(x.total)}</span>
+                  </span>
+                  <span className="mt-1.5 block h-1 overflow-hidden rounded-full" style={{ background: 'var(--np-line)' }}>
+                    <span className="block h-full rounded-full"
+                      style={{ width: `${Math.max(3, (x.total / max) * 100)}%`, background: 'var(--np-amber)' }} />
+                  </span>
+                </button>
+              ) : <div key={k} className="m-1 h-10 animate-pulse rounded-xl" style={{ background: 'var(--np-line)' }} />
+            ))}
+          </div>
 
-        <div className="grid grid-cols-2 divide-x divide-rule border-b border-rule sm:grid-cols-4">
-          {[
-            ['Articles', d?.articles],
-            ['Books', d?.books],
-            ['Journals', d?.journals.length],
-            ['Publishers', d?.publishers.length],
-          ].map(([label, value]) => (
-            <div key={label as string} className="px-5 py-4">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">{label}</p>
-              <p className="mt-1 font-mono text-[20px] text-ink">
-                {loading && !d ? <span className="inline-block h-4 w-12 animate-pulse rounded bg-surface-2" /> : <Figure value={value as number | undefined} />}
+          <div className="overflow-hidden rounded-2xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
+            <div className="px-6 py-7 text-white"
+              style={{ background: 'linear-gradient(120deg, var(--np-navy) 0%, var(--np-navy-2) 70%, #23336b 100%)' }}>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">Department</p>
+              <h3 className="np-display mt-2 text-[30px] leading-tight text-white">{current || '—'}</h3>
+              <p className="mt-2 text-[13.5px] text-white/70">
+                {row ? <>{n(row.total)} items held</> : 'Reading the catalogue…'}
+                {d?.firstYear ? <> · published {d.firstYear}–{d.lastYear}</> : null}
               </p>
             </div>
-          ))}
-        </div>
 
-        <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-[1.3fr_minmax(0,1fr)]">
-          <div className="min-w-0">
-            <p className={LABEL}>Journals with the most articles</p>
-            <ul className="mt-3 divide-y divide-rule">
-              {(d?.journals.slice().sort((a, b) => b.articleCount - a.articleCount).slice(0, 5) || Array.from({ length: 4 }) as any[]).map((j: any, i: number) => (
-                j ? (
-                  <li key={j.id} className="flex items-baseline justify-between gap-4 py-2.5">
-                    <span className="min-w-0">
-                      <span className="block truncate text-[13.5px] text-ink-2">{j.title}</span>
-                      <span className="block truncate font-mono text-[10.5px] text-faint">{j.publisherName || '—'}</span>
-                    </span>
-                    <span className="tnum shrink-0 font-mono text-[12px] text-ink">{n(j.articleCount)}</span>
-                  </li>
-                ) : <li key={i} className="py-3"><div className="h-6 animate-pulse rounded bg-surface-2" /></li>
+            <div className="grid grid-cols-2 border-b sm:grid-cols-4" style={{ borderColor: 'var(--np-line)' }}>
+              {[
+                ['Articles', d?.articles], ['Books', d?.books],
+                ['Journals', d?.journals.length], ['Publishers', d?.publishers.length],
+              ].map(([label, value], k) => (
+                <div key={label as string} className="border-r px-5 py-4 last:border-r-0" style={{ borderColor: 'var(--np-line)' }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--np-body)' }}>{label}</p>
+                  <p className="np-display mt-1 text-[20px]" style={{ color: 'var(--np-ink)' }}>
+                    {loading && !d ? <span className="inline-block h-4 w-12 animate-pulse rounded" style={{ background: 'var(--np-line)' }} /> : <Figure value={value as number | undefined} />}
+                  </p>
+                </div>
               ))}
-            </ul>
-          </div>
-          <div className="min-w-0">
-            <p className={LABEL}>Publishers here</p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {(d?.publishers.slice(0, 8) || []).map(p => (
-                <span key={p.name} className="max-w-full truncate rounded-full border border-rule bg-ground px-3 py-1 text-[11.5px] text-ink-2">
-                  {p.name}
-                </span>
-              ))}
-              {!d && <div className="h-20 w-full animate-pulse rounded-xl bg-surface-2" />}
             </div>
-            {current && (
-              <Link to={`/domain/${slug(current)}`}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-accent-hover">
-                Explore {current} <ArrowRight size={15} />
-              </Link>
-            )}
+
+            <div className="p-6">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
+                Journals with the most articles
+              </p>
+              <ul className="mt-3 divide-y" style={{ borderColor: 'var(--np-line)' }}>
+                {(d?.journals.slice().sort((a, b) => b.articleCount - a.articleCount).slice(0, 5) || Array.from({ length: 4 }) as any[])
+                  .map((j: any, k: number) => (
+                    j ? (
+                      <li key={j.id} className="flex items-baseline justify-between gap-4 border-t py-2.5 first:border-t-0"
+                        style={{ borderColor: 'var(--np-line)' }}>
+                        <span className="min-w-0 truncate text-[13.5px]" style={{ color: 'var(--np-ink)' }}>{j.title}</span>
+                        <span className="shrink-0 text-[12px]" style={{ color: 'var(--np-body)' }}>{n(j.articleCount)}</span>
+                      </li>
+                    ) : <li key={k} className="py-3"><div className="h-5 animate-pulse rounded" style={{ background: 'var(--np-line)' }} /></li>
+                  ))}
+              </ul>
+              {current && (
+                <Link to={`/domain/${slug(current)}`} className={`${btnPrimary} mt-6`} style={{ background: 'var(--np-navy)' }}>
+                  Explore {current} <ArrowRight size={15} />
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </div>
+    </section>
+  );
+}
+
+// ── 6. How it is built ──────────────────────────────────────────────────────
+
+const PRINCIPLES = [
+  { icon: Layers, title: 'Structured like a library', tone: 1,
+    body: 'Every article sits in its journal, volume and issue, under a department — so a reader can walk the shelf, not only search it.' },
+  { icon: ShieldCheck, title: 'Every licence checked', tone: 5,
+    body: 'Full text is served here only where the licence allows. Where it does not, the record stays and the reader goes to the publisher.' },
+  { icon: RefreshCw, title: 'Always growing', tone: 2,
+    body: 'New titles arrive continuously from open scholarly sources, each checked for its licence and its department on the way in.' },
+  { icon: BookMarked, title: 'Picks up where you left off', tone: 6,
+    body: 'The reader remembers the page you stopped on, keeps your history, and suggests what to open next in your departments.' },
+];
+
+function Principles() {
+  return (
+    <section className="mx-auto max-w-6xl px-5 py-20">
+      <Eyebrow>How it is built</Eyebrow>
+      <Heading className="max-w-3xl">Not a pile of PDFs. A catalogue, kept the way a library keeps one.</Heading>
+      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {PRINCIPLES.map(p => (
+          <div key={p.title} className="overflow-hidden rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
+            <span aria-hidden className="-mx-6 -mt-6 mb-6 block h-1" style={{ background: `var(--t${p.tone}-ink)` }} />
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl"
+              style={{ background: `var(--t${p.tone}-bg)`, color: `var(--t${p.tone}-ink)` }}>
+              <p.icon size={19} />
+            </span>
+            <h3 className="np-strong mt-4 text-[15px]" style={{ color: 'var(--np-ink)' }}>{p.title}</h3>
+            <p className="mt-2 text-[13.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>{p.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── 7. What is new ──────────────────────────────────────────────────────────
+
+function Cover({ book, tone, className = '' }: { book: NewBook; tone: number; className?: string }) {
+  if (book.coverUrl) {
+    return (
+      <span className={`block ${className}`} style={{ background: `var(--t${tone}-bg)` }}>
+        <img src={book.coverUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+      </span>
+    );
+  }
+  return (
+    <div className={`flex flex-col justify-between p-4 ${className}`} style={{ background: `var(--t${tone}-bg)`, color: `var(--t${tone}-ink)` }}>
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-80">{book.domain || 'Book'}</span>
+      <span className="np-strong line-clamp-4 text-[15px] leading-tight">{book.title}</span>
     </div>
   );
 }
+
+function WhatIsNew({ books, articles }: { books: NewBook[]; articles: NewArticle[] }) {
+  const withCovers = books.filter(b => b.coverUrl);
+  const featured = (withCovers.length >= 3 ? withCovers : books).slice(0, 3);
+  return (
+    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+      <div className="mx-auto max-w-6xl px-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <Eyebrow>Just added</Eyebrow>
+            <Heading>The shelves move every day.</Heading>
+          </div>
+          <Link to="/digital-library" className="np-strong inline-flex items-center gap-1.5 text-[13.5px]" style={{ color: 'var(--np-ink)' }}>
+            See everything <ArrowRight size={14} />
+          </Link>
+        </div>
+
+        <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-3">
+          {(featured.length ? featured : Array.from({ length: 3 }) as any[]).map((b: NewBook | undefined, k) => (
+            b ? (
+              <Link key={b.id} to={browse('books', b.title)}
+                className="group flex flex-col overflow-hidden rounded-2xl border bg-surface transition-shadow hover:shadow-xl"
+                style={{ borderColor: 'var(--np-line)' }}>
+                <Cover book={b} tone={(k % 6) + 1} className="h-48 w-full" />
+                <div className="flex flex-1 flex-col p-5">
+                  <span className="w-fit rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                    style={{ background: `var(--t${(k % 6) + 1}-bg)`, color: `var(--t${(k % 6) + 1}-ink)` }}>
+                    {added(b.createdAt) || 'Book'}{b.domain ? ` · ${b.domain}` : ''}
+                  </span>
+                  <h3 className="np-strong mt-3 line-clamp-2 text-[17px] leading-tight" style={{ color: 'var(--np-ink)' }}>{b.title}</h3>
+                  <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
+                    {[b.authors, b.publisherName].filter(Boolean).join(' · ') || 'Open-access book'}
+                  </p>
+                  <span className="np-strong mt-4 inline-flex items-center gap-1.5 text-[12.5px]" style={{ color: 'var(--np-ink)' }}>
+                    View details <ArrowRight size={13} />
+                  </span>
+                </div>
+              </Link>
+            ) : <div key={k} className="h-80 animate-pulse rounded-2xl" style={{ background: 'var(--np-line)' }} />
+          ))}
+        </div>
+
+        <div className="mt-6 overflow-hidden rounded-2xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
+          <p className="border-b px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em]"
+            style={{ borderColor: 'var(--np-line)', color: 'var(--np-body)' }}>Newest articles</p>
+          <ul>
+            {(articles.length ? articles.slice(0, 5) : Array.from({ length: 5 }) as any[]).map((a: NewArticle | undefined, k) => (
+              <li key={a?.id || k} className="border-b px-5 py-3.5 last:border-b-0" style={{ borderColor: 'var(--np-line)' }}>
+                {a ? (
+                  <Link to={browse('articles', a.title)} className="flex items-baseline justify-between gap-4">
+                    <span className="min-w-0">
+                      <span className="block truncate text-[14px]" style={{ color: 'var(--np-ink)' }}>{a.title}</span>
+                      <span className="block truncate text-[11.5px]" style={{ color: 'var(--np-body)' }}>
+                        {[a.journalName, a.domain].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[11px]" style={{ color: 'var(--np-body)' }}>{added(a.createdAt)}</span>
+                  </Link>
+                ) : <div className="h-9 animate-pulse rounded" style={{ background: 'var(--np-line)' }} />}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── 8. How reading works ────────────────────────────────────────────────────
+
+function Walkthrough({ stats, depts, subjects, articles }: {
+  stats: Stats | null; depts: DeptRow[]; subjects: Subject[]; articles: NewArticle[];
+}) {
+  const steps = [
+    ['Search or browse', `One box over ${stats ? n(stats.total) : 'every'} items, or walk down from department to journal, volume and issue.`],
+    ['Open it where it lives', 'Whatever the licence allows opens in the reader here, page by page. The rest links to the publisher.'],
+    ['Come back to it', 'Your history is kept, the reader remembers the page, and the dashboard suggests what to read next.'],
+  ];
+  return (
+    <section className="mx-auto max-w-6xl px-5 py-20">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
+        <div>
+          <Eyebrow>How reading works</Eyebrow>
+          <Heading>From a search box to the page you stopped on.</Heading>
+          <p className="mt-4 text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
+            No request forms, no waiting for a login to be approved, no PDF sent by email. A reader
+            signs in and the library is open.
+          </p>
+          <ol className="mt-8 space-y-6">
+            {steps.map(([title, body], k) => (
+              <li key={title} className="flex gap-4">
+                <span className="np-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[14px]"
+                  style={{ background: 'var(--t2-bg)', color: 'var(--t2-ink)' }}>{k + 1}</span>
+                <span>
+                  <span className="np-strong block text-[15px]" style={{ color: 'var(--np-ink)' }}>{title}</span>
+                  <span className="mt-1 block text-[13.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>{body}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl p-5 shadow-2xl"
+          style={{ background: 'linear-gradient(140deg, var(--np-navy) 0%, #1b2f63 60%, var(--np-navy-2) 100%)' }}>
+          <div className="flex items-center gap-2 pb-4">
+            {[0, 1, 2].map(k => <span key={k} className="h-2.5 w-2.5 rounded-full bg-white/25" />)}
+            <span className="ml-2 text-[10.5px] text-white/50">the reader</span>
+          </div>
+          <div className="rounded-xl bg-surface p-4">
+            <div className="flex items-center gap-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--np-line)' }}>
+              <Search size={14} style={{ color: 'var(--np-body)' }} />
+              <span className="text-[11.5px]" style={{ color: 'var(--np-body)' }}>Search the library…</span>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {[['Departments', depts.length || undefined], ['Subjects', subjects.length || undefined], ['Articles', stats?.articles]].map(([label, value]) => (
+                <div key={label as string} className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--np-line)' }}>
+                  <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--np-body)' }}>{label}</p>
+                  <p className="np-strong mt-0.5 text-[13px]" style={{ color: 'var(--np-ink)' }}><Figure value={value as number | undefined} /></p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--np-body)' }}>Newest in the library</p>
+            <ul className="mt-1.5 space-y-2">
+              {(articles.slice(0, 3).length ? articles.slice(0, 3) : Array.from({ length: 3 }) as any[]).map((a: NewArticle | undefined, k) => (
+                <li key={a?.id || k} className="rounded-lg border px-3 py-2.5" style={{ borderColor: 'var(--np-line)' }}>
+                  {a ? (
+                    <>
+                      <p className="line-clamp-1 text-[12.5px]" style={{ color: 'var(--np-ink)' }}>{a.title}</p>
+                      <p className="mt-0.5 truncate text-[10px]" style={{ color: 'var(--np-body)' }}>
+                        {[a.journalName, a.domain].filter(Boolean).join(' · ')}
+                      </p>
+                    </>
+                  ) : <div className="h-7 animate-pulse rounded" style={{ background: 'var(--np-line)' }} />}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center justify-between rounded-lg px-3 py-2"
+              style={{ background: 'var(--t2-bg)', color: 'var(--t2-ink)' }}>
+              <span className="text-[10.5px] font-bold uppercase tracking-wider">Resume reading</span>
+              <span className="text-[10.5px]">page 7 of 14</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── 9. Who it is for ────────────────────────────────────────────────────────
+
+function Audiences({ stats }: { stats: Stats | null }) {
+  const cards = [
+    { icon: GraduationCap, who: 'Students', tone: 1, to: '/for-students',
+      blurb: 'Everything the department holds, from the first year onwards.',
+      points: ['Search the whole library from one box', 'Read in the browser, nothing to install', 'Added by your librarian on Pro'] },
+    { icon: UserSquare2, who: 'Faculty & researchers', tone: 5, to: '/for-students',
+      blurb: 'Browse the way you would walk a shelf, and pick up where you stopped.',
+      points: [`Search ${stats ? n(stats.total) : 'the whole'} items`, 'Department, journal, volume, issue', 'History kept, with suggestions'] },
+    { icon: Library, who: 'Librarians', tone: 2, to: '/for-institutions',
+      blurb: 'Run access for the whole institution from one screen.',
+      points: ['Add faculty and researchers yourself', 'See reading by week and subject', 'Find the searches that came back empty'] },
+    { icon: Building2, who: 'Institutions', tone: 6, to: '/for-institutions',
+      blurb: 'Free to start, and Pro when the sessions get in the way.',
+      points: ['Free: the whole library, in half-hour sessions', 'Pro: no session limit for anyone you add', 'Pro: students added, in agreed numbers'] },
+  ];
+  return (
+    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+      <div className="mx-auto max-w-6xl px-5">
+        <Eyebrow>Community</Eyebrow>
+        <Heading className="max-w-3xl">One library, four ways in.</Heading>
+        <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {cards.map(c => (
+            <div key={c.who} className="flex flex-col rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl"
+                style={{ background: `var(--t${c.tone}-bg)`, color: `var(--t${c.tone}-ink)` }}>
+                <c.icon size={19} />
+              </span>
+              <h3 className="np-strong mt-4 text-[18px]" style={{ color: 'var(--np-ink)' }}>{c.who}</h3>
+              <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: 'var(--np-body)' }}>{c.blurb}</p>
+              <ul className="mt-4 flex-1 space-y-2">
+                {c.points.map(p => (
+                  <li key={p} className="flex gap-2 text-[13px] leading-snug" style={{ color: 'var(--np-ink)' }}>
+                    <ChevronRight size={14} className="mt-[2px] shrink-0" style={{ color: `var(--t${c.tone}-ink)` }} />{p}
+                  </li>
+                ))}
+              </ul>
+              <Link to={c.to} className="np-strong mt-5 inline-flex items-center gap-1.5 text-[13px]"
+                style={{ color: `var(--t${c.tone}-ink)` }}>
+                Learn more <ArrowRight size={14} />
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── 10. Who is with us, in full ─────────────────────────────────────────────
+
+function WithUs({ inst }: { inst: Institutions | null }) {
+  const [kind, setKind] = useState('All');
+  if (!inst?.institutions?.length) return null;
+  const kinds = ['All', ...Object.keys(inst.byKind || {}).sort((a, b) => (inst.byKind[b] || 0) - (inst.byKind[a] || 0))];
+  const shown = kind === 'All' ? inst.institutions : inst.institutions.filter(i => i.kind === kind);
+
+  return (
+    <section className="mx-auto max-w-6xl px-5 py-20">
+      <Eyebrow>Who is with us</Eyebrow>
+      <Heading className="max-w-3xl">
+        The institutions whose people read here.
+      </Heading>
+      <p className="mt-4 max-w-2xl text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
+        {n(inst.total)} institutions have their faculty, researchers and students on the library, and
+        members between them name {n(inst.organisations)} organisations.
+      </p>
+
+      <div className="mt-7 flex flex-wrap gap-2">
+        {kinds.map(k => (
+          <button key={k} type="button" onClick={() => setKind(k)}
+            className="np-strong rounded-full px-4 py-2 text-[12.5px] transition-colors"
+            style={kind === k
+              ? { background: 'var(--np-navy)', color: '#fff' }
+              : { border: '1px solid var(--np-line)', color: 'var(--np-ink)' }}>
+            {k === 'All' ? `All ${inst.total}` : `${plural(k, inst.byKind[k] || 0)} ${inst.byKind[k] || 0}`}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border sm:grid-cols-2 lg:grid-cols-3"
+        style={{ background: 'var(--np-line)', borderColor: 'var(--np-line)' }}>
+        {shown.map(i => (
+          <div key={i.name} className="flex items-center gap-3 bg-surface px-5 py-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+              style={{ background: 'var(--t6-bg)', color: 'var(--t6-ink)' }}>
+              <Building2 size={16} />
+            </span>
+            <span className="min-w-0">
+              <span className="np-strong block truncate text-[13.5px]" style={{ color: 'var(--np-ink)' }}>{i.name}</span>
+              <span className="block text-[11.5px]" style={{ color: 'var(--np-body)' }}>
+                {i.kind}{i.members ? ` · ${n(i.members)} member${i.members === 1 ? '' : 's'}` : ''}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-4 text-[12px]" style={{ color: 'var(--np-body)' }}>
+        Counted from the accounts on the library today. An institution appears here once its people
+        have joined.
+      </p>
+    </section>
+  );
+}
+
+// ── 11. The collection at a glance ──────────────────────────────────────────
 
 function ChartCard({ label, title, children, note }: {
   label: string; title: string; children: React.ReactNode; note?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col rounded-2xl border border-rule bg-surface p-6">
-      <p className={LABEL}>{label}</p>
-      <h3 className="mt-2 text-[15px] font-semibold text-ink">{title}</h3>
+    <div className="flex flex-col rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>{label}</p>
+      <h3 className="np-strong mt-2 text-[15px]" style={{ color: 'var(--np-ink)' }}>{title}</h3>
       <div className="mt-5 flex-1">{children}</div>
-      {note && <div className="mt-4 border-t border-rule pt-3 text-[12px] leading-relaxed text-muted">{note}</div>}
+      {note && (
+        <div className="mt-4 border-t pt-3 text-[12px] leading-relaxed" style={{ borderColor: 'var(--np-line)', color: 'var(--np-body)' }}>
+          {note}
+        </div>
+      )}
     </div>
   );
 }
 
 const ChartSkeleton = ({ h = 260 }: { h?: number }) => (
-  <div className="animate-pulse rounded-xl bg-surface-2" style={{ height: h }} />
+  <div className="animate-pulse rounded-xl" style={{ height: h, background: 'var(--np-line)' }} />
 );
 
-function Audience({ icon: Icon, who, blurb, points, to, t }: {
-  icon: any; who: string; blurb: string; points: string[]; to: string; t: Tone;
-}) {
-  return (
-    <div className="flex flex-col rounded-2xl border border-rule bg-surface p-6">
-      <span style={tone(t)} className="flex h-10 w-10 items-center justify-center rounded-xl">
-        <Icon size={18} />
-      </span>
-      <h3 className="mt-4 font-serif text-[20px] font-medium text-ink">{who}</h3>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-muted">{blurb}</p>
-      <ul className="mt-4 flex-1 space-y-2">
-        {points.map(p => (
-          <li key={p} className="flex gap-2 text-[13px] leading-snug text-ink-2">
-            <ChevronRight size={14} className="mt-[2px] shrink-0" style={toneInk(t)} /><span>{p}</span>
-          </li>
-        ))}
-      </ul>
-      <Link to={to} style={toneInk(t)} className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold hover:underline">
-        Learn more <ArrowRight size={14} />
-      </Link>
-    </div>
-  );
-}
-
-/** Where the collection comes from, as the reference shows its affiliations. */
-function Provenance({ publishers }: { publishers: Publisher[] }) {
-  const [tab, setTab] = useState<'publishers' | 'sources'>('publishers');
-  const sources: { name: string; what: string; gives: string; t: Tone }[] = [
-    { name: 'DOAJ', what: 'Directory of Open Access Journals', gives: 'Journals, and the licence each one declares', t: 3 },
-    { name: 'DOAB', what: 'Directory of Open Access Books', gives: 'Books, catalogued with a link to the publisher', t: 2 },
-    { name: 'OpenAlex', what: 'Open catalogue of scholarly work', gives: 'Articles, with their journal, volume and issue', t: 1 },
-    { name: 'OAPEN Library', what: 'Open-access book library', gives: 'The book files themselves, where they exist', t: 5 },
-  ];
-  return (
-    <div className="rounded-2xl border border-rule bg-surface p-6">
-      <div className="flex flex-wrap gap-1.5">
-        {([['publishers', `Publishers ${publishers.length || ''}`], ['sources', `Sources ${sources.length}`]] as const).map(([id, label]) => (
-          <button key={id} type="button" onClick={() => setTab(id)}
-            className={`rounded-lg px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
-              tab === id ? 'bg-ink text-surface' : 'border border-rule text-ink-2 hover:bg-surface-2'}`}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'publishers' ? (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {publishers.slice(0, 24).map((p, i) => (
-            <span key={p.name} style={tone(((i % 6) + 1) as Tone)}
-              className="inline-flex max-w-full items-center gap-2 rounded-full px-3.5 py-1.5 text-[12.5px]">
-              <span className="truncate">{p.name}</span>
-              <span className="tnum shrink-0 font-mono text-[11px] opacity-70">{n(p.count)}</span>
-            </span>
-          ))}
-          {!publishers.length && <div className="h-24 w-full animate-pulse rounded-xl bg-surface-2" />}
-        </div>
-      ) : (
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {sources.map(s => (
-            <div key={s.name} className="overflow-hidden rounded-xl border border-rule bg-ground p-4"
-              style={{ borderLeft: `3px solid var(--t${s.t}-ink)` }}>
-              <p style={toneInk(s.t)} className="font-mono text-[12px] uppercase tracking-wider">{s.name}</p>
-              <p className="mt-1 text-[13.5px] text-ink">{s.what}</p>
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{s.gives}</p>
-            </div>
-          ))}
-        </div>
-      )}
-      <p className="mt-5 border-t border-rule pt-3 text-[11.5px] leading-relaxed text-faint">
-        Publisher names are shown as the catalogue records them. Nothing is served here unless the
-        licence on the work allows it.
-      </p>
-    </div>
-  );
-}
-
-export function HomePreview() {
-  const navigate = useNavigate();
-  const { stats, publishers, articles, books, insights, subjects } = useLibrary();
-  const [q, setQ] = useState('');
-
-  const depts = stats?.departmentTotals || [];
-  const withCovers = books.filter(b => b.coverUrl);
-  const featured = (withCovers.length >= 3 ? withCovers : books).slice(0, 3);
+function AtAGlance({ insights, subjects, depts }: { insights: Insights | null; subjects: Subject[]; depts: DeptRow[] }) {
   const years = insights?.years || [];
-  const span = years.length ? `${years[0].year}–${years[years.length - 1].year}` : undefined;
-
   return (
-    <div className="bg-ground text-ink">
-      <Helmet>
-        <title>STM Digital Library — research your institution can open</title>
-      </Helmet>
+    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+      <div className="mx-auto max-w-6xl px-5">
+        <Eyebrow>The collection at a glance</Eyebrow>
+        <Heading className="max-w-3xl">What it is, where you read it, and on what terms.</Heading>
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      {/* Every grid here names one column on a phone. Left unnamed, the implicit
-          column sized itself to the longest truncated line — a journal title —
-          and the page came out 411px wide on a 390px screen, cutting the hero
-          text off at the right. */}
-      <section className="relative overflow-hidden"
-        style={{
-          background:
-            'radial-gradient(1100px 520px at 12% 8%, color-mix(in srgb, var(--hero-2) 75%, transparent), transparent 60%),'
-            + 'radial-gradient(900px 480px at 88% 92%, color-mix(in srgb, var(--hero-3) 85%, transparent), transparent 62%),'
-            + 'linear-gradient(115deg, var(--hero-1) 0%, var(--hero-2) 48%, var(--hero-3) 100%)',
-        }}>
-        <HeroGlow />
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 pb-28 pt-14 lg:grid-cols-[1.1fr_1fr] lg:pb-32 lg:pt-20">
-          <div className="min-w-0">
-            <p className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em]"
-              style={{ background: 'color-mix(in srgb, var(--hero-warm) 18%, transparent)', color: 'var(--hero-warm)' }}>
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--hero-warm)' }} /> The collection
-            </p>
-            <h1 className="on-dark mt-5 font-serif text-[40px] font-medium leading-[1.08] tracking-tight sm:text-[54px]">
-              An academic library your whole institution can{' '}
-              <span className="relative whitespace-nowrap" style={{ color: 'var(--hero-warm)' }}>
-                open
-                <span aria-hidden className="absolute inset-x-0 -bottom-1 h-[3px] rounded-full"
-                  style={{ background: 'var(--hero-warm)', opacity: 0.75 }} />
-              </span>.
-            </h1>
-            <p className="on-dark-2 mt-5 max-w-xl text-[16px] leading-relaxed">
-              <b className="on-dark"><Figure value={stats?.total} /> items</b> of research —{' '}
-              <Figure value={stats?.articles} /> articles and <Figure value={stats?.books} /> books —
-              catalogued by department, journal, volume and issue, with every licence checked
-              before anything is served.
-            </p>
-
-            <form
-              onSubmit={e => { e.preventDefault(); if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`); }}
-              className="on-dark-edge mt-7 flex max-w-xl items-center gap-2 rounded-xl border bg-surface p-1.5 shadow-xl focus-within:border-accent"
-            >
-              <Search size={18} className="ml-2.5 shrink-0 text-faint" />
-              <input
-                value={q} onChange={e => setQ(e.target.value)}
-                placeholder="Search articles, books, journals, authors…"
-                className="min-w-0 flex-1 bg-transparent px-1 py-2 text-[14.5px] text-ink outline-none placeholder:text-faint"
-              />
-              <button type="submit" className="shrink-0 rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white hover:bg-accent-hover">
-                Search
-              </button>
-            </form>
-
-            {/* Who the library is for, as the reference sets out its audiences. */}
-            <div className="mt-6 flex flex-wrap gap-2">
-              {[
-                { label: 'Students', to: '/for-students', icon: GraduationCap, t: 1 as Tone },
-                { label: 'Faculty & researchers', to: '/for-students', icon: UserSquare2, t: 5 as Tone },
-                { label: 'Librarians', to: '/for-institutions', icon: Library, t: 2 as Tone },
-                { label: 'Institutions', to: '/for-institutions', icon: Building2, t: 6 as Tone },
-              ].map(a => (
-                <Link key={a.label} to={a.to}
-                  className="on-dark-2 on-dark-edge on-dark-fill inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12.5px]">
-                  <a.icon size={14} style={onDark(a.t)} /> {a.label}
-                </Link>
-              ))}
-            </div>
-
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link to="/signup" className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-[14px] font-semibold text-white hover:bg-accent-hover">
-                Register Now <ArrowRight size={16} />
-              </Link>
-              <Link to="/digital-library" className="on-dark on-dark-edge on-dark-fill inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-semibold">
-                Browse the collection
-              </Link>
-            </div>
-            <p className="on-dark-3 mt-4 text-[12.5px]">
-              Free to register · the whole library in half-hour sessions · Pro removes the limit
-            </p>
-          </div>
-
-          {/* The catalogue itself, as the product sees it — one fact a slide. */}
-          <HeroSlider stats={stats} insights={insights} articles={articles} publishers={publishers} depts={depts} />
-        </div>
-      </section>
-
-      {/* ── Ways in, laid over the foot of the hero ──────────────────────── */}
-      <section className="relative z-10 mx-auto -mt-20 max-w-6xl px-5">
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-rule bg-rule shadow-xl sm:grid-cols-2 lg:grid-cols-4">
-          {WAYS_IN.map(w => (
-            <Link key={w.title} to={w.to} className="group flex items-center gap-3 bg-surface px-5 py-4 hover:bg-surface-2">
-              <span style={tone(w.t)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
-                <w.icon size={17} />
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-[13.5px] font-semibold text-ink group-hover:text-accent">{w.title}</span>
-                <span className="block truncate text-[11.5px] text-muted">{w.sub}</span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ── The publishers, walking past ─────────────────────────────────── */}
-      <section className="mt-16 border-y border-rule bg-surface py-6">
-        <div className="mx-auto mb-4 max-w-6xl px-5">
-          <Eyebrow t={5}>Published by {n(publishers.length || undefined)} publishers, among them</Eyebrow>
-        </div>
-        <div className="marquee relative overflow-hidden">
-          <div className="marquee-track flex w-max gap-3">
-            {(publishers.length ? publishers.slice(0, 30).concat(publishers.slice(0, 30)) : []).map((p, i) => (
-              <span key={`${p.name}-${i}`} style={tone(((i % 6) + 1) as Tone)}
-                className="inline-flex shrink-0 items-center gap-2.5 rounded-full px-4 py-2 text-[13px]">
-                {p.name}
-                <span className="tnum font-mono text-[11px] opacity-70">{n(p.count)}</span>
-              </span>
-            ))}
-          </div>
-          <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-surface to-transparent" />
-          <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-surface to-transparent" />
-        </div>
-      </section>
-
-      {/* ── What the library adds up to ──────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 py-20">
-        <Eyebrow t={3}>Built for trust, not for the brochure</Eyebrow>
-        <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
-          Every figure on this page is read from the catalogue as it loads.
-        </h2>
-        <dl className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: Layers, value: stats?.total, label: 'Items of content', t: 1 as Tone, hint: `Articles, books and archived material across ${depts.length || '—'} departments` },
-            { icon: FileText, value: stats?.articles, label: 'Research articles', t: 3 as Tone, hint: 'Each one in its journal, volume and issue' },
-            { icon: BookOpen, value: stats?.books, label: 'Books', t: 2 as Tone, hint: 'Open-access monographs and edited volumes' },
-            { icon: Users, value: stats?.authors, label: 'Authors indexed', t: 6 as Tone, hint: 'Searchable by name, with everything they wrote' },
-          ].map(s => (
-            <div key={s.label}>
-              <span style={tone(s.t)} className="flex h-11 w-11 items-center justify-center rounded-xl">
-                <s.icon size={20} />
-              </span>
-              <dd className="mt-4 font-mono text-[32px] leading-none text-ink"><Figure value={s.value} /></dd>
-              <dt className="mt-2 text-[14px] font-semibold text-ink">{s.label}</dt>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-muted">{s.hint}</p>
-            </div>
-          ))}
-        </dl>
-      </section>
-
-      {/* ── Department explorer ──────────────────────────────────────────── */}
-      <section className="border-y border-rule bg-ground">
-        <div className="mx-auto max-w-6xl px-5 py-20">
-          <Eyebrow t={1}>Core departments</Eyebrow>
-          <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
-            Explore the collection department by department.
-          </h2>
-          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
-            Choose a department to see what it actually holds — how many articles and books, which
-            journals carry the most, and which publishers they come from.
-          </p>
-          <DepartmentExplorer depts={depts} />
-        </div>
-      </section>
-
-      {/* ── Why it reads like a library ──────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 py-20">
-        <Eyebrow t={2}>How it is built</Eyebrow>
-        <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
-          Not a pile of PDFs. A catalogue, kept the way a library keeps one.
-        </h2>
-        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Principle t={1} icon={Layers} title="Structured like a library"
-            proof={
-              <div className="flex flex-wrap items-center gap-1 font-mono text-[10.5px] text-muted">
-                {['Department', 'Journal', 'Volume', 'Issue', 'Article'].map((s, i) => (
-                  <span key={s} className="flex items-center gap-1">
-                    {i > 0 && <ChevronRight size={11} className="text-faint" />}
-                    <span className="rounded bg-surface-2 px-1.5 py-0.5">{s}</span>
-                  </span>
-                ))}
-              </div>
-            }>
-            Every article sits in its journal, volume and issue, under a department — so a reader can
-            browse the way they would walk a shelf, not only search.
-          </Principle>
-          <Principle t={5} icon={ShieldCheck} title="Every licence checked"
-            proof={<p className="font-mono text-[10.5px] text-muted">Served here · or linked to the publisher's copy</p>}>
-            Full text is shown inside the library only where its licence allows it. Where it does not,
-            the record is kept and the reader is sent to the publisher's own copy.
-          </Principle>
-          <Principle t={2} icon={RefreshCw} title="Always growing"
-            proof={<p className="font-mono text-[10.5px] text-muted">DOAJ · DOAB · OpenAlex</p>}>
-            New titles arrive continuously from open scholarly sources, and each is checked for its
-            licence and its department on the way in.
-          </Principle>
-          <Principle t={6} icon={BookMarked} title="Picks up where you left off"
-            proof={<p className="font-mono text-[10.5px] text-muted">Resume · history · what to open next</p>}>
-            The reader remembers the page you stopped on, keeps your reading history, and suggests what
-            to open next in the departments you care about.
-          </Principle>
-        </div>
-      </section>
-
-      {/* ── Just added ───────────────────────────────────────────────────── */}
-      <section className="border-y border-rule bg-surface">
-        <div className="mx-auto max-w-6xl px-5 py-20">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <Eyebrow t={4}>Just added</Eyebrow>
-              <h2 className="mt-3 font-serif text-[32px] font-medium leading-tight text-ink">
-                The shelves move every day.
-              </h2>
-              <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">
-                The newest books to reach the catalogue, and the articles that arrived with them.
-              </p>
-            </div>
-            <Link to="/digital-library" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent hover:underline">
-              See everything <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-3">
-            {(featured.length ? featured : Array.from({ length: 3 }) as any[]).map((b: NewBook | undefined, i) => (
-              b ? (
-                <Link key={b.id} to={browse('books', b.title)}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-rule bg-ground transition-shadow hover:shadow-lg">
-                  <Cover book={b} className="h-52 w-full" tone={((i % 6) + 1) as Tone} />
-                  <div className="flex flex-1 flex-col p-5">
-                    <p style={tone(((i % 6) + 1) as Tone)}
-                      className="inline-flex w-fit rounded-full px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.14em]">
-                      {added(b.createdAt) || 'Book'}{b.domain ? ` · ${b.domain}` : ''}
-                    </p>
-                    <h3 className="mt-2 line-clamp-2 font-serif text-[19px] font-medium leading-tight text-ink group-hover:text-accent">
-                      {b.title}
-                    </h3>
-                    <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-muted">
-                      {[b.authors, b.publisherName].filter(Boolean).join(' · ') || 'Open-access book'}
-                    </p>
-                    <span style={toneInk(((i % 6) + 1) as Tone)} className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold">
-                      View details <ArrowRight size={13} />
-                    </span>
-                  </div>
-                </Link>
-              ) : <div key={i} className="h-80 animate-pulse rounded-2xl bg-surface-2" />
-            ))}
-          </div>
-
-          <div className="mt-6 overflow-hidden rounded-2xl border border-rule bg-ground">
-            <p className={`${LABEL} border-b border-rule px-5 py-3`}>Newest articles</p>
-            <ul className="divide-y divide-rule">
-              {(articles.length ? articles.slice(0, 5) : Array.from({ length: 5 }) as any[]).map((a: NewArticle | undefined, i) => (
-                <li key={a?.id || i} className="px-5 py-3.5">
-                  {a ? (
-                    <Link to={browse('articles', a.title)} className="group flex items-baseline justify-between gap-4">
-                      <span className="min-w-0">
-                        <span className="block truncate text-[14px] text-ink-2 group-hover:text-accent">{a.title}</span>
-                        <span className="block truncate font-mono text-[11px] text-faint">
-                          {[a.journalName, a.domain].filter(Boolean).join(' · ')}
-                        </span>
-                      </span>
-                      <span className="shrink-0 font-mono text-[10.5px] text-faint">{added(a.createdAt)}</span>
-                    </Link>
-                  ) : <div className="h-9 animate-pulse rounded bg-surface-2" />}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* ── At a glance: what, where, on what terms ──────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 pt-20">
-        <Eyebrow t={6}>The collection at a glance</Eyebrow>
-        <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
-          What it is, where you read it, and on what terms.
-        </h2>
-        <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-3">
           <ChartCard label="Composition" title="What the library is made of"
-            note={insights?.composition.otherTypes.length ? (
-              <>Other: {insights.composition.otherTypes.map(t => `${t.type} ${n(t.n)}`).join(' · ')}</>
-            ) : undefined}>
+            note={insights?.composition.otherTypes.length
+              ? <>Other: {insights.composition.otherTypes.map(t => `${t.type} ${n(t.n)}`).join(' · ')}</> : undefined}>
             {insights ? (
               <Donut centerLabel="items in all" slices={[
                 { key: 'articles', label: 'Articles', value: insights.composition.articles, color: 'var(--series-1)' },
@@ -992,11 +873,7 @@ export function HomePreview() {
           </ChartCard>
 
           <ChartCard label="Access" title="Where you read it"
-            note={insights ? (
-              <>Full text is shown here only where the licence allows; otherwise the reader goes to the
-              publisher's own copy. Counts the {n(insights.access.readHere + insights.access.atPublisher + insights.access.recordOnly)} articles
-              and books in the structured catalogue — archived items carry no access record.</>
-            ) : undefined}>
+            note={insights ? <>Full text is shown here only where the licence allows; otherwise the reader goes to the publisher's own copy.</> : undefined}>
             {insights ? (
               <Donut centerLabel="in the catalogue" slices={[
                 { key: 'here', label: 'Read here, in the library', value: insights.access.readHere, color: 'var(--acc-1)' },
@@ -1007,23 +884,16 @@ export function HomePreview() {
           </ChartCard>
 
           <ChartCard label="Licences" title="On what terms"
-            note={insights ? (
-              <>Ordered from most open to most restricted. Every one of the{' '}
-              {n(insights.licences.reduce((t, l) => t + l.n, 0))} catalogue articles carries its licence;
-              archived periodicals carry no licence record.</>
-            ) : undefined}>
+            note={insights ? <>Ordered from most open to most restricted. Every catalogue article carries its licence.</> : undefined}>
             {insights ? (
-              <Donut centerLabel="catalogue articles" slices={insights.licences.map((l, i) => ({
-                key: l.key, label: l.label, value: l.n, color: `var(--lic-${i + 1})`,
+              <Donut centerLabel="catalogue articles" slices={insights.licences.map((l, k) => ({
+                key: l.key, label: l.label, value: l.n, color: `var(--lic-${k + 1})`,
               }))} />
             ) : <ChartSkeleton />}
           </ChartCard>
         </div>
-      </section>
 
-      {/* ── How current, and in which subjects ───────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 pt-4">
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_1fr]">
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.3fr_1fr]">
           <ChartCard label="Recency" title="Articles by year of publication"
             note={years.length ? `${years[years.length - 1].year} counts the year so far.` : undefined}>
             {years.length
@@ -1036,179 +906,173 @@ export function HomePreview() {
               : <ChartSkeleton h={200} />}
           </ChartCard>
         </div>
-      </section>
 
-      {/* ── From search to reading ───────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 py-20">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-center">
-          <div>
-            <Eyebrow t={5}>How reading works</Eyebrow>
-            <h2 className="mt-3 font-serif text-[32px] font-medium leading-tight text-ink">
-              From a search box to the page you stopped on.
-            </h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-muted">
-              No request forms, no waiting for a login to be approved, no PDF sent by email. A reader
-              signs in and the library is open.
-            </p>
-            <ol className="mt-8 space-y-6">
-              {[
-                ['Search or browse', `One box over ${stats ? n(stats.total) : 'every'} items, or walk down from department to journal, volume and issue.`],
-                ['Open it where it lives', 'Whatever the licence allows opens in the reader here, page by page. The rest links to the publisher.'],
-                ['Come back to it', 'Your history is kept, the reader remembers the page, and the dashboard suggests what to read next.'],
-              ].map(([title, body], i) => (
-                <li key={title} className="flex gap-4">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-accent font-mono text-[13px] text-accent">
-                    {i + 1}
-                  </span>
-                  <span>
-                    <span className="block text-[15px] font-semibold text-ink">{title}</span>
-                    <span className="mt-1 block text-[13.5px] leading-relaxed text-muted">{body}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          {/* The product, drawn rather than photographed: the reader's own
-              furniture, with this library's real figures in it. */}
-          <div className="overflow-hidden rounded-2xl border border-rule p-5 shadow-xl"
-            style={{ background: 'linear-gradient(140deg, var(--hero-1) 0%, var(--hero-3) 60%, var(--hero-2) 100%)' }}>
-            <div className="flex items-center gap-2 pb-4">
-              <span className="on-dark-dot h-2.5 w-2.5 rounded-full" />
-              <span className="on-dark-dot h-2.5 w-2.5 rounded-full" />
-              <span className="on-dark-dot h-2.5 w-2.5 rounded-full" />
-              <span className="on-dark-3 ml-2 font-mono text-[10.5px]">the reader</span>
-            </div>
-            <div className="rounded-xl bg-surface p-4">
-              <div className="flex items-center gap-2 rounded-lg border border-rule bg-ground px-3 py-2">
-                <Search size={14} className="text-faint" />
-                <span className="font-mono text-[11.5px] text-faint">Search the library…</span>
-              </div>
-              {/* What the reader has to search across, not the results of any
-                  one search — a figure standing in for a result count would be
-                  the one invented number on the page. */}
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {[
-                  ['Departments', depts.length || undefined],
-                  ['Subjects', subjects.length || undefined],
-                  ['Articles', stats?.articles],
-                ].map(([label, value]) => (
-                  <div key={label as string} className="rounded-lg border border-rule bg-ground px-3 py-2">
-                    <p className="font-mono text-[9px] uppercase tracking-wider text-faint">{label}</p>
-                    <p className="mt-0.5 font-mono text-[13px] text-ink"><Figure value={value as number | undefined} /></p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 font-mono text-[9px] uppercase tracking-wider text-faint">Newest in the library</p>
-              <ul className="mt-1.5 space-y-2">
-                {(articles.slice(0, 3).length ? articles.slice(0, 3) : Array.from({ length: 3 }) as any[]).map((a: NewArticle | undefined, i) => (
-                  <li key={a?.id || i} className="rounded-lg border border-rule bg-ground px-3 py-2.5">
-                    {a ? (
-                      <>
-                        <p className="line-clamp-1 text-[12.5px] text-ink-2">{a.title}</p>
-                        <p className="mt-0.5 truncate font-mono text-[10px] text-faint">{[a.journalName, a.domain].filter(Boolean).join(' · ')}</p>
-                      </>
-                    ) : <div className="h-7 animate-pulse rounded bg-surface-2" />}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3 flex items-center justify-between rounded-lg bg-accent-soft px-3 py-2">
-                <span className="font-mono text-[10.5px] uppercase tracking-wider text-accent">Resume reading</span>
-                <span className="font-mono text-[10.5px] text-accent">page 7 of 14</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 pt-5 sm:grid-cols-4">
-              {[
-                ['In-app', 'No download needed'],
-                ['Kept', 'History and place'],
-                ['Cited', 'DOI on every record'],
-                ['Open', span ? `Covers ${span}` : 'Recent work'],
-              ].map(([t, s]) => (
-                <div key={t}>
-                  <p className="on-dark text-[12.5px] font-semibold">{t}</p>
-                  <p className="on-dark-3 mt-0.5 text-[11.5px] leading-snug">{s}</p>
-                </div>
-              ))}
-            </div>
+        <div className="mt-5 rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
+            Everything held, department by department
+          </p>
+          <div className="mt-5">
+            {depts.length
+              ? <Collection rows={depts} />
+              : <div className="space-y-4">{[0, 1, 2, 3, 4].map(k => <div key={k} className="h-7 animate-pulse rounded" style={{ background: 'var(--np-line)' }} />)}</div>}
           </div>
         </div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
-      {/* ── Who we serve ─────────────────────────────────────────────────── */}
-      <section className="border-y border-rule bg-surface">
-        <div className="mx-auto max-w-6xl px-5 py-20">
-          <Eyebrow t={1}>Who it is for</Eyebrow>
-          <h2 className="mt-3 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
-            One library, four ways in.
+// ── 12. Where the collection comes from ─────────────────────────────────────
+
+const SOURCES = [
+  { name: 'DOAJ', what: 'Directory of Open Access Journals', gives: 'Journals, and the licence each one declares', tone: 3 },
+  { name: 'DOAB', what: 'Directory of Open Access Books', gives: 'Books, catalogued with a link to the publisher', tone: 2 },
+  { name: 'OpenAlex', what: 'Open catalogue of scholarly work', gives: 'Articles, with their journal, volume and issue', tone: 1 },
+  { name: 'OAPEN Library', what: 'Open-access book library', gives: 'The book files themselves, where they exist', tone: 5 },
+];
+
+function Sources() {
+  return (
+    <section className="mx-auto max-w-6xl px-5 py-20">
+      <Eyebrow>Where it comes from</Eyebrow>
+      <Heading className="max-w-3xl">Open scholarship, with its paperwork.</Heading>
+      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {SOURCES.map(s => (
+          <div key={s.name} className="rounded-2xl border bg-surface p-6"
+            style={{ borderColor: 'var(--np-line)', borderLeft: `3px solid var(--t${s.tone}-ink)` }}>
+            <p className="np-strong text-[15px]" style={{ color: `var(--t${s.tone}-ink)` }}>{s.name}</p>
+            <p className="mt-1 text-[13px]" style={{ color: 'var(--np-ink)' }}>{s.what}</p>
+            <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>{s.gives}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-5 text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
+        Every journal's licence is decided once, at the journal, before a single article is fetched
+        from it. Nothing is served here unless that licence allows it.
+      </p>
+    </section>
+  );
+}
+
+// ── 13. Questions ───────────────────────────────────────────────────────────
+
+const FAQS: [string, string][] = [
+  ['Is it really free?',
+    'Yes. A free membership reads the entire library — every subject and every kind of material — in half-hour sessions, four a day. Nothing is charged, and no card is asked for.'],
+  ['What is the half-hour session?',
+    'On free membership the library opens for thirty minutes at a time, four times a day, with two hours between sessions. The clock stops when you sign out, and whatever is left of a session is kept for your next visit. Pro removes the clock entirely.'],
+  ['Why can I read some things here and not others?',
+    'Each work carries the licence it was published under. Where that licence allows it, the full text opens in the reader here. Where it does not, we keep the catalogue record and send you to the publisher\'s own copy — and say so on the page, rather than letting you find out after a click.'],
+  ['Can my college add its own people?',
+    'Yes. A librarian adds faculty and researchers themselves, as many as they like, at no extra cost and without waiting for us to approve anyone. Students can be added on Pro.'],
+  ['Where does the content come from?',
+    'Open scholarly sources — DOAJ for journals, DOAB and OAPEN for books, OpenAlex for articles — checked for licence and department on the way in. Nothing is scraped from behind a paywall.'],
+  ['What do you do with my reading history?',
+    'It is used to show you where you stopped and to suggest what to open next, and your librarian sees reading by week and by subject for the institution. It is not sold, and it is not shared with publishers.'],
+];
+
+function Questions() {
+  const [open, setOpen] = useState<number | null>(0);
+  return (
+    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+      <div className="mx-auto max-w-4xl px-5">
+        <Eyebrow>Before you register</Eyebrow>
+        <Heading>Common questions.</Heading>
+        <div className="mt-10 overflow-hidden rounded-2xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
+          {FAQS.map(([q, a], k) => (
+            <div key={q} className="border-b last:border-b-0" style={{ borderColor: 'var(--np-line)' }}>
+              <button type="button" onClick={() => setOpen(open === k ? null : k)} aria-expanded={open === k}
+                className="flex w-full items-center gap-4 px-6 py-5 text-left">
+                <span className="np-display text-[13px]" style={{ color: 'var(--np-amber)' }}>{String(k + 1).padStart(2, '0')}</span>
+                <span className="np-strong flex-1 text-[15px]" style={{ color: 'var(--np-ink)' }}>{q}</span>
+                <ChevronDown size={18} className={`shrink-0 transition-transform ${open === k ? 'rotate-180' : ''}`}
+                  style={{ color: 'var(--np-body)' }} />
+              </button>
+              {open === k && (
+                <p className="px-6 pb-5 pl-[4.4rem] text-[14px] leading-relaxed" style={{ color: 'var(--np-body)' }}>{a}</p>
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="mt-5 text-[13px]" style={{ color: 'var(--np-body)' }}>
+          Something else? <Link to="/faq" className="np-strong underline" style={{ color: 'var(--np-ink)' }}>All questions</Link>
+          {' '}or <Link to="/contact" className="np-strong underline" style={{ color: 'var(--np-ink)' }}>ask us</Link>.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ── 14. The closing band, and the notice ────────────────────────────────────
+
+function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | null }) {
+  return (
+    <>
+      <section className="relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, var(--np-navy) 0%, var(--np-navy-2) 60%, #1b2f63 100%)' }}>
+        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70"
+          style={{ background: 'radial-gradient(700px 360px at 80% 0%, rgba(245,179,1,0.12), transparent 60%)' }} />
+        <div className="relative mx-auto max-w-4xl px-5 py-20 text-center">
+          <Eyebrow onDark>Your reading starts here</Eyebrow>
+          <h2 className="np-display mx-auto mt-5 max-w-2xl text-[34px] leading-tight text-white sm:text-[42px]">
+            Open the library for your institution.
           </h2>
-          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Audience t={1} icon={GraduationCap} who="Students" to="/for-students"
-              blurb="Everything the department holds, from the first year onwards."
-              points={['Search the whole library from one box', 'Read in the browser, nothing to install', 'Added by your librarian on Pro']} />
-            <Audience t={5} icon={UserSquare2} who="Faculty & researchers" to="/for-students"
-              blurb="Browse the way you would walk a shelf, and pick up where you stopped."
-              points={[`Search ${stats ? n(stats.total) : 'the whole'} items`, 'Department, journal, volume, issue', 'History kept, with suggestions']} />
-            <Audience t={2} icon={Library} who="Librarians" to="/for-institutions"
-              blurb="Run access for the whole institution from one screen."
-              points={['Add faculty and researchers yourself', 'See reading by week and subject', 'Find the searches that came back empty']} />
-            <Audience t={6} icon={Building2} who="Institutions" to="/for-institutions"
-              blurb="Free to start, and Pro when the sessions get in the way."
-              points={['Free: the whole library, in half-hour sessions', 'Pro: no session limit for anyone you add', 'Pro: students added, in agreed numbers']} />
-          </div>
-        </div>
-      </section>
-
-      {/* ── Where the collection is deep ─────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 py-20">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <Eyebrow t={3}>Where the collection is deep</Eyebrow>
-            <h2 className="mt-3 font-serif text-[32px] font-medium leading-tight text-ink">
-              Everything held, department by department.
-            </h2>
-          </div>
-          <Link to="/digital-library" className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
-            Explore every department <ArrowRight size={13} />
-          </Link>
-        </div>
-        <div className="mt-8 rounded-2xl border border-rule bg-surface p-6">
-          {depts.length
-            ? <Collection rows={depts} />
-            : <div className="space-y-4">{[0, 1, 2, 3, 4].map(i => <div key={i} className="h-7 animate-pulse rounded bg-surface-2" />)}</div>}
-        </div>
-      </section>
-
-      {/* ── Where it comes from ──────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 pb-20">
-        <Eyebrow t={2}>Where the collection comes from</Eyebrow>
-        <h2 className="mt-3 mb-8 max-w-2xl font-serif text-[32px] font-medium leading-tight text-ink">
-          Open scholarship, with its paperwork.
-        </h2>
-        <Provenance publishers={publishers} />
-      </section>
-
-      {/* ── Close ────────────────────────────────────────────────────────── */}
-      <section className="border-t border-rule"
-        style={{ background: 'linear-gradient(115deg, var(--hero-1) 0%, var(--hero-2) 50%, var(--hero-3) 100%)' }}>
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-5 py-16 md:flex-row md:items-center">
-          <div>
-            <h2 className="on-dark font-serif text-[30px] font-medium leading-tight">
-              Open the library for your institution.
-            </h2>
-            <p className="on-dark-2 mt-2 text-[14px]">
-              Register free, add your faculty and researchers, and start reading today.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link to="/signup" className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-[14px] font-semibold text-white hover:bg-accent-hover">
-              Register Now <ArrowRight size={16} />
+          <p className="mx-auto mt-4 max-w-xl text-[15.5px] text-white/75">
+            Join {n(inst?.total)} institutions already reading {n(stats?.total)} items — free to register,
+            and open from the first minute.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link to="/signup" className={btnPrimary} style={{ background: 'var(--np-amber)', color: '#1a1200' }}>
+              Register free <ArrowRight size={16} />
             </Link>
-            <Link to="/digital-library" className="on-dark on-dark-edge on-dark-fill inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-semibold">
-              Browse the collection
+            <Link to="/contact" className={`${btnGhost} border-white/25 text-white hover:bg-white/10`}>
+              Talk to us
             </Link>
           </div>
         </div>
       </section>
+
+      <section className="border-t py-8" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+        <div className="mx-auto max-w-6xl px-5">
+          <p className="np-strong text-[13px]" style={{ color: 'var(--np-ink)' }}>A note on what is held here</p>
+          <p className="mt-2 max-w-4xl text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
+            STM Digital Library catalogues openly licensed scholarly work and serves full text only
+            where the licence permits it. Where it does not, the record links to the publisher's own
+            copy. Any rights holder who wants an item removed can ask, and it will be —
+            see <Link to="/content-removal" className="underline">Content Removal</Link>.
+          </p>
+        </div>
+      </section>
+    </>
+  );
+}
+
+// ── The page ────────────────────────────────────────────────────────────────
+
+export function HomePreview() {
+  const { stats, articles, books, insights, subjects, institutions } = useLibrary();
+  const depts = stats?.departmentTotals || [];
+
+  return (
+    <div className="np bg-surface" style={{ color: 'var(--np-body)' }}>
+      <Helmet>
+        <title>STM Digital Library — research your institution can open</title>
+      </Helmet>
+
+      <Hero stats={stats} insights={insights} institutions={institutions} depts={depts} />
+      <WaysIn />
+      <InstitutionStrip inst={institutions} />
+      <Impact stats={stats} depts={depts} inst={institutions} />
+      <DepartmentExplorer depts={depts} />
+      <Principles />
+      <WhatIsNew books={books} articles={articles} />
+      <Walkthrough stats={stats} depts={depts} subjects={subjects} articles={articles} />
+      <Audiences stats={stats} />
+      <WithUs inst={institutions} />
+      <AtAGlance insights={insights} subjects={subjects} depts={depts} />
+      <Sources />
+      <Questions />
+      <Closing stats={stats} inst={institutions} />
     </div>
   );
 }

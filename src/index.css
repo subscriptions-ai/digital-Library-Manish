@@ -207,6 +207,29 @@
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* The second home page, at /home-preview.
+   It is drawn to a reference the user chose, which sets its type in Sora and
+   Inter rather than the library's own Spectral and IBM Plex. Scoped to that
+   page: the rest of the site keeps its own face. */
+.np {
+  font-family: Inter, "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --np-navy: #0b1b3a;
+  --np-navy-2: #14284f;
+  --np-amber: #f5b301;
+  --np-ink: #0f172a;
+  --np-body: #475569;
+  --np-line: #e6e9ef;
+  --np-soft: #f6f8fb;
+}
+.dark .np {
+  --np-ink: #e8ecf3;
+  --np-body: #aeb6c2;
+  --np-line: #2b3340;
+  --np-soft: #161b23;
+}
+.np-display { font-family: Sora, Inter, ui-sans-serif, system-ui, sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+.np-strong  { font-family: Sora, Inter, ui-sans-serif, system-ui, sans-serif; font-weight: 700; }
+
 /* The blog: what the editor types, and what a reader gets, set the same way.
    Tailwind's typography plugin is not installed, and one page does not justify
    it — these are the tags the editor can actually produce, and nothing else. */

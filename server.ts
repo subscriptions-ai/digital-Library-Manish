@@ -8524,6 +8524,97 @@ async function startServer() {
     }
   });
 
+  /**
+   * Who is with us — the institutions, by kind.
+   *
+   * The home page used to name publishers, which is a fact about where the
+   * catalogue came from rather than about who reads it. What a college wants to
+   * know is which other colleges are here, so that is what this answers.
+   *
+   * The kind is read from the name, because nobody has ever been asked to
+   * record it: an institution with "University" in its name is a university, and
+   * so on down a short list. It is a guess, and a visible one — the name is shown
+   * beside it, so a wrong guess is obvious rather than hidden inside a total.
+   */
+  const institutionKind = (name: string): 'University' | 'College' | 'Institute' | 'School' | 'Organisation' => {
+    const n2 = String(name || '').toLowerCase();
+    if (/\buniversit|vishwavidyalaya|vidyapith|deemed\b/.test(n2)) return 'University';
+    if (/\bcollege|mahavidyalaya\b/.test(n2)) return 'College';
+    if (/\binstitut|\biit\b|\bnit\b|\biiit\b|academy|polytechnic|\bres(earch)?\b|laborator/.test(n2)) return 'Institute';
+    if (/\bschool|vidyalaya|vidya mandir\b/.test(n2)) return 'School';
+    return 'Organisation';
+  };
+
+  let institutionCache: { at: number; value: any } | null = null;
+  app.get("/api/library/institutions", async (_req: any, res: any) => {
+    try {
+      if (institutionCache && Date.now() - institutionCache.at < 10 * 60_000) return res.json(institutionCache.value);
+
+      const rows = await prisma.institution.findMany({
+        where: { status: 'Active' },
+        select: { id: true, name: true, createdAt: true, _count: { select: { users: true } } },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      // Two institutions typed in twice, with different capitals, are one
+      // institution — and a list that shows both reads as carelessness.
+      const seen = new Map<string, any>();
+      for (const r of rows) {
+        const key = String(r.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        if (!key) continue;
+        const held = seen.get(key);
+        if (held) { held.members += r._count.users; continue; }
+        seen.set(key, {
+          name: String(r.name).trim(),
+          kind: institutionKind(r.name),
+          members: r._count.users,
+          since: r.createdAt,
+        });
+      }
+      // An institution with an account but nobody on it is not "with us" in any
+      // sense a reader would recognise, and the page says as much underneath.
+      const list = [...seen.values()]
+        .filter((i: any) => i.members > 0)
+        .sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
+
+      // Where the people are from, which is a wider question than which
+      // institutions have an account: a reader whose college has no account
+      // still names their organisation when they register.
+      const orgs = await prisma.user.groupBy({
+        by: ['organization'],
+        where: { organization: { not: null }, role: { notIn: STAFF_ROLES } },
+        _count: { _all: true },
+      });
+      const organisations = new Set(
+        orgs.map((o: any) => String(o.organization || '').trim().toLowerCase())
+          .filter((o: string) => o.length > 2),
+      ).size;
+
+      const states = await prisma.user.groupBy({
+        by: ['state'],
+        where: { state: { not: null }, role: { notIn: STAFF_ROLES } },
+        _count: { _all: true },
+      });
+
+      const byKind: Record<string, number> = {};
+      for (const i of list) byKind[i.kind] = (byKind[i.kind] || 0) + 1;
+
+      const value = {
+        total: list.length,
+        byKind,
+        members: list.reduce((n: number, i: any) => n + i.members, 0),
+        organisations,
+        states: states.filter((s: any) => String(s.state || '').trim()).length,
+        institutions: list.map((i: any) => ({ name: i.name, kind: i.kind, members: i.members })),
+      };
+      institutionCache = { at: Date.now(), value };
+      res.json(value);
+    } catch (e: any) {
+      console.error('institutions error', e?.message);
+      res.status(500).json({ error: "Failed to read the institutions" });
+    }
+  });
+
   app.get("/api/library/stats", async (_req: any, res: any) => {
     try {
       // These are the figures the homepage and every department heading share,
