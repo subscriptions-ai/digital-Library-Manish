@@ -455,7 +455,6 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
 
   const d = current ? cache[current] : undefined;
   const row = depts.find(x => x.name === current);
-  const max = depts[0]?.total || 1;
 
   return (
     <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
@@ -478,10 +477,6 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
                     <span className="np-strong truncate text-[13.5px]"
                       style={{ color: x.name === current ? 'var(--t1-ink)' : 'var(--np-ink)' }}>{x.name}</span>
                     <span className="shrink-0 text-[11.5px]" style={{ color: 'var(--np-body)' }}>{n(x.total)}</span>
-                  </span>
-                  <span className="mt-1.5 block h-1 overflow-hidden rounded-full" style={{ background: 'var(--np-line)' }}>
-                    <span className="block h-full rounded-full"
-                      style={{ width: `${Math.max(3, (x.total / max) * 100)}%`, background: 'var(--np-amber)' }} />
                   </span>
                 </button>
               ) : <div key={k} className="m-1 h-10 animate-pulse rounded-xl" style={{ background: 'var(--np-line)' }} />
