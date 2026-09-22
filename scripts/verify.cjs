@@ -1002,8 +1002,36 @@ const catalogueSize = async () => {
     map.includes('/blog') ? ok('the blog is in the sitemap') : bad('the blog is in the sitemap', 'sitemap-blog.xml is empty');
   }
 
+  // ── a journal's own page ──────────────────────────────────────────────────
+  // /journal/:id used to be matched against a hand-written list of showcase
+  // titles, so every real journal answered "Journal Not Found".
+  console.log('\nA journal on its own page');
+  {
+    const j = await p.journal.findFirst({
+      where: { articles: { some: { status: 'Published' } } },
+      select: { id: true, title: true },
+    }).catch(() => null);
+    if (!j) meh('a real journal reads by its id', 'no journal holds a published article');
+    else {
+      const r = await get(`/api/library/journal/${j.id}`);
+      r.status === 200 && r.body?.id === j.id
+        ? ok('a real journal reads by its id', `${n(r.body.articleCount)} articles`)
+        : bad('a real journal reads by its id', `HTTP ${r.status}`);
+
+      const recent = r.body?.recent || [];
+      recent.length > 0
+        ? ok('the journal page shows what is in it', `${recent.length} latest articles`)
+        : bad('the journal page shows what is in it', 'no recent articles returned');
+
+      recent.some(a => !a.title || a.title === 'Untitled')
+        ? bad('no untitled rows on the journal page', 'an untitled article is listed')
+        : ok('no untitled rows on the journal page');
+    }
+  }
+
   console.log('\nDead ends');
   for (const [name, path] of [
+    ['unknown journal', '/api/library/journal/no-such-journal'],
     ['unknown article', '/api/library/article/does-not-exist'],
     ['unknown department', '/api/library/department/no-such-department'],
     ['unknown publisher', '/api/library/publisher/no-such-publisher'],

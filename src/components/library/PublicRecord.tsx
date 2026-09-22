@@ -50,6 +50,9 @@ function Facts({ rows }: { rows: [string, React.ReactNode][] }) {
           <dd className="mt-1 text-[14px] leading-snug text-ink-2">{v}</dd>
         </div>
       ))}
+      {/* An odd number of facts leaves a hole in the second column, which reads
+          as a grey bug rather than as empty space. */}
+      {shown.length % 2 === 1 && <div className="hidden bg-surface sm:block" />}
     </dl>
   );
 }
@@ -249,6 +252,132 @@ export function BookRecord() {
         <Link to="/digital-library?kind=books"
           className="inline-flex items-center gap-2 rounded-xl border border-rule px-4 py-2.5 text-[13.5px] font-semibold text-ink hover:bg-surface-2">
           <Building2 size={15} /> Every book
+        </Link>
+      </div>
+    </Shell>
+  );
+}
+
+/**
+ * One journal on a page of its own.
+ *
+ * The old /journal/:id page looked the journal up in a hand-written list in
+ * constants.ts, so every real journal in the database — which is all of them —
+ * answered "Journal Not Found". This is the same record treatment as an article
+ * or a book: what the journal is, how much of it we hold, and a way in.
+ */
+export function JournalRecord() {
+  const { journalId = '' } = useParams();
+  const [j, setJ] = useState<any>(null);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    fetch(`/api/library/journal/${encodeURIComponent(journalId)}`)
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(d => (d?.id ? setJ(d) : setMissing(true)))
+      .catch(() => setMissing(true));
+  }, [journalId]);
+
+  if (missing) return <Missing what="journal" />;
+  if (!j) return <Shell><div className="h-72 animate-pulse rounded-2xl bg-surface-2" /></Shell>;
+
+  const years = j.firstYear && j.lastYear
+    ? (j.firstYear === j.lastYear ? String(j.firstYear) : `${j.firstYear}–${j.lastYear}`)
+    : '';
+  const volumes: any[] = j.volumes || [];
+  const recent: any[] = j.recent || [];
+  const issn = j.issn && j.eissn && j.issn !== j.eissn ? `${j.issn} · ${j.eissn}` : (j.issn || j.eissn || '');
+
+  return (
+    <Shell>
+      <Helmet>
+        <title>{`${j.title} — STM Digital Library`}</title>
+        <meta name="description"
+          content={`${j.title}${j.domain ? ` — ${j.domain}` : ''}. ${n(j.articleCount)} articles held in the STM Digital Library.`} />
+      </Helmet>
+
+      <Link to="/digital-library?kind=articles" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink">
+        <ArrowLeft size={15} /> All articles
+      </Link>
+
+      <p className={`${LABEL} mt-7`}>
+        <BookOpen size={12} className="mr-1.5 inline" />Journal{j.domain ? ` · ${j.domain}` : ''}
+      </p>
+      <h1 className="mt-3 font-serif text-[30px] font-medium leading-snug text-ink sm:text-[34px]">{j.title}</h1>
+      {issn && <p className="mt-2 font-mono text-[12px] text-faint"><Hash size={11} className="mr-1 inline" />{issn}</p>}
+
+      {j.description && (
+        <p className="mt-6 whitespace-pre-line text-[15px] leading-relaxed text-muted">{j.description}</p>
+      )}
+
+      {/* What we hold of it, in plain numbers. */}
+      <div className="mt-7 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-rule bg-rule">
+        {[['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]].map(([k, v]) => (
+          <div key={String(k)} className="bg-surface px-5 py-4 text-center">
+            <p className="font-serif text-[24px] leading-none text-ink">{n(Number(v) || 0)}</p>
+            <p className={`${LABEL} mt-1.5`}>{k}</p>
+          </div>
+        ))}
+      </div>
+
+      <OpenIt to={`/library/journal/${j.id}`} label="Open it in the library" />
+
+      <Facts rows={[
+        ['Publisher', j.publisherName],
+        ['Department', j.domain],
+        ['Subjects', Array.isArray(j.subjects) && j.subjects.length ? j.subjects.join(', ') : j.subject],
+        ['Years held', years],
+        ['Language', j.language],
+        ['Country', j.country],
+      ]} />
+
+      {volumes.length > 0 && (
+        <section className="mt-10">
+          <p className={LABEL}><Layers size={12} className="mr-1.5 inline" />Volumes held</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {volumes.slice(0, 40).map((v: any) => (
+              <span key={`${v.volume}-${v.year}`}
+                className="rounded-xl border border-rule bg-surface px-3.5 py-2 text-[13px] text-ink-2">
+                Vol {v.volume}
+                <span className="ml-1.5 font-mono text-[11px] text-faint">
+                  {[v.year, `${n(v.articles)} articles`].filter(Boolean).join(' · ')}
+                </span>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {recent.length > 0 && (
+        <section className="mt-10">
+          <p className={LABEL}><Calendar size={12} className="mr-1.5 inline" />Latest in this journal</p>
+          <ul className="mt-4 divide-y divide-rule overflow-hidden rounded-2xl border border-rule bg-surface">
+            {recent.map((a: any) => (
+              <li key={a.id}>
+                <Link to={`/article/${a.id}`} className="group block px-5 py-3.5 hover:bg-surface-2">
+                  <span className="block text-[14px] leading-snug text-ink-2 group-hover:text-accent">{a.title}</span>
+                  <span className="mt-1 block truncate font-mono text-[10.5px] text-faint">
+                    {[a.authors, a.year, a.volume && `Vol ${a.volume}`, a.issue && `Issue ${a.issue}`]
+                      .filter(Boolean).join(' · ')}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <div className="mt-8 flex flex-wrap gap-3">
+        {j.domain && (
+          <Link to={`/domain/${String(j.domain).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
+            className="inline-flex items-center gap-2 rounded-xl border border-rule px-4 py-2.5 text-[13.5px] font-semibold text-ink hover:bg-surface-2">
+            <Layers size={15} /> More in {j.domain}
+          </Link>
+        )}
+        <Link to="/digital-library?kind=articles"
+          className="inline-flex items-center gap-2 rounded-xl border border-rule px-4 py-2.5 text-[13.5px] font-semibold text-ink hover:bg-surface-2">
+          <FileText size={15} /> Every article
         </Link>
       </div>
     </Shell>

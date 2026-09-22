@@ -5,6 +5,7 @@ import { cn } from "../lib/utils";
 import { useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { logUsage } from "../lib/usageTracker";
+import { JournalRecord } from "./library/PublicRecord";
 
 export function JournalDetail() {
   const { journalId } = useParams();
@@ -24,16 +25,9 @@ export function JournalDetail() {
     }
   };
 
-  if (!journal) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-slate-900">Journal Not Found</h1>
-          <Link to="/journals" className="mt-8 inline-block text-blue-600 font-bold">Back to Library</Link>
-        </div>
-      </div>
-    );
-  }
+  // FEATURED_JOURNALS is a hand-written list of a few showcase titles. Anything
+  // else — which is every journal we actually hold — is read from the library.
+  if (!journal) return <JournalRecord />;
 
   return (
     <div className="min-h-screen bg-slate-50">

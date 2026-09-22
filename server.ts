@@ -7672,6 +7672,16 @@ async function startServer() {
         where "journalId" = $1 and status = 'Published' and volume is not null
         group by volume order by max(year) desc nulls last, volume desc`, journal.id);
 
+      // A handful of the newest pieces, so the journal's own page can show what
+      // is actually in it rather than only counting it.
+      const recent = await (prisma as any).article.findMany({
+        // A few hundred rows came in with no title at all; they read as noise here.
+        where: { journalId: journal.id, status: 'Published', NOT: { title: 'Untitled' } },
+        select: { id: true, title: true, authors: true, year: true, volume: true, issue: true },
+        orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+        take: 12,
+      });
+
       const h = held?.[0] || {};
       res.json({
         ...journal,
@@ -7681,6 +7691,7 @@ async function startServer() {
         firstYear: h.first_year ?? journal.firstYear ?? null,
         lastYear: h.last_year ?? journal.lastYear ?? null,
         volumes,
+        recent,
       });
     } catch (e: any) {
       console.error('GET library/journal error:', e?.message);
