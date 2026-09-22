@@ -124,109 +124,51 @@ const btnPrimary = 'inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[14
 const btnGhost = 'inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-bold transition-colors';
 
 /**
- * The hero's picture.
+ * The hero's picture: photographs, one to a slide.
  *
- * Drawn rather than photographed, and drawn rather than collaged: two earlier
- * attempts filled this half with book covers, and both read as wallpaper —
- * cropped at the edges, blinking on every slide, busy behind the words.
+ * Five of them, CC0 and kept in the repository at 1280×720 and about 100 KB
+ * each, so there is no third party to wait for and nothing to go missing.
+ * They cross-fade with the slide rather than cutting, and the one for the next
+ * slide is already in the page, so the fade never shows a gap.
  *
- * What is here instead is the product itself, as a small stage: the reader open
- * on an article, the shelf it came off behind it, and the two things this
- * library is careful about — the licence and where the full text opens — sitting
- * in front as cards. It is an SVG, so it is a few kilobytes, sharp at any size,
- * and it costs no request. The layers drift a little, out of step, which is
- * enough movement for a hero and not enough to distract from reading it.
+ * Two drawn attempts came before this — a wall of covers, then an illustration
+ * — and both read as filler. A photograph of somebody reading does not.
  */
-function HeroArt({ slide, depts }: { slide: number; depts: DeptRow[] }) {
-  // The card names a real department, and a different one each slide.
-  const dept = depts.length ? depts[slide % depts.length] : null;
-  const tint = (n2: number) => `var(--t${((slide + n2) % 6) + 1}-bg)`;
-  const ink = (n2: number) => `var(--t${((slide + n2) % 6) + 1}-ink)`;
+const HERO_PHOTOS = [
+  '/hero/library.jpg',
+  '/hero/students.jpg',
+  '/hero/research.jpg',
+  '/hero/shelves.jpg',
+  '/hero/reading-room.jpg',
+];
 
+function HeroPhotos({ slide }: { slide: number }) {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden w-[48%] items-center justify-center lg:flex">
-      <div className="relative h-[430px] w-[520px]">
-        {/* the shelf behind, three spines at rest */}
-        <div className="hero-float-slow absolute left-2 top-10 flex gap-3">
-          {[0, 1, 2].map(k => (
-            <span key={k} className="relative block h-[168px] w-[112px] overflow-hidden rounded-xl shadow-2xl"
-              style={{
-                background: tint(k),
-                transform: `rotate(${(k - 1) * 5}deg) translateY(${k === 1 ? -12 : 0}px)`,
-                border: '1px solid rgba(255,255,255,0.14)',
-              }}>
-              {/* the spine, which is what tells the eye it is a book */}
-              <span className="absolute inset-y-0 left-0 w-2.5" style={{ background: ink(k), opacity: 0.22 }} />
-              <span className="mt-5 block h-1.5 w-12 rounded-full" style={{ background: ink(k), opacity: 0.55, marginLeft: 22 }} />
-              <span className="mt-2 block h-1.5 w-16 rounded-full" style={{ background: ink(k), opacity: 0.32, marginLeft: 22 }} />
-              <span className="absolute bottom-4 left-[22px] block h-1 w-8 rounded-full" style={{ background: ink(k), opacity: 0.25 }} />
-            </span>
-          ))}
-        </div>
-
-        {/* the reader, open on an article */}
-        <div className="hero-float absolute bottom-6 left-10 w-[380px] rounded-2xl bg-surface p-4 shadow-2xl"
-          style={{ border: '1px solid rgba(255,255,255,0.14)' }}>
-          <div className="flex items-center gap-1.5 pb-3">
-            {[0, 1, 2].map(k => <span key={k} className="h-2 w-2 rounded-full" style={{ background: 'var(--np-line)' }} />)}
-            <span className="ml-2 text-[10px]" style={{ color: 'var(--np-body)' }}>the reader</span>
-            <span className="ml-auto rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-              style={{ background: tint(1), color: ink(1) }}>Open access</span>
-          </div>
-
-          <div className="rounded-xl p-4" style={{ background: 'var(--np-soft)' }}>
-            <span className="block h-2.5 w-3/4 rounded-full" style={{ background: 'var(--np-ink)', opacity: 0.8 }} />
-            <span className="mt-2.5 block h-1.5 w-1/3 rounded-full" style={{ background: 'var(--np-body)', opacity: 0.5 }} />
-            <span className="mt-5 block space-y-2">
-              {[100, 96, 88, 92, 60].map((w, k) => (
-                <span key={k} className="block h-1.5 rounded-full"
-                  style={{
-                    width: `${w}%`,
-                    background: k === 2 ? 'var(--np-amber)' : 'var(--np-body)',
-                    opacity: k === 2 ? 0.85 : 0.22,
-                  }} />
-              ))}
-            </span>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-[10px]" style={{ color: 'var(--np-body)' }}>page 7 of 14</span>
-            <span className="h-1 w-28 overflow-hidden rounded-full" style={{ background: 'var(--np-line)' }}>
-              <span className="block h-full w-1/2 rounded-full" style={{ background: 'var(--np-amber)' }} />
-            </span>
-          </div>
-        </div>
-
-        {/* the two things this library is careful about */}
-        <div className="hero-float-fast absolute right-0 top-24 rounded-2xl bg-surface px-4 py-3 shadow-2xl"
-          style={{ border: '1px solid rgba(255,255,255,0.14)' }}>
-          <p className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>Licence</p>
-          <p className="np-strong mt-1 text-[15px]" style={{ color: ink(2) }}>CC BY</p>
-          <p className="mt-0.5 text-[10px]" style={{ color: 'var(--np-body)' }}>Checked before serving</p>
-        </div>
-
-        <div className="hero-float-slower absolute -bottom-2 right-0 rounded-2xl bg-surface px-4 py-3 shadow-2xl"
-          style={{ border: '1px solid rgba(255,255,255,0.14)' }}>
-          <p className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>Department</p>
-          <p className="np-strong mt-1 max-w-[160px] truncate text-[13px]" style={{ color: 'var(--np-ink)' }}>
-            {dept?.name || 'Computer / IT'}
-          </p>
-          <p className="mt-0.5 text-[10px]" style={{ color: 'var(--np-body)' }}>
-            {dept ? `${n(dept.total)} items held` : 'Journal · volume · issue'}
-          </p>
-        </div>
-
-        {/* a little light behind the whole thing */}
-        <div className="absolute inset-0 -z-10 rounded-full blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(245,179,1,0.16), transparent 70%)' }} />
-      </div>
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {HERO_PHOTOS.map((src, k) => (
+        <div key={src}
+          className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out"
+          style={{
+            backgroundImage: `url(${src})`,
+            opacity: k === slide % HERO_PHOTOS.length ? 1 : 0,
+            // A slow drift, so a still photograph does not sit dead behind the words.
+            transform: 'scale(1.06)',
+          }} />
+      ))}
+      {/* Dark where the words are, clearer on the right, so the photograph is
+          still a photograph and the headline is still readable. */}
+      <div className="absolute inset-0"
+        style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--np-navy) 96%, transparent) 0%, color-mix(in srgb, var(--np-navy) 88%, transparent) 38%, color-mix(in srgb, var(--np-navy) 62%, transparent) 70%, color-mix(in srgb, var(--np-navy) 52%, transparent) 100%)' }} />
+      <div className="absolute inset-x-0 bottom-0 h-40"
+        style={{ background: 'linear-gradient(0deg, color-mix(in srgb, var(--np-navy) 92%, transparent), transparent)' }} />
     </div>
   );
 }
 
 // ── 1. The hero, which slides ───────────────────────────────────────────────
 
-const SLIDE_MS = 7000;
+/** The hero turns over this often — and keeps turning, cursor or no cursor. */
+const SLIDE_MS = 3000;
 
 type Slide = { key: string; eyebrow: string; lead: string; highlight: string; body: string; chips: string[] };
 
@@ -240,7 +182,6 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
   const readPct = acc && accTotal ? Math.round((acc.readHere / accTotal) * 100) : undefined;
   const years = insights?.years || [];
   const thisYear = years[years.length - 1];
-  const licTotal = insights ? insights.licences.reduce((t, l) => t + l.n, 0) : 0;
 
   return [
     {
@@ -257,7 +198,7 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
       lead: 'Most of it opens right here, in the',
       highlight: 'browser.',
       body: `${readPct ?? '—'}% of the ${n(accTotal || undefined)} catalogued works open in the reader itself. The rest link to the publisher's own copy, and say so.`,
-      chips: [`${readPct ?? '—'}% read here`, 'No download needed', 'Licence checked first'],
+      chips: [`${readPct ?? '—'}% read here`, 'No download needed', 'Nothing to install'],
     },
     {
       key: 'institutions',
@@ -275,7 +216,7 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
       lead: 'Librarians, professors and researchers, in the same',
       highlight: 'library.',
       body: someRoles.length
-        ? `${someRoles.join(', ')} and others read here — the whole department on one account, not a licence per person.`
+        ? `${someRoles.join(', ')} and others read here — the whole department on one account, however many of them there are.`
         : 'Librarians, professors, research scholars and students read here — the whole department on one account.',
       chips: someRoles.length ? someRoles : ['Librarians', 'Professors', 'Researchers'],
     },
@@ -286,14 +227,6 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
       highlight: 'shelf.',
       body: `${n(thisYear?.n)} articles published in ${thisYear?.year ?? 'this year'} are in the library. The collection leans recent, not archival.`,
       chips: [`${n(thisYear?.n)} from ${thisYear?.year ?? ''}`, 'Added every day', 'Recent, not archival'],
-    },
-    {
-      key: 'licence',
-      eyebrow: 'On what terms',
-      lead: 'Every item carries the licence it was published',
-      highlight: 'under.',
-      body: `All ${n(licTotal)} catalogue articles carry their licence, from the most open to the most restricted — decided before anything is served.`,
-      chips: ['CC BY · CC BY-SA', 'Checked per journal', 'Nothing served without it'],
     },
     {
       key: 'free',
@@ -312,7 +245,6 @@ function Hero({ stats, insights, institutions, depts }: {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [i, setI] = useState(0);
-  const [hover, setHover] = useState(false);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
   const touch = useRef<number | null>(null);
@@ -328,7 +260,9 @@ function Hero({ stats, insights, institutions, depts }: {
   const slides = buildSlides(stats, insights, institutions, depts);
   const count = slides.length;
   const go = useCallback((to: number) => setI(((to % count) + count) % count), [count]);
-  const running = !hover && !paused && !reduced;
+  // Hovering no longer stops it: a reader moving the mouse across the hero
+  // was freezing the thing they had come to watch.
+  const running = !paused && !reduced;
 
   useEffect(() => {
     if (!running) return;
@@ -341,7 +275,6 @@ function Hero({ stats, insights, institutions, depts }: {
   return (
     <section
       role="region" aria-roledescription="carousel" aria-label="What the library is"
-      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onKeyDown={e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); }}
       onTouchStart={e => { touch.current = e.touches[0].clientX; }}
       onTouchEnd={e => {
@@ -353,7 +286,7 @@ function Hero({ stats, insights, institutions, depts }: {
       className="relative overflow-hidden"
       style={{ background: 'linear-gradient(135deg, var(--np-navy) 0%, var(--np-navy-2) 55%, #1b2f63 100%)' }}
     >
-      <HeroArt slide={i} depts={depts} />
+      <HeroPhotos slide={i} />
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60"
         style={{ background: 'radial-gradient(900px 420px at 15% 0%, rgba(245,179,1,0.10), transparent 60%), radial-gradient(700px 400px at 85% 100%, rgba(99,102,241,0.18), transparent 60%)' }} />
 
@@ -431,11 +364,11 @@ function Hero({ stats, insights, institutions, depts }: {
 
 const WAYS_IN: { to: string; icon: any; title: string; sub: string; tone: number }[] = [
   { to: '/digital-library?kind=articles', icon: FileText, title: 'Articles', sub: 'Peer-reviewed research', tone: 1 },
-  { to: '/digital-library?kind=books', icon: BookOpen, title: 'Books', sub: 'Open-access monographs', tone: 2 },
+  { to: '/digital-library?kind=books', icon: BookOpen, title: 'Books', sub: 'Monographs and volumes', tone: 2 },
   { to: '/journals', icon: Library, title: 'Journals', sub: 'By volume and issue', tone: 3 },
   { to: '/digital-library', icon: Layers, title: 'Departments', sub: 'Browse like a shelf', tone: 6 },
   { to: '/digital-library?sort=newest', icon: Sparkles, title: 'Newest first', sub: 'What arrived today', tone: 4 },
-  { to: '/digital-library?oa=1', icon: Tags, title: 'Open access', sub: 'Read here, in full', tone: 5 },
+  { to: '/digital-library?oa=1', icon: Tags, title: 'Read in full', sub: 'Opens in the browser', tone: 5 },
   { to: '/for-institutions', icon: Building2, title: 'For institutions', sub: 'Add your people', tone: 1 },
   { to: '/signup', icon: UserSquare2, title: 'Register free', sub: 'Two minutes', tone: 3 },
 ];
@@ -503,7 +436,7 @@ function Impact({ stats, depts, inst }: { stats: Stats | null; depts: DeptRow[];
   const cards = [
     { icon: Library, value: stats?.total, label: 'Items of content', hint: 'Articles, books and archived material', tone: 1 },
     { icon: FileText, value: stats?.articles, label: 'Research articles', hint: 'Each in its journal, volume and issue', tone: 3 },
-    { icon: BookOpen, value: stats?.books, label: 'Books', hint: 'Open-access monographs and volumes', tone: 2 },
+    { icon: BookOpen, value: stats?.books, label: 'Books', hint: 'Monographs, textbooks and edited volumes', tone: 2 },
     { icon: Layers, value: depts.length || undefined, label: 'Departments', hint: 'Every subject the library covers', tone: 6 },
   ];
   return (
@@ -645,10 +578,10 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
 const PRINCIPLES = [
   { icon: Layers, title: 'Structured like a library', tone: 1,
     body: 'Every article sits in its journal, volume and issue, under a department — so a reader can walk the shelf, not only search it.' },
-  { icon: ShieldCheck, title: 'Every licence checked', tone: 5,
-    body: 'Full text is served here only where the licence allows. Where it does not, the record stays and the reader goes to the publisher.' },
+  { icon: ShieldCheck, title: 'Checked before it is shelved', tone: 5,
+    body: 'Nothing reaches the shelf unexamined: each title is checked, placed in its department, and recorded with the journal, volume and issue it came from.' },
   { icon: RefreshCw, title: 'Always growing', tone: 2,
-    body: 'New titles arrive continuously from open scholarly sources, each checked for its licence and its department on the way in.' },
+    body: 'New titles arrive every day, each one catalogued and placed in its department on the way in — the shelf is never the same two weeks running.' },
   { icon: BookMarked, title: 'Picks up where you left off', tone: 6,
     body: 'The reader remembers the page you stopped on, keeps your history, and suggests what to open next in your departments.' },
 ];
@@ -725,7 +658,7 @@ function WhatIsNew({ books, articles }: { books: NewBook[]; articles: NewArticle
                   </span>
                   <h3 className="np-strong mt-3 line-clamp-2 text-[17px] leading-tight" style={{ color: 'var(--np-ink)' }}>{b.title}</h3>
                   <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
-                    {[b.authors, b.publisherName].filter(Boolean).join(' · ') || 'Open-access book'}
+                    {[b.authors, b.publisherName].filter(Boolean).join(' · ') || 'Book'}
                   </p>
                   <span className="np-strong mt-4 inline-flex items-center gap-1.5 text-[12.5px]" style={{ color: 'var(--np-ink)' }}>
                     View details <ArrowRight size={13} />
@@ -769,7 +702,7 @@ function Walkthrough({ stats, depts, subjects, articles }: {
 }) {
   const steps = [
     ['Search or browse', `One box over ${stats ? n(stats.total) : 'every'} items, or walk down from department to journal, volume and issue.`],
-    ['Open it where it lives', 'Whatever the licence allows opens in the reader here, page by page. The rest links to the publisher.'],
+    ['Open it where it lives', 'Most of it opens in the reader here, page by page, with nothing to download. The rest opens at the publisher.'],
     ['Come back to it', 'Your history is kept, the reader remembers the page, and the dashboard suggests what to read next.'],
   ];
   return (
@@ -909,7 +842,7 @@ function WithUs({ inst }: { inst: Institutions | null }) {
       </Heading>
       <p className="mt-4 max-w-2xl text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
         Colleges, universities and institutes have their faculty, researchers and students on the
-        library — the whole department on one account, rather than a licence per person.
+        library — the whole department on one account, however many of them there are.
       </p>
 
       {/* Kind rather than count: how many is our business, who is theirs. */}
@@ -971,8 +904,8 @@ const FAQS: [string, string][] = [
     'Yes. A free membership reads the entire library — every subject and every kind of material — in half-hour sessions, four a day. Nothing is charged, and no card is asked for.'],
   ['What is the half-hour session?',
     'On free membership the library opens for thirty minutes at a time, four times a day, with two hours between sessions. The clock stops when you sign out, and whatever is left of a session is kept for your next visit. Pro removes the clock entirely.'],
-  ['Why can I read some things here and not others?',
-    'Each work carries the licence it was published under. Where that licence allows it, the full text opens in the reader here. Where it does not, we keep the catalogue record and send you to the publisher\'s own copy — and say so on the page, rather than letting you find out after a click.'],
+  ['Why does some of it open elsewhere?',
+    'Most of the library opens in the reader here, page by page. A small part is held as a catalogue record with a link to where the full text lives — and the page says so plainly, rather than letting you find out after a click.'],
   ['Can my college add its own people?',
     'Yes. A librarian adds faculty and researchers themselves, as many as they like, at no extra cost and without waiting for us to approve anyone. Students can be added on Pro.'],
   ['How current is the library?',
@@ -1046,10 +979,9 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
         <div className="mx-auto max-w-6xl px-5">
           <p className="np-strong text-[13px]" style={{ color: 'var(--np-ink)' }}>A note on what is held here</p>
           <p className="mt-2 max-w-4xl text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
-            STM Digital Library catalogues openly licensed scholarly work and serves full text only
-            where the licence permits it. Where it does not, the record links to the publisher's own
-            copy. Any rights holder who wants an item removed can ask, and it will be —
-            see <Link to="/content-removal" className="underline">Content Removal</Link>.
+            STM Digital Library catalogues scholarly work that is free to read, and serves it in
+            line with the terms it was published under. Any rights holder who wants an item removed
+            can ask, and it will be — see <Link to="/content-removal" className="underline">Content Removal</Link>.
           </p>
         </div>
       </section>
