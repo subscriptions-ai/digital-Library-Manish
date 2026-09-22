@@ -46,7 +46,7 @@ type Institutions = {
   designations: { name: string; members: number }[];
 };
 type Department = {
-  domain: string; slug: string; articles: number; books: number;
+  domain: string; slug: string; articles: number; books: number; authors: number;
   firstYear: number | null; lastYear: number | null;
   journals: { id: string; title: string; publisherName: string | null; articleCount: number }[];
   publishers: { name: string; journals: number }[];
@@ -501,8 +501,10 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
 
             <div className="grid grid-cols-2 border-b sm:grid-cols-4" style={{ borderColor: 'var(--np-line)' }}>
               {[
+                // Not the number of journals: it is the smallest figure here and
+                // the least of what a department actually amounts to.
                 ['Articles', d?.articles], ['Books', d?.books],
-                ['Journals', d?.journals.length], ['Publishers', d?.publishers.length],
+                ['Authors', d?.authors], ['Publishers', d?.publishers.length],
               ].map(([label, value], k) => (
                 <div key={label as string} className="border-r px-5 py-4 last:border-r-0" style={{ borderColor: 'var(--np-line)' }}>
                   <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--np-body)' }}>{label}</p>

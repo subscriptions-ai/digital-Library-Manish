@@ -31730,7 +31730,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         where ${clause}
         group by j.id
         order by "articleCount" desc`;
-      const [journals, articles, books, publishers] = await Promise.all([
+      const authorsSql = `
+        select count(distinct lower(btrim(x)))::int as authors from (
+          select a.authors as names from "Article" a where a.domain = $1 and a.status = 'Published'
+          union all
+          select b.authors from "Book" b where b.domain = $1 and b.status = 'Published'
+        ) s, unnest(string_to_array(s.names, ',')) x
+        where s.names is not null and btrim(x) <> ''`;
+      const [journals, articles, books, publishers, authorRows] = await Promise.all([
         prisma3.$queryRawUnsafe(shelfSql("j.domain = $1"), domain),
         prisma3.article.count({ where: { domain, status: "Published" } }),
         prisma3.book.count({ where: { domain, status: "Published" } }),
@@ -31741,7 +31748,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
            where j.domain = $1 and j."publisherName" is not null
            group by 1 order by 2 desc`,
           domain
-        )
+        ),
+        prisma3.$queryRawUnsafe(authorsSql, domain)
       ]);
       const years = journals.flatMap((j) => [j.firstYear, j.lastYear]).filter(Boolean);
       res.json({
@@ -31752,7 +31760,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         books,
         firstYear: years.length ? Math.min(...years) : null,
         lastYear: years.length ? Math.max(...years) : null,
-        publishers: publishers.map((p2) => ({ name: p2.name, journals: Number(p2.journals) }))
+        publishers: publishers.map((p2) => ({ name: p2.name, journals: Number(p2.journals) })),
+        authors: Number(authorRows?.[0]?.authors || 0)
       });
     } catch (e2) {
       console.error("GET library/department error:", e2?.message);

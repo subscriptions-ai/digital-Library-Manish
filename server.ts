@@ -7920,7 +7920,19 @@ async function startServer() {
         group by j.id
         order by "articleCount" desc`;
 
-      const [journals, articles, books, publishers] = await Promise.all([
+      // How many people wrote what this department holds. The names are stored
+      // as one printed string per item, so they are split on the comma and
+      // folded to lower case before counting — near enough, and it counts the
+      // books' authors too.
+      const authorsSql = `
+        select count(distinct lower(btrim(x)))::int as authors from (
+          select a.authors as names from "Article" a where a.domain = $1 and a.status = 'Published'
+          union all
+          select b.authors from "Book" b where b.domain = $1 and b.status = 'Published'
+        ) s, unnest(string_to_array(s.names, ',')) x
+        where s.names is not null and btrim(x) <> ''`;
+
+      const [journals, articles, books, publishers, authorRows] = await Promise.all([
         (prisma as any).$queryRawUnsafe(shelfSql('j.domain = $1'), domain),
         (prisma as any).article.count({ where: { domain, status: 'Published' } }),
         (prisma as any).book.count({ where: { domain, status: 'Published' } }),
@@ -7930,6 +7942,7 @@ async function startServer() {
            join "Article" a on a."journalId" = j.id and a.status = 'Published'
            where j.domain = $1 and j."publisherName" is not null
            group by 1 order by 2 desc`, domain),
+        (prisma as any).$queryRawUnsafe(authorsSql, domain),
       ]);
 
       const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
@@ -7943,6 +7956,7 @@ async function startServer() {
         firstYear: years.length ? Math.min(...years) : null,
         lastYear: years.length ? Math.max(...years) : null,
         publishers: publishers.map((p: any) => ({ name: p.name, journals: Number(p.journals) })),
+        authors: Number(authorRows?.[0]?.authors || 0),
       });
     } catch (e: any) {
       console.error('GET library/department error:', e?.message);

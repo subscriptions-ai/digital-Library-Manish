@@ -167,6 +167,9 @@ const catalogueSize = async () => {
       const v = shelfIsCoherent('department')(b);
       if (v !== true) return v;
       if (b.journals.length === 0) return `resolved "${journal.domain}" but returned no journals`;
+      // The card on the preview shows an author count where it used to show a
+      // journal count; a department with articles must be able to name people.
+      if (b.articles > 0 && !(b.authors > 0)) return `${b.articles} articles but no authors counted`;
       return true;
     });
   } else meh('journal + department', 'no journals with a department');
