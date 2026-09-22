@@ -122,6 +122,47 @@ function Figure({ value, className = '' }: { value?: number; className?: string 
 const btnPrimary = 'inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[14px] font-bold text-white transition-opacity hover:opacity-90';
 const btnGhost = 'inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-bold transition-colors';
 
+/**
+ * The hero's picture: the covers the library actually holds.
+ *
+ * The reference puts photographs of people behind its hero. Ours puts the
+ * shelf, which is both truer and the thing being sold — and the covers come
+ * through our own /api/library/cover, which keeps a copy and refuses anything
+ * over 400 KB, because DOAB serves some of them at megabytes apiece.
+ *
+ * A cover that fails to load simply leaves its tile tinted; nothing breaks and
+ * no gap appears.
+ */
+function CoverWall({ books }: { books: NewBook[] }) {
+  const covers = books.filter(b => b.coverUrl).slice(0, 12);
+  if (covers.length < 4) return null;
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden w-[52%] lg:block">
+      <div className="absolute inset-0 origin-center scale-110 -rotate-6">
+        <div className="grid h-full grid-cols-4 gap-3 p-6">
+          {covers.map((b, k) => (
+            <span key={b.id}
+              className="block overflow-hidden rounded-xl"
+              style={{
+                background: `var(--t${(k % 6) + 1}-bg)`,
+                transform: `translateY(${(k % 4) * 18 - 24}px)`,
+                opacity: 0.9,
+              }}>
+              <img src={`/api/library/cover/${b.id}`} alt="" loading="lazy" decoding="async"
+                className="h-full w-full object-cover"
+                onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }} />
+            </span>
+          ))}
+        </div>
+      </div>
+      {/* Dark enough for the headline to sit over it, light enough that the
+          shelf is still a shelf. */}
+      <div className="absolute inset-0"
+        style={{ background: 'linear-gradient(90deg, var(--np-navy) 0%, color-mix(in srgb, var(--np-navy) 94%, transparent) 26%, color-mix(in srgb, var(--np-navy) 70%, transparent) 52%, color-mix(in srgb, var(--np-navy) 45%, transparent) 78%, color-mix(in srgb, var(--np-navy) 66%, transparent) 100%)' }} />
+    </div>
+  );
+}
+
 // ── 1. The hero, which slides ───────────────────────────────────────────────
 
 const SLIDE_MS = 7000;
@@ -188,8 +229,8 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
   ];
 }
 
-function Hero({ stats, insights, institutions, depts }: {
-  stats: Stats | null; insights: Insights | null; institutions: Institutions | null; depts: DeptRow[];
+function Hero({ stats, insights, institutions, depts, books }: {
+  stats: Stats | null; insights: Insights | null; institutions: Institutions | null; depts: DeptRow[]; books: NewBook[];
 }) {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
@@ -235,6 +276,7 @@ function Hero({ stats, insights, institutions, depts }: {
       className="relative overflow-hidden"
       style={{ background: 'linear-gradient(135deg, var(--np-navy) 0%, var(--np-navy-2) 55%, #1b2f63 100%)' }}
     >
+      <CoverWall books={books} />
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60"
         style={{ background: 'radial-gradient(900px 420px at 15% 0%, rgba(245,179,1,0.10), transparent 60%), radial-gradient(700px 400px at 85% 100%, rgba(99,102,241,0.18), transparent 60%)' }} />
 
@@ -562,7 +604,9 @@ function Cover({ book, tone, className = '' }: { book: NewBook; tone: number; cl
   if (book.coverUrl) {
     return (
       <span className={`block ${className}`} style={{ background: `var(--t${tone}-bg)` }}>
-        <img src={book.coverUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        <img src={`/api/library/cover/${book.id}`} alt="" loading="lazy" decoding="async"
+          className="h-full w-full object-cover"
+          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
       </span>
     );
   }
@@ -1059,7 +1103,7 @@ export function HomePreview() {
         <title>STM Digital Library — research your institution can open</title>
       </Helmet>
 
-      <Hero stats={stats} insights={insights} institutions={institutions} depts={depts} />
+      <Hero stats={stats} insights={insights} institutions={institutions} depts={depts} books={books} />
       <WaysIn />
       <InstitutionStrip inst={institutions} />
       <Impact stats={stats} depts={depts} inst={institutions} />

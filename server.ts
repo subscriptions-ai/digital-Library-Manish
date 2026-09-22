@@ -8546,6 +8546,111 @@ async function startServer() {
   };
 
   let institutionCache: { at: number; value: any } | null = null;
+  /**
+   * A book's cover, through us rather than straight from DOAB.
+   *
+   * DOAB serves covers at whatever size the publisher uploaded — one of the
+   * books on the home page is 1.9 MB and takes twenty seconds — and a home page
+   * that pulls a dozen of those before it has said anything is a home page
+   * nobody waits for. This fetches once, refuses anything above the cap, keeps
+   * what it got, and serves it with a week's cache. A cover it could not get,
+   * or would not take, is remembered as such so the next reader does not pay
+   * for the same slow request.
+   *
+   * There is no resizing: that would mean a native image library in the build,
+   * and a 400 KB ceiling does the same job for this page.
+   */
+  const COVER_DIR = path.join(UPLOAD_DIR, 'covers');
+  const COVER_MAX = 400_000;
+  const COVER_EXT = ['jpg', 'png', 'webp', 'gif'];
+
+  /** The cached file for a cover, or null if it is not here. */
+  const cachedCover = async (id: string) => {
+    const fsm = await import('node:fs');
+    return COVER_EXT.map(e => path.join(COVER_DIR, `${id}.${e}`)).find(f => fsm.existsSync(f)) || null;
+  };
+
+  /**
+   * Fetch one cover and keep it. Returns the path, or null if it could not be
+   * had — and remembers a refusal so the next reader does not wait for the same
+   * slow request a second time.
+   */
+  const ensureCover = async (id: string): Promise<string | null> => {
+    const fsm = await import('node:fs');
+    fsm.mkdirSync(COVER_DIR, { recursive: true });
+    const hit = await cachedCover(id);
+    if (hit) return hit;
+    if (fsm.existsSync(path.join(COVER_DIR, `${id}.none`))) return null;
+
+    const book = await (prisma as any).book.findUnique({ where: { id }, select: { coverUrl: true } });
+    const url = book?.coverUrl;
+    if (!url || !/^https?:\/\//i.test(url)) return null;
+
+    const refuse = (why: string) => { fsm.writeFileSync(path.join(COVER_DIR, `${id}.none`), why); return null; };
+    const stop = new AbortController();
+    const timer = setTimeout(() => stop.abort(), 8000);
+    let r: any;
+    try {
+      r = await fetch(url, { signal: stop.signal, headers: { 'User-Agent': `STM Digital Library (mailto:${process.env.OPENALEX_CONTACT || 'info@celnet.in'})` } });
+    } catch {
+      clearTimeout(timer);
+      return refuse('fetch failed');
+    }
+    clearTimeout(timer);
+
+    const type = String(r.headers.get('content-type') || '');
+    const size = Number(r.headers.get('content-length') || 0);
+    if (!r.ok || !type.startsWith('image/') || (size && size > COVER_MAX)) return refuse(`refused: ${r.status} ${type} ${size}`);
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > COVER_MAX) return refuse(`too large: ${buf.length}`);
+
+    const ext = type.includes('png') ? 'png' : type.includes('webp') ? 'webp' : type.includes('gif') ? 'gif' : 'jpg';
+    const file = path.join(COVER_DIR, `${id}.${ext}`);
+    fsm.writeFileSync(file, buf);
+    return file;
+  };
+
+  app.get("/api/library/cover/:id", async (req: any, res: any) => {
+    try {
+      const id = String(req.params.id || '').replace(/[^a-zA-Z0-9-]/g, '');
+      if (!id) return res.status(400).end();
+      const file = await ensureCover(id);
+      if (!file) return res.status(404).end();
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+      res.sendFile(file);
+    } catch (e: any) {
+      console.error('cover proxy error', e?.message);
+      res.status(404).end();
+    }
+  });
+
+  /**
+   * The covers the home page will ask for, fetched before anybody asks.
+   *
+   * DOAB takes seconds a file and the first visitor should not pay for that.
+   * Run a minute after boot and every six hours, a few at a time so the source
+   * is never hammered.
+   */
+  const warmCovers = async () => {
+    try {
+      const books = await (prisma as any).book.findMany({
+        where: { status: 'Published', coverUrl: { not: null } },
+        orderBy: { createdAt: 'desc' }, take: 24, select: { id: true },
+      });
+      let got = 0;
+      for (const b of books) {
+        if (await cachedCover(b.id)) continue;
+        if (await ensureCover(b.id)) got++;
+        await new Promise(r => setTimeout(r, 400));
+      }
+      if (got) console.log(`[covers] kept ${got} new cover${got === 1 ? '' : 's'}`);
+    } catch (e: any) {
+      console.error('[covers] warm failed:', e?.message);
+    }
+  };
+  setTimeout(() => { warmCovers().catch(() => {}); }, 60_000);
+  cron.schedule('0 */6 * * *', () => { warmCovers().catch(() => {}); });
+
   app.get("/api/library/institutions", async (_req: any, res: any) => {
     try {
       if (institutionCache && Date.now() - institutionCache.at < 10 * 60_000) return res.json(institutionCache.value);
