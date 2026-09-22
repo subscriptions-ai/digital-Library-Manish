@@ -4755,8 +4755,23 @@ async function startServer() {
         .map(r => ({ value: r[key] || null, count: r._count._all }))
         .sort((a, b) => b.count - a.count);
 
+      // The tag on a member is a code; the screen shows what it stands for —
+      // which campaign, run where, by whom.
+      const codes = [...new Set(users.map(u => u.signupSource).filter(Boolean))] as string[];
+      const named = codes.length
+        ? await (prisma as any).campaign.findMany({
+            where: { code: { in: codes } },
+            select: { code: true, name: true, channel: true, ownerName: true },
+          })
+        : [];
+      const byCode = new Map(named.map((c: any) => [c.code, c]));
+
       res.json({
-        data: users.map(u => ({ ...u, isEmailVerified: !!u.emailVerifiedAt })),
+        data: users.map(u => ({
+          ...u,
+          isEmailVerified: !!u.emailVerifiedAt,
+          campaign: u.signupSource ? byCode.get(u.signupSource) || null : null,
+        })),
         total, page, limit: take,
         counts: {
           matching: total,
@@ -4773,6 +4788,194 @@ async function startServer() {
     } catch (err) {
       console.error('GET /api/admin/users error:', err);
       res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // ── Campaigns ─────────────────────────────────────────────────────────────
+  // Where a member came from and who brought them. A campaign is registered
+  // here first, which hands back the one link to paste into Facebook, a
+  // WhatsApp forward or Sendy's query string; the tag on that link is what
+  // arrives on the signup, and these endpoints read it back.
+
+  const CHANNELS = ['Facebook', 'Instagram', 'WhatsApp', 'LinkedIn', 'Email', 'Poster', 'Other'];
+  const CHANNEL_CODE: Record<string, string> = {
+    Facebook: 'fb', Instagram: 'ig', WhatsApp: 'wa', LinkedIn: 'li',
+    Email: 'mail', Poster: 'qr', Other: 'web',
+  };
+
+  const slugPart = (s: string, max = 18) => String(s || '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, max).replace(/-$/, '');
+
+  /** fb-ravi-oct-drive, and -2 after it if that is taken. */
+  const mintCampaignCode = async (channel: string, owner: string, name: string) => {
+    const base = [CHANNEL_CODE[channel] || 'web', slugPart(owner, 12), slugPart(name)]
+      .filter(Boolean).join('-') || 'campaign';
+    for (let i = 0; i < 40; i++) {
+      const code = i ? `${base}-${i + 1}` : base;
+      const taken = await (prisma as any).campaign.findFirst({ where: { code }, select: { id: true } });
+      if (!taken) return code;
+    }
+    return `${base}-${Date.now().toString(36)}`;
+  };
+
+  /**
+   * Every campaign with what it brought in.
+   *
+   * Counted from User.signupSource rather than from a foreign key, so a
+   * campaign registered after its first signups still shows them, and a tag
+   * that belongs to no campaign is reported rather than silently dropped.
+   */
+  const campaignBoard = async () => {
+    const MEMBERS = { role: { notIn: STAFF_ROLES } };
+    const since30 = new Date(Date.now() - 30 * 864e5);
+
+    const [campaigns, all, verified, read, recent] = await Promise.all([
+      (prisma as any).campaign.findMany({ orderBy: { createdAt: 'desc' } }),
+      prisma.user.groupBy({ by: ['signupSource'], where: MEMBERS, _count: { _all: true } }),
+      prisma.user.groupBy({ by: ['signupSource'], where: { ...MEMBERS, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+      prisma.user.groupBy({ by: ['signupSource'], where: { ...MEMBERS, lastReadAt: { not: null } }, _count: { _all: true } }),
+      prisma.user.groupBy({ by: ['signupSource'], where: { ...MEMBERS, createdAt: { gte: since30 } }, _count: { _all: true } }),
+    ]);
+
+    const tally = (rows: any[]) => {
+      const m = new Map<string, number>();
+      for (const r of rows) if (r.signupSource) m.set(r.signupSource, r._count._all);
+      return m;
+    };
+    const [A, V, R, N] = [tally(all), tally(verified), tally(read), tally(recent)];
+
+    const rows = campaigns.map((c: any) => ({
+      ...c,
+      signups: A.get(c.code) || 0,
+      verified: V.get(c.code) || 0,
+      readers: R.get(c.code) || 0,
+      last30: N.get(c.code) || 0,
+    }));
+
+    // Tags that arrived on a link nobody registered here — our own lifecycle
+    // mail tags itself `mail-…`, and a marketer may have typed their own.
+    const known = new Set(campaigns.map((c: any) => c.code));
+    const loose = [...A.entries()]
+      .filter(([code]) => !known.has(code))
+      .map(([code, signups]) => ({ code, signups, verified: V.get(code) || 0, readers: R.get(code) || 0 }))
+      .sort((a, b) => b.signups - a.signups);
+
+    const group = (key: 'ownerName' | 'channel') => {
+      const m = new Map<string, any>();
+      for (const r of rows) {
+        const k = r[key] || '—';
+        const held = m.get(k) || { name: k, campaigns: 0, signups: 0, verified: 0, readers: 0, last30: 0 };
+        held.campaigns++; held.signups += r.signups; held.verified += r.verified;
+        held.readers += r.readers; held.last30 += r.last30;
+        m.set(k, held);
+      }
+      return [...m.values()].sort((a, b) => b.signups - a.signups || b.campaigns - a.campaigns);
+    };
+
+    const untaggedCount = (all.find((r: any) => !r.signupSource)?._count?._all) || 0;
+
+    return {
+      campaigns: rows,
+      byOwner: group('ownerName'),
+      byChannel: group('channel'),
+      loose,
+      channels: CHANNELS,
+      untagged: untaggedCount,
+      tagged: rows.reduce((n: number, r: any) => n + r.signups, 0)
+        + loose.reduce((n: number, r: any) => n + r.signups, 0),
+    };
+  };
+
+  app.get("/api/admin/campaigns", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try {
+      res.json(await campaignBoard());
+    } catch (e: any) {
+      console.error('GET campaigns error:', e?.message);
+      res.status(500).json({ error: "Failed to read the campaigns" });
+    }
+  });
+
+  app.post("/api/admin/campaigns", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const name = String(req.body?.name || '').trim();
+      const channel = String(req.body?.channel || '').trim();
+      const ownerName = String(req.body?.ownerName || '').trim();
+      if (!name) return res.status(400).json({ error: "The campaign needs a name" });
+      if (!CHANNELS.includes(channel)) return res.status(400).json({ error: "Pick where it runs" });
+      if (!ownerName) return res.status(400).json({ error: "Say who is running it" });
+
+      const landing = String(req.body?.landing || '/').trim() || '/';
+      const code = await mintCampaignCode(channel, ownerName, name);
+
+      const campaign = await (prisma as any).campaign.create({
+        data: {
+          code, name, channel, ownerName,
+          ownerId: req.body?.ownerId || null,
+          landing: landing.startsWith('/') ? landing : `/${landing}`,
+          notes: String(req.body?.notes || '').trim() || null,
+          createdBy: req.user?.userId || null,
+        },
+      });
+      res.status(201).json({ campaign });
+    } catch (e: any) {
+      console.error('POST campaign error:', e?.message);
+      res.status(500).json({ error: "Failed to create the campaign" });
+    }
+  });
+
+  app.patch("/api/admin/campaigns/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const data: any = {};
+      for (const k of ['name', 'ownerName', 'notes', 'landing'] as const) {
+        if (typeof req.body?.[k] === 'string') data[k] = req.body[k].trim() || null;
+      }
+      if (typeof req.body?.active === 'boolean') data.active = req.body.active;
+      if (typeof req.body?.channel === 'string' && CHANNELS.includes(req.body.channel)) data.channel = req.body.channel;
+      // The code is never edited: it is on links already in the world, and the
+      // signups that came through them carry it.
+      const campaign = await (prisma as any).campaign.update({ where: { id: req.params.id }, data });
+      res.json({ campaign });
+    } catch (e: any) {
+      console.error('PATCH campaign error:', e?.message);
+      res.status(500).json({ error: "Failed to save the campaign" });
+    }
+  });
+
+  app.delete("/api/admin/campaigns/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const campaign = await (prisma as any).campaign.findUnique({ where: { id: req.params.id } });
+      if (!campaign) return res.status(404).json({ error: "No such campaign" });
+      const brought = await prisma.user.count({ where: { signupSource: campaign.code } });
+      if (brought > 0) {
+        return res.status(409).json({
+          error: `${brought} ${brought === 1 ? 'member' : 'members'} came through this one. Switch it off instead of deleting it.`,
+        });
+      }
+      await (prisma as any).campaign.delete({ where: { id: campaign.id } });
+      res.json({ ok: true });
+    } catch (e: any) {
+      console.error('DELETE campaign error:', e?.message);
+      res.status(500).json({ error: "Failed to delete the campaign" });
+    }
+  });
+
+  // Who a campaign actually brought, newest first.
+  app.get("/api/admin/campaigns/:id/members", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const campaign = await (prisma as any).campaign.findUnique({ where: { id: req.params.id } });
+      if (!campaign) return res.status(404).json({ error: "No such campaign" });
+      const members = await prisma.user.findMany({
+        where: { signupSource: campaign.code, role: { notIn: STAFF_ROLES } },
+        select: {
+          id: true, displayName: true, email: true, role: true, organization: true,
+          designation: true, state: true, createdAt: true, emailVerifiedAt: true, lastReadAt: true,
+        },
+        orderBy: { createdAt: 'desc' }, take: 500,
+      });
+      res.json({ campaign, members });
+    } catch (e: any) {
+      console.error('campaign members error:', e?.message);
+      res.status(500).json({ error: "Failed to read the members" });
     }
   });
 

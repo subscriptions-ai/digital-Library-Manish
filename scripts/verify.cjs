@@ -957,6 +957,40 @@ const catalogueSize = async () => {
     summed === body.total ? ok('the kinds add up to the total', `${summed}`) : bad('the kinds add up to the total', `${summed} vs ${body.total}`);
   }
 
+  // ── Campaigns ─────────────────────────────────────────────────────────────
+  // Where a member came from and who brought them. The board is counted from
+  // the members themselves, so its own arithmetic is worth checking.
+  console.log('\nCampaigns');
+  {
+    const r = await get('/api/admin/campaigns', A);
+    if (r.status !== 200) bad('the campaign board reads', `HTTP ${r.status}`);
+    else {
+      const b = r.body || {};
+      ok('the campaign board reads', `${(b.campaigns || []).length} campaigns`);
+
+      const owners = (b.byOwner || []).reduce((n, o) => n + o.signups, 0);
+      const channels = (b.byChannel || []).reduce((n, c) => n + c.signups, 0);
+      owners === channels
+        ? ok('marketer and channel totals agree', `${owners}`)
+        : bad('marketer and channel totals agree', `${owners} by marketer vs ${channels} by channel`);
+
+      const fromCampaigns = (b.campaigns || []).reduce((n, c) => n + c.signups, 0);
+      const fromLoose = (b.loose || []).reduce((n, c) => n + c.signups, 0);
+      fromCampaigns + fromLoose === b.tagged
+        ? ok('every tagged signup is accounted for', `${b.tagged} tagged · ${b.untagged} untagged`)
+        : bad('every tagged signup is accounted for', `${fromCampaigns} + ${fromLoose} ≠ ${b.tagged}`);
+
+      // A code on a link already in the world is what the signups carry.
+      const dupes = (b.campaigns || []).map(c => c.code).filter((c, i, a) => a.indexOf(c) !== i);
+      dupes.length ? bad('campaign codes are unique', dupes.join(', ')) : ok('campaign codes are unique');
+    }
+
+    const shut = await get('/api/admin/campaigns', S || R);
+    shut.status === 403 || shut.status === 401
+      ? ok('members cannot read the campaign board', `HTTP ${shut.status}`)
+      : bad('members cannot read the campaign board', `HTTP ${shut.status}`);
+  }
+
   console.log('\nThe blog');
   {
     const editor = await p.user.findFirst({ where: { role: 'ContentManager' }, select: { id: true, email: true, role: true } });

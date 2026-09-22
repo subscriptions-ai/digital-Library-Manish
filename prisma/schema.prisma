@@ -1599,3 +1599,46 @@ model FreeSession {
   @@unique([userId, day, number])
   @@index([userId, startedAt])
 }
+
+/// A campaign we run somewhere — a Facebook post, a WhatsApp forward, a
+/// LinkedIn ad, a Sendy mailing — and the person who ran it.
+///
+/// The `code` is what goes on the link as `?ref=`. It is generated here rather
+/// than typed into five different ad managers, because attribution typed by
+/// hand is attribution that breaks on the first spelling mistake and cannot be
+/// repaired afterwards: a signup arrives with the tag it arrived with.
+///
+/// Nothing points at this table from User. The link is by `code` against
+/// `User.signupSource`, so a campaign can be renamed, or created after its
+/// first signups have already landed, without touching anybody's record.
+model Campaign {
+  id   String @id @default(uuid())
+  /// Lower case, url-safe. Unique in practice, enforced in the application:
+  /// a unique constraint on a new column makes `prisma db push` ask for
+  /// --accept-data-loss, which the deploy does not pass.
+  code String
+  name String
+
+  /// Facebook | Instagram | WhatsApp | LinkedIn | Email | Poster | Other
+  channel String
+
+  /// Who ran it. The name is what the scoreboard groups by, so a marketer
+  /// without a login on this system still has a column.
+  ownerName String
+  ownerId   String?
+
+  /// Where the link should land — "/" unless the campaign is about one thing.
+  landing String?
+  notes   String?
+
+  /// A finished campaign stays for its numbers but is not offered for new links.
+  active Boolean @default(true)
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([ownerName])
+  @@index([channel])
+}

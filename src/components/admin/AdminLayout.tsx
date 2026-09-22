@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, PenLine, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon, ShieldAlert
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, PenLine, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon, ShieldAlert, Megaphone
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -192,6 +192,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             active={location.pathname === '/admin/leads'}
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/admin/leads')}
+            highlight
+          />
+          <NavButton
+            icon={<Megaphone size={17} />}
+            label="Campaigns"
+            active={location.pathname === '/admin/campaigns'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/campaigns')}
             highlight
           />
           <NavButton
@@ -493,7 +501,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname.startsWith('/admin/extraction') ? 'AI Extraction Engine'
               : location.pathname.startsWith('/admin/coupons') ? 'Coupons'
               : location.pathname === '/admin/sales-team' ? 'Sales Team'
-              : location.pathname === '/admin/leads' ? 'Lead Master'
+              : location.pathname === '/admin/campaigns' ? 'Campaigns'
+            : location.pathname === '/admin/leads' ? 'Lead Master'
               : location.pathname.startsWith('/admin/sales-team/') ? 'Executive Pipeline'
               : 'Dashboard')}
           </h1>

@@ -67,6 +67,7 @@ import { AdminSalesTeam } from "./components/admin/AdminSalesTeam";
 import { AdminExecutivePipeline } from "./components/admin/AdminExecutivePipeline";
 import { AdminLeadManager } from "./components/admin/AdminLeadManager";
 import { AdminJournalDirectory } from "./components/admin/AdminJournalDirectory";
+import { AdminCampaigns } from "./components/admin/AdminCampaigns";
 import { AdminEmails } from "./components/admin/AdminEmails";
 import { Unsubscribe } from "./components/Unsubscribe";
 import { StudioLayout } from "./components/studio/StudioLayout";
@@ -217,6 +218,7 @@ export default function App() {
                 <Route path="/admin/receipts" element={<AdminLayout><ReceiptManager /></AdminLayout>} />
                 <Route path="/admin/publishers" element={<AdminLayout><PublisherManager /></AdminLayout>} />
                 <Route path="/admin/journals" element={<AdminLayout><AdminJournalDirectory /></AdminLayout>} />
+                <Route path="/admin/campaigns" element={<AdminLayout><AdminCampaigns /></AdminLayout>} />
                 <Route path="/admin/media" element={<AdminLayout><MediaLibrary /></AdminLayout>} />
                 <Route path="/admin/review" element={<AdminLayout><PublisherReviewQueue /></AdminLayout>} />
                 <Route path="/admin/ingestion" element={<AdminLayout><DataIngestion /></AdminLayout>} />

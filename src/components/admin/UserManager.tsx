@@ -442,8 +442,15 @@ export function UserManager() {
                             never opened anything
                           </span>
                         )}
+                        {/* The tag is a code; where a campaign is registered under
+                            it, the row says what it stands for instead. */}
                         <p className="mt-1 text-slate-400">
-                          {user.signupSource ? <>via <b className="text-slate-600">{user.signupSource}</b></> : 'no campaign tag'}
+                          {user.campaign ? (
+                            <>via <b className="text-slate-600">{user.campaign.name}</b>
+                              {' '}<span className="text-slate-500">{user.campaign.channel} · {user.campaign.ownerName}</span></>
+                          ) : user.signupSource ? (
+                            <>via <b className="text-slate-600">{user.signupSource}</b></>
+                          ) : 'no campaign tag'}
                         </p>
                         {user.createdAt && (
                           <p className="text-slate-400">joined {new Date(user.createdAt).toLocaleDateString()}</p>

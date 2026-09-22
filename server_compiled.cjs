@@ -28748,8 +28748,18 @@ async function startServer() {
         prisma3.user.count({ where: { AND: [where, { lastReadAt: { not: null } }] } })
       ]);
       const facet = (rows, key) => rows.map((r2) => ({ value: r2[key] || null, count: r2._count._all })).sort((a, b) => b.count - a.count);
+      const codes = [...new Set(users.map((u) => u.signupSource).filter(Boolean))];
+      const named = codes.length ? await prisma3.campaign.findMany({
+        where: { code: { in: codes } },
+        select: { code: true, name: true, channel: true, ownerName: true }
+      }) : [];
+      const byCode = new Map(named.map((c) => [c.code, c]));
       res.json({
-        data: users.map((u) => ({ ...u, isEmailVerified: !!u.emailVerifiedAt })),
+        data: users.map((u) => ({
+          ...u,
+          isEmailVerified: !!u.emailVerifiedAt,
+          campaign: u.signupSource ? byCode.get(u.signupSource) || null : null
+        })),
         total,
         page,
         limit: take,
@@ -28768,6 +28778,171 @@ async function startServer() {
     } catch (err) {
       console.error("GET /api/admin/users error:", err);
       res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+  const CHANNELS = ["Facebook", "Instagram", "WhatsApp", "LinkedIn", "Email", "Poster", "Other"];
+  const CHANNEL_CODE = {
+    Facebook: "fb",
+    Instagram: "ig",
+    WhatsApp: "wa",
+    LinkedIn: "li",
+    Email: "mail",
+    Poster: "qr",
+    Other: "web"
+  };
+  const slugPart = (s2, max = 18) => String(s2 || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, max).replace(/-$/, "");
+  const mintCampaignCode = async (channel, owner, name) => {
+    const base = [CHANNEL_CODE[channel] || "web", slugPart(owner, 12), slugPart(name)].filter(Boolean).join("-") || "campaign";
+    for (let i2 = 0; i2 < 40; i2++) {
+      const code = i2 ? `${base}-${i2 + 1}` : base;
+      const taken = await prisma3.campaign.findFirst({ where: { code }, select: { id: true } });
+      if (!taken) return code;
+    }
+    return `${base}-${Date.now().toString(36)}`;
+  };
+  const campaignBoard = async () => {
+    const MEMBERS = { role: { notIn: STAFF_ROLES } };
+    const since30 = new Date(Date.now() - 30 * 864e5);
+    const [campaigns, all, verified, read, recent] = await Promise.all([
+      prisma3.campaign.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma3.user.groupBy({ by: ["signupSource"], where: MEMBERS, _count: { _all: true } }),
+      prisma3.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+      prisma3.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, lastReadAt: { not: null } }, _count: { _all: true } }),
+      prisma3.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, createdAt: { gte: since30 } }, _count: { _all: true } })
+    ]);
+    const tally = (rows2) => {
+      const m2 = /* @__PURE__ */ new Map();
+      for (const r2 of rows2) if (r2.signupSource) m2.set(r2.signupSource, r2._count._all);
+      return m2;
+    };
+    const [A2, V, R, N] = [tally(all), tally(verified), tally(read), tally(recent)];
+    const rows = campaigns.map((c) => ({
+      ...c,
+      signups: A2.get(c.code) || 0,
+      verified: V.get(c.code) || 0,
+      readers: R.get(c.code) || 0,
+      last30: N.get(c.code) || 0
+    }));
+    const known = new Set(campaigns.map((c) => c.code));
+    const loose = [...A2.entries()].filter(([code]) => !known.has(code)).map(([code, signups]) => ({ code, signups, verified: V.get(code) || 0, readers: R.get(code) || 0 })).sort((a, b) => b.signups - a.signups);
+    const group = (key) => {
+      const m2 = /* @__PURE__ */ new Map();
+      for (const r2 of rows) {
+        const k = r2[key] || "\u2014";
+        const held = m2.get(k) || { name: k, campaigns: 0, signups: 0, verified: 0, readers: 0, last30: 0 };
+        held.campaigns++;
+        held.signups += r2.signups;
+        held.verified += r2.verified;
+        held.readers += r2.readers;
+        held.last30 += r2.last30;
+        m2.set(k, held);
+      }
+      return [...m2.values()].sort((a, b) => b.signups - a.signups || b.campaigns - a.campaigns);
+    };
+    const untaggedCount = all.find((r2) => !r2.signupSource)?._count?._all || 0;
+    return {
+      campaigns: rows,
+      byOwner: group("ownerName"),
+      byChannel: group("channel"),
+      loose,
+      channels: CHANNELS,
+      untagged: untaggedCount,
+      tagged: rows.reduce((n2, r2) => n2 + r2.signups, 0) + loose.reduce((n2, r2) => n2 + r2.signups, 0)
+    };
+  };
+  app.get("/api/admin/campaigns", authenticateJWT, requireAdminOrManager, async (_req, res) => {
+    try {
+      res.json(await campaignBoard());
+    } catch (e2) {
+      console.error("GET campaigns error:", e2?.message);
+      res.status(500).json({ error: "Failed to read the campaigns" });
+    }
+  });
+  app.post("/api/admin/campaigns", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const name = String(req.body?.name || "").trim();
+      const channel = String(req.body?.channel || "").trim();
+      const ownerName = String(req.body?.ownerName || "").trim();
+      if (!name) return res.status(400).json({ error: "The campaign needs a name" });
+      if (!CHANNELS.includes(channel)) return res.status(400).json({ error: "Pick where it runs" });
+      if (!ownerName) return res.status(400).json({ error: "Say who is running it" });
+      const landing = String(req.body?.landing || "/").trim() || "/";
+      const code = await mintCampaignCode(channel, ownerName, name);
+      const campaign = await prisma3.campaign.create({
+        data: {
+          code,
+          name,
+          channel,
+          ownerName,
+          ownerId: req.body?.ownerId || null,
+          landing: landing.startsWith("/") ? landing : `/${landing}`,
+          notes: String(req.body?.notes || "").trim() || null,
+          createdBy: req.user?.userId || null
+        }
+      });
+      res.status(201).json({ campaign });
+    } catch (e2) {
+      console.error("POST campaign error:", e2?.message);
+      res.status(500).json({ error: "Failed to create the campaign" });
+    }
+  });
+  app.patch("/api/admin/campaigns/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const data = {};
+      for (const k of ["name", "ownerName", "notes", "landing"]) {
+        if (typeof req.body?.[k] === "string") data[k] = req.body[k].trim() || null;
+      }
+      if (typeof req.body?.active === "boolean") data.active = req.body.active;
+      if (typeof req.body?.channel === "string" && CHANNELS.includes(req.body.channel)) data.channel = req.body.channel;
+      const campaign = await prisma3.campaign.update({ where: { id: req.params.id }, data });
+      res.json({ campaign });
+    } catch (e2) {
+      console.error("PATCH campaign error:", e2?.message);
+      res.status(500).json({ error: "Failed to save the campaign" });
+    }
+  });
+  app.delete("/api/admin/campaigns/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const campaign = await prisma3.campaign.findUnique({ where: { id: req.params.id } });
+      if (!campaign) return res.status(404).json({ error: "No such campaign" });
+      const brought = await prisma3.user.count({ where: { signupSource: campaign.code } });
+      if (brought > 0) {
+        return res.status(409).json({
+          error: `${brought} ${brought === 1 ? "member" : "members"} came through this one. Switch it off instead of deleting it.`
+        });
+      }
+      await prisma3.campaign.delete({ where: { id: campaign.id } });
+      res.json({ ok: true });
+    } catch (e2) {
+      console.error("DELETE campaign error:", e2?.message);
+      res.status(500).json({ error: "Failed to delete the campaign" });
+    }
+  });
+  app.get("/api/admin/campaigns/:id/members", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const campaign = await prisma3.campaign.findUnique({ where: { id: req.params.id } });
+      if (!campaign) return res.status(404).json({ error: "No such campaign" });
+      const members = await prisma3.user.findMany({
+        where: { signupSource: campaign.code, role: { notIn: STAFF_ROLES } },
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+          role: true,
+          organization: true,
+          designation: true,
+          state: true,
+          createdAt: true,
+          emailVerifiedAt: true,
+          lastReadAt: true
+        },
+        orderBy: { createdAt: "desc" },
+        take: 500
+      });
+      res.json({ campaign, members });
+    } catch (e2) {
+      console.error("campaign members error:", e2?.message);
+      res.status(500).json({ error: "Failed to read the members" });
     }
   });
   app.get("/api/admin/institutions", authenticateJWT, requireAdminOrManager, async (req, res) => {
