@@ -892,6 +892,37 @@ const catalogueSize = async () => {
     bogus.status === 404 ? ok('a bogus unsubscribe link is refused', 'HTTP 404') : bad('a bogus unsubscribe link is refused', `HTTP ${bogus.status}`);
   }
 
+  console.log('\nRecords anybody can open');
+  {
+    // Every link on the public side used to land on the browse screen, because
+    // nothing in the library had a page of its own.
+    const bk = await p.book.findFirst({ where: { status: 'Published' }, select: { id: true, title: true } });
+    if (!bk) meh('a book has a page of its own', 'no published book');
+    else {
+      const r = await get(`/api/library/book/${bk.id}`);
+      r.status === 200 && r.body?.book?.title
+        ? ok('a book has a page of its own', `"${String(r.body.book.title).slice(0, 40)}" · ${(r.body.alongside || []).length} alongside`)
+        : bad('a book has a page of its own', `HTTP ${r.status}`);
+
+      // The publisher's brief to its own copywriter is not a blurb.
+      const d = String(r.body?.book?.description || '');
+      /promotional forms|consumer-friendly terms|^ca\. \d+ words/i.test(d)
+        ? bad('a blurb is a blurb', 'the description still carries the publisher\'s instructions')
+        : ok('a blurb is a blurb');
+    }
+
+    if (!article) meh('an article has a page of its own', 'no published article');
+    else {
+      const r = await get(`/api/library/article/${article.id}`);
+      r.status === 200 && r.body?.id === article.id
+        ? ok('an article has a page of its own', 'readable without signing in')
+        : bad('an article has a page of its own', `HTTP ${r.status}`);
+    }
+
+    const gone = await get('/api/library/book/not-a-real-book');
+    gone.status === 404 ? ok('an unknown book answers 404') : bad('an unknown book answers 404', `HTTP ${gone.status}`);
+  }
+
   console.log('\nWho is with us');
   {
     const inst = await get('/api/library/institutions');

@@ -58,9 +58,13 @@ const plural = (word: string, count: number) =>
   count === 1 ? word : /y$/.test(word) ? `${word.slice(0, -1)}ies` : `${word}s`;
 const named = (t?: string) => Boolean(t && t.trim() && t.trim().toLowerCase() !== 'untitled');
 
-/** Where a title on this page leads: the public browse screen, never a login. */
-const browse = (kind: 'articles' | 'books', title: string) =>
-  `/digital-library?kind=${kind}&q=${encodeURIComponent(title)}`;
+/**
+ * Where a title on this page leads: its own record, which anybody can open.
+ *
+ * Everything used to point at the browse screen with a search on it, so three
+ * different clicks landed on the same list — which is no navigation at all.
+ */
+const record = (kind: 'article' | 'book', id: string) => `/${kind}/${id}`;
 
 const added = (iso?: string) => {
   if (!iso) return null;
@@ -647,7 +651,7 @@ function WhatIsNew({ books, articles }: { books: NewBook[]; articles: NewArticle
         <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {(featured.length ? featured : Array.from({ length: 3 }) as any[]).map((b: NewBook | undefined, k) => (
             b ? (
-              <Link key={b.id} to={browse('books', b.title)}
+              <Link key={b.id} to={record('book', b.id)}
                 className="group flex flex-col overflow-hidden rounded-2xl border bg-surface transition-shadow hover:shadow-xl"
                 style={{ borderColor: 'var(--np-line)' }}>
                 <Cover book={b} tone={(k % 6) + 1} className="h-48 w-full" />
@@ -676,7 +680,7 @@ function WhatIsNew({ books, articles }: { books: NewBook[]; articles: NewArticle
             {(articles.length ? articles.slice(0, 5) : Array.from({ length: 5 }) as any[]).map((a: NewArticle | undefined, k) => (
               <li key={a?.id || k} className="border-b px-5 py-3.5 last:border-b-0" style={{ borderColor: 'var(--np-line)' }}>
                 {a ? (
-                  <Link to={browse('articles', a.title)} className="flex items-baseline justify-between gap-4">
+                  <Link to={record('article', a.id)} className="flex items-baseline justify-between gap-4">
                     <span className="min-w-0">
                       <span className="block truncate text-[14px]" style={{ color: 'var(--np-ink)' }}>{a.title}</span>
                       <span className="block truncate text-[11.5px]" style={{ color: 'var(--np-body)' }}>

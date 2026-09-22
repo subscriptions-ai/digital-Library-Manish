@@ -8651,6 +8651,50 @@ async function startServer() {
   setTimeout(() => { warmCovers().catch(() => {}); }, 60_000);
   cron.schedule('0 */6 * * *', () => { warmCovers().catch(() => {}); });
 
+  /**
+   * One book, for its own page.
+   *
+   * There was no such endpoint: a book could be listed, searched and read, but
+   * not linked to — which is why every link on the second home page ended up
+   * pointing at the browse screen. A record anybody can open is also a record
+   * a search engine can index.
+   */
+  app.get("/api/library/book/:id", async (req: any, res: any) => {
+    try {
+      const book = await (prisma as any).book.findFirst({
+        where: { id: String(req.params.id || ''), status: 'Published' },
+        select: {
+          id: true, title: true, authors: true, publisherName: true, isbn: true, doi: true,
+          year: true, edition: true, pages: true, subject: true, domain: true, language: true,
+          country: true, description: true, coverUrl: true, chapterCount: true, createdAt: true,
+        },
+      });
+      if (!book) return res.status(404).json({ error: "No such book" });
+
+      // Some catalogues carry the publisher's own brief in the description
+      // field — "ca. 200 words; this text will present the book in all
+      // promotional forms… [the actual blurb]". The instruction is not for the
+      // reader, so it is cut and the blurb kept.
+      if (book.description) {
+        let d = String(book.description).trim();
+        d = d.replace(/^[^[]{0,400}?\b(promotional forms|consumer-friendly terms)[^[]{0,200}?\[/i, '[');
+        const inner = /^\[(.+)\]$/s.exec(d);
+        if (inner) d = inner[1].trim();
+        book.description = d;
+      }
+
+      const alongside = await (prisma as any).book.findMany({
+        where: { status: 'Published', id: { not: book.id }, ...(book.domain ? { domain: book.domain } : {}) },
+        orderBy: { createdAt: 'desc' }, take: 4,
+        select: { id: true, title: true, authors: true, coverUrl: true, domain: true, year: true },
+      });
+      res.json({ book, alongside });
+    } catch (e: any) {
+      console.error('book record error', e?.message);
+      res.status(500).json({ error: "Failed to read that book" });
+    }
+  });
+
   app.get("/api/library/institutions", async (_req: any, res: any) => {
     try {
       if (institutionCache && Date.now() - institutionCache.at < 10 * 60_000) return res.json(institutionCache.value);

@@ -72,6 +72,7 @@ import { StudioLayout } from "./components/studio/StudioLayout";
 import { PostList } from "./components/studio/PostList";
 import { PostEditor } from "./components/studio/PostEditor";
 import { BlogList, BlogPost } from "./components/blog/Blog";
+import { ArticleRecord, BookRecord } from "./components/library/PublicRecord";
 import { AdminBlog } from "./components/admin/AdminBlog";
 import { SalesLayout } from "./components/sales/SalesLayout";
 import { SalesDashboard } from "./components/sales/SalesDashboard";
@@ -383,6 +384,9 @@ export default function App() {
                       <Route path="/unsubscribe/:token" element={<Unsubscribe />} />
                       <Route path="/blog" element={<BlogList />} />
                       <Route path="/blog/:slug" element={<BlogPost />} />
+                      {/* A record anybody can open, and link to. */}
+                      <Route path="/article/:id" element={<ArticleRecord />} />
+                      <Route path="/book/:id" element={<BookRecord />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>

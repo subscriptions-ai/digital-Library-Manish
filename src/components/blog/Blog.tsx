@@ -255,7 +255,7 @@ export function BlogPost() {
             <ul className="mt-4 divide-y divide-rule">
               {fromLibrary.map((a: any) => (
                 <li key={a.id} className="py-3 first:pt-0 last:pb-0">
-                  <Link to={`/digital-library?kind=articles&q=${encodeURIComponent(a.title)}`} className="group block">
+                  <Link to={`/article/${a.id}`} className="group block">
                     <p className="text-[14px] leading-snug text-ink-2 group-hover:text-accent">{a.title}</p>
                     <p className="mt-0.5 font-mono text-[11px] text-faint">
                       {[a.journalName, a.domain, a.year].filter(Boolean).join(' · ')}
