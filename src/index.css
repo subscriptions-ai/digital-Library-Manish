@@ -290,21 +290,17 @@
   .slider-progress { animation: none; }
 }
 
-/* The hero's shelf.
-   Three columns of covers drifting past at different speeds, the way a shelf
-   looks when you walk along it. Each column holds its covers twice over, so
-   the loop has no seam and nothing ever cuts or flashes — the earlier version
-   faded a whole wall in and out on every slide, which read as a glitch.
-   The columns are nudged as the slide changes, which brings different books
-   into view without a transition anybody has to watch. */
-@keyframes shelf-up   { from { transform: translateY(0); }    to { transform: translateY(-50%); } }
-@keyframes shelf-down { from { transform: translateY(-50%); } to { transform: translateY(0); } }
-.shelf-col { will-change: transform; }
-.shelf-col-1 { animation: shelf-up   64s linear infinite; }
-.shelf-col-2 { animation: shelf-down 78s linear infinite; }
-.shelf-col-3 { animation: shelf-up   92s linear infinite; }
-.shelf:hover .shelf-col { animation-play-state: paused; }
-@media (prefers-reduced-motion: reduce) { .shelf-col { animation: none; } }
+/* The hero's illustration: its layers breathe, slightly out of step, so the
+   picture is alive without anything moving far enough to pull the eye off the
+   headline. Still for anyone who has asked their system for less motion. */
+@keyframes hero-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+.hero-float        { animation: hero-float 9s ease-in-out infinite; }
+.hero-float-slow   { animation: hero-float 13s ease-in-out infinite; }
+.hero-float-slower { animation: hero-float 16s ease-in-out infinite 1.5s; }
+.hero-float-fast   { animation: hero-float 7s ease-in-out infinite 0.6s; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-float, .hero-float-slow, .hero-float-slower, .hero-float-fast { animation: none; }
+}
 
 /* The publishers strip on the home page, which walks slowly to the left and
    stops when a reader points at it. The track holds the list twice, so the

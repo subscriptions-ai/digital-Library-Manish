@@ -124,66 +124,102 @@ const btnPrimary = 'inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[14
 const btnGhost = 'inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-bold transition-colors';
 
 /**
- * The hero's picture: the shelf itself, drifting past.
+ * The hero's picture.
  *
- * Three columns of the covers the library actually holds, each moving at its
- * own speed — one up, one down, one up again — with every column holding its
- * covers twice so the loop never shows a seam. Nothing fades in or out: the
- * first version turned a whole wall over on each slide, and a picture that
- * blinks every seven seconds is a picture people look away from.
+ * Drawn rather than photographed, and drawn rather than collaged: two earlier
+ * attempts filled this half with book covers, and both read as wallpaper —
+ * cropped at the edges, blinking on every slide, busy behind the words.
  *
- * The slide still changes what is on show, but gently: each one nudges the
- * columns along, so different books come round without anything cutting.
- *
- * Covers come through /api/library/cover, which keeps a copy and refuses
- * anything over 400 KB. A cover that fails leaves its tile tinted, and the
- * column carries on.
+ * What is here instead is the product itself, as a small stage: the reader open
+ * on an article, the shelf it came off behind it, and the two things this
+ * library is careful about — the licence and where the full text opens — sitting
+ * in front as cards. It is an SVG, so it is a few kilobytes, sharp at any size,
+ * and it costs no request. The layers drift a little, out of step, which is
+ * enough movement for a hero and not enough to distract from reading it.
  */
-function Shelf({ books, slide }: { books: NewBook[]; slide: number }) {
-  const all = books.filter(b => b.coverUrl);
-  if (all.length < 6) return null;
-
-  // Three columns, each with its own run of books and its own twice-over loop.
-  const columns = [0, 1, 2].map(c => {
-    const mine = all.filter((_, k) => k % 3 === c);
-    return mine.length ? mine : all;
-  });
+function HeroArt({ slide, depts }: { slide: number; depts: DeptRow[] }) {
+  // The card names a real department, and a different one each slide.
+  const dept = depts.length ? depts[slide % depts.length] : null;
+  const tint = (n2: number) => `var(--t${((slide + n2) % 6) + 1}-bg)`;
+  const ink = (n2: number) => `var(--t${((slide + n2) % 6) + 1}-ink)`;
 
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden w-[46%] lg:block">
-      <div className="shelf absolute inset-0 origin-center scale-[1.22] -rotate-6 opacity-95">
-        <div className="grid h-full grid-cols-3 gap-4 px-4">
-          {columns.map((col, c) => (
-            <div key={c} className="overflow-hidden">
-              <div
-                className={`shelf-col shelf-col-${c + 1} flex flex-col gap-4 transition-transform duration-1000 ease-out`}
-                style={{ transform: `translateY(${-(slide * 26)}px)` }}
-              >
-                {col.concat(col).map((b, k) => (
-                  <span key={`${b.id}-${k}`}
-                    // A book is taller than it is wide; cropping one to a square
-                    // is how a shelf starts looking like wallpaper.
-                    className="block aspect-[2/3] w-full shrink-0 overflow-hidden rounded-xl shadow-xl ring-1 ring-white/10"
-                    style={{ background: `var(--t${((c + k) % 6) + 1}-bg)` }}>
-                    <img src={`/api/library/cover/${b.id}`} alt="" loading="lazy" decoding="async"
-                      className="h-full w-full object-cover"
-                      onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }} />
-                  </span>
-                ))}
-              </div>
-            </div>
+    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden w-[48%] items-center justify-center lg:flex">
+      <div className="relative h-[430px] w-[520px]">
+        {/* the shelf behind, three spines at rest */}
+        <div className="hero-float-slow absolute left-2 top-10 flex gap-3">
+          {[0, 1, 2].map(k => (
+            <span key={k} className="relative block h-[168px] w-[112px] overflow-hidden rounded-xl shadow-2xl"
+              style={{
+                background: tint(k),
+                transform: `rotate(${(k - 1) * 5}deg) translateY(${k === 1 ? -12 : 0}px)`,
+                border: '1px solid rgba(255,255,255,0.14)',
+              }}>
+              {/* the spine, which is what tells the eye it is a book */}
+              <span className="absolute inset-y-0 left-0 w-2.5" style={{ background: ink(k), opacity: 0.22 }} />
+              <span className="mt-5 block h-1.5 w-12 rounded-full" style={{ background: ink(k), opacity: 0.55, marginLeft: 22 }} />
+              <span className="mt-2 block h-1.5 w-16 rounded-full" style={{ background: ink(k), opacity: 0.32, marginLeft: 22 }} />
+              <span className="absolute bottom-4 left-[22px] block h-1 w-8 rounded-full" style={{ background: ink(k), opacity: 0.25 }} />
+            </span>
           ))}
         </div>
-      </div>
 
-      {/* Dark where the words are, clear where the shelf is, and softened at
-          the top and bottom so the columns do not end in a straight cut. */}
-      <div className="absolute inset-0"
-        style={{ background: 'linear-gradient(90deg, var(--np-navy) 0%, color-mix(in srgb, var(--np-navy) 92%, transparent) 22%, color-mix(in srgb, var(--np-navy) 62%, transparent) 50%, color-mix(in srgb, var(--np-navy) 38%, transparent) 78%, color-mix(in srgb, var(--np-navy) 58%, transparent) 100%)' }} />
-      <div className="absolute inset-x-0 top-0 h-28"
-        style={{ background: 'linear-gradient(180deg, var(--np-navy), transparent)' }} />
-      <div className="absolute inset-x-0 bottom-0 h-32"
-        style={{ background: 'linear-gradient(0deg, var(--np-navy), transparent)' }} />
+        {/* the reader, open on an article */}
+        <div className="hero-float absolute bottom-6 left-10 w-[380px] rounded-2xl bg-surface p-4 shadow-2xl"
+          style={{ border: '1px solid rgba(255,255,255,0.14)' }}>
+          <div className="flex items-center gap-1.5 pb-3">
+            {[0, 1, 2].map(k => <span key={k} className="h-2 w-2 rounded-full" style={{ background: 'var(--np-line)' }} />)}
+            <span className="ml-2 text-[10px]" style={{ color: 'var(--np-body)' }}>the reader</span>
+            <span className="ml-auto rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+              style={{ background: tint(1), color: ink(1) }}>Open access</span>
+          </div>
+
+          <div className="rounded-xl p-4" style={{ background: 'var(--np-soft)' }}>
+            <span className="block h-2.5 w-3/4 rounded-full" style={{ background: 'var(--np-ink)', opacity: 0.8 }} />
+            <span className="mt-2.5 block h-1.5 w-1/3 rounded-full" style={{ background: 'var(--np-body)', opacity: 0.5 }} />
+            <span className="mt-5 block space-y-2">
+              {[100, 96, 88, 92, 60].map((w, k) => (
+                <span key={k} className="block h-1.5 rounded-full"
+                  style={{
+                    width: `${w}%`,
+                    background: k === 2 ? 'var(--np-amber)' : 'var(--np-body)',
+                    opacity: k === 2 ? 0.85 : 0.22,
+                  }} />
+              ))}
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-[10px]" style={{ color: 'var(--np-body)' }}>page 7 of 14</span>
+            <span className="h-1 w-28 overflow-hidden rounded-full" style={{ background: 'var(--np-line)' }}>
+              <span className="block h-full w-1/2 rounded-full" style={{ background: 'var(--np-amber)' }} />
+            </span>
+          </div>
+        </div>
+
+        {/* the two things this library is careful about */}
+        <div className="hero-float-fast absolute right-0 top-24 rounded-2xl bg-surface px-4 py-3 shadow-2xl"
+          style={{ border: '1px solid rgba(255,255,255,0.14)' }}>
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>Licence</p>
+          <p className="np-strong mt-1 text-[15px]" style={{ color: ink(2) }}>CC BY</p>
+          <p className="mt-0.5 text-[10px]" style={{ color: 'var(--np-body)' }}>Checked before serving</p>
+        </div>
+
+        <div className="hero-float-slower absolute -bottom-2 right-0 rounded-2xl bg-surface px-4 py-3 shadow-2xl"
+          style={{ border: '1px solid rgba(255,255,255,0.14)' }}>
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>Department</p>
+          <p className="np-strong mt-1 max-w-[160px] truncate text-[13px]" style={{ color: 'var(--np-ink)' }}>
+            {dept?.name || 'Computer / IT'}
+          </p>
+          <p className="mt-0.5 text-[10px]" style={{ color: 'var(--np-body)' }}>
+            {dept ? `${n(dept.total)} items held` : 'Journal · volume · issue'}
+          </p>
+        </div>
+
+        {/* a little light behind the whole thing */}
+        <div className="absolute inset-0 -z-10 rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(closest-side, rgba(245,179,1,0.16), transparent 70%)' }} />
+      </div>
     </div>
   );
 }
@@ -270,8 +306,8 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
   ];
 }
 
-function Hero({ stats, insights, institutions, depts, books }: {
-  stats: Stats | null; insights: Insights | null; institutions: Institutions | null; depts: DeptRow[]; books: NewBook[];
+function Hero({ stats, insights, institutions, depts }: {
+  stats: Stats | null; insights: Insights | null; institutions: Institutions | null; depts: DeptRow[];
 }) {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
@@ -317,7 +353,7 @@ function Hero({ stats, insights, institutions, depts, books }: {
       className="relative overflow-hidden"
       style={{ background: 'linear-gradient(135deg, var(--np-navy) 0%, var(--np-navy-2) 55%, #1b2f63 100%)' }}
     >
-      <Shelf books={books} slide={i} />
+      <HeroArt slide={i} depts={depts} />
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60"
         style={{ background: 'radial-gradient(900px 420px at 15% 0%, rgba(245,179,1,0.10), transparent 60%), radial-gradient(700px 400px at 85% 100%, rgba(99,102,241,0.18), transparent 60%)' }} />
 
@@ -1033,7 +1069,7 @@ export function HomePreview() {
         <title>STM Digital Library — research your institution can open</title>
       </Helmet>
 
-      <Hero stats={stats} insights={insights} institutions={institutions} depts={depts} books={books} />
+      <Hero stats={stats} insights={insights} institutions={institutions} depts={depts} />
       <WaysIn />
       <InstitutionStrip inst={institutions} />
       <Impact stats={stats} depts={depts} inst={institutions} />
