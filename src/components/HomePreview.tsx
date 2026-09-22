@@ -448,9 +448,14 @@ function Impact({ stats, depts, inst }: { stats: Stats | null; depts: DeptRow[];
 const WITH_US_SHOWN = 18;
 
 function WithUs({ inst }: { inst: Institutions | null }) {
-  const [kind, setKind] = useState('All');
+  // Universities lead, and the page opens on them: they are what a visitor
+  // asking "who else is on this" is looking for.
+  const [chosen, setChosen] = useState<string | null>(null);
   if (!inst?.institutions?.length) return null;
-  const kinds = ['All', ...KIND_ORDER.filter(k => inst.byKind?.[k]),
+  const kind = chosen ?? (inst.byKind?.University ? 'University' : 'All');
+  const setKind = setChosen;
+  const kinds = [...(inst.byKind?.University ? ['University'] : []), 'All',
+    ...KIND_ORDER.filter(k => k !== 'University' && inst.byKind?.[k]),
     ...Object.keys(inst.byKind || {}).filter(k => !KIND_ORDER.includes(k))];
   const all = [...inst.institutions].sort(byKindThenSize);
   const matching = kind === 'All' ? all : all.filter(i => i.kind === kind);

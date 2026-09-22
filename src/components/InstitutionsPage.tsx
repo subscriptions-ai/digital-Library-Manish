@@ -27,7 +27,7 @@ const rank = (k: string) => { const i = KIND_ORDER.indexOf(k); return i < 0 ? 99
 
 export function InstitutionsPage() {
   const [data, setData] = useState<Payload | null>(null);
-  const [kind, setKind] = useState('All');
+  const [chosen, setChosen] = useState<string | null>(null);
   const [q, setQ] = useState('');
 
   useEffect(() => {
@@ -37,6 +37,10 @@ export function InstitutionsPage() {
       .then(d => d?.institutions && setData(d))
       .catch(() => {});
   }, []);
+
+  // Universities first, and selected when the page opens.
+  const kind = chosen ?? (data?.byKind?.University ? 'University' : 'All');
+  const setKind = setChosen;
 
   const rows = useMemo(() => {
     const all = [...(data?.institutions || [])].sort(
@@ -54,7 +58,8 @@ export function InstitutionsPage() {
     return [...by.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
   }, [rows]);
 
-  const kinds = ['All', ...KIND_ORDER.filter(k => data?.byKind?.[k]),
+  const kinds = [...(data?.byKind?.University ? ['University'] : []), 'All',
+    ...KIND_ORDER.filter(k => k !== 'University' && data?.byKind?.[k]),
     ...Object.keys(data?.byKind || {}).filter(k => !KIND_ORDER.includes(k))];
 
   return (
