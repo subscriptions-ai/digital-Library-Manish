@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import {
   ArrowRight, BookMarked, BookOpen, Building2, ChevronDown, ChevronLeft, ChevronRight,
   FileText, GraduationCap, Layers, Library, Minus, Pause, Play, RefreshCw, Search,
-  ShieldCheck, Sparkles, Tags, Users, UserSquare2,
+  ShieldCheck, Users, UserSquare2,
 } from 'lucide-react';
 import { type DeptRow } from './charts';
 
@@ -294,7 +294,7 @@ function Hero({ stats, insights, institutions, depts }: {
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60"
         style={{ background: 'radial-gradient(900px 420px at 15% 0%, rgba(245,179,1,0.10), transparent 60%), radial-gradient(700px 400px at 85% 100%, rgba(99,102,241,0.18), transparent 60%)' }} />
 
-      <div className="relative mx-auto max-w-6xl px-5 pb-32 pt-14 sm:pt-20">
+      <div className="relative mx-auto max-w-6xl px-5 pb-10 pt-14 sm:pb-14 sm:pt-20">
         <div className="min-h-[330px] max-w-2xl" aria-live={running ? 'off' : 'polite'}>
           <Eyebrow onDark>{s.eyebrow}</Eyebrow>
           <h1 className="np-display mt-5 max-w-[620px] text-[38px] leading-[1.08] text-white sm:text-[50px]">
@@ -364,42 +364,7 @@ function Hero({ stats, insights, institutions, depts }: {
   );
 }
 
-// ── 2. The card of ways in, laid over the hero ──────────────────────────────
-
-const WAYS_IN: { to: string; icon: any; title: string; sub: string; tone: number }[] = [
-  { to: '/digital-library?kind=articles', icon: FileText, title: 'Articles', sub: 'Peer-reviewed research', tone: 1 },
-  { to: '/digital-library?kind=books', icon: BookOpen, title: 'Books', sub: 'Monographs and volumes', tone: 2 },
-  { to: '/journals', icon: Library, title: 'Journals', sub: 'By volume and issue', tone: 3 },
-  { to: '/digital-library', icon: Layers, title: 'Departments', sub: 'Browse like a shelf', tone: 6 },
-  { to: '/digital-library?sort=newest', icon: Sparkles, title: 'Newest first', sub: 'What arrived today', tone: 4 },
-  { to: '/digital-library?oa=1', icon: Tags, title: 'Read in full', sub: 'Opens in the browser', tone: 5 },
-  { to: '/for-institutions', icon: Building2, title: 'For institutions', sub: 'Add your people', tone: 1 },
-  { to: '/signup', icon: UserSquare2, title: 'Register free', sub: 'Two minutes', tone: 3 },
-];
-
-function WaysIn() {
-  return (
-    <section className="relative z-10 mx-auto -mt-24 max-w-6xl px-5">
-      <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border bg-[color:var(--np-line)] shadow-xl sm:grid-cols-2 lg:grid-cols-4"
-        style={{ borderColor: 'var(--np-line)' }}>
-        {WAYS_IN.map(w => (
-          <Link key={w.title} to={w.to} className="group flex items-center gap-3 bg-surface px-5 py-4 hover:bg-[color:var(--np-soft)]">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: `var(--t${w.tone}-bg)`, color: `var(--t${w.tone}-ink)` }}>
-              <w.icon size={18} />
-            </span>
-            <span className="min-w-0">
-              <span className="np-strong block truncate text-[14px]" style={{ color: 'var(--np-ink)' }}>{w.title}</span>
-              <span className="block truncate text-[11.5px]" style={{ color: 'var(--np-body)' }}>{w.sub}</span>
-            </span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ── 3. Who is with us, walking past ─────────────────────────────────────────
+// ── 2. Who is with us, walking past ─────────────────────────────────────────
 
 function InstitutionStrip({ inst }: { inst: Institutions | null }) {
   const list = inst?.institutions || [];
@@ -434,7 +399,7 @@ function InstitutionStrip({ inst }: { inst: Institutions | null }) {
   );
 }
 
-// ── 4. The figures ──────────────────────────────────────────────────────────
+// ── 3. The figures ──────────────────────────────────────────────────────────
 
 function Impact({ stats, depts, inst }: { stats: Stats | null; depts: DeptRow[]; inst: Institutions | null }) {
   const cards = [
@@ -466,7 +431,7 @@ function Impact({ stats, depts, inst }: { stats: Stats | null; depts: DeptRow[];
   );
 }
 
-// ── 5. The departments, as the reference shows its domains ──────────────────
+// ── 4. The departments, as the reference shows its domains ──────────────────
 
 function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
   const [chosen, setChosen] = useState<string | null>(null);
@@ -577,7 +542,7 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
   );
 }
 
-// ── 6. How it is built ──────────────────────────────────────────────────────
+// ── 5. How it is built ──────────────────────────────────────────────────────
 
 const PRINCIPLES = [
   { icon: Layers, title: 'Structured like a library', tone: 1,
@@ -612,7 +577,7 @@ function Principles() {
   );
 }
 
-// ── 7. What is new ──────────────────────────────────────────────────────────
+// ── 6. What is new ──────────────────────────────────────────────────────────
 
 function Cover({ book, tone, className = '' }: { book: NewBook; tone: number; className?: string }) {
   if (book.coverUrl) {
@@ -699,7 +664,7 @@ function WhatIsNew({ books, articles }: { books: NewBook[]; articles: NewArticle
   );
 }
 
-// ── 8. How reading works ────────────────────────────────────────────────────
+// ── 7. How reading works ────────────────────────────────────────────────────
 
 function Walkthrough({ stats, depts, subjects, articles }: {
   stats: Stats | null; depts: DeptRow[]; subjects: Subject[]; articles: NewArticle[];
@@ -779,7 +744,7 @@ function Walkthrough({ stats, depts, subjects, articles }: {
   );
 }
 
-// ── 9. Who it is for ────────────────────────────────────────────────────────
+// ── 8. Who it is for ────────────────────────────────────────────────────────
 
 function Audiences({ stats }: { stats: Stats | null }) {
   const cards = [
@@ -829,7 +794,7 @@ function Audiences({ stats }: { stats: Stats | null }) {
   );
 }
 
-// ── 10. Who is with us, in full ─────────────────────────────────────────────
+// ── 9. Who is with us, in full ─────────────────────────────────────────────
 
 function WithUs({ inst }: { inst: Institutions | null }) {
   const [kind, setKind] = useState('All');
@@ -901,7 +866,7 @@ function WithUs({ inst }: { inst: Institutions | null }) {
   );
 }
 
-// ── 11. Questions ───────────────────────────────────────────────────────────
+// ── 10. Questions ───────────────────────────────────────────────────────────
 
 const FAQS: [string, string][] = [
   ['Is it really free?',
@@ -950,7 +915,7 @@ function Questions() {
   );
 }
 
-// ── 12. The closing band, and the notice ────────────────────────────────────
+// ── 11. The closing band, and the notice ────────────────────────────────────
 
 function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | null }) {
   return (
@@ -1006,7 +971,6 @@ export function HomePreview() {
       </Helmet>
 
       <Hero stats={stats} insights={insights} institutions={institutions} depts={depts} />
-      <WaysIn />
       <InstitutionStrip inst={institutions} />
       <Impact stats={stats} depts={depts} inst={institutions} />
       <DepartmentExplorer depts={depts} />

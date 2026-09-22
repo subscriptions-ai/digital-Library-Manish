@@ -32404,10 +32404,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         select: { id: true, name: true, createdAt: true, _count: { select: { users: true } } },
         orderBy: { createdAt: "asc" }
       });
+      const pretend = /\b(demo|test|testing|sample|dummy|example)\b/i;
       const seen = /* @__PURE__ */ new Map();
       for (const r2 of rows) {
         const key = String(r2.name || "").trim().toLowerCase().replace(/\s+/g, " ");
-        if (!key) continue;
+        if (!key || pretend.test(key)) continue;
         const held = seen.get(key);
         if (held) {
           held.members += r2._count.users;

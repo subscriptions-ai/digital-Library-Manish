@@ -8718,10 +8718,14 @@ async function startServer() {
 
       // Two institutions typed in twice, with different capitals, are one
       // institution — and a list that shows both reads as carelessness.
+      // Our own demo and test accounts are not colleges that read here, and
+      // naming one in public reads as a made-up customer.
+      const pretend = /\b(demo|test|testing|sample|dummy|example)\b/i;
+
       const seen = new Map<string, any>();
       for (const r of rows) {
         const key = String(r.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
-        if (!key) continue;
+        if (!key || pretend.test(key)) continue;
         const held = seen.get(key);
         if (held) { held.members += r._count.users; continue; }
         seen.set(key, {
