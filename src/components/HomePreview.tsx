@@ -454,9 +454,8 @@ function WithUs({ inst }: { inst: Institutions | null }) {
   if (!inst?.institutions?.length) return null;
   const kind = chosen ?? (inst.byKind?.University ? 'University' : 'All');
   const setKind = setChosen;
-  const kinds = [...(inst.byKind?.University ? ['University'] : []), 'All',
-    ...KIND_ORDER.filter(k => k !== 'University' && inst.byKind?.[k]),
-    ...Object.keys(inst.byKind || {}).filter(k => !KIND_ORDER.includes(k))];
+  const kinds = [...KIND_ORDER.filter(k => inst.byKind?.[k]),
+    ...Object.keys(inst.byKind || {}).filter(k => !KIND_ORDER.includes(k)), 'All'];
   const all = [...inst.institutions].sort(byKindThenSize);
   const matching = kind === 'All' ? all : all.filter(i => i.kind === kind);
   const shown = matching.slice(0, WITH_US_SHOWN);

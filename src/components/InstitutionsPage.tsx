@@ -58,9 +58,8 @@ export function InstitutionsPage() {
     return [...by.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
   }, [rows]);
 
-  const kinds = [...(data?.byKind?.University ? ['University'] : []), 'All',
-    ...KIND_ORDER.filter(k => k !== 'University' && data?.byKind?.[k]),
-    ...Object.keys(data?.byKind || {}).filter(k => !KIND_ORDER.includes(k))];
+  const kinds = [...KIND_ORDER.filter(k => data?.byKind?.[k]),
+    ...Object.keys(data?.byKind || {}).filter(k => !KIND_ORDER.includes(k)), 'All'];
 
   return (
     <div className="np bg-surface" style={{ color: 'var(--np-body)' }}>
