@@ -290,10 +290,21 @@
   .slider-progress { animation: none; }
 }
 
-/* The hero's shelf, which turns over with each slide rather than cutting. */
-@keyframes hero-shelf-in { from { opacity: 0; transform: scale(1.14) rotate(-6deg); } to { opacity: 1; transform: scale(1.1) rotate(-6deg); } }
-.hero-shelf { animation: hero-shelf-in 900ms ease-out both; }
-@media (prefers-reduced-motion: reduce) { .hero-shelf { animation: none; } }
+/* The hero's shelf.
+   Three columns of covers drifting past at different speeds, the way a shelf
+   looks when you walk along it. Each column holds its covers twice over, so
+   the loop has no seam and nothing ever cuts or flashes — the earlier version
+   faded a whole wall in and out on every slide, which read as a glitch.
+   The columns are nudged as the slide changes, which brings different books
+   into view without a transition anybody has to watch. */
+@keyframes shelf-up   { from { transform: translateY(0); }    to { transform: translateY(-50%); } }
+@keyframes shelf-down { from { transform: translateY(-50%); } to { transform: translateY(0); } }
+.shelf-col { will-change: transform; }
+.shelf-col-1 { animation: shelf-up   64s linear infinite; }
+.shelf-col-2 { animation: shelf-down 78s linear infinite; }
+.shelf-col-3 { animation: shelf-up   92s linear infinite; }
+.shelf:hover .shelf-col { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .shelf-col { animation: none; } }
 
 /* The publishers strip on the home page, which walks slowly to the left and
    stops when a reader points at it. The track holds the list twice, so the

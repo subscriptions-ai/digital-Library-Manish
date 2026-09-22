@@ -124,46 +124,66 @@ const btnPrimary = 'inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[14
 const btnGhost = 'inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-bold transition-colors';
 
 /**
- * The hero's picture: the covers the library actually holds.
+ * The hero's picture: the shelf itself, drifting past.
  *
- * The reference puts photographs of people behind its hero. Ours puts the
- * shelf, which is both truer and the thing being sold — and the covers come
- * through our own /api/library/cover, which keeps a copy and refuses anything
- * over 400 KB, because DOAB serves some of them at megabytes apiece.
+ * Three columns of the covers the library actually holds, each moving at its
+ * own speed — one up, one down, one up again — with every column holding its
+ * covers twice so the loop never shows a seam. Nothing fades in or out: the
+ * first version turned a whole wall over on each slide, and a picture that
+ * blinks every seven seconds is a picture people look away from.
  *
- * A cover that fails to load simply leaves its tile tinted; nothing breaks and
- * no gap appears.
+ * The slide still changes what is on show, but gently: each one nudges the
+ * columns along, so different books come round without anything cutting.
+ *
+ * Covers come through /api/library/cover, which keeps a copy and refuses
+ * anything over 400 KB. A cover that fails leaves its tile tinted, and the
+ * column carries on.
  */
-function CoverWall({ books, slide }: { books: NewBook[]; slide: number }) {
+function Shelf({ books, slide }: { books: NewBook[]; slide: number }) {
   const all = books.filter(b => b.coverUrl);
-  if (all.length < 4) return null;
-  // Each slide brings its own shelf: the wall turns over with the words, so
-  // the hero is not one picture with changing captions.
-  const start = (slide * 4) % Math.max(1, all.length);
-  const covers = [...all.slice(start), ...all.slice(0, start)].slice(0, 12);
+  if (all.length < 6) return null;
+
+  // Three columns, each with its own run of books and its own twice-over loop.
+  const columns = [0, 1, 2].map(c => {
+    const mine = all.filter((_, k) => k % 3 === c);
+    return mine.length ? mine : all;
+  });
+
   return (
     <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden w-[46%] lg:block">
-      <div key={slide} className="hero-shelf absolute inset-0 origin-center scale-110 -rotate-6">
-        <div className="grid h-full grid-cols-4 gap-3 p-6">
-          {covers.map((b, k) => (
-            <span key={b.id}
-              className="block overflow-hidden rounded-xl"
-              style={{
-                background: `var(--t${(k % 6) + 1}-bg)`,
-                transform: `translateY(${(k % 4) * 18 - 24}px)`,
-                opacity: 0.9,
-              }}>
-              <img src={`/api/library/cover/${b.id}`} alt="" loading="lazy" decoding="async"
-                className="h-full w-full object-cover"
-                onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }} />
-            </span>
+      <div className="shelf absolute inset-0 origin-center scale-[1.22] -rotate-6 opacity-95">
+        <div className="grid h-full grid-cols-3 gap-4 px-4">
+          {columns.map((col, c) => (
+            <div key={c} className="overflow-hidden">
+              <div
+                className={`shelf-col shelf-col-${c + 1} flex flex-col gap-4 transition-transform duration-1000 ease-out`}
+                style={{ transform: `translateY(${-(slide * 26)}px)` }}
+              >
+                {col.concat(col).map((b, k) => (
+                  <span key={`${b.id}-${k}`}
+                    // A book is taller than it is wide; cropping one to a square
+                    // is how a shelf starts looking like wallpaper.
+                    className="block aspect-[2/3] w-full shrink-0 overflow-hidden rounded-xl shadow-xl ring-1 ring-white/10"
+                    style={{ background: `var(--t${((c + k) % 6) + 1}-bg)` }}>
+                    <img src={`/api/library/cover/${b.id}`} alt="" loading="lazy" decoding="async"
+                      className="h-full w-full object-cover"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }} />
+                  </span>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
-      {/* Dark enough for the headline to sit over it, light enough that the
-          shelf is still a shelf. */}
+
+      {/* Dark where the words are, clear where the shelf is, and softened at
+          the top and bottom so the columns do not end in a straight cut. */}
       <div className="absolute inset-0"
-        style={{ background: 'linear-gradient(90deg, var(--np-navy) 0%, color-mix(in srgb, var(--np-navy) 94%, transparent) 26%, color-mix(in srgb, var(--np-navy) 70%, transparent) 52%, color-mix(in srgb, var(--np-navy) 45%, transparent) 78%, color-mix(in srgb, var(--np-navy) 66%, transparent) 100%)' }} />
+        style={{ background: 'linear-gradient(90deg, var(--np-navy) 0%, color-mix(in srgb, var(--np-navy) 92%, transparent) 22%, color-mix(in srgb, var(--np-navy) 62%, transparent) 50%, color-mix(in srgb, var(--np-navy) 38%, transparent) 78%, color-mix(in srgb, var(--np-navy) 58%, transparent) 100%)' }} />
+      <div className="absolute inset-x-0 top-0 h-28"
+        style={{ background: 'linear-gradient(180deg, var(--np-navy), transparent)' }} />
+      <div className="absolute inset-x-0 bottom-0 h-32"
+        style={{ background: 'linear-gradient(0deg, var(--np-navy), transparent)' }} />
     </div>
   );
 }
@@ -297,7 +317,7 @@ function Hero({ stats, insights, institutions, depts, books }: {
       className="relative overflow-hidden"
       style={{ background: 'linear-gradient(135deg, var(--np-navy) 0%, var(--np-navy-2) 55%, #1b2f63 100%)' }}
     >
-      <CoverWall books={books} slide={i} />
+      <Shelf books={books} slide={i} />
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60"
         style={{ background: 'radial-gradient(900px 420px at 15% 0%, rgba(245,179,1,0.10), transparent 60%), radial-gradient(700px 400px at 85% 100%, rgba(99,102,241,0.18), transparent 60%)' }} />
 
