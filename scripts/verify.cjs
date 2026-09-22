@@ -912,6 +912,13 @@ const catalogueSize = async () => {
     const odd = (body.institutions || []).find(i => !kinds.has(i.kind));
     odd ? bad('every institution has a known kind', `${odd.name}: ${odd.kind}`) : ok('every institution has a known kind');
 
+    // Only designations the signup actually offers, never somebody's free text.
+    Array.isArray(body.designations)
+      ? ok('the designations answer', body.designations.length
+          ? body.designations.slice(0, 4).map(d => d.name).join(', ')
+          : 'none recorded yet')
+      : bad('the designations answer', 'no designations in the response');
+
     const summed = Object.values(body.byKind || {}).reduce((a, b) => a + b, 0);
     summed === body.total ? ok('the kinds add up to the total', `${summed}`) : bad('the kinds add up to the total', `${summed} vs ${body.total}`);
   }

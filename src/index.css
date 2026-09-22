@@ -290,6 +290,11 @@
   .slider-progress { animation: none; }
 }
 
+/* The hero's shelf, which turns over with each slide rather than cutting. */
+@keyframes hero-shelf-in { from { opacity: 0; transform: scale(1.14) rotate(-6deg); } to { opacity: 1; transform: scale(1.1) rotate(-6deg); } }
+.hero-shelf { animation: hero-shelf-in 900ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .hero-shelf { animation: none; } }
+
 /* The publishers strip on the home page, which walks slowly to the left and
    stops when a reader points at it. The track holds the list twice, so the
    second copy is under the cursor by the time the first has left. */

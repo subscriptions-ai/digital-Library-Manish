@@ -22,7 +22,7 @@ import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
-import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, opensInstitutionDashboard,
+import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { importDoajCatalogue } from "./src/lib/doajCatalogue.js";
@@ -8704,12 +8704,28 @@ async function startServer() {
       const byKind: Record<string, number> = {};
       for (const i of list) byKind[i.kind] = (byKind[i.kind] || 0) + 1;
 
+      // Who is reading, by what they call themselves. Only designations the
+      // signup actually offers are shown: free text and a demo college's "2nd
+      // Year" are somebody's typing, not a roll call of the profession.
+      const known = new Set(ALL_DESIGNATIONS.map((d: string) => d.toLowerCase()));
+      const desigRows = await prisma.user.groupBy({
+        by: ['designation'],
+        where: { designation: { not: null }, role: { notIn: STAFF_ROLES }, isBlocked: false },
+        _count: { _all: true },
+      });
+      const designations = desigRows
+        .map((d: any) => ({ name: String(d.designation || '').trim(), members: d._count._all }))
+        .filter((d: any) => d.name && known.has(d.name.toLowerCase()))
+        .sort((a: any, b: any) => b.members - a.members)
+        .slice(0, 14);
+
       const value = {
         total: list.length,
         byKind,
         members: list.reduce((n: number, i: any) => n + i.members, 0),
         organisations,
         states: states.filter((s: any) => String(s.state || '').trim()).length,
+        designations,
         institutions: list.map((i: any) => ({ name: i.name, kind: i.kind, members: i.members })),
       };
       institutionCache = { at: Date.now(), value };

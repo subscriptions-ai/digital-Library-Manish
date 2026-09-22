@@ -43,6 +43,7 @@ type Institutions = {
   total: number; members: number; organisations: number; states: number;
   byKind: Record<string, number>;
   institutions: { name: string; kind: string; members: number }[];
+  designations: { name: string; members: number }[];
 };
 type Department = {
   domain: string; slug: string; articles: number; books: number;
@@ -133,12 +134,16 @@ const btnGhost = 'inline-flex items-center gap-2 rounded-xl border px-5 py-3 tex
  * A cover that fails to load simply leaves its tile tinted; nothing breaks and
  * no gap appears.
  */
-function CoverWall({ books }: { books: NewBook[] }) {
-  const covers = books.filter(b => b.coverUrl).slice(0, 12);
-  if (covers.length < 4) return null;
+function CoverWall({ books, slide }: { books: NewBook[]; slide: number }) {
+  const all = books.filter(b => b.coverUrl);
+  if (all.length < 4) return null;
+  // Each slide brings its own shelf: the wall turns over with the words, so
+  // the hero is not one picture with changing captions.
+  const start = (slide * 4) % Math.max(1, all.length);
+  const covers = [...all.slice(start), ...all.slice(0, start)].slice(0, 12);
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden w-[52%] lg:block">
-      <div className="absolute inset-0 origin-center scale-110 -rotate-6">
+    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden w-[46%] lg:block">
+      <div key={slide} className="hero-shelf absolute inset-0 origin-center scale-110 -rotate-6">
         <div className="grid h-full grid-cols-4 gap-3 p-6">
           {covers.map((b, k) => (
             <span key={b.id}
@@ -170,6 +175,10 @@ const SLIDE_MS = 7000;
 type Slide = { key: string; eyebrow: string; lead: string; highlight: string; body: string; chips: string[] };
 
 function buildSlides(stats: Stats | null, insights: Insights | null, inst: Institutions | null, depts: DeptRow[]): Slide[] {
+  // Names rather than a tally: a list of colleges reads as a community, and a
+  // small number reads as a small one.
+  const someColleges = (inst?.institutions || []).slice(0, 3).map(x => x.name);
+  const someRoles = (inst?.designations || []).slice(0, 3).map(x => x.name);
   const acc = insights?.access;
   const accTotal = acc ? acc.readHere + acc.atPublisher + acc.recordOnly : 0;
   const readPct = acc && accTotal ? Math.round((acc.readHere / accTotal) * 100) : undefined;
@@ -199,8 +208,20 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
       eyebrow: 'Who is with us',
       lead: 'Colleges and universities already reading',
       highlight: 'here.',
-      body: `${n(inst?.total)} institutions have their people on the library, and members name ${n(inst?.organisations)} organisations between them.`,
-      chips: [`${n(inst?.total)} institutions`, `${n(inst?.members)} members`, `${n(inst?.organisations)} organisations`],
+      body: someColleges.length
+        ? `${someColleges.join(', ')} — and others — have their faculty, researchers and students on the library.`
+        : 'Colleges and universities have their faculty, researchers and students on the library.',
+      chips: someColleges.length ? someColleges : ['Colleges', 'Universities', 'Institutes'],
+    },
+    {
+      key: 'people',
+      eyebrow: 'Who reads here',
+      lead: 'Librarians, professors and researchers, in the same',
+      highlight: 'library.',
+      body: someRoles.length
+        ? `${someRoles.join(', ')} and others read here — the whole department on one account, not a licence per person.`
+        : 'Librarians, professors, research scholars and students read here — the whole department on one account.',
+      chips: someRoles.length ? someRoles : ['Librarians', 'Professors', 'Researchers'],
     },
     {
       key: 'recency',
@@ -276,20 +297,20 @@ function Hero({ stats, insights, institutions, depts, books }: {
       className="relative overflow-hidden"
       style={{ background: 'linear-gradient(135deg, var(--np-navy) 0%, var(--np-navy-2) 55%, #1b2f63 100%)' }}
     >
-      <CoverWall books={books} />
+      <CoverWall books={books} slide={i} />
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60"
         style={{ background: 'radial-gradient(900px 420px at 15% 0%, rgba(245,179,1,0.10), transparent 60%), radial-gradient(700px 400px at 85% 100%, rgba(99,102,241,0.18), transparent 60%)' }} />
 
       <div className="relative mx-auto max-w-6xl px-5 pb-32 pt-14 sm:pt-20">
-        <div className="min-h-[330px] max-w-3xl" aria-live={running ? 'off' : 'polite'}>
+        <div className="min-h-[330px] max-w-2xl" aria-live={running ? 'off' : 'polite'}>
           <Eyebrow onDark>{s.eyebrow}</Eyebrow>
-          <h1 className="np-display mt-5 text-[38px] leading-[1.08] text-white sm:text-[52px]">
+          <h1 className="np-display mt-5 max-w-[620px] text-[38px] leading-[1.08] text-white sm:text-[50px]">
             {s.lead}{' '}
             <span style={{ color: 'var(--np-amber)' }}>{s.highlight}</span>
           </h1>
-          <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-white/75">{s.body}</p>
+          <p className="mt-5 max-w-[620px] text-[16px] leading-relaxed text-white/75">{s.body}</p>
 
-          <div className="mt-6 flex flex-wrap gap-2">
+          <div className="mt-6 flex max-w-[620px] flex-wrap gap-2">
             {s.chips.map(c => (
               <span key={c} className="rounded-full border border-white/20 bg-white/5 px-3.5 py-1.5 text-[12.5px] font-semibold text-white/85">
                 {c}
@@ -395,8 +416,8 @@ function InstitutionStrip({ inst }: { inst: Institutions | null }) {
     <section className="border-y py-7" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
       <div className="mx-auto mb-4 max-w-6xl px-5">
         <p className="text-[12.5px]" style={{ color: 'var(--np-body)' }}>
-          <b className="np-strong" style={{ color: 'var(--np-ink)' }}>{n(inst?.total)} institutions</b> have their faculty and
-          researchers on the library{inst?.states ? ` — across ${n(inst.states)} state${inst.states === 1 ? '' : 's'}` : ''}.
+          <b className="np-strong" style={{ color: 'var(--np-ink)' }}>Colleges and universities</b> whose faculty,
+          researchers and students read here.
         </p>
       </div>
       <div className="marquee relative overflow-hidden">
@@ -424,10 +445,10 @@ function InstitutionStrip({ inst }: { inst: Institutions | null }) {
 
 function Impact({ stats, depts, inst }: { stats: Stats | null; depts: DeptRow[]; inst: Institutions | null }) {
   const cards = [
-    { icon: Layers, value: stats?.total, label: 'Items of content', hint: `Across ${depts.length || '—'} departments`, tone: 1 },
+    { icon: Library, value: stats?.total, label: 'Items of content', hint: 'Articles, books and archived material', tone: 1 },
     { icon: FileText, value: stats?.articles, label: 'Research articles', hint: 'Each in its journal, volume and issue', tone: 3 },
     { icon: BookOpen, value: stats?.books, label: 'Books', hint: 'Open-access monographs and volumes', tone: 2 },
-    { icon: Building2, value: inst?.total, label: 'Institutions with us', hint: `${n(inst?.members)} members between them`, tone: 6 },
+    { icon: Layers, value: depts.length || undefined, label: 'Departments', hint: 'Every subject the library covers', tone: 6 },
   ];
   return (
     <section className="mx-auto max-w-6xl px-5 py-20">
@@ -822,6 +843,7 @@ function WithUs({ inst }: { inst: Institutions | null }) {
   if (!inst?.institutions?.length) return null;
   const kinds = ['All', ...Object.keys(inst.byKind || {}).sort((a, b) => (inst.byKind[b] || 0) - (inst.byKind[a] || 0))];
   const shown = kind === 'All' ? inst.institutions : inst.institutions.filter(i => i.kind === kind);
+  const roles = inst.designations || [];
 
   return (
     <section className="mx-auto max-w-6xl px-5 py-20">
@@ -830,10 +852,11 @@ function WithUs({ inst }: { inst: Institutions | null }) {
         The institutions whose people read here.
       </Heading>
       <p className="mt-4 max-w-2xl text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
-        {n(inst.total)} institutions have their faculty, researchers and students on the library, and
-        members between them name {n(inst.organisations)} organisations.
+        Colleges, universities and institutes have their faculty, researchers and students on the
+        library — the whole department on one account, rather than a licence per person.
       </p>
 
+      {/* Kind rather than count: how many is our business, who is theirs. */}
       <div className="mt-7 flex flex-wrap gap-2">
         {kinds.map(k => (
           <button key={k} type="button" onClick={() => setKind(k)}
@@ -841,7 +864,7 @@ function WithUs({ inst }: { inst: Institutions | null }) {
             style={kind === k
               ? { background: 'var(--np-navy)', color: '#fff' }
               : { border: '1px solid var(--np-line)', color: 'var(--np-ink)' }}>
-            {k === 'All' ? `All ${inst.total}` : `${plural(k, inst.byKind[k] || 0)} ${inst.byKind[k] || 0}`}
+            {k === 'All' ? 'All of them' : plural(k, 2)}
           </button>
         ))}
       </div>
@@ -856,18 +879,31 @@ function WithUs({ inst }: { inst: Institutions | null }) {
             </span>
             <span className="min-w-0">
               <span className="np-strong block truncate text-[13.5px]" style={{ color: 'var(--np-ink)' }}>{i.name}</span>
-              <span className="block text-[11.5px]" style={{ color: 'var(--np-body)' }}>
-                {i.kind}{i.members ? ` · ${n(i.members)} member${i.members === 1 ? '' : 's'}` : ''}
-              </span>
+              <span className="block text-[11.5px]" style={{ color: 'var(--np-body)' }}>{i.kind}</span>
             </span>
           </div>
         ))}
       </div>
 
-      <p className="mt-4 text-[12px]" style={{ color: 'var(--np-body)' }}>
-        Counted from the accounts on the library today. An institution appears here once its people
-        have joined.
-      </p>
+      {/* And who, inside them, is actually reading. */}
+      {roles.length > 0 && (
+        <div className="mt-8 rounded-2xl border p-6" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
+            Who reads here
+          </p>
+          <p className="mt-2 max-w-3xl text-[14px] leading-relaxed" style={{ color: 'var(--np-ink)' }}>
+            The people on the library describe themselves as:
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {roles.map((r, k) => (
+              <span key={r.name} className="np-strong inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12.5px]"
+                style={{ background: `var(--t${(k % 6) + 1}-bg)`, color: `var(--t${(k % 6) + 1}-ink)` }}>
+                <Users size={13} /> {plural(r.name, 2)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -936,8 +972,8 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
             Open the library for your institution.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-[15.5px] text-white/75">
-            Join {n(inst?.total)} institutions already reading {n(stats?.total)} items — free to register,
-            and open from the first minute.
+            Join the colleges and universities already reading {n(stats?.total)} items — free to
+            register, and open from the first minute.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link to="/signup" className={btnPrimary} style={{ background: 'var(--np-amber)', color: '#1a1200' }}>
