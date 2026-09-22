@@ -12,6 +12,7 @@ import { Footer } from "./components/Footer";
 import { Home } from "./components/Home";
 import { HomePreview } from "./components/HomePreview";
 import { PreviewHeader, PreviewFooter } from "./components/HomePreviewChrome";
+import { InstitutionsPage } from "./components/InstitutionsPage";
 import { NotFound } from "./components/NotFound";
 
 import { DigitalLibrary } from "./components/DigitalLibrary";
@@ -343,6 +344,16 @@ export default function App() {
                   <>
                     <PreviewHeader />
                     <main className="flex-1"><HomePreview /></main>
+                    <PreviewFooter />
+                  </>
+                } />
+
+                {/* Where the preview's list of institutions goes on — the whole
+                    list, with its own header and footer to match. */}
+                <Route path="/institutions" element={
+                  <>
+                    <PreviewHeader />
+                    <main className="flex-1"><InstitutionsPage /></main>
                     <PreviewFooter />
                   </>
                 } />
