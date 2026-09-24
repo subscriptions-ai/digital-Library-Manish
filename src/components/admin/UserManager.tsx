@@ -47,8 +47,18 @@ export function UserManager() {
   });
   const [counts, setCounts] = useState<any>(null);
   const [facets, setFacets] = useState<any>(null);
-  /** The flat list of everybody, or the same people under their institution. */
-  const [view, setView] = useState<'list' | 'institution'>('list');
+  /**
+   * The flat list of everybody, or the same people under their institution.
+   * Remembered, because an admin who works institution by institution should
+   * not have to find the switch again on every visit.
+   */
+  const [view, setView] = useState<'list' | 'institution'>(() => {
+    try { return localStorage.getItem('adminUsersView') === 'institution' ? 'institution' : 'list'; }
+    catch { return 'list'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('adminUsersView', view); } catch { /* blocked storage is not worth failing over */ }
+  }, [view]);
   const [exporting, setExporting] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
