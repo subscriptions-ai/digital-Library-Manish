@@ -957,6 +957,53 @@ const catalogueSize = async () => {
     summed === body.total ? ok('the kinds add up to the total', `${summed}`) : bad('the kinds add up to the total', `${summed} vs ${body.total}`);
   }
 
+  // ── Members under their institution ──────────────────────────────────────
+  // A librarian registers and adds their people; the grouped view is how an
+  // admin sees that account whole. Everybody belongs to exactly one bucket.
+  console.log('\nMembers by institution');
+  {
+    const r = await get('/api/admin/users/by-institution', A);
+    if (r.status !== 200) bad('the grouped view reads', `HTTP ${r.status}`);
+    else {
+      const b = r.body || {};
+      const t = b.totals || {};
+      ok('the grouped view reads', `${t.institutions} institutions`);
+
+      const everyone = await p.user.count();
+      const bucketed = (t.inInstitutions || 0) + (t.typed || 0) + (t.solo || 0);
+      bucketed === everyone
+        ? ok('every member sits in exactly one bucket', `${bucketed}`)
+        : bad('every member sits in exactly one bucket', `${bucketed} bucketed vs ${everyone} members`);
+
+      // The count on the row is the number of people the row opens onto.
+      const biggest = (b.groups || [])[0];
+      if (!biggest) meh('a group opens onto its own members', 'no institution holds anybody');
+      else {
+        const one = await get(`/api/admin/users?institutionId=${biggest.id}&limit=1`, A);
+        one.body?.total === biggest.members
+          ? ok('a group opens onto its own members', `${biggest.name}: ${biggest.members}`)
+          : bad('a group opens onto its own members', `row says ${biggest.members}, filter says ${one.body?.total}`);
+      }
+
+      // The typed names are the ones with no link; filtering by the name must
+      // never sweep in somebody who is properly attached.
+      const typed = (b.typed || [])[0];
+      if (!typed) meh('a typed name stays unlinked', 'nobody typed a college name');
+      else {
+        const one = await get(`/api/admin/users?org=${encodeURIComponent(typed.name)}&limit=200`, A);
+        const linked = (one.body?.data || []).filter(u => u.institutionId);
+        linked.length === 0
+          ? ok('a typed name stays unlinked', `${typed.name}: ${typed.members}`)
+          : bad('a typed name stays unlinked', `${linked.length} of them are linked after all`);
+      }
+    }
+
+    const shut = await get('/api/admin/users/by-institution', S || R);
+    shut.status === 403 || shut.status === 401
+      ? ok('members cannot read the grouped view', `HTTP ${shut.status}`)
+      : bad('members cannot read the grouped view', `HTTP ${shut.status}`);
+  }
+
   // ── Campaigns ─────────────────────────────────────────────────────────────
   // Where a member came from and who brought them. The board is counted from
   // the members themselves, so its own arithmetic is worth checking.

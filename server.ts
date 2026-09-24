@@ -4670,6 +4670,14 @@ async function startServer() {
       const domain = str(q.domain);
       if (domain) where.interestedDomains = { array_contains: [domain] };
 
+      // One institution's people. "none" is the members who belong to no
+      // institution record, and `org` catches the ones who typed the name of
+      // their college without ever being linked to it.
+      const institutionId = str(q.institutionId);
+      if (institutionId) where.institutionId = institutionId === 'none' ? null : institutionId;
+      const org = str(q.org);
+      if (org) { where.institutionId = null; where.organization = { equals: org, mode: 'insensitive' }; }
+
       const search = str(q.search);
       if (search) {
         where.OR = [
@@ -4788,6 +4796,96 @@ async function startServer() {
     } catch (err) {
       console.error('GET /api/admin/users error:', err);
       res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  /**
+   * The members gathered under the institution they belong to.
+   *
+   * A librarian registers, then adds their faculty and students; on a flat
+   * list those people are scattered among everyone else's, and the question
+   * an admin actually has — who is on the SMG Institute account, and did any
+   * of them read anything — cannot be answered by scrolling.
+   *
+   * Two kinds of group. Institutions we hold a record for, counted by the
+   * link; and, under them, the people who typed the name of their college on
+   * the way in without ever being attached to it. The second kind is a real
+   * state of the data, not a tidy one, so it is shown rather than hidden.
+   */
+  app.get("/api/admin/users/by-institution", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try {
+      const counts = (rows: any[], key: string) => {
+        const m = new Map<string, number>();
+        for (const r of rows) if (r[key]) m.set(r[key], r._count._all);
+        return m;
+      };
+
+      const [byId, verifiedById, readById, institutions, heads,
+             byOrg, verifiedByOrg, readByOrg, solo] = await Promise.all([
+        prisma.user.groupBy({ by: ['institutionId'], where: { institutionId: { not: null } }, _count: { _all: true } }),
+        prisma.user.groupBy({ by: ['institutionId'], where: { institutionId: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+        prisma.user.groupBy({ by: ['institutionId'], where: { institutionId: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
+        prisma.institution.findMany({ select: { id: true, name: true, status: true, createdAt: true } }),
+        // The account the institution runs on — the librarian who adds the rest.
+        prisma.user.findMany({
+          where: { institutionId: { not: null }, role: 'Institution' },
+          select: { id: true, displayName: true, email: true, designation: true, institutionId: true, lastReadAt: true },
+        }),
+        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, organization: { not: null } }, _count: { _all: true } }),
+        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, organization: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, organization: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
+        prisma.user.count({ where: { institutionId: null, OR: [{ organization: null }, { organization: '' }] } }),
+      ]);
+
+      const [N, V, R] = [counts(byId, 'institutionId'), counts(verifiedById, 'institutionId'), counts(readById, 'institutionId')];
+      const headsBy = new Map<string, any[]>();
+      for (const h of heads) {
+        const k = h.institutionId as string;
+        (headsBy.get(k) || headsBy.set(k, []).get(k)!).push(h);
+      }
+
+      const groups = institutions
+        .map((i: any) => ({
+          kind: 'institution' as const,
+          id: i.id, name: i.name, status: i.status, since: i.createdAt,
+          members: N.get(i.id) || 0,
+          verified: V.get(i.id) || 0,
+          readers: R.get(i.id) || 0,
+          librarians: (headsBy.get(i.id) || []).map((h: any) => ({
+            id: h.id, name: h.displayName, email: h.email, designation: h.designation,
+            hasRead: !!h.lastReadAt,
+          })),
+        }))
+        .filter(g => g.members > 0)
+        .sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
+
+      // The same name typed with different capitals is one college.
+      const loose = new Map<string, any>();
+      const add = (rows: any[], field: 'members' | 'verified' | 'readers') => {
+        for (const r of rows) {
+          const name = String(r.organization || '').trim();
+          if (!name) continue;
+          const key = name.toLowerCase().replace(/\s+/g, ' ');
+          const held = loose.get(key) || { kind: 'typed' as const, id: null, name, members: 0, verified: 0, readers: 0 };
+          held[field] += r._count._all;
+          loose.set(key, held);
+        }
+      };
+      add(byOrg, 'members'); add(verifiedByOrg, 'verified'); add(readByOrg, 'readers');
+      const typed = [...loose.values()].sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
+
+      res.json({
+        groups, typed, solo,
+        totals: {
+          institutions: groups.length,
+          inInstitutions: groups.reduce((n, g) => n + g.members, 0),
+          typed: typed.reduce((n, g) => n + g.members, 0),
+          solo,
+        },
+      });
+    } catch (e: any) {
+      console.error('by-institution error:', e?.message);
+      res.status(500).json({ error: "Failed to group the members" });
     }
   });
 

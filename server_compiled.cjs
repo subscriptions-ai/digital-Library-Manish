@@ -28627,6 +28627,13 @@ async function startServer() {
       }
       const domain = str(q.domain);
       if (domain) where.interestedDomains = { array_contains: [domain] };
+      const institutionId = str(q.institutionId);
+      if (institutionId) where.institutionId = institutionId === "none" ? null : institutionId;
+      const org = str(q.org);
+      if (org) {
+        where.institutionId = null;
+        where.organization = { equals: org, mode: "insensitive" };
+      }
       const search = str(q.search);
       if (search) {
         where.OR = [
@@ -28778,6 +28785,92 @@ async function startServer() {
     } catch (err) {
       console.error("GET /api/admin/users error:", err);
       res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+  app.get("/api/admin/users/by-institution", authenticateJWT, requireAdminOrManager, async (_req, res) => {
+    try {
+      const counts = (rows, key) => {
+        const m2 = /* @__PURE__ */ new Map();
+        for (const r2 of rows) if (r2[key]) m2.set(r2[key], r2._count._all);
+        return m2;
+      };
+      const [
+        byId,
+        verifiedById,
+        readById,
+        institutions,
+        heads,
+        byOrg,
+        verifiedByOrg,
+        readByOrg,
+        solo
+      ] = await Promise.all([
+        prisma3.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null } }, _count: { _all: true } }),
+        prisma3.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+        prisma3.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
+        prisma3.institution.findMany({ select: { id: true, name: true, status: true, createdAt: true } }),
+        // The account the institution runs on — the librarian who adds the rest.
+        prisma3.user.findMany({
+          where: { institutionId: { not: null }, role: "Institution" },
+          select: { id: true, displayName: true, email: true, designation: true, institutionId: true, lastReadAt: true }
+        }),
+        prisma3.user.groupBy({ by: ["organization"], where: { institutionId: null, organization: { not: null } }, _count: { _all: true } }),
+        prisma3.user.groupBy({ by: ["organization"], where: { institutionId: null, organization: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+        prisma3.user.groupBy({ by: ["organization"], where: { institutionId: null, organization: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
+        prisma3.user.count({ where: { institutionId: null, OR: [{ organization: null }, { organization: "" }] } })
+      ]);
+      const [N, V, R] = [counts(byId, "institutionId"), counts(verifiedById, "institutionId"), counts(readById, "institutionId")];
+      const headsBy = /* @__PURE__ */ new Map();
+      for (const h2 of heads) {
+        const k = h2.institutionId;
+        (headsBy.get(k) || headsBy.set(k, []).get(k)).push(h2);
+      }
+      const groups = institutions.map((i2) => ({
+        kind: "institution",
+        id: i2.id,
+        name: i2.name,
+        status: i2.status,
+        since: i2.createdAt,
+        members: N.get(i2.id) || 0,
+        verified: V.get(i2.id) || 0,
+        readers: R.get(i2.id) || 0,
+        librarians: (headsBy.get(i2.id) || []).map((h2) => ({
+          id: h2.id,
+          name: h2.displayName,
+          email: h2.email,
+          designation: h2.designation,
+          hasRead: !!h2.lastReadAt
+        }))
+      })).filter((g) => g.members > 0).sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
+      const loose = /* @__PURE__ */ new Map();
+      const add = (rows, field) => {
+        for (const r2 of rows) {
+          const name = String(r2.organization || "").trim();
+          if (!name) continue;
+          const key = name.toLowerCase().replace(/\s+/g, " ");
+          const held = loose.get(key) || { kind: "typed", id: null, name, members: 0, verified: 0, readers: 0 };
+          held[field] += r2._count._all;
+          loose.set(key, held);
+        }
+      };
+      add(byOrg, "members");
+      add(verifiedByOrg, "verified");
+      add(readByOrg, "readers");
+      const typed = [...loose.values()].sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
+      res.json({
+        groups,
+        typed,
+        solo,
+        totals: {
+          institutions: groups.length,
+          inInstitutions: groups.reduce((n2, g) => n2 + g.members, 0),
+          typed: typed.reduce((n2, g) => n2 + g.members, 0),
+          solo
+        }
+      });
+    } catch (e2) {
+      console.error("by-institution error:", e2?.message);
+      res.status(500).json({ error: "Failed to group the members" });
     }
   });
   const CHANNELS = ["Facebook", "Instagram", "WhatsApp", "LinkedIn", "Email", "Poster", "Other"];

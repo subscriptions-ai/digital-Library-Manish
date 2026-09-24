@@ -7,6 +7,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { UsersByInstitution } from './UsersByInstitution';
 import { REGISTRANT_TYPES, DOMAINS } from '../../constants';
 
 const ROLES = ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'Institution', 'Student', 'Subscriber'];
@@ -46,6 +47,8 @@ export function UserManager() {
   });
   const [counts, setCounts] = useState<any>(null);
   const [facets, setFacets] = useState<any>(null);
+  /** The flat list of everybody, or the same people under their institution. */
+  const [view, setView] = useState<'list' | 'institution'>('list');
   const [exporting, setExporting] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -235,13 +238,29 @@ export function UserManager() {
           <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
           <p className="text-sm text-slate-500 mt-0.5">Create, edit, and manage all platform users.</p>
         </div>
-        <button
-          onClick={() => navigate('/admin/users/create')}
-          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all"
-        >
-          <UserPlus size={16} /> Create User
-        </button>
+        <div className="flex items-center gap-3">
+          {/* One list of everybody, or the same people under the institution
+              whose account they are on. */}
+          <div className="flex rounded-xl border border-slate-200 bg-white p-1">
+            {([['list', 'Everyone'], ['institution', 'By institution']] as const).map(([k, label]) => (
+              <button key={k} onClick={() => setView(k)}
+                className={`rounded-lg px-3.5 py-1.5 text-[12.5px] font-bold transition-colors ${
+                  view === k ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => navigate('/admin/users/create')}
+            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all"
+          >
+            <UserPlus size={16} /> Create User
+          </button>
+        </div>
       </div>
+
+      {view === 'institution' && <UsersByInstitution />}
+      {view === 'list' && (<>
 
       {/* Filters — every one of them a question to the database */}
       <div className="space-y-3">
@@ -669,6 +688,7 @@ export function UserManager() {
           )}
         </div>
       </div>
+      </>)}
 
       {/* ── EDIT MODAL ── */}
       <AnimatePresence>
