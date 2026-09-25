@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { UsersByInstitution } from './UsersByInstitution';
+import { LibrarianMembers } from './LibrarianMembers';
 import { REGISTRANT_TYPES, DOMAINS } from '../../constants';
 
 const ROLES = ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'Institution', 'Student', 'Subscriber'];
@@ -622,6 +623,15 @@ export function UserManager() {
                             ) : <p className="text-sm text-slate-400 italic">No payment history.</p>}
                           </div>
                         </div>
+
+                        {/* The people this librarian put on the library. */}
+                        {user.role === 'Institution' && user.institutionId && (
+                          <LibrarianMembers
+                            librarianId={user.id}
+                            institutionId={user.institutionId}
+                            institutionName={user.institution?.name}
+                          />
+                        )}
 
                         {/* Institution Specific Details */}
                         {user.role === 'Institution' && user.institutionProfile && (
