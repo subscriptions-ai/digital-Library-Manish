@@ -49,7 +49,7 @@ function Row({ group, open, onToggle }: { group: Group; open: boolean; onToggle:
     fetch(`/api/admin/users?${q}&limit=200`, { headers: authHeader() })
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(d => setMembers(d?.data || []))
-      .catch(() => toast.error('Members load nahi hue'))
+      .catch(() => toast.error('Could not load members'))
       .finally(() => setLoading(false));
   }, [open, group, members]);
 
@@ -69,8 +69,8 @@ function Row({ group, open, onToggle }: { group: Group; open: boolean; onToggle:
             {group.kind === 'institution'
               ? (head
                 ? <>Librarian: <b className="text-slate-600">{head.name || head.email}</b></>
-                : 'koi librarian account nahi — sidha jude hue hain')
-              : 'naam type kiya hai, institution se juda nahi'}
+                : 'no librarian account — members are attached directly')
+              : 'typed the name; not linked to an institution'}
           </span>
         </span>
         <span className="hidden shrink-0 gap-6 text-right sm:flex">
@@ -92,7 +92,7 @@ function Row({ group, open, onToggle }: { group: Group; open: boolean; onToggle:
       {open && (
         <div className="bg-slate-50/70 px-5 pb-5 pt-1">
           {loading && <p className="flex items-center gap-2 py-4 text-sm text-slate-500"><Loader2 size={15} className="animate-spin" /> Loading…</p>}
-          {members && members.length === 0 && <p className="py-4 text-sm text-slate-400">Koi member nahi.</p>}
+          {members && members.length === 0 && <p className="py-4 text-sm text-slate-400">No members.</p>}
           {members && members.length > 0 && (
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
               <table className="w-full text-sm">
@@ -102,7 +102,7 @@ function Row({ group, open, onToggle }: { group: Group; open: boolean; onToggle:
                     <th className="px-4 py-2.5 text-left">Role</th>
                     <th className="px-4 py-2.5 text-left">Designation</th>
                     <th className="px-4 py-2.5 text-right">Joined</th>
-                    <th className="px-4 py-2.5 text-right">Padha</th>
+                    <th className="px-4 py-2.5 text-right">Last read</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -132,7 +132,7 @@ function Row({ group, open, onToggle }: { group: Group; open: boolean; onToggle:
                       <td className="px-4 py-2.5 text-right text-[12px]">
                         {m.lastReadAt
                           ? <span className="text-emerald-600">{new Date(m.lastReadAt).toLocaleDateString('en-IN')}</span>
-                          : <span className="text-slate-400">nahi</span>}
+                          : <span className="text-slate-400">Never</span>}
                       </td>
                     </tr>
                   ))}
@@ -140,7 +140,7 @@ function Row({ group, open, onToggle }: { group: Group; open: boolean; onToggle:
               </table>
               {members.length === 200 && (
                 <p className="border-t border-slate-100 px-4 py-2 text-[11.5px] text-slate-400">
-                  Pehle 200 dikhaye ja rahe hain.
+                  Showing the first 200.
                 </p>
               )}
             </div>
@@ -160,7 +160,7 @@ export function UsersByInstitution() {
     fetch('/api/admin/users/by-institution', { headers: authHeader() })
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(setBoard)
-      .catch(() => toast.error('Institutions load nahi hue'))
+      .catch(() => toast.error('Could not load institutions'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -173,10 +173,10 @@ export function UsersByInstitution() {
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          ['Institutions', t.institutions, 'jinke members hain'],
-          ['In institutions', t.inInstitutions, 'kisi account se jude'],
-          ['Naam type kiya', t.typed, 'juda nahi hai'],
-          ['Akele', t.solo, 'koi institution nahi'],
+          ['Institutions', t.institutions, 'with members'],
+          ['In institutions', t.inInstitutions, 'linked to an account'],
+          ['Typed a name', t.typed, 'not linked'],
+          ['Solo', t.solo, 'no institution'],
         ].map(([label, value, hint]) => (
           <div key={label as string} className="rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
@@ -190,7 +190,7 @@ export function UsersByInstitution() {
         <p className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">
           <Users size={14} /> Institution accounts
         </p>
-        {board.groups.length === 0 && <p className="px-5 py-6 text-sm text-slate-400">Abhi koi nahi.</p>}
+        {board.groups.length === 0 && <p className="px-5 py-6 text-sm text-slate-400">None yet.</p>}
         {board.groups.map(g => (
           <Row key={keyOf(g)} group={g} open={open === keyOf(g)}
             onToggle={() => setOpen(open === keyOf(g) ? null : keyOf(g))} />
@@ -200,9 +200,9 @@ export function UsersByInstitution() {
       {board.typed.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
           <div className="border-b border-amber-100 bg-amber-50 px-5 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Institution se jude nahi</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Not linked to an institution</p>
             <p className="mt-0.5 text-[12px] text-amber-700/80">
-              Inhone register karte waqt college ka naam likha tha, lekin kisi institution account se link nahi hain.
+              They typed their college's name when registering but are not linked to any institution account.
             </p>
           </div>
           {board.typed.map(g => (

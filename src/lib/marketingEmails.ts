@@ -17,8 +17,8 @@ import {
  * go wrong together: a rule that drifts from its copy sends the wrong people a
  * mail that reads as if it were meant for someone else.
  *
- * The copy is bilingual, English first with a Hindi line where it matters,
- * which is how the people who read this library actually speak.
+ * The copy is English only. Nothing in the product is written in another
+ * language, so every line here reads the same for every recipient.
  */
 
 export type TemplateKey =
@@ -77,15 +77,11 @@ const link = (path: string, c: MailContext) => {
   return url + (url.includes('?') ? '&' : '?') + `ref=${encodeURIComponent(c.ref)}`;
 };
 
-/** The Hindi line, set quieter than the English above it. */
-const hi = (t: string) =>
-  `<p style="margin:0 0 18px;font-size:14px;line-height:22px;color:#475569;">${esc(t)}</p>`;
-
 /** Every marketing mail closes with a way out of marketing mail. */
 const footer = (c: MailContext) => c.unsubscribeUrl
   ? eMuted(`You are receiving this because you have an account at STM Digital Library. `
     + `<a href="${esc(c.unsubscribeUrl)}" style="color:#64748b;">Unsubscribe from updates</a> — `
-    + `aapke OTP, receipt aur zaroori mails phir bhi aate rahenge.`)
+    + `your OTP, receipt and other essential account mails will still reach you.`)
   : '';
 
 export const TEMPLATES: Record<TemplateKey, Template> = {
@@ -106,7 +102,6 @@ export const TEMPLATES: Record<TemplateKey, Template> = {
           + 'profile are still blank, and they are the ones that make your dashboard useful — '
           + 'the contact we reach you on, and the size and courses that let us tell you which '
           + 'departments your library is thin in.')
-        + hi('Aapka account chalu hai. Bas profile ke kuch khane khaali hain — do minute ka kaam hai.')
         + (missing.length
           ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Still blank</p>`
             + `<p style="margin:0;font-size:14px;line-height:24px;color:#334155;">`
@@ -135,7 +130,6 @@ export const TEMPLATES: Record<TemplateKey, Template> = {
       + eP(`You registered, and since then nothing has been opened. There is no approval to wait for `
         + `and nothing to install — ${n(c.library?.total)} items across ${n(c.library?.departments)} `
         + `departments are already available to you, and they open in the browser.`)
-      + hi('Aapne register to kiya, par abhi tak kuch padha nahi. Koi permission ka intezaar nahi hai — seedhe kholiye aur padhiye.')
       + (c.departments?.length
         ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Your departments</p>`
           + `<p style="margin:0;font-size:14px;line-height:24px;color:#334155;">`
@@ -189,7 +183,6 @@ export const TEMPLATES: Record<TemplateKey, Template> = {
       + eP('On free membership the library is whole, but the clock is not: a session lasts half an '
         + 'hour, and if you have been reading you will have met it mid-article. Pro is the same '
         + 'library with that clock removed.')
-      + hi('Free membership mein poori library milti hai, par session aadhe ghante ka hota hai. Pro mein wo ghadi hat jati hai — baaki sab wahi rehta hai.')
       + eCard(`<p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#1e3a6e;">What changes</p>`
         + `<p style="margin:0;font-size:14px;line-height:24px;color:#334155;">`
         + `• No session limit — read for as long as the work takes<br/>`
@@ -222,7 +215,6 @@ export const TEMPLATES: Record<TemplateKey, Template> = {
       + eP(`${c.institution?.members ? `${n(c.institution.members)} people from your institution can open the library today. ` : ''}`
         + `Adding the rest of your faculty and researchers takes a name and an email each, and `
         + `there is no limit on how many you add — the account covers them all.`)
-      + hi('Aap jitne faculty aur researchers jodna chahein, jod sakte hain — koi limit nahi hai, aur koi alag kharcha bhi nahi.')
       + (c.institution?.members
         ? eCard(eRows([
           ['People with access', n(c.institution.members)],

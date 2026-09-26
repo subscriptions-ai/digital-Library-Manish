@@ -67,7 +67,7 @@ export function Unsubscribe() {
             <p className="mt-3 text-[14.5px] leading-relaxed text-muted">
               We will stop sending <b className="text-ink">{email}</b> news about the library, new
               features and membership. <br />
-              <span className="text-ink-2">Aapke OTP, receipt aur account se judi zaroori mails phir bhi aayengi.</span>
+              <span className="text-ink-2">Your OTP, receipt and other essential account mails will still reach you.</span>
             </p>
             <button onClick={() => change(false)} disabled={busy}
               className="mt-6 inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-semibold text-surface hover:opacity-90 disabled:opacity-60">

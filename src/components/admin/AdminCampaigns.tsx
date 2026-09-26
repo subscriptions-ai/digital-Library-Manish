@@ -53,7 +53,7 @@ function Copyable({ value, label }: { value: string; label: string }) {
         try {
           await navigator.clipboard.writeText(value);
           setDone(true); setTimeout(() => setDone(false), 1600);
-        } catch { toast.error('Copy nahi hua — link select karke copy kar lijiye'); }
+        } catch { toast.error('Could not copy — select the link and copy it by hand'); }
       }}
       title={value}
       className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11.5px] font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
@@ -87,7 +87,7 @@ export function AdminCampaigns() {
     fetch('/api/admin/campaigns', { headers: authHeader() })
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then(setBoard)
-      .catch(() => toast.error('Campaigns load nahi hue'))
+      .catch(() => toast.error('Could not load campaigns'))
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
@@ -104,12 +104,12 @@ export function AdminCampaigns() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || 'Failed');
-      toast.success(`Link ban gaya — ${d.campaign.code}`);
+      toast.success(`Link created — ${d.campaign.code}`);
       setForm({ name: '', channel: form.channel, ownerName: form.ownerName, landing: '/', notes: '' });
       setOpen(false);
       load();
     } catch (err: any) {
-      toast.error(err.message || 'Campaign nahi bana');
+      toast.error(err.message || 'Could not create the campaign');
     } finally { setSaving(false); }
   };
 
@@ -123,17 +123,17 @@ export function AdminCampaigns() {
   };
 
   const remove = async (c: Campaign) => {
-    if (!confirm(`"${c.name}" hata dein?`)) return;
+    if (!confirm(`Delete "${c.name}"?`)) return;
     const r = await fetch(`/api/admin/campaigns/${c.id}`, { method: 'DELETE', headers: authHeader() });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) return toast.error(d?.error || 'Delete nahi hua');
-    toast.success('Hata diya');
+    if (!r.ok) return toast.error(d?.error || 'Could not delete the campaign');
+    toast.success('Deleted');
     load();
   };
 
   const openMembers = async (c: Campaign) => {
     const r = await fetch(`/api/admin/campaigns/${c.id}/members`, { headers: authHeader() });
-    if (!r.ok) return toast.error('Members load nahi hue');
+    if (!r.ok) return toast.error('Could not load members');
     setMembers(await r.json());
   };
 
@@ -145,7 +145,7 @@ export function AdminCampaigns() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Campaigns</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Har campaign ka apna link. Jo us link se register karega, wo yahin ginaa jayega — kis channel se aaya aur kisne laaya.
+            Every campaign has its own link. Whoever registers through it is counted here — by which channel they came from and who brought them.
           </p>
         </div>
         <button onClick={() => setOpen(true)}
@@ -159,9 +159,9 @@ export function AdminCampaigns() {
       {board && (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat label="Tagged signups" value={board.tagged} hint="kisi campaign se aaye" />
-            <Stat label="No tag" value={board.untagged} hint="seedha aaye ya purane" />
-            <Stat label="Campaigns" value={board.campaigns.length} hint={`${board.campaigns.filter(c => c.active).length} chal rahe hain`} />
+            <Stat label="Tagged signups" value={board.tagged} hint="came from a campaign" />
+            <Stat label="No tag" value={board.untagged} hint="came directly, or joined before tracking" />
+            <Stat label="Campaigns" value={board.campaigns.length} hint={`${board.campaigns.filter(c => c.active).length} running`} />
             <Stat label="Top marketer" value={leader?.signups || 0} hint={leader?.name || '—'} />
           </div>
 
@@ -172,7 +172,7 @@ export function AdminCampaigns() {
                 <p className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   <Icon size={14} /> {title}
                 </p>
-                {rows.length === 0 && <p className="px-5 py-4 text-sm text-slate-400">Abhi kuch nahi.</p>}
+                {rows.length === 0 && <p className="px-5 py-4 text-sm text-slate-400">Nothing yet.</p>}
                 {rows.map(r => (
                   <div key={r.name} className="flex items-center gap-4 border-b border-slate-50 px-5 py-3 last:border-b-0">
                     <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">{r.name}</span>
@@ -202,7 +202,7 @@ export function AdminCampaigns() {
               <tbody>
                 {board.campaigns.length === 0 && (
                   <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-400">
-                    Abhi koi campaign nahi. "New campaign link" se shuru karein.
+                    No campaigns yet. Start with "New campaign link".
                   </td></tr>
                 )}
                 {board.campaigns.map(c => (
@@ -253,7 +253,7 @@ export function AdminCampaigns() {
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Tags outside this list</p>
               <p className="mt-1 text-[12.5px] text-slate-500">
-                Ye links yahan se nahi bane the. Inhe campaign banana ho to wahi code daal kar bana lijiye.
+                These links were not created here. To turn one into a campaign, create a campaign using the same code.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {board.loose.map(l => (
@@ -278,12 +278,12 @@ export function AdminCampaigns() {
               <button type="button" onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-700"><X size={18} /></button>
             </div>
 
-            <label className="mt-5 block text-[12px] font-semibold text-slate-600">Campaign ka naam</label>
+            <label className="mt-5 block text-[12px] font-semibold text-slate-600">Campaign name</label>
             <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus
-              placeholder="Librarians ko October drive"
+              placeholder="October drive for librarians"
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-slate-400" />
 
-            <label className="mt-4 block text-[12px] font-semibold text-slate-600">Kahan chalega</label>
+            <label className="mt-4 block text-[12px] font-semibold text-slate-600">Where it will run</label>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {(board?.channels || []).map(ch => (
                 <button key={ch} type="button" onClick={() => setForm({ ...form, channel: ch })}
@@ -294,27 +294,27 @@ export function AdminCampaigns() {
               ))}
             </div>
 
-            <label className="mt-4 block text-[12px] font-semibold text-slate-600">Kaun chala raha hai</label>
+            <label className="mt-4 block text-[12px] font-semibold text-slate-600">Who is running it</label>
             <input value={form.ownerName} onChange={e => setForm({ ...form, ownerName: e.target.value })}
-              list="campaign-owners" placeholder="Marketer ka naam"
+              list="campaign-owners" placeholder="Marketer's name"
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-slate-400" />
             <datalist id="campaign-owners">
               {(board?.byOwner || []).map(o => <option key={o.name} value={o.name} />)}
             </datalist>
 
-            <label className="mt-4 block text-[12px] font-semibold text-slate-600">Link kis page par le jaye</label>
+            <label className="mt-4 block text-[12px] font-semibold text-slate-600">Page the link opens</label>
             <input value={form.landing} onChange={e => setForm({ ...form, landing: e.target.value })}
               placeholder="/"
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 font-mono text-[13px] outline-none focus:border-slate-400" />
             <p className="mt-1.5 text-[11.5px] text-slate-500">
               <Link2 size={12} className="mr-1 inline" />
-              Banne ke baad link copy karke Facebook, WhatsApp ya Sendy ki "Query string" field mein daal dijiye.
+              Once it is created, copy the link into Facebook or WhatsApp, or the "Query string" field in Sendy.
             </p>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setOpen(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100">Rehne do</button>
+              <button type="button" onClick={() => setOpen(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
               <button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-                {saving && <Loader2 size={15} className="animate-spin" />} Link banao
+                {saving && <Loader2 size={15} className="animate-spin" />} Create link
               </button>
             </div>
           </form>
@@ -334,11 +334,11 @@ export function AdminCampaigns() {
               </div>
               <button onClick={() => setMembers(null)} className="text-slate-400 hover:text-slate-700"><X size={18} /></button>
             </div>
-            {members.members.length === 0 && <p className="mt-6 text-sm text-slate-400">Abhi koi nahi aaya is link se.</p>}
+            {members.members.length === 0 && <p className="mt-6 text-sm text-slate-400">No one has come through this link yet.</p>}
             {members.members.length > 0 && (
               <table className="mt-5 w-full text-sm">
                 <thead className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  <tr><th className="py-2 text-left">Member</th><th className="py-2 text-left">Kahan se</th><th className="py-2 text-right">Joined</th><th className="py-2 text-right">Padha</th></tr>
+                  <tr><th className="py-2 text-left">Member</th><th className="py-2 text-left">From</th><th className="py-2 text-right">Joined</th><th className="py-2 text-right">Read</th></tr>
                 </thead>
                 <tbody>
                   {members.members.map(m => (
@@ -354,7 +354,7 @@ export function AdminCampaigns() {
                         {new Date(m.createdAt).toLocaleDateString('en-IN')}
                       </td>
                       <td className="py-2.5 text-right text-[12px]">
-                        {m.lastReadAt ? <span className="text-emerald-600">haan</span> : <span className="text-slate-400">nahi</span>}
+                        {m.lastReadAt ? <span className="text-emerald-600">Yes</span> : <span className="text-slate-400">No</span>}
                       </td>
                     </tr>
                   ))}

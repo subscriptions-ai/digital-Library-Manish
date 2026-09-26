@@ -41,18 +41,18 @@ export function LibrarianMembers({ librarianId, institutionId, institutionName }
   return (
     <div className="mt-6 border-t border-slate-200 pt-6">
       <h4 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-600">
-        <Users size={13} /> Inhone jo users add kiye
+        <Users size={13} /> Users they added
         {members && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-700">{members.length}</span>}
       </h4>
 
       {!members && !failed && (
         <p className="flex items-center gap-2 text-sm text-slate-400"><Loader2 size={14} className="animate-spin" /> Loading…</p>
       )}
-      {failed && <p className="text-sm text-slate-400 italic">Load nahi hue.</p>}
+      {failed && <p className="text-sm text-slate-400 italic">Could not load.</p>}
 
       {members && members.length === 0 && (
         <p className="text-sm text-slate-400 italic">
-          Abhi tak kisi ko add nahi kiya{institutionName ? ` — ${institutionName} par sirf yahi account hai` : ''}.
+          No one added yet{institutionName ? ` — this is the only account at ${institutionName}` : ''}.
         </p>
       )}
 
@@ -65,7 +65,7 @@ export function LibrarianMembers({ librarianId, institutionId, institutionName }
                 <th className="px-4 py-2.5 text-left">Role</th>
                 <th className="px-4 py-2.5 text-left">Designation</th>
                 <th className="px-4 py-2.5 text-right">Added</th>
-                <th className="px-4 py-2.5 text-right">Padha</th>
+                <th className="px-4 py-2.5 text-right">Last read</th>
               </tr>
             </thead>
             <tbody>
@@ -86,14 +86,14 @@ export function LibrarianMembers({ librarianId, institutionId, institutionName }
                   <td className="px-4 py-2.5 text-right text-[12px]">
                     {m.lastReadAt
                       ? <span className="text-emerald-600">{date(m.lastReadAt)}</span>
-                      : <span className="text-slate-400">nahi</span>}
+                      : <span className="text-slate-400">Never</span>}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           {members.length === 200 && (
-            <p className="border-t border-slate-100 px-4 py-2 text-[11.5px] text-slate-400">Pehle 200 dikhaye ja rahe hain.</p>
+            <p className="border-t border-slate-100 px-4 py-2 text-[11.5px] text-slate-400">Showing the first 200.</p>
           )}
         </div>
       )}
