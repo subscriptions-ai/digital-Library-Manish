@@ -9,7 +9,7 @@ import {
 import { type DeptRow } from './charts';
 
 /**
- * A second draft of the home page, at /home-preview.
+ * The home page.
  *
  * The shape is a reference the user chose — a hero that slides, a card of ways
  * in laid over it, a strip of names, a band of figures, a department explorer,

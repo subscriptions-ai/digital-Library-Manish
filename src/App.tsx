@@ -338,17 +338,21 @@ export default function App() {
                 <Route path="/sales/quotations" element={<SalesLayout><MyQuotations /></SalesLayout>} />
                 <Route path="/sales/quotations/create" element={<SalesLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></SalesLayout>} />
 
-                {/* A second draft of the home page, with a header and footer of its
-                    own, for review beside the live one. Declared ahead of the shared
-                    layout so the site's own header and footer never wrap it. Not
-                    linked from anywhere; remove it or promote it to "/". */}
-                <Route path="/home-preview" element={
+                {/* The home page. It carries a header and footer of its own, so it
+                    is declared ahead of the shared layout, whose Navbar must never
+                    wrap it. The page it replaced is still built and reachable at
+                    /home-classic. */}
+                <Route path="/" element={
                   <>
                     <PreviewHeader />
                     <main className="flex-1"><HomePreview /></main>
                     <PreviewFooter />
                   </>
                 } />
+
+                {/* Where it lived while it was a draft — links and bookmarks that
+                    went there still arrive at the home page. */}
+                <Route path="/home-preview" element={<Navigate to="/" replace />} />
 
                 {/* Where the preview's list of institutions goes on — the whole
                     list, with its own header and footer to match. */}
@@ -366,7 +370,8 @@ export default function App() {
                   <Navbar />
                   <main className="flex-1">
                     <Routes>
-                      <Route path="/" element={<Home />} />
+                      {/* The home page until 28 September 2026, kept reachable. */}
+                      <Route path="/home-classic" element={<Home />} />
                       <Route path="/digital-library" element={<DigitalLibrary />} />
                       <Route path="/for-institutions" element={<ForInstitutions />} />
                       <Route path="/for-students" element={<ForStudents />} />

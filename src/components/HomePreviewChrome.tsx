@@ -12,8 +12,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePublisherSafeMode } from '../lib/publicSettings';
 
 /**
- * The header and footer for /home-preview only, drawn in the same language as
- * the page: the dashboards' tokens, a serif for names, mono for figures.
+ * The header and footer for the home page and the pages that belong with it,
+ * drawn in the same language as the page: the dashboards' tokens, a serif for
+ * names, mono for figures.
  *
  * They carry exactly what the site's own header and footer carry — the same
  * links, the same departments, the same search, the same sign-in states and the

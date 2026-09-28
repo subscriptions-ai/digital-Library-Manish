@@ -71,7 +71,7 @@ export function InstitutionsPage() {
       <section className="px-5 py-14 text-white"
         style={{ background: 'linear-gradient(120deg, var(--np-navy) 0%, var(--np-navy-2) 70%, #23336b 100%)' }}>
         <div className="mx-auto max-w-6xl">
-          <Link to="/home-preview" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-white/70 hover:text-white">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-white/70 hover:text-white">
             <ArrowLeft size={15} /> Back
           </Link>
           <h1 className="np-display mt-5 text-[32px] leading-tight sm:text-[42px]">
