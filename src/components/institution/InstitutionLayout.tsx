@@ -8,6 +8,9 @@ import { FeedbackWidget } from '../dashboard/FeedbackWidget';
 import { dashboardTitle, affiliation } from '../../lib/identity';
 import { ReadingClock, useAllowance } from '../membership/ReadingClock';
 import { Sparkles } from 'lucide-react';
+import { PricingProvider, usePricing } from './pricing/PricingContext';
+import { PlanMiniCard } from './pricing/PlanWidgets';
+import { PLAN_CHANGED } from './pricing/planApi';
 
 interface InstitutionLayoutProps {
   children: React.ReactNode;
@@ -17,7 +20,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, logout, loading, isInstitutionAdmin } = useAuth();
-  const { allowance, msLeft, msUntil } = useAllowance();
+  const { allowance, msLeft, msUntil, refresh: refreshAllowance } = useAllowance();
   const { dark, toggleDark } = useTheme();
   const [q, setQ] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -32,6 +35,12 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
       navigate('/login');
     }
   }, [profile, loading, navigate, isInstitutionAdmin]);
+
+  // A purchase lifts the clock; ask again rather than wait for the next poll.
+  useEffect(() => {
+    window.addEventListener(PLAN_CHANGED, refreshAllowance);
+    return () => window.removeEventListener(PLAN_CHANGED, refreshAllowance);
+  }, [refreshAllowance]);
 
   const handleSignOut = async () => {
     try {
@@ -52,6 +61,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   }
 
   return (
+    <PricingProvider enabled={profile.role === 'Institution'}>
     <div className="min-h-screen bg-surface-2 flex">
       {/* Sidebar */}
       {/* It stays put. The rail scrolled away with the page, taking Sign Out,
@@ -147,20 +157,10 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           )}
         </nav>
 
-        {/* The reference put a promotion here; ours is the thing we actually
-            want them to take, and only while it would mean something. */}
-        {isSidebarOpen && allowance?.timed && (
-          <div className="mx-3 mb-2 rounded-2xl bg-accent px-4 py-3 text-white">
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/70">Free membership</p>
-            <p className="mt-1 text-[13px] font-semibold leading-snug">Read without a limit</p>
-            <button
-              onClick={() => navigate('/institution/membership')}
-              className="mt-2.5 w-full rounded-xl bg-white/15 py-1.5 text-[12px] font-bold hover:bg-white/25"
-            >
-              Apply for Pro
-            </button>
-          </div>
-        )}
+        {/* The plan, where the prototype puts it: the free preview with the way to
+            Premium, or what is running and the seats it has. An account that is
+            not the librarian has no plan to show, and keeps the Pro card. */}
+        {isSidebarOpen && <RailPlan timed={!!allowance?.timed} onPro={() => navigate('/institution/membership')} />}
 
         {/* Who is signed in is named in the top bar, on every page. Saying it
             a second time at the foot of the rail cost the height that pushed
@@ -179,7 +179,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
             : location.pathname === '/institution/library' ? 'Content Library'
             : location.pathname === '/institution/explore' ? 'Content Library'
-            : location.pathname === '/institution/subscriptions' ? 'Subscription Details'
+            : location.pathname === '/institution/subscriptions' ? 'Subscriptions'
             : location.pathname === '/institution/profile' ? 'Institution Profile'
             : location.pathname === '/institution/feedbacks' ? 'My Feedbacks'
             : 'Dashboard'}
@@ -235,6 +235,22 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
         </div>
       </main>
       <FeedbackWidget />
+    </div>
+    </PricingProvider>
+  );
+}
+
+function RailPlan({ timed, onPro }: { timed: boolean; onPro: () => void }) {
+  const pricing = usePricing();
+  if (pricing?.plan) return <PlanMiniCard />;
+  if (pricing?.loading || !timed) return null;
+  return (
+    <div className="mx-3 mb-2 rounded-2xl bg-accent px-4 py-3 text-white">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/70">Free membership</p>
+      <p className="mt-1 text-[13px] font-semibold leading-snug">Read without a limit</p>
+      <button onClick={onPro} className="mt-2.5 w-full rounded-xl bg-white/15 py-1.5 text-[12px] font-bold hover:bg-white/25">
+        Apply for Pro
+      </button>
     </div>
   );
 }

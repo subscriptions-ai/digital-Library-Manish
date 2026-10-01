@@ -3,6 +3,8 @@ import { BarChart3, Sparkles } from 'lucide-react';
 import { useAllowance } from '../membership/ReadingClock';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Download, Loader2, Search, TrendingDown, TrendingUp } from 'lucide-react';
+import { usePricing } from './pricing/PricingContext';
+import { AnalyticsLock } from './pricing/PlanWidgets';
 
 /**
  * What the librarian came to find out.
@@ -277,6 +279,12 @@ export function LibrarianAnalytics({
   };
 
   const trend = useMemo(() => (d?.trend ?? []).map(t => ({ week: String(t.week), reads: t.reads })), [d]);
+
+  // A librarian without a department subscription is shown what analytics would
+  // give them and the way to it, not a blurred copy. An administrator looking at
+  // an institution (forInstitution) never is.
+  const pricing = usePricing();
+  if (!forInstitution && pricing?.plan && !pricing.plan.hasSubscription) return <AnalyticsLock />;
 
   if (state === 'loading') {
     return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="animate-spin text-faint" size={26} /></div>;

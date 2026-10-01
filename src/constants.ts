@@ -474,7 +474,9 @@ export function contentEditPath(contentType?: string | null, id?: string): strin
  * Who a librarian may add to their institution, and how many.
  *
  * Librarian is not on the list: this is the librarian's own dashboard, and there
- * is nothing to add. There is no cap on how many.
+ * is nothing to add. How many is set by the institution's seats: a department
+ * subscription includes five (the librarian among them), and more can be bought —
+ * see src/lib/institutionPricing.ts.
  *
  * Students are on the list but belong to Pro — see PRO_ONLY_MEMBER_ROLES.
  */

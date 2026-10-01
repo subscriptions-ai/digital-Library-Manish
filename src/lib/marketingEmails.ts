@@ -1,6 +1,7 @@
 import {
   MAIL_BASE, esc, buildEmail, eBody, eH1, eP, eMuted, eBtn, eCard, eRows,
 } from './emailTemplates.js';
+import { INCLUDED_SEATS } from './institutionPricing.js';
 
 /**
  * The marketing and lifecycle mails: the five the product actually has a
@@ -209,12 +210,12 @@ export const TEMPLATES: Record<TemplateKey, Template> = {
     subject: c => c.institution?.members
       ? `${c.user.organization || 'Your institution'}: ${n(c.institution.members)} people have access so far`
       : 'Add your faculty and researchers to the library',
-    preheader: () => 'Every person you add reads on the same account, at no extra cost.',
+    preheader: () => 'Every person you add reads on the same institutional account.',
     body: c => eBody(
       eH1(`${firstName(c)}, who else should be reading?`)
       + eP(`${c.institution?.members ? `${n(c.institution.members)} people from your institution can open the library today. ` : ''}`
         + `Adding the rest of your faculty and researchers takes a name and an email each, and `
-        + `there is no limit on how many you add — the account covers them all.`)
+        + `a department subscription includes ${INCLUDED_SEATS} users, with more seats available whenever you need them.`)
       + (c.institution?.members
         ? eCard(eRows([
           ['People with access', n(c.institution.members)],
