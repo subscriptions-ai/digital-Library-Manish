@@ -11772,6 +11772,13 @@ async function startServer() {
       };
     }
     if (body?.kind === 'seats') {
+      // Three "unlimited" states to tell apart: a free-preview institution with no subscription
+      // at all, a legacy institution still on its pre-pricing subscription, and a new-system
+      // institution that is capped. The free-preview case needs the department prompt (seats
+      // are added on top of a department); the legacy case is genuinely already unlimited.
+      if (seats.unlimited && seats.subscriptions.length === 0) {
+        return { error: 'Subscribe to at least one department before buying user seats.', code: 'NEEDS_SUBSCRIPTION' };
+      }
       if (seats.unlimited) return { error: 'Your current subscription already allows unlimited users.' };
       if (!seats.included) return { error: 'Subscribe to at least one department before buying user seats.', code: 'NEEDS_SUBSCRIPTION' };
       const totalUsers = Math.floor(Number(body.totalUsers));
