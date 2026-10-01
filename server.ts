@@ -32,6 +32,7 @@ import {
   type TemplateKey, type MailContext,
 } from "./src/lib/marketingEmails.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
+import { priceDepartments, priceSeats, termEnd, INCLUDED_SEATS, DEPARTMENT_RATES, SEAT_BANDS, GST_RATE } from "./src/lib/institutionPricing.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
   eBody, eH1, eP, eMuted, eBtn, eCard, eRows, eQuote,
@@ -1389,8 +1390,16 @@ async function startServer() {
    * Opening something to read is one of the two things that sets the clock
    * going, the other being signing in. Asking how much time is left is not.
    */
-  const passesFreeClock = async (req: any, res: any): Promise<boolean> => {
-    if (!(await isFreeMember(req))) return true;
+  const passesFreeClock = async (req: any, res: any, resolved?: { kind: string; item: any; accessType?: string | null }): Promise<boolean> => {
+    if (!(await isFreeMember(req))) {
+      // A subscriber reads their own departments without a clock. Anything outside them —
+      // another department, on any shelf — is read the way a free member reads it: on the
+      // clock, rather than refused outright. Open-access items are never clocked for them.
+      if (!resolved || STAFF_ROLES.includes(req.user.role)) return true;
+      if (['OpenAccess', 'Free'].includes(resolved.accessType || '')) return true;
+      const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      if (checkContentAccess(resolved.item, req.user.role, subs)) return true;
+    }
     const a = await allowanceFor(prisma, req.user.uid, { start: true });
     if (a.allowed) return true;
     res.status(403).json({
@@ -3239,7 +3248,8 @@ async function startServer() {
         : (sub.domains ? JSON.parse(sub.domains as string) : []);
 
       // If both domains array is empty AND domainName is empty, it's a wildcard (Full Access)
-      const hasWildcardDomain = d.length === 0 && !sub.domainName;
+      // "All Domains" is what a converted quotation writes for a whole-library plan.
+      const hasWildcardDomain = d.length === 0 && (!sub.domainName || /^all domains?$/i.test(String(sub.domainName).trim()));
       
       let domainMatch = false;
       if (hasWildcardDomain) {
@@ -3833,16 +3843,8 @@ async function startServer() {
 
       // Checked after the item is resolved, so an id that does not exist still
       // answers "not found" rather than "out of time".
-      if (!(await passesFreeClock(req, res))) return;
-
-      // New-dataset OA items are freely viewable; legacy content uses subscription checks.
-      const isOA = ['OpenAccess', 'Free'].includes(resolved.accessType || '');
-      let hasAccess = true;
-      if (resolved.kind === 'content' && !isOA) {
-        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-        hasAccess = checkContentAccess(resolved.item, req.user.role, activeSubs);
-      }
-      if (!hasAccess) return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
+      // The clock also decides departments a subscriber has not subscribed to.
+      if (!(await passesFreeClock(req, res, resolved))) return;
 
       // Impact analytics: count a read on new-dataset items (skip admin previews)
       if ((resolved.kind === 'article' || resolved.kind === 'book') && !isAdminRole) {
@@ -3917,17 +3919,9 @@ async function startServer() {
       // The document itself passes through here, so the clock is checked here
       // too. Gating only the request that opens the reader would leave this one
       // answering to anybody who asked it directly.
-      if (!(await passesFreeClock(req, res))) return;
+      if (!(await passesFreeClock(req, res, resolved))) return;
       const content: any = resolved.item;
       content.fileUrl = resolved.fileUrl;
-      const isOA = ['OpenAccess', 'Free'].includes(resolved.accessType || '');
-      if (!isAdmin && resolved.kind === 'content' && !isOA) {
-        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-        const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
-        if (!hasAccess) {
-          return res.status(403).json({ error: "Access denied." });
-        }
-      }
 
       // If it's a local relative URL, serve it directly from the public folder
       if (content.fileUrl.startsWith('/')) {
@@ -4033,17 +4027,8 @@ async function startServer() {
       // The document itself passes through here, so the clock is checked here
       // too. Gating only the request that opens the reader would leave this one
       // answering to anybody who asked it directly.
-      if (!(await passesFreeClock(req, res))) return;
+      if (!(await passesFreeClock(req, res, resolved))) return;
       const content: any = { ...resolved.item, fileUrl: resolved.fileUrl };
-
-      const isOA = ['OpenAccess', 'Free'].includes(resolved.accessType || '');
-      if (!isAdmin && resolved.kind === 'content' && !isOA) {
-        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-        const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
-        if (!hasAccess) {
-          return res.status(403).json({ error: "Access denied." });
-        }
-      }
 
       if (content.fileUrl.startsWith('/')) {
         const filePath = path.join(process.cwd(), 'dist', content.fileUrl);
@@ -11682,6 +11667,257 @@ async function startServer() {
     return (INSTITUTION_MEMBER_ROLES as readonly string[]).includes(wanted) ? wanted : null;
   };
 
+  /**
+   * How many users an institution may have, and how many it has.
+   *
+   * A department subscription bought from the dashboard brings 5 users (the librarian and
+   * four more); seats bought on top add to that while they run. Without a running department
+   * subscription there is nothing to seat, so the capacity is 0. A subscription made before
+   * seat pricing existed (seatsIncluded null) leaves the institution unlimited until it renews
+   * — Boss's call, so no existing customer is locked out of adding their own people.
+   *
+   * Used counts every member not blocked, the librarian included: restricting someone frees
+   * their seat, activating them takes one.
+   */
+  const institutionSeats = async (institutionId: string) => {
+    const now = new Date();
+    const librarians = await prisma.user.findMany({ where: { institutionId, role: 'Institution' }, select: { id: true } });
+    const subs = await prisma.subscription.findMany({
+      where: {
+        status: 'Active',
+        endDate: { gt: now },
+        OR: [{ institutionId }, ...(librarians.length ? [{ userId: { in: librarians.map((l) => l.id) } }] : [])]
+      }
+    });
+    const used = await prisma.user.count({ where: { institutionId, isBlocked: false } });
+    const purchases = await (prisma as any).seatPurchase.findMany({
+      where: { institutionId, status: 'Active', endDate: { gt: now } },
+      orderBy: { endDate: 'asc' }
+    });
+    const extra = purchases.reduce((sum: number, p: any) => sum + p.seats, 0);
+    const unlimited = subs.some((sub: any) => sub.seatsIncluded == null);
+    const included = subs.reduce((max: number, sub: any) => Math.max(max, sub.seatsIncluded ?? 0), 0);
+    const capacity = unlimited ? null : included > 0 ? included + extra : 0;
+    return {
+      unlimited,
+      capacity,
+      used,
+      available: capacity == null ? null : Math.max(0, capacity - used),
+      included,
+      extra,
+      purchases,
+      subscriptions: subs,
+    };
+  };
+
+  /** The refusal an add answers with when the seats are full, so the screen can offer more. */
+  const seatsFullResponse = (seats: Awaited<ReturnType<typeof institutionSeats>>) => ({
+    code: seats.capacity ? 'SEATS_FULL' : 'NEEDS_SUBSCRIPTION',
+    error: seats.capacity
+      ? `All ${seats.capacity} user seats are in use. Add more seats to add more users.`
+      : 'Subscribe to at least one department before adding users.',
+    capacity: seats.capacity,
+    used: seats.used,
+  });
+
+  /** The institution the signed-in librarian runs, or null. */
+  const librarianInstitutionId = async (req: any): Promise<string | null> => {
+    if (req.user.role !== 'Institution') return null;
+    const me = await prisma.user.findUnique({ where: { id: req.user.uid || req.user.id || req.user.userId }, select: { institutionId: true } });
+    return me?.institutionId ?? null;
+  };
+
+  const departmentNames = new Set(DOMAINS.map((d: any) => d.name));
+
+  /** Departments the institution's running subscriptions already cover, by name. */
+  const coveredDepartments = (subs: any[]): string[] => {
+    const names = new Set<string>();
+    for (const sub of subs) {
+      const list: string[] = Array.isArray(sub.domains) ? sub.domains : [];
+      for (const name of list) if (departmentNames.has(name)) names.add(name);
+    }
+    return [...names];
+  };
+
+  /**
+   * Prices a purchase from what is asked for — never from an amount the browser sends.
+   *
+   * Departments are charged at the rate for the institution's total after the purchase, so
+   * adding a fifth department to four already running brings the fifth in at ₹7,990, the same
+   * rule the seat bands follow. Departments it already holds are not sold to it again.
+   */
+  const priceInstitutionPurchase = async (institutionId: string, body: any) => {
+    const seats = await institutionSeats(institutionId);
+    if (body?.kind === 'departments') {
+      const wanted: string[] = Array.isArray(body.departments) ? body.departments.map(String) : [];
+      const unknown = wanted.filter((name) => !departmentNames.has(name));
+      if (unknown.length) return { error: `Unknown department: ${unknown.join(', ')}` };
+      const held = new Set(coveredDepartments(seats.subscriptions));
+      const fresh = [...new Set(wanted)].filter((name) => !held.has(name));
+      if (!fresh.length) return { error: 'Choose at least one department you do not already subscribe to.' };
+      const total = held.size + fresh.length;
+      const price = priceDepartments(total);
+      const base = fresh.length * price.rate;
+      const gst = Math.round(base * GST_RATE * 100) / 100;
+      return {
+        kind: 'departments' as const,
+        departments: fresh,
+        price: { quantity: fresh.length, rate: price.rate, base, gst, total: Math.round((base + gst) * 100) / 100 },
+      };
+    }
+    if (body?.kind === 'seats') {
+      if (seats.unlimited) return { error: 'Your current subscription already allows unlimited users.' };
+      if (!seats.included) return { error: 'Subscribe to at least one department before buying user seats.', code: 'NEEDS_SUBSCRIPTION' };
+      const totalUsers = Math.floor(Number(body.totalUsers));
+      if (!Number.isFinite(totalUsers) || totalUsers <= (seats.capacity ?? 0)) {
+        return { error: `Enter a total above your current ${seats.capacity} seats.` };
+      }
+      if (totalUsers > 100000) return { error: 'For more than 100,000 users, please talk to our team.' };
+      const price = priceSeats(totalUsers, seats.capacity ?? INCLUDED_SEATS);
+      return { kind: 'seats' as const, totalUsers, price };
+    }
+    return { error: 'Unknown purchase.' };
+  };
+
+  // GET /api/institution/plan — what the institution holds, what it uses, and the price lists.
+  app.get("/api/institution/plan", authenticateJWT, async (req: any, res) => {
+    try {
+      const institutionId = await librarianInstitutionId(req);
+      if (!institutionId) return res.status(403).json({ error: "Only an institution's librarian can see its plan." });
+      const seats = await institutionSeats(institutionId);
+      const departments = seats.subscriptions
+        .flatMap((sub: any) => (Array.isArray(sub.domains) ? sub.domains : []).map((name: string) => ({ name, endDate: sub.endDate })))
+        .filter((d: any) => departmentNames.has(d.name));
+      res.json({
+        unlimitedSeats: seats.unlimited,
+        hasSubscription: seats.subscriptions.length > 0,
+        departments,
+        seats: { capacity: seats.capacity, used: seats.used, available: seats.available, included: seats.included, extra: seats.extra },
+        seatPurchases: seats.purchases.map((p: any) => ({ seats: p.seats, rate: p.rate, startDate: p.startDate, endDate: p.endDate })),
+        pricing: { includedSeats: INCLUDED_SEATS, gstRate: GST_RATE, departmentRates: DEPARTMENT_RATES, seatBands: SEAT_BANDS.map((b) => ({ ...b, upTo: Number.isFinite(b.upTo) ? b.upTo : null })) },
+        allDepartments: DOMAINS.map((d: any) => d.name),
+      });
+    } catch (err: any) {
+      console.error('GET /api/institution/plan:', err?.message);
+      res.status(500).json({ error: "Failed to load your plan" });
+    }
+  });
+
+  // POST /api/institution/quote — the server's price for a purchase, before paying.
+  app.post("/api/institution/quote", authenticateJWT, async (req: any, res) => {
+    try {
+      const institutionId = await librarianInstitutionId(req);
+      if (!institutionId) return res.status(403).json({ error: "Only an institution's librarian can buy for it." });
+      const quote: any = await priceInstitutionPurchase(institutionId, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      res.json(quote);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to price this" });
+    }
+  });
+
+  // POST /api/institution/checkout — a Razorpay order for that price, recorded as a pending Payment.
+  app.post("/api/institution/checkout", authenticateJWT, async (req: any, res) => {
+    try {
+      const institutionId = await librarianInstitutionId(req);
+      if (!institutionId) return res.status(403).json({ error: "Only an institution's librarian can buy for it." });
+      const quote: any = await priceInstitutionPurchase(institutionId, req.body);
+      if (quote.error) return res.status(400).json(quote);
+
+      const amountPaise = Math.round(quote.price.total * 100);
+      const receipt = `inst_${quote.kind}_${Date.now()}`;
+      let order: any;
+      if (process.env.NODE_ENV !== "production" && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+        order = { id: `order_mock_${Date.now()}`, amount: amountPaise, currency: 'INR', receipt, isMock: true };
+      } else {
+        order = await getRazorpay().orders.create({ amount: amountPaise, currency: 'INR', receipt });
+      }
+      await prisma.payment.create({
+        data: {
+          orderId: order.id,
+          amount: quote.price.total,
+          status: 'Pending',
+          userId: req.user.uid,
+          items: { purpose: 'institution', institutionId, ...quote } as any,
+        }
+      });
+      res.json({ ...order, razorpayKey: process.env.RAZORPAY_KEY_ID, quote });
+    } catch (err: any) {
+      console.error('POST /api/institution/checkout:', err?.message);
+      res.status(500).json({ error: "Failed to start the payment" });
+    }
+  });
+
+  /**
+   * POST /api/institution/checkout/verify — activates what a verified payment bought.
+   *
+   * What is activated is read back from the pending Payment written when the order was made,
+   * not from this request, so a client cannot pay for one department and claim five. A payment
+   * already marked Paid is answered as done and never activated twice.
+   */
+  app.post("/api/institution/checkout/verify", authenticateJWT, async (req: any, res) => {
+    try {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+      if (!razorpay_order_id) return res.status(400).json({ error: "Missing order." });
+      const payment = await prisma.payment.findUnique({ where: { orderId: razorpay_order_id } });
+      const items: any = payment?.items;
+      if (!payment || items?.purpose !== 'institution' || payment.userId !== req.user.uid) {
+        return res.status(404).json({ error: "No such payment." });
+      }
+      if (payment.status === 'Paid') return res.json({ ok: true, alreadyActive: true });
+
+      const isMock = process.env.NODE_ENV !== "production" && String(razorpay_order_id).startsWith("order_mock_");
+      if (!isMock) {
+        const expected = crypto.createHmac("sha256", (process.env.RAZORPAY_KEY_SECRET || "").trim())
+          .update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+        if (!razorpay_signature || razorpay_signature !== expected) {
+          console.warn(`[institution checkout] signature mismatch for ${razorpay_order_id}`);
+          return res.status(400).json({ error: "Payment could not be verified." });
+        }
+      }
+
+      const now = new Date();
+      const end = termEnd(now);
+      await prisma.$transaction(async (tx: any) => {
+        await tx.payment.update({ where: { id: payment.id }, data: { status: 'Paid', paymentId: razorpay_payment_id || `mock_${Date.now()}` } });
+        if (items.kind === 'departments') {
+          await tx.subscription.create({
+            data: {
+              planName: 'Premium Department Subscription',
+              planType: 'Yearly',
+              durationMonths: 12,
+              status: 'Active',
+              domains: items.departments,
+              contentTypes: [],
+              institutionId: items.institutionId,
+              userId: payment.userId,
+              seatsIncluded: INCLUDED_SEATS,
+              paymentId: payment.id,
+              startDate: now,
+              endDate: end,
+            }
+          });
+        } else if (items.kind === 'seats') {
+          await tx.seatPurchase.create({
+            data: {
+              institutionId: items.institutionId,
+              seats: items.price.quantity,
+              rate: items.price.rate,
+              amount: items.price.total,
+              paymentId: payment.id,
+              startDate: now,
+              endDate: end,
+            }
+          });
+        }
+      });
+      res.json({ ok: true, endDate: end });
+    } catch (err: any) {
+      console.error('POST /api/institution/checkout/verify:', err?.message);
+      res.status(500).json({ error: "Payment received, but activation failed. Our team will activate it — please contact support." });
+    }
+  });
+
   app.get("/api/institution/students", authenticateJWT, async (req: any, res) => {
     try {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });
@@ -11738,6 +11974,10 @@ async function startServer() {
       if (PRO_ONLY_MEMBER_ROLES.includes(role) && !(await institutionOnPro(req, targetInstitutionId!))) {
         return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
       }
+      if (req.user.role === 'Institution') {
+        const seats = await institutionSeats(targetInstitutionId!);
+        if (seats.available !== null && seats.available < 1) return res.status(403).json(seatsFullResponse(seats));
+      }
 
       const student = await (prisma as any).user.create({
         data: {
@@ -11781,6 +12021,10 @@ async function startServer() {
       const targetInstitutionId = target.id;
 
       const onPro = await institutionOnPro(req, targetInstitutionId!);
+      // Seats left for this import; null when the plan has no cap (or an administrator is importing).
+      const seatsAtStart = await institutionSeats(targetInstitutionId!);
+      let seatsLeft = req.user.role === 'Institution' ? seatsAtStart.available : null;
+      if (seatsLeft !== null && seatsLeft < 1) return res.status(403).json(seatsFullResponse(seatsAtStart));
 
       let successCount = 0;
       let errorCount = 0;
@@ -11813,6 +12057,12 @@ async function startServer() {
             continue;
           }
 
+          if (seatsLeft !== null && seatsLeft < 1) {
+            errorCount++;
+            errors.push({ email: u.email, error: 'No user seats left. Add more seats to import the rest.' });
+            continue;
+          }
+
           const hashed = await bcrypt.hash(u.password, 10);
           await (prisma as any).user.create({
             data: {
@@ -11831,6 +12081,7 @@ async function startServer() {
             }
           });
           successCount++;
+          if (seatsLeft !== null) seatsLeft--;
         } catch (err: any) {
           errorCount++;
           errors.push({ email: u.email, error: err.message });
@@ -11858,6 +12109,11 @@ async function startServer() {
         if (!target) return res.status(404).json({ error: "Student not found" });
         if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
+        }
+        // Activating a restricted member takes a seat back.
+        if (isBlocked === false && target.isBlocked) {
+          const seats = await institutionSeats(caller.institutionId);
+          if (seats.available !== null && seats.available < 1) return res.status(403).json(seatsFullResponse(seats));
         }
       }
 

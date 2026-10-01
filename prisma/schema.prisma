@@ -589,6 +589,13 @@ model Subscription {
   request   SubscriptionRequest? @relation(fields: [requestId], references: [id])
   requestId String?              @unique
 
+  /// Users this subscription brings with it, the librarian included — 5 for a department
+  /// subscription bought from the institution dashboard. Null on every subscription made
+  /// before seat pricing existed: those institutions keep unlimited users until they renew.
+  seatsIncluded Int?
+  /// The Payment that bought it, when it was bought online.
+  paymentId     String?
+
   startDate   DateTime  @default(now())
   endDate     DateTime
   cancelledAt DateTime?
@@ -812,9 +819,30 @@ model Institution {
 
   users         User[]
   subscriptions Subscription[]
+  seatPurchases SeatPurchase[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Full-access user seats an institution bought on top of the five its department
+/// subscription includes. Each purchase runs twelve months from the day it was bought;
+/// the institution's capacity is 5 plus every purchase still running.
+model SeatPurchase {
+  id            String      @id @default(uuid())
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  institutionId String
+  /// Extra seats bought, and the per-seat rate of the band the new total fell in.
+  seats         Int
+  rate          Int
+  amount        Float
+  paymentId     String?
+  status        String      @default("Active") // Active | Cancelled
+  startDate     DateTime    @default(now())
+  endDate       DateTime
+  createdAt     DateTime    @default(now())
+
+  @@index([institutionId, endDate])
 }
 
 model StudentActivity {
