@@ -7,6 +7,7 @@ import { COMPANY_DETAILS } from "../config";
 
 
 import { DOMAINS } from "../constants";
+import { INCLUDED_SEATS } from "../lib/institutionPricing";
 
 const departments = DOMAINS.map(d => d.name);
 
@@ -109,7 +110,7 @@ export function InstitutionalAccess() {
               { icon: Globe, title: "Remote Access", desc: "Enable access for students and faculty working from home via proxy or Shibboleth." },
               { icon: BarChart3, title: "Usage Statistics", desc: "COUNTER-compliant reports to help you understand resource utilization." },
               { icon: ShieldCheck, title: "Librarian Dashboard", desc: "Centralized control panel to manage access and view analytics." },
-              { icon: Users, title: "Unlimited Users", desc: "No caps on the number of simultaneous users from your institution." },
+              { icon: Users, title: "Users That Scale", desc: `${INCLUDED_SEATS} users included with every subscription, and more seats at lower rates as your institution grows.` },
               { icon: BookOpen, title: "Archival Rights", desc: "Permanent access to content published during your access period." }
             ].map((feature, i) => (
               <div key={i} className="rounded-2xl bg-white p-8 border border-slate-200 shadow-sm">
