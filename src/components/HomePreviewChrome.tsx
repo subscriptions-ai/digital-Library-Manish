@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronDown, Facebook, LayoutGrid, Linkedin, LogOut, Mail, MapPin, Menu, Phone, Search, X,
 } from 'lucide-react';
@@ -72,6 +72,7 @@ export function PreviewHeader() {
   const safeMode = usePublisherSafeMode();
   const { user, logout, isAdmin, isInstitutionAdmin, isSubscriptionManager } = useAuth();
   const navigate = useNavigate();
+  const { pathname, search } = useLocation();
   const totals = useDepartmentTotals();
 
   const [deptOpen, setDeptOpen] = useState(false);
@@ -80,6 +81,14 @@ export function PreviewHeader() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileDepts, setMobileDepts] = useState(false);
   const [q, setQ] = useState('');
+
+  useEffect(() => {
+    setDeptOpen(false);
+    setSearchOpen(false);
+    setMenuOpen(false);
+    setProfileOpen(false);
+    setMobileDepts(false);
+  }, [pathname, search]);
 
   const deptRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -245,6 +254,7 @@ export function PreviewHeader() {
               </div>
             )}
             {!safeMode && <Link to="/faq" onClick={() => setMenuOpen(false)} className="border-b border-rule py-3 text-[15px] text-ink">FAQ</Link>}
+            <Link to="/blog" onClick={() => setMenuOpen(false)} className="border-b border-rule py-3 text-[15px] text-ink">Blog</Link>
             <Link to="/contact" onClick={() => setMenuOpen(false)} className="border-b border-rule py-3 text-[15px] text-ink">Contact</Link>
           </nav>
           <div className="mt-5 grid grid-cols-2 gap-2">

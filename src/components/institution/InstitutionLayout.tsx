@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, BookOpen, ChevronLeft, CreditCard, LayoutDashboard, LogOut, Menu, MessageSquareHeart, Search, UserCircle, Users } from 'lucide-react';
+import { Activity, BookOpen, ChevronLeft, CreditCard, LayoutDashboard, LogOut, Menu, MessageSquareHeart, Moon, Search, Sun, UserCircle, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { FeedbackWidget } from '../dashboard/FeedbackWidget';
@@ -17,6 +18,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   const location = useLocation();
   const { profile, logout, loading, isInstitutionAdmin } = useAuth();
   const { allowance, msLeft, msUntil } = useAllowance();
+  const { dark, toggleDark } = useTheme();
   const [q, setQ] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -212,6 +214,13 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
                 <p className="max-w-[160px] truncate text-[11px] text-faint">{profile.email}</p>
               </div>
             </div>
+            <button
+              onClick={toggleDark}
+              title={dark ? 'Light theme' : 'Dark theme'}
+              className="rounded-xl border border-rule p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            >
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
             <button
               onClick={handleSignOut}
               title="Sign out"

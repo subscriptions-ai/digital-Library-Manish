@@ -7,11 +7,9 @@ import React, { useEffect, useState, lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import { ForcePasswordChange } from "./components/ForcePasswordChange";
-import { Navbar } from "./components/Navbar";
-import { Footer } from "./components/Footer";
 import { Home } from "./components/Home";
 import { HomePreview } from "./components/HomePreview";
-import { PreviewHeader, PreviewFooter } from "./components/HomePreviewChrome";
+import { PublicLayout } from "./components/PublicLayout";
 import { InstitutionsPage } from "./components/InstitutionsPage";
 import { NotFound } from "./components/NotFound";
 
@@ -100,6 +98,7 @@ import { DetailedAnalyticsPage } from './components/admin/dashboard/DetailedAnal
 import { CONTENT_MODULES } from "./constants";
 
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { DashboardLayout } from "./components/DashboardLayout";
 import { LMSDashboard } from "./components/dashboard/LMSDashboard";
 import { LibraryHome } from "./components/dashboard/LibraryHome";
@@ -176,12 +175,13 @@ export default function App() {
   return (
     <HelmetProvider>
       <ErrorBoundary>
-        <AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
             <Router>
               <AnalyticsTracker />
               <ScrollToTop />
               <FirstLoginGate>
-              <div className="flex min-h-screen flex-col font-sans text-slate-900 antialiased">
+              <div className="flex min-h-screen flex-col font-sans text-ink bg-ground antialiased">
                 <Toaster position="top-right" />
                 <CookieConsent />
                 <EmailVerificationPopup />
@@ -338,38 +338,13 @@ export default function App() {
                 <Route path="/sales/quotations" element={<SalesLayout><MyQuotations /></SalesLayout>} />
                 <Route path="/sales/quotations/create" element={<SalesLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></SalesLayout>} />
 
-                {/* The home page. It carries a header and footer of its own, so it
-                    is declared ahead of the shared layout, whose Navbar must never
-                    wrap it. The page it replaced is still built and reachable at
-                    /home-classic. */}
-                <Route path="/" element={
-                  <>
-                    <PreviewHeader />
-                    <main className="flex-1"><HomePreview /></main>
-                    <PreviewFooter />
-                  </>
-                } />
-
-                {/* Where it lived while it was a draft — links and bookmarks that
-                    went there still arrive at the home page. */}
-                <Route path="/home-preview" element={<Navigate to="/" replace />} />
-
-                {/* Where the preview's list of institutions goes on — the whole
-                    list, with its own header and footer to match. */}
-                <Route path="/institutions" element={
-                  <>
-                    <PreviewHeader />
-                    <main className="flex-1"><InstitutionsPage /></main>
-                    <PreviewFooter />
-                  </>
-                } />
-
-                {/* Main Layout routes */}
-              <Route path="*" element={
-                <>
-                  <Navbar />
-                  <main className="flex-1">
+                {/* Every public route shares the home page's chrome and typography. */}
+                <Route path="*" element={
+                  <PublicLayout>
                     <Routes>
+                      <Route path="/" element={<HomePreview />} />
+                      <Route path="/home-preview" element={<Navigate to="/" replace />} />
+                      <Route path="/institutions" element={<InstitutionsPage />} />
                       {/* The home page until 28 September 2026, kept reachable. */}
                       <Route path="/home-classic" element={<Home />} />
                       <Route path="/digital-library" element={<DigitalLibrary />} />
@@ -407,15 +382,14 @@ export default function App() {
                       <Route path="/book/:id" element={<BookRecord />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
-                  </main>
-                  <Footer />
-                </>
+                  </PublicLayout>
               } />
             </Routes>
           </div>
           </FirstLoginGate>
         </Router>
       </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
     </HelmetProvider>
   );

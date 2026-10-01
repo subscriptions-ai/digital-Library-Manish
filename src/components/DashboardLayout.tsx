@@ -19,6 +19,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { ReadingClock, useAllowance } from './membership/ReadingClock';
 import { dashboardTitle, affiliation } from '../lib/identity';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -48,24 +49,8 @@ const sidebarItems: SidebarItem[] = [
   { label: 'Profile Settings', icon: Settings, path: '/dashboard/settings', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
 ];
 
-/**
- * The theme lives here, not on one page.
- *
- * The toggle used to sit inside the dashboard home, so a reader on any other
- * page could not reach it. The class it sets is what every token reads from,
- * and the preference keeps its old key so an existing choice carries over.
- */
-function useTheme() {
-  const [dark, setDark] = useState(() => localStorage.getItem('lms-dark') === '1');
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('lms-dark', dark ? '1' : '0');
-  }, [dark]);
-  return { dark, setDark };
-}
-
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { dark, setDark } = useTheme();
+  const { dark, toggleDark } = useTheme();
   const { profile, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -248,7 +233,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               {profile?.displayName?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase()}
             </div>
             <button
-              onClick={() => setDark(d => !d)}
+              onClick={toggleDark}
               title={dark ? 'Light theme' : 'Dark theme'}
               className="rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >

@@ -207,10 +207,8 @@
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-/* The second home page, at /home-preview.
-   It is drawn to a reference the user chose, which sets its type in Sora and
-   Inter rather than the library's own Spectral and IBM Plex. Scoped to that
-   page: the rest of the site keeps its own face. */
+/* Public pages share the home page's Inter body and Sora titles.
+   Keep these tokens scoped to the public layout. */
 .np {
   font-family: Inter, "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --np-navy: #0b1b3a;
@@ -357,3 +355,20 @@ body {
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Override legacy font utilities only inside public page content. Header and
+   footer retain the exact typography used by the home page's shared chrome. */
+.public-content {
+  --font-sans: Inter, "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: Sora, Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+}
+.public-content :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-serif);
+  font-weight: 700;
+}
+.public-content :is(h1, h2) {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.public-content .np-strong { font-weight: 700; }

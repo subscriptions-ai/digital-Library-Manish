@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Search, Filter, Lock, FileText, PlayCircle, ArrowLeft } from 'lucide-react';
+import { BookOpen, Search, Filter, Lock, FileText, PlayCircle, ArrowLeft, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function InstitutionContentLibrary() {
@@ -171,14 +171,25 @@ export function InstitutionContentLibrary() {
           <div className="space-y-5">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" size={16} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none" size={16} />
               <input
                 type="text"
                 placeholder="Search resources..."
-                className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent transition-all outline-none text-ink placeholder:text-faint"
+                className="w-full pl-10 pr-9 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent transition-all outline-none text-ink placeholder:text-faint"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  title="Clear search"
+                  aria-label="Clear search"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-faint hover:text-ink rounded-full hover:bg-surface transition-colors focus:outline-none"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             
             {/* Content Type Filter */}

@@ -37,6 +37,15 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
   const [recentOnly, setRecentOnly] = useState(sp.get('recent') === '1');
   const [oaOnly, setOaOnly] = useState(sp.get('oa') === '1');
   const [search, setSearch] = useState(sp.get('q') || '');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const clearSearch = () => {
+    setSearch('');
+    setDebounced('');
+    setPage(1);
+    lastSearch.current = '';
+    searchInputRef.current?.focus();
+  };
 
   const [debounced, setDebounced] = useState(sp.get('q') || '');
   const [sort, setSort] = useState<Sort>((sp.get('sort') as Sort) || 'newest');
@@ -240,12 +249,35 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
 
       {/* Search bar */}
       <div className="relative mb-5">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search articles, authors, journals, topics…"
-          className="w-full pl-12 pr-4 py-3.5 rounded-md border border-rule bg-surface text-sm outline-none transition-colors focus:border-accent" />
-        <button onClick={() => setMobileFilters(v => !v)} className="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md bg-surface-2 text-ink-2">
-          <SlidersHorizontal size={16} />
-        </button>
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
+        <input
+          ref={searchInputRef}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search articles, authors, journals, topics…"
+          className="w-full pl-12 pr-20 lg:pr-12 py-3.5 rounded-md border border-rule bg-surface text-sm outline-none transition-colors focus:border-accent text-ink placeholder:text-faint"
+        />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+          {search && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              title="Clear search"
+              aria-label="Clear search"
+              className="p-1 rounded-full text-muted hover:text-ink hover:bg-surface-2 transition-colors focus:outline-none"
+            >
+              <X size={16} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setMobileFilters(v => !v)}
+            className="lg:hidden p-2 rounded-md bg-surface-2 text-ink-2 hover:bg-surface transition-colors"
+            aria-label="Toggle filters"
+          >
+            <SlidersHorizontal size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
@@ -340,9 +372,24 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                   {selJournalIds.length > 0 && <button onClick={() => { setSelJournalIds([]); setYear(''); setVolume(''); setIssue(''); }} className="text-[10px] font-bold text-accent hover:underline">{selJournalIds.length} selected · clear</button>}
                 </div>
                 <div className="relative mt-2">
-                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
-                  <input value={journalQuery} onChange={e => setJournalQuery(e.target.value)} placeholder="Filter journals…"
-                    className="w-full pl-8 pr-2 py-1.5 text-xs rounded-lg border border-rule bg-surface-2 outline-none focus:border-accent" />
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
+                  <input
+                    value={journalQuery}
+                    onChange={e => setJournalQuery(e.target.value)}
+                    placeholder="Filter journals…"
+                    className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border border-rule bg-surface-2 outline-none focus:border-accent"
+                  />
+                  {journalQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setJournalQuery('')}
+                      title="Clear filter"
+                      aria-label="Clear journal filter"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-faint hover:text-ink transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="max-h-64 overflow-y-auto p-2">

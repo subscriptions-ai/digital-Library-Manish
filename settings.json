@@ -1,7 +1,9 @@
 {
-  "emailVerificationEnabled": true,
+  "emailVerificationEnabled": false,
   "awsAccessKeyId": "",
   "awsSecretAccessKey": "",
   "awsRegion": "eu-west-1",
-  "emailFrom": "noreply@journalslibrary.com"
+  "emailFrom": "noreply@journalslibrary.com",
+  "publisherSafeMode": false,
+  "hidePricing": false
 }

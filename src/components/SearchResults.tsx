@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import {
   Search, Loader2, BookOpen, FileText, Newspaper,
-  Video, Users, Mail, Book, GraduationCap, ChevronLeft, ChevronRight, Filter,
+  Video, Users, Mail, Book, GraduationCap, ChevronLeft, ChevronRight, Filter, X,
 } from "lucide-react";
 import { CONTENT_TYPES } from "../constants";
 import { DOMAINS } from "../constants";
@@ -120,8 +120,19 @@ export function SearchResults() {
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
                 placeholder="Search journals, books, topics…"
-                className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all"
+                className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-12 pr-10 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all"
               />
+              {inputVal && (
+                <button
+                  type="button"
+                  onClick={() => setInputVal("")}
+                  title="Clear search"
+                  aria-label="Clear search"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors focus:outline-none"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
             <button
               type="submit"

@@ -3350,8 +3350,8 @@ var require_decode_shared = __commonJS({
       const out = new Uint16Array(evenLength / 2);
       for (let index = 0, outIndex = 0; index < evenLength; index += 2) {
         const lo = binary.charCodeAt(index);
-        const hi2 = binary.charCodeAt(index + 1);
-        out[outIndex++] = lo | hi2 << 8;
+        const hi = binary.charCodeAt(index + 1);
+        out[outIndex++] = lo | hi << 8;
       }
       return out;
     }
@@ -3785,16 +3785,16 @@ var require_decode = __commonJS({
       }
       const packedKeySlots = branchCount + 1 >> 1;
       let lo = 0;
-      let hi2 = branchCount - 1;
-      while (lo <= hi2) {
-        const mid = lo + hi2 >>> 1;
+      let hi = branchCount - 1;
+      while (lo <= hi) {
+        const mid = lo + hi >>> 1;
         const slot = mid >> 1;
         const packed = decodeTree[nodeIndex + slot];
         const midKey = packed >> (mid & 1) * 8 & 255;
         if (midKey < char) {
           lo = mid + 1;
         } else if (midKey > char) {
-          hi2 = mid - 1;
+          hi = mid - 1;
         } else {
           return decodeTree[nodeIndex + packedKeySlots + mid];
         }
@@ -6084,14 +6084,14 @@ var require_decode2 = __commonJS({
         return value < 0 || value >= branchCount ? -1 : decodeTree[nodeIdx + value] - 1;
       }
       var lo = nodeIdx;
-      var hi2 = lo + branchCount - 1;
-      while (lo <= hi2) {
-        var mid = lo + hi2 >>> 1;
+      var hi = lo + branchCount - 1;
+      while (lo <= hi) {
+        var mid = lo + hi >>> 1;
         var midVal = decodeTree[mid];
         if (midVal < char) {
           lo = mid + 1;
         } else if (midVal > char) {
-          hi2 = mid - 1;
+          hi = mid - 1;
         } else {
           return decodeTree[mid + branchCount];
         }
@@ -24372,7 +24372,7 @@ function parseLcc(code) {
   const m2 = /^([A-Z]+)\s*([0-9.]+)?/.exec(code.trim().toUpperCase());
   return m2 ? { cls: m2[1], num: m2[2] ? parseFloat(m2[2]) : null } : null;
 }
-var within = (num, lo, hi2) => num !== null && num >= lo && num <= hi2;
+var within = (num, lo, hi) => num !== null && num >= lo && num <= hi;
 function departmentFromLcc(cls, num) {
   const c1 = cls[0];
   switch (c1) {
@@ -24615,8 +24615,7 @@ var link = (path3, c) => {
   if (!c.ref) return url;
   return url + (url.includes("?") ? "&" : "?") + `ref=${encodeURIComponent(c.ref)}`;
 };
-var hi = (t2) => `<p style="margin:0 0 18px;font-size:14px;line-height:22px;color:#475569;">${esc(t2)}</p>`;
-var footer = (c) => c.unsubscribeUrl ? eMuted(`You are receiving this because you have an account at STM Digital Library. <a href="${esc(c.unsubscribeUrl)}" style="color:#64748b;">Unsubscribe from updates</a> \u2014 aapke OTP, receipt aur zaroori mails phir bhi aate rahenge.`) : "";
+var footer = (c) => c.unsubscribeUrl ? eMuted(`You are receiving this because you have an account at STM Digital Library. <a href="${esc(c.unsubscribeUrl)}" style="color:#64748b;">Unsubscribe from updates</a> \u2014 your OTP, receipt and other essential account mails will still reach you.`) : "";
 var TEMPLATES = {
   // ── 1. The librarian's profile is still half empty ───────────────────────
   "profile-incomplete": {
@@ -24630,7 +24629,7 @@ var TEMPLATES = {
     body: (c) => {
       const missing = c.missingFields || [];
       return eBody(
-        eH1(`Hello ${firstName(c)}, your profile is nearly there`) + eP("Your institution is set up and your people can read today. A few details on the profile are still blank, and they are the ones that make your dashboard useful \u2014 the contact we reach you on, and the size and courses that let us tell you which departments your library is thin in.") + hi("Aapka account chalu hai. Bas profile ke kuch khane khaali hain \u2014 do minute ka kaam hai.") + (missing.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Still blank</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + missing.map((f3) => `\u2022 ${esc(f3)}`).join("<br/>") + `</p>`, "warning") : "") + eBtn("Complete the profile", link("/institution/profile", c)) + eMuted("Nothing about your members changes while it is blank \u2014 this only improves what we can show you.") + footer(c)
+        eH1(`Hello ${firstName(c)}, your profile is nearly there`) + eP("Your institution is set up and your people can read today. A few details on the profile are still blank, and they are the ones that make your dashboard useful \u2014 the contact we reach you on, and the size and courses that let us tell you which departments your library is thin in.") + (missing.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Still blank</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + missing.map((f3) => `\u2022 ${esc(f3)}`).join("<br/>") + `</p>`, "warning") : "") + eBtn("Complete the profile", link("/institution/profile", c)) + eMuted("Nothing about your members changes while it is blank \u2014 this only improves what we can show you.") + footer(c)
       );
     }
   },
@@ -24644,7 +24643,7 @@ var TEMPLATES = {
     subject: (c) => c.departments?.length ? `${n(c.library?.total)} items are waiting \u2014 starting with ${esc(c.departments[0])}` : `Your library is open \u2014 ${n(c.library?.total)} items are waiting`,
     preheader: () => "Sign in and open the first one. Free, no request form, nothing to install.",
     body: (c) => eBody(
-      eH1(`${firstName(c)}, your library is open`) + eP(`You registered, and since then nothing has been opened. There is no approval to wait for and nothing to install \u2014 ${n(c.library?.total)} items across ${n(c.library?.departments)} departments are already available to you, and they open in the browser.`) + hi("Aapne register to kiya, par abhi tak kuch padha nahi. Koi permission ka intezaar nahi hai \u2014 seedhe kholiye aur padhiye.") + (c.departments?.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Your departments</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + c.departments.slice(0, 4).map((d) => `\u2022 ${esc(d)}`).join("<br/>") + `</p>`) : "") + eBtn("Open the library", link("/dashboard/library", c)) + eMuted("Free membership reads in half-hour sessions. Nothing is charged, and nothing is asked for.") + footer(c)
+      eH1(`${firstName(c)}, your library is open`) + eP(`You registered, and since then nothing has been opened. There is no approval to wait for and nothing to install \u2014 ${n(c.library?.total)} items across ${n(c.library?.departments)} departments are already available to you, and they open in the browser.`) + (c.departments?.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Your departments</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + c.departments.slice(0, 4).map((d) => `\u2022 ${esc(d)}`).join("<br/>") + `</p>`) : "") + eBtn("Open the library", link("/dashboard/library", c)) + eMuted("Free membership reads in half-hour sessions. Nothing is charged, and nothing is asked for.") + footer(c)
     )
   },
   // ── 3. What is new ───────────────────────────────────────────────────────
@@ -24675,7 +24674,7 @@ var TEMPLATES = {
     subject: () => "Reading without the half-hour session",
     preheader: () => "Pro removes the session clock, for you and everyone you add.",
     body: (c) => eBody(
-      eH1(`${firstName(c)}, you have been reading \u2014 here is what Pro changes`) + eP("On free membership the library is whole, but the clock is not: a session lasts half an hour, and if you have been reading you will have met it mid-article. Pro is the same library with that clock removed.") + hi("Free membership mein poori library milti hai, par session aadhe ghante ka hota hai. Pro mein wo ghadi hat jati hai \u2014 baaki sab wahi rehta hai.") + eCard(`<p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#1e3a6e;">What changes</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">\u2022 No session limit \u2014 read for as long as the work takes<br/>\u2022 The same for everyone your institution adds<br/>\u2022 Students can be added to your institution's account<br/>\u2022 Reading reports for the whole institution, by week and by subject</p>`, "success") + (c.reading?.items ? eMuted(`You have opened ${n(c.reading.items)} item${c.reading.items === 1 ? "" : "s"} so far.`) : "") + eBtn("See what Pro includes", link("/for-institutions", c)) + eMuted("Questions about what suits your institution? Reply to this mail and a person will answer.") + footer(c)
+      eH1(`${firstName(c)}, you have been reading \u2014 here is what Pro changes`) + eP("On free membership the library is whole, but the clock is not: a session lasts half an hour, and if you have been reading you will have met it mid-article. Pro is the same library with that clock removed.") + eCard(`<p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#1e3a6e;">What changes</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">\u2022 No session limit \u2014 read for as long as the work takes<br/>\u2022 The same for everyone your institution adds<br/>\u2022 Students can be added to your institution's account<br/>\u2022 Reading reports for the whole institution, by week and by subject</p>`, "success") + (c.reading?.items ? eMuted(`You have opened ${n(c.reading.items)} item${c.reading.items === 1 ? "" : "s"} so far.`) : "") + eBtn("See what Pro includes", link("/for-institutions", c)) + eMuted("Questions about what suits your institution? Reply to this mail and a person will answer.") + footer(c)
     )
   },
   // ── 5. Librarian: add the rest of your faculty ───────────────────────────
@@ -24688,7 +24687,7 @@ var TEMPLATES = {
     subject: (c) => c.institution?.members ? `${c.user.organization || "Your institution"}: ${n(c.institution.members)} people have access so far` : "Add your faculty and researchers to the library",
     preheader: () => "Every person you add reads on the same account, at no extra cost.",
     body: (c) => eBody(
-      eH1(`${firstName(c)}, who else should be reading?`) + eP(`${c.institution?.members ? `${n(c.institution.members)} people from your institution can open the library today. ` : ""}Adding the rest of your faculty and researchers takes a name and an email each, and there is no limit on how many you add \u2014 the account covers them all.`) + hi("Aap jitne faculty aur researchers jodna chahein, jod sakte hain \u2014 koi limit nahi hai, aur koi alag kharcha bhi nahi.") + (c.institution?.members ? eCard(eRows([
+      eH1(`${firstName(c)}, who else should be reading?`) + eP(`${c.institution?.members ? `${n(c.institution.members)} people from your institution can open the library today. ` : ""}Adding the rest of your faculty and researchers takes a name and an email each, and there is no limit on how many you add \u2014 the account covers them all.`) + (c.institution?.members ? eCard(eRows([
         ["People with access", n(c.institution.members)],
         ...typeof c.institution.readers === "number" ? [["Of them, have read something", n(c.institution.readers)]] : [],
         ...c.institution.lastAddedDays ? [["Last person added", `${c.institution.lastAddedDays} days ago`]] : []

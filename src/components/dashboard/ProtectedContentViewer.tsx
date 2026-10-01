@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useTheme } from '../../contexts/ThemeContext';
 import { ReadingLimitNotice } from '../membership/ReadingClock';
 import {
   ArrowLeft,
@@ -195,7 +196,7 @@ export function ProtectedContentViewer() {
 
   // Viewer controls
   const [scale, setScale] = useState(() => window.innerWidth < 640 ? 0.6 : 1.4);
-  const [darkMode, setDarkMode] = useState(false);
+  const { dark: darkMode, toggleDark } = useTheme();
   const [fullscreen, setFullscreen] = useState(false);
   const [iframeFallback, setIframeFallback] = useState(false);
 
@@ -655,7 +656,7 @@ export function ProtectedContentViewer() {
 
           {/* Dark mode toggle */}
           <button
-            onClick={() => setDarkMode(d => !d)}
+            onClick={toggleDark}
             title={darkMode ? 'Light Mode' : 'Dark Mode'}
             className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
           >
@@ -718,39 +719,39 @@ export function ProtectedContentViewer() {
                 : isOapenPdf ? 'Full text opens outside the library'
                 : 'Full text opens at the publisher'}
             </p>
-            <h2 className="mt-2 font-serif text-2xl font-medium leading-snug text-ink">
+            <h2 className={`mt-2 font-serif text-2xl font-medium leading-snug ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
               {content?.title}
             </h2>
 
             {record?.authors_structured?.length > 0 ? (
-              <p className="mt-2 text-sm text-ink-2">
+              <p className={`mt-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                 {record.authors_structured.map((a: any, i: number) => (
                   <React.Fragment key={a.id}>
-                    {i > 0 && <span className="text-faint"> · </span>}
+                    {i > 0 && <span className={darkMode ? 'text-slate-500' : 'text-slate-400'}> · </span>}
                     <Link to={`${libBase}/author/${a.id}`} className="text-accent hover:underline">{a.name}</Link>
                   </React.Fragment>
                 ))}
               </p>
             ) : (record?.authors || content?.authors) ? (
-              <p className="mt-2 text-sm text-ink-2">{record?.authors || content?.authors}</p>
+              <p className={`mt-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{record?.authors || content?.authors}</p>
             ) : null}
 
-            <p className="tnum mt-2 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
+            <p className={`tnum mt-2 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               {content?.journalName && (
                 content?.journalIssn
                   ? <Link to={`${libBase}/journal/${encodeURIComponent(content.journalIssn)}`}
-                      className="text-ink-2 hover:text-accent hover:underline">{content.journalName}</Link>
-                  : <span className="text-ink-2">{content.journalName}</span>
+                      className={`${darkMode ? 'text-slate-300' : 'text-slate-700'} hover:text-accent hover:underline`}>{content.journalName}</Link>
+                  : <span className={darkMode ? 'text-slate-300' : 'text-slate-700'}>{content.journalName}</span>
               )}
-              {content?.volume && <><span className="text-rule-2">·</span><span>{content.volume}{content.issue ? `(${content.issue})` : ''}</span></>}
-              {content?.year && <><span className="text-rule-2">·</span><span>{content.year}</span></>}
-              {content?.journalIssn && <><span className="text-rule-2">·</span><span>ISSN {content.journalIssn}</span></>}
+              {content?.volume && <><span className={darkMode ? 'text-slate-600' : 'text-slate-300'}>·</span><span>{content.volume}{content.issue ? `(${content.issue})` : ''}</span></>}
+              {content?.year && <><span className={darkMode ? 'text-slate-600' : 'text-slate-300'}>·</span><span>{content.year}</span></>}
+              {content?.journalIssn && <><span className={darkMode ? 'text-slate-600' : 'text-slate-300'}>·</span><span>ISSN {content.journalIssn}</span></>}
             </p>
 
             {record?.abstract && (
-              <div className="mt-6 border-t border-rule pt-5">
-                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Abstract</p>
-                <p className="mt-2 whitespace-pre-wrap text-[14.5px] leading-relaxed text-ink-2">{record.abstract}</p>
+              <div className={`mt-6 border-t pt-5 ${darkMode ? 'border-white/10' : 'border-slate-200'}`}>
+                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Abstract</p>
+                <p className={`mt-2 whitespace-pre-wrap text-[14.5px] leading-relaxed ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{record.abstract}</p>
               </div>
             )}
 
@@ -766,19 +767,19 @@ export function ProtectedContentViewer() {
               {doi && (
                 <a href={`https://doi.org/${String(doi).replace(/^https?:\/\/(dx\.)?doi\.org\//i, '')}`}
                   target="_blank" rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-md border border-rule-2 px-4 py-2.5 font-mono text-[12px] text-muted hover:border-accent hover:text-accent">
+                  className={`inline-flex items-center gap-2 rounded-md border px-4 py-2.5 font-mono text-[12px] hover:border-accent hover:text-accent ${darkMode ? 'border-white/20 text-slate-400' : 'border-slate-300 text-slate-500'}`}>
                   DOI {doi}
                 </a>
               )}
               {record && content?.kind !== 'book' && (
                 <Link to={`${libBase}/article/${id}`}
-                  className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline">
+                  className={`font-mono text-[11px] uppercase tracking-wider underline-offset-4 hover:text-accent hover:underline ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                   Full record
                 </Link>
               )}
             </div>
 
-            <p className="mt-6 text-[12.5px] leading-relaxed text-faint">
+            <p className={`mt-6 text-[12.5px] leading-relaxed ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
               {pdfError === 'restricted'
                 ? 'We hold this record and its metadata. The publisher\u2019s copy did not respond, so the link above may not work either.'
                 : isOapenPdf
@@ -810,11 +811,11 @@ export function ProtectedContentViewer() {
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-ink-2 text-[13.5px]">Loading document…</p>
-                <p className="tnum mt-1 font-mono text-[11.5px] text-faint">
+                <p className={`text-[13.5px] ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Loading document…</p>
+                <p className={`tnum mt-1 font-mono text-[11.5px] ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                   {total > 0 ? `${fmt(loaded)} of ${fmt(total)}` : (loaded > 0 ? `${fmt(loaded)} downloaded` : 'Preparing secure stream…')}
                 </p>
-                {total > 1048576 * 8 && <p className="text-faint text-[11px] mt-1">Large file — this may take a moment</p>}
+                {total > 1048576 * 8 && <p className={`text-[11px] mt-1 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Large file — this may take a moment</p>}
               </div>
             </div>
           );
@@ -873,24 +874,24 @@ export function ProtectedContentViewer() {
 
       {/* ─── CONTEXT RAIL ────────────────────────────── */}
       {record && railOpen && (
-        <aside className="hidden w-[320px] shrink-0 overflow-y-auto border-l border-rule bg-surface lg:block">
+        <aside className={`hidden w-[320px] shrink-0 overflow-y-auto border-l lg:block ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
           <div className="space-y-7 p-5">
 
             {record.journal && (
               <section>
-                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Published in</p>
+                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Published in</p>
                 <Link
                   to={`${libBase}/journal/${encodeURIComponent(record.journal.issn || record.journal.id)}`}
-                  className="mt-1.5 block font-serif text-[15px] font-medium leading-snug text-ink hover:text-accent"
+                  className={`mt-1.5 block font-serif text-[15px] font-medium leading-snug hover:text-accent ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}
                 >
                   {record.journal.title}
                 </Link>
-                <p className="tnum mt-1 font-mono text-[11px] text-muted">
+                <p className={`tnum mt-1 font-mono text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                   {record.journal.issn && <>ISSN {record.journal.issn}</>}
                   {record.journal.firstYear && record.journal.lastYear && <> · {record.journal.firstYear}–{record.journal.lastYear}</>}
                 </p>
                 {record.journal.publisherName && (
-                  <p className="mt-1 text-[12.5px] leading-snug text-muted">{record.journal.publisherName}</p>
+                  <p className={`mt-1 text-[12.5px] leading-snug ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{record.journal.publisherName}</p>
                 )}
               </section>
             )}
@@ -900,14 +901,14 @@ export function ProtectedContentViewer() {
                 goes nowhere. */}
             {!record.authors_structured?.length && record.authors && (
               <section>
-                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Authors</p>
-                <p className="mt-1.5 text-[13.5px] leading-snug text-ink-2">{record.authors}</p>
+                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Authors</p>
+                <p className={`mt-1.5 text-[13.5px] leading-snug ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{record.authors}</p>
               </section>
             )}
 
             {record.authors_structured?.length > 0 && (
               <section>
-                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Authors</p>
+                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Authors</p>
                 <ul className="mt-1.5 space-y-1">
                   {record.authors_structured.map((a: any) => (
                     <li key={a.id}>
@@ -915,7 +916,7 @@ export function ProtectedContentViewer() {
                         {a.name}
                       </Link>
                       {a.articleCount > 1 && (
-                        <span className="tnum ml-1.5 font-mono text-[11px] text-faint">{a.articleCount}</span>
+                        <span className={`tnum ml-1.5 font-mono text-[11px] ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{a.articleCount}</span>
                       )}
                     </li>
                   ))}
@@ -924,7 +925,7 @@ export function ProtectedContentViewer() {
             )}
 
             <section>
-              <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">This record</p>
+              <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>This record</p>
               <dl className="mt-1.5 space-y-1.5 text-[12.5px]">
                 {record.contentType && <RailRow k="Type">{record.contentType}</RailRow>}
                 {record.domain && <RailRow k="Dept">{record.domain}</RailRow>}
@@ -938,7 +939,7 @@ export function ProtectedContentViewer() {
               {record.journal && (
                 <Link
                   to={`${libBase}/article/${id}`}
-                  className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
+                  className={`mt-3 inline-block font-mono text-[11px] uppercase tracking-wider underline-offset-4 hover:text-accent hover:underline ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}
                 >
                   Full record
                 </Link>
@@ -947,15 +948,15 @@ export function ProtectedContentViewer() {
 
             {(record.siblings?.length > 0 || record.related?.length > 0) && (
               <section>
-                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">
+                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                   {record.siblings?.length ? 'Also in this issue' : (record.relatedLabel || 'Related')}
                 </p>
-                <ul className="mt-1.5 divide-y divide-rule border-t border-rule">
+                <ul className={`mt-1.5 divide-y border-t ${darkMode ? 'divide-white/10 border-white/10' : 'divide-slate-200 border-slate-200'}`}>
                   {(record.siblings?.length ? record.siblings : record.related).slice(0, 12).map((sb: any) => (
                     <li key={sb.id} className="py-2">
                       <Link
                         to={`${libBase}/viewer/${sb.id}`}
-                        className="block text-[13px] leading-snug text-ink-2 hover:text-accent"
+                        className={`block text-[13px] leading-snug hover:text-accent ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}
                       >
                         {sb.title}
                       </Link>
