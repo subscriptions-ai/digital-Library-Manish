@@ -6,6 +6,8 @@ import {
 import { toast } from 'react-hot-toast';
 import { INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePricing } from './pricing/PricingContext';
+import { seatsLabel } from './pricing/PlanWidgets';
 
 function authHeader() {
   return { Authorization: `Bearer ${localStorage.getItem('token')}` };
@@ -60,6 +62,9 @@ function RolePicker({ value, onChange, onFree }: {
 }
 
 export function InstitutionStudentManager() {
+  // The plan decides whether anyone can be added at all, and how many more.
+  const pricing = usePricing();
+  const plan = pricing?.plan ?? null;
   const [students, setStudents] = useState<any[]>([]);
   // Whether the cap applies at all: an institution with a subscription is not
   // limited here, and must not be shown a notice about a limit it does not have.
@@ -104,6 +109,44 @@ export function InstitutionStudentManager() {
 
   useEffect(() => { fetchStudents(); }, []);
 
+  /**
+   * Whether there is a seat for one more person, asked before a form opens rather than
+   * after it is filled in. No subscription opens the department window; a full house
+   * opens the seat window, and buying seats there carries straight on to `then`.
+   */
+  const haveSeat = (then: () => void): boolean => {
+    if (!plan || plan.unlimitedSeats || plan.seats.capacity == null) return true;
+    if (!plan.hasSubscription || !plan.seats.capacity) {
+      toast('Subscribe to at least one department before adding users.');
+      pricing?.openDepartments();
+      return false;
+    }
+    if ((plan.seats.available ?? 0) < 1) {
+      toast(`All ${plan.seats.capacity} user seats are in use. Add seats to add more users.`);
+      pricing?.openSeats({ onPurchased: then });
+      return false;
+    }
+    return true;
+  };
+
+  /** The server's own refusal for want of seats: say it, and offer the way out. */
+  const handleSeatRefusal = (data: any, then?: () => void): boolean => {
+    if (data?.code === 'NEEDS_SUBSCRIPTION') {
+      toast.error(data.error || 'Subscribe to at least one department before adding users.');
+      pricing?.openDepartments();
+      return true;
+    }
+    if (data?.code === 'SEATS_FULL') {
+      toast.error(data.error || 'All user seats are in use.');
+      pricing?.openSeats({ onPurchased: then });
+      return true;
+    }
+    return false;
+  };
+
+  const openAdd = () => { if (haveSeat(() => setShowAddModal(true))) setShowAddModal(true); };
+  const openImport = () => { if (haveSeat(() => setShowImportModal(true))) setShowImportModal(true); };
+
   useEffect(() => {
     fetch('/api/institution/overview', { headers: authHeader() })
       .then(r => (r.ok ? r.json() : null))
@@ -124,11 +167,16 @@ export function InstitutionStudentManager() {
       });
       let data: any = {};
       try { data = await res.json(); } catch {}
-      if (!res.ok) throw new Error(data?.error || 'Failed to add user');
+      if (!res.ok) {
+        // The form stays filled in; once seats are bought, it can be sent again.
+        if (handleSeatRefusal(data)) return;
+        throw new Error(data?.error || 'Failed to add user');
+      }
       toast.success('User registered successfully');
       setShowAddModal(false);
       setNewStudent({ name: '', email: '', password: '', mobile: '', designation: '', branch: '', department: '' });
       fetchStudents();
+      pricing?.reload();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -185,6 +233,7 @@ export function InstitutionStudentManager() {
       toast.success(`"${deleteTarget.displayName || deleteTarget.email}" removed`);
       setDeleteTarget(null);
       fetchStudents();
+      pricing?.reload();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -200,9 +249,15 @@ export function InstitutionStudentManager() {
         headers: { 'Content-Type': 'application/json', ...authHeader() },
         body: JSON.stringify({ isBlocked }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        let data: any = {};
+        try { data = await res.json(); } catch {}
+        if (handleSeatRefusal(data, () => handleToggleBlock(id, isBlocked))) return;
+        throw new Error();
+      }
       toast.success(isBlocked ? 'Student suspended' : 'Student access restored');
       fetchStudents();
+      pricing?.reload();
     } catch {
       toast.error('Failed to update access status');
     }
@@ -218,8 +273,29 @@ export function InstitutionStudentManager() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink">User Directory</h1>
-          <p className="text-sm text-muted mt-0.5">Everyone you have added to this institution.</p>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-ink">User Directory</h1>
+            {plan && (plan.hasSubscription || plan.unlimitedSeats) && (
+              <button
+                type="button"
+                onClick={() => (plan.unlimitedSeats ? undefined : pricing?.openSeats())}
+                title={plan.unlimitedSeats ? 'Your current plan has no cap on users' : 'Every active member, you included, takes a seat. Click to add seats.'}
+                className={`tnum inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11px] font-semibold ${
+                  !plan.unlimitedSeats && (plan.seats.available ?? 0) < 1
+                    ? 'border-caution/50 bg-caution-soft text-caution'
+                    : 'border-rule bg-accent-soft text-accent'} ${plan.unlimitedSeats ? 'cursor-default' : 'hover:border-accent'}`}
+              >
+                {plan.unlimitedSeats ? 'Seats: Unlimited' : `Seats: ${seatsLabel(plan)}`}
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-muted mt-0.5">
+            {!plan ? 'Everyone you have added to this institution.'
+              : !plan.hasSubscription ? 'Subscribe to at least one Premium department before adding users.'
+              : plan.unlimitedSeats ? 'Everyone you have added to this institution.'
+              : (plan.seats.available ?? 0) < 1 ? 'Every seat is in use. Add seats to add more users, or suspend someone to free one.'
+              : `${plan.seats.available} seat${plan.seats.available === 1 ? '' : 's'} free. Everyone you have added to this institution.`}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-60">
@@ -236,13 +312,13 @@ export function InstitutionStudentManager() {
             <RefreshCw size={15} />
           </button>
           <button
-            onClick={() => setShowImportModal(true)}
+            onClick={openImport}
             className="flex items-center gap-2 bg-surface border border-rule text-ink-2 px-4 py-2.5 rounded-md text-sm font-bold hover:bg-surface-2 transition-colors"
           >
             Import Users
           </button>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={openAdd}
             className="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-md text-sm font-bold hover:bg-accent-hover shadow-md"
           >
             <Plus size={16} /> Add User
@@ -510,11 +586,21 @@ export function InstitutionStudentManager() {
                               body: JSON.stringify({ users: results.data })
                             });
                             const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || 'Failed to import users');
-                            
+                            if (!res.ok) {
+                              if (handleSeatRefusal(data)) { setShowImportModal(false); return; }
+                              throw new Error(data.error || 'Failed to import users');
+                            }
+
                             toast.success(`Import complete! Successfully added ${data.successCount} users. ${data.errorCount > 0 ? `${data.errorCount} failed.` : ''}`);
                             setShowImportModal(false);
                             fetchStudents();
+                            pricing?.reload();
+                            // Rows refused for want of a seat: say how many, and offer the seats.
+                            const seatless = (data.errors || []).filter((x: any) => /no user seats left/i.test(x?.error || '')).length;
+                            if (seatless) {
+                              toast.error(`${seatless} user${seatless === 1 ? ' was' : 's were'} not added: no user seats left. Add seats, then import them again.`, { duration: 7000 });
+                              pricing?.openSeats();
+                            }
                           } catch (err: any) {
                             toast.error(err.message);
                           } finally {
