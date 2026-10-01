@@ -11695,9 +11695,15 @@ async function startServer() {
       orderBy: { endDate: 'asc' }
     });
     const extra = purchases.reduce((sum: number, p: any) => sum + p.seats, 0);
-    const unlimited = subs.some((sub: any) => sub.seatsIncluded == null);
-    const included = subs.reduce((max: number, sub: any) => Math.max(max, sub.seatsIncluded ?? 0), 0);
-    const capacity = unlimited ? null : included > 0 ? included + extra : 0;
+    // An institution with no "new-system" subscription (i.e. none that recorded `seatsIncluded`
+    // when it was bought) is left unlimited: a free preview still fills faculty seats the way
+    // it did before this pricing shipped, and institutions whose last subscription predates it
+    // keep working until they renew into the new system. The seat cap takes effect from the
+    // first purchase under the new system onward.
+    const newSystem = subs.filter((sub: any) => sub.seatsIncluded != null);
+    const unlimited = newSystem.length === 0;
+    const included = newSystem.reduce((max: number, sub: any) => Math.max(max, sub.seatsIncluded ?? 0), 0);
+    const capacity = unlimited ? null : included + extra;
     return {
       unlimited,
       capacity,
@@ -11881,6 +11887,11 @@ async function startServer() {
       await prisma.$transaction(async (tx: any) => {
         await tx.payment.update({ where: { id: payment.id }, data: { status: 'Paid', paymentId: razorpay_payment_id || `mock_${Date.now()}` } });
         if (items.kind === 'departments') {
+          // Grandfather existing members at the moment the institution first subscribes under
+          // the new system: an institution with more active users than the included seats
+          // keeps them. Growing beyond this snapshot requires buying seats as usual.
+          const existingMembers = await tx.user.count({ where: { institutionId: items.institutionId, isBlocked: false } });
+          const seatsIncluded = Math.max(INCLUDED_SEATS, existingMembers);
           await tx.subscription.create({
             data: {
               planName: 'Premium Department Subscription',
@@ -11891,7 +11902,7 @@ async function startServer() {
               contentTypes: [],
               institutionId: items.institutionId,
               userId: payment.userId,
-              seatsIncluded: INCLUDED_SEATS,
+              seatsIncluded,
               paymentId: payment.id,
               startDate: now,
               endDate: end,
