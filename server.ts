@@ -9870,244 +9870,27 @@ async function startServer() {
     }
   });
 
-  // Create Razorpay Order
-  app.post("/api/payment/order", async (req, res) => {
-    try {
-      const { amount, currency = "INR", receipt } = req.body;
-      
-      // Check if keys exist, if not, fallback to Mock Payment Order for local dev ONLY
-      if (process.env.NODE_ENV !== "production" && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
-        console.log("ℹ️ [Razorpay] Keys not configured. Falling back to local mock order...");
-        return res.json({
-          id: `order_mock_${Date.now()}`,
-          amount: Math.round(amount * 100),
-          currency: currency,
-          receipt,
-          isMock: true
-        });
-      }
-
-      const razorpay = getRazorpay();
-      const options = {
-        amount: Math.round(amount * 100), // amount in the smallest currency unit
-        currency,
-        receipt,
-      };
-      const order = await razorpay.orders.create(options);
-      res.json({
-        ...order,
-        razorpayKey: process.env.RAZORPAY_KEY_ID
-      });
-    } catch (error) {
-      console.error("Razorpay Order Error:", error);
-      res.status(500).json({ error: "Failed to create order" });
-    }
+  /**
+   * The old self-serve Razorpay routes.
+   *
+   * These took the `amount` and the subscription `items` from the request body and trusted them:
+   * a client could craft a ₹1 order for a ₹10,000 plan, pay it, and the matching Subscription
+   * would be created on the back of a signature that is genuinely for ₹1.
+   *
+   * Nothing in the live UI calls them (the reader-side plans go through SubscriptionRequest →
+   * admin records payment → receipt; the institution dashboard goes through the server-priced
+   * /api/institution/checkout which is safe). They are left in place as a `410 Gone` so an
+   * old link, a dormant webhook or a hostile prober gets a definitive refusal instead of a
+   * silently-exploitable success.
+   */
+  app.post("/api/payment/order", (_req, res) => {
+    res.status(410).json({ error: 'This payment route is retired. Institution purchases use /api/institution/checkout; other plans go through "Request Subscription", which an administrator approves after taking payment manually.' });
+  });
+  app.post("/api/payment/verify", (_req, res) => {
+    res.status(410).json({ error: 'This payment route is retired. Institution purchases use /api/institution/checkout/verify.' });
   });
 
-  // Verify Razorpay Payment
-  app.post("/api/payment/verify", async (req, res) => {
-    try {
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, items, userId, guestData } = req.body;
-      
-      let isVerified = false;
-      const isMockOrder = process.env.NODE_ENV !== "production" && razorpay_order_id && razorpay_order_id.startsWith("order_mock_");
-      
-      if (isMockOrder) {
-        console.log("✅ [Razorpay] Mock Order verified automatically for local development.");
-        isVerified = true;
-      } else {
-        const keySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
-        const sign = razorpay_order_id + "|" + razorpay_payment_id;
-        const expectedSign = crypto
-          .createHmac("sha256", keySecret)
-          .update(sign.toString())
-          .digest("hex");
-          
-        isVerified = razorpay_signature === expectedSign;
-        
-        if (!isVerified) {
-          console.warn(`⚠️ [Razorpay] Payment signature mismatch for Order: ${razorpay_order_id}`);
-        }
-      }
 
-      if (isVerified) {
-        let finalUserId = userId || null;
-        let isNewUser = false;
-        let generatedPassword = "";
-
-        // Guest Checkout Handling
-        if (!finalUserId && guestData && guestData.email) {
-          try {
-            const existingUser = await prisma.user.findUnique({ where: { email: guestData.email } });
-            if (existingUser) {
-              finalUserId = existingUser.id;
-            } else {
-              // Create new user for guest
-              generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase() + "!";
-              const hashedPassword = await bcrypt.hash(generatedPassword, 10);
-              
-              const newUser = await prisma.user.create({
-                data: {
-                  email: guestData.email,
-                  displayName: guestData.name || "New User",
-                  password: hashedPassword,
-                  role: guestData.userCategory === 'Institution' || guestData.organization ? 'Institution' : 'Subscriber',
-                  organization: guestData.organization || null,
-                  status: 'Active',
-                  isFirstLogin: true,
-                }
-              });
-              finalUserId = newUser.id;
-              isNewUser = true;
-            }
-          } catch (userErr) {
-            console.error("Guest User Creation Error:", userErr);
-          }
-        }
-
-        // Payment verified, save to PostgreSQL
-        if (items && amount) {
-          await prisma.payment.create({
-            data: {
-              orderId: razorpay_order_id,
-              paymentId: razorpay_payment_id,
-              amount: parseFloat(amount),
-              status: "Success",
-              userId: finalUserId,
-              items: items || []
-            }
-          });
-
-          // Log Coupon Usage if present
-          if (req.body.couponCode && req.body.discountAmount > 0) {
-            const coupon = await prisma.coupon.findUnique({ where: { code: req.body.couponCode } });
-            if (coupon) {
-              await prisma.couponUsage.create({
-                data: {
-                  couponId: coupon.id,
-                  userId: finalUserId,
-                  orderId: razorpay_order_id,
-                  discount: parseFloat(req.body.discountAmount)
-                }
-              });
-              await prisma.coupon.update({
-                where: { id: coupon.id },
-                data: { usedCount: { increment: 1 } }
-              });
-            }
-          }
-
-          let newInstitutionId = null;
-          if (finalUserId) {
-            const u = await prisma.user.findUnique({ where: { id: finalUserId } });
-            if (u && u.role === 'Institution') {
-               if (u.institutionId) {
-                 newInstitutionId = u.institutionId;
-               } else {
-                 let inst = await prisma.institution.findFirst({ where: { subscriptionId: u.id } });
-                 if (!inst && u.organization) {
-                    inst = await prisma.institution.create({
-                      data: {
-                        name: u.organization,
-                        status: 'Active',
-                        subscriptionId: u.id
-                      }
-                    });
-                    await prisma.user.update({
-                      where: { id: u.id },
-                      data: { institutionId: inst.id }
-                    });
-                 }
-                 newInstitutionId = inst?.id || null;
-               }
-            }
-          }
-
-          if (Array.isArray(items)) {
-            for (const item of items) {
-              const days = item.duration === 'Yearly' ? 365 : item.duration === 'Half-Yearly' ? 180 : item.duration === 'Quarterly' ? 90 : 30;
-              const endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-              
-              await prisma.subscription.create({
-                data: {
-                  domainId: item.domainId ? String(item.domainId) : null,
-                  domainName: item.domainName,
-                  planName: item.planName || item.plan?.name || "Trial", 
-                  duration: item.duration || "Monthly",
-                  status: "Active",
-                  userId: finalUserId,
-                  institutionId: newInstitutionId,
-                  endDate
-                }
-              });
-            }
-          }
-
-          if (isNewUser && guestData && guestData.email) {
-            try {
-               await sendCredentialsEmail(
-                 guestData.email,
-                 guestData.name || "New User",
-                 generatedPassword,
-                 {
-                   planName: items[0]?.planName || "Purchased Subscription",
-                   validity: items[0]?.duration || "Monthly",
-                 }
-               );
-            } catch (err) {
-               console.error("Failed to send guest credentials email:", err);
-            }
-          }
-
-          // Automated Order & Receipt Notification Email Triggers
-          try {
-            let targetEmail = guestData?.email || "";
-            let targetName = guestData?.name || "Valued Customer";
-
-            if (!targetEmail && finalUserId) {
-              const dbUser = await prisma.user.findUnique({ where: { id: finalUserId } });
-              if (dbUser) {
-                targetEmail = dbUser.email;
-                targetName = dbUser.displayName || "Subscriber";
-              }
-            }
-
-            const backendInvoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
-
-            if (targetEmail) {
-              // Trigger automated emails asynchronously so the request responds promptly to Razorpay
-              sendPaymentSuccessEmails(
-                targetEmail,
-                targetName,
-                parseFloat(amount).toFixed(2),
-                items || [],
-                razorpay_payment_id || '',
-                razorpay_order_id || '',
-                backendInvoiceNum
-              ).catch(err => console.error("⚠️ Auto-payment success email trigger failed:", err));
-            }
-          } catch (emailSendErr) {
-            console.error("Failed to trigger automated receipt notification:", emailSendErr);
-          }
-        }
-        res.json({ status: "success", message: "Payment verified successfully" });
-      } else {
-        res.status(400).json({ status: "failure", message: "Invalid signature" });
-      }
-    } catch (error) {
-      console.error("Payment Verification Error:", error);
-      if (!res.headersSent) {
-        res.status(500).json({ status: "error", message: "Payment verification failed" });
-      }
-    }
-  });
-
-  // Debug endpoint to verify deployment
-  app.get("/api/debug-version", (req, res) => {
-    res.json({ version: "1.0.1", status: "New UI deployed!" });
-  });
-
-  // Demo Session Request
   app.post("/api/demo-request", async (req, res) => {
     try {
       const formData = req.body;
