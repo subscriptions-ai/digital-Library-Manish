@@ -56,17 +56,23 @@ function useDismiss(open: boolean, close: () => void, ref: React.RefObject<HTMLE
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link to="/" className="flex shrink-0 items-center gap-2.5">
-      <img src="/logo.png" alt="STM Digital Library" className={compact ? 'h-8 w-8 object-contain' : 'h-9 w-9 object-contain'} />
-      <span className="leading-none">
-        <span className="font-serif text-[17px] font-medium tracking-tight text-ink">STM Digital Library</span>
+    <Link to="/" className="flex min-w-0 items-center gap-2.5 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+      <img src="/logo.png" alt="STM Digital Library" className={`shrink-0 object-contain ${compact ? 'h-8 w-8' : 'h-9 w-9'}`} />
+      <span className="min-w-0 leading-none">
+        <span className="block truncate font-serif text-[16px] font-semibold tracking-tight text-ink sm:text-[17px]">STM Digital Library</span>
       </span>
     </Link>
   );
 }
 
+// The current page is marked by a 2px rule under it as well as by darker text,
+// and hover draws the same rule, so nothing moves and nothing depends on colour.
+const navBase =
+  "relative flex h-full items-center text-[14px] font-medium transition-colors duration-150 " +
+  "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-left after:bg-accent after:transition-transform after:duration-200 " +
+  "hover:text-accent focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-accent";
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `relative py-1 text-[13.5px] transition-colors ${isActive ? 'text-ink' : 'text-ink-2 hover:text-ink'}`;
+  `${navBase} ${isActive ? 'text-ink after:scale-x-100' : 'text-ink-2 after:scale-x-0 hover:after:scale-x-100'}`;
 
 export function PreviewHeader() {
   const safeMode = usePublisherSafeMode();
@@ -81,14 +87,35 @@ export function PreviewHeader() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileDepts, setMobileDepts] = useState(false);
   const [q, setQ] = useState('');
+  const [hint, setHint] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 4);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    setHint(false);
     setDeptOpen(false);
     setSearchOpen(false);
     setMenuOpen(false);
     setProfileOpen(false);
     setMobileDepts(false);
   }, [pathname, search]);
+
+  // The open menu covers the page, so the page behind it must not scroll, and
+  // Escape closes it the way it closes every other overlay here.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const before = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = before; document.removeEventListener('keydown', onKey); };
+  }, [menuOpen]);
 
   const deptRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -103,33 +130,33 @@ export function PreviewHeader() {
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const term = q.trim();
-    if (!term) return;
+    if (!term) { setHint(true); return; }
     navigate(`/search?q=${encodeURIComponent(term)}`);
     setQ(''); setSearchOpen(false); setMenuOpen(false);
   };
   const signOut = () => { logout(); navigate('/'); setProfileOpen(false); setMenuOpen(false); };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-rule bg-surface/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5">
+    <header className={`sticky top-0 z-50 border-b border-rule bg-surface transition-shadow duration-200 ${scrolled ? 'shadow-[0_1px_8px_rgba(15,23,42,0.06)]' : ''}`}>
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-5 lg:gap-5 lg:px-6">
         <Brand />
 
         {/* Primary navigation */}
-        <nav className="hidden flex-1 items-center justify-center gap-6 lg:flex" aria-label="Main">
+        <nav className="hidden h-full flex-1 items-center justify-center gap-5 lg:flex xl:gap-7" aria-label="Main">
           <NavLink to="/" end className={navLinkClass}>Home</NavLink>
           <NavLink to="/about" className={navLinkClass}>About</NavLink>
           <NavLink to="/for-institutions" className={navLinkClass}>For Institutions</NavLink>
           <NavLink to="/for-students" className={navLinkClass}>For Researchers</NavLink>
 
-          <div ref={deptRef} className="relative" onMouseLeave={() => setDeptOpen(false)}>
+          <div ref={deptRef} className="relative h-full" onMouseLeave={() => setDeptOpen(false)}>
             <button type="button" aria-expanded={deptOpen} aria-haspopup="true"
               onClick={() => setDeptOpen(o => !o)} onMouseEnter={() => setDeptOpen(true)}
-              className="flex items-center gap-1 py-1 text-[13.5px] text-ink-2 hover:text-ink">
-              Departments <ChevronDown size={14} className={`transition-transform ${deptOpen ? 'rotate-180' : ''}`} />
+              className={`${navBase} gap-1 ${deptOpen || pathname.startsWith('/domain/') || pathname.startsWith('/digital-library') ? 'text-ink after:scale-x-100' : 'text-ink-2 after:scale-x-0 hover:after:scale-x-100'}`}>
+              Departments <ChevronDown size={14} aria-hidden="true" className={`transition-transform duration-150 ${deptOpen ? 'rotate-180' : ''}`} />
             </button>
             {deptOpen && (
-              <div className="absolute left-1/2 top-full z-50 w-[880px] -translate-x-1/2 pt-3">
-                <div className="rounded-2xl border border-rule bg-surface p-5 shadow-xl">
+              <div className="absolute left-1/2 top-full z-50 w-[min(880px,calc(100vw-2.5rem))] -translate-x-1/2 pt-0">
+                <div className="rounded-xl border border-rule bg-surface p-5 shadow-[0_12px_32px_rgba(15,23,42,0.12)]">
                   <div className="mb-4 flex items-baseline justify-between border-b border-rule pb-3">
                     <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
                       Departments {totals ? `· ${n(totals.total)} items across ${totals.count}` : ''}
@@ -142,7 +169,7 @@ export function PreviewHeader() {
                       const count = totals?.byName[d.name];
                       return (
                         <Link key={d.id} to={`/domain/${d.id}`} onClick={() => setDeptOpen(false)}
-                          className="flex items-baseline justify-between gap-3 rounded-lg px-2.5 py-2 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-ink">
+                          className="flex items-baseline justify-between gap-3 rounded-lg px-2.5 py-2 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-accent focus-visible:bg-surface-2 focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
                           <span className="truncate">{d.name}</span>
                           {typeof count === 'number' && count > 0 && (
                             <span className="tnum shrink-0 font-mono text-[11px] text-faint">{n(count)}</span>
@@ -162,21 +189,28 @@ export function PreviewHeader() {
         </nav>
 
         {/* Search and account */}
-        <div className="ml-auto flex items-center gap-2 lg:ml-0">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:ml-0">
           {!safeMode && (
-            <div ref={searchRef} className="relative hidden sm:block">
-              <button type="button" onClick={() => setSearchOpen(o => !o)} aria-label="Search the library" aria-expanded={searchOpen}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-2 hover:bg-surface-2 hover:text-ink">
-                <Search size={17} />
+            <div ref={searchRef} className="sm:relative">
+              <button type="button" onClick={() => { setHint(false); setMenuOpen(false); setSearchOpen(o => !o); }}
+                aria-label={searchOpen ? 'Close search' : 'Open search'} aria-expanded={searchOpen} aria-controls="header-search"
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-surface-2 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+                <Search size={17} aria-hidden="true" />
               </button>
               {searchOpen && (
-                <form onSubmit={submitSearch}
-                  className="absolute right-0 top-full z-50 mt-2 flex w-[380px] items-center gap-2 rounded-xl border border-rule bg-surface p-1.5 shadow-xl">
-                  <Search size={16} className="ml-2 shrink-0 text-faint" />
-                  <input autoFocus value={q} onChange={e => setQ(e.target.value)}
-                    placeholder="Search articles, books, journals…"
-                    className="min-w-0 flex-1 bg-transparent py-2 text-[14px] text-ink outline-none placeholder:text-faint" />
-                  <button type="submit" className="rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-accent-hover">Search</button>
+                <form id="header-search" role="search" onSubmit={submitSearch} noValidate
+                  className="fixed inset-x-3 top-[68px] z-50 rounded-xl border border-rule bg-surface p-2 shadow-[0_12px_32px_rgba(15,23,42,0.12)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[440px]">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-rule bg-surface px-3 focus-within:border-accent">
+                      <Search size={16} aria-hidden="true" className="shrink-0 text-faint" />
+                      <input autoFocus type="search" value={q} aria-label="Search the library"
+                        onChange={e => { setQ(e.target.value); if (hint) setHint(false); }}
+                        placeholder={window.matchMedia('(min-width: 640px)').matches ? 'Search articles, books, journals, authors, DOI…' : 'Search the library…'}
+                        className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-faint" />
+                    </div>
+                    <button type="submit" className="h-10 w-20 shrink-0 rounded-[10px] bg-accent text-[13px] font-semibold text-white hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Search</button>
+                  </div>
+                  {hint && <p role="status" className="px-1 pt-2 text-[12px] text-muted">Enter a title, author, DOI or keyword.</p>}
                 </form>
               )}
             </div>
@@ -185,20 +219,22 @@ export function PreviewHeader() {
           {user ? (
             <div ref={profileRef} className="relative hidden lg:block">
               <button type="button" onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen}
-                className="flex items-center gap-2 rounded-lg border border-rule px-2 py-1.5 text-[13px] text-ink hover:bg-surface-2">
+                aria-haspopup="menu"
+                className="flex h-10 items-center gap-2 rounded-lg border border-rule bg-surface px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-[10.5px] font-bold text-accent">{initials}</span>
                 <span className="max-w-[110px] truncate">{user.displayName || 'Account'}</span>
                 <ChevronDown size={13} className={`text-muted transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
               </button>
               {profileOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-rule bg-surface py-1.5 shadow-xl">
-                  <Link to={dashboardPath} onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-ink">
-                    <LayoutGrid size={15} /> Dashboard
+                <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-rule bg-surface py-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)]">
+                  <Link to={dashboardPath} role="menuitem" onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-ink focus-visible:bg-surface-2 focus-visible:text-ink focus-visible:outline-none">
+                    <LayoutGrid size={15} aria-hidden="true" /> Dashboard
                   </Link>
-                  <button type="button" onClick={signOut}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] text-alarm hover:bg-alarm-soft">
-                    <LogOut size={15} /> Log out
+                  <div className="my-1 border-t border-rule" />
+                  <button type="button" role="menuitem" onClick={signOut}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] text-alarm hover:bg-alarm-soft focus-visible:bg-alarm-soft focus-visible:outline-none">
+                    <LogOut size={15} aria-hidden="true" /> Log out
                   </button>
                 </div>
               )}
@@ -210,8 +246,8 @@ export function PreviewHeader() {
             </div>
           )}
 
-          <button type="button" onClick={() => setMenuOpen(o => !o)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-ink hover:bg-surface-2 lg:hidden">
+          <button type="button" onClick={() => { setSearchOpen(false); setMenuOpen(o => !o); }} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} aria-controls="mobile-menu"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-surface-2 lg:hidden">
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
@@ -219,25 +255,17 @@ export function PreviewHeader() {
 
       {/* Phone and tablet menu */}
       {menuOpen && (
-        <div className="max-h-[80vh] overflow-y-auto border-t border-rule bg-surface px-5 pb-6 pt-4 lg:hidden">
-          {!safeMode && (
-            <form onSubmit={submitSearch} className="mb-4 flex items-center gap-2 rounded-xl border border-rule bg-ground p-1.5">
-              <Search size={16} className="ml-2 shrink-0 text-faint" />
-              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search the library…"
-                className="min-w-0 flex-1 bg-transparent py-2 text-[14px] text-ink outline-none placeholder:text-faint" />
-              <button type="submit" className="rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-semibold text-white">Search</button>
-            </form>
-          )}
+        <div id="mobile-menu" className="fixed inset-x-0 bottom-0 top-16 z-50 overflow-y-auto overscroll-contain border-t border-rule bg-surface px-4 pb-8 pt-2 sm:px-5 lg:hidden">
           <nav className="flex flex-col" aria-label="Main">
             {[
               ['/', 'Home'], ['/about', 'About'], ['/for-institutions', 'For Institutions'],
               ['/for-students', 'For Students & Researchers'],
             ].map(([to, label]) => (
               <Link key={to} to={to} onClick={() => setMenuOpen(false)}
-                className="border-b border-rule py-3 text-[15px] text-ink">{label}</Link>
+                className="flex min-h-11 items-center border-b border-rule py-3 text-[15px] text-ink">{label}</Link>
             ))}
             <button type="button" onClick={() => setMobileDepts(o => !o)} aria-expanded={mobileDepts}
-              className="flex items-center justify-between border-b border-rule py-3 text-left text-[15px] text-ink">
+              className="flex min-h-11 items-center justify-between border-b border-rule py-3 text-left text-[15px] text-ink">
               Departments <ChevronDown size={17} className={`text-muted transition-transform ${mobileDepts ? 'rotate-180' : ''}`} />
             </button>
             {mobileDepts && (
@@ -246,29 +274,29 @@ export function PreviewHeader() {
                   className="block py-2 font-mono text-[11px] uppercase tracking-wider text-accent">View all departments</Link>
                 {DEPARTMENTS_AZ.map(d => (
                   <Link key={d.id} to={`/domain/${d.id}`} onClick={() => setMenuOpen(false)}
-                    className="flex items-baseline justify-between py-2 text-[14px] text-ink-2">
-                    <span>{d.name}</span>
+                    className="flex min-h-10 items-center justify-between gap-3 py-2 text-[14px] text-ink-2">
+                    <span className="min-w-0 break-words">{d.name}</span>
                     {totals?.byName[d.name] ? <span className="tnum font-mono text-[11px] text-faint">{n(totals.byName[d.name])}</span> : null}
                   </Link>
                 ))}
               </div>
             )}
-            {!safeMode && <Link to="/faq" onClick={() => setMenuOpen(false)} className="border-b border-rule py-3 text-[15px] text-ink">FAQ</Link>}
-            <Link to="/blog" onClick={() => setMenuOpen(false)} className="border-b border-rule py-3 text-[15px] text-ink">Blog</Link>
-            <Link to="/contact" onClick={() => setMenuOpen(false)} className="border-b border-rule py-3 text-[15px] text-ink">Contact</Link>
+            {!safeMode && <Link to="/faq" onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center border-b border-rule py-3 text-[15px] text-ink">FAQ</Link>}
+            <Link to="/blog" onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center border-b border-rule py-3 text-[15px] text-ink">Blog</Link>
+            <Link to="/contact" onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center border-b border-rule py-3 text-[15px] text-ink">Contact</Link>
           </nav>
-          <div className="mt-5 grid grid-cols-2 gap-2">
+          <div className="mt-5 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
             {user ? (
               <>
                 <Link to={dashboardPath} onClick={() => setMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-rule py-3 text-[14px] text-ink"><LayoutGrid size={16} /> Dashboard</Link>
+                  className="flex items-center justify-center gap-2 min-h-11 rounded-lg border border-rule py-3 text-[14px] text-ink"><LayoutGrid size={16} /> Dashboard</Link>
                 <button type="button" onClick={signOut}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-rule py-3 text-[14px] text-alarm"><LogOut size={16} /> Log out</button>
+                  className="flex items-center justify-center gap-2 min-h-11 rounded-lg border border-rule py-3 text-[14px] text-alarm"><LogOut size={16} /> Log out</button>
               </>
             ) : (
               <>
-                <Link to="/login" onClick={() => setMenuOpen(false)} className="flex items-center justify-center rounded-lg border border-rule py-3 text-[14px] text-ink">Log in</Link>
-                <Link to="/signup" onClick={() => setMenuOpen(false)} className="flex items-center justify-center rounded-lg bg-ink py-3 text-[14px] font-semibold text-surface">Register Now</Link>
+                <Link to="/login" onClick={() => setMenuOpen(false)} className="flex items-center justify-center min-h-11 rounded-lg border border-rule py-3 text-[14px] text-ink">Log in</Link>
+                <Link to="/signup" onClick={() => setMenuOpen(false)} className="flex items-center justify-center min-h-11 rounded-lg bg-ink py-3 text-[14px] font-semibold text-surface">Register Now</Link>
               </>
             )}
           </div>
