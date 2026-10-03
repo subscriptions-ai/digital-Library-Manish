@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { PostImage } from './GeneratedCover';
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Clock, Search } from 'lucide-react';
 
 /**
@@ -22,13 +23,8 @@ const day = (iso?: string | null) =>
 
 const LABEL = 'font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint';
 
-function Cover({ post, className }: { post: Card; className: string }) {
-  if (post.coverUrl) return <img src={post.coverUrl} alt="" loading="lazy" className={`object-cover ${className}`} />;
-  return (
-    <div className={`flex items-end bg-accent-soft p-4 ${className}`}>
-      <span className="line-clamp-3 font-serif text-[15px] leading-tight text-accent">{post.title}</span>
-    </div>
-  );
+function Cover({ post, className, loading = 'lazy' }: { post: Card; className: string; loading?: 'lazy' | 'eager' }) {
+  return <PostImage src={post.coverUrl} seed={post.slug} loading={loading} className={className} />;
 }
 
 export function BlogList() {
@@ -124,7 +120,7 @@ export function BlogList() {
         {lead && page === 1 && !q && !category && (
           <Link to={`/blog/${lead.slug}`}
             className="group mb-10 grid grid-cols-1 overflow-hidden rounded-2xl border border-rule bg-surface lg:grid-cols-2">
-            <Cover post={lead} className="h-64 w-full lg:h-full" />
+            <Cover post={lead} loading="eager" className="h-64 w-full lg:h-full" />
             <div className="flex flex-col justify-center p-7">
               <p className={LABEL}>{lead.category || 'Latest'}</p>
               <h2 className="mt-3 font-serif text-[28px] font-medium leading-tight text-ink group-hover:text-accent">
@@ -241,9 +237,7 @@ export function BlogPost() {
           <span className="flex items-center gap-1.5"><Clock size={12} /> {p.readMinutes} min read</span>
         </div>
 
-        {p.coverUrl && (
-          <img src={p.coverUrl} alt="" className="mt-8 w-full rounded-2xl border border-rule object-cover" />
-        )}
+        <PostImage src={p.coverUrl} seed={p.slug} loading="eager" className="mt-8 aspect-[5/3] w-full rounded-2xl border border-rule" />
 
         {/* The body is cleaned on the server before it is ever stored. */}
         <div className="prose-post mt-8" dangerouslySetInnerHTML={{ __html: p.body }} />

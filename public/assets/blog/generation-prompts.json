@@ -1,0 +1,25 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "file": "digital-library-features.webp",
+      "prompt": "Use case: stylized-concept. Asset type: wide editorial blog cover for STM Digital Library, article 'Key Features of Digital Libraries: A Guide for Researchers and Publishers'. Create a polished dimensional editorial illustration of an open academic book beside a laptop showing abstract research search cards, with floating journal pages connected by fine network lines, within a calm contemporary library. Teal, navy, warm ivory and restrained gold, soft natural light, tactile paper, sophisticated academic mood. Wide 16:9 composition, main subject central and safe for thumbnail cropping. No lettering, no logos, no watermark. Return the generated image and its saved local file path."
+    },
+    {
+      "file": "student-library.webp",
+      "prompt": "Use case: stylized-concept. Asset type: wide editorial cover for STM Digital Library blog article 'The Importance of Digital Libraries for Students'. Primary request: Two university students studying together with a laptop and open textbooks at a sunlit library desk. Polished dimensional editorial illustration, tactile paper and soft natural lighting, sophisticated academic mood. Teal, navy, warm ivory and restrained gold palette matching a digital library website. Wide 16:9 composition, central subject safe for thumbnail crops. No readable lettering, no logos, no watermark."
+    },
+    {
+      "file": "knowledge-sharing.webp",
+      "prompt": "Use case: stylized-concept. Asset type: wide editorial cover for STM Digital Library blog article 'Digital Libraries: Transforming How We Access and Share Knowledge'. Primary request: A dimensional open book whose pages become a flowing network of digital journal cards linking library shelves and computer screens. Polished dimensional editorial illustration, tactile paper and soft natural lighting, sophisticated academic mood. Teal, navy, warm ivory and restrained gold palette matching a digital library website. Wide 16:9 composition, central subject safe for thumbnail crops. No readable lettering, no logos, no watermark."
+    },
+    {
+      "file": "academic-journals.webp",
+      "prompt": "Use case: stylized-concept. Asset type: wide editorial cover for STM Digital Library blog article 'Academic Journals: What Every Researcher Should Know'. Primary request: A thoughtful scholarly still life of academic journals, a magnifying glass, reading glasses and a tablet displaying abstract scientific charts on a study desk. Polished dimensional editorial illustration, tactile paper and soft natural lighting, sophisticated academic mood. Teal, navy, warm ivory and restrained gold palette matching a digital library website. Wide 16:9 composition, central subject safe for thumbnail crops. No readable lettering, no logos, no watermark."
+    },
+    {
+      "file": "college-research.webp",
+      "prompt": "Use case: stylized-concept. Asset type: wide editorial cover for STM Digital Library blog article 'How to find research your college can actually use'. Primary request: A university researcher at a desk comparing a paper with scientific charts on a laptop, library shelves and a soft campus window view. Polished dimensional editorial illustration, tactile paper and soft natural lighting, sophisticated academic mood. Teal, navy, warm ivory and restrained gold palette matching a digital library website. Wide 16:9 composition, central subject safe for thumbnail crops. No readable lettering, no logos, no watermark."
+    }
+  ]
+}
