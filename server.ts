@@ -13657,6 +13657,28 @@ async function startServer() {
     }
   });
 
+  // Remove someone from the sales team. Their account is blocked and taken off
+  // the sales role rather than deleted, so the interaction history they wrote
+  // on leads stays intact; their leads go back to unassigned.
+  app.delete("/api/admin/sales-team/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      if (id === req.user.uid) return res.status(400).json({ error: "You cannot remove yourself" });
+      const member = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+      if (!member || !['SalesExecutive', 'SalesManager'].includes(member.role)) {
+        return res.status(404).json({ error: "Sales team member not found" });
+      }
+      const [released] = await prisma.$transaction([
+        prisma.lead.updateMany({ where: { assignedToId: id }, data: { assignedToId: null, assignedAt: null } }),
+        prisma.user.update({ where: { id }, data: { role: 'Subscriber', isBlocked: true } }),
+      ]);
+      res.json({ message: "Removed from sales team", unassignedLeads: released.count });
+    } catch (error) {
+      console.error("Remove sales member error:", error);
+      res.status(500).json({ error: "Failed to remove team member" });
+    }
+  });
+
 
   // 2. SALES EXECUTIVE ROUTES
 

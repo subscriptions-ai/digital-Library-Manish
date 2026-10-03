@@ -97,10 +97,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <aside className={`sticky top-0 h-screen self-start bg-slate-900 text-white flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         {/* Logo + Toggle */}
         <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
-          <div className="flex items-center gap-2.5 font-extrabold tracking-tight">
+          <button type="button" onClick={() => navigate('/')} title="Go to home page"
+            className="flex items-center gap-2.5 font-extrabold tracking-tight text-left">
             <img src="/logo.png" alt="STM Logo" className="h-8 w-8 object-contain" />
             {isSidebarOpen && <span className="text-base">STM ADMIN</span>}
-          </div>
+          </button>
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400">
             {isSidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
           </button>

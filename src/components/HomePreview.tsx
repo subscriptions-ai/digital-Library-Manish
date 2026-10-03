@@ -978,14 +978,19 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
         </div>
       </section>
 
-      <section className="border-t py-8" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+      <section className="py-8" style={{ background: 'var(--np-soft)' }}>
         <div className="mx-auto max-w-6xl px-5">
-          <p className="np-strong text-[13px]" style={{ color: 'var(--np-ink)' }}>A note on what is held here</p>
-          <p className="mt-2 max-w-4xl text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
-            STM Digital Library catalogues scholarly work that is free to read, and serves it in
-            line with the terms it was published under. Any rights holder who wants an item removed
-            can ask, and it will be — see <Link to="/content-removal" className="underline">Content Removal</Link>.
-          </p>
+          <div className="flex items-start gap-3.5 rounded-xl border bg-white px-5 py-4" style={{ borderColor: 'var(--np-line)' }}>
+            <ShieldCheck size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-[#1B5DFC]" />
+            <div>
+              <p className="np-strong text-[13.5px]" style={{ color: 'var(--np-ink)' }}>A note on what is held here</p>
+              <p className="mt-1.5 max-w-4xl text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
+                STM Digital Library catalogues scholarly work that is free to read, and serves it in
+                line with the terms it was published under. Any rights holder who wants an item removed
+                can ask, and it will be — see <Link to="/content-removal" className="font-semibold text-[#1B5DFC] underline-offset-2 hover:underline">Content Removal</Link>.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
     </>

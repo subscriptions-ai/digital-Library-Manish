@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  ChevronDown, Facebook, LayoutGrid, Linkedin, LogOut, Mail, MapPin, Menu, Phone, Search, X,
+  ChevronDown, Facebook, LayoutGrid, Linkedin, Lock, LogOut, Mail, MapPin, Menu, Phone, Search, X,
 } from 'lucide-react';
 import { DOMAINS } from '../constants';
 
@@ -281,85 +281,99 @@ export function PreviewHeader() {
 export function PreviewFooter() {
   const totals = useDepartmentTotals();
   const year = new Date().getFullYear();
-  const colLabel = 'font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint';
-  const linkClass = 'text-[13.5px] text-ink-2 hover:text-accent';
+  const colLabel = 'font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-faint';
+  const linkClass =
+    'group inline-flex items-center gap-1 rounded text-[13.5px] leading-7 text-ink-2 transition-colors hover:text-accent focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+  const arrow = <span aria-hidden="true" className="-ml-1 translate-x-0 text-accent opacity-0 transition-all group-hover:ml-0 group-hover:opacity-100 group-focus-visible:opacity-100">→</span>;
+  const socialClass =
+    'flex h-10 w-10 items-center justify-center rounded-full border border-rule bg-surface text-ink-2 transition-colors hover:border-accent hover:bg-accent hover:text-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+  const iconBox = 'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rule bg-surface text-accent';
 
   return (
     <footer className="border-t border-rule bg-surface">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 py-14 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.3fr]">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 py-14 md:grid-cols-2 lg:grid-cols-[1.5fr_0.9fr_1.1fr_1.5fr] lg:gap-12">
         <div className="min-w-0">
-          <Brand compact />
-          <p className="mt-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-accent">{COMPANY_DETAILS.positioning}</p>
-          <p className="mt-4 max-w-xs text-[13.5px] leading-relaxed text-muted">
+          <Link to="/" className="inline-flex items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface p-1.5 border border-rule">
+              <img src="/logo.png" alt="" className="h-full w-full object-contain" />
+            </span>
+            <span className="font-serif text-[19px] font-medium leading-tight tracking-tight text-ink">STM Digital Library</span>
+          </Link>
+          <p className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.16em] text-accent">{COMPANY_DETAILS.positioning}</p>
+          <p className="mt-4 max-w-xs text-[13.5px] leading-[1.8] text-ink-2">
             A digital library providing curated academic journals and research papers to institutions and researchers worldwide.
           </p>
-          <div className="mt-5 flex gap-2">
-            <a href="https://www.facebook.com/STMDigitalLibrary" target="_blank" rel="noopener noreferrer" aria-label="STM Digital Library on Facebook"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-rule text-muted hover:border-accent hover:text-accent"><Facebook size={16} /></a>
-            <a href="https://linkedin.com/in/stmdigitallibrary" target="_blank" rel="noopener noreferrer" aria-label="STM Digital Library on LinkedIn"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-rule text-muted hover:border-accent hover:text-accent"><Linkedin size={16} /></a>
+          <div className="mt-6 flex gap-2.5">
+            <a href="https://www.facebook.com/STMDigitalLibrary" target="_blank" rel="noopener noreferrer" aria-label="STM Digital Library on Facebook" className={socialClass}><Facebook size={17} aria-hidden="true" /></a>
+            <a href="https://linkedin.com/in/stmdigitallibrary" target="_blank" rel="noopener noreferrer" aria-label="STM Digital Library on LinkedIn" className={socialClass}><Linkedin size={17} aria-hidden="true" /></a>
           </div>
         </div>
 
-        <div>
+        <nav aria-label="Explore">
           <p className={colLabel}>Explore</p>
-          <ul className="mt-4 space-y-2.5">
-            <li><Link to="/" className={linkClass}>Home</Link></li>
-            <li><Link to="/digital-library" className={linkClass}>Journals</Link></li>
-            <li><Link to="/for-institutions" className={linkClass}>For Institutions</Link></li>
-            <li><Link to="/for-students" className={linkClass}>For Students & Researchers</Link></li>
-            <li><Link to="/about" className={linkClass}>About Us</Link></li>
-            <li><Link to="/contact" className={linkClass}>Contact Us</Link></li>
+          <ul className="mt-5 space-y-1">
+            <li><Link to="/" className={linkClass}>Home{arrow}</Link></li>
+            <li><Link to="/digital-library" className={linkClass}>Journals{arrow}</Link></li>
+            <li><Link to="/for-institutions" className={linkClass}>For Institutions{arrow}</Link></li>
+            <li><Link to="/for-students" className={linkClass}>For Students & Researchers{arrow}</Link></li>
+            <li><Link to="/about" className={linkClass}>About Us{arrow}</Link></li>
+            <li><Link to="/contact" className={linkClass}>Contact Us{arrow}</Link></li>
           </ul>
-        </div>
+        </nav>
 
-        <div>
+        <nav aria-label="Legal and support">
           <p className={colLabel}>Legal & support</p>
-          <ul className="mt-4 space-y-2.5">
-            <li><Link to="/privacy-policy" className={linkClass}>Privacy Policy</Link></li>
-            <li><Link to="/terms-and-conditions" className={linkClass}>Terms & Conditions</Link></li>
-            <li><Link to="/faq" className={linkClass}>FAQs</Link></li>
-            <li><Link to="/content-removal" className={linkClass}>Content Removal</Link></li>
-            <li><Link to="/content-sources" className={linkClass}>Content Sources</Link></li>
-            <li><Link to="/legal-disclaimer" className={linkClass}>Legal Disclaimer</Link></li>
-            <li><Link to="/admin" className={linkClass}>Admin Login</Link></li>
+          <ul className="mt-5 space-y-1">
+            <li><Link to="/privacy-policy" className={linkClass}>Privacy Policy{arrow}</Link></li>
+            <li><Link to="/terms-and-conditions" className={linkClass}>Terms & Conditions{arrow}</Link></li>
+            <li><Link to="/faq" className={linkClass}>FAQs{arrow}</Link></li>
+            <li><Link to="/content-removal" className={linkClass}>Content Removal{arrow}</Link></li>
+            <li><Link to="/content-sources" className={linkClass}>Content Sources{arrow}</Link></li>
+            <li><Link to="/legal-disclaimer" className={linkClass}>Legal Disclaimer{arrow}</Link></li>
+            <li><Link to="/admin" className={linkClass}><Lock size={13} aria-hidden="true" className="text-accent" />Admin Login{arrow}</Link></li>
           </ul>
-        </div>
+        </nav>
 
         <div className="min-w-0">
           <p className={colLabel}>Contact</p>
-          <ul className="mt-4 space-y-4 text-[13.5px] text-ink-2">
+          <ul className="mt-5 space-y-4 text-[13.5px] text-ink-2">
             <li className="flex gap-3">
-              <MapPin size={16} className="mt-0.5 shrink-0 text-accent" />
-              <span className="leading-relaxed">{COMPANY_DETAILS.address}</span>
+              <span className={iconBox}><MapPin size={15} aria-hidden="true" /></span>
+              <span className="leading-relaxed"><span className="sr-only">Address: </span>{COMPANY_DETAILS.address}</span>
             </li>
             <li className="flex gap-3">
-              <Phone size={16} className="mt-0.5 shrink-0 text-accent" />
-              <span className="flex flex-col gap-1">
+              <span className={iconBox}><Phone size={15} aria-hidden="true" /></span>
+              <span className="flex flex-col">
                 {COMPANY_DETAILS.tel.map((t: string) => (
-                  <a key={t} href={`tel:${t.replace(/[^\d+]/g, '')}`} className="tnum font-mono text-[13px] hover:text-accent">{t}</a>
+                  <a key={t} href={`tel:${t.replace(/[^\d+]/g, '')}`} className="tnum rounded font-mono text-[13px] leading-7 hover:text-accent focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">{t}</a>
                 ))}
               </span>
             </li>
             <li className="flex gap-3">
-              <Mail size={16} className="mt-0.5 shrink-0 text-accent" />
-              <a href={`mailto:${COMPANY_DETAILS.email}`} className="break-all hover:text-accent">{COMPANY_DETAILS.email}</a>
+              <span className={iconBox}><Mail size={15} aria-hidden="true" /></span>
+              <a href={`mailto:${COMPANY_DETAILS.email}`} className="break-all rounded leading-8 hover:text-accent focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">{COMPANY_DETAILS.email}</a>
             </li>
           </ul>
         </div>
       </div>
 
       <div className="border-t border-rule">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-5 text-[12px] text-faint md:flex-row md:items-center md:justify-between">
-          <p>© {year} {COMPANY_DETAILS.name}. All rights reserved.</p>
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-6 md:flex-row md:items-center md:justify-between">
+          <p className="text-[12px] text-ink-2">© {year} {COMPANY_DETAILS.name}. All rights reserved.</p>
           {totals && (
-            <p className="flex items-center gap-2 font-mono text-[11px]">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              {n(totals.total)} items across {totals.count} departments, counted from the catalogue
-            </p>
+            <div className="flex items-start gap-2.5 md:text-right">
+              <span className="relative mt-[5px] flex h-2 w-2 shrink-0 md:order-2">
+                <span aria-hidden="true" className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60 motion-reduce:animate-none" />
+                <span aria-hidden="true" className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              <p className="font-mono text-[11px] leading-relaxed text-ink-2 md:order-1">
+                <span className="font-semibold text-emerald-700">Catalogue live</span><br />
+                {n(totals.total)} items across {totals.count} departments, counted from the catalogue
+              </p>
+            </div>
           )}
         </div>
-        <p className="mx-auto max-w-6xl select-none px-5 pb-4 text-[10px] text-faint/30">shubham a developer</p>
+        <p className="mx-auto max-w-6xl select-none px-5 pb-4 text-[10px] text-faint/30 md:text-right">shubham a developer</p>
       </div>
     </footer>
   );

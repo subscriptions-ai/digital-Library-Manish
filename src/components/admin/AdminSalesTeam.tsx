@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   UserPlus, Users, Loader2, X, Briefcase, Mail, CheckCircle2, LayoutDashboard,
-  TrendingUp, Award, Activity, Clock, ChevronRight
+  TrendingUp, Award, Activity, Clock, ChevronRight, Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -11,6 +11,8 @@ export function AdminSalesTeam() {
   const [team, setTeam] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [removeTarget, setRemoveTarget] = useState<any | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -51,6 +53,23 @@ export function AdminSalesTeam() {
       fetchTeam();
     } catch (error: any) { toast.error(error.message); }
     finally { setCreating(false); }
+  };
+
+  const handleRemove = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    try {
+      const res = await fetch(`/api/admin/sales-team/${removeTarget.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || 'Failed to remove');
+      toast.success(`${removeTarget.displayName || removeTarget.email} removed from the sales team`);
+      setRemoveTarget(null);
+      fetchTeam();
+    } catch (error: any) { toast.error(error.message); }
+    finally { setRemoving(false); }
   };
 
   // ── Summary stats ──────────────────────────────────────────────
@@ -143,6 +162,14 @@ export function AdminSalesTeam() {
                   <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border border-blue-100 shrink-0">
                     {member.role === 'SalesExecutive' ? 'Executive' : 'Manager'}
                   </span>
+                  <button
+                    onClick={() => setRemoveTarget(member)}
+                    title="Remove from team"
+                    aria-label="Remove from team"
+                    className="p-1.5 -mr-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
 
                 {/* Metrics Grid */}
@@ -194,6 +221,28 @@ export function AdminSalesTeam() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── REMOVE CONFIRM ───────────────────────────── */}
+      {removeTarget && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4">
+            <h2 className="text-lg font-extrabold text-slate-900">Remove {removeTarget.displayName || removeTarget.email}?</h2>
+            <p className="text-sm text-slate-600">
+              They will lose access to the sales dashboard and their login will be blocked.
+              {(removeTarget._count?.assignedLeads ?? 0) > 0 && <> Their <b>{removeTarget._count.assignedLeads} assigned leads</b> will become unassigned.</>}
+              {' '}Past interaction history on leads is kept.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => setRemoveTarget(null)} className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
+              <button onClick={handleRemove} disabled={removing}
+                className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 disabled:opacity-50">
+                {removing ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                {removing ? 'Removing...' : 'Remove'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
