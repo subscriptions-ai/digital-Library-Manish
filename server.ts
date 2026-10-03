@@ -11384,14 +11384,19 @@ async function startServer() {
       const { contactName, city, contactPhone, address, website, logoUrl, coursesOffered, totalCourses, studentBodySize } = req.body;
       // institutionName (organization) is intentionally EXCLUDED from updates here
       const userId = req.user.uid || req.user.id || req.user.userId;
+      const existing = await prisma.user.findUnique({ where: { id: userId }, select: { institutionProfile: true } });
+      const current = ((existing as any)?.institutionProfile && typeof (existing as any).institutionProfile === 'object')
+        ? (existing as any).institutionProfile : {};
+      // Merge so keys we were not sent (and keys owned elsewhere) survive; undefined never overwrites.
+      const incoming = { contactPhone, address, city, website, logoUrl, coursesOffered, totalCourses, studentBodySize };
+      const merged = { ...current };
+      for (const [k, v] of Object.entries(incoming)) if (v !== undefined) merged[k] = v;
       await prisma.user.update({
         where: { id: userId },
         data: {
           ...(contactName ? { displayName: contactName } : {}),
           ...(city ? { state: city } : {}),
-          institutionProfile: {
-            contactPhone, address, city, website, logoUrl, coursesOffered, totalCourses, studentBodySize
-          } as any
+          institutionProfile: merged as any
         }
       });
       res.json({ message: "Profile updated successfully" });

@@ -160,6 +160,47 @@ export function SubscriptionListPage() {
     Custom:  'bg-purple-100 text-purple-700'
   };
 
+  // The librarian account holds the institution's profile; sub.user can be someone else.
+  const isInstitutionSub = (sub: any) => !!sub.institutionId || sub.user?.role === 'Institution';
+  const getProfileOwner = (sub: any) =>
+    sub.institution?.users?.find((u: any) => u.role === 'Institution') ?? sub.user;
+
+  const buildDetailGroups = (sub: any) => {
+    const owner = getProfileOwner(sub) || {};
+    const p = (owner.institutionProfile && typeof owner.institutionProfile === 'object') ? owner.institutionProfile : {};
+    const has = (v: any) => v !== undefined && v !== null && String(v).trim() !== '';
+    const students = (sub.institution?.users || []).filter((u: any) => u.role === 'Student').length;
+    const location = [p.city || owner.state, owner.country].filter(has).join(', ');
+    const groups: { title: string; rows: [string, any][] }[] = [
+      { title: 'Institution', rows: [
+        ['Name', owner.organization || sub.institution?.name],
+        ['Type', owner.registrantType],
+        ['Location', location],
+        ['Address', p.address],
+        ['Website', p.website],
+      ]},
+      { title: 'Contact', rows: [
+        ['Name', owner.displayName],
+        ['Designation', owner.designation],
+        ['Email', owner.email],
+        ['Phone', p.contactPhone || owner.contact],
+        ['WhatsApp', owner.whatsapp],
+      ]},
+      { title: 'Academic Profile', rows: [
+        ['Courses Offered', p.coursesOffered],
+        ['Total Courses', p.totalCourses],
+        ['Student Body Size', p.studentBodySize],
+      ]},
+      { title: 'Seats', rows: [
+        ['Included', sub.seatsIncluded],
+        ['Students Enrolled', sub.institutionId ? students : undefined],
+      ]},
+    ];
+    return groups
+      .map(g => ({ ...g, rows: g.rows.filter(([, v]) => has(v)) }))
+      .filter(g => g.rows.length > 0);
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -231,7 +272,7 @@ export function SubscriptionListPage() {
                 </td>
                 <td className="px-5 py-3 text-right">
                   <div className="flex justify-end gap-2">
-                    {(sub.user?.institutionProfile || sub.institutionId) && (
+                    {isInstitutionSub(sub) && (
                       <button onClick={() => setExpandedSub(expandedSub === sub.id ? null : sub.id)}
                         className="px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
                         {expandedSub === sub.id ? 'Hide Details' : 'View Details'}
@@ -246,43 +287,47 @@ export function SubscriptionListPage() {
                   </div>
                 </td>
               </tr>
-              {expandedSub === sub.id && (sub.user?.institutionProfile || sub.institutionId) && (
+              {expandedSub === sub.id && isInstitutionSub(sub) && (
                 <tr className="bg-slate-50/50 border-b border-slate-100">
                   <td colSpan={5} className="px-5 py-4 space-y-5">
 
-                    {/* Institution Marketing Profile */}
-                    {sub.user?.institutionProfile && (
-                      <div>
-                        <div className="flex gap-2 items-center mb-3">
-                          <Building2 size={14} className="text-indigo-600" />
-                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Institution Marketing Profile</h4>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                            <div className="text-[10px] font-bold text-slate-400 uppercase">Courses Offered</div>
-                            <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.coursesOffered || '—'}</div>
+                    {/* Institution details */}
+                    {(() => {
+                      const groups = buildDetailGroups(sub);
+                      const academic = groups.find(g => g.title === 'Academic Profile');
+                      return (
+                        <div>
+                          <div className="flex gap-2 items-center mb-3">
+                            <Building2 size={14} className="text-indigo-600" />
+                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Institution Details</h4>
                           </div>
-                          <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                            <div className="text-[10px] font-bold text-slate-400 uppercase">Total Courses</div>
-                            <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.totalCourses || '—'}</div>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                            <div className="text-[10px] font-bold text-slate-400 uppercase">Student Body Size</div>
-                            <div className="text-xs font-semibold text-slate-800 mt-0.5">{sub.user.institutionProfile.studentBodySize || '—'}</div>
-                          </div>
-                          {(sub.user.institutionProfile.city || sub.user.institutionProfile.contactPhone) && (
-                            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                              <div className="text-[10px] font-bold text-slate-400 uppercase">Contact & Location</div>
-                              <div className="text-xs font-semibold text-slate-800 mt-0.5">
-                                {sub.user.institutionProfile.city && <span>{sub.user.institutionProfile.city}</span>}
-                                {sub.user.institutionProfile.city && sub.user.institutionProfile.contactPhone && <span> • </span>}
-                                {sub.user.institutionProfile.contactPhone && <span>{sub.user.institutionProfile.contactPhone}</span>}
-                              </div>
+                          {groups.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                              {groups.map(g => (
+                                <div key={g.title} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">{g.title}</div>
+                                  <dl className="space-y-1">
+                                    {g.rows.map(([label, value]) => (
+                                      <div key={label}>
+                                        <dt className="text-[10px] text-slate-400">{label}</dt>
+                                        <dd className="text-xs font-semibold text-slate-800 break-words">{String(value)}</dd>
+                                      </div>
+                                    ))}
+                                  </dl>
+                                </div>
+                              ))}
                             </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 italic">No details available for this institution.</p>
+                          )}
+                          {!academic && (
+                            <p className="text-xs text-slate-400 italic mt-3">
+                              Courses offered, total courses and student body size have not been filled in by the institution yet.
+                            </p>
                           )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Enrolled Students under Institution */}
                     {sub.institution?.users && (

@@ -13,15 +13,15 @@ export function InstitutionContentLibrary() {
   const freshBrowse = !!(searchParams.get('domain') || searchParams.get('type'));
 
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
-  const [contents, setContents]           = useState<any[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [subsLoading, setSubsLoading]     = useState(true);
+  const [contents, setContents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [subsLoading, setSubsLoading] = useState(true);
 
   // Filters (Init from URL query OR sessionStorage)
-  const [search, setSearch]           = useState(() => searchParams.get('search') || (freshBrowse ? '' : sessionStorage.getItem('inst_lib_search') || ''));
+  const [search, setSearch] = useState(() => searchParams.get('search') || (freshBrowse ? '' : sessionStorage.getItem('inst_lib_search') || ''));
   const [debouncedSearch, setDebounced] = useState(search);
   const [filterDomain, setFilterDomain] = useState(() => searchParams.get('domain') || sessionStorage.getItem('inst_lib_domain') || '');
-  const [filterType, setFilterType]   = useState(() => searchParams.get('type') || sessionStorage.getItem('inst_lib_type') || '');
+  const [filterType, setFilterType] = useState(() => searchParams.get('type') || sessionStorage.getItem('inst_lib_type') || '');
   const [filterSubjects, setFilterSubjects] = useState<string[]>(() => {
     const fromUrl = searchParams.get('subjectArea');
     if (fromUrl) return fromUrl.split(',');
@@ -34,12 +34,12 @@ export function InstitutionContentLibrary() {
     if (freshBrowse) return [];
     return JSON.parse(sessionStorage.getItem('inst_lib_tags') || '[]');
   });
-  
+
   const [availableFilters, setAvailableFilters] = useState<{ domains: string[], subjects: string[], tags: string[] }>({ domains: [], subjects: [], tags: [] });
 
   // Pagination
   const PER_PAGE = 24;
-  const [page, setPage]         = useState(() => Number(sessionStorage.getItem('inst_lib_page')) || 1);
+  const [page, setPage] = useState(() => Number(sessionStorage.getItem('inst_lib_page')) || 1);
   const [totalItems, setTotalItems] = useState(0);
 
   // Persist state changes
@@ -54,10 +54,10 @@ export function InstitutionContentLibrary() {
 
   // Debounce search
   useEffect(() => {
-    const t = setTimeout(() => { 
+    const t = setTimeout(() => {
       if (debouncedSearch !== search) {
-        setDebounced(search); 
-        setPage(1); 
+        setDebounced(search);
+        setPage(1);
       }
     }, 350);
     return () => clearTimeout(t);
@@ -71,7 +71,7 @@ export function InstitutionContentLibrary() {
     })
       .then(r => r.json())
       .then(data => setSubscriptions(Array.isArray(data) ? data.filter(s => s.status === 'Active') : []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setSubsLoading(false));
   }, []);
 
@@ -101,7 +101,7 @@ export function InstitutionContentLibrary() {
           tags: data.tags || []
         }));
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [filterDomain, filterType, debouncedSearch, filterSubjects]);
 
   // Fetch content based on filters
@@ -116,7 +116,7 @@ export function InstitutionContentLibrary() {
         url += `&domain=${encodeURIComponent(subDomains.join(','))}`;
       }
     }
-    if (filterType)   url += `&contentType=${encodeURIComponent(filterType)}`;
+    if (filterType) url += `&contentType=${encodeURIComponent(filterType)}`;
     if (filterSubjects.length > 0) url += `&subjectArea=${encodeURIComponent(filterSubjects.join(','))}`;
     if (filterTags.length > 0) url += `&tag=${encodeURIComponent(filterTags.join(','))}`;
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
@@ -149,7 +149,7 @@ export function InstitutionContentLibrary() {
   };
 
   const subscribedDomains = Array.from(new Set(subscriptions.flatMap(s => Array.isArray(s.domains) ? s.domains : [])));
-  const subscribedTypes   = Array.from(new Set(subscriptions.flatMap(s => Array.isArray(s.contentTypes) ? s.contentTypes : [])));
+  const subscribedTypes = Array.from(new Set(subscriptions.flatMap(s => Array.isArray(s.contentTypes) ? s.contentTypes : [])));
   const totalPages = Math.ceil(totalItems / PER_PAGE);
 
   return (
@@ -191,19 +191,19 @@ export function InstitutionContentLibrary() {
                 </button>
               )}
             </div>
-            
+
             {/* Content Type Filter */}
             <div className="pt-2">
               <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Content Type</h3>
-              <select value={filterType} onChange={e => { 
-                  setFilterType(e.target.value); 
-                  setFilterSubjects([]);
-                  setFilterTags([]);
-                  setPage(1); 
-                }}
+              <select value={filterType} onChange={e => {
+                setFilterType(e.target.value);
+                setFilterSubjects([]);
+                setFilterTags([]);
+                setPage(1);
+              }}
                 className="w-full px-3 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent outline-none text-ink transition-all cursor-pointer appearance-none">
                 <option value="">All Types</option>
-                {(subscribedTypes.length > 0 ? subscribedTypes : ['Books','Periodicals','Magazines','Theses','Educational Videos']).map(t => (
+                {(subscribedTypes.length > 0 ? subscribedTypes : ['Books', 'Periodicals', 'Magazines', 'Theses', 'Educational Videos']).map(t => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
@@ -213,12 +213,12 @@ export function InstitutionContentLibrary() {
             {availableFilters.domains.length > 0 && (
               <div className="pt-4 border-t border-rule">
                 <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Domain</h3>
-                <select value={filterDomain} onChange={e => { 
-                    setFilterDomain(e.target.value); 
-                    setFilterSubjects([]);
-                    setFilterTags([]);
-                    setPage(1); 
-                  }}
+                <select value={filterDomain} onChange={e => {
+                  setFilterDomain(e.target.value);
+                  setFilterSubjects([]);
+                  setFilterTags([]);
+                  setPage(1);
+                }}
                   className="w-full px-3 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent outline-none text-ink transition-all cursor-pointer appearance-none">
                   <option value="">All Subscribed Domains</option>
                   {availableFilters.domains
@@ -227,7 +227,7 @@ export function InstitutionContentLibrary() {
                 </select>
               </div>
             )}
-            
+
             {/* Subject Filter */}
             <AnimatePresence>
               {availableFilters.subjects.length > 0 && (
@@ -236,7 +236,7 @@ export function InstitutionContentLibrary() {
                   <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
                     {availableFilters.subjects.map(s => (
                       <label key={s} className="flex items-start gap-3 cursor-pointer group">
-                        <input 
+                        <input
                           type="checkbox"
                           checked={filterSubjects.includes(s)}
                           onChange={(e) => {
@@ -270,11 +270,10 @@ export function InstitutionContentLibrary() {
                             else setFilterTags([...filterTags, t]);
                             setPage(1);
                           }}
-                          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${
-                            isSelected 
-                              ? 'bg-accent text-accent-on border-accent' 
+                          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${isSelected
+                              ? 'bg-accent text-accent-on border-accent'
                               : 'bg-surface text-ink-2 border-rule hover:border-accent hover:text-accent'
-                          }`}
+                            }`}
                         >
                           {t}
                         </button>
@@ -314,7 +313,7 @@ export function InstitutionContentLibrary() {
             <h3 className="text-lg font-bold text-ink">No content found</h3>
             <p className="text-muted text-sm max-w-md mx-auto mt-2">Try adjusting your filters or search query to find what you're looking for.</p>
             {(search || filterSubjects.length > 0 || filterTags.length > 0) && (
-              <button 
+              <button
                 onClick={() => { setSearch(''); setFilterSubjects([]); setFilterTags([]); setFilterDomain(''); setFilterType(''); }}
                 className="mt-6 text-accent font-bold text-sm hover:text-accent"
               >
@@ -344,7 +343,7 @@ export function InstitutionContentLibrary() {
                       </div>
                     )}
                     <div className="absolute inset-0 bg-ink/45" />
-                    
+
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5">
                       <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white bg-black/40 backdrop-blur-md rounded-md border border-white/10">
                         {item.contentType}
@@ -379,7 +378,7 @@ export function InstitutionContentLibrary() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center gap-2 mt-12 mb-8">
-            <button 
+            <button
               disabled={page === 1}
               onClick={() => { setPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className="px-4 py-2 border border-rule rounded-md text-sm font-bold text-ink-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-2 transition-colors"
@@ -389,7 +388,7 @@ export function InstitutionContentLibrary() {
             <div className="px-4 py-2 text-sm font-bold text-ink">
               Page {page} of {totalPages}
             </div>
-            <button 
+            <button
               disabled={page === totalPages}
               onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className="px-4 py-2 border border-rule rounded-md text-sm font-bold text-ink-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-2 transition-colors"

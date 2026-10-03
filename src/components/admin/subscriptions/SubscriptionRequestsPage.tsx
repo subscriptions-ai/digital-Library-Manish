@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Check, X, ChevronDown, Calendar, Clock, User, Mail } from 'lucide-react';
+import { Check, X, ChevronDown, Calendar, Clock, User, Mail, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function SubscriptionRequestsPage() {
@@ -72,7 +72,9 @@ export function SubscriptionRequestsPage() {
   };
 
   const PLAN_COLOR: Record<string, string> = {
+    Pro:       'bg-amber-100 text-amber-700',
     Monthly: 'bg-blue-100 text-blue-700',
+    Quarterly: 'bg-sky-100 text-sky-700',
     Yearly:  'bg-indigo-100 text-indigo-700',
     Custom:  'bg-purple-100 text-purple-700'
   };
@@ -136,6 +138,11 @@ export function SubscriptionRequestsPage() {
                     <div>
                       <div className="font-semibold text-slate-900">{req.userName}</div>
                       <div className="text-xs text-slate-500">{req.email}</div>
+                      {req.user?.contact && (
+                        <a href={`tel:${req.user.contact}`} className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 mt-0.5">
+                          <Phone size={11} /> {req.user.contact}
+                        </a>
+                      )}
                     </div>
                   </div>
                 </td>
@@ -143,7 +150,11 @@ export function SubscriptionRequestsPage() {
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${PLAN_COLOR[req.planType] || 'bg-slate-100 text-slate-600'}`}>
                     {req.planType}
                   </span>
-                  {req.planDescription && <div className="text-xs text-slate-400 mt-0.5">{req.planDescription}</div>}
+                  {req.planDescription && <div className="text-xs text-slate-500 mt-0.5 max-w-xs break-words">{req.planDescription}</div>}
+                  {req.notes && (
+                    <div className="text-[11px] text-slate-400 mt-1 max-w-xs whitespace-pre-line break-words line-clamp-4" title={req.notes}>{req.notes}</div>
+                  )}
+                  {req.user?.organization && <div className="text-[11px] text-slate-400 mt-1">{req.user.organization}</div>}
                 </td>
                 <td className="px-5 py-3 text-slate-600">
                   <div className="flex items-center gap-1"><Clock size={12} /> {req.durationMonths} month{req.durationMonths > 1 ? 's' : ''}</div>
@@ -191,6 +202,9 @@ export function SubscriptionRequestsPage() {
             <div className="p-6 border-b border-slate-100">
               <h2 className="font-bold text-slate-900 text-lg">Approve Subscription Request</h2>
               <p className="text-sm text-slate-500 mt-1">For <strong>{approveModal.userName}</strong> — {approveModal.planType} plan</p>
+              {approveModal.user?.contact && <p className="text-xs text-slate-500 mt-1">Mobile: {approveModal.user.contact}</p>}
+              {approveModal.planDescription && <p className="text-xs text-slate-500 mt-1">{approveModal.planDescription}</p>}
+              {approveModal.notes && <p className="text-xs text-slate-400 mt-2 whitespace-pre-line">{approveModal.notes}</p>}
             </div>
             <div className="p-6 space-y-4">
               <div>
