@@ -125,13 +125,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/institution/access')}
           />
-          <NavButton
-            icon={<CreditCard size={18} />}
-            label="Subscriptions"
-            active={location.pathname === '/institution/subscriptions'}
-            collapsed={!isSidebarOpen}
-            onClick={() => navigate('/institution/subscriptions')}
-          />
+          <PlanNavItem timed={!!allowance?.timed} collapsed={!isSidebarOpen} pathname={location.pathname} navigate={navigate} />
           <NavButton
             icon={<UserCircle size={18} />}
             label="Profile"
@@ -146,15 +140,6 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             collapsed={!isSidebarOpen}
             onClick={() => navigate('/institution/feedbacks')}
           />
-          {allowance?.timed && (
-            <NavButton
-              icon={<Sparkles size={18} />}
-              label="Membership"
-              active={location.pathname === '/institution/membership'}
-              collapsed={!isSidebarOpen}
-              onClick={() => navigate('/institution/membership')}
-            />
-          )}
         </nav>
 
         {/* The plan, where the prototype puts it: the free preview with the way to
@@ -237,6 +222,32 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
       <FeedbackWidget />
     </div>
     </PricingProvider>
+  );
+}
+
+/**
+ * One entry for the plan, never two. The librarian has an institution plan to
+ * manage, so theirs is Subscriptions; every other account has the Free/Pro
+ * membership instead. Showing both sent people to a page that told them it was
+ * not theirs.
+ */
+function PlanNavItem({ timed, collapsed, pathname, navigate }: {
+  timed: boolean; collapsed: boolean; pathname: string; navigate: (to: string) => void;
+}) {
+  const pricing = usePricing();
+  if (pricing?.loading) return null;
+  if (pricing?.plan) {
+    return (
+      <NavButton icon={<CreditCard size={18} />} label="Subscriptions"
+        active={pathname === '/institution/subscriptions'} collapsed={collapsed}
+        onClick={() => navigate('/institution/subscriptions')} />
+    );
+  }
+  if (!timed) return null;
+  return (
+    <NavButton icon={<Sparkles size={18} />} label="Membership"
+      active={pathname === '/institution/membership'} collapsed={collapsed}
+      onClick={() => navigate('/institution/membership')} />
   );
 }
 

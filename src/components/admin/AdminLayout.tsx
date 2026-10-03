@@ -27,13 +27,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, logout, loading } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const isSmallScreen = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+  // On a phone the open rail takes the whole screen, so it starts folded to icons.
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => !isSmallScreen());
   const [contentExpanded, setContentExpanded] = useState(true);
   const [subsExpanded, setSubsExpanded] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [newInquiriesCount, setNewInquiriesCount] = useState(0);
   const [openTakedownCount, setOpenTakedownCount] = useState(0);
   const [newDemoRequestsCount, setNewDemoRequestsCount] = useState(0);
+
+  // Going anywhere folds the rail on a small screen, so the page that was asked
+  // for is not left hidden behind the menu that asked for it.
+  useEffect(() => {
+    if (isSmallScreen()) setIsSidebarOpen(false);
+  }, [location.key]);
 
   useEffect(() => {
     if (!loading && profile) {
