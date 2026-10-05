@@ -45,6 +45,7 @@ interface DashboardData {
     byDepartment: { name: string; articles: number; books: number; other: number; total: number }[];
   };
   departmentsCovered?: number;
+  selectedDepartments?: number;
   itemsRead?: number;
   readByWeek?: number[];
   readByDepartment?: { name: string; reads: number }[];
@@ -466,7 +467,9 @@ export function LMSDashboard() {
               note: dashData?.membership?.timed ? 'Free · half an hour at a time' : 'No session limit' },
             { label: 'Open to you',       value: dashData?.collection?.total ?? 0,
               note: `${Number(dashData?.collection?.articles ?? 0).toLocaleString()} articles · ${Number(dashData?.collection?.books ?? 0).toLocaleString()} books` },
-            { label: 'Departments',       value: dashData?.departmentsCovered ?? 0, note: 'holding something you can open' },
+            dashData?.selectedDepartments
+              ? { label: 'Your departments', value: dashData.selectedDepartments, note: 'the ones you selected' }
+              : { label: 'Departments',       value: dashData?.departmentsCovered ?? 0, note: 'holding something you can open' },
             { label: 'Items you have read', value: dashData?.itemsRead ?? 0,
               note: (dashData?.minutesRead ?? 0) > 0 ? `${dashData?.minutesRead} minutes on the page` : undefined },
           ].map(st => (

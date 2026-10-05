@@ -477,6 +477,13 @@ model User {
   /// carrying a list of twenty thousand ids into a query.
   lastReadAt DateTime?
 
+  /// The last successful sign-in (or sign-up, which signs the member in). Written
+  /// at the door, so "has this person ever come back?" is a column and not an
+  /// inference. Empty for everyone who last signed in before it existed — which
+  /// is why the never-logged-in journey only counts accounts created after
+  /// EmailEngine.loginTrackingSince.
+  lastLoginAt DateTime?
+
   /// When this address was proved. Verification is recorded on EmailVerification,
   /// which is keyed by address and written before the account exists — fine for
   /// the signup flow, useless for "show me everyone unverified", which is a
@@ -536,6 +543,7 @@ model User {
   @@index([country])
   @@index([emailVerifiedAt])
   @@index([lastReadAt])
+  @@index([lastLoginAt])
   @@index([unsubscribeToken])
 }
 
@@ -1195,6 +1203,18 @@ model EmailEngine {
 
   lastRunAt    DateTime?
   lastDryRunAt DateTime?
+
+  /// Held while a pass is running, so two processes (a second server, a restart
+  /// during a pass, a manual run beside the timer) cannot both work through the
+  /// same list. It expires on its own, so a crashed pass never blocks the next.
+  lockedUntil DateTime?
+  lockedBy    String?
+
+  /// When sign-ins started being recorded. Accounts older than this have an
+  /// empty lastLoginAt because nothing was watching, not because they never
+  /// came back, so the never-logged-in journey leaves them alone.
+  loginTrackingSince DateTime?
+
   /// What the last pass did, for the screen.
   lastSent     Int       @default(0)
   lastSkipped  Int       @default(0)
@@ -1219,6 +1239,12 @@ model EmailRule {
   lastRunAt DateTime?
   lastDue   Int       @default(0)
   lastSent  Int       @default(0)
+  lastSkipped Int     @default(0)
+  lastFailed  Int     @default(0)
+  /// The last dry run, kept apart from the real passes so a check never
+  /// reads as something that happened.
+  lastDryRunAt  DateTime?
+  lastDryRunDue Int?
   updatedAt DateTime  @updatedAt
 
   @@index([enabled])
@@ -1244,7 +1270,7 @@ model EmailSend {
   /// template again means it.
   dedupeKey    String
   subject      String
-  status       String // Sent | Failed | Skipped
+  status       String // Sending | Sent | Failed | Skipped
   /// Why a send was skipped: opted out, capped, already sent, no address.
   reason       String?
   /// "auto" for the engine, otherwise the id of the admin who pressed send.
@@ -1255,6 +1281,9 @@ model EmailSend {
   error        String?   @db.Text
   context      Json? // what the template was given
   createdAt    DateTime  @default(now())
+  /// Moves whenever the row does. A send that has sat in "Sending" for longer
+  /// than a send can take was abandoned by a crash, and may be claimed again.
+  updatedAt    DateTime  @default(now()) @updatedAt
 
   @@unique([userId, templateKey, dedupeKey])
   @@index([userId, createdAt])

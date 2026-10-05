@@ -4,9 +4,10 @@ import { Check, Download, Loader2, Lock, Search, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
-  DEPARTMENT_RATES, GST_RATE, INCLUDED_SEATS, SEAT_BANDS, TERM_MONTHS,
-  departmentRate, formatRupees, priceSeats, seatRate,
+  DEPARTMENT_RATES, GST_RATE, MAX_INSTITUTION_USERS, TERM_MONTHS,
+  departmentRate, formatRupees,
 } from '../../../lib/institutionPricing';
+import { COMPANY_DETAILS } from '../../../config';
 import { fetchQuote, payForPurchase, type InstitutionPlan, type Quote, type ServerPrice } from './planApi';
 import { downloadQuotation } from './quotationPdf';
 
@@ -23,11 +24,6 @@ export function departmentRateLine(): string {
     const label = `${t.minDepartments}${last ? '+' : ''} dept${t.minDepartments > 1 || last ? 's' : ''}`;
     return `${label} ${formatRupees(t.rate)}${t.minDepartments > 1 ? ' each' : ''}`;
   }).join('; ');
-}
-
-/** "6–100 users ₹2,490; … 1,000+ users ₹1,000", from the price list itself. */
-export function seatBandLine(): string {
-  return SEAT_BANDS.map((b) => `${b.label} ${formatRupees(b.rate)}`).join('; ');
 }
 
 function ModalShell({ title, subtitle, onClose, children, footer, wide = false, z = 'z-50' }: {
@@ -120,6 +116,15 @@ function useServerQuote(key: string | null, body: () => Parameters<typeof fetchQ
   return quote && quote.key === key ? quote : null;
 }
 
+/** The department-rate slab a total of `n` departments falls in, worded as the terms word it. */
+function slabLabel(n: number): string {
+  const tier = DEPARTMENT_RATES.find((t) => n >= t.minDepartments);
+  const min = tier?.minDepartments ?? 1;
+  const top = DEPARTMENT_RATES[0].minDepartments;
+  return min === top ? `${min}+ departments` : min === 1 ? '1 department' : `${min} departments`;
+}
+const rsText = (n: number) => `Rs. ${Number(n).toLocaleString('en-IN')}`;
+
 function institutionName(profile: any): string | undefined {
   return profile?.institutionProfile?.name || profile?.organization || undefined;
 }
@@ -166,15 +171,20 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
     if (!price) { toast.error('Choose at least one department.'); return; }
     downloadQuotation({
       institution: institutionName(profile),
-      preparedFor: profile?.displayName ? `Attn: ${profile.displayName}${profile.email ? ` (${profile.email})` : ''}` : profile?.email,
+      contactName: profile?.displayName, contactEmail: profile?.email,
+      customerState: profile?.state || profile?.institutionProfile?.state,
       title: 'Premium Institutional Subscription',
+      summary: [
+        ['Departments', String(count)],
+        ['Subscription period', `${TERM_MONTHS} months`],
+      ],
+      slabNote: `Applied pricing slab: ${slabLabel(totalAfter)} — ${rsText(price.rate)} per department/year.`,
       lines: selected.map((d) => ({ description: `Department subscription: ${d} (${TERM_MONTHS} months)`, quantity: 1, rate: price.rate })),
       base: price.base, gst: price.gst, total: price.total,
       notes: [
         held.size
           ? `Rate for ${totalAfter} departments in total, including the ${held.size} your institution already subscribes to.`
           : `Department rates: ${departmentRateLine()}.`,
-        `Additional users beyond the ${INCLUDED_SEATS} included are charged separately by total user count (${seatBandLine()}).`,
       ],
       fileName: 'STM_Digital_Library_Department_Quotation.pdf',
     });
@@ -200,7 +210,7 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
   return (
     <ModalShell
       title="Premium Institutional Subscription"
-      subtitle={`Choose the departments for full subscribed access. ${INCLUDED_SEATS} users are included; more user seats can be added later from User Management.`}
+      subtitle={`Choose the departments for full subscribed access. Your institution can add up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users at no extra charge.`}
       onClose={onClose}
       footer={<>
         <button onClick={download} disabled={!count} className={btnGhost}><Download size={15} /> Download Quotation</button>
@@ -263,10 +273,7 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
 
       <div className="mt-4 rounded-xl border border-rule bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-2">
         This purchase gives your institution full access to the selected departments for {TERM_MONTHS} months.{' '}
-        {held.size
-          ? <>It does not change your user seats: the {INCLUDED_SEATS} included users stay as they are, and more seats are bought separately.</>
-          : <>It includes {INCLUDED_SEATS} users: you and {INCLUDED_SEATS - 1} more. Further users are charged separately by
-            your total user count; that price is shown when you add seats.</>}
+        Users are not charged for: your institution can have up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} of them.
       </div>
       <Disclaimer onTerms={onTerms}>
         *Department rate: {departmentRateLine()}. {gstPct}% GST extra.
@@ -275,142 +282,25 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
   );
 }
 
-/* ─────────────────────────────── Seats ─────────────────────────────── */
+/* ─────────────────────────────── User limit ─────────────────────────────── */
 
-export function SeatModal({ plan, onClose, onTerms, onPurchased, onNeedsDepartments }: {
-  plan: InstitutionPlan; onClose: () => void; onTerms: () => void; onPurchased: () => void; onNeedsDepartments: () => void;
-}) {
-  const { profile } = useAuth() as any;
-  const capacity = plan.seats.capacity ?? 0;
-  const needsDepartments = !plan.hasSubscription || (!plan.unlimitedSeats && !plan.seats.included);
-  const min = Math.max(INCLUDED_SEATS, capacity) + 1;
-
-  const [raw, setRaw] = useState(String(min));
-  const [paying, setPaying] = useState(false);
-  const total = Math.floor(Number(raw));
-  const valid = Number.isFinite(total) && total >= min;
-
-  const preview = valid ? priceSeats(total, capacity) : null;
-  const server = useServerQuote(valid && !needsDepartments && !plan.unlimitedSeats ? String(total) : null,
-    () => ({ kind: 'seats', totalUsers: total }));
-  const price = server?.quote?.price ?? preview;
-  const added = price?.quantity ?? 0;
-
-  const download = () => {
-    if (!price || !valid) { toast.error(`Enter at least ${min} users.`); return; }
-    downloadQuotation({
-      institution: institutionName(profile),
-      preparedFor: profile?.displayName ? `Attn: ${profile.displayName}${profile.email ? ` (${profile.email})` : ''}` : profile?.email,
-      title: 'Premium User Access',
-      lines: [{ description: `Additional full-access user seats (${TERM_MONTHS} months), taking the institution from ${capacity} to ${total} users`, quantity: added, rate: price.rate }],
-      base: price.base, gst: price.gst, total: price.total,
-      notes: [
-        `Subscribed departments: ${[...new Set(plan.departments.map((d) => d.name))].join(', ') || 'none yet'}.`,
-        `Users included with the subscription: ${INCLUDED_SEATS}. Seats already added: ${plan.seats.extra}.`,
-        `Only the seats added are charged, all at the rate for the band the new total falls in (${seatBandLine()}).`,
-      ],
-      fileName: 'STM_Digital_Library_User_Access_Quotation.pdf',
-    });
-  };
-
-  const pay = async () => {
-    if (needsDepartments) { onNeedsDepartments(); return; }
-    if (!valid) { toast.error(`Enter at least ${min} users.`); return; }
-    if (server?.error) { toast.error(server.error); return; }
-    setPaying(true);
-    const r = await payForPurchase(
-      { kind: 'seats', totalUsers: total },
-      { name: profile?.displayName, email: profile?.email, description: `${added} user seat${added === 1 ? '' : 's'}, ${TERM_MONTHS} months` },
-    );
-    setPaying(false);
-    if (r.status === 'paid') {
-      toast.success(`${added} more user seat${added === 1 ? ' is' : 's are'} active${r.endDate ? ` until ${shortDate(r.endDate)}` : ''}.`);
-      onPurchased();
-    } else if (r.status === 'failed') {
-      toast.error(r.error);
-    }
-  };
-
-  if (plan.unlimitedSeats) {
-    return (
-      <ModalShell title="User Access" onClose={onClose}
-        footer={<button onClick={onClose} className={btnPrimary}>Close</button>}>
-        <p className="text-[13.5px] leading-relaxed text-ink-2">
-          Your current subscription allows unlimited users, so there is nothing to buy here. When it is renewed, the
-          new plan includes {INCLUDED_SEATS} users and further seats are priced by total user count.
-        </p>
-      </ModalShell>
-    );
-  }
-
+/** Shown when an institution has reached its user limit: there is no price, only a conversation. */
+export function UserLimitModal({ onClose }: { onClose: () => void }) {
+  const limit = MAX_INSTITUTION_USERS.toLocaleString('en-IN');
   return (
-    <ModalShell
-      title="Activate Premium User Access"
-      subtitle="Enter the total number of full-access users you want. The applicable rate is shown as soon as you do."
+    <ModalShell title={`Need more than ${limit} users?`}
+      subtitle={`A paid subscription covers up to ${limit} users at no extra charge.`}
       onClose={onClose}
-      footer={needsDepartments ? (
-        <button onClick={onNeedsDepartments} className={btnPrimary}>Choose departments first</button>
-      ) : <>
-        <button onClick={download} disabled={!valid} className={btnGhost}><Download size={15} /> Download Quotation</button>
-        <button onClick={pay} disabled={!valid || paying || !!server?.error} className={btnPrimary}>
-          {paying && <Loader2 size={15} className="animate-spin" />} Activate User Access
-        </button>
-      </>}
-    >
-      {needsDepartments && (
-        <div className="mb-4 flex gap-2.5 rounded-xl border border-caution/40 bg-caution-soft px-3.5 py-2.5 text-[12.5px] text-ink-2">
-          <Lock size={15} className="mt-0.5 shrink-0 text-caution" />
-          A department subscription must be active before you can add user seats. It includes {INCLUDED_SEATS} users.
-        </div>
-      )}
-
-      <div className="grid grid-cols-3 gap-2 rounded-xl border border-rule bg-surface-2 p-3 text-center">
-        {[
-          ['Seats now', String(capacity)],
-          ['In use', String(plan.seats.used)],
-          ['Free', String(plan.seats.available ?? 0)],
-        ].map(([k, v]) => (
-          <div key={k}>
-            <p className="font-mono text-[9.5px] uppercase tracking-wider text-faint">{k}</p>
-            <p className="tnum mt-0.5 font-mono text-[18px] text-ink">{v}</p>
-          </div>
+      footer={<button onClick={onClose} className={btnPrimary}>Close</button>}>
+      <p className="text-[13.5px] leading-relaxed text-ink-2">
+        If your institution needs more than {limit} users, please contact us and we will arrange it with you.
+      </p>
+      <ul className="mt-4 space-y-2 rounded-xl border border-rule bg-surface-2 px-4 py-3 text-[13px] text-ink">
+        <li>Email: <a className="font-semibold text-accent underline" href={`mailto:${COMPANY_DETAILS.email}`}>{COMPANY_DETAILS.email}</a></li>
+        {COMPANY_DETAILS.tel.map((t: string) => (
+          <li key={t}>Phone: <a className="font-semibold text-accent underline" href={`tel:${t.replace(/[^\d+]/g, '')}`}>{t}</a></li>
         ))}
-      </div>
-
-      <label htmlFor="seat-total" className="mt-4 block font-mono text-[10.5px] uppercase tracking-wider text-faint">
-        Total full-access users required
-      </label>
-      <input id="seat-total" type="number" min={min} step={1} value={raw} disabled={needsDepartments}
-        onChange={(e) => setRaw(e.target.value)}
-        placeholder={`At least ${min}, e.g. 50, 300, 1000`}
-        className="mt-1.5 w-full rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-[14px] text-ink outline-none focus:border-accent disabled:opacity-60" />
-      {!valid && raw !== '' && !needsDepartments && (
-        <p className="mt-1.5 text-[12px] text-alarm">Enter at least {min} — one more than the {capacity} seats you have now.</p>
-      )}
-
-      <div className="mt-3 rounded-xl border border-rule bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-2">
-        Your subscription includes {INCLUDED_SEATS} users: you and {INCLUDED_SEATS - 1} more. Only the seats you add
-        are charged, all at the rate of the band your new total falls in, and they run {TERM_MONTHS} months from purchase.
-      </div>
-
-      {price && valid && !needsDepartments && (
-        <PriceBox
-          eyebrow="Additional user access"
-          pending={!server}
-          price={price}
-          equation={`${added.toLocaleString('en-IN')} added user${added === 1 ? '' : 's'} × ${formatRupees(price.rate)} = ${formatRupees(price.base)} + GST`}
-          metrics={[
-            ['Total users', total.toLocaleString('en-IN')],
-            ['Rate / added user', formatRupees(price.rate || seatRate(total))],
-            [`GST @ ${gstPct}%`, formatRupees(price.gst, 2)],
-          ]}
-        />
-      )}
-      {server?.error && <p className="mt-3 text-[12.5px] font-semibold text-alarm">{server.error}</p>}
-
-      <Disclaimer onTerms={onTerms} link="View pricing terms & volume bands">
-        Rates by total users: {seatBandLine()}. {gstPct}% GST extra.
-      </Disclaimer>
+      </ul>
     </ModalShell>
   );
 }
@@ -422,7 +312,7 @@ export function TermsModal({ onClose }: { onClose: () => void }) {
     <h3 className="mb-1 mt-4 text-[13.5px] font-semibold text-ink first:mt-0">{children}</h3>
   );
   return (
-    <ModalShell title="Subscription Pricing Terms" subtitle="How department subscriptions and user seats are priced."
+    <ModalShell title="Subscription Pricing Terms" subtitle="How department subscriptions are priced."
       onClose={onClose} z="z-[60]" wide
       footer={<button onClick={onClose} className={btnPrimary}><Check size={15} /> Understood</button>}>
       <div className="text-[13px] leading-relaxed text-ink-2">
@@ -430,30 +320,15 @@ export function TermsModal({ onClose }: { onClose: () => void }) {
         <p>Premium department access is priced per department per year, by how many departments your institution
           holds in total: {departmentRateLine()}. Adding departments later brings the new ones in at the rate for your
           new total. Applicable GST ({gstPct}%) is extra.</p>
-        <H>2. Included users</H>
-        <p>A department subscription includes {INCLUDED_SEATS} full-access users: the librarian (you) and {INCLUDED_SEATS - 1} more.</p>
-        <H>3. Additional user seats</H>
-        <p>Beyond the {INCLUDED_SEATS} included, each added seat is charged at the yearly rate for the band your new total
-          number of users falls in: {seatBandLine()}. Only the seats you add are charged.</p>
-        <table className="mt-2 w-full overflow-hidden rounded-lg border border-rule text-[12.5px]">
-          <thead className="bg-surface-2 text-left">
-            <tr><th className="px-3 py-1.5 font-semibold">Total users</th><th className="px-3 py-1.5 text-right font-semibold">Per added user / year</th></tr>
-          </thead>
-          <tbody>
-            {SEAT_BANDS.map((b) => (
-              <tr key={b.label} className="border-t border-rule">
-                <td className="px-3 py-1.5">{b.label}</td>
-                <td className="tnum px-3 py-1.5 text-right">{formatRupees(b.rate)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <H>4. Term</H>
-        <p>Every purchase, of departments or of seats, runs {TERM_MONTHS} months from the day it is paid for.</p>
-        <H>5. Who counts as a user</H>
-        <p>Every active member of your institution, you included, takes one seat. Suspending a member frees their seat;
+        <H>2. Users</H>
+        <p>Users are not charged for. A paid subscription covers up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users in your
+          institution, you included. If you need more, please contact us at {COMPANY_DETAILS.email}.</p>
+        <H>3. Term</H>
+        <p>Every purchase runs {TERM_MONTHS} months from the day it is paid for.</p>
+        <H>4. Who counts as a user</H>
+        <p>Every active member of your institution, you included, counts towards the limit. Suspending a member frees their place;
           restoring them takes one again.</p>
-        <H>6. Price before payment</H>
+        <H>5. Price before payment</H>
         <p>The rate, GST and total payable are shown before you pay, and the amount shown is the amount charged.
           Usage analytics describe platform activity and are not a measure of anyone's academic performance.</p>
         <p className="mt-4 text-[12px] text-muted">Questions about pricing: info@celnet.in</p>

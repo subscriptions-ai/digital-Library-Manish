@@ -286,6 +286,8 @@ type Rule = {
   templateKey: string; name: string; audience: string; enabled: boolean;
   delayDays: number; repeatAfterDays: number; maxSends: number; dailyCap: number;
   due: number; lastRunAt: string | null; lastDue: number; lastSent: number;
+  trigger?: string; lastSkipped?: number; lastFailed?: number;
+  lastDryRunAt?: string | null; lastDryRunDue?: number | null;
 };
 type EngineState = {
   enabled: boolean; startHour: number; endHour: number; dailyCap: number; hour: number;
@@ -310,6 +312,9 @@ function Automations() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [dry, setDry] = useState<DryRun | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dryFor, setDryFor] = useState<string | null>(null);
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
+  const [testing, setTesting] = useState<string | null>(null);
 
   const load = useCallback(() => {
     fetch('/api/admin/email-engine', { headers: authHeader() })
@@ -337,16 +342,27 @@ function Automations() {
     } catch { toast.error('Could not change that journey'); } finally { setBusy(false); }
   };
 
-  const runDry = async () => {
-    setBusy(true); setDry(null);
+  const runDry = async (only?: string) => {
+    setBusy(true); setDry(null); setDryFor(only || null);
     try {
-      const r = await fetch('/api/admin/email-engine/run', { method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ dryRun: true }) });
+      const r = await fetch('/api/admin/email-engine/run', { method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ dryRun: true, only }) });
       const d = await r.json();
       if (!r.ok) throw new Error();
       setDry(d);
       toast.success(`${n(d.wouldSend)} mails would go out`);
       load();
     } catch { toast.error('Could not run the check'); } finally { setBusy(false); }
+  };
+
+  const testSend = async (key: string) => {
+    setTesting(key);
+    try {
+      const r = await fetch(`/api/admin/email-rules/${key}/test`, { method: 'POST', headers: jsonHeaders() });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'failed');
+      toast.success(d.live ? `Test sent to ${d.to}` : `Test sent to the throwaway inbox — no mail provider is configured here`);
+    } catch (e) { toast.error(`Test send failed: ${e instanceof Error ? e.message : 'unknown error'}`); }
+    finally { setTesting(null); }
   };
 
   if (!state) return <div className="h-64 animate-pulse rounded-2xl bg-slate-100" />;
@@ -369,7 +385,7 @@ function Automations() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={runDry} disabled={busy}
+            <button onClick={() => runDry()} disabled={busy}
               className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
               {busy ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} Check who is due
             </button>
@@ -418,33 +434,63 @@ function Automations() {
           <div key={r.templateKey} className="border-b border-slate-100 px-5 py-4 last:border-0">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-[240px] flex-1">
-                <p className="text-[14px] font-bold text-slate-800">{r.name}</p>
-                <p className="mt-0.5 text-[11.5px] text-slate-500">{r.audience}</p>
+                <p className="flex items-center gap-2 text-[14px] font-bold text-slate-800">
+                  {r.name}
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    r.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
+                    {r.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </p>
+                <p className="mt-0.5 text-[12px] text-slate-600">{r.trigger || r.audience}</p>
                 <p className="mt-1 text-[12px] font-semibold text-blue-700">{n(r.due)} due right now</p>
               </div>
               <button onClick={() => saveRule(r.templateKey, { enabled: !r.enabled })} disabled={busy}
+                aria-pressed={r.enabled}
                 className={`rounded-lg px-4 py-1.5 text-[12px] font-bold ${
                   r.enabled ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                {r.enabled ? 'On' : 'Off'}
+                {r.enabled ? 'Switch off' : 'Switch on'}
               </button>
             </div>
+
             <div className="mt-3 flex flex-wrap gap-4">
               {([
-                ['delayDays', 'Wait (days)', 0, 365],
-                ['repeatAfterDays', 'Repeat after (days)', 0, 365],
-                ['maxSends', 'Most per member', 1, 20],
+                ['delayDays', 'Delay (days)', 0, 365],
+                ['repeatAfterDays', 'Repeat every (days)', 0, 365],
+                ['maxSends', 'Max sends per member', 1, 20],
                 ['dailyCap', 'Most a day', 0, 5000],
               ] as const).map(([field, label, min, max]) => (
                 <label key={field} className="text-[11px]">
-                  <span className="mb-1 block font-bold uppercase tracking-wide text-slate-400">{label}</span>
+                  <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500">{label}</span>
                   <input type="number" min={min} max={max} value={(r as any)[field]} disabled={busy}
                     onChange={e => saveRule(r.templateKey, { [field]: parseInt(e.target.value) } as any)}
                     className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500" />
                 </label>
               ))}
-              {r.lastRunAt && (
-                <p className="self-end text-[11px] text-slate-400">Last pass {when(r.lastRunAt)} — {r.lastSent} sent of {r.lastDue} due</p>
-              )}
+            </div>
+
+            <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 rounded-xl bg-slate-50 px-4 py-2.5 text-[12px] sm:grid-cols-5">
+              <div><dt className="text-slate-500">Last run</dt><dd className="font-semibold text-slate-800">{r.lastRunAt ? when(r.lastRunAt) : 'Never'}</dd></div>
+              <div><dt className="text-slate-500">Sent</dt><dd className="font-semibold text-emerald-700">{n(r.lastSent)}</dd></div>
+              <div><dt className="text-slate-500">Skipped</dt><dd className="font-semibold text-slate-800">{n(r.lastSkipped)}</dd></div>
+              <div><dt className="text-slate-500">Failed</dt><dd className={`font-semibold ${r.lastFailed ? 'text-red-700' : 'text-slate-800'}`}>{n(r.lastFailed)}</dd></div>
+              <div><dt className="text-slate-500">Last dry run</dt>
+                <dd className="font-semibold text-slate-800">{r.lastDryRunAt ? `${when(r.lastDryRunAt)} · ${n(r.lastDryRunDue || 0)} due` : 'Never'}</dd></div>
+            </dl>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button onClick={() => runDry(r.templateKey)} disabled={busy}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                <Search size={13} aria-hidden="true" /> Dry run
+              </button>
+              <button onClick={() => setPreviewKey(r.templateKey)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-bold text-slate-700 hover:bg-slate-50">
+                <Mail size={13} aria-hidden="true" /> Preview
+              </button>
+              <button onClick={() => testSend(r.templateKey)} disabled={testing === r.templateKey}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                {testing === r.templateKey ? <Loader2 size={13} className="animate-spin" aria-hidden="true" /> : <Send size={13} aria-hidden="true" />}
+                Test send to me
+              </button>
             </div>
           </div>
         ))}
@@ -455,7 +501,7 @@ function Automations() {
         <div className="overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/40 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 px-5 py-3">
             <p className="text-[13px] font-bold text-slate-800">
-              {n(dry.wouldSend)} mails would go out — nothing was sent
+              {n(dry.wouldSend)} mails would go out{dryFor ? ' from this journey' : ''} — nothing was sent
             </p>
             <p className="text-[11.5px] text-slate-500">
               {dry.inWindow ? 'Inside the sending window' : `Outside the window (it is ${dry.hour}:00 IST)`} ·
@@ -484,6 +530,40 @@ function Automations() {
           ))}
         </div>
       )}
+      {previewKey && <RulePreview templateKey={previewKey} onClose={() => setPreviewKey(null)} />}
+    </div>
+  );
+}
+
+/** The journey's mail, rendered for a member who fits it. */
+function RulePreview({ templateKey, onClose }: { templateKey: string; onClose: () => void }) {
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    fetch(`/api/admin/email-templates/${templateKey}/preview`, { headers: authHeader() })
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(setPreview).catch(() => setFailed(true));
+  }, [templateKey]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', key);
+    return () => document.removeEventListener('keydown', key);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Mail preview" onClick={e => e.stopPropagation()}
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-slate-900">{preview?.subject || 'Preview'}</p>
+            {preview && <p className="truncate text-[11.5px] text-slate-500">Shown for {preview.member?.name || preview.to} — nothing is sent</p>}
+          </div>
+          <button onClick={onClose} aria-label="Close preview" className="rounded-lg px-2 py-1 text-sm font-bold text-slate-500 hover:bg-slate-100">✕</button>
+        </div>
+        {failed ? <p className="p-8 text-center text-sm text-slate-500">There is no member to show this against yet.</p>
+          : preview ? <iframe title="Mail preview" srcDoc={preview.html} className="h-[600px] w-full bg-slate-100" />
+          : <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>}
+      </div>
     </div>
   );
 }

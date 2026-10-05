@@ -1,7 +1,7 @@
 import {
   MAIL_BASE, esc, buildEmail, eBody, eH1, eP, eMuted, eBtn, eCard, eRows,
 } from './emailTemplates.js';
-import { INCLUDED_SEATS } from './institutionPricing.js';
+import { MAX_INSTITUTION_USERS } from './institutionPricing.js';
 
 /**
  * The marketing and lifecycle mails: the five the product actually has a
@@ -27,7 +27,11 @@ export type TemplateKey =
   | 'never-read'
   | 'new-features'
   | 'pro-benefits'
-  | 'librarian-add-users';
+  | 'librarian-add-users'
+  | 'verify-email-reminder'
+  | 'never-logged-in'
+  | 'no-research-activity'
+  | 'inactive-user';
 
 /** What a template is handed. Anything absent simply goes unmentioned. */
 export type MailContext = {
@@ -215,7 +219,7 @@ export const TEMPLATES: Record<TemplateKey, Template> = {
       eH1(`${firstName(c)}, who else should be reading?`)
       + eP(`${c.institution?.members ? `${n(c.institution.members)} people from your institution can open the library today. ` : ''}`
         + `Adding the rest of your faculty and researchers takes a name and an email each, and `
-        + `a department subscription includes ${INCLUDED_SEATS} users, with more seats available whenever you need them.`)
+        + `a department subscription covers up to ${n(MAX_INSTITUTION_USERS)} users at no extra charge.`)
       + (c.institution?.members
         ? eCard(eRows([
           ['People with access', n(c.institution.members)],
@@ -227,6 +231,90 @@ export const TEMPLATES: Record<TemplateKey, Template> = {
         : '')
       + eBtn('Add users', link('/institution/students', c))
       + eMuted('Bulk import takes a spreadsheet, if it is easier than adding them one at a time.')
+      + footer(c),
+    ),
+  },
+
+  // ── 6. The address was never proved ──────────────────────────────────────
+  'verify-email-reminder': {
+    key: 'verify-email-reminder',
+    name: 'Verify your email address',
+    description: 'A reminder to confirm the address on the account. Stops the moment it is confirmed.',
+    audience: 'Members whose email address has not been verified yet',
+    kind: 'lifecycle',
+    subject: () => 'Please confirm your email address',
+    preheader: () => 'It takes a minute, and it keeps your account safe.',
+    body: c => eBody(
+      eH1(`${firstName(c)}, one thing left to do`)
+      + eP('Your account is set up, but the email address on it has not been confirmed yet. '
+        + 'Confirming it means we can reach you if something about your account needs attention, '
+        + 'and it protects the account from being used by someone else.')
+      + eP('Sign in and you will be asked for a short code, which we send to this address.')
+      + eBtn('Sign in and confirm', link('/login', c))
+      + eMuted('If you did not create this account, you can ignore this mail.')
+      + footer(c),
+    ),
+  },
+
+  // ── 7. Account made, never used ──────────────────────────────────────────
+  'never-logged-in': {
+    key: 'never-logged-in',
+    name: 'Your account is waiting',
+    description: 'For verified members who have never signed in.',
+    audience: 'Verified members who have not signed in since their account was created',
+    kind: 'lifecycle',
+    subject: () => 'Your library account is ready when you are',
+    preheader: c => `${n(c.library?.total)} items are open to you the moment you sign in.`,
+    body: c => eBody(
+      eH1(`${firstName(c)}, your account is ready`)
+      + eP(`Your email address is confirmed and your library account is active, but you have not `
+        + `signed in yet. ${c.library?.total ? `${n(c.library.total)} items across ${n(c.library.departments)} departments are ` : 'The whole library is '}`
+        + `open to you from the first minute.`)
+      + eBtn('Sign in', link('/login', c))
+      + eMuted('Forgotten your password? Use "Forgot password" on the sign-in page and you will be sent a link.')
+      + footer(c),
+    ),
+  },
+
+  // ── 8. Signed in, then did nothing ───────────────────────────────────────
+  'no-research-activity': {
+    key: 'no-research-activity',
+    name: 'Start with a search',
+    description: 'For members who signed in but have not searched or opened anything.',
+    audience: 'Members who have signed in but never searched or opened an item',
+    kind: 'lifecycle',
+    subject: () => 'Where would you like to start?',
+    preheader: () => 'Search by title, author, DOI or keyword — or browse your departments.',
+    body: c => eBody(
+      eH1(`${firstName(c)}, what are you researching?`)
+      + eP('You signed in, but have not searched or opened anything yet. The quickest way in is to '
+        + 'type what you are looking for — a title, an author, a DOI or a keyword — into the search box.')
+      + (c.departments?.length
+        ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Your departments</p>`
+          + `<p style="margin:0;font-size:14px;line-height:24px;color:#334155;">`
+          + c.departments.slice(0, 4).map(d => `• ${esc(d)}`).join('<br/>') + `</p>`)
+        : '')
+      + eBtn('Search the library', link('/dashboard/library', c))
+      + footer(c),
+    ),
+  },
+
+  // ── 9. Used to read, then stopped ────────────────────────────────────────
+  'inactive-user': {
+    key: 'inactive-user',
+    name: 'It has been a while',
+    description: 'For members who used to read and have not searched or opened anything for some time.',
+    audience: 'Members who have read before, with no searching or reading for the configured number of days',
+    kind: 'lifecycle',
+    subject: () => 'New in your library since you were last here',
+    preheader: c => `${n(c.library?.total)} items now, and more every week.`,
+    body: c => eBody(
+      eH1(`${firstName(c)}, it has been a while`)
+      + eP(`The library has kept growing since your last visit${c.library?.total ? ` — it now holds ${n(c.library.total)} items` : ''}. `
+        + 'Whatever you were reading before, there is likely more of it now.')
+      + (c.reading?.lastReadDays
+        ? eMuted(`You last opened something ${n(c.reading.lastReadDays)} days ago.`) : '')
+      + eBtn('Pick up where you left off', link('/dashboard/library', c))
       + footer(c),
     ),
   },

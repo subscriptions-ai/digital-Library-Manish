@@ -52,13 +52,13 @@ export function PlanMiniCard() {
         {n ? `${n} department${n === 1 ? '' : 's'} subscribed` : 'Institutional subscription'}
       </p>
       <p className="mt-0.5 text-[11.5px] leading-snug text-white/75">
-        {plan.unlimitedSeats ? 'Unlimited users (current plan)' : `Seats ${seatsLabel(plan)} in use`}
+        {plan.unlimitedSeats ? 'Unlimited users (current plan)' : `${seatsLabel(plan)} users`}
       </p>
       <button
-        onClick={() => (plan.unlimitedSeats ? navigate('/institution/subscriptions') : pricing!.openSeats())}
+        onClick={() => navigate('/institution/subscriptions')}
         className={button}
       >
-        {plan.unlimitedSeats ? 'View subscription' : 'Manage User Access'}
+        View subscription
       </button>
     </div>
   );

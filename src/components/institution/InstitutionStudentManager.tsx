@@ -110,11 +110,11 @@ export function InstitutionStudentManager() {
   useEffect(() => { fetchStudents(); }, []);
 
   /**
-   * Whether there is a seat for one more person, asked before a form opens rather than
+   * Whether there is room for one more person, asked before a form opens rather than
    * after it is filled in. No subscription opens the department window; a full house
-   * opens the seat window, and buying seats there carries straight on to `then`.
+   * says so and shows who to contact.
    */
-  const haveSeat = (then: () => void): boolean => {
+  const haveSeat = (_then?: () => void): boolean => {
     if (!plan || plan.unlimitedSeats || plan.seats.capacity == null) return true;
     if (!plan.hasSubscription || !plan.seats.capacity) {
       toast('Subscribe to at least one department before adding users.');
@@ -122,8 +122,8 @@ export function InstitutionStudentManager() {
       return false;
     }
     if ((plan.seats.available ?? 0) < 1) {
-      toast(`All ${plan.seats.capacity} user seats are in use. Add seats to add more users.`);
-      pricing?.openSeats({ onPurchased: then });
+      toast(`Your institution has reached its limit of ${plan.seats.capacity.toLocaleString('en-IN')} users.`);
+      pricing?.openUserLimit();
       return false;
     }
     return true;
@@ -137,8 +137,8 @@ export function InstitutionStudentManager() {
       return true;
     }
     if (data?.code === 'SEATS_FULL') {
-      toast.error(data.error || 'All user seats are in use.');
-      pricing?.openSeats({ onPurchased: then });
+      toast.error(data.error || 'Your institution has reached its user limit.');
+      pricing?.openUserLimit();
       return true;
     }
     return false;
@@ -168,7 +168,7 @@ export function InstitutionStudentManager() {
       let data: any = {};
       try { data = await res.json(); } catch {}
       if (!res.ok) {
-        // The form stays filled in; once seats are bought, it can be sent again.
+        // The form stays filled in, so it can be sent again once there is room.
         if (handleSeatRefusal(data)) return;
         throw new Error(data?.error || 'Failed to add user');
       }
@@ -278,14 +278,14 @@ export function InstitutionStudentManager() {
             {plan && (plan.hasSubscription || plan.unlimitedSeats) && (
               <button
                 type="button"
-                onClick={() => (plan.unlimitedSeats ? undefined : pricing?.openSeats())}
-                title={plan.unlimitedSeats ? 'Your current plan has no cap on users' : 'Every active member, you included, takes a seat. Click to add seats.'}
+                onClick={() => (plan.unlimitedSeats ? undefined : pricing?.openUserLimit())}
+                title={plan.unlimitedSeats ? 'Your current plan has no cap on users' : 'Every active member, you included, counts towards the limit. Click for more.'}
                 className={`tnum inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11px] font-semibold ${
                   !plan.unlimitedSeats && (plan.seats.available ?? 0) < 1
                     ? 'border-caution/50 bg-caution-soft text-caution'
                     : 'border-rule bg-accent-soft text-accent'} ${plan.unlimitedSeats ? 'cursor-default' : 'hover:border-accent'}`}
               >
-                {plan.unlimitedSeats ? 'Seats: Unlimited' : `Seats: ${seatsLabel(plan)}`}
+                {plan.unlimitedSeats ? 'Users: Unlimited' : `Users: ${seatsLabel(plan)}`}
               </button>
             )}
           </div>
@@ -293,8 +293,8 @@ export function InstitutionStudentManager() {
             {!plan ? 'Everyone you have added to this institution.'
               : !plan.hasSubscription ? 'Subscribe to at least one Premium department before adding users.'
               : plan.unlimitedSeats ? 'Everyone you have added to this institution.'
-              : (plan.seats.available ?? 0) < 1 ? 'Every seat is in use. Add seats to add more users, or suspend someone to free one.'
-              : `${plan.seats.available} seat${plan.seats.available === 1 ? '' : 's'} free. Everyone you have added to this institution.`}
+              : (plan.seats.available ?? 0) < 1 ? 'You have reached your user limit. Suspend someone to free a place, or contact us for more.'
+              : `Everyone you have added to this institution — room for ${Number(plan.seats.available).toLocaleString('en-IN')} more.`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -595,11 +595,11 @@ export function InstitutionStudentManager() {
                             setShowImportModal(false);
                             fetchStudents();
                             pricing?.reload();
-                            // Rows refused for want of a seat: say how many, and offer the seats.
+                            // Rows refused for want of room: say how many, and say who to contact.
                             const seatless = (data.errors || []).filter((x: any) => /no user seats left/i.test(x?.error || '')).length;
                             if (seatless) {
-                              toast.error(`${seatless} user${seatless === 1 ? ' was' : 's were'} not added: no user seats left. Add seats, then import them again.`, { duration: 7000 });
-                              pricing?.openSeats();
+                              toast.error(`${seatless} user${seatless === 1 ? ' was' : 's were'} not added: your institution has reached its user limit. Contact us for more, then import them again.`, { duration: 7000 });
+                              pricing?.openUserLimit();
                             }
                           } catch (err: any) {
                             toast.error(err.message);

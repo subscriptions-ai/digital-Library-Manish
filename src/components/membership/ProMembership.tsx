@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAllowance, countdown, clockTime } from './ReadingClock';
-import { INCLUDED_SEATS } from '../../lib/institutionPricing';
+import { MAX_INSTITUTION_USERS } from '../../lib/institutionPricing';
 
 /**
  * Membership: everything about this member's account, in one place.
@@ -47,7 +47,7 @@ function PlanComparison({ pro, institution, sessionsPerDay }: {
     { freeHas: false, free: 'Two hours between one session and the next', proText: 'Come and go as you please, all day' },
     { freeHas: true, free: 'The clock stops when you sign out; what is left is kept', proText: 'Nothing to keep — there is no clock' },
     ...(institution ? [
-      { freeHas: false, free: 'Adding users needs a department subscription', proText: `${INCLUDED_SEATS} users included — you and ${INCLUDED_SEATS - 1} more; add seats as you grow` },
+      { freeHas: false, free: 'Adding users needs a department subscription', proText: `Up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users, at no extra charge` },
       { freeHas: false, free: 'Students cannot be added on this plan', proText: 'Students can be added to your account too' },
       { freeHas: false, free: 'Everyone you add reads in half-hour sessions', proText: 'Everyone you add reads without the clock' },
     ] as Row[] : []),

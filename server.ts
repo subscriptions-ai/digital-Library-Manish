@@ -32,7 +32,7 @@ import {
   type TemplateKey, type MailContext,
 } from "./src/lib/marketingEmails.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
-import { priceDepartments, priceSeats, termEnd, INCLUDED_SEATS, DEPARTMENT_RATES, SEAT_BANDS, GST_RATE } from "./src/lib/institutionPricing.js";
+import { priceDepartments, termEnd, MAX_INSTITUTION_USERS, DEPARTMENT_RATES, GST_RATE } from "./src/lib/institutionPricing.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
   eBody, eH1, eP, eMuted, eBtn, eCard, eRows, eQuote,
@@ -836,6 +836,8 @@ async function startServer() {
           signupSource,
           signupTags: Object.keys(tags).length ? tags : undefined,
           emailVerifiedAt: proof?.isVerified ? new Date() : null,
+          // Signing up signs them in: the token below is a session.
+          lastLoginAt: new Date(),
         }
       });
 
@@ -981,6 +983,10 @@ async function startServer() {
         { expiresIn: '24h' }
       );
       
+      // Recorded for the lifecycle mail rules. Not awaited, and its failure is
+      // nobody's business at the door.
+      prisma.user.update({ where: { id: userObj.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+
       // The clock starts when they sign in. Not awaited: a member must never be
       // kept waiting at the door by the bookkeeping, and if it fails the next
       // thing they open starts it anyway.
@@ -1859,6 +1865,11 @@ async function startServer() {
 
   type SendOutcome = { status: 'Sent' | 'Skipped' | 'Failed'; reason?: string; subject?: string; id?: string };
 
+  /** A send that has sat in "Sending" longer than a send can take was abandoned. */
+  const STALE_SENDING_MS = 10 * 60_000;
+  /** One automated engagement mail per member in this many hours, whichever journey. */
+  const AUTO_MIN_GAP_HOURS = 24;
+
   /**
    * Send one template to one member.
    *
@@ -1866,12 +1877,18 @@ async function startServer() {
    * — "auto:1", "2026-09" — so a cron that runs twice cannot mail twice; an
    * admin's send passes its own timestamp, because an admin sending the same
    * template again means it.
+   *
+   * The send is claimed before it is made: a "Sending" row is written first,
+   * and the unique key on (member, template, dedupeKey) lets exactly one caller
+   * hold it. Checking for a "Sent" row and then sending, as this once did, left
+   * a window in which two processes both saw nothing and both sent.
    */
   const sendMarketingEmail = async (opts: {
     userId: string; templateKey: TemplateKey; dedupeKey: string;
     sentBy: string;                    // "auto" or an admin's id
     extra?: Partial<MailContext>;
     ignoreCap?: boolean;               // an admin sending by hand
+    rule?: { delayDays: number };      // the journey's own settings, for the re-check
   }): Promise<SendOutcome> => {
     const template = TEMPLATES[opts.templateKey];
     if (!template) return { status: 'Failed', reason: 'no such template' };
@@ -1879,47 +1896,107 @@ async function startServer() {
     const user = await prisma.user.findUnique({ where: { id: opts.userId } });
     if (!user) return { status: 'Failed', reason: 'no such member' };
 
-    const record = async (status: SendOutcome['status'], fields: any = {}) => {
-      const row = await (prisma as any).emailSend.upsert({
-        where: { userId_templateKey_dedupeKey: { userId: user.id, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey } },
+    const where = { userId_templateKey_dedupeKey: { userId: user.id, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey } };
+
+    /** Settle the claim this call holds (or, before it holds one, write the outcome). */
+    const record = async (status: SendOutcome['status'], fields: any = {}) =>
+      (prisma as any).emailSend.upsert({
+        where,
         update: { status, ...fields },
         create: {
           userId: user.id, email: user.email, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey,
           status, sentBy: opts.sentBy, subject: fields.subject || template.name, ...fields,
         },
       }).catch((e: any) => { console.error('emailSend write failed', e?.message); return null; });
-      return row;
-    };
 
     if (!user.email) return { status: 'Skipped', reason: 'no address' };
-    if ((user as any).marketingOptOut) {
-      await record('Skipped', { reason: 'unsubscribed' });
-      return { status: 'Skipped', reason: 'this member has unsubscribed from updates' };
-    }
-    if (user.isBlocked || user.status !== 'Active') {
-      await record('Skipped', { reason: 'account not active' });
-      return { status: 'Skipped', reason: 'account is blocked or inactive' };
-    }
 
-    // Already sent this exact thing.
-    const already = await (prisma as any).emailSend.findFirst({
-      where: { userId: user.id, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey, status: 'Sent' },
-      select: { id: true },
-    });
-    if (already) return { status: 'Skipped', reason: 'already sent', id: already.id };
+    // Everything that can be decided without sending is decided before the
+    // claim is taken, so a refusal never leaves a half-made row behind.
+    const refuse = async (reason: string, why: string): Promise<SendOutcome> => {
+      // Never overwrite a send that happened, or one another process is making.
+      const held = await (prisma as any).emailSend.findUnique({ where, select: { status: true } });
+      if (!held || held.status === 'Failed' || held.status === 'Skipped') await record('Skipped', { reason });
+      return { status: 'Skipped', reason: why };
+    };
+
+    if ((user as any).marketingOptOut) return refuse('unsubscribed', 'this member has unsubscribed from updates');
+    if (user.isBlocked || user.status !== 'Active') return refuse('account not active', 'account is blocked or inactive');
 
     if (!opts.ignoreCap) {
       const last = (user as any).lastMarketingAt as Date | null;
       if (last && Date.now() - new Date(last).getTime() < MARKETING_MIN_GAP_DAYS * 864e5) {
-        await record('Skipped', { reason: 'too soon after the last one' });
-        return { status: 'Skipped', reason: `capped — last marketing mail was under ${MARKETING_MIN_GAP_DAYS} days ago` };
+        return refuse('too soon after the last one', `capped — last marketing mail was under ${MARKETING_MIN_GAP_DAYS} days ago`);
       }
       const month = await (prisma as any).emailSend.count({
         where: { userId: user.id, status: 'Sent', createdAt: { gte: new Date(Date.now() - 30 * 864e5) } },
       });
-      if (month >= MARKETING_PER_MONTH) {
-        await record('Skipped', { reason: 'monthly cap reached' });
-        return { status: 'Skipped', reason: `capped — ${month} marketing mails already this month` };
+      if (month >= MARKETING_PER_MONTH) return refuse('monthly cap reached', `capped — ${month} marketing mails already this month`);
+    }
+
+    // ── Take the claim ──
+    let claimed = false;
+    try {
+      await (prisma as any).emailSend.create({
+        data: {
+          userId: user.id, email: user.email, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey,
+          status: 'Sending', sentBy: opts.sentBy, subject: template.name,
+        },
+      });
+      claimed = true;
+    } catch (e: any) {
+      if (e?.code !== 'P2002') throw e;
+      // A row is already there. A refusal or a failure from an earlier pass may
+      // be retried, and so may a claim abandoned by a crash; a send that went,
+      // or one in flight, may not. updateMany is the atomic part: of two callers
+      // racing for the same row, only one sees a count of 1.
+      const taken = await (prisma as any).emailSend.updateMany({
+        where: {
+          ...where.userId_templateKey_dedupeKey,
+          OR: [
+            { status: { in: ['Failed', 'Skipped'] } },
+            { status: 'Sending', updatedAt: { lt: new Date(Date.now() - STALE_SENDING_MS) } },
+          ],
+        },
+        data: { status: 'Sending', sentBy: opts.sentBy, reason: null, error: null },
+      });
+      claimed = taken.count === 1;
+      if (!claimed) {
+        const held = await (prisma as any).emailSend.findUnique({ where, select: { id: true } });
+        return { status: 'Skipped', reason: 'already sent', id: held?.id };
+      }
+    }
+
+    // ── With the claim held, ask again whether this mail should go ──
+    // The list this send came from may be minutes old, and the member may have
+    // verified, signed in, read something or been blocked since it was drawn.
+    if (opts.sentBy === 'auto') {
+      const fresh = await prisma.user.findUnique({ where: { id: user.id } });
+      const el = fresh && !(fresh as any).marketingOptOut && !fresh.isBlocked && fresh.status === 'Active'
+        ? await mailEligibility(fresh, opts.templateKey, opts.rule)
+        : { due: false, why: 'the account changed' };
+      if (!el.due) {
+        await record('Skipped', { reason: `no longer eligible: ${el.why}`.slice(0, 200) });
+        return { status: 'Skipped', reason: `no longer eligible — ${el.why}` };
+      }
+      // One automated engagement mail per member per day, across every journey.
+      // Counted after the claim, and ordered by who claimed first (creation
+      // time, then id), so two journeys reaching the same member in the same
+      // instant cannot both pass: the one that is later sees the other, and the
+      // one that is earlier does not see it as ahead of it.
+      const own = await (prisma as any).emailSend.findUnique({ where, select: { id: true, createdAt: true } });
+      const since = new Date(Date.now() - AUTO_MIN_GAP_HOURS * 3600_000);
+      const ahead = own ? await (prisma as any).emailSend.findFirst({
+        where: {
+          userId: user.id, sentBy: 'auto', status: { in: ['Sent', 'Sending'] },
+          id: { not: own.id }, createdAt: { gte: since },
+          OR: [{ createdAt: { lt: own.createdAt } }, { createdAt: own.createdAt, id: { lt: own.id } }],
+        },
+        select: { id: true },
+      }) : null;
+      if (ahead) {
+        await record('Skipped', { reason: 'another automatic mail went to this member in the last 24 hours' });
+        return { status: 'Skipped', reason: `capped — one automatic mail per member per ${AUTO_MIN_GAP_HOURS} hours` };
       }
     }
 
@@ -1972,12 +2049,28 @@ async function startServer() {
     { key: 'profile-incomplete', delayDays: 2, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
     { key: 'never-read', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
     { key: 'librarian-add-users', delayDays: 30, repeatAfterDays: 30, maxSends: 6, dailyCap: 50 },
+    // Added with the activity signals. Every one starts switched off, like the
+    // rest, and is read in the dry run before it is ever turned on. For the
+    // verification reminder the repeat interval cannot usefully be shorter than
+    // the marketing gap, which holds every journey to one mail per member.
+    { key: 'verify-email-reminder', delayDays: 1, repeatAfterDays: 5, maxSends: 3, dailyCap: 100 },
+    { key: 'never-logged-in', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
+    { key: 'no-research-activity', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
+    { key: 'inactive-user', delayDays: 30, repeatAfterDays: 30, maxSends: 2, dailyCap: 100 },
     // 'pro-benefits' and 'new-features' are deliberately absent: both are sent
     // by hand, because both are announcements rather than nudges.
   ];
 
-  const emailEngineState = async () =>
-    (prisma as any).emailEngine.upsert({ where: { id: 'singleton' }, update: {}, create: { id: 'singleton' } });
+  const emailEngineState = async () => {
+    const state = await (prisma as any).emailEngine.upsert({ where: { id: 'singleton' }, update: {}, create: { id: 'singleton' } });
+    // The first time anything looks, sign-ins have only just begun to be
+    // recorded. Accounts older than this have no lastLoginAt because nothing
+    // was watching, so the never-logged-in journey must not read that as "never".
+    if (!state.loginTrackingSince) {
+      return (prisma as any).emailEngine.update({ where: { id: 'singleton' }, data: { loginTrackingSince: new Date() } });
+    }
+    return state;
+  };
 
   const emailRules = async () => {
     const held = await (prisma as any).emailRule.findMany();
@@ -1994,6 +2087,12 @@ async function startServer() {
     return held;
   };
 
+  /** Midnight at the start of today in India, as an instant. IST has no daylight saving. */
+  const istDayStart = () => {
+    const IST_MS = 330 * 60_000;
+    return new Date(Math.floor((Date.now() + IST_MS) / 864e5) * 864e5 - IST_MS);
+  };
+
   /** The hour in India, whatever the server thinks it is. */
   const istHour = () => Number(new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Kolkata', hour: '2-digit', hour12: false,
@@ -2006,7 +2105,7 @@ async function startServer() {
    * out, not blocked — and then mailEligibility() decides each one, so the
    * engine and the member's file can never disagree about who qualifies.
    */
-  const dueFor = async (rule: any, limit: number, claimed?: Set<string>) => {
+  const dueFor = async (rule: any, limit: number, claimed?: Set<string>, trackingSince?: Date | null) => {
     const key = rule.templateKey as TemplateKey;
     const since = new Date(Date.now() - rule.delayDays * 864e5);
     const base: any = {
@@ -2027,6 +2126,16 @@ async function startServer() {
       : key === 'never-read' ? { lastReadAt: null, createdAt: { lte: since } }
       : key === 'librarian-add-users' ? { role: 'Institution', institutionId: { not: null } }
       : key === 'pro-benefits' ? { lastReadAt: { not: null } }
+      // The four below read the activity signals. The cheap query only narrows;
+      // mailEligibility() makes the real decision from the event log.
+      : key === 'verify-email-reminder'
+        ? { emailVerifiedAt: null, createdAt: { lte: since, gte: new Date(Date.now() - VERIFY_REMINDER_MAX_AGE_DAYS * 864e5) } }
+      : key === 'never-logged-in'
+        ? { lastLoginAt: null, lastReadAt: null, emailVerifiedAt: { not: null },
+            // Accounts older than the first recorded sign-in are unknowable, not "never".
+            createdAt: trackingSince ? { lte: since, gte: trackingSince } : { lte: since, gte: new Date() } }
+      : key === 'no-research-activity' ? { lastLoginAt: { not: null, lte: since }, lastReadAt: null }
+      : key === 'inactive-user' ? { lastReadAt: { not: null, lte: since } }
       : {};
 
     // Ask for more than are needed: some will fall at the eligibility check or
@@ -2034,7 +2143,10 @@ async function startServer() {
     // looks like the engine has run out of work.
     const candidates = await prisma.user.findMany({
       where: { ...base, ...narrow },
-      orderBy: { createdAt: 'asc' },
+      // The newer journeys start from the most recent accounts: somebody who
+      // joined last week can still be helped, and the oldest ones are the
+      // likeliest to have been abandoned. The older journeys keep their order.
+      orderBy: { createdAt: ['verify-email-reminder', 'never-logged-in', 'no-research-activity'].includes(key) ? 'desc' : 'asc' },
       take: Math.max(limit * 5, 50),
     });
 
@@ -2053,7 +2165,7 @@ async function startServer() {
       if (sends.length >= rule.maxSends) continue;
       if (sends.length && (!rule.repeatAfterDays
         || Date.now() - new Date(sends[0].createdAt).getTime() < rule.repeatAfterDays * 864e5)) continue;
-      const el = await mailEligibility(u, key);
+      const el = await mailEligibility(u, key, rule);
       if (!el.due) continue;
       due.push({ user: u, attempt: sends.length + 1, why: el.why });
     }
@@ -2067,100 +2179,158 @@ async function startServer() {
    * hand should not thereby stop the automatic ones, and a cap meant to limit
    * what happens unattended should not be spent by what happens on purpose.
    */
-  const sentToday = async () => {
-    const start = new Date(); start.setHours(0, 0, 0, 0);
-    return (prisma as any).emailSend.count({ where: { status: 'Sent', sentBy: 'auto', createdAt: { gte: start } } });
-  };
+  const sentToday = async () =>
+    // "Sending" counts: a mail claimed a moment ago is part of today's total
+    // even before the provider has answered. The day is the Indian day, the
+    // same one the sending window is read in.
+    (prisma as any).emailSend.count({ where: { status: { in: ['Sent', 'Sending'] }, sentBy: 'auto', createdAt: { gte: istDayStart() } } });
+
+  /** How long a pass may hold the lease before another may take it over. */
+  const ENGINE_LEASE_MS = 10 * 60_000;
 
   /**
-   * One pass. With `dryRun` it reports who would be mailed and writes nothing,
-   * which is how this is meant to be read before it is ever switched on.
+   * One pass. With `dryRun` it reports who would be mailed and writes no send,
+   * takes no lease and touches no run counter — only the "last check" stamp,
+   * which is kept apart from the real passes so a check never reads as a run.
+   * `only` limits the pass to one journey.
    */
-  const runEmailEngine = async (opts: { dryRun?: boolean; force?: boolean } = {}) => {
+  const runEmailEngine = async (opts: { dryRun?: boolean; force?: boolean; only?: string } = {}) => {
     const state = await emailEngineState();
-    const rules = await emailRules();
+    const allRules = await emailRules();
+    const rules = opts.only ? allRules.filter((r: any) => r.templateKey === opts.only) : allRules;
     const dryRun = !!opts.dryRun;
 
-    const hour = istHour();
-    const inWindow = hour >= state.startHour && hour < state.endHour;
-    const reasons: string[] = [];
-    if (!state.enabled) reasons.push('the engine is switched off');
-    if (!inWindow) reasons.push(`outside the sending window (${state.startHour}:00–${state.endHour}:00 IST, it is ${hour}:00)`);
-
-    const already = await sentToday();
-    let budget = Math.max(0, state.dailyCap - already);
-    if (!budget) reasons.push(`the day's cap of ${state.dailyCap} is used up`);
-
-    const journeys: any[] = [];
-    // One member, one mail a pass — see dueFor().
-    const claimedThisPass = new Set<string>();
-    let sent = 0, skipped = 0;
-
-    for (const rule of rules) {
-      const template = TEMPLATES[rule.templateKey as TemplateKey];
-      if (!template) continue;
-      // A dry run works out a switched-off journey too: "who would get this if
-      // I turned it on" is the question it exists to answer.
-      if (!rule.enabled && !opts.force && !dryRun) {
-        journeys.push({ templateKey: rule.templateKey, name: template.name, enabled: false, due: 0, sent: 0, note: 'switched off' });
-        continue;
-      }
-      const todayForRule = await (prisma as any).emailSend.count({
-        where: {
-          templateKey: rule.templateKey, status: 'Sent', sentBy: 'auto',
-          createdAt: { gte: (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })() },
-        },
-      });
-      const room = Math.min(rule.dailyCap - todayForRule, dryRun ? 50 : Math.min(budget, 50));
-      const due = await dueFor(rule, Math.max(0, room), claimedThisPass);
-      for (const d of due) claimedThisPass.add(d.user.id);
-      const record: any = {
-        templateKey: rule.templateKey, name: template.name, enabled: rule.enabled,
-        due: due.length, sent: 0,
-        examples: due.slice(0, 5).map((d: any) => ({ email: d.user.email, name: d.user.displayName, why: d.why, attempt: d.attempt })),
-      };
-
-      if (dryRun || reasons.length) {
-        record.note = dryRun
-          ? (rule.enabled ? 'dry run — nothing sent' : 'switched off — this is what it would send')
-          : reasons[0];
-        journeys.push(record);
-        continue;
-      }
-
-      for (const d of due) {
-        const out = await sendMarketingEmail({
-          userId: d.user.id, templateKey: rule.templateKey, dedupeKey: `auto:${d.attempt}`,
-          sentBy: 'auto', extra: { ref: `mail-${rule.templateKey}` },
-        });
-        if (out.status === 'Sent') { record.sent++; sent++; budget--; }
-        else skipped++;
-        if (budget <= 0) break;
-      }
-      await (prisma as any).emailRule.update({
-        where: { templateKey: rule.templateKey },
-        data: { lastRunAt: new Date(), lastDue: due.length, lastSent: record.sent },
-      }).catch(() => {});
-      journeys.push(record);
-    }
-
-    const note = reasons.length ? reasons.join(' · ') : dryRun ? 'dry run' : `${sent} sent, ${skipped} skipped`;
+    // The lease: of any number of processes starting a real pass at once (a
+    // second server, a restart mid-pass, the timer and a manual run), exactly
+    // one gets a count of 1. Each send is claimed on its own as well, so this is
+    // the first guard rather than the only one.
+    const holder = `${process.pid}:${Date.now()}`;
     if (!dryRun) {
-      await (prisma as any).emailEngine.update({
-        where: { id: 'singleton' },
-        data: reasons.length
-          ? { lastRunAt: new Date(), lastNote: note }
-          : { lastRunAt: new Date(), lastSent: sent, lastSkipped: skipped, lastNote: note },
-      }).catch(() => {});
-    } else {
-      await (prisma as any).emailEngine.update({ where: { id: 'singleton' }, data: { lastDryRunAt: new Date() } }).catch(() => {});
+      const got = await (prisma as any).emailEngine.updateMany({
+        where: { id: 'singleton', OR: [{ lockedUntil: null }, { lockedUntil: { lt: new Date() } }] },
+        data: { lockedUntil: new Date(Date.now() + ENGINE_LEASE_MS), lockedBy: holder },
+      });
+      if (got.count !== 1) {
+        return {
+          dryRun, wouldSend: 0, sent: 0, skipped: 0, inWindow: false, hour: istHour(), sentToday: await sentToday(),
+          dailyCap: state.dailyCap, journeys: [], note: 'another pass is already running',
+        };
+      }
     }
 
-    return {
-      dryRun, wouldSend: journeys.reduce((n: number, j: any) => n + j.due, 0),
-      sent, skipped, note, inWindow, hour, sentToday: already, dailyCap: state.dailyCap,
-      journeys,
-    };
+    try {
+      const hour = istHour();
+      const windowOpen = (h: number, st: any) => h >= st.startHour && h < st.endHour;
+      const inWindow = windowOpen(hour, state);
+      const reasons: string[] = [];
+      if (!state.enabled) reasons.push('the engine is switched off');
+      if (!inWindow) reasons.push(`outside the sending window (${state.startHour}:00–${state.endHour}:00 IST, it is ${hour}:00)`);
+
+      const already = await sentToday();
+      let budget = Math.max(0, state.dailyCap - already);
+      if (!budget) reasons.push(`the day's cap of ${state.dailyCap} is used up`);
+
+      const trackingSince = state.loginTrackingSince ? new Date(state.loginTrackingSince) : null;
+      const dayStart = istDayStart();
+      const journeys: any[] = [];
+      // One member, one mail a pass — see dueFor().
+      const claimedThisPass = new Set<string>();
+      let sent = 0, skipped = 0, failed = 0;
+
+      for (const rule of rules) {
+        const template = TEMPLATES[rule.templateKey as TemplateKey];
+        if (!template) continue;
+        // A dry run works out a switched-off journey too: "who would get this if
+        // I turned it on" is the question it exists to answer.
+        if (!rule.enabled && !opts.force && !dryRun) {
+          journeys.push({ templateKey: rule.templateKey, name: template.name, enabled: false, due: 0, sent: 0, note: 'switched off' });
+          continue;
+        }
+        const todayForRule = await (prisma as any).emailSend.count({
+          where: {
+            templateKey: rule.templateKey, status: { in: ['Sent', 'Sending'] }, sentBy: 'auto',
+            createdAt: { gte: dayStart },
+          },
+        });
+        // What a real pass could send, so the dry run reports that and not more.
+        const room = Math.max(0, Math.min(rule.dailyCap - todayForRule, Math.min(budget, 50)));
+        const due = await dueFor(rule, room, claimedThisPass, trackingSince);
+        for (const d of due) claimedThisPass.add(d.user.id);
+        const record: any = {
+          templateKey: rule.templateKey, name: template.name, enabled: rule.enabled,
+          due: due.length, sent: 0, skipped: 0, failed: 0,
+          examples: due.slice(0, 5).map((d: any) => ({ email: d.user.email, name: d.user.displayName, why: d.why, attempt: d.attempt })),
+        };
+
+        if (dryRun) {
+          record.note = rule.enabled ? 'dry run — nothing sent' : 'switched off — this is what it would send';
+          if (reasons.length) record.blockedNow = reasons[0];
+          journeys.push(record);
+          await (prisma as any).emailRule.update({
+            where: { templateKey: rule.templateKey },
+            data: { lastDryRunAt: new Date(), lastDryRunDue: due.length },
+          }).catch(() => {});
+          continue;
+        }
+        if (reasons.length) {
+          record.note = reasons[0];
+          journeys.push(record);
+          continue;
+        }
+
+        for (const d of due) {
+          // Looked at again before every send: a pass can run for minutes, and
+          // somebody may have switched the engine or this journey off in them.
+          const [liveState, liveRule] = await Promise.all([
+            (prisma as any).emailEngine.findUnique({ where: { id: 'singleton' } }),
+            (prisma as any).emailRule.findUnique({ where: { templateKey: rule.templateKey } }),
+          ]);
+          if (!liveState?.enabled || !windowOpen(istHour(), liveState) || (!liveRule?.enabled && !opts.force)) {
+            record.note = 'stopped part-way — switched off or the window closed';
+            break;
+          }
+          const out = await sendMarketingEmail({
+            userId: d.user.id, templateKey: rule.templateKey, dedupeKey: `auto:${d.attempt}`,
+            sentBy: 'auto', extra: { ref: `mail-${rule.templateKey}` }, rule,
+          });
+          if (out.status === 'Sent') { record.sent++; sent++; budget--; }
+          else if (out.status === 'Failed') { record.failed++; failed++; }
+          else { record.skipped++; skipped++; }
+          if (budget <= 0) break;
+        }
+        await (prisma as any).emailRule.update({
+          where: { templateKey: rule.templateKey },
+          data: { lastRunAt: new Date(), lastDue: due.length, lastSent: record.sent, lastSkipped: record.skipped, lastFailed: record.failed },
+        }).catch(() => {});
+        journeys.push(record);
+      }
+
+      const note = reasons.length ? reasons.join(' · ') : dryRun ? 'dry run' : `${sent} sent, ${skipped} skipped${failed ? `, ${failed} failed` : ''}`;
+      if (!dryRun) {
+        await (prisma as any).emailEngine.update({
+          where: { id: 'singleton' },
+          data: reasons.length
+            ? { lastRunAt: new Date(), lastNote: note }
+            : { lastRunAt: new Date(), lastSent: sent, lastSkipped: skipped, lastNote: note },
+        }).catch(() => {});
+      } else {
+        await (prisma as any).emailEngine.update({ where: { id: 'singleton' }, data: { lastDryRunAt: new Date() } }).catch(() => {});
+      }
+
+      return {
+        dryRun, wouldSend: journeys.reduce((n: number, j: any) => n + j.due, 0),
+        sent, skipped, failed, note, inWindow, hour, sentToday: already, dailyCap: state.dailyCap,
+        journeys,
+      };
+    } finally {
+      if (!dryRun) {
+        // Only if the lease is still ours: a pass that ran past it has been
+        // taken over, and must not release the new holder's.
+        await (prisma as any).emailEngine.updateMany({
+          where: { id: 'singleton', lockedBy: holder }, data: { lockedUntil: null, lockedBy: null },
+        }).catch(() => {});
+      }
+    }
   };
 
   // The timer. Every quarter of an hour is often enough for mail that is not
@@ -2179,13 +2349,30 @@ async function startServer() {
     }
   });
 
+  /** One line saying what sets a journey off, with its own wait written in. */
+  const triggerSummary = (r: any) => {
+    const d = r.delayDays;
+    const days = `${d} day${d === 1 ? '' : 's'}`;
+    switch (r.templateKey as TemplateKey) {
+      case 'profile-incomplete': return `Institution profile still has blank fields, ${days} after registering`;
+      case 'never-read': return `Registered, never opened anything, ${days} after registering`;
+      case 'librarian-add-users': return `Librarian has added nobody for ${days}`;
+      case 'verify-email-reminder': return `Email address not verified, ${days} after registering — stops once verified`;
+      case 'never-logged-in': return `Email verified but never signed in, ${days} after registering — stops at the first sign-in`;
+      case 'no-research-activity': return `Signed in ${days} ago or more, and has not searched or opened anything`;
+      case 'inactive-user': return `Has read before, but no searching or reading for ${days}`;
+      default: return TEMPLATES[r.templateKey as TemplateKey]?.audience || '';
+    }
+  };
+
   app.get("/api/admin/email-engine", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
     try {
       const [state, rules] = await Promise.all([emailEngineState(), emailRules()]);
       // How many are waiting for each journey, whether it is on or off.
+      const tracking = state.loginTrackingSince ? new Date(state.loginTrackingSince) : null;
       const due = await Promise.all(rules.map(async (r: any) => ({
         templateKey: r.templateKey,
-        due: (await dueFor(r, 500)).length,
+        due: (await dueFor(r, 500, undefined, tracking)).length,
       })));
       res.json({
         state: { ...state, hour: istHour(), sentToday: await sentToday() },
@@ -2193,6 +2380,7 @@ async function startServer() {
           ...r,
           name: TEMPLATES[r.templateKey as TemplateKey]?.name || r.templateKey,
           audience: TEMPLATES[r.templateKey as TemplateKey]?.audience || '',
+          trigger: triggerSummary(r),
           due: due.find(d => d.templateKey === r.templateKey)?.due ?? 0,
         })),
       });
@@ -2238,7 +2426,8 @@ async function startServer() {
   /** Run a pass now. `dryRun` reports who would be mailed and writes nothing. */
   app.post("/api/admin/email-engine/run", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
-      res.json(await runEmailEngine({ dryRun: req.body?.dryRun !== false }));
+      const only = typeof req.body?.only === 'string' && AUTOMATIC.some(a => a.key === req.body.only) ? req.body.only : undefined;
+      res.json(await runEmailEngine({ dryRun: req.body?.dryRun !== false, only }));
     } catch (e: any) {
       res.status(500).json({ error: String(e?.message || e) });
     }
@@ -2276,6 +2465,10 @@ async function startServer() {
         'never-read': { lastReadAt: null, role: { notIn: STAFF_ROLES } },
         'pro-benefits': { lastReadAt: { not: null }, role: { notIn: STAFF_ROLES } },
         'new-features': { role: { notIn: STAFF_ROLES } },
+        'verify-email-reminder': { emailVerifiedAt: null, role: { notIn: STAFF_ROLES } },
+        'never-logged-in': { lastLoginAt: null, role: { notIn: STAFF_ROLES } },
+        'no-research-activity': { lastLoginAt: { not: null }, lastReadAt: null, role: { notIn: STAFF_ROLES } },
+        'inactive-user': { lastReadAt: { not: null }, role: { notIn: STAFF_ROLES } },
       }[key] || { role: { notIn: STAFF_ROLES } };
       const user = userId
         ? await prisma.user.findUnique({ where: { id: userId } })
@@ -2302,6 +2495,30 @@ async function startServer() {
       });
     } catch (e: any) {
       res.status(500).json({ error: String(e?.message || e) });
+    }
+  });
+
+  /**
+   * A test send: the journey's mail, rendered for the admin themselves and sent
+   * to their own address, marked as a test. It is not recorded as a send to a
+   * member, does not use any cap, and cannot go to anybody else.
+   */
+  app.post("/api/admin/email-rules/:key/test", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const key = req.params.key as TemplateKey;
+      if (!TEMPLATES[key]) return res.status(404).json({ error: "No such template" });
+      const me = await prisma.user.findUnique({ where: { id: req.user.uid } });
+      if (!me?.email) return res.status(400).json({ error: "Your account has no email address" });
+      const ctx = await contextFor(me, { ref: `test-${key}` }, false);
+      const { subject, html } = renderTemplate(key, ctx);
+      await sendMail({ to: me.email, subject: `[Test] ${subject}`, html, _throwOnError: true }, true);
+      const st = getSystemSettings();
+      const live = Boolean(
+        (st.awsAccessKeyId || process.env.AWS_ACCESS_KEY_ID) &&
+        (st.awsSecretAccessKey || process.env.AWS_SECRET_ACCESS_KEY));
+      res.json({ ok: true, to: me.email, live });
+    } catch (e: any) {
+      res.status(502).json({ error: String(e?.message || e).slice(0, 200) });
     }
   });
 
@@ -2336,15 +2553,47 @@ async function startServer() {
    * built) the engine that sends without being asked. A screen that computes
    * eligibility its own way is a screen that disagrees with the sender.
    */
-  const mailEligibility = async (user: any, key: TemplateKey): Promise<{ due: boolean; why: string }> => {
+  /** Used when a journey's own settings are not to hand (the member's file screen
+   *  passes them; this is only the fallback). */
+  const DEFAULT_DELAY: Partial<Record<TemplateKey, number>> = Object.fromEntries(AUTOMATIC.map(a => [a.key, a.delayDays]));
+
+  /** An account that went unverified for longer than this is not reminded: a nudge
+   *  about something done months ago is noise, and the oldest unverified accounts
+   *  are mostly imports and abandoned sign-ups. */
+  const VERIFY_REMINDER_MAX_AGE_DAYS = 90;
+
+  /** The kinds of event that count as research: looking for something or opening it. */
+  const RESEARCH_KINDS = ['search', 'view', 'read'];
+  const hasResearchSince = async (userId: string, since?: Date) =>
+    !!(await (prisma as any).libraryEvent.findFirst({
+      where: { userId, kind: { in: RESEARCH_KINDS }, ...(since ? { at: { gte: since } } : {}) },
+      select: { id: true },
+    }));
+
+  /** When sign-ins started being recorded; cached, because eligibility runs per member. */
+  let trackingCache: { at: number; value: Date | null } | null = null;
+  const loginTrackingSince = async (): Promise<Date | null> => {
+    if (trackingCache && Date.now() - trackingCache.at < 5 * 60_000) return trackingCache.value;
+    const st = await emailEngineState();
+    trackingCache = { at: Date.now(), value: st.loginTrackingSince ? new Date(st.loginTrackingSince) : null };
+    return trackingCache.value;
+  };
+
+  const mailEligibility = async (
+    user: any, key: TemplateKey, rule?: { delayDays: number },
+  ): Promise<{ due: boolean; why: string }> => {
     const days = (d: any) => (d ? Math.floor((Date.now() - new Date(d).getTime()) / 864e5) : null);
     const age = days(user.createdAt) ?? 0;
     const isInstitution = user.role === 'Institution';
+    // The journey's own wait, never a number written into the rule.
+    const wait = rule?.delayDays ?? DEFAULT_DELAY[key] ?? 0;
+    const waits = (n: number, from: string) => `${from} ${n} day${n === 1 ? '' : 's'} ago — the mail waits ${wait} day${wait === 1 ? '' : 's'}`;
+    if (STAFF_ROLES.includes(user.role)) return { due: false, why: 'staff accounts are not mailed' };
 
     switch (key) {
       case 'profile-incomplete': {
         if (!isInstitution) return { due: false, why: 'only institution accounts have this profile' };
-        if (age < 2) return { due: false, why: `registered ${age === 0 ? 'today' : 'yesterday'} — the mail waits 2 days` };
+        if (age < wait) return { due: false, why: waits(age, 'registered') };
         const missing = missingInstitutionFields(user);
         return missing.length
           ? { due: true, why: `${missing.length} field${missing.length === 1 ? '' : 's'} still blank` }
@@ -2352,7 +2601,7 @@ async function startServer() {
       }
       case 'never-read': {
         if (user.lastReadAt) return { due: false, why: `has read something — last ${days(user.lastReadAt)} days ago` };
-        if (age < 3) return { due: false, why: `registered ${age} day${age === 1 ? '' : 's'} ago — the mail waits 3 days` };
+        if (age < wait) return { due: false, why: waits(age, 'registered') };
         return { due: true, why: 'registered and has never opened anything' };
       }
       case 'pro-benefits': {
@@ -2370,8 +2619,50 @@ async function startServer() {
           orderBy: { createdAt: 'desc' }, select: { createdAt: true },
         });
         const since = days(last?.createdAt);
-        if (since !== null && since < 30) return { due: false, why: `added someone ${since} day${since === 1 ? '' : 's'} ago` };
+        if (since !== null && since < wait) return { due: false, why: `added someone ${since} day${since === 1 ? '' : 's'} ago` };
         return { due: true, why: since === null ? 'has never added anyone' : `nobody added in ${since} days` };
+      }
+      case 'verify-email-reminder': {
+        if (!getSystemSettings().emailVerificationEnabled) return { due: false, why: 'email verification is switched off' };
+        if (user.emailVerifiedAt) return { due: false, why: 'the address is verified' };
+        // An address is often proved before the account exists; that proof counts.
+        const proof = await (prisma as any).emailVerification.findUnique({ where: { email: user.email }, select: { isVerified: true } }).catch(() => null);
+        if (proof?.isVerified) return { due: false, why: 'the address is verified' };
+        if (age < wait) return { due: false, why: waits(age, 'registered') };
+        if (age > VERIFY_REMINDER_MAX_AGE_DAYS) return { due: false, why: `registered ${age} days ago — too long ago to remind` };
+        return { due: true, why: `address still unverified after ${age} day${age === 1 ? '' : 's'}` };
+      }
+      case 'never-logged-in': {
+        if (user.lastLoginAt) return { due: false, why: `has signed in — last ${days(user.lastLoginAt)} days ago` };
+        if (user.lastReadAt || await hasResearchSince(user.id)) return { due: false, why: 'has used the library, so has signed in' };
+        if (!user.emailVerifiedAt) return { due: false, why: 'the address is not verified yet' };
+        const since = await loginTrackingSince();
+        if (!since || new Date(user.createdAt) < since) {
+          return { due: false, why: 'created before sign-ins were recorded, so "never" cannot be told from "not since"' };
+        }
+        if (age < wait) return { due: false, why: waits(age, 'registered') };
+        return { due: true, why: `verified ${age} day${age === 1 ? '' : 's'} ago and has never signed in` };
+      }
+      case 'no-research-activity': {
+        if (!user.lastLoginAt) return { due: false, why: 'has not signed in' };
+        const sinceLogin = days(user.lastLoginAt) ?? 0;
+        if (sinceLogin < wait) return { due: false, why: waits(sinceLogin, 'signed in') };
+        if (user.lastReadAt || await hasResearchSince(user.id)) return { due: false, why: 'has searched or opened something' };
+        // The never-read mail is this member's nudge already; a second, near-identical
+        // one a few days later reads as nagging.
+        const nudged = await (prisma as any).emailSend.findFirst({
+          where: { userId: user.id, templateKey: 'never-read', status: 'Sent' }, select: { id: true },
+        });
+        if (nudged) return { due: false, why: 'was already sent the "never read" mail' };
+        return { due: true, why: `signed in ${sinceLogin} days ago and has not searched or opened anything` };
+      }
+      case 'inactive-user': {
+        if (!user.lastReadAt) return { due: false, why: 'has never read — that is the "never read" mail' };
+        const quiet = days(user.lastReadAt) ?? 0;
+        if (quiet < wait) return { due: false, why: `read ${quiet} day${quiet === 1 ? '' : 's'} ago — the mail waits until ${wait} days of quiet` };
+        const since = new Date(Date.now() - wait * 864e5);
+        if (await hasResearchSince(user.id, since)) return { due: false, why: 'has searched or opened something recently' };
+        return { due: true, why: `no research for ${quiet} days` };
       }
       case 'new-features':
       default:
@@ -2405,10 +2696,11 @@ async function startServer() {
         }),
       ]);
 
+      const ruleList = await emailRules();
       const templates = await Promise.all(TEMPLATE_LIST.map(async t => {
         const mine = sends.filter((s: any) => s.templateKey === t.key);
         const lastSent = mine.find((s: any) => s.status === 'Sent');
-        const el = await mailEligibility(user, t.key);
+        const el = await mailEligibility(user, t.key, ruleList.find((r: any) => r.templateKey === t.key));
         return {
           key: t.key, name: t.name, kind: t.kind, description: t.description,
           sentCount: mine.filter((s: any) => s.status === 'Sent').length,
@@ -2858,6 +3150,13 @@ async function startServer() {
 
       const free = req.user.role === 'Subscriber' && activeSubs.length === 0;
 
+      // The departments the member chose themselves, which is what the
+      // dashboard's "Departments" figure means. Only names the library knows.
+      const me = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { interestedDomains: true } });
+      const known = new Set(DOMAINS.map((d: any) => d.name));
+      const chosenDepartments: string[] = (Array.isArray(me?.interestedDomains) ? me!.interestedDomains as unknown[] : [])
+        .map(String).filter(n => known.has(n));
+
       // What the reader can actually open, counted the way every other screen
       // counts it. The page used to headline "Accessible items" with the length
       // of the page of results it had just fetched — twenty, forever, whatever
@@ -2916,6 +3215,8 @@ async function startServer() {
         collection: { ...counts, byDepartment },
         /** Departments that actually hold something, not departments that exist. */
         departmentsCovered: byDepartment.length,
+        /** What the member selected; empty when they never chose any. */
+        selectedDepartments: chosenDepartments.length,
         itemsRead: readIds.size,
         readByWeek: (weekRows as any[]).map(r => Number(r.reads)),
         readByDepartment: (deptRows as any[])
@@ -11482,6 +11783,9 @@ async function startServer() {
       where: { institutionId, status: 'Active', endDate: { gt: now } },
       orderBy: { endDate: 'asc' }
     });
+    // Seats are no longer sold: a paid subscription covers up to MAX_INSTITUTION_USERS. Seats
+    // bought under the old pricing are still on record, and still count while they run, so
+    // nobody who paid for more than the limit is held below it.
     const extra = purchases.reduce((sum: number, p: any) => sum + p.seats, 0);
     // An institution with no "new-system" subscription (i.e. none that recorded `seatsIncluded`
     // when it was bought) is left unlimited: a free preview still fills faculty seats the way
@@ -11490,7 +11794,9 @@ async function startServer() {
     // first purchase under the new system onward.
     const newSystem = subs.filter((sub: any) => sub.seatsIncluded != null);
     const unlimited = newSystem.length === 0;
-    const included = newSystem.reduce((max: number, sub: any) => Math.max(max, sub.seatsIncluded ?? 0), 0);
+    const included = unlimited ? 0 : Math.max(
+      MAX_INSTITUTION_USERS,
+      newSystem.reduce((max: number, sub: any) => Math.max(max, sub.seatsIncluded ?? 0), 0));
     const capacity = unlimited ? null : included + extra;
     return {
       unlimited,
@@ -11508,7 +11814,7 @@ async function startServer() {
   const seatsFullResponse = (seats: Awaited<ReturnType<typeof institutionSeats>>) => ({
     code: seats.capacity ? 'SEATS_FULL' : 'NEEDS_SUBSCRIPTION',
     error: seats.capacity
-      ? `All ${seats.capacity} user seats are in use. Add more seats to add more users.`
+      ? `Your institution has reached its limit of ${seats.capacity.toLocaleString('en-IN')} users. Please contact us to add more.`
       : 'Subscribe to at least one department before adding users.',
     capacity: seats.capacity,
     used: seats.used,
@@ -11560,22 +11866,9 @@ async function startServer() {
       };
     }
     if (body?.kind === 'seats') {
-      // Three "unlimited" states to tell apart: a free-preview institution with no subscription
-      // at all, a legacy institution still on its pre-pricing subscription, and a new-system
-      // institution that is capped. The free-preview case needs the department prompt (seats
-      // are added on top of a department); the legacy case is genuinely already unlimited.
-      if (seats.unlimited && seats.subscriptions.length === 0) {
-        return { error: 'Subscribe to at least one department before buying user seats.', code: 'NEEDS_SUBSCRIPTION' };
-      }
-      if (seats.unlimited) return { error: 'Your current subscription already allows unlimited users.' };
-      if (!seats.included) return { error: 'Subscribe to at least one department before buying user seats.', code: 'NEEDS_SUBSCRIPTION' };
-      const totalUsers = Math.floor(Number(body.totalUsers));
-      if (!Number.isFinite(totalUsers) || totalUsers <= (seats.capacity ?? 0)) {
-        return { error: `Enter a total above your current ${seats.capacity} seats.` };
-      }
-      if (totalUsers > 100000) return { error: 'For more than 100,000 users, please talk to our team.' };
-      const price = priceSeats(totalUsers, seats.capacity ?? INCLUDED_SEATS);
-      return { kind: 'seats' as const, totalUsers, price };
+      // Users are not sold any more. A paid subscription covers up to the limit, and beyond
+      // it the answer is a conversation, not a price.
+      return { error: `A subscription covers up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users. For more, please contact us.`, code: 'CONTACT_US' };
     }
     return { error: 'Unknown purchase.' };
   };
@@ -11595,7 +11888,7 @@ async function startServer() {
         departments,
         seats: { capacity: seats.capacity, used: seats.used, available: seats.available, included: seats.included, extra: seats.extra },
         seatPurchases: seats.purchases.map((p: any) => ({ seats: p.seats, rate: p.rate, startDate: p.startDate, endDate: p.endDate })),
-        pricing: { includedSeats: INCLUDED_SEATS, gstRate: GST_RATE, departmentRates: DEPARTMENT_RATES, seatBands: SEAT_BANDS.map((b) => ({ ...b, upTo: Number.isFinite(b.upTo) ? b.upTo : null })) },
+        pricing: { maxUsers: MAX_INSTITUTION_USERS, gstRate: GST_RATE, departmentRates: DEPARTMENT_RATES },
         allDepartments: DOMAINS.map((d: any) => d.name),
       });
     } catch (err: any) {
@@ -11682,11 +11975,10 @@ async function startServer() {
       await prisma.$transaction(async (tx: any) => {
         await tx.payment.update({ where: { id: payment.id }, data: { status: 'Paid', paymentId: razorpay_payment_id || `mock_${Date.now()}` } });
         if (items.kind === 'departments') {
-          // Grandfather existing members at the moment the institution first subscribes under
-          // the new system: an institution with more active users than the included seats
-          // keeps them. Growing beyond this snapshot requires buying seats as usual.
+          // An institution already holding more than the limit keeps its people: the limit
+          // it is recorded with is never below the number it has today.
           const existingMembers = await tx.user.count({ where: { institutionId: items.institutionId, isBlocked: false } });
-          const seatsIncluded = Math.max(INCLUDED_SEATS, existingMembers);
+          const seatsIncluded = Math.max(MAX_INSTITUTION_USERS, existingMembers);
           await tx.subscription.create({
             data: {
               planName: 'Premium Department Subscription',
@@ -11865,7 +12157,7 @@ async function startServer() {
 
           if (seatsLeft !== null && seatsLeft < 1) {
             errorCount++;
-            errors.push({ email: u.email, error: 'No user seats left. Add more seats to import the rest.' });
+            errors.push({ email: u.email, error: 'No user seats left. Your institution has reached its user limit; contact us to add more.' });
             continue;
           }
 

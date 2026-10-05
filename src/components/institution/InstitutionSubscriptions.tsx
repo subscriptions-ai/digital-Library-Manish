@@ -4,7 +4,7 @@ import {
   RefreshCw, ShieldCheck, Timer, UserPlus, Users,
 } from 'lucide-react';
 import {
-  DEPARTMENT_RATES, GST_RATE, INCLUDED_SEATS, SEAT_BANDS, STARTING_DEPARTMENT_RATE, TERM_MONTHS, formatRupees,
+  DEPARTMENT_RATES, GST_RATE, MAX_INSTITUTION_USERS, STARTING_DEPARTMENT_RATE, TERM_MONTHS, formatRupees,
 } from '../../lib/institutionPricing';
 import { SESSION_MS, SESSIONS_PER_DAY, HOLD_MS } from '../../lib/freeAllowance';
 import { usePricing } from './pricing/PricingContext';
@@ -127,7 +127,7 @@ export function InstitutionSubscriptions() {
           <p className="mt-3 max-w-3xl text-[13.5px] leading-relaxed on-dark-2">
             Remove session limits, unlock full subscribed content, add your faculty, researchers and students, and follow
             institutional usage through live analytics, user controls and statistical reports. Choose your departments
-            first — {INCLUDED_SEATS} users come with it, and more seats can be added whenever your institution needs them.
+            first — up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users come with it, at no extra charge.
           </p>
           <div className="mt-5 flex flex-wrap gap-2.5">
             <button onClick={subscribe} className="inline-flex items-center gap-2 rounded-xl bg-[#72d8df] px-4 py-2.5 text-[13px] font-bold text-[#17324d] hover:bg-[#8be2e8]">
@@ -185,29 +185,19 @@ export function InstitutionSubscriptions() {
               <>
                 <p className="mt-1 text-[15px] font-semibold text-ink">Unlimited users (current plan)</p>
                 <p className="mt-1 text-[12.5px] text-muted">
-                  {plan.seats.used} in use. Your plan predates seat pricing, so there is no cap until it is renewed.
+                  {plan.seats.used} in use. Your plan has no cap on users until it is renewed.
                 </p>
               </>
             ) : (
               <>
                 <p className="tnum mt-1 text-[15px] font-semibold text-ink">
-                  {premium ? `${seatsLabel(plan)} seats in use` : '0 Premium user seats'}
+                  {premium ? `${seatsLabel(plan)} users` : `Up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users with a subscription`}
                 </p>
                 <p className="mt-1 text-[12.5px] text-muted">
                   {premium
-                    ? `${plan.seats.included} included with the subscription${plan.seats.extra ? ` + ${plan.seats.extra} added` : ''}. You count as one.`
-                    : `A subscription includes ${INCLUDED_SEATS} users: you and ${INCLUDED_SEATS - 1} more.`}
+                    ? `No charge per user, up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')}. You count as one.`
+                    : 'Users are not charged for. Subscribe to at least one department to add them.'}
                 </p>
-                {plan.seatPurchases.length > 0 && (
-                  <ul className="mt-2.5 space-y-1.5 border-t border-rule pt-2.5">
-                    {plan.seatPurchases.map((p, i) => (
-                      <li key={i} className="flex items-center justify-between gap-2 text-[12.5px]">
-                        <span className="text-ink-2">{p.seats} seat{p.seats === 1 ? '' : 's'} at {formatRupees(p.rate)}</span>
-                        <span className="text-muted">{shortDate(p.startDate)} – {shortDate(p.endDate)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </>
             )}
           </div>
@@ -217,14 +207,14 @@ export function InstitutionSubscriptions() {
           <button onClick={subscribe} className={btnPrimary}>
             {premium ? <>Add departments <ArrowRight size={15} /></> : <>Subscribe from {FROM_PRICE} <ArrowRight size={15} /></>}
           </button>
-          {!plan.unlimitedSeats && (
-            <button onClick={() => pricing.openSeats()} className={btnSoft}><Users size={15} /> Manage User Access</button>
+          {!plan.unlimitedSeats && premium && (
+            <button onClick={() => pricing.openUserLimit()} className={btnSoft}><Users size={15} /> Need more than {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users?</button>
           )}
         </div>
 
         <div className="mt-4 rounded-xl border border-caution/40 bg-caution-soft px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-2">
-          Departments and additional users are priced separately. Additional users are charged by your institution's total
-          user count, and only for the seats you add. Every purchase runs {TERM_MONTHS} months from the day it is bought, and
+          Departments are priced by the year, and users are not charged for: up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} per
+          institution. Every purchase runs {TERM_MONTHS} months from the day it is bought, and
           the amount payable is shown before payment.{' '}
           <button onClick={pricing.openTerms} className="font-semibold text-accent underline underline-offset-2">View pricing terms</button>
         </div>
@@ -261,7 +251,7 @@ export function InstitutionSubscriptions() {
           <ul className="px-5 py-3">
             <Feature icon={<Check size={12} />}><strong className="text-ink">Full subscribed content</strong> for the departments you choose.</Feature>
             <Feature icon={<InfinityIcon size={12} />}><strong className="text-ink">No {sessionMin}-minute session limit</strong> and no waiting period.</Feature>
-            <Feature icon={<UserPlus size={12} />}><strong className="text-ink">{INCLUDED_SEATS} users included</strong> — you and {INCLUDED_SEATS - 1} faculty, researchers or students; add more seats from {formatRupees(SEAT_BANDS[SEAT_BANDS.length - 1].rate)} to {formatRupees(SEAT_BANDS[0].rate)} each by volume.</Feature>
+            <Feature icon={<UserPlus size={12} />}><strong className="text-ink">Up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users</strong> — faculty, researchers or students, at no extra charge. Need more? Contact us.</Feature>
             <Feature icon={<ShieldCheck size={12} />}><strong className="text-ink">User Management</strong> — add, remove, suspend or restore access.</Feature>
             <Feature icon={<BarChart3 size={12} />}><strong className="text-ink">Live usage analytics</strong> — who used the platform, when and how much.</Feature>
             <Feature icon={<FileBarChart size={12} />}><strong className="text-ink">Statistical reports</strong>, reading timeline and most-read content.</Feature>
@@ -277,8 +267,8 @@ export function InstitutionSubscriptions() {
       {!premium && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rule bg-accent-soft/50 p-4">
           <div>
-            <h3 className="text-[15px] font-semibold text-ink">Start with the department subscription. Add user seats when you need them.</h3>
-            <p className="mt-0.5 text-[12.5px] text-muted">Pricing for additional users is shown only when you choose to add them.</p>
+            <h3 className="text-[15px] font-semibold text-ink">Start with the department subscription. Add your people at no extra charge.</h3>
+            <p className="mt-0.5 text-[12.5px] text-muted">Up to 1,000 users are included; contact us for more.</p>
           </div>
           <button onClick={subscribe} className={btnPrimary}>Subscribe from {FROM_PRICE} <ArrowRight size={15} /></button>
         </div>

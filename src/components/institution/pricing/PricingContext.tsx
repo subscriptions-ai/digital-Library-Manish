@@ -1,9 +1,9 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { fetchPlan, PLAN_CHANGED, type InstitutionPlan } from './planApi';
-import { DepartmentModal, SeatModal, TermsModal } from './PricingModals';
+import { DepartmentModal, TermsModal, UserLimitModal } from './PricingModals';
 
 /**
- * The librarian's plan, and the three windows that sell more of it.
+ * The librarian's plan, and the windows that sell more of it (and say who to ask beyond it).
  *
  * Held once, in the institution shell, so the rail, User Management, Analytics and the
  * Subscriptions page all read the same plan and open the same windows. A screen used outside
@@ -11,14 +11,13 @@ import { DepartmentModal, SeatModal, TermsModal } from './PricingModals';
  * as it did before.
  */
 
-type OpenSeatsOptions = { onPurchased?: () => void };
-
 type PricingValue = {
   plan: InstitutionPlan | null;
   loading: boolean;
   reload: () => Promise<void>;
   openDepartments: () => void;
-  openSeats: (opts?: OpenSeatsOptions) => void;
+  /** The user limit has been reached: say so, and say who to contact. */
+  openUserLimit: () => void;
   openTerms: () => void;
 };
 
@@ -29,9 +28,8 @@ export const usePricing = () => useContext(PricingCtx);
 export function PricingProvider({ enabled, children }: { enabled: boolean; children: React.ReactNode }) {
   const [plan, setPlan] = useState<InstitutionPlan | null>(null);
   const [loading, setLoading] = useState(enabled);
-  const [open, setOpen] = useState<'departments' | 'seats' | null>(null);
+  const [open, setOpen] = useState<'departments' | 'limit' | null>(null);
   const [terms, setTerms] = useState(false);
-  const afterSeats = useRef<(() => void) | undefined>(undefined);
 
   const reload = useCallback(async () => {
     if (!enabled) return;
@@ -55,7 +53,7 @@ export function PricingProvider({ enabled, children }: { enabled: boolean; child
     loading,
     reload,
     openDepartments: () => setOpen('departments'),
-    openSeats: (opts) => { afterSeats.current = opts?.onPurchased; setOpen('seats'); },
+    openUserLimit: () => setOpen('limit'),
     openTerms: () => setTerms(true),
   }), [plan, loading, reload]);
 
@@ -74,21 +72,7 @@ export function PricingProvider({ enabled, children }: { enabled: boolean; child
           onPurchased={() => { purchased(); setOpen(null); }}
         />
       )}
-      {plan && open === 'seats' && (
-        <SeatModal
-          plan={plan}
-          onClose={() => setOpen(null)}
-          onTerms={() => setTerms(true)}
-          onNeedsDepartments={() => setOpen('departments')}
-          onPurchased={() => {
-            purchased();
-            setOpen(null);
-            const next = afterSeats.current;
-            afterSeats.current = undefined;
-            if (next) next();
-          }}
-        />
-      )}
+      {open === 'limit' && <UserLimitModal onClose={() => setOpen(null)} />}
       {terms && <TermsModal onClose={() => setTerms(false)} />}
     </PricingCtx.Provider>
   );
