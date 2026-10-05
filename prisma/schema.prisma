@@ -545,6 +545,53 @@ model User {
   @@index([lastReadAt])
   @@index([lastLoginAt])
   @@index([unsubscribeToken])
+
+  sessions UserSession[]
+  institutionAccess InstitutionMemberAccess[]
+}
+
+/// Which members of an institution hold one of its licensed subscription
+/// seats. One row per member; `revokedAt` set means the seat has been taken
+/// back (the row is kept as history and reused if it is assigned again).
+/// Whether a seat counts also depends on the member still belonging to the
+/// institution and not being blocked — see licensedSeats() in server.ts.
+model InstitutionMemberAccess {
+  id             String      @id @default(uuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  /// The subscription that held the limit when the seat was assigned.
+  subscriptionId String?
+  assignedAt     DateTime    @default(now())
+  assignedBy     String?
+  revokedAt      DateTime?
+  revokedBy      String?
+
+  @@unique([userId, institutionId])
+  @@index([institutionId, revokedAt])
+}
+
+/// One row per sign-in. A member may hold at most ONE row that is neither
+/// revoked nor expired; the sign-in route enforces it under a per-user advisory
+/// lock. `sessionId` is the random value carried in the JWT as `sid` — it is
+/// the authority on whether a token is still good, and is never shown in any
+/// screen. No password, token or one-time code is ever stored here. The
+/// address is kept for audit only; it does not define a device.
+model UserSession {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId   String    @unique
+  createdAt   DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  userAgent   String?
+  ipAddress   String?
+  deviceLabel String?
+
+  @@index([userId, revokedAt, expiresAt])
 }
 
 model Payment {
@@ -601,6 +648,11 @@ model Subscription {
   /// subscription bought from the institution dashboard. Null on every subscription made
   /// before seat pricing existed: those institutions keep unlimited users until they renew.
   seatsIncluded Int?
+  /// How many of the institution's members may hold subscription access at once,
+  /// set by a Super Admin. Null means seat management is not switched on for
+  /// this subscription: members inherit access as they always have. This is
+  /// unrelated to `seatsIncluded`, which caps how many people may be added.
+  licensedUserLimit Int?
   /// The Payment that bought it, when it was bought online.
   paymentId     String?
 
@@ -825,9 +877,23 @@ model Institution {
   subscriptionId String? @unique
   status         String  @default("Active")
 
+  /// A separate switch from `status`: it stops this institution adding new
+  /// members and nothing else. Existing members, sign-in, reading and the
+  /// dashboard are untouched. A restriction with `userAdditionRestrictionUntil`
+  /// in the past no longer applies — nobody has to remove it.
+  userAdditionRestricted       Boolean   @default(false)
+  userAdditionRestrictionReason String?
+  userAdditionRestrictedAt     DateTime?
+  /// The administrator's user id.
+  userAdditionRestrictedBy     String?
+  userAdditionRestrictionUntil DateTime?
+  /// Internal. Never sent to the institution.
+  userAdditionRestrictionNote  String?
+
   users         User[]
   subscriptions Subscription[]
   seatPurchases SeatPurchase[]
+  memberAccess  InstitutionMemberAccess[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

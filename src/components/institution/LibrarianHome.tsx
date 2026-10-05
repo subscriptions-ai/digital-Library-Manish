@@ -312,7 +312,7 @@ export function LibrarianHome() {
               </p>
               <Link to="/institution/membership"
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-accent-hover">
-                Apply for Pro <ArrowRight size={13} />
+                Explore Subscription Options <ArrowRight size={13} />
               </Link>
             </div>
           )}

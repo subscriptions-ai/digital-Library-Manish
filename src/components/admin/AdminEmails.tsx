@@ -287,6 +287,7 @@ type Rule = {
   delayDays: number; repeatAfterDays: number; maxSends: number; dailyCap: number;
   due: number; lastRunAt: string | null; lastDue: number; lastSent: number;
   trigger?: string; lastSkipped?: number; lastFailed?: number;
+  legacy?: boolean; overlapsWith?: string | null; recommendedDailyCap?: number | null;
   lastDryRunAt?: string | null; lastDryRunDue?: number | null;
 };
 type EngineState = {
@@ -315,6 +316,7 @@ function Automations() {
   const [dryFor, setDryFor] = useState<string | null>(null);
   const [previewKey, setPreviewKey] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
+  const [dueKey, setDueKey] = useState<string | null>(null);
 
   const load = useCallback(() => {
     fetch('/api/admin/email-engine', { headers: authHeader() })
@@ -333,10 +335,20 @@ function Automations() {
     } catch { toast.error('Could not change that'); } finally { setBusy(false); }
   };
 
-  const saveRule = async (key: string, patch: Partial<Rule>) => {
+  const saveRule = async (key: string, patch: Partial<Rule> & { confirmOverlap?: boolean }) => {
     setBusy(true);
     try {
       const r = await fetch(`/api/admin/email-rules/${key}`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(patch) });
+      if (r.status === 409) {
+        // Two journeys for much the same people: say so, and go on only if told to.
+        const d = await r.json().catch(() => ({}));
+        if (d.code === 'OVERLAP' && window.confirm(
+          `${d.error}\n\n"${d.otherName}" is already on. Switch this one on as well?`)) {
+          setBusy(false);
+          return saveRule(key, { ...patch, confirmOverlap: true });
+        }
+        return;
+      }
       if (!r.ok) throw new Error();
       load();
     } catch { toast.error('Could not change that journey'); } finally { setBusy(false); }
@@ -411,7 +423,8 @@ function Automations() {
             <span className="mt-1 block text-[10px] text-slate-400">It is {state.hour}:00 in India now</span>
           </label>
           <label className="text-xs">
-            <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500">Most in a day</span>
+            <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500"
+              title="Maximum automatic emails the engine may send across all journeys in one IST day.">Daily Send Limit</span>
             <input type="number" min={0} max={20000} value={state.dailyCap} disabled={busy}
               onChange={e => saveState({ dailyCap: parseInt(e.target.value) })}
               className="w-24 rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-blue-500" />
@@ -424,6 +437,14 @@ function Automations() {
           )}
         </div>
       </div>
+
+      {rules.some(r => r.legacy && r.enabled) && rules.some(r => r.overlapsWith && !r.legacy && r.enabled) && (
+        <div role="alert" className="flex gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+          “You have not opened anything yet” and “Start with a search” are both on. They target similar inactive members and may
+          send overlapping reminders. Switch one off.
+        </div>
+      )}
 
       {/* The journeys */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -440,9 +461,25 @@ function Automations() {
                     r.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
                     {r.enabled ? 'Enabled' : 'Disabled'}
                   </span>
+                  {r.legacy && (
+                    <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">Legacy</span>
+                  )}
                 </p>
                 <p className="mt-0.5 text-[12px] text-slate-600">{r.trigger || r.audience}</p>
-                <p className="mt-1 text-[12px] font-semibold text-blue-700">{n(r.due)} due right now</p>
+                {r.legacy && (
+                  <p className="mt-0.5 text-[11.5px] text-amber-800">
+                    Legacy journey — overlaps with “Start with a search”. Keep only one active, and use “Start with a search” for new automation.
+                  </p>
+                )}
+                <p className="mt-1 text-[12px] font-semibold text-blue-700">
+                  {n(r.due)} due right now
+                  {r.due > 0 && (
+                    <button type="button" onClick={() => setDueKey(r.templateKey)}
+                      className="ml-3 rounded text-[11.5px] font-semibold text-slate-600 underline underline-offset-2 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
+                      View due users
+                    </button>
+                  )}
+                </p>
               </div>
               <button onClick={() => saveRule(r.templateKey, { enabled: !r.enabled })} disabled={busy}
                 aria-pressed={r.enabled}
@@ -457,13 +494,17 @@ function Automations() {
                 ['delayDays', 'Delay (days)', 0, 365],
                 ['repeatAfterDays', 'Repeat every (days)', 0, 365],
                 ['maxSends', 'Max sends per member', 1, 20],
-                ['dailyCap', 'Most a day', 0, 5000],
+                ['dailyCap', 'Daily Rule Limit', 0, 5000],
               ] as const).map(([field, label, min, max]) => (
                 <label key={field} className="text-[11px]">
-                  <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500">{label}</span>
+                  <span className="mb-1 block font-bold uppercase tracking-wide text-slate-500"
+                    title={field === 'dailyCap' ? 'Maximum automatic emails this journey may send in one IST day.' : undefined}>{label}</span>
                   <input type="number" min={min} max={max} value={(r as any)[field]} disabled={busy}
                     onChange={e => saveRule(r.templateKey, { [field]: parseInt(e.target.value) } as any)}
                     className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500" />
+                  {field === 'dailyCap' && r.recommendedDailyCap != null && r.recommendedDailyCap !== r.dailyCap && (
+                    <span className="mt-0.5 block text-[10px] font-normal normal-case text-slate-500">Recommended: {r.recommendedDailyCap}</span>
+                  )}
                 </label>
               ))}
             </div>
@@ -530,7 +571,116 @@ function Automations() {
           ))}
         </div>
       )}
+      {dueKey && <DueUsers ruleKey={dueKey} onClose={() => setDueKey(null)} />}
       {previewKey && <RulePreview templateKey={previewKey} onClose={() => setPreviewKey(null)} />}
+    </div>
+  );
+}
+
+type DueRow = {
+  id: string; displayName: string | null; email: string; organization: string | null; role: string; registrantType: string | null;
+  reason: string; attempt: number; createdAt: string; lastLoginAt: string | null; lastReadAt: string | null; lastAutomationAt: string | null;
+};
+
+/**
+ * Who a journey would mail right now. Read-only: it asks the server, which asks the same
+ * function the engine does, and it has no way to send anything.
+ */
+function DueUsers({ ruleKey, onClose }: { ruleKey: string; onClose: () => void }) {
+  const [data, setData] = useState<{ name: string; dueCount: number; capped: boolean; matching: number; users: DueRow[]; pageSize: number } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [search, setSearch] = useState('');
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { const t = setTimeout(() => { setQ(search.trim()); setPage(1); }, 300); return () => clearTimeout(t); }, [search]);
+  useEffect(() => {
+    let live = true;
+    setFailed(false);
+    const p = new URLSearchParams({ page: String(page), pageSize: '25' });
+    if (q) p.set('search', q);
+    fetch(`/api/admin/email-rules/${ruleKey}/due-users?${p}`, { headers: authHeader() })
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(d => { if (live) setData(d); })
+      .catch(() => { if (live) setFailed(true); });
+    return () => { live = false; };
+  }, [ruleKey, page, q]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', key);
+    return () => document.removeEventListener('keydown', key);
+  }, [onClose]);
+
+  const d = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
+  const pages = data ? Math.max(1, Math.ceil(data.matching / data.pageSize)) : 1;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Members due this mail" onClick={e => e.stopPropagation()}
+        className="flex h-full w-full max-w-4xl flex-col bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Due right now · read-only</p>
+            <h2 className="truncate text-lg font-bold text-slate-900">{data?.name || 'Loading…'}</h2>
+            {data && <p className="text-[12px] text-slate-600">
+              {n(data.dueCount)}{data.capped ? '+' : ''} members are due. Nothing is sent from this list.
+            </p>}
+          </div>
+          <button onClick={onClose} aria-label="Close" className="rounded-lg px-2 py-1 text-sm font-bold text-slate-500 hover:bg-slate-100">✕</button>
+        </div>
+        <div className="border-b border-slate-100 px-5 py-3">
+          <div className="relative max-w-sm">
+            <Search size={15} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="search" value={search} onChange={e => setSearch(e.target.value)} aria-label="Search due members"
+              placeholder="Search name, email or institution…"
+              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500" />
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto">
+          {failed ? <p className="p-10 text-center text-sm text-slate-500">Could not list who is due.</p>
+            : !data ? <div className="flex h-48 items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>
+            : data.users.length === 0 ? <p className="p-10 text-center text-sm text-slate-500">{q ? 'No due member matches that search.' : 'Nobody is due right now.'}</p>
+            : (
+              <table className="w-full min-w-[820px] text-left text-[12.5px]">
+                <thead className="sticky top-0 bg-slate-50 text-[10.5px] uppercase tracking-wide text-slate-600">
+                  <tr>
+                    {['Member', 'Institution / type', 'Why due', 'Created', 'Last login', 'Last read', 'Last auto mail'].map(h => (
+                      <th key={h} scope="col" className="px-4 py-2.5 font-bold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.users.map(u => (
+                    <tr key={u.id} className="align-top">
+                      <td className="px-4 py-2.5">
+                        <div className="font-semibold text-slate-900">{u.displayName || '—'}</div>
+                        <div className="text-slate-600">{u.email}</div>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-700">
+                        {u.organization || '—'}
+                        <div className="text-slate-500">{u.registrantType || u.role}</div>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-700">{u.reason}{u.attempt > 1 && <span className="text-slate-500"> · reminder {u.attempt}</span>}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-slate-700">{d(u.createdAt)}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-slate-700">{d(u.lastLoginAt)}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-slate-700">{d(u.lastReadAt)}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-slate-700">{u.lastAutomationAt ? d(u.lastAutomationAt) : 'Never'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+        </div>
+        {data && data.matching > data.pageSize && (
+          <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 text-[12px] text-slate-600">
+            <span>{n(data.matching)} members · page {page} of {pages}</span>
+            <span className="flex gap-2">
+              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="rounded-lg border border-slate-200 px-3 py-1 font-semibold disabled:opacity-40">Previous</button>
+              <button disabled={page >= pages} onClick={() => setPage(p => p + 1)} className="rounded-lg border border-slate-200 px-3 py-1 font-semibold disabled:opacity-40">Next</button>
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

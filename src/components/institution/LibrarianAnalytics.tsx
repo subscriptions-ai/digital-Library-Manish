@@ -323,7 +323,7 @@ export function LibrarianAnalytics({
               to="/institution/membership"
               className="mt-5 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
             >
-              <Sparkles size={15} /> Apply for Pro
+              <Sparkles size={15} /> Explore Subscription Options
             </Link>
             <p className="mt-3 text-xs text-faint">
               The summary on your dashboard stays open either way.

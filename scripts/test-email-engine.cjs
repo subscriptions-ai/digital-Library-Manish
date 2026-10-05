@@ -241,6 +241,40 @@ const SUFFIX = '@ee-test.invalid';
       await p.user.update({ where: { id: unverified.id }, data: { emailVerifiedAt: null } });
     }
 
+    console.log('\nDue users, and overlapping journeys');
+    {
+      await p.emailSend.deleteMany({ where: { email: { endsWith: SUFFIX } } });
+      await p.user.updateMany({ where: { email: { endsWith: SUFFIX } }, data: { lastMarketingAt: null } });
+      await rule('verify-email-reminder', { enabled: true, delayDays: 2 });
+      const sendsBefore = await p.emailSend.count();
+      const list = (await call('/api/admin/email-rules/verify-email-reminder/due-users?pageSize=100')).body;
+      const emails = (list.users || []).map(u => u.email);
+      expect(emails.includes(E(unverified)) && !emails.includes(E(verified)), 'the list names the unverified member and not the verified one');
+      const examples = dueIn(await dry('verify-email-reminder'), 'verify-email-reminder');
+      expect(examples.every(e => emails.includes(e)), 'everyone the dry run offers is in the list (same eligibility)');
+      expect(list.dueCount >= emails.length && typeof list.matching === 'number', 'it reports the count', `${list.dueCount} due`);
+      expect(await p.emailSend.count() === sendsBefore, 'listing sends nothing and writes nothing');
+      const hit = (await call('/api/admin/email-rules/verify-email-reminder/due-users?search=unverified' + SUFFIX.replace('@', '%40'))).body;
+      expect(hit.users.length === 1 && hit.users[0].email === E(unverified), 'search narrows the list');
+      const raw = JSON.stringify(list);
+      expect(!/password|token|otp/i.test(Object.keys(list.users[0] || {}).join(' ')) && !raw.includes('$2'), 'no password, token or secret fields are returned');
+      expect((await call('/api/admin/email-rules/new-features/due-users')).status === 400, 'a journey that is not automatic is refused');
+
+      await rule('verify-email-reminder', { enabled: false });
+      await rule('never-read', { enabled: true });
+      const clash = await call('/api/admin/email-rules/no-research-activity', 'POST', { enabled: true });
+      expect(clash.status === 409 && clash.body.code === 'OVERLAP', 'switching on the overlapping journey is refused with a warning');
+      expect(!(await p.emailRule.findUnique({ where: { templateKey: 'no-research-activity' } })).enabled, 'and nothing was switched silently');
+      const ok = await call('/api/admin/email-rules/no-research-activity', 'POST', { enabled: true, confirmOverlap: true });
+      expect(ok.status === 200 && ok.body.enabled === true, 'with confirmation it goes ahead');
+      const eng = (await call('/api/admin/email-engine')).body;
+      const nr = eng.rules.find(r => r.templateKey === 'never-read');
+      expect(nr.legacy === true && nr.overlapsWith === 'no-research-activity', 'the older journey is marked legacy');
+      expect(eng.rules.every(r => r.recommendedDailyCap == null || r.recommendedDailyCap <= 30), 'recommended daily limits are the safer ones');
+      await rule('never-read', { enabled: false });
+      await rule('no-research-activity', { enabled: false });
+    }
+
     console.log('\nThe day is the Indian day');
     {
       await p.emailSend.deleteMany({ where: { email: { endsWith: SUFFIX } } });

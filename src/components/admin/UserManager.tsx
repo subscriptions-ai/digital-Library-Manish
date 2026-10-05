@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, ShieldAlert, ShieldCheck, Mail, Calendar, CreditCard,
   ChevronDown, Pencil, Trash2, RefreshCw, X, Save, Loader2,
-  UserPlus, Filter, Building2, Download, BookOpen
+  UserPlus, Filter, Building2, Download, BookOpen, LogOut
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -183,6 +183,19 @@ export function UserManager() {
       fetchUsers();
     } catch {
       toast.error('Failed to update status');
+    }
+  };
+
+  /* ── END ACTIVE SESSION ── */
+  const handleEndSession = async (user: any) => {
+    if (!window.confirm(`Sign ${user.displayName || user.email} out? Their current session ends on its next request.`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/revoke-session`, { method: 'POST', headers: authHeader() });
+      if (!res.ok) throw new Error();
+      toast.success('Session ended');
+      fetchUsers();
+    } catch {
+      toast.error('Could not end the session');
     }
   };
 
@@ -494,6 +507,15 @@ export function UserManager() {
                         {user.isBlocked ? <ShieldAlert size={11} /> : <ShieldCheck size={11} />}
                         {user.isBlocked ? 'Blocked' : 'Active'}
                       </span>
+                      {user.activeSession && (
+                        <div className="mt-1.5 text-[10px] leading-tight text-slate-500">
+                          <p className="font-bold text-emerald-700">Signed in</p>
+                          <p>{user.activeSession.device || 'Unknown browser'}</p>
+                          <p>since {new Date(user.activeSession.loginAt).toLocaleString()}</p>
+                          <p>last active {new Date(user.activeSession.lastActivity).toLocaleString()}</p>
+                          <p>expires {new Date(user.activeSession.expiresAt).toLocaleString()}</p>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
@@ -515,6 +537,14 @@ export function UserManager() {
                           title={user.isBlocked ? 'Unblock' : 'Block'}>
                           {user.isBlocked ? <ShieldCheck size={15} /> : <ShieldAlert size={15} />}
                         </button>
+                        {/* Sign out active session */}
+                        {user.activeSession && (
+                          <button onClick={() => handleEndSession(user)}
+                            className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                            title="Sign out active session">
+                            <LogOut size={15} />
+                          </button>
+                        )}
                         {/* Reset Password */}
                         <button onClick={() => setResetTarget(user)}
                           className="p-2 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"

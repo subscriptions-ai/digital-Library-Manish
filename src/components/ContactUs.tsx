@@ -4,6 +4,7 @@ import { COMPANY_DETAILS } from "../config";
 import { toast } from "react-hot-toast";
 import { cn } from "../lib/utils";
 import { motion, AnimatePresence } from "motion/react";
+import { useLocation } from "react-router-dom";
 
 const INDIA_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", 
@@ -135,17 +136,19 @@ function MultiSelect({
 }
 
 export function ContactUs() {
+  // A page that sends someone here can bring the words and the details with it.
+  const prefill = (useLocation().state as any)?.prefill || {};
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
+    fullName: prefill.fullName || "",
+    email: prefill.email || "",
     mobile: "",
     whatsapp: "",
     sameAsMobile: false,
     designation: "",
     departments: [] as string[],
     state: "",
-    organization: "",
-    message: ""
+    organization: prefill.organization || "",
+    message: prefill.message || ""
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);

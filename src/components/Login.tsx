@@ -10,6 +10,8 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Set when the server says this account is already signed in elsewhere.
+  const [sessionElsewhere, setSessionElsewhere] = useState(false);
 
   // Forgot password state
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -22,8 +24,19 @@ export function Login() {
 
   const { login, profile } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // Left by the global fetch guard when a revoked or expired session sent us here.
+  React.useEffect(() => {
+    try {
+      if (sessionStorage.getItem('sessionEnded')) {
+        sessionStorage.removeItem('sessionEnded');
+        toast.error('Your session has ended. Please sign in again.');
+      }
+    } catch { /* storage unavailable — the redirect itself is the message */ }
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent, replaceExisting = false) => {
     e.preventDefault();
+    setSessionElsewhere(false);
     if (!email || !password) {
       toast.error('Please fill in all fields');
       return;
@@ -31,7 +44,7 @@ export function Login() {
 
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, replaceExisting);
       // login updates the profile in context, but for immediate redirection 
       // we might need to rely on what the context will have. 
       // However, we can also just wait for the profile to be updated or use the return from login if we modified it.
@@ -43,7 +56,8 @@ export function Login() {
       // but we need the role. Let's assume we can navigate to /dashboard 
       // and it will redirect if admin. Or better, check current profile if available.
     } catch (error: any) {
-      toast.error(error.message || 'Failed to login');
+      if (error?.code === 'ACTIVE_SESSION_EXISTS') setSessionElsewhere(true);
+      else toast.error(error.message || 'Failed to login');
     } finally {
       setLoading(false);
     }
@@ -196,6 +210,21 @@ export function Login() {
                 </button>
               </div>
             </div>
+            {sessionElsewhere && (
+              <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <p className="font-bold">Already signed in elsewhere</p>
+                <p className="mt-1">This account is already signed in on another device or browser. Please sign out from the active session before signing in here.</p>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={(e) => handleLogin(e as any, true)}
+                  className="mt-3 text-xs font-bold text-amber-900 underline underline-offset-2 hover:text-amber-700 disabled:opacity-50"
+                >
+                  Sign out the other session and sign in here
+                </button>
+                <p className="mt-1 text-[11px] text-amber-800">Uses the password you entered above.</p>
+              </div>
+            )}
             <button 
               type="submit"
               disabled={loading}

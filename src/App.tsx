@@ -169,6 +169,8 @@ function FirstLoginGate({ children }: { children: React.ReactNode }) {
 import { HelmetProvider } from "react-helmet-async";
 import { AnalyticsTracker } from "./components/AnalyticsTracker";
 import { CookieConsent } from "./components/CookieConsent";
+import { WhatsAppFloatingButton } from "./components/WhatsAppFloatingButton";
+import { InstallWebAppPrompt } from "./components/InstallWebAppPrompt";
 import { EmailVerificationPopup } from "./components/dashboard/EmailVerificationPopup";
 
 export default function App() {
@@ -184,6 +186,8 @@ export default function App() {
               <div className="flex min-h-screen flex-col font-sans text-ink bg-ground antialiased">
                 <Toaster position="top-right" />
                 <CookieConsent />
+                <WhatsAppFloatingButton />
+                <InstallWebAppPrompt />
                 <EmailVerificationPopup />
                 <Routes>
                 {/* Subscriber Dashboard routes with DashboardLayout */}

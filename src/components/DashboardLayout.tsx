@@ -1,3 +1,4 @@
+import { SeatNotice } from './dashboard/SeatNotice';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -253,6 +254,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 relative">
+          <SeatNotice />
           {children}
         </div>
       </main>

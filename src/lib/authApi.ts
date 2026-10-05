@@ -32,16 +32,18 @@ export const authApi = {
     return data;
   },
 
-  async login(email: string, password: string): Promise<AuthResponse> {
+  async login(email: string, password: string, replaceExisting = false): Promise<AuthResponse> {
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, ...(replaceExisting ? { replaceExisting: true } : {}) }),
     });
     
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Login failed');
+      const failure: any = new Error(error.error || 'Login failed');
+      failure.code = error.code;
+      throw failure;
     }
     
     const data = await response.json();

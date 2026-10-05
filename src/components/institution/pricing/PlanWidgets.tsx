@@ -38,7 +38,7 @@ export function PlanMiniCard() {
         </p>
         <p className="mt-0.5 text-[11.5px] leading-snug text-white/75">Premium department access starts from {FROM_PRICE}.</p>
         <button onClick={() => navigate('/institution/subscriptions')} className={button}>
-          Subscribe from {FROM_PRICE}
+          Explore Subscription Options
         </button>
       </div>
     );

@@ -11,7 +11,7 @@ interface AuthContextType {
   isSubscriber: boolean;
   isContentManager: boolean;
   isInstitutionAdmin: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, replaceExisting?: boolean) => Promise<void>;
   signup: (email: string, password: string, name: string, organization?: string, contact?: string, designation?: string, interestedDomains?: string[], extra?: { registrantType?: string; state?: string; country?: string; whatsapp?: string }) => Promise<void>;
   logout: () => Promise<void>;
   fetchProfile: () => Promise<void>;
@@ -42,8 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchProfile();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await authApi.login(email, password);
+  const login = async (email: string, password: string, replaceExisting = false) => {
+    const response = await authApi.login(email, password, replaceExisting);
     setUser(response.user);
     setProfile(response.user as UserProfile);
   };

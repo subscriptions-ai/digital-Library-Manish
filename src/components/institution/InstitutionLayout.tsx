@@ -183,7 +183,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search journals, books, subjects…"
+              placeholder="Search the entire library…"
               className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-faint"
             />
           </form>
@@ -260,7 +260,7 @@ function RailPlan({ timed, onPro }: { timed: boolean; onPro: () => void }) {
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/70">Free membership</p>
       <p className="mt-1 text-[13px] font-semibold leading-snug">Read without a limit</p>
       <button onClick={onPro} className="mt-2.5 w-full rounded-xl bg-white/15 py-1.5 text-[12px] font-bold hover:bg-white/25">
-        Apply for Pro
+        Explore Subscription Options
       </button>
     </div>
   );

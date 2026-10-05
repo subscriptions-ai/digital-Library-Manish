@@ -4,10 +4,13 @@ import {
   ChevronDown, Pencil, Trash2, X, Save, Loader2, Activity, RefreshCw, Eye, EyeOff, Lock
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePricing } from './pricing/PricingContext';
 import { seatsLabel } from './pricing/PlanWidgets';
+import { LicensedAccessPanel } from '../LicensedAccessPanel';
 
 function authHeader() {
   return { Authorization: `Bearer ${localStorage.getItem('token')}` };
@@ -65,6 +68,24 @@ export function InstitutionStudentManager() {
   // The plan decides whether anyone can be added at all, and how many more.
   const pricing = usePricing();
   const plan = pricing?.plan ?? null;
+  const navigate = useNavigate();
+  const { profile } = useAuth();
+  // Set by the server: this institution may not add members at the moment.
+  const [addRestricted, setAddRestricted] = useState(false);
+  const [institutionName, setInstitutionName] = useState('');
+  const RESTRICTED_TEXT = 'User addition is currently restricted for your institution.';
+
+  const contactSupport = () => navigate('/contact', { state: { prefill: {
+    fullName: profile?.displayName || '', email: profile?.email || '', organization: institutionName,
+    message: `Hello, user addition is currently restricted for our institution. Please help us review and restore member-adding access.\n\nInstitution: ${institutionName}`,
+  } } });
+
+  useEffect(() => {
+    fetch('/api/institution/user-addition', { headers: authHeader() })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d) { setAddRestricted(!!d.restricted); setInstitutionName(d.institutionName || ''); } })
+      .catch(() => {});
+  }, []);
   const [students, setStudents] = useState<any[]>([]);
   // Whether the cap applies at all: an institution with a subscription is not
   // limited here, and must not be shown a notice about a limit it does not have.
@@ -131,6 +152,11 @@ export function InstitutionStudentManager() {
 
   /** The server's own refusal for want of seats: say it, and offer the way out. */
   const handleSeatRefusal = (data: any, then?: () => void): boolean => {
+    if (data?.code === 'USER_ADDITION_RESTRICTED') {
+      setAddRestricted(true);
+      toast.error(`${RESTRICTED_TEXT} Please contact STM Digital Library support.`);
+      return true;
+    }
     if (data?.code === 'NEEDS_SUBSCRIPTION') {
       toast.error(data.error || 'Subscribe to at least one department before adding users.');
       pricing?.openDepartments();
@@ -144,8 +170,8 @@ export function InstitutionStudentManager() {
     return false;
   };
 
-  const openAdd = () => { if (haveSeat(() => setShowAddModal(true))) setShowAddModal(true); };
-  const openImport = () => { if (haveSeat(() => setShowImportModal(true))) setShowImportModal(true); };
+  const openAdd = () => { if (addRestricted) { toast.error(RESTRICTED_TEXT); return; } if (haveSeat(() => setShowAddModal(true))) setShowAddModal(true); };
+  const openImport = () => { if (addRestricted) { toast.error(RESTRICTED_TEXT); return; } if (haveSeat(() => setShowImportModal(true))) setShowImportModal(true); };
 
   useEffect(() => {
     fetch('/api/institution/overview', { headers: authHeader() })
@@ -270,6 +296,23 @@ export function InstitutionStudentManager() {
 
   return (
     <div className="space-y-6">
+      {addRestricted && (
+        <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <p className="font-bold">⚠ Member addition is currently restricted</p>
+          <p className="mt-1 text-sm">
+            Your institution cannot add new users at this time. Existing users and library access are unaffected.
+            Please contact STM Digital Library support for assistance.
+          </p>
+          <button onClick={contactSupport} className="mt-3 rounded-md bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700">
+            Contact Us
+          </button>
+        </div>
+      )}
+      {/* Subscription access: who holds the institution's licensed seats */}
+      <details className="rounded-md border border-rule bg-surface p-4">
+        <summary className="cursor-pointer text-sm font-bold text-ink">Subscription Access</summary>
+        <div className="mt-4"><LicensedAccessPanel base="/api/institution/access" institutionName={institutionName} /></div>
+      </details>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -313,13 +356,17 @@ export function InstitutionStudentManager() {
           </button>
           <button
             onClick={openImport}
-            className="flex items-center gap-2 bg-surface border border-rule text-ink-2 px-4 py-2.5 rounded-md text-sm font-bold hover:bg-surface-2 transition-colors"
+            disabled={addRestricted}
+            title={addRestricted ? RESTRICTED_TEXT : undefined}
+            className="disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 bg-surface border border-rule text-ink-2 px-4 py-2.5 rounded-md text-sm font-bold hover:bg-surface-2 transition-colors"
           >
             Import Users
           </button>
           <button
             onClick={openAdd}
-            className="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-md text-sm font-bold hover:bg-accent-hover shadow-md"
+            disabled={addRestricted}
+            title={addRestricted ? RESTRICTED_TEXT : undefined}
+            className="disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-md text-sm font-bold hover:bg-accent-hover shadow-md"
           >
             <Plus size={16} /> Add User
           </button>
