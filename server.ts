@@ -33,6 +33,8 @@ import {
 } from "./src/lib/marketingEmails.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
 import { priceDepartments, termEnd, MAX_INSTITUTION_USERS, DEPARTMENT_RATES, GST_RATE } from "./src/lib/institutionPricing.js";
+import { cleanSubjectArea } from "./src/lib/subjects.js";
+import { previousIstDay, buildDailyUserDigest, DIGEST_ROW_LIMIT, DIGEST_TEMPLATE_KEY } from "./src/lib/dailyUserDigest.js";
 import {
   MAIL_BASE, esc, escLines, buildEmail,
   eBody, eH1, eP, eMuted, eBtn, eCard, eRows, eQuote,
@@ -151,6 +153,103 @@ async function startServer() {
     throw new Error("CRITICAL SECURITY ERROR: JWT_SECRET must be set in production environment variables.");
   }
 
+  /**
+   * One account, one live session.
+   *
+   * A signed token alone no longer proves anything: it carries `sid`, and the
+   * session row that `sid` names must still be live. Signing in creates that
+   * row; signing out, an admin, or the expiry date ends it. Tokens issued
+   * before this existed carry no `sid` and are refused, so everyone signs in
+   * once after the deploy.
+   */
+  const SESSION_TTL_SECONDS = 24 * 60 * 60;
+  const SESSION_TOUCH_MS = 5 * 60 * 1000;
+  const SESSION_ENDED = { code: "SESSION_EXPIRED_OR_REVOKED", error: "Your session has ended. Please sign in again." };
+
+  /** A rough "Chrome on Windows" for the admin screen — never used to identify a device. */
+  const describeDevice = (ua: string): string | null => {
+    if (!ua) return null;
+    const browser = /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox'
+      : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+    const os = /Android/.test(ua) ? 'Android' : /iPhone|iPad|iOS/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows'
+      : /Mac OS X|Macintosh/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'unknown system';
+    return `${browser} on ${os}`;
+  };
+
+  const lastTouched = new Map<string, number>();
+
+  /**
+   * Opens the member's one session, or reports that one is already open.
+   *
+   * The check and the insert run under a per-member advisory lock, so two
+   * sign-ins arriving together queue: the first creates the row, the second
+   * then sees it and is refused. `replaceExisting` is only ever passed by a
+   * sign-in whose password has just been verified.
+   */
+  const startSession = async (
+    userObj: { id: string; email: string; role: string; institutionId?: string | null },
+    req: any,
+    opts: { replaceExisting?: boolean; claims?: Record<string, any> } = {},
+  ): Promise<{ token: string } | null> => {
+    const sessionId = crypto.randomBytes(32).toString('hex');
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
+    const ua = String(req.headers?.['user-agent'] || '').slice(0, 400);
+
+    const created = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'user-session:' + userObj.id}))`;
+      const live = await tx.userSession.findFirst({
+        where: { userId: userObj.id, revokedAt: null, expiresAt: { gt: now } },
+        select: { id: true },
+      });
+      if (live && !opts.replaceExisting) return false;
+      // Whatever is still open is either being replaced or already expired.
+      await tx.userSession.updateMany({ where: { userId: userObj.id, revokedAt: null }, data: { revokedAt: now } });
+      await tx.userSession.deleteMany({ where: { userId: userObj.id, expiresAt: { lt: new Date(now.getTime() - 7 * 864e5) } } });
+      await tx.userSession.create({
+        data: {
+          userId: userObj.id, sessionId, expiresAt, userAgent: ua || null,
+          ipAddress: req.ip ? String(req.ip).slice(0, 64) : null, deviceLabel: describeDevice(ua),
+        },
+      });
+      return true;
+    });
+    if (!created) return null;
+
+    // `exp` is set from the same instant as the row's expiresAt, so the two end together.
+    const token = jwt.sign(
+      { uid: userObj.id, email: userObj.email, role: userObj.role, institutionId: userObj.institutionId, ...(opts.claims || {}),
+        sid: sessionId, exp: Math.floor(expiresAt.getTime() / 1000) },
+      JWT_SECRET,
+    );
+    return { token };
+  };
+
+  const sendActiveSessionExists = (res: any) => res.status(409).json({
+    code: "ACTIVE_SESSION_EXISTS",
+    error: "This account is already signed in on another device or browser.",
+    message: "This account is already signed in on another device or browser.",
+  });
+
+  /** True when the verified token's session is still live. Touches lastSeenAt at most every five minutes. */
+  const sessionIsLive = async (claims: any): Promise<boolean> => {
+    if (claims?.uid === "__validator__") return true; // the server's own short-lived internal token
+    if (!claims?.sid || !claims?.uid) return false;
+    const row = await prisma.userSession.findUnique({
+      where: { sessionId: String(claims.sid) },
+      select: { userId: true, revokedAt: true, expiresAt: true },
+    });
+    const now = Date.now();
+    if (!row || row.userId !== claims.uid || row.revokedAt || row.expiresAt.getTime() <= now) return false;
+    const last = lastTouched.get(claims.sid) || 0;
+    if (now - last > SESSION_TOUCH_MS) {
+      if (lastTouched.size > 20000) lastTouched.clear();
+      lastTouched.set(claims.sid, now);
+      prisma.userSession.updateMany({ where: { sessionId: claims.sid }, data: { lastSeenAt: new Date(now) } }).catch(() => {});
+    }
+    return true;
+  };
+
   // Middleware to authenticate JWT
   const authenticateJWT = (req: any, res: any, next: any) => {
     let token = '';
@@ -162,9 +261,15 @@ async function startServer() {
     }
 
     if (token) {
-      jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+      jwt.verify(token, JWT_SECRET, async (err: any, user: any) => {
         if (err) {
           return res.status(403).json({ error: "Forbidden: Invalid or expired token" });
+        }
+        try {
+          if (!(await sessionIsLive(user))) return res.status(401).json(SESSION_ENDED);
+        } catch (e) {
+          console.error("session check failed", e);
+          return res.status(500).json({ error: "Could not verify your session" });
         }
         req.user = user;
         next();
@@ -668,58 +773,82 @@ async function startServer() {
 
   // Auth: Signup
   /**
-   * New members, gathered up and reported together.
+   * New registrations, reported to the admin once a day.
    *
-   * Flushed every half hour, or sooner if fifty arrive first. The alert is a
-   * convenience — whoever joined is in the members list and in the sales CRM
-   * whatever happens to this buffer — so losing half an hour of it to a restart
-   * costs nothing, and that is why it is allowed to live in memory.
+   * There is no per-signup alert and no buffer: the digest reads the members
+   * table for the previous calendar day in IST, so nothing is lost to a restart.
+   * It runs at 00:00 Asia/Kolkata and again every half hour until 05:30 — the
+   * later runs only matter if the first failed, and they skip once the day has a
+   * Sent row. The record of each day lives in EmailSend under
+   * "daily-new-users:YYYY-MM-DD" (userId is null, so the unique key cannot
+   * enforce this; the check below does, and the job runs in one process).
    */
-  const joinedSinceLastAlert: {
-    name: string; email: string; organization: string | null;
-    designation: string | null; interests: string[]; at: Date;
-  }[] = [];
+  const sendDailyUserDigest = async (now: Date = new Date()) => {
+    const win = previousIstDay(now);
+    const where = { templateKey: DIGEST_TEMPLATE_KEY, dedupeKey: win.dedupeKey };
+    const done = await (prisma as any).emailSend.findFirst({
+      where: {
+        ...where,
+        OR: [
+          { status: { in: ['Sent', 'Skipped'] } },
+          { status: 'Sending', updatedAt: { gt: new Date(now.getTime() - 10 * 60_000) } },
+        ],
+      },
+    });
+    if (done) return { skipped: true, reason: `already ${done.status}`, day: win.isoDay };
 
-  const flushJoinAlerts = async () => {
-    if (!joinedSinceLastAlert.length) return;
-    const batch = joinedSinceLastAlert.splice(0, joinedSinceLastAlert.length);
+    const base: any = {
+      role: { in: ['Subscriber', 'Institution'] },
+      isDemoAccount: false,
+      createdAt: { gte: win.start, lt: win.end },
+    };
+    const [total, verified, institutionLinked] = await Promise.all([
+      prisma.user.count({ where: base }),
+      prisma.user.count({ where: { ...base, emailVerifiedAt: { not: null } } }),
+      prisma.user.count({ where: { ...base, OR: [{ role: 'Institution' }, { institutionId: { not: null } }] } }),
+    ]);
 
-    const byInterest = new Map<string, number>();
-    for (const j of batch) for (const d of j.interests) byInterest.set(d, (byInterest.get(d) || 0) + 1);
-    const popular = [...byInterest.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const to = process.env.ADMIN_EMAIL || COMPANY_DETAILS.email;
+    if (total === 0) {
+      await (prisma as any).emailSend.create({
+        data: { ...where, email: to, subject: 'Daily new-user digest', status: 'Skipped', reason: 'no registrations', sentBy: 'auto', context: { day: win.isoDay, total: 0 } },
+      });
+      console.log(`daily user digest ${win.isoDay}: 0 new users, no email`);
+      return { skipped: true, reason: 'no registrations', day: win.isoDay };
+    }
 
-    const rows = batch.slice(0, 60).map((j, i) => (
-      `<tr style="background:${i % 2 ? '#fafbfc' : '#fff'};">` +
-      `<td style="padding:8px 14px;font-size:12.5px;color:#1e293b;">${j.name || '—'}</td>` +
-      `<td style="padding:8px 14px;font-size:12.5px;color:#1e3a6e;">${j.email}</td>` +
-      `<td style="padding:8px 14px;font-size:12px;color:#475569;">${j.organization || '—'}</td>` +
-      `<td style="padding:8px 14px;font-size:12px;color:#64748b;">${j.interests.join(', ') || '—'}</td>` +
-      `</tr>`
-    )).join('');
+    const users = await prisma.user.findMany({
+      where: base, orderBy: { createdAt: 'asc' }, take: DIGEST_ROW_LIMIT,
+      select: { displayName: true, email: true, organization: true, registrantType: true,
+                signupSource: true, institutionId: true, emailVerifiedAt: true, createdAt: true },
+    });
+    const { subject, html } = buildDailyUserDigest(win, {
+      total, verified, unverified: total - verified,
+      institutionLinked, individual: total - institutionLinked,
+    }, users);
 
-    await sendMail({
-      to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
-      subject: `🆕 ${batch.length} new member${batch.length > 1 ? 's' : ''} joined`,
-      html: buildEmail(
-        `<tr><td style="padding:28px 40px 24px;">` +
-        `<p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">${batch.length} new member${batch.length > 1 ? 's' : ''}</p>` +
-        `<p style="margin:0 0 18px;font-size:13px;color:#475569;">Since the last of these. All of them are in the members list and filed as leads.</p>` +
-        (popular.length
-          ? `<p style="margin:0 0 14px;font-size:12.5px;color:#334155;"><b>Most wanted:</b> ${popular.map(([d, n]) => `${d} (${n})`).join(' · ')}</p>`
-          : '') +
-        `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;">` +
-        `<tr style="background:#f8fafc;">` +
-        `<td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Name</td>` +
-        `<td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Email</td>` +
-        `<td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Organisation</td>` +
-        `<td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Wants to read</td>` +
-        `</tr>${rows}</table>` +
-        (batch.length > 60 ? `<p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">…and ${batch.length - 60} more.</p>` : '') +
-        `</td></tr>`),
-    }).catch((e: any) => console.error('join alerts: could not send', e?.message));
+    // Claim the day before sending. An earlier Failed row is reused, not duplicated.
+    const prior = await (prisma as any).emailSend.findFirst({ where, orderBy: { createdAt: 'desc' } });
+    const row = prior
+      ? await (prisma as any).emailSend.update({ where: { id: prior.id }, data: { status: 'Sending', subject, error: null } })
+      : await (prisma as any).emailSend.create({ data: { ...where, email: to, subject, status: 'Sending', sentBy: 'auto' } });
+    try {
+      await sendMail({
+        from: `"STM Digital Library" <${(process.env.EMAIL_FROM || process.env.EMAIL_USER || '').trim()}>`,
+        to, subject, html, _throwOnError: true,
+      });
+      await (prisma as any).emailSend.update({ where: { id: row.id }, data: { status: 'Sent', context: { day: win.isoDay, total } } });
+      console.log(`daily user digest ${win.isoDay}: sent, ${total} new users`);
+      return { sent: true, day: win.isoDay, total };
+    } catch (e: any) {
+      await (prisma as any).emailSend.update({ where: { id: row.id }, data: { status: 'Failed', error: String(e?.message || e) } }).catch(() => {});
+      console.error(`daily user digest ${win.isoDay}: failed, will retry`, e?.message);
+      return { failed: true, day: win.isoDay, error: e?.message };
+    }
   };
 
-  cron.schedule("*/30 * * * *", () => { flushJoinAlerts().catch(() => {}); });
+  cron.schedule('0,30 0-5 * * *', () => { sendDailyUserDigest().catch((e) => console.error('daily user digest:', e?.message)); },
+    { timezone: 'Asia/Kolkata' });
 
   app.post("/api/auth/signup", async (req, res) => {
     try {
@@ -870,23 +999,13 @@ async function startServer() {
         }).catch((e: any) => console.error('signup: could not file the lead', e?.message));
       }
 
-      const token = jwt.sign({ uid: userObj.id, email, role: userObj.role }, JWT_SECRET, { expiresIn: '24h' });
+      // A brand-new account has no other session, so this cannot be refused.
+      const token = (await startSession({ id: userObj.id, email, role: userObj.role }, req))!.token;
       
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
 
-      // Gathered, not sent one at a time. Twenty thousand members arriving from
-      // one mailing would otherwise be twenty thousand separate alerts into the
-      // same inbox, which is not a notification — it is a way of making sure
-      // nobody ever reads one again. Nothing is lost if the process restarts:
-      // the member is in the database and filed as a lead either way.
-      joinedSinceLastAlert.push({
-        name, email,
-        organization: organization || null,
-        designation: designation || null,
-        interests,
-        at: new Date(),
-      });
-      if (joinedSinceLastAlert.length >= 50) flushJoinAlerts().catch(() => {});
+      // No admin alert here: new registrations are reported once a day by
+      // sendDailyUserDigest, read from the members table.
 
       const userMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
@@ -946,14 +1065,11 @@ async function startServer() {
           });
         }
         
-        const token = jwt.sign(
-          { uid: adminUser.id, email, role: 'SuperAdmin' }, 
-          JWT_SECRET, 
-          { expiresIn: '24h' }
-        );
-        
+        const started = await startSession({ id: adminUser.id, email, role: 'SuperAdmin' }, req, { replaceExisting: !!req.body?.replaceExisting });
+        if (!started) return sendActiveSessionExists(res);
+
         const { password: _, ...profile } = adminUser;
-        return res.json({ token, user: profile });
+        return res.json({ token: started.token, user: profile });
       }
       // -----------------------------------------------
 
@@ -977,12 +1093,17 @@ async function startServer() {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      const token = jwt.sign(
-        { uid: userObj.id, email, role: userObj.role, institutionId: userObj.institutionId }, 
-        JWT_SECRET, 
-        { expiresIn: '24h' }
+      // Only now — password verified — is it safe to say anything about other
+      // sessions. `replaceExisting` is the member choosing to end the other one,
+      // and is honoured only because the password above has just been checked.
+      const started = await startSession(
+        { id: userObj.id, email, role: userObj.role, institutionId: userObj.institutionId },
+        req,
+        { replaceExisting: req.body?.replaceExisting === true },
       );
-      
+      if (!started) return sendActiveSessionExists(res);
+      const token = started.token;
+
       // Recorded for the lifecycle mail rules. Not awaited, and its failure is
       // nobody's business at the door.
       prisma.user.update({ where: { id: userObj.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
@@ -1011,12 +1132,23 @@ async function startServer() {
    * clock left no trace on the side that keeps it. It stops the clock and banks
    * what is left of the stretch for when they return.
    *
-   * The token itself stays valid until it expires, as it always has, so this is
-   * not a revocation; anything done with a kept token starts the clock again.
+   * It also ends the session, so a kept copy of the token stops working. (Before
+   * single-session sign-in the token simply outlived this call.)
    */
   app.post("/api/auth/logout", authenticateJWT, async (req: any, res) => {
     try { await pauseFor(prisma, req.user.uid); }
     catch (e) { console.error('logout: could not stop the clock', e); }
+    // Ends this token's own session — matched on both the session and the
+    // member, so it can never reach anybody else's.
+    try {
+      if (req.user.sid) {
+        await prisma.userSession.updateMany({
+          where: { sessionId: req.user.sid, userId: req.user.uid, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        lastTouched.delete(req.user.sid);
+      }
+    } catch (e) { console.error('logout: could not end the session', e); }
     res.json({ ok: true });
   });
 
@@ -2045,18 +2177,20 @@ async function startServer() {
      ──────────────────────────────────────────────────────────────────────── */
 
   /** Which mails the engine may send on its own, and how they start out. */
+  // These are the starting values for a rule that does not exist yet, and the figures the
+  // admin screen recommends. A rule already saved keeps whatever the admin set.
   const AUTOMATIC: { key: TemplateKey; delayDays: number; repeatAfterDays: number; maxSends: number; dailyCap: number }[] = [
-    { key: 'profile-incomplete', delayDays: 2, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
-    { key: 'never-read', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
-    { key: 'librarian-add-users', delayDays: 30, repeatAfterDays: 30, maxSends: 6, dailyCap: 50 },
+    { key: 'profile-incomplete', delayDays: 2, repeatAfterDays: 7, maxSends: 2, dailyCap: 20 },
+    { key: 'never-read', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 30 },
+    { key: 'librarian-add-users', delayDays: 30, repeatAfterDays: 30, maxSends: 6, dailyCap: 20 },
     // Added with the activity signals. Every one starts switched off, like the
     // rest, and is read in the dry run before it is ever turned on. For the
     // verification reminder the repeat interval cannot usefully be shorter than
     // the marketing gap, which holds every journey to one mail per member.
-    { key: 'verify-email-reminder', delayDays: 1, repeatAfterDays: 5, maxSends: 3, dailyCap: 100 },
-    { key: 'never-logged-in', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
-    { key: 'no-research-activity', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
-    { key: 'inactive-user', delayDays: 30, repeatAfterDays: 30, maxSends: 2, dailyCap: 100 },
+    { key: 'verify-email-reminder', delayDays: 1, repeatAfterDays: 5, maxSends: 3, dailyCap: 30 },
+    { key: 'never-logged-in', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 30 },
+    { key: 'no-research-activity', delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 30 },
+    { key: 'inactive-user', delayDays: 30, repeatAfterDays: 30, maxSends: 2, dailyCap: 20 },
     // 'pro-benefits' and 'new-features' are deliberately absent: both are sent
     // by hand, because both are announcements rather than nudges.
   ];
@@ -2349,6 +2483,13 @@ async function startServer() {
     }
   });
 
+  /**
+   * Two journeys that go to much the same people. "Never read" is the older one;
+   * "Start with a search" checks the same thing from the event log and only reaches
+   * members who have signed in. Both running means one person is nudged twice for one reason.
+   */
+  const OVERLAPPING: Record<string, string> = { 'never-read': 'no-research-activity', 'no-research-activity': 'never-read' };
+
   /** One line saying what sets a journey off, with its own wait written in. */
   const triggerSummary = (r: any) => {
     const d = r.delayDays;
@@ -2381,6 +2522,9 @@ async function startServer() {
           name: TEMPLATES[r.templateKey as TemplateKey]?.name || r.templateKey,
           audience: TEMPLATES[r.templateKey as TemplateKey]?.audience || '',
           trigger: triggerSummary(r),
+          legacy: r.templateKey === 'never-read',
+          overlapsWith: OVERLAPPING[r.templateKey] || null,
+          recommendedDailyCap: AUTOMATIC.find(a => a.key === r.templateKey)?.dailyCap ?? null,
           due: due.find(d => d.templateKey === r.templateKey)?.due ?? 0,
         })),
       });
@@ -2409,8 +2553,19 @@ async function startServer() {
     try {
       const key = req.params.key;
       if (!AUTOMATIC.some(a => a.key === key)) return res.status(400).json({ error: "That mail is not sent automatically" });
-      const { enabled, delayDays, repeatAfterDays, maxSends, dailyCap } = req.body || {};
+      const { enabled, delayDays, repeatAfterDays, maxSends, dailyCap, confirmOverlap } = req.body || {};
       const data: any = {};
+      if (enabled === true && OVERLAPPING[key] && confirmOverlap !== true) {
+        // Not switched silently: the admin is told, and may go ahead.
+        const other = (await emailRules()).find((r: any) => r.templateKey === OVERLAPPING[key]);
+        if (other?.enabled) {
+          return res.status(409).json({
+            code: 'OVERLAP', other: other.templateKey,
+            otherName: TEMPLATES[other.templateKey as TemplateKey]?.name || other.templateKey,
+            error: 'These journeys target similar inactive members and may cause overlapping reminders. Disable one before continuing.',
+          });
+        }
+      }
       if (typeof enabled === 'boolean') data.enabled = enabled;
       if (Number.isInteger(delayDays) && delayDays >= 0 && delayDays <= 365) data.delayDays = delayDays;
       if (Number.isInteger(repeatAfterDays) && repeatAfterDays >= 0 && repeatAfterDays <= 365) data.repeatAfterDays = repeatAfterDays;
@@ -2420,6 +2575,64 @@ async function startServer() {
       res.json(await (prisma as any).emailRule.update({ where: { templateKey: key }, data }));
     } catch {
       res.status(500).json({ error: "Failed to change that journey" });
+    }
+  });
+
+  /**
+   * Who is due a journey right now — read-only.
+   *
+   * It asks the same function the engine and the "due right now" count ask (dueFor,
+   * which ends in mailEligibility), so this list cannot disagree with what a pass would
+   * do. It sends nothing and writes nothing, and names only fields safe to show.
+   */
+  app.get("/api/admin/email-rules/:key/due-users", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const key = req.params.key;
+      if (!AUTOMATIC.some(a => a.key === key)) return res.status(400).json({ error: "That mail is not sent automatically" });
+      const state = await emailEngineState();
+      const rule = (await emailRules()).find((r: any) => r.templateKey === key);
+      if (!rule) return res.status(404).json({ error: "No such journey" });
+      const tracking = state.loginTrackingSince ? new Date(state.loginTrackingSince) : null;
+      const LIMIT = 500;
+      const due = await dueFor(rule, LIMIT, undefined, tracking);
+
+      const ids = due.map((d: any) => d.user.id);
+      const lastAuto = ids.length ? await (prisma as any).emailSend.groupBy({
+        by: ['userId'], where: { userId: { in: ids }, sentBy: 'auto', status: 'Sent' }, _max: { createdAt: true },
+      }) : [];
+      const lastById = new Map<string, Date>(lastAuto.map((g: any) => [g.userId, g._max.createdAt]));
+
+      const q = String(req.query.search || '').trim().toLowerCase();
+      let rows = due.map((d: any) => ({
+        id: d.user.id,
+        displayName: d.user.displayName || null,
+        email: d.user.email,
+        organization: d.user.organization || null,
+        role: d.user.role,
+        registrantType: d.user.registrantType || null,
+        reason: d.why,
+        attempt: d.attempt,
+        createdAt: d.user.createdAt,
+        lastLoginAt: d.user.lastLoginAt || null,
+        lastReadAt: d.user.lastReadAt || null,
+        lastAutomationAt: lastById.get(d.user.id) || null,
+      }));
+      if (q) rows = rows.filter((r: any) => `${r.displayName || ''} ${r.email} ${r.organization || ''}`.toLowerCase().includes(q));
+
+      const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize || '25')) || 25));
+      const page = Math.max(1, parseInt(String(req.query.page || '1')) || 1);
+      res.json({
+        ruleKey: key,
+        name: TEMPLATES[key as TemplateKey]?.name || key,
+        dueCount: due.length,
+        capped: due.length >= LIMIT,
+        matching: rows.length,
+        page, pageSize,
+        users: rows.slice((page - 1) * pageSize, page * pageSize),
+      });
+    } catch (e: any) {
+      console.error('due users failed', e?.message);
+      res.status(500).json({ error: "Could not list who is due" });
     }
   });
 
@@ -3510,6 +3723,67 @@ async function startServer() {
     }
   });
 
+  /**
+   * Licensed subscription seats.
+   *
+   * Who may be ADDED to an institution is a separate matter (the seat cap on
+   * adding people, and the user-addition restriction). This is about who, of
+   * the people already there, holds the institution's subscription access. A
+   * Super Admin sets `licensedUserLimit` on the institution's subscription;
+   * until one has, seat management is off for that institution and members
+   * inherit access exactly as they always did.
+   *
+   * Once on, a member inherits the institution's subscription only while they
+   * hold a seat (an InstitutionMemberAccess row not revoked), still belong to
+   * the institution and are not blocked — those last two are checked when
+   * counting, so removing or blocking someone frees the seat with no extra
+   * bookkeeping. The member who paid for a subscription keeps it regardless.
+   */
+  const licensedSeats = async (institutionId: string, db: any = prisma) => {
+    const now = new Date();
+    const [withLimit, activeSubs, assigned, totalMembers] = await Promise.all([
+      db.subscription.findMany({
+        where: { institutionId, licensedUserLimit: { not: null } },
+        orderBy: { endDate: 'desc' },
+        select: { id: true, planName: true, licensedUserLimit: true, endDate: true },
+      }),
+      db.subscription.findMany({
+        where: { institutionId, status: 'Active', endDate: { gt: now } },
+        orderBy: { endDate: 'desc' },
+        select: { id: true, planName: true, licensedUserLimit: true, endDate: true },
+      }),
+      db.institutionMemberAccess.count({
+        where: { institutionId, revokedAt: null, user: { institutionId, isBlocked: false } },
+      }),
+      db.user.count({ where: { institutionId } }),
+    ]);
+    const managed = withLimit.length > 0;
+    const activeWithLimit = activeSubs.filter((x: any) => x.licensedUserLimit != null);
+    // A renewal that did not restate the limit carries the last one forward.
+    const limit: number | null = !managed ? null
+      : activeWithLimit.length ? Math.max(...activeWithLimit.map((x: any) => x.licensedUserLimit))
+      : withLimit[0].licensedUserLimit;
+    const sub = activeWithLimit[0] || activeSubs[0] || withLimit[0] || null;
+    return {
+      managed, limit, assigned, totalMembers,
+      available: limit == null ? null : Math.max(0, limit - assigned),
+      full: limit != null && assigned >= limit,
+      overLimit: limit != null && assigned > limit,
+      subscriptionActive: activeSubs.length > 0,
+      subscription: sub ? { id: sub.id, name: sub.planName, endsAt: sub.endDate } : null,
+    };
+  };
+
+  const memberHasLicensedAccess = async (institutionId: string, uid: string): Promise<boolean> => {
+    const row = await prisma.institutionMemberAccess.findFirst({
+      where: { userId: uid, institutionId, revokedAt: null, user: { institutionId, isBlocked: false } },
+      select: { id: true },
+    });
+    if (!row) return false;
+    // After a renewal at a lower limit nobody is trusted until an admin reconciles.
+    return !(await licensedSeats(institutionId)).overLimit;
+  };
+
   // Helper to fetch valid subscriptions considering Institution inheritance
   const getUserActiveSubscriptions = async (uid: string, role: string, institutionId?: string | null) => {
     const OR_clauses: any[] = [{ userId: uid }];
@@ -3525,13 +3799,28 @@ async function startServer() {
       OR_clauses.push({ institutionId: resolvedInstId });
     }
     
-    return prisma.subscription.findMany({
+    const subs = await prisma.subscription.findMany({
       where: {
         OR: OR_clauses,
         status: 'Active',
         endDate: { gt: new Date() }
       }
     });
+
+    // Belonging to an institution is not by itself a seat. Where seats are
+    // managed, what the institution holds reaches only the members holding one.
+    if (resolvedInstId && !STAFF_ROLES.includes(role)) {
+      const inherited = subs.filter(x => x.institutionId === resolvedInstId && x.userId !== uid);
+      if (inherited.length) {
+        const managed = await prisma.subscription.findFirst({
+          where: { institutionId: resolvedInstId, licensedUserLimit: { not: null } }, select: { id: true },
+        });
+        if (managed && !(await memberHasLicensedAccess(resolvedInstId, uid))) {
+          return subs.filter(x => !inherited.includes(x));
+        }
+      }
+    }
+    return subs;
   };
 
   // Helper to check if a specific content object is accessible based on subscriptions
@@ -3800,7 +4089,7 @@ async function startServer() {
 
       const contents = await prisma.content.findMany({
         where,
-        select: { domain: true, subjectArea: true, tags: true },
+        select: { domain: true, subjectArea: true, tags: true, title: true },
       });
 
       const subjectsSet = new Set<string>();
@@ -3810,7 +4099,9 @@ async function startServer() {
 
       contents.forEach((c: any) => {
         if (c.domain) domainsSet.add(c.domain.trim());
-        if (c.subjectArea) subjectsSet.add(c.subjectArea.trim());
+        // Only a believable category is offered; a title or a bare number is not a subject.
+        const cleanSubject = cleanSubjectArea(c.subjectArea, c.title);
+        if (cleanSubject) subjectsSet.add(cleanSubject);
         
         let shouldAddTags = true;
         if (selectedSubjects.length > 0) {
@@ -5060,9 +5351,19 @@ async function startServer() {
         : [];
       const byCode = new Map(named.map((c: any) => [c.code, c]));
 
+      // Who is signed in right now — session ids never leave the server.
+      const liveRows = await prisma.userSession.findMany({
+        where: { userId: { in: users.map(u => u.id) }, revokedAt: null, expiresAt: { gt: new Date() } },
+        select: { userId: true, createdAt: true, lastSeenAt: true, expiresAt: true, deviceLabel: true },
+      });
+      const liveBy = new Map(liveRows.map(r => [r.userId, {
+        loginAt: r.createdAt, lastActivity: r.lastSeenAt, expiresAt: r.expiresAt, device: r.deviceLabel,
+      }]));
+
       res.json({
         data: users.map(u => ({
           ...u,
+          activeSession: liveBy.get(u.id) || null,
           isEmailVerified: !!u.emailVerifiedAt,
           campaign: u.signupSource ? byCode.get(u.signupSource) || null : null,
         })),
@@ -5082,6 +5383,259 @@ async function startServer() {
     } catch (err) {
       console.error('GET /api/admin/users error:', err);
       res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Whether this institution may add members. Says nothing of why — the
+  // reason and note are for administrators.
+  app.get("/api/institution/user-addition", authenticateJWT, async (req: any, res: any) => {
+    try {
+      if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') return res.status(403).json({ error: "Unauthorized" });
+      const target = await resolveTargetInstitution(req);
+      if (target.error) return res.json({ restricted: false, institutionName: '' });
+      res.json({ restricted: !!(await activeAddRestriction(target.id)), institutionName: target.name });
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to load" });
+    }
+  });
+
+  // ── Licensed seats: who in an institution holds its subscription access ──
+  const LICENSED_FULL = { code: "LICENSED_SEAT_LIMIT_REACHED", message: "All licensed user seats are currently assigned.", error: "All licensed user seats are currently assigned." };
+
+  const memberAccessStatus = (seat: any, row: any, member: any) => {
+    if (!seat.managed) return 'Not managed';
+    if (member.isBlocked) return 'Account suspended';
+    if (row && !row.revokedAt) {
+      if (!seat.subscriptionActive) return 'Subscription Expired';
+      if (seat.overLimit) return 'On hold — review needed';
+      return 'Subscription Access Active';
+    }
+    return row?.revokedAt ? 'Access Revoked' : 'Access Not Assigned';
+  };
+
+  const accessOverview = async (institutionId: string, q?: string) => {
+    const seat = await licensedSeats(institutionId);
+    const where: any = { institutionId };
+    if (q) where.OR = [{ displayName: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }];
+    const users = await prisma.user.findMany({
+      where, orderBy: [{ role: 'asc' }, { displayName: 'asc' }], take: 500,
+      select: { id: true, displayName: true, email: true, role: true, designation: true, lastReadAt: true, isBlocked: true },
+    });
+    const rows = await prisma.institutionMemberAccess.findMany({ where: { institutionId, userId: { in: users.map(u => u.id) } } });
+    const byUser = new Map(rows.map(r => [r.userId, r]));
+    return {
+      summary: seat,
+      members: users.map(u => {
+        const r = byUser.get(u.id);
+        return {
+          ...u, accessStatus: memberAccessStatus(seat, r, u),
+          hasSeat: !!r && !r.revokedAt && !u.isBlocked, assignedAt: r && !r.revokedAt ? r.assignedAt : null,
+        };
+      }),
+    };
+  };
+
+  /**
+   * Assign or take back seats, all or nothing. The count and the claim happen
+   * under one per-institution lock, so two requests for the last seat queue up
+   * and the second finds none.
+   */
+  const changeSeats = async (institutionId: string, userIds: string[], mode: 'assign' | 'revoke', actor: any) => {
+    const ids = [...new Set(userIds.filter(x => typeof x === 'string'))].slice(0, 1000);
+    if (!ids.length) throw { status: 400, body: { error: "Choose at least one member." } };
+    const result = await prisma.$transaction(async (tx: any) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'licensed-seats:' + institutionId}))`;
+      const now = new Date();
+      if (mode === 'revoke') {
+        const r = await tx.institutionMemberAccess.updateMany({
+          where: { institutionId, userId: { in: ids }, revokedAt: null }, data: { revokedAt: now, revokedBy: actor.uid },
+        });
+        return { changed: r.count };
+      }
+      const seat = await licensedSeats(institutionId, tx);
+      if (!seat.managed) throw { status: 409, body: { code: 'SEATS_NOT_MANAGED', error: "Licensed seats have not been set up for this institution." } };
+      if (!seat.subscriptionActive) throw { status: 409, body: { code: 'NO_ACTIVE_SUBSCRIPTION', error: "The institution has no active subscription." } };
+      const members = await tx.user.findMany({ where: { id: { in: ids }, institutionId, isBlocked: false }, select: { id: true } });
+      if (members.length !== ids.length) throw { status: 400, body: { error: "Some of the selected members cannot be assigned access." } };
+      const held = await tx.institutionMemberAccess.findMany({ where: { institutionId, userId: { in: ids }, revokedAt: null }, select: { userId: true } });
+      const heldIds = new Set(held.map((h: any) => h.userId));
+      const toAssign = ids.filter(i => !heldIds.has(i));
+      if (toAssign.length > (seat.available ?? 0)) {
+        throw { status: 409, body: {
+          ...LICENSED_FULL, available: seat.available ?? 0, requested: toAssign.length,
+          ...(toAssign.length > 1 && (seat.available ?? 0) > 0
+            ? { message: `Only ${seat.available} licensed seat${seat.available === 1 ? ' is' : 's are'} available. Reduce your selection or increase the user limit.` } : {}),
+        } };
+      }
+      for (const userId of toAssign) {
+        await tx.institutionMemberAccess.upsert({
+          where: { userId_institutionId: { userId, institutionId } },
+          create: { userId, institutionId, subscriptionId: seat.subscription?.id || null, assignedBy: actor.uid },
+          update: { revokedAt: null, revokedBy: null, assignedAt: now, assignedBy: actor.uid, subscriptionId: seat.subscription?.id || null },
+        });
+      }
+      return { changed: toAssign.length };
+    });
+    await prisma.usageLog.create({ data: {
+      action: mode === 'assign' ? 'LICENSED_ACCESS_ASSIGNED' : 'LICENSED_ACCESS_REMOVED', userId: actor.uid,
+      details: `${institutionId}: ${result.changed} member(s) [${ids.slice(0, 20).join(', ')}] by ${actor.email}`,
+    } }).catch(() => {});
+    return result;
+  };
+
+  const seatRoute = (fn: (req: any) => Promise<any>) => async (req: any, res: any) => {
+    try { res.json(await fn(req)); }
+    catch (e: any) {
+      if (e?.status) return res.status(e.status).json(e.body);
+      console.error('licensed seats:', e?.message);
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  };
+
+  // Super Admin / User Manager: any institution
+  app.get("/api/admin/institutions/:id/access", authenticateJWT, requireAdminOrManager,
+    seatRoute(req => accessOverview(req.params.id, String(req.query.q || '').trim() || undefined)));
+  app.post("/api/admin/institutions/:id/access/assign", authenticateJWT, requireAdminOrManager,
+    seatRoute(async req => { await changeSeats(req.params.id, req.body?.userIds || [], 'assign', req.user); return accessOverview(req.params.id); }));
+  app.post("/api/admin/institutions/:id/access/revoke", authenticateJWT, requireAdminOrManager,
+    seatRoute(async req => { await changeSeats(req.params.id, req.body?.userIds || [], 'revoke', req.user); return accessOverview(req.params.id); }));
+
+  // Super Admin only: the limit itself.
+  app.put("/api/admin/institutions/:id/licensed-limit", authenticateJWT, requireSuperAdmin, seatRoute(async (req: any) => {
+    const institutionId = req.params.id;
+    const limit = Number(req.body?.limit);
+    if (!Number.isInteger(limit) || limit < 1) throw { status: 400, body: { error: "The limit must be a whole number, at least 1." } };
+    if (limit > MAX_INSTITUTION_USERS) throw { status: 400, body: { error: `The limit cannot exceed ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')}.` } };
+    const note = String(req.body?.note || '').trim().slice(0, 500) || null;
+
+    const seeded = await prisma.$transaction(async (tx: any) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'licensed-seats:' + institutionId}))`;
+      const before = await licensedSeats(institutionId, tx);
+      if (!before.subscriptionActive) throw { status: 409, body: { code: 'NO_ACTIVE_SUBSCRIPTION', error: "The institution has no active subscription to set a limit on." } };
+      // Never quietly take access from anyone.
+      if (before.assigned > limit) {
+        throw { status: 409, body: {
+          code: 'LIMIT_BELOW_ASSIGNED', assigned: before.assigned,
+          error: `${before.assigned} users currently have access, which exceeds the new limit of ${limit}. Remove access from at least ${before.assigned - limit} first.`,
+        } };
+      }
+      const active = await tx.subscription.findMany({
+        where: { institutionId, status: 'Active', endDate: { gt: new Date() } }, orderBy: { endDate: 'desc' }, select: { id: true },
+      });
+      await tx.subscription.updateMany({ where: { id: { in: active.slice(1).map((x: any) => x.id) } }, data: { licensedUserLimit: null } });
+      await tx.subscription.update({ where: { id: active[0].id }, data: { licensedUserLimit: limit } });
+
+      let seeded = 0;
+      if (!before.managed && req.body?.keepCurrentMembers) {
+        // Switching seats on must not lock the current members out in one stroke:
+        // on request, they keep access up to the limit — the librarian first,
+        // then those who have read, then the longest-standing.
+        const members = await tx.user.findMany({
+          where: { institutionId, isBlocked: false }, select: { id: true, role: true, lastReadAt: true, createdAt: true },
+        });
+        members.sort((a: any, b: any) =>
+          (a.role === 'Institution' ? 0 : 1) - (b.role === 'Institution' ? 0 : 1)
+          || (b.lastReadAt ? 1 : 0) - (a.lastReadAt ? 1 : 0)
+          || a.createdAt.getTime() - b.createdAt.getTime());
+        for (const m of members.slice(0, limit)) {
+          await tx.institutionMemberAccess.upsert({
+            where: { userId_institutionId: { userId: m.id, institutionId } },
+            create: { userId: m.id, institutionId, subscriptionId: active[0].id, assignedBy: req.user.uid },
+            update: { revokedAt: null, revokedBy: null, subscriptionId: active[0].id },
+          });
+          seeded++;
+        }
+      }
+      await tx.usageLog.create({ data: {
+        action: 'LICENSED_LIMIT_CHANGED', userId: req.user.uid,
+        details: `${institutionId}: ${before.managed ? before.limit : 'off'} -> ${limit} by ${req.user.email}${seeded ? `; ${seeded} current members kept access` : ''}${note ? `; ${note}` : ''}`,
+      } });
+      return seeded;
+    });
+    return { ...(await accessOverview(institutionId)), seeded };
+  }));
+
+  // The librarian: their own institution, never beyond the limit the Super Admin set.
+  const ownInstitution = async (req: any): Promise<string> => {
+    if (req.user.role !== 'Institution') throw { status: 403, body: { error: "Unauthorized" } };
+    const id = await librarianInstitutionId(req);
+    if (!id) throw { status: 400, body: { error: "Your account is not linked to an institution." } };
+    return id;
+  };
+  app.get("/api/institution/access", authenticateJWT, seatRoute(async req =>
+    accessOverview(await ownInstitution(req), String(req.query.q || '').trim() || undefined)));
+  app.post("/api/institution/access/assign", authenticateJWT, seatRoute(async req => {
+    const id = await ownInstitution(req); await changeSeats(id, req.body?.userIds || [], 'assign', req.user); return accessOverview(id);
+  }));
+  app.post("/api/institution/access/revoke", authenticateJWT, seatRoute(async req => {
+    const id = await ownInstitution(req); await changeSeats(id, req.body?.userIds || [], 'revoke', req.user); return accessOverview(id);
+  }));
+
+  // What a member is told about their own access.
+  app.get("/api/me/institution-access", authenticateJWT, seatRoute(async req => {
+    const me = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true, institution: { select: { name: true } } } as any }) as any;
+    if (!me?.institutionId) return { linked: false };
+    const seat = await licensedSeats(me.institutionId);
+    if (!seat.managed) return { linked: true, managed: false, institutionName: me.institution?.name || '' };
+    const has = await memberHasLicensedAccess(me.institutionId, req.user.uid);
+    return {
+      linked: true, managed: true, institutionName: me.institution?.name || '', hasAccess: has,
+      status: has ? (seat.subscriptionActive ? 'Subscription Access Active' : 'Subscription Expired') : 'Access Not Assigned',
+      seatsFull: seat.full,
+    };
+  }));
+
+  // Super Admin only: stop an institution adding new members. Nothing else about it changes.
+  app.post("/api/admin/institutions/:id/user-addition-restriction", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const reason = String(req.body?.reason || '').trim().slice(0, 500);
+      const note = String(req.body?.note || '').trim().slice(0, 1000) || null;
+      if (!reason) return res.status(400).json({ error: "A reason is required." });
+      let until: Date | null = null;
+      if (req.body?.until) {
+        // The restriction runs through the whole of the chosen day.
+        until = new Date(`${String(req.body.until).slice(0, 10)}T23:59:59.999+05:30`);
+        if (isNaN(until.getTime()) || until.getTime() <= Date.now()) return res.status(400).json({ error: "Choose an end date in the future." });
+      }
+      const inst = await (prisma as any).institution.findUnique({ where: { id: req.params.id }, select: { name: true } });
+      if (!inst) return res.status(404).json({ error: "Institution not found" });
+      await (prisma as any).institution.update({
+        where: { id: req.params.id },
+        data: {
+          userAdditionRestricted: true, userAdditionRestrictionReason: reason, userAdditionRestrictionNote: note,
+          userAdditionRestrictedAt: new Date(), userAdditionRestrictedBy: req.user.uid, userAdditionRestrictionUntil: until,
+        },
+      });
+      await prisma.usageLog.create({ data: {
+        action: 'INSTITUTION_USER_ADDITION_RESTRICTED', userId: req.user.uid,
+        details: `${inst.name} (${req.params.id}) restricted by ${req.user.email}; until ${until ? until.toISOString() : 'removed manually'}; reason: ${reason}`,
+      } }).catch(() => {});
+      res.json({ ok: true });
+    } catch (e: any) {
+      console.error('restrict user addition:', e?.message);
+      res.status(500).json({ error: "Failed to apply the restriction" });
+    }
+  });
+
+  app.delete("/api/admin/institutions/:id/user-addition-restriction", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const inst = await (prisma as any).institution.findUnique({ where: { id: req.params.id }, select: { name: true } });
+      if (!inst) return res.status(404).json({ error: "Institution not found" });
+      // The fields are cleared; the history lives in the activity log.
+      await (prisma as any).institution.update({
+        where: { id: req.params.id },
+        data: {
+          userAdditionRestricted: false, userAdditionRestrictionReason: null, userAdditionRestrictionNote: null,
+          userAdditionRestrictedAt: null, userAdditionRestrictedBy: null, userAdditionRestrictionUntil: null,
+        },
+      });
+      await prisma.usageLog.create({ data: {
+        action: 'INSTITUTION_USER_ADDITION_RESTORED', userId: req.user.uid,
+        details: `${inst.name} (${req.params.id}) restored by ${req.user.email}`,
+      } }).catch(() => {});
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to remove the restriction" });
     }
   });
 
@@ -5111,7 +5665,9 @@ async function startServer() {
         prisma.user.groupBy({ by: ['institutionId'], where: { institutionId: { not: null } }, _count: { _all: true } }),
         prisma.user.groupBy({ by: ['institutionId'], where: { institutionId: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
         prisma.user.groupBy({ by: ['institutionId'], where: { institutionId: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
-        prisma.institution.findMany({ select: { id: true, name: true, status: true, createdAt: true } }),
+        (prisma as any).institution.findMany({ select: { id: true, name: true, status: true, createdAt: true,
+          userAdditionRestricted: true, userAdditionRestrictionReason: true, userAdditionRestrictedAt: true,
+          userAdditionRestrictedBy: true, userAdditionRestrictionUntil: true, userAdditionRestrictionNote: true } }),
         // The account the institution runs on — the librarian who adds the rest.
         prisma.user.findMany({
           where: { institutionId: { not: null }, role: 'Institution' },
@@ -5130,10 +5686,49 @@ async function startServer() {
         (headsBy.get(k) || headsBy.set(k, []).get(k)!).push(h);
       }
 
+      // Subscription seats, for every institution in two queries.
+      const limitRows = await prisma.subscription.findMany({
+        where: { institutionId: { not: null }, licensedUserLimit: { not: null } },
+        select: { institutionId: true, licensedUserLimit: true, status: true, endDate: true },
+        orderBy: { endDate: 'desc' },
+      });
+      // Newest first, so the first seen is the last known limit; a running subscription's limit wins over it.
+      const seatLimit = new Map<string, number>();
+      const running = new Map<string, number>();
+      const nowMs = Date.now();
+      for (const r of limitRows) {
+        if (!seatLimit.has(r.institutionId!)) seatLimit.set(r.institutionId!, r.licensedUserLimit!);
+        if (r.status === 'Active' && r.endDate.getTime() > nowMs) {
+          running.set(r.institutionId!, Math.max(running.get(r.institutionId!) ?? 0, r.licensedUserLimit!));
+        }
+      }
+      for (const [id, v] of running) seatLimit.set(id, v);
+      const heldRows = await prisma.institutionMemberAccess.findMany({
+        where: { revokedAt: null, user: { isBlocked: false } }, select: { institutionId: true, user: { select: { institutionId: true } } },
+      });
+      const heldBy = new Map<string, number>();
+      for (const h of heldRows) if (h.user.institutionId === h.institutionId) heldBy.set(h.institutionId, (heldBy.get(h.institutionId) || 0) + 1);
+
+      const byIds = [...new Set(institutions.map((i: any) => i.userAdditionRestrictedBy).filter(Boolean))] as string[];
+      const adminNames = new Map((byIds.length
+        ? await prisma.user.findMany({ where: { id: { in: byIds } }, select: { id: true, displayName: true, email: true } })
+        : []).map(a => [a.id, a.displayName || a.email]));
+
       const groups = institutions
         .map((i: any) => ({
           kind: 'institution' as const,
           id: i.id, name: i.name, status: i.status, since: i.createdAt,
+          access: seatLimit.has(i.id)
+            ? { managed: true, limit: seatLimit.get(i.id)!, assigned: heldBy.get(i.id) || 0, available: Math.max(0, seatLimit.get(i.id)! - (heldBy.get(i.id) || 0)) }
+            : { managed: false, limit: null, assigned: 0, available: null },
+          // Only a restriction still in force is shown as one.
+          addRestriction: i.userAdditionRestricted
+            && !(i.userAdditionRestrictionUntil && new Date(i.userAdditionRestrictionUntil).getTime() <= Date.now())
+            ? {
+                reason: i.userAdditionRestrictionReason, note: i.userAdditionRestrictionNote,
+                at: i.userAdditionRestrictedAt, by: adminNames.get(i.userAdditionRestrictedBy) || null,
+                until: i.userAdditionRestrictionUntil,
+              } : null,
           members: N.get(i.id) || 0,
           verified: V.get(i.id) || 0,
           readers: R.get(i.id) || 0,
@@ -9713,7 +10308,7 @@ async function startServer() {
     try {
       const { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price, accessType, status, publishingMode } = req.body;
       const newContent = await prisma.content.create({
-        data: { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price: parseFloat(price) || 0, accessType, status, publishingMode: publishingMode || "Direct" }
+        data: { title, description, authors, domain, contentType, subjectArea: cleanSubjectArea(subjectArea, title) ?? undefined, fileUrl, thumbnailUrl, tags, price: parseFloat(price) || 0, accessType, status, publishingMode: publishingMode || "Direct" }
       });
       res.json(newContent);
     } catch (error) {
@@ -9872,7 +10467,8 @@ async function startServer() {
               authors: item.authors || "Unknown",
               domain: item.domain,
               contentType: item.contentType || "Book",
-              subjectArea: item.subjectArea,
+              // A column mapped to the wrong field puts a title or a number here; those are left out.
+              subjectArea: cleanSubjectArea(item.subjectArea, item.title) ?? undefined,
               fileUrl: item.fileUrl,
               thumbnailUrl: item.thumbnailUrl,
               tags: item.tags ? (typeof item.tags === "string" ? (item.tags.startsWith('[') ? JSON.parse(item.tags) : item.tags.split(',').map((t: string) => t.trim())) : item.tags) : [],
@@ -9925,6 +10521,25 @@ async function startServer() {
   });
 
   // Removed duplicate GET /api/admin/users
+
+  // Ends a member's live session. Their token fails on its next request.
+  app.post("/api/admin/users/:id/revoke-session", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
+    try {
+      const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { role: true } });
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (target.role === 'SuperAdmin' && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: "Only a Super Admin can end a Super Admin's session" });
+      }
+      const r = await prisma.userSession.updateMany({
+        where: { userId: req.params.id, revokedAt: null, expiresAt: { gt: new Date() } },
+        data: { revokedAt: new Date() },
+      });
+      res.json({ ok: true, revoked: r.count });
+    } catch (error) {
+      console.error('revoke-session error:', error);
+      res.status(500).json({ error: "Failed to end the session" });
+    }
+  });
 
   app.post("/api/admin/users/:id/block", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
@@ -11709,6 +12324,43 @@ async function startServer() {
 
 
   /**
+   * The restriction on adding members, if one is in force.
+   *
+   * Separate from the institution's status on purpose: it stops new members
+   * being added and nothing else. A restriction with an end date that has
+   * passed is simply not in force — it needs no one to remove it.
+   */
+  const activeAddRestriction = async (institutionId?: string | null) => {
+    if (!institutionId) return null;
+    const inst: any = await (prisma as any).institution.findUnique({
+      where: { id: institutionId },
+      select: { userAdditionRestricted: true, userAdditionRestrictionUntil: true },
+    });
+    if (!inst?.userAdditionRestricted) return null;
+    if (inst.userAdditionRestrictionUntil && new Date(inst.userAdditionRestrictionUntil).getTime() <= Date.now()) return null;
+    return inst;
+  };
+
+  /**
+   * The one gate every institution-side route that adds a member goes through.
+   * Sends the refusal itself and returns false; the caller just returns.
+   * Administrators adding on an institution's behalf are not stopped — the
+   * restriction is theirs to set, and theirs to work around knowingly.
+   */
+  const assertInstitutionCanAddUsers = async (req: any, res: any, institutionId?: string | null): Promise<boolean> => {
+    if (req.user?.role === 'SuperAdmin') return true;
+    if (await activeAddRestriction(institutionId)) {
+      res.status(403).json({
+        code: "USER_ADDITION_RESTRICTED",
+        error: "New member addition is currently restricted for this institution.",
+        message: "New member addition is currently restricted for this institution.",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  /**
    * Which institution a student is being created into.
    *
    * This used to be left undefined whenever it could not be resolved, so the
@@ -12061,6 +12713,7 @@ async function startServer() {
       if (target.error) return res.status(400).json({ error: target.error });
       const institutionName = target.name;
       const targetInstitutionId = target.id;
+      if (!(await assertInstitutionCanAddUsers(req, res, targetInstitutionId))) return;
 
       const role = memberRole(designation);
       if (!role) {
@@ -12117,6 +12770,7 @@ async function startServer() {
       if (target.error) return res.status(400).json({ error: target.error });
       const institutionName = target.name;
       const targetInstitutionId = target.id;
+      if (!(await assertInstitutionCanAddUsers(req, res, targetInstitutionId))) return;
 
       const onPro = await institutionOnPro(req, targetInstitutionId!);
       // Seats left for this import; null when the plan has no cap (or an administrator is importing).

@@ -5,8 +5,9 @@ import { SmartPagination } from './SmartPagination';
 import { MetadataModal } from './MetadataModal';
 import {
   FileText, Search, Archive, Sparkles, ChevronRight, ChevronDown,
-  Unlock, Copy, SlidersHorizontal, X, BookMarked, Check,
+  Unlock, Copy, SlidersHorizontal, X, BookMarked, Check, Lock,
 } from 'lucide-react';
+import { useAllowance, inCooldown, clockTime } from './membership/ReadingClock';
 
 type Mode = 'new' | 'archived';
 type Kind = 'articles' | 'books';
@@ -71,6 +72,13 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
   const [page, setPage] = useState(Number(sp.get('page')) || 1);
   const [loading, setLoading] = useState(false);
   const [mobileFilters, setMobileFilters] = useState(false);
+  const [subjectQuery, setSubjectQuery] = useState('');
+  // The free member's clock. While they are waiting, the way into a reader is shut, and the
+  // list says so — with the time it opens — rather than offering "Read" for a door that is locked.
+  // msUntil counts down locally, so "Read" comes back by itself when the wait ends.
+  const { allowance, msUntil } = useAllowance();
+  const waiting = inCooldown(allowance, msUntil);
+  const lockedLabel = !waiting ? '' : allowance?.state === 'spent' ? 'Available after midnight' : `Available at ${clockTime(allowance?.nextOpensAt)}`;
   // Filter options limited to what the user can access AND that actually has content.
   const [avail, setAvail] = useState<any>(null);
   useEffect(() => {
@@ -214,6 +222,14 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
   const showBooks = !avail ? true : avail.neu.hasBooks;
   const showArticles = !avail ? true : avail.neu.hasArticles;
   useEffect(() => { if (avail && !showBooks && kind === 'books') setKind('articles'); }, [avail, showBooks, kind]);
+  // A view with nothing in it for this member is not offered. Until the server has answered, both are.
+  const showCollection = !avail || avail.all || showArticles || showBooks;
+  const showArchive = !avail || avail.all || (avail.archived?.departments?.length ?? 0) > 0;
+  useEffect(() => {
+    if (!avail) return;
+    if (mode === 'archived' && !showArchive) setMode('new');
+    else if (mode === 'new' && !showCollection && showArchive) setMode('archived');
+  }, [avail, mode, showArchive, showCollection]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const activeChips: { label: string; clear: () => void }[] = [];
@@ -237,14 +253,17 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-ink flex items-center gap-2">
-            <BookMarked className="text-accent" size={24} /> Journals &amp; Books
+            <BookMarked className="text-accent" size={24} aria-hidden="true" /> Content Library
           </h1>
-          <p className="text-sm text-muted">Discover open-access research — filter precisely, read in your secure viewer.</p>
+          <p className="text-sm text-muted">Discover academic research — filter precisely and read in your secure viewer.</p>
         </div>
-        <div className="inline-flex bg-surface-2 rounded-md p-1 w-fit">
-          <button onClick={() => setMode('new')} className={seg(mode === 'new')}><Sparkles size={14} /> New Collection</button>
-          <button onClick={() => setMode('archived')} className={seg(mode === 'archived')}><Archive size={14} /> Archived</button>
-        </div>
+        {/* These are two views of the library, shown only where the member has something in them. */}
+        {(showCollection && showArchive) && (
+          <div className="inline-flex bg-surface-2 rounded-md p-1 w-fit">
+            <button onClick={() => setMode('new')} className={seg(mode === 'new')}><Sparkles size={14} /> New Collection</button>
+            <button onClick={() => setMode('archived')} className={seg(mode === 'archived')}><Archive size={14} /> Archived</button>
+          </div>
+        )}
       </div>
 
       {/* Search bar */}
@@ -254,7 +273,8 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
           ref={searchInputRef}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search articles, authors, journals, topics…"
+          aria-label="Search within these results"
+          placeholder="Search within these results…"
           className="w-full pl-12 pr-20 lg:pr-12 py-3.5 rounded-md border border-rule bg-surface text-sm outline-none transition-colors focus:border-accent text-ink placeholder:text-faint"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -338,13 +358,23 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                   </Group>
                   {aFilters.subjects.length > 0 && (
                     <Group label="Subject Area">
+                      <div className="relative mb-2">
+                        <Search size={13} aria-hidden="true" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
+                        <input value={subjectQuery} onChange={e => setSubjectQuery(e.target.value)}
+                          aria-label="Filter subject areas" placeholder="Filter subject areas…"
+                          className="w-full pl-8 pr-2 py-1.5 text-xs rounded-lg border border-rule bg-surface-2 outline-none focus:border-accent" />
+                      </div>
                       <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                        {aFilters.subjects.map(s => (
+                        {/* A subject you have ticked stays listed even when the filter hides its neighbours. */}
+                        {aFilters.subjects.filter(s => !subjectQuery || aSubjects.includes(s) || s.toLowerCase().includes(subjectQuery.trim().toLowerCase())).map(s => (
                           <label key={s} className="flex items-start gap-2.5 cursor-pointer group">
                             <input type="checkbox" checked={aSubjects.includes(s)} onChange={() => { setASubjects(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]); setATags([]); setPage(1); }} className="mt-0.5 w-4 h-4 rounded text-accent" />
                             <span className="text-[13px] font-medium text-ink-2 group-hover:text-accent leading-tight">{s}</span>
                           </label>
                         ))}
+                        {subjectQuery && !aFilters.subjects.some(s => s.toLowerCase().includes(subjectQuery.trim().toLowerCase())) && (
+                          <p className="text-xs text-faint">No subject area matches.</p>
+                        )}
                       </div>
                     </Group>
                   )}
@@ -474,6 +504,7 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                   kind={kind}
                   mode={mode}
                   journalBase={journalBase}
+                  lockedLabel={lockedLabel}
                   onOpen={() => navigate(`${viewerBasePath}/${it.id}`)}
                 />
               ))}
@@ -499,8 +530,8 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
  * catalogue has always set them, and colour spent only on whether the thing can
  * actually be read.
  */
-function ResultCard({ it, n, kind, mode, onOpen, journalBase }: {
-  it: any; n: number; kind: Kind; mode: Mode; onOpen: () => void; journalBase: string;
+const ResultCard = React.memo(function ResultCard({ it, n, kind, mode, onOpen, journalBase, lockedLabel }: {
+  it: any; n: number; kind: Kind; mode: Mode; onOpen: () => void; journalBase: string; lockedLabel: string;
 }) {
   const isBook = kind === 'books' || it.contentType === 'Books';
   const hasPdf = !!(it.pdfUrl || it.fileUrl);
@@ -519,7 +550,8 @@ function ResultCard({ it, n, kind, mode, onOpen, journalBase }: {
   const volIss = it.volume ? `${it.volume}${it.issue ? `(${it.issue})` : ''}` : (it.issue ? `(${it.issue})` : '');
   const bits: string[] = isBook
     ? [it.publisherName, it.isbn ? `ISBN ${it.isbn}` : '', it.edition ? `${it.edition} ed.` : '', it.year].filter(Boolean)
-    : [volIss, it.year, it.pages ? `pp ${it.pages}` : '', it.journalIssn ? `ISSN ${it.journalIssn}` : ''].filter(Boolean);
+    // Source · year · volume(issue) · pages · ISSN. A missing part is left out, never filled in.
+    : [it.year, volIss, it.pages ? `pp ${it.pages}` : '', it.journalIssn ? `ISSN ${it.journalIssn}` : ''].filter(Boolean);
 
   const open = metaOnly ? () => setShowMeta(true) : onOpen;
   const copyDoi = (e: React.MouseEvent) => {
@@ -574,6 +606,8 @@ function ResultCard({ it, n, kind, mode, onOpen, journalBase }: {
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {hasPdf && <Mark tone="accent">Full text</Mark>}
+          {(it.accessType === 'OpenAccess' || it.accessType === 'Free') && <Mark tone="accent">Open access</Mark>}
+          {metaOnly && it.originalUrl && <Mark>External source</Mark>}
           {metaOnly && <Mark tone="caution">Metadata only</Mark>}
           {it.locked && <Mark>Subscription</Mark>}
           {typeMark && <Mark>{typeMark}</Mark>}
@@ -591,18 +625,27 @@ function ResultCard({ it, n, kind, mode, onOpen, journalBase }: {
       </div>
 
       <div className="shrink-0 self-start pt-0.5">
-        <button
-          onClick={open}
-          className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
-        >
-          {metaOnly ? 'Details' : hasPdf ? 'Read' : 'Open'}
-        </button>
+        {lockedLabel && !metaOnly ? (
+          // Said in words and with a lock, not by colour: reading is shut until the time shown.
+          <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-caution"
+            aria-label={`Reading is locked. ${lockedLabel}`}>
+            <Lock size={11} aria-hidden="true" />
+            <span className="max-w-[9rem] text-right leading-tight">{lockedLabel}</span>
+          </span>
+        ) : (
+          <button
+            onClick={open}
+            className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {metaOnly ? 'Details' : hasPdf ? 'Read →' : 'Open'}
+          </button>
+        )}
       </div>
 
       {showMeta && <MetadataModal item={it} isBook={isBook} onClose={() => setShowMeta(false)} />}
     </div>
   );
-}
+});
 
 /** An outlined mark. Colour is spent only on whether the record can be read. */
 function Mark({ children, tone }: { children: React.ReactNode; tone?: 'accent' | 'caution' }) {

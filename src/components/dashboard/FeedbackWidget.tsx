@@ -86,7 +86,7 @@ export function FeedbackWidget() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 bg-accent text-white px-5 py-3.5 rounded-full shadow-2xl shadow-indigo-500/40 hover:shadow-indigo-500/60 transition-all flex items-center justify-center gap-2 hover:-translate-y-1 border border-white/10"
+        className="fixed bottom-6 right-6 mb-[var(--pwa-offset,0px)] z-40 bg-accent text-white px-5 py-3.5 rounded-full shadow-2xl shadow-indigo-500/40 hover:shadow-indigo-500/60 transition-all flex items-center justify-center gap-2 hover:-translate-y-1 border border-white/10"
       >
         <MessageSquareHeart size={20} className="animate-pulse" />
         <span className="whitespace-nowrap font-bold text-sm">

@@ -66,7 +66,7 @@ export function useAllowance(pollMs = 30_000) {
 }
 
 /**
- * Where "Apply for Pro" goes from here.
+ * Where the subscription options are, from here.
  *
  * There are two shells and one membership page, and the link was hard-coded to
  * the reader's copy of it. A librarian who clicked Membership was thrown
@@ -78,6 +78,18 @@ export function useProPath(): string {
   return useLocation().pathname.startsWith('/institution')
     ? '/institution/membership'
     : '/dashboard/pro';
+}
+
+/** Where "Back to Content Library" goes: the library in whichever shell you are standing in. */
+export function useLibraryPath(): string {
+  return useLocation().pathname.startsWith('/institution') ? '/institution/access' : '/dashboard/library';
+}
+
+/** True while a free member is shut out and the wait has not run out yet. */
+export function inCooldown(allowance: Allowance | null, msUntil: number | null): boolean {
+  if (!allowance?.timed) return false;
+  if (allowance.state === 'spent') return true;
+  return allowance.state === 'waiting' && typeof msUntil === 'number' && msUntil > 0;
 }
 
 const two = (n: number) => String(Math.floor(n)).padStart(2, '0');
@@ -115,7 +127,7 @@ export function ReadingClock({ allowance, msLeft, msUntil, className = '' }: {
     s === 'running' ? `${countdown(msLeft ?? 0)} left`
     : s === 'paused' ? `${Math.round((allowance.remainingMs ?? 0) / 60_000)} min kept for you`
     : s === 'available' ? 'Ready when you are'
-    : s === 'waiting' ? `Back at ${clockTime(allowance.nextOpensAt)}`
+    : s === 'waiting' ? `Available at ${clockTime(allowance.nextOpensAt)}`
     : 'Today’s two hours are used';
 
   const title =
@@ -132,7 +144,7 @@ export function ReadingClock({ allowance, msLeft, msUntil, className = '' }: {
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold tabular-nums transition-colors hover:opacity-80 ${tone} ${className}`}
     >
       {s === 'waiting' || s === 'spent' ? <Lock size={12} /> : <Clock size={12} />}
-      <span className="hidden sm:inline">Free ·</span> {label}
+      <span className="hidden sm:inline">Free Preview ·</span> {label}
     </Link>
   );
 }
@@ -148,41 +160,60 @@ export function ReadingLimitNotice({
   allowance, msUntil, compact = false,
 }: { allowance: Allowance; msUntil?: number | null; compact?: boolean }) {
   const proPath = useProPath();
+  const libraryPath = useLibraryPath();
   const spent = allowance.state === 'spent';
+  const perDay = allowance.sessionsPerDay ?? 4;
+  const left = allowance.sessionsLeft;
   return (
     <div className={`mx-auto w-full max-w-lg rounded-2xl border border-rule bg-surface p-6 text-center ${compact ? '' : 'my-10'}`}>
       <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-caution-soft text-caution">
-        <Lock size={20} />
+        <Lock size={20} aria-hidden="true" />
       </div>
       <h2 className="font-serif text-xl text-ink">
         {spent ? 'That is today’s two hours' : 'Your reading session has ended'}
       </h2>
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
-        {spent
-          ? 'A free membership includes four half-hour sessions a day. The next one opens after midnight.'
-          : <>Free membership comes in half-hour sessions, with a two-hour gap between them.
-              {allowance.nextOpensAt && <> The next one opens at <b className="text-ink">{clockTime(allowance.nextOpensAt)}</b>.</>}</>}
-      </p>
-      {allowance.nextOpensAt && (
-        <div className="mt-4 flex flex-col items-center">
-          <WaitingClock opensAt={new Date(allowance.nextOpensAt)} size={124} />
+
+      {spent ? (
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
+          A free membership includes {perDay} half-hour sessions a day. The next one opens after midnight.
+        </p>
+      ) : allowance.nextOpensAt ? (
+        <div className="mt-3">
+          <p className="text-sm text-muted">Your next free reading session starts at</p>
+          <p className="mt-0.5 font-serif text-3xl text-ink">{clockTime(allowance.nextOpensAt)}</p>
           {typeof msUntil === 'number' && msUntil > 0 && (
-            <p className="mt-2.5 font-mono text-xl tabular-nums text-ink">{countdown(msUntil)}</p>
+            <p className="mt-1 text-sm text-muted"><span className="font-mono tabular-nums text-ink">{countdown(msUntil)}</span> remaining</p>
           )}
         </div>
+      ) : null}
+
+      {allowance.nextOpensAt && !spent && (
+        <div className="mt-3 flex flex-col items-center">
+          <WaitingClock opensAt={new Date(allowance.nextOpensAt)} size={112} />
+        </div>
       )}
-      {!spent && typeof allowance.sessionsLeft === 'number' && (
-        <p className="mt-2 text-xs text-faint">
-          {allowance.sessionsLeft} of {allowance.sessionsPerDay ?? 4} sessions left today
+
+      {typeof left === 'number' && (
+        <p className="mt-3 text-sm font-semibold text-ink">
+          {left} {left === 1 ? 'session' : 'sessions'} remaining today
+          <span className="block text-xs font-normal text-faint">{perDay} sessions available per day</span>
         </p>
       )}
 
-      <Link
-        to={proPath}
-        className="mt-5 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-      >
-        <Sparkles size={15} /> Apply for Pro — read without a limit
-      </Link>
+      <div className="mt-5 flex flex-col items-stretch gap-2.5 sm:flex-row sm:justify-center">
+        <Link
+          to={proPath}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <Sparkles size={15} aria-hidden="true" /> Explore Subscription Options
+        </Link>
+        <Link
+          to={libraryPath}
+          className="inline-flex items-center justify-center rounded-xl border border-rule bg-surface px-5 py-2.5 text-sm font-semibold text-ink-2 transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          Back to Content Library
+        </Link>
+      </div>
       <p className="mt-3 text-xs text-faint">
         You can still search and browse the whole catalogue while you wait.
       </p>
