@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "check:english": "node scripts/check-english.cjs",
+    "brochure": "node scripts/brochure/build.cjs",
     "lint": "tsc --noEmit && node scripts/check-english.cjs"
   },
   "dependencies": {

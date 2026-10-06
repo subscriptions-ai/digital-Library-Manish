@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, XCircle, Search, ArrowRight, Lock, ChevronLeft, LayoutGrid, BookOpen, Layers } from 'lucide-react';
+import { CheckCircle2, Search, ArrowRight, Lock, ChevronLeft, LayoutGrid, BookOpen, Layers } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { Badge, EmptyState, PageHeader, Skeleton, buttonClass } from '../ui';
 
 export function InstitutionContentAccess() {
   const [accessMap, setAccessMap] = useState<Record<string, any[]>>({});
@@ -36,10 +36,14 @@ export function InstitutionContentAccess() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="mx-auto max-w-6xl space-y-6" role="status" aria-label="Loading departments">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-full max-w-xl" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-40 rounded-md bg-rule animate-pulse" />
+            <Skeleton key={i} className="h-36 rounded-xl" />
           ))}
         </div>
       </div>
@@ -52,50 +56,51 @@ export function InstitutionContentAccess() {
     const isFullyUnlocked = unlockedCount > 0 && unlockedCount === modules.length;
 
     return (
-      <div className="space-y-6 pb-12">
-        <button 
+      <div className="mx-auto max-w-6xl space-y-6">
+        <button
+          type="button"
           onClick={() => setSelectedDomain(null)}
-          className="flex items-center gap-2 text-sm font-bold text-muted hover:text-accent transition-colors"
+          className="btn btn-ghost btn-sm -ml-3"
         >
-          <ChevronLeft size={16} /> Back to Departments
+          <ChevronLeft size={16} aria-hidden="true" /> Back to Departments
         </button>
 
-        <div className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-rule bg-surface-2/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-black text-ink flex items-center gap-3">
-                <LayoutGrid className="text-accent" /> {selectedDomain}
-              </h2>
-              <p className="text-sm text-muted font-medium mt-1">
+        <div className="card overflow-hidden">
+          <div className="flex flex-col justify-between gap-4 border-b border-rule bg-surface-2/50 px-5 py-5 sm:flex-row sm:items-center sm:px-6">
+            <div className="min-w-0">
+              <h1 className="flex items-center gap-3 text-ink">
+                <LayoutGrid className="shrink-0 text-accent" size={24} aria-hidden="true" /> <span className="min-w-0 break-words">{selectedDomain}</span>
+              </h1>
+              <p className="mt-1 text-sm text-muted">
                 {unlockedCount} of {modules.length} content types unlocked
               </p>
             </div>
             {isFullyUnlocked ? (
-              <span className="px-4 py-1.5 bg-accent-soft text-accent font-bold text-xs uppercase tracking-wider rounded-md flex items-center gap-1.5 w-max border border-accent">
-                <CheckCircle2 size={16} /> Full Access
-              </span>
+              <Badge tone="success" className="w-max">
+                <CheckCircle2 size={14} aria-hidden="true" /> Full Access
+              </Badge>
             ) : (
-              <a href={`/domain/${selectedDomain.toLowerCase().replace(/\s+/g, '-')}`} className="px-5 py-2 bg-ink text-white font-bold text-sm rounded-md shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 w-max">
-                <Lock size={14} /> Upgrade Plan for More
+              <a href={`/domain/${selectedDomain.toLowerCase().replace(/\s+/g, '-')}`} className={buttonClass('outline', 'md', 'w-max')}>
+                <Lock size={16} aria-hidden="true" /> Upgrade Plan for More
               </a>
             )}
           </div>
-          
+
           <div className="divide-y divide-rule">
             {modules.length === 0 ? (
-               <div className="p-8 text-center text-muted">No content types found in this department.</div>
+               <EmptyState title="No content types found in this department." />
             ) : (
               modules.map((mod) => (
-                <div key={mod.id} className="p-5 sm:px-8 flex items-center justify-between hover:bg-surface-2/50 transition-colors group">
-                  <div className="flex items-center gap-5">
-                    <div className={`w-12 h-12 rounded-md flex items-center justify-center ${mod.hasAccess ? 'bg-accent-soft text-accent border border-rule' : 'bg-surface-2 text-faint border border-rule'}`}>
-                      {mod.hasAccess ? <BookOpen size={24} /> : <Lock size={20} />}
+                <div key={mod.id} className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-surface-2/50 sm:px-6">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-rule ${mod.hasAccess ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-muted'}`} aria-hidden="true">
+                      {mod.hasAccess ? <BookOpen size={20} /> : <Lock size={18} />}
                     </div>
-                    <div>
-                      <p className={`font-bold text-lg ${mod.hasAccess ? 'text-ink' : 'text-muted'}`}>
+                    <div className="min-w-0">
+                      <p className={`text-base font-semibold ${mod.hasAccess ? 'text-ink' : 'text-muted'}`}>
                         {mod.contentType}
                       </p>
-                      <p className="text-sm font-medium text-faint mt-0.5">
+                      <p className="mt-0.5 text-[13px] text-muted">
                         {mod.totalCount.toLocaleString()} item{mod.totalCount !== 1 ? 's' : ''} available
                       </p>
                     </div>
@@ -110,12 +115,13 @@ export function InstitutionContentAccess() {
                           ? `/institution/explore?domain=${encodeURIComponent(selectedDomain)}&mode=new`
                           : `/institution/explore?domain=${encodeURIComponent(selectedDomain)}&mode=archived&atype=${encodeURIComponent(mod.contentType)}`
                       )}
-                      className="px-6 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-md shadow-sm hover:shadow-md transition-all flex items-center gap-2 text-sm font-bold"
+                      className="btn btn-primary btn-sm shrink-0"
+                      aria-label={`Browse ${mod.contentType} in ${selectedDomain}`}
                     >
-                      Browse <ArrowRight size={16} />
+                      Browse <ArrowRight size={16} aria-hidden="true" />
                     </button>
                   ) : (
-                    <span className="px-3 py-1 bg-surface-2 text-faint text-xs font-bold rounded-lg uppercase tracking-wider hidden sm:block">Locked</span>
+                    <Badge tone="neutral" className="shrink-0"><Lock size={12} aria-hidden="true" /> Locked</Badge>
                   )}
                 </div>
               ))
@@ -127,73 +133,65 @@ export function InstitutionContentAccess() {
   }
 
   return (
-    <div className="space-y-8 pb-12">
-      <div>
-        <h1 className="text-3xl font-black text-ink tracking-tight flex items-center gap-3">
-          <Layers className="text-accent" size={32} /> My Content Access
-        </h1>
-        <p className="text-base font-medium text-muted mt-2 max-w-2xl">
-          Select a department below to see which content types (Books, Periodicals, etc.) you have unlocked. Browse and read instantly.
-        </p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        title={<span className="flex items-center gap-3"><Layers className="shrink-0 text-accent" size={28} aria-hidden="true" /> My Content Access</span>}
+        description="Select a department below to see which content types (Books, Periodicals, etc.) you have unlocked. Browse and read instantly."
+        className="!mb-0"
+      />
 
       <div className="relative max-w-xl">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" size={20} />
+        <label htmlFor="dept-search" className="sr-only">Search departments</label>
+        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
         <input
-          type="text"
+          id="dept-search"
+          type="search"
           placeholder="Search departments..."
-          className="w-full pl-12 pr-4 py-3.5 bg-surface border border-rule rounded-md text-base focus:ring-4 focus:border-accent focus:border-accent transition-all outline-none text-ink shadow-sm"
+          className="input pl-9"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {sortedDomains
           .filter(d => d.toLowerCase().includes(search.toLowerCase()))
-          .map((domain, index) => {
+          .map((domain) => {
             const modules = accessMap[domain] || [];
             const unlockedCount = modules.filter(m => m.hasAccess).length;
             const hasAnyAccess = unlockedCount > 0;
 
             return (
-              <motion.button 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+              <button
+                type="button"
                 key={domain}
                 onClick={() => setSelectedDomain(domain)}
-                className={`text-left relative p-6 rounded-md border transition-all duration-300 group ${
-                  hasAnyAccess 
-                    ? 'bg-surface border-rule shadow-md hover:shadow-xl hover:-translate-y-1 hover:border-accent'
-                    : 'bg-surface-2/50 border-rule opacity-80 hover:opacity-100 hover:shadow-md'
-                }`}
+                className={`card card-interactive group relative p-5 text-left ${hasAnyAccess ? 'hover:border-accent' : 'bg-surface-2/50'}`}
               >
-                {hasAnyAccess && (
-                  <div className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-accent shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                )}
-                
-                <div className="mb-4">
-                  <h3 className={`text-xl font-black ${hasAnyAccess ? 'text-ink group-hover:text-accent transition-colors' : 'text-ink-2'}`}>
-                    {domain}
-                  </h3>
-                </div>
-                
-                <div className="space-y-1.5">
-                  <p className={`text-sm font-semibold flex items-center gap-1.5 ${hasAnyAccess ? 'text-accent' : 'text-faint'}`}>
-                    {hasAnyAccess ? <CheckCircle2 size={16} /> : <Lock size={16} />}
+                <h2 className={`pr-6 text-lg font-semibold ${hasAnyAccess ? 'text-ink group-hover:text-accent' : 'text-ink-2'}`}>
+                  {domain}
+                </h2>
+
+                <div className="mt-4 space-y-1.5">
+                  <p className={`flex items-center gap-1.5 text-sm font-semibold ${hasAnyAccess ? 'text-success' : 'text-muted'}`}>
+                    {hasAnyAccess ? <CheckCircle2 size={16} aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
                     {unlockedCount} of {modules.length} accessible
                   </p>
-                  <p className="text-xs text-muted font-medium">
+                  <p className="text-xs text-muted">
                     Total {modules.reduce((acc, m) => acc + m.totalCount, 0).toLocaleString()} items
                   </p>
                 </div>
-              </motion.button>
+              </button>
             );
         })}
         {domains.length === 0 && !loading && (
-          <div className="col-span-full text-center p-16 bg-surface rounded-md border border-rule">
-             <p className="text-lg font-bold text-muted">No departments available.</p>
+          <div className="card col-span-full">
+            <EmptyState icon={Layers} title="No departments available." />
+          </div>
+        )}
+        {domains.length > 0 && !sortedDomains.some(d => d.toLowerCase().includes(search.toLowerCase())) && (
+          <div className="card col-span-full">
+            <EmptyState icon={Search} title="No departments match this search" description="Try another name." />
           </div>
         )}
       </div>

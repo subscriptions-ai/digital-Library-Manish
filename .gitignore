@@ -15,3 +15,7 @@ dist-email-preview/
 
 # database dumps — real user data, never commit
 backups/
+
+# brochure build: downloaded fonts and print scratch
+scripts/brochure/fonts/
+scripts/brochure/.build/

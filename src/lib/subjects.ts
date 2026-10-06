@@ -26,7 +26,10 @@ export function cleanSubjectArea(value: unknown, title?: string | null): string 
   if (/[.?!]$/.test(v) && v.split(' ').length > 5) return null;
   if (title) {
     const t = norm(title), s = norm(v);
-    if (s && t && (s === t || (s.length >= 20 && (t.includes(s) || s.includes(t))))) return null;
+    // The title copied into the subject field, whole or cut short. A real subject
+    // that merely appears in a longer title ("Magnonics" in "Magnonics in thin
+    // films…") is kept: it has to cover most of the title to count as a copy.
+    if (s && t && (s === t || s.includes(t) || (s.length >= 20 && t.includes(s) && s.length >= t.length * 0.6))) return null;
   }
   return v;
 }

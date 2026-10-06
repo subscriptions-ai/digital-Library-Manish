@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import {
-  Search, Loader2, BookOpen, FileText, Newspaper,
-  Video, Users, Mail, Book, GraduationCap, ChevronLeft, ChevronRight, Filter, X,
+  Search, BookOpen, FileText, Newspaper,
+  Video, Users, Mail, Book, GraduationCap, ChevronLeft, ChevronRight, Filter, X, ArrowRight,
 } from "lucide-react";
+import { Button, EmptyState, ErrorState, Skeleton } from "./ui";
+import { SEARCH_PLACEHOLDER } from "./GlobalSearch";
 import { CONTENT_TYPES } from "../constants";
 import { DOMAINS } from "../constants";
 
@@ -43,6 +45,32 @@ const CT_ICON: Record<string, any> = {
 
 const LIMIT = 20;
 
+/** The year a search result was published, or nothing if the date is unusable. */
+function yearOf(date: string): number | null {
+  if (!date) return null;
+  const y = new Date(date).getFullYear();
+  return Number.isFinite(y) ? y : null;
+}
+
+/** Placeholder cards with the same shape as a result, while a search runs. */
+function ResultSkeletons() {
+  return (
+    <div className="space-y-3" role="status" aria-label="Searching">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i} className="card card-pad flex gap-4">
+          <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
+          <div className="flex-1 space-y-2.5">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/3" />
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export function SearchResults() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -67,6 +95,8 @@ export function SearchResults() {
       if (ctFilter)     params.set("contentType", ctFilter);
       const res  = await fetch(`/api/search?${params.toString()}`);
       const data = await res.json();
+      // A failed search answers with { error }, which has no rows to render.
+      if (!res.ok || !Array.isArray(data?.data)) throw new Error("search failed");
       setResults(data);
     } catch {
       setError(true);
@@ -91,6 +121,16 @@ export function SearchResults() {
     setSearchParams(next);
   };
 
+  // Both filters in one update; two setFilter calls each start from the same
+  // stale params, so the second put the first filter back.
+  const clearFilters = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("domain");
+    next.delete("contentType");
+    next.set("page", "1");
+    setSearchParams(next);
+  };
+
   const setPage = (p: number) => {
     const next = new URLSearchParams(searchParams);
     next.set("page", String(p));
@@ -100,27 +140,40 @@ export function SearchResults() {
 
   const totalPages = results ? Math.ceil(results.total / LIMIT) : 0;
 
+  // Page numbers to offer: up to seven, centred on the current page.
+  const pageNumbers = Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+    let p = i + 1;
+    if (totalPages > 7) {
+      if (currentPage <= 4) p = i + 1;
+      else if (currentPage >= totalPages - 3) p = totalPages - 6 + i;
+      else p = currentPage - 3 + i;
+    }
+    return p;
+  });
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="bg-ground">
       {/* ── Search Hero Bar ──────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-200 py-10">
+      <div className="border-b border-rule bg-surface py-8 sm:py-10">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-6">
+          <h1 className="type-page-title mb-5 break-words text-ink">
             {query ? (
-              <>Search results for <span className="text-indigo-600">"{query}"</span></>
+              <>Search results for <span className="text-accent">"{query}"</span></>
             ) : (
               "Search the Library"
             )}
           </h1>
-          <form onSubmit={handleSubmit} className="flex gap-3">
-            <div className="relative flex-1">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <form onSubmit={handleSubmit} role="search" className="flex flex-wrap gap-2 sm:flex-nowrap sm:gap-3">
+            <div className="relative w-full sm:flex-1">
+              <label htmlFor="search-results-input" className="sr-only">Search the library</label>
+              <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" aria-hidden="true" />
               <input
-                type="text"
+                id="search-results-input"
+                type="search"
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
-                placeholder="Search journals, books, topics…"
-                className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-12 pr-10 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all"
+                placeholder={SEARCH_PLACEHOLDER}
+                className="input h-[46px] pl-11 pr-11 text-ellipsis [&::-webkit-search-cancel-button]:hidden"
               />
               {inputVal && (
                 <button
@@ -128,41 +181,40 @@ export function SearchResults() {
                   onClick={() => setInputVal("")}
                   title="Clear search"
                   aria-label="Clear search"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors focus:outline-none"
+                  className="btn btn-ghost btn-sm btn-icon absolute right-1.5 top-1/2 -translate-y-1/2 text-muted"
                 >
-                  <X size={16} />
+                  <X size={16} aria-hidden="true" />
                 </button>
               )}
             </div>
-            <button
-              type="submit"
-              className="rounded-full bg-indigo-600 hover:bg-indigo-700 px-7 py-3 text-sm font-bold text-white transition-all"
-            >
+            <Button type="submit" variant="brand" className="h-[46px] flex-1 sm:flex-none sm:px-6">
               Search
-            </button>
+            </Button>
             <button
               type="button"
               onClick={() => setShowFilters((f) => !f)}
-              className={`flex items-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold transition-all ${
-                showFilters
-                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-              }`}
+              aria-expanded={showFilters}
+              aria-controls="search-filters"
+              className={`btn h-[46px] flex-1 sm:flex-none ${showFilters ? "btn-outline border-accent bg-accent-soft text-accent" : "btn-outline"}`}
             >
-              <Filter size={15} /> Filters
+              <Filter size={16} aria-hidden="true" /> Filters
+              {(domainFilter || ctFilter) && (
+                <span className="badge badge-accent ml-1">{[domainFilter, ctFilter].filter(Boolean).length}</span>
+              )}
             </button>
           </form>
 
           {/* Filters */}
           {showFilters && (
-            <div className="mt-4 flex flex-wrap gap-4 pt-4 border-t border-slate-100">
+            <div id="search-filters" className="mt-4 grid gap-4 border-t border-rule pt-4 sm:flex sm:flex-wrap sm:items-end">
               {/* Domain filter */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Domain</label>
+              <div className="field sm:min-w-[220px]">
+                <label htmlFor="search-filter-domain" className="field-label">Domain</label>
                 <select
+                  id="search-filter-domain"
                   value={domainFilter}
                   onChange={(e) => setFilter("domain", e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-400"
+                  className="input"
                 >
                   <option value="">All Domains</option>
                   {DOMAINS.map((d) => (
@@ -172,12 +224,13 @@ export function SearchResults() {
               </div>
 
               {/* Content Type filter */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Content Type</label>
+              <div className="field sm:min-w-[200px]">
+                <label htmlFor="search-filter-type" className="field-label">Content Type</label>
                 <select
+                  id="search-filter-type"
                   value={ctFilter}
                   onChange={(e) => setFilter("contentType", e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-400"
+                  className="input"
                 >
                   <option value="">All Types</option>
                   {CONTENT_TYPES.map((ct) => (
@@ -188,12 +241,13 @@ export function SearchResults() {
 
               {/* Clear filters */}
               {(domainFilter || ctFilter) && (
-                <button
-                  onClick={() => { setFilter("domain", ""); setFilter("contentType", ""); }}
-                  className="self-end rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-100 transition-all"
+                <Button
+                  variant="ghost"
+                  onClick={clearFilters}
+                  className="justify-self-start text-accent"
                 >
                   Clear Filters
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -201,146 +255,157 @@ export function SearchResults() {
       </div>
 
       {/* ── Results Area ──────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
 
         {/* Loading */}
-        {loading && (
-          <div className="flex items-center justify-center gap-3 py-20 text-slate-400">
-            <Loader2 className="animate-spin" size={22} />
-            <span className="text-sm">Searching…</span>
-          </div>
-        )}
+        {loading && <ResultSkeletons />}
 
         {/* Error */}
         {!loading && error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-600 text-sm">
-            Search failed. Please try again.
+          <div className="card">
+            <ErrorState
+              title="Search failed"
+              description="We could not run this search right now. Please try again."
+              onRetry={doSearch}
+            />
           </div>
         )}
 
         {/* No query */}
         {!loading && !error && !query && (
-          <div className="text-center py-24 text-slate-400">
-            <Search size={48} className="mx-auto mb-4 text-slate-300" />
-            <p className="text-lg font-semibold">Enter a keyword to search the library</p>
-            <p className="text-sm mt-1">Try searching for a topic, author, domain, or content type</p>
-          </div>
+          <EmptyState
+            icon={Search}
+            title="Enter a keyword to search the library"
+            description="Try searching for a topic, author, domain, or content type"
+          />
         )}
 
         {/* No results */}
         {!loading && !error && query && results && results.data.length === 0 && (
-          <div className="text-center py-24 text-slate-400">
-            <BookOpen size={48} className="mx-auto mb-4 text-slate-300" />
-            <p className="text-lg font-semibold text-slate-700">No results for "{query}"</p>
-            <p className="text-sm mt-1">Try different keywords, or remove filters</p>
+          <div className="card">
+            <EmptyState
+              icon={BookOpen}
+              title="No research results match this search"
+              description={<>Nothing matched "{query}"{(domainFilter || ctFilter) ? " with these filters" : ""}. Try different keywords, or remove filters.</>}
+            />
           </div>
         )}
 
         {/* Results */}
         {!loading && !error && results && results.data.length > 0 && (
           <>
-            <p className="text-sm text-slate-500 mb-6">
-              Showing <strong className="text-slate-800">{(currentPage - 1) * LIMIT + 1}–{Math.min(currentPage * LIMIT, results.total)}</strong> of{" "}
-              <strong className="text-slate-800">{results.total.toLocaleString("en-IN")}</strong> results
-              {domainFilter && <> in <span className="text-indigo-600 font-semibold">{domainFilter}</span></>}
-              {ctFilter && <> · <span className="text-indigo-600 font-semibold">{ctFilter}</span></>}
+            <p className="mb-5 text-sm text-muted" aria-live="polite">
+              Showing <strong className="text-ink">{(currentPage - 1) * LIMIT + 1}–{Math.min(currentPage * LIMIT, results.total)}</strong> of{" "}
+              <strong className="text-ink">{results.total.toLocaleString("en-IN")}</strong> results
+              {domainFilter && <> in <span className="font-semibold text-accent">{domainFilter}</span></>}
+              {ctFilter && <> · <span className="font-semibold text-accent">{ctFilter}</span></>}
             </p>
 
-            <div className="space-y-4">
+            <ul className="space-y-3">
               {results.data.map((item) => {
                 const Icon = CT_ICON[item.contentType] || BookOpen;
+                const year = yearOf(item.publishedAt);
+                const domainId = DOMAINS.find(d => d.name === item.domain)?.id;
                 return (
-                  <div
+                  <li
                     key={item.id}
-                    className="flex gap-5 bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all"
+                    className="card card-pad flex gap-4 transition-colors hover:border-rule-2"
                   >
                     {/* Icon */}
-                    <div className="shrink-0 h-12 w-12 rounded-xl bg-indigo-50 flex items-center justify-center">
-                      <Icon size={22} className="text-indigo-500" />
+                    <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent sm:flex" aria-hidden="true">
+                      <Icon size={20} />
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-                          {item.contentType}
-                        </span>
-                        {item.domain && (
-                          <Link
-                            to={`/domain/${DOMAINS.find(d => d.name === item.domain)?.id || ""}`}
-                            className="inline-block rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-bold text-indigo-600 hover:underline"
-                            onClick={(e) => { if (!DOMAINS.find(d => d.name === item.domain)) e.preventDefault(); }}
-                          >
-                            {item.domain}
-                          </Link>
-                        )}
-                        <span className={`ml-auto shrink-0 text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                          item.accessType === "Open" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
-                        }`}>
-                          {item.accessType === "Open" ? "Open Access" : "Licensed Access"}
-                        </span>
-                      </div>
-
-                      <h3 className="text-base font-bold text-slate-900 leading-snug">
-                        {item.title}
-                      </h3>
+                    {/* Content: title, authors, source line, badges, action */}
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-base font-semibold leading-snug text-ink break-words">
+                        <Link to={`/preview/${item.id}`} className="hover:text-accent hover:underline">
+                          {item.title}
+                        </Link>
+                      </h2>
 
                       {item.authors && (
-                        <p className="text-xs text-slate-500 mt-0.5">{item.authors}</p>
+                        <p className="mt-1 text-sm text-ink-2 line-clamp-2">{item.authors}</p>
+                      )}
+
+                      {(item.domain || year) && (
+                        <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+                          {item.domain && (
+                            domainId ? (
+                              <Link to={`/domain/${domainId}`} className="font-medium text-accent hover:underline">
+                                {item.domain}
+                              </Link>
+                            ) : (
+                              <span className="font-medium">{item.domain}</span>
+                            )
+                          )}
+                          {item.domain && year && <span aria-hidden="true">·</span>}
+                          {year && <span>{year}</span>}
+                        </p>
                       )}
 
                       {item.description && (
-                        <p className="text-sm text-slate-600 mt-2 line-clamp-2 leading-relaxed">
+                        <p className="mt-2 text-sm leading-relaxed text-ink-2 line-clamp-2">
                           {item.description}
                         </p>
                       )}
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {item.contentType && (
+                          <span className="badge badge-neutral">{item.contentType}</span>
+                        )}
+                        <span className={`badge ${item.accessType === "Open" ? "badge-success" : "badge-caution"}`}>
+                          {item.accessType === "Open" ? "Open Access" : "Licensed Access"}
+                        </span>
+                        <Link
+                          to={`/preview/${item.id}`}
+                          className="ml-auto inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline"
+                        >
+                          View details <ArrowRight size={14} aria-hidden="true" />
+                        </Link>
+                      </div>
                     </div>
-                  </div>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="mt-10 flex items-center justify-center gap-2">
+              <nav aria-label="Search results pages" className="mt-8 flex flex-wrap items-center justify-center gap-2">
                 <button
+                  type="button"
                   onClick={() => setPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:border-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  aria-label="Previous page"
+                  className="btn btn-outline btn-sm"
                 >
-                  <ChevronLeft size={16} /> Prev
+                  <ChevronLeft size={16} aria-hidden="true" /> Prev
                 </button>
 
-                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                  let p = i + 1;
-                  if (totalPages > 7) {
-                    if (currentPage <= 4) p = i + 1;
-                    else if (currentPage >= totalPages - 3) p = totalPages - 6 + i;
-                    else p = currentPage - 3 + i;
-                  }
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={`h-9 w-9 rounded-full text-sm font-bold transition-all ${
-                        p === currentPage
-                          ? "bg-indigo-600 text-white"
-                          : "border border-slate-200 bg-white text-slate-600 hover:border-indigo-300"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
+                {pageNumbers.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    aria-label={`Page ${p}`}
+                    aria-current={p === currentPage ? "page" : undefined}
+                    className={`btn btn-sm btn-icon ${p === currentPage ? "btn-primary" : "btn-outline"}`}
+                  >
+                    {p}
+                  </button>
+                ))}
 
                 <button
+                  type="button"
                   onClick={() => setPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:border-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  aria-label="Next page"
+                  className="btn btn-outline btn-sm"
                 >
-                  Next <ChevronRight size={16} />
+                  Next <ChevronRight size={16} aria-hidden="true" />
                 </button>
-              </div>
+              </nav>
             )}
           </>
         )}

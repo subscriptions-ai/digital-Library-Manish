@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  ChevronDown, Facebook, LayoutGrid, Linkedin, Lock, LogOut, Mail, MapPin, Menu, Phone, Search, X,
+  ChevronDown, Facebook, LayoutGrid, Linkedin, Lock, LogOut, Mail, MapPin, Menu, Phone, X,
 } from 'lucide-react';
 import { DOMAINS } from '../constants';
 
@@ -10,11 +10,12 @@ const DEPARTMENTS_AZ = [...DOMAINS].sort((a, b) => a.name.localeCompare(b.name))
 import { COMPANY_DETAILS } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { usePublisherSafeMode } from '../lib/publicSettings';
+import { HeaderSearch } from './GlobalSearch';
 
 /**
  * The header and footer for the home page and the pages that belong with it,
- * drawn in the same language as the page: the dashboards' tokens, a serif for
- * names, mono for figures.
+ * drawn in the same language as the page: the dashboards' tokens and the one
+ * typeface, with tabular figures for the counts.
  *
  * They carry exactly what the site's own header and footer carry — the same
  * links, the same departments, the same search, the same sign-in states and the
@@ -56,10 +57,10 @@ function useDismiss(open: boolean, close: () => void, ref: React.RefObject<HTMLE
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link to="/" className="flex min-w-0 items-center gap-2.5 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+    <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
       <img src="/logo.png" alt="STM Digital Library" className={`shrink-0 object-contain ${compact ? 'h-8 w-8' : 'h-9 w-9'}`} />
-      <span className="min-w-0 leading-none">
-        <span className="block truncate font-serif text-[16px] font-semibold tracking-tight text-ink sm:text-[17px]">STM Digital Library</span>
+      <span className="leading-none">
+        <span className="block whitespace-nowrap text-[16px] font-semibold tracking-tight text-ink sm:text-[17px]">STM Digital Library</span>
       </span>
     </Link>
   );
@@ -68,7 +69,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
 // The current page is marked by a 2px rule under it as well as by darker text,
 // and hover draws the same rule, so nothing moves and nothing depends on colour.
 const navBase =
-  "relative flex h-full items-center text-[14px] font-medium transition-colors duration-150 " +
+  "relative flex h-full items-center whitespace-nowrap text-[14px] font-medium transition-colors duration-150 " +
   "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-left after:bg-accent after:transition-transform after:duration-200 " +
   "hover:text-accent focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-accent";
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -86,8 +87,6 @@ export function PreviewHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileDepts, setMobileDepts] = useState(false);
-  const [q, setQ] = useState('');
-  const [hint, setHint] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -98,7 +97,6 @@ export function PreviewHeader() {
   }, []);
 
   useEffect(() => {
-    setHint(false);
     setDeptOpen(false);
     setSearchOpen(false);
     setMenuOpen(false);
@@ -118,31 +116,22 @@ export function PreviewHeader() {
   }, [menuOpen]);
 
   const deptRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   useDismiss(deptOpen, () => setDeptOpen(false), deptRef);
-  useDismiss(searchOpen, () => setSearchOpen(false), searchRef);
   useDismiss(profileOpen, () => setProfileOpen(false), profileRef);
 
   const dashboardPath = isAdmin ? '/admin' : isInstitutionAdmin ? '/institution' : isSubscriptionManager ? '/manager' : '/dashboard';
   const initials = (user?.displayName || user?.email || '?').trim().slice(0, 2).toUpperCase();
 
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const term = q.trim();
-    if (!term) { setHint(true); return; }
-    navigate(`/search?q=${encodeURIComponent(term)}`);
-    setQ(''); setSearchOpen(false); setMenuOpen(false);
-  };
   const signOut = () => { logout(); navigate('/'); setProfileOpen(false); setMenuOpen(false); };
 
   return (
     <header className={`sticky top-0 z-50 border-b border-rule bg-surface transition-shadow duration-200 ${scrolled ? 'shadow-[0_1px_8px_rgba(15,23,42,0.06)]' : ''}`}>
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-5 lg:gap-5 lg:px-6">
+      <div className="container-public flex h-16 items-center gap-3 xl:gap-6">
         <Brand />
 
         {/* Primary navigation */}
-        <nav className="hidden h-full flex-1 items-center justify-center gap-5 lg:flex xl:gap-7" aria-label="Main">
+        <nav className="hidden h-full flex-1 items-center justify-center gap-5 xl:flex 2xl:gap-7" aria-label="Main">
           <NavLink to="/" end className={navLinkClass}>Home</NavLink>
           <NavLink to="/about" className={navLinkClass}>About</NavLink>
           <NavLink to="/for-institutions" className={navLinkClass}>For Institutions</NavLink>
@@ -156,7 +145,7 @@ export function PreviewHeader() {
             </button>
             {deptOpen && (
               <div className="absolute left-1/2 top-full z-50 w-[min(880px,calc(100vw-2.5rem))] -translate-x-1/2 pt-0">
-                <div className="rounded-xl border border-rule bg-surface p-5 shadow-[0_12px_32px_rgba(15,23,42,0.12)]">
+                <div className="rounded-xl border border-rule bg-surface p-5 shadow-[var(--shadow-pop)]">
                   <div className="mb-4 flex items-baseline justify-between border-b border-rule pb-3">
                     <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
                       Departments {totals ? `· ${n(totals.total)} items across ${totals.count}` : ''}
@@ -189,44 +178,25 @@ export function PreviewHeader() {
         </nav>
 
         {/* Search and account */}
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:ml-0">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 xl:ml-0">
           {!safeMode && (
-            <div ref={searchRef} className="sm:relative">
-              <button type="button" onClick={() => { setHint(false); setMenuOpen(false); setSearchOpen(o => !o); }}
-                aria-label={searchOpen ? 'Close search' : 'Open search'} aria-expanded={searchOpen} aria-controls="header-search"
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-surface-2 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
-                <Search size={17} aria-hidden="true" />
-              </button>
-              {searchOpen && (
-                <form id="header-search" role="search" onSubmit={submitSearch} noValidate
-                  className="fixed inset-x-3 top-[68px] z-50 rounded-xl border border-rule bg-surface p-2 shadow-[0_12px_32px_rgba(15,23,42,0.12)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 sm:w-[440px]">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-rule bg-surface px-3 focus-within:border-accent">
-                      <Search size={16} aria-hidden="true" className="shrink-0 text-faint" />
-                      <input autoFocus type="search" value={q} aria-label="Search the library"
-                        onChange={e => { setQ(e.target.value); if (hint) setHint(false); }}
-                        placeholder={window.matchMedia('(min-width: 640px)').matches ? 'Search articles, books, journals, authors, DOI…' : 'Search the library…'}
-                        className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-faint" />
-                    </div>
-                    <button type="submit" className="h-10 w-20 shrink-0 rounded-[10px] bg-accent text-[13px] font-semibold text-white hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Search</button>
-                  </div>
-                  {hint && <p role="status" className="px-1 pt-2 text-[12px] text-muted">Enter a title, author, DOI or keyword.</p>}
-                </form>
-              )}
-            </div>
+            <HeaderSearch
+              open={searchOpen}
+              onOpenChange={open => { if (open) setMenuOpen(false); setSearchOpen(open); }}
+            />
           )}
 
           {user ? (
-            <div ref={profileRef} className="relative hidden lg:block">
+            <div ref={profileRef} className="relative hidden xl:block">
               <button type="button" onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen}
                 aria-haspopup="menu"
                 className="flex h-10 items-center gap-2 rounded-lg border border-rule bg-surface px-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-[10.5px] font-bold text-accent">{initials}</span>
                 <span className="max-w-[110px] truncate">{user.displayName || 'Account'}</span>
-                <ChevronDown size={13} className={`text-muted transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={13} aria-hidden="true" className={`text-muted transition-transform duration-150 ${profileOpen ? 'rotate-180' : ''}`} />
               </button>
               {profileOpen && (
-                <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-rule bg-surface py-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)]">
+                <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-rule bg-surface py-1.5 shadow-[var(--shadow-pop)]">
                   <Link to={dashboardPath} role="menuitem" onClick={() => setProfileOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-ink focus-visible:bg-surface-2 focus-visible:text-ink focus-visible:outline-none">
                     <LayoutGrid size={15} aria-hidden="true" /> Dashboard
@@ -240,33 +210,33 @@ export function PreviewHeader() {
               )}
             </div>
           ) : (
-            <div className="hidden items-center gap-2 lg:flex">
-              <Link to="/login" className="rounded-lg px-3 py-2 text-[13.5px] text-ink-2 hover:bg-surface-2 hover:text-ink">Log in</Link>
-              <Link to="/signup" className="rounded-lg bg-ink px-4 py-2 text-[13.5px] font-semibold text-surface hover:opacity-90">Register Now</Link>
+            <div className="hidden items-center gap-2 xl:flex">
+              <Link to="/login" className="btn btn-ghost">Log in</Link>
+              <Link to="/signup" className="btn btn-brand">Register Now</Link>
             </div>
           )}
 
           <button type="button" onClick={() => { setSearchOpen(false); setMenuOpen(o => !o); }} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} aria-controls="mobile-menu"
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-surface-2 lg:hidden">
-            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-surface-2 xl:hidden">
+            {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
           </button>
         </div>
       </div>
 
       {/* Phone and tablet menu */}
       {menuOpen && (
-        <div id="mobile-menu" className="fixed inset-x-0 bottom-0 top-16 z-50 overflow-y-auto overscroll-contain border-t border-rule bg-surface px-4 pb-8 pt-2 sm:px-5 lg:hidden">
-          <nav className="flex flex-col" aria-label="Main">
+        <div id="mobile-menu" className="fixed inset-x-0 bottom-0 top-16 z-50 overflow-y-auto overscroll-contain border-t border-rule bg-surface px-4 pb-8 pt-2 sm:px-6 xl:hidden">
+          <nav className="mx-auto flex max-w-2xl flex-col" aria-label="Main menu">
             {[
               ['/', 'Home'], ['/about', 'About'], ['/for-institutions', 'For Institutions'],
               ['/for-students', 'For Students & Researchers'],
             ].map(([to, label]) => (
-              <Link key={to} to={to} onClick={() => setMenuOpen(false)}
-                className="flex min-h-11 items-center border-b border-rule py-3 text-[15px] text-ink">{label}</Link>
+              <NavLink key={to} to={to} end={to === '/'} onClick={() => setMenuOpen(false)}
+                className={({ isActive }) => `flex min-h-11 items-center border-b border-rule py-3 text-[15px] ${isActive ? 'font-semibold text-accent' : 'text-ink'}`}>{label}</NavLink>
             ))}
             <button type="button" onClick={() => setMobileDepts(o => !o)} aria-expanded={mobileDepts}
               className="flex min-h-11 items-center justify-between border-b border-rule py-3 text-left text-[15px] text-ink">
-              Departments <ChevronDown size={17} className={`text-muted transition-transform ${mobileDepts ? 'rotate-180' : ''}`} />
+              Departments <ChevronDown size={17} aria-hidden="true" className={`text-muted transition-transform duration-200 ${mobileDepts ? 'rotate-180' : ''}`} />
             </button>
             {mobileDepts && (
               <div className="border-b border-rule py-2">
@@ -281,22 +251,22 @@ export function PreviewHeader() {
                 ))}
               </div>
             )}
-            {!safeMode && <Link to="/faq" onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center border-b border-rule py-3 text-[15px] text-ink">FAQ</Link>}
-            <Link to="/blog" onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center border-b border-rule py-3 text-[15px] text-ink">Blog</Link>
-            <Link to="/contact" onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center border-b border-rule py-3 text-[15px] text-ink">Contact</Link>
+            {!safeMode && <NavLink to="/faq" onClick={() => setMenuOpen(false)} className={({ isActive }) => `flex min-h-11 items-center border-b border-rule py-3 text-[15px] ${isActive ? 'font-semibold text-accent' : 'text-ink'}`}>FAQ</NavLink>}
+            <NavLink to="/blog" onClick={() => setMenuOpen(false)} className={({ isActive }) => `flex min-h-11 items-center border-b border-rule py-3 text-[15px] ${isActive ? 'font-semibold text-accent' : 'text-ink'}`}>Blog</NavLink>
+            <NavLink to="/contact" onClick={() => setMenuOpen(false)} className={({ isActive }) => `flex min-h-11 items-center border-b border-rule py-3 text-[15px] ${isActive ? 'font-semibold text-accent' : 'text-ink'}`}>Contact</NavLink>
           </nav>
-          <div className="mt-5 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+          <div className="mx-auto mt-6 grid max-w-2xl grid-cols-1 gap-2 min-[400px]:grid-cols-2">
             {user ? (
               <>
                 <Link to={dashboardPath} onClick={() => setMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 min-h-11 rounded-lg border border-rule py-3 text-[14px] text-ink"><LayoutGrid size={16} /> Dashboard</Link>
+                  className="btn btn-outline btn-lg"><LayoutGrid size={16} aria-hidden="true" /> Dashboard</Link>
                 <button type="button" onClick={signOut}
-                  className="flex items-center justify-center gap-2 min-h-11 rounded-lg border border-rule py-3 text-[14px] text-alarm"><LogOut size={16} /> Log out</button>
+                  className="btn btn-outline btn-lg text-alarm"><LogOut size={16} aria-hidden="true" /> Log out</button>
               </>
             ) : (
               <>
-                <Link to="/login" onClick={() => setMenuOpen(false)} className="flex items-center justify-center min-h-11 rounded-lg border border-rule py-3 text-[14px] text-ink">Log in</Link>
-                <Link to="/signup" onClick={() => setMenuOpen(false)} className="flex items-center justify-center min-h-11 rounded-lg bg-ink py-3 text-[14px] font-semibold text-surface">Register Now</Link>
+                <Link to="/login" onClick={() => setMenuOpen(false)} className="btn btn-outline btn-lg">Log in</Link>
+                <Link to="/signup" onClick={() => setMenuOpen(false)} className="btn btn-brand btn-lg">Register Now</Link>
               </>
             )}
           </div>
@@ -309,7 +279,7 @@ export function PreviewHeader() {
 export function PreviewFooter() {
   const totals = useDepartmentTotals();
   const year = new Date().getFullYear();
-  const colLabel = 'font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-faint';
+  const colLabel = 'text-[12px] font-semibold uppercase tracking-[0.12em] text-muted';
   const linkClass =
     'group inline-flex items-center gap-1 rounded text-[13.5px] leading-7 text-ink-2 transition-colors hover:text-accent focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
   const arrow = <span aria-hidden="true" className="-ml-1 translate-x-0 text-accent opacity-0 transition-all group-hover:ml-0 group-hover:opacity-100 group-focus-visible:opacity-100">→</span>;
@@ -319,13 +289,13 @@ export function PreviewFooter() {
 
   return (
     <footer className="border-t border-rule bg-surface">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 py-14 md:grid-cols-2 lg:grid-cols-[1.5fr_0.9fr_1.1fr_1.5fr] lg:gap-12">
+      <div className="container-public grid grid-cols-1 gap-10 py-12 sm:grid-cols-2 sm:py-16 lg:grid-cols-[1.5fr_0.9fr_1.1fr_1.5fr] lg:gap-12">
         <div className="min-w-0">
           <Link to="/" className="inline-flex items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface p-1.5 border border-rule">
               <img src="/logo.png" alt="" className="h-full w-full object-contain" />
             </span>
-            <span className="font-serif text-[19px] font-medium leading-tight tracking-tight text-ink">STM Digital Library</span>
+            <span className="text-[19px] font-semibold leading-tight tracking-tight text-ink">STM Digital Library</span>
           </Link>
           <p className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.16em] text-accent">{COMPANY_DETAILS.positioning}</p>
           <p className="mt-4 max-w-xs text-[13.5px] leading-[1.8] text-ink-2">
@@ -386,22 +356,22 @@ export function PreviewFooter() {
       </div>
 
       <div className="border-t border-rule">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-6 md:flex-row md:items-center md:justify-between">
+        <div className="container-public flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
           <p className="text-[12px] text-ink-2">© {year} {COMPANY_DETAILS.name}. All rights reserved.</p>
           {totals && (
             <div className="flex items-start gap-2.5 md:text-right">
               <span className="relative mt-[5px] flex h-2 w-2 shrink-0 md:order-2">
-                <span aria-hidden="true" className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60 motion-reduce:animate-none" />
-                <span aria-hidden="true" className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                <span aria-hidden="true" className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60 motion-reduce:animate-none" />
+                <span aria-hidden="true" className="relative inline-flex h-2 w-2 rounded-full bg-success" />
               </span>
               <p className="font-mono text-[11px] leading-relaxed text-ink-2 md:order-1">
-                <span className="font-semibold text-emerald-700">Catalogue live</span><br />
+                <span className="font-semibold text-success">Catalogue live</span><br />
                 {n(totals.total)} items across {totals.count} departments, counted from the catalogue
               </p>
             </div>
           )}
         </div>
-        <p className="mx-auto max-w-6xl select-none px-5 pb-4 text-[10px] text-faint/30 md:text-right">shubham a developer</p>
+        <p className="container-public select-none pb-4 text-[10px] text-faint/30 md:text-right">shubham a developer</p>
       </div>
     </footer>
   );

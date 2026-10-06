@@ -23704,11 +23704,7 @@ var DESIGNATIONS_BY_TYPE = {
     "Professor",
     "Associate Professor",
     "Assistant Professor",
-    "Faculty Member",
-    "Research Scientist",
-    "Research Associate",
-    "Principal Investigator (PI)",
-    "Research / Academic Coordinator"
+    "Faculty Member"
   ],
   Corporate: [
     "HR Manager",
@@ -23742,15 +23738,18 @@ var DESIGNATIONS_BY_TYPE = {
     "Entrepreneur / Founder",
     "Consultant",
     "Freelancer",
-    "Independent Researcher"
+    "Independent Researcher",
+    "Research Scientist",
+    "Research Associate",
+    "Principal Investigator (PI)",
+    "Research / Academic Coordinator"
   ]
 };
 var DESIGNATION_GROUPS = {
   Institute: [
     { label: "Library", roles: ["Librarian"] },
     { label: "Leadership", roles: ["Principal", "Vice Principal", "Dean", "Director", "Head of Department (HOD)"] },
-    { label: "Faculty", roles: ["Professor", "Associate Professor", "Assistant Professor", "Faculty Member"] },
-    { label: "Research", roles: ["Research Scientist", "Research Associate", "Principal Investigator (PI)", "Research / Academic Coordinator"] }
+    { label: "Faculty", roles: ["Professor", "Associate Professor", "Assistant Professor", "Faculty Member"] }
   ],
   Corporate: [
     { label: "Leadership", roles: ["CEO / Managing Director", "Director", "Vice President (VP)", "General Manager", "Department Head"] },
@@ -23759,7 +23758,7 @@ var DESIGNATION_GROUPS = {
   ],
   Solo: [
     { label: "Studying", roles: ["Undergraduate Student", "Master's Student", "PhD Scholar", "Postdoctoral Researcher"] },
-    { label: "Research & academia", roles: ["Researcher / Scientist", "Faculty / Academic Professional", "Independent Researcher"] },
+    { label: "Research & academia", roles: ["Researcher / Scientist", "Faculty / Academic Professional", "Independent Researcher", "Research Scientist", "Research Associate", "Principal Investigator (PI)", "Research / Academic Coordinator"] },
     { label: "Working", roles: ["Working Professional", "Industry Professional", "Entrepreneur / Founder", "Consultant", "Freelancer"] }
   ]
 };
@@ -24607,6 +24606,37 @@ var eRows = (pairs) => `<table width="100%" cellpadding="0" cellspacing="0" styl
 ).join("") + `</table>`;
 var eQuote = (author, text) => `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"><tr><td style="padding:16px 18px;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#1e3a6e;">${esc(author)}</p><div style="font-size:14px;line-height:1.65;color:#334155;">${escLines(text)}</div></td></tr></table>`;
 
+// src/lib/institutionPricing.ts
+var GST_RATE = 0.18;
+var MAX_INSTITUTION_USERS = 1e3;
+var TERM_MONTHS = 12;
+var DEPARTMENT_RATES = [
+  { minDepartments: 5, rate: 7990 },
+  { minDepartments: 4, rate: 8490 },
+  { minDepartments: 3, rate: 8990 },
+  { minDepartments: 2, rate: 9490 },
+  { minDepartments: 1, rate: 9990 }
+];
+var STARTING_DEPARTMENT_RATE = DEPARTMENT_RATES[0].rate;
+function departmentRate(count) {
+  if (count < 1) return 0;
+  return DEPARTMENT_RATES.find((tier) => count >= tier.minDepartments).rate;
+}
+var round2 = (value) => Math.round(value * 100) / 100;
+function withGst(quantity, rate) {
+  const base = quantity * rate;
+  const gst = round2(base * GST_RATE);
+  return { quantity, rate, base, gst, total: round2(base + gst) };
+}
+function priceDepartments(count) {
+  return withGst(Math.max(0, Math.floor(count)), departmentRate(count));
+}
+function termEnd(from = /* @__PURE__ */ new Date()) {
+  const end = new Date(from);
+  end.setMonth(end.getMonth() + TERM_MONTHS);
+  return end;
+}
+
 // src/lib/marketingEmails.ts
 var n = (x2) => typeof x2 === "number" ? x2.toLocaleString("en-IN") : "";
 var firstName = (c) => esc((c.user.displayName || "").trim().split(/\s+/)[0] || "there");
@@ -24685,13 +24715,65 @@ var TEMPLATES = {
     audience: "Institution accounts with no new member added in the last 30 days",
     kind: "lifecycle",
     subject: (c) => c.institution?.members ? `${c.user.organization || "Your institution"}: ${n(c.institution.members)} people have access so far` : "Add your faculty and researchers to the library",
-    preheader: () => "Every person you add reads on the same account, at no extra cost.",
+    preheader: () => "Every person you add reads on the same institutional account.",
     body: (c) => eBody(
-      eH1(`${firstName(c)}, who else should be reading?`) + eP(`${c.institution?.members ? `${n(c.institution.members)} people from your institution can open the library today. ` : ""}Adding the rest of your faculty and researchers takes a name and an email each, and there is no limit on how many you add \u2014 the account covers them all.`) + (c.institution?.members ? eCard(eRows([
+      eH1(`${firstName(c)}, who else should be reading?`) + eP(`${c.institution?.members ? `${n(c.institution.members)} people from your institution can open the library today. ` : ""}Adding the rest of your faculty and researchers takes a name and an email each, and a department subscription covers up to ${n(MAX_INSTITUTION_USERS)} users at no extra charge.`) + (c.institution?.members ? eCard(eRows([
         ["People with access", n(c.institution.members)],
         ...typeof c.institution.readers === "number" ? [["Of them, have read something", n(c.institution.readers)]] : [],
         ...c.institution.lastAddedDays ? [["Last person added", `${c.institution.lastAddedDays} days ago`]] : []
       ])) : "") + eBtn("Add users", link("/institution/students", c)) + eMuted("Bulk import takes a spreadsheet, if it is easier than adding them one at a time.") + footer(c)
+    )
+  },
+  // ── 6. The address was never proved ──────────────────────────────────────
+  "verify-email-reminder": {
+    key: "verify-email-reminder",
+    name: "Verify your email address",
+    description: "A reminder to confirm the address on the account. Stops the moment it is confirmed.",
+    audience: "Members whose email address has not been verified yet",
+    kind: "lifecycle",
+    subject: () => "Please confirm your email address",
+    preheader: () => "It takes a minute, and it keeps your account safe.",
+    body: (c) => eBody(
+      eH1(`${firstName(c)}, one thing left to do`) + eP("Your account is set up, but the email address on it has not been confirmed yet. Confirming it means we can reach you if something about your account needs attention, and it protects the account from being used by someone else.") + eP("Sign in and you will be asked for a short code, which we send to this address.") + eBtn("Sign in and confirm", link("/login", c)) + eMuted("If you did not create this account, you can ignore this mail.") + footer(c)
+    )
+  },
+  // ── 7. Account made, never used ──────────────────────────────────────────
+  "never-logged-in": {
+    key: "never-logged-in",
+    name: "Your account is waiting",
+    description: "For verified members who have never signed in.",
+    audience: "Verified members who have not signed in since their account was created",
+    kind: "lifecycle",
+    subject: () => "Your library account is ready when you are",
+    preheader: (c) => `${n(c.library?.total)} items are open to you the moment you sign in.`,
+    body: (c) => eBody(
+      eH1(`${firstName(c)}, your account is ready`) + eP(`Your email address is confirmed and your library account is active, but you have not signed in yet. ${c.library?.total ? `${n(c.library.total)} items across ${n(c.library.departments)} departments are ` : "The whole library is "}open to you from the first minute.`) + eBtn("Sign in", link("/login", c)) + eMuted('Forgotten your password? Use "Forgot password" on the sign-in page and you will be sent a link.') + footer(c)
+    )
+  },
+  // ── 8. Signed in, then did nothing ───────────────────────────────────────
+  "no-research-activity": {
+    key: "no-research-activity",
+    name: "Start with a search",
+    description: "For members who signed in but have not searched or opened anything.",
+    audience: "Members who have signed in but never searched or opened an item",
+    kind: "lifecycle",
+    subject: () => "Where would you like to start?",
+    preheader: () => "Search by title, author, DOI or keyword \u2014 or browse your departments.",
+    body: (c) => eBody(
+      eH1(`${firstName(c)}, what are you researching?`) + eP("You signed in, but have not searched or opened anything yet. The quickest way in is to type what you are looking for \u2014 a title, an author, a DOI or a keyword \u2014 into the search box.") + (c.departments?.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Your departments</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + c.departments.slice(0, 4).map((d) => `\u2022 ${esc(d)}`).join("<br/>") + `</p>`) : "") + eBtn("Search the library", link("/dashboard/library", c)) + footer(c)
+    )
+  },
+  // ── 9. Used to read, then stopped ────────────────────────────────────────
+  "inactive-user": {
+    key: "inactive-user",
+    name: "It has been a while",
+    description: "For members who used to read and have not searched or opened anything for some time.",
+    audience: "Members who have read before, with no searching or reading for the configured number of days",
+    kind: "lifecycle",
+    subject: () => "New in your library since you were last here",
+    preheader: (c) => `${n(c.library?.total)} items now, and more every week.`,
+    body: (c) => eBody(
+      eH1(`${firstName(c)}, it has been a while`) + eP(`The library has kept growing since your last visit${c.library?.total ? ` \u2014 it now holds ${n(c.library.total)} items` : ""}. Whatever you were reading before, there is likely more of it now.`) + (c.reading?.lastReadDays ? eMuted(`You last opened something ${n(c.reading.lastReadDays)} days ago.`) : "") + eBtn("Pick up where you left off", link("/dashboard/library", c)) + footer(c)
     )
   }
 };
@@ -24892,6 +24974,111 @@ async function applyWrites(tx, userId, writes) {
   }
 }
 
+// src/lib/gstUtils.ts
+var GST_RATE2 = 0.18;
+var COMPANY_STATE = COMPANY_DETAILS.state;
+
+// src/lib/soloPricing.ts
+var SOLO_RATE_STANDARD = 4990;
+var SOLO_RATE_BULK = 3990;
+var SOLO_BULK_THRESHOLD = 5;
+var SOLO_TERM_MONTHS = 12;
+var round22 = (value) => Math.round(value * 100) / 100;
+function soloRateFor(count) {
+  const n2 = Math.floor(count);
+  if (n2 < 1) return 0;
+  return n2 >= SOLO_BULK_THRESHOLD ? SOLO_RATE_BULK : SOLO_RATE_STANDARD;
+}
+function soloGstSplit(customerState) {
+  const state = (customerState || "").trim().toLowerCase();
+  if (!state) return "unknown";
+  return state === COMPANY_STATE.toLowerCase() ? "cgst-sgst" : "igst";
+}
+function calculateSoloSubscriptionPrice(count, opts = {}) {
+  const n2 = Math.max(0, Math.floor(count || 0));
+  const rate = soloRateFor(n2);
+  const subtotal = n2 * rate;
+  const gst = round22(subtotal * GST_RATE2);
+  const gstSplit = soloGstSplit(opts.state);
+  const cgst = gstSplit === "cgst-sgst" ? round22(gst / 2) : 0;
+  const sgst = gstSplit === "cgst-sgst" ? round22(gst - cgst) : 0;
+  const igst = gstSplit === "igst" ? gst : 0;
+  return {
+    count: n2,
+    rate,
+    subtotal,
+    gst,
+    cgst,
+    sgst,
+    igst,
+    gstSplit,
+    total: round22(subtotal + gst),
+    bulkApplied: n2 >= SOLO_BULK_THRESHOLD,
+    toUnlockBulk: n2 === SOLO_BULK_THRESHOLD - 1 ? 1 : 0
+  };
+}
+
+// src/lib/subjects.ts
+var PLACEHOLDERS = /* @__PURE__ */ new Set(["general", "n/a", "na", "none", "null", "undefined", "unknown", "other", "-", "--", "misc", "miscellaneous"]);
+var norm = (s2) => s2.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function cleanSubjectArea(value, title) {
+  if (typeof value !== "string") return null;
+  const v = value.replace(/\s+/g, " ").trim();
+  if (!v) return null;
+  if (PLACEHOLDERS.has(v.toLowerCase())) return null;
+  if (/^[\d\s.,#-]+$/.test(v)) return null;
+  if (v.length > 70 || v.split(" ").length > 8) return null;
+  if (/[.?!]$/.test(v) && v.split(" ").length > 5) return null;
+  if (title) {
+    const t2 = norm(title), s2 = norm(v);
+    if (s2 && t2 && (s2 === t2 || s2.includes(t2) || s2.length >= 20 && t2.includes(s2) && s2.length >= t2.length * 0.6)) return null;
+  }
+  return v;
+}
+
+// src/lib/dailyUserDigest.ts
+var IST_OFFSET_MS2 = 330 * 6e4;
+var DAY_MS = 864e5;
+var DIGEST_ROW_LIMIT = 50;
+var DIGEST_TEMPLATE_KEY = "admin-daily-new-users";
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var pad = (n2) => String(n2).padStart(2, "0");
+function previousIstDay(now = /* @__PURE__ */ new Date()) {
+  const istNow = now.getTime() + IST_OFFSET_MS2;
+  const todayIstMidnight = Math.floor(istNow / DAY_MS) * DAY_MS;
+  const startShifted = todayIstMidnight - DAY_MS;
+  const start = new Date(startShifted - IST_OFFSET_MS2);
+  const end = new Date(todayIstMidnight - IST_OFFSET_MS2);
+  const d = new Date(startShifted);
+  const isoDay = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  const label = `${pad(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  return { start, end, isoDay, label, dedupeKey: `daily-new-users:${isoDay}` };
+}
+var formatIst = (d) => {
+  const s2 = new Date(d.getTime() + IST_OFFSET_MS2);
+  return `${pad(s2.getUTCDate())} ${MONTHS[s2.getUTCMonth()]}, ${pad(s2.getUTCHours())}:${pad(s2.getUTCMinutes())} IST`;
+};
+function buildDailyUserDigest(win, total, users) {
+  const subject = `STM Digital Library \u2014 ${total.total} New User${total.total === 1 ? "" : "s"} Registered on ${win.label}`;
+  const stat2 = (label, n2) => `<td style="padding:10px 14px;text-align:center;background:#f8fafc;border:1px solid #e2e8f0;"><div style="font-size:20px;font-weight:800;color:#1e3a6e;">${n2}</div><div style="font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.8px;">${esc(label)}</div></td>`;
+  const th = (t2) => `<td style="padding:8px 10px;font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;">${t2}</td>`;
+  const td = (t2, color = "#475569") => `<td style="padding:8px 10px;font-size:12px;color:${color};vertical-align:top;">${t2}</td>`;
+  const hasOrg = users.some((u) => u.organization);
+  const hasType = users.some((u) => u.registrantType);
+  const hasSource = users.some((u) => u.signupSource);
+  const rows = users.slice(0, DIGEST_ROW_LIMIT).map(
+    (u, i2) => `<tr style="background:${i2 % 2 ? "#fafbfc" : "#fff"};">` + td(esc(u.displayName || "\u2014"), "#1e293b") + td(esc(u.email), "#1e3a6e") + (hasOrg ? td(esc(u.organization || "\u2014")) : "") + (hasType ? td(esc(u.registrantType || "\u2014")) : "") + (hasSource ? td(esc(u.signupSource || "\u2014")) : "") + td(esc(formatIst(u.createdAt))) + `</tr>`
+  ).join("");
+  const more = total.total - Math.min(users.length, DIGEST_ROW_LIMIT);
+  const html = buildEmail(
+    eBody(
+      eH1("Daily New User Registration Summary") + eP(`<b>Date:</b> ${esc(win.label)}<br/><b>New users registered:</b> ${total.total}`) + `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-collapse:collapse;"><tr>` + stat2("Individual", total.individual) + stat2("Institution-linked", total.institutionLinked) + stat2("Verified", total.verified) + stat2("Unverified", total.unverified) + `</tr></table><table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;"><tr style="background:#f8fafc;">${th("Name")}${th("Email")}${hasOrg ? th("Institution / Organization") : ""}${hasType ? th("Role / Type") : ""}${hasSource ? th("Signup Source") : ""}${th("Registered At")}</tr>${rows}</table>` + (more > 0 ? eMuted(`+ ${more} more user${more === 1 ? "" : "s"}`) : "") + eBtn("View All Users", `${MAIL_BASE}/admin/users`)
+    ),
+    `${total.total} new user${total.total === 1 ? "" : "s"} registered on ${win.label}`
+  );
+  return { subject, html };
+}
+
 // server.ts
 var import_meta = {};
 if (!import_crypto2.default.hash) {
@@ -24966,6 +25153,80 @@ async function startServer() {
   if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
     throw new Error("CRITICAL SECURITY ERROR: JWT_SECRET must be set in production environment variables.");
   }
+  const SESSION_TTL_SECONDS = 24 * 60 * 60;
+  const SESSION_TOUCH_MS = 5 * 60 * 1e3;
+  const SESSION_ENDED = { code: "SESSION_EXPIRED_OR_REVOKED", error: "Your session has ended. Please sign in again." };
+  const describeDevice = (ua) => {
+    if (!ua) return null;
+    const browser = /Edg\//.test(ua) ? "Edge" : /OPR\/|Opera/.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
+    const os = /Android/.test(ua) ? "Android" : /iPhone|iPad|iOS/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "unknown system";
+    return `${browser} on ${os}`;
+  };
+  const lastTouched = /* @__PURE__ */ new Map();
+  const startSession = async (userObj, req, opts = {}) => {
+    const sessionId = import_crypto2.default.randomBytes(32).toString("hex");
+    const now = /* @__PURE__ */ new Date();
+    const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1e3);
+    const ua = String(req.headers?.["user-agent"] || "").slice(0, 400);
+    const created = await prisma3.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"user-session:" + userObj.id}))`;
+      const live = await tx.userSession.findFirst({
+        where: { userId: userObj.id, revokedAt: null, expiresAt: { gt: now } },
+        select: { id: true }
+      });
+      if (live && !opts.replaceExisting) return false;
+      await tx.userSession.updateMany({ where: { userId: userObj.id, revokedAt: null }, data: { revokedAt: now } });
+      await tx.userSession.deleteMany({ where: { userId: userObj.id, expiresAt: { lt: new Date(now.getTime() - 7 * 864e5) } } });
+      await tx.userSession.create({
+        data: {
+          userId: userObj.id,
+          sessionId,
+          expiresAt,
+          userAgent: ua || null,
+          ipAddress: req.ip ? String(req.ip).slice(0, 64) : null,
+          deviceLabel: describeDevice(ua)
+        }
+      });
+      return true;
+    });
+    if (!created) return null;
+    const token = import_jsonwebtoken.default.sign(
+      {
+        uid: userObj.id,
+        email: userObj.email,
+        role: userObj.role,
+        institutionId: userObj.institutionId,
+        ...opts.claims || {},
+        sid: sessionId,
+        exp: Math.floor(expiresAt.getTime() / 1e3)
+      },
+      JWT_SECRET
+    );
+    return { token };
+  };
+  const sendActiveSessionExists = (res) => res.status(409).json({
+    code: "ACTIVE_SESSION_EXISTS",
+    error: "This account is already signed in on another device or browser.",
+    message: "This account is already signed in on another device or browser."
+  });
+  const sessionIsLive = async (claims) => {
+    if (claims?.uid === "__validator__") return true;
+    if (!claims?.sid || !claims?.uid) return false;
+    const row = await prisma3.userSession.findUnique({
+      where: { sessionId: String(claims.sid) },
+      select: { userId: true, revokedAt: true, expiresAt: true }
+    });
+    const now = Date.now();
+    if (!row || row.userId !== claims.uid || row.revokedAt || row.expiresAt.getTime() <= now) return false;
+    const last = lastTouched.get(claims.sid) || 0;
+    if (now - last > SESSION_TOUCH_MS) {
+      if (lastTouched.size > 2e4) lastTouched.clear();
+      lastTouched.set(claims.sid, now);
+      prisma3.userSession.updateMany({ where: { sessionId: claims.sid }, data: { lastSeenAt: new Date(now) } }).catch(() => {
+      });
+    }
+    return true;
+  };
   const authenticateJWT = (req, res, next) => {
     let token = "";
     const authHeader = req.headers.authorization;
@@ -24975,9 +25236,15 @@ async function startServer() {
       token = req.query.token;
     }
     if (token) {
-      import_jsonwebtoken.default.verify(token, JWT_SECRET, (err, user) => {
+      import_jsonwebtoken.default.verify(token, JWT_SECRET, async (err, user) => {
         if (err) {
           return res.status(403).json({ error: "Forbidden: Invalid or expired token" });
+        }
+        try {
+          if (!await sessionIsLive(user)) return res.status(401).json(SESSION_ENDED);
+        } catch (e2) {
+          console.error("session check failed", e2);
+          return res.status(500).json({ error: "Could not verify your session" });
         }
         req.user = user;
         next();
@@ -25361,26 +25628,86 @@ async function startServer() {
       res.status(500).json({ error: "Failed to verify OTP" });
     }
   });
-  const joinedSinceLastAlert = [];
-  const flushJoinAlerts = async () => {
-    if (!joinedSinceLastAlert.length) return;
-    const batch = joinedSinceLastAlert.splice(0, joinedSinceLastAlert.length);
-    const byInterest = /* @__PURE__ */ new Map();
-    for (const j of batch) for (const d of j.interests) byInterest.set(d, (byInterest.get(d) || 0) + 1);
-    const popular = [...byInterest.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
-    const rows = batch.slice(0, 60).map((j, i2) => `<tr style="background:${i2 % 2 ? "#fafbfc" : "#fff"};"><td style="padding:8px 14px;font-size:12.5px;color:#1e293b;">${j.name || "\u2014"}</td><td style="padding:8px 14px;font-size:12.5px;color:#1e3a6e;">${j.email}</td><td style="padding:8px 14px;font-size:12px;color:#475569;">${j.organization || "\u2014"}</td><td style="padding:8px 14px;font-size:12px;color:#64748b;">${j.interests.join(", ") || "\u2014"}</td></tr>`).join("");
-    await sendMail({
-      to: process.env.ADMIN_EMAIL || COMPANY_DETAILS.email,
-      subject: `\u{1F195} ${batch.length} new member${batch.length > 1 ? "s" : ""} joined`,
-      html: buildEmail(
-        `<tr><td style="padding:28px 40px 24px;"><p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#1e3a6e;">${batch.length} new member${batch.length > 1 ? "s" : ""}</p><p style="margin:0 0 18px;font-size:13px;color:#475569;">Since the last of these. All of them are in the members list and filed as leads.</p>` + (popular.length ? `<p style="margin:0 0 14px;font-size:12.5px;color:#334155;"><b>Most wanted:</b> ${popular.map(([d, n2]) => `${d} (${n2})`).join(" \xB7 ")}</p>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;"><tr style="background:#f8fafc;"><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Name</td><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Email</td><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Organisation</td><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Wants to read</td></tr>${rows}</table>` + (batch.length > 60 ? `<p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">\u2026and ${batch.length - 60} more.</p>` : "") + `</td></tr>`
-      )
-    }).catch((e2) => console.error("join alerts: could not send", e2?.message));
-  };
-  import_node_cron.default.schedule("*/30 * * * *", () => {
-    flushJoinAlerts().catch(() => {
+  const sendDailyUserDigest = async (now = /* @__PURE__ */ new Date()) => {
+    const win = previousIstDay(now);
+    const where = { templateKey: DIGEST_TEMPLATE_KEY, dedupeKey: win.dedupeKey };
+    const done = await prisma3.emailSend.findFirst({
+      where: {
+        ...where,
+        OR: [
+          { status: { in: ["Sent", "Skipped"] } },
+          { status: "Sending", updatedAt: { gt: new Date(now.getTime() - 10 * 6e4) } }
+        ]
+      }
     });
-  });
+    if (done) return { skipped: true, reason: `already ${done.status}`, day: win.isoDay };
+    const base = {
+      role: { in: ["Subscriber", "Institution"] },
+      isDemoAccount: false,
+      createdAt: { gte: win.start, lt: win.end }
+    };
+    const [total, verified, institutionLinked] = await Promise.all([
+      prisma3.user.count({ where: base }),
+      prisma3.user.count({ where: { ...base, emailVerifiedAt: { not: null } } }),
+      prisma3.user.count({ where: { ...base, OR: [{ role: "Institution" }, { institutionId: { not: null } }] } })
+    ]);
+    const to = process.env.ADMIN_EMAIL || COMPANY_DETAILS.email;
+    if (total === 0) {
+      await prisma3.emailSend.create({
+        data: { ...where, email: to, subject: "Daily new-user digest", status: "Skipped", reason: "no registrations", sentBy: "auto", context: { day: win.isoDay, total: 0 } }
+      });
+      console.log(`daily user digest ${win.isoDay}: 0 new users, no email`);
+      return { skipped: true, reason: "no registrations", day: win.isoDay };
+    }
+    const users = await prisma3.user.findMany({
+      where: base,
+      orderBy: { createdAt: "asc" },
+      take: DIGEST_ROW_LIMIT,
+      select: {
+        displayName: true,
+        email: true,
+        organization: true,
+        registrantType: true,
+        signupSource: true,
+        institutionId: true,
+        emailVerifiedAt: true,
+        createdAt: true
+      }
+    });
+    const { subject, html } = buildDailyUserDigest(win, {
+      total,
+      verified,
+      unverified: total - verified,
+      institutionLinked,
+      individual: total - institutionLinked
+    }, users);
+    const prior = await prisma3.emailSend.findFirst({ where, orderBy: { createdAt: "desc" } });
+    const row = prior ? await prisma3.emailSend.update({ where: { id: prior.id }, data: { status: "Sending", subject, error: null } }) : await prisma3.emailSend.create({ data: { ...where, email: to, subject, status: "Sending", sentBy: "auto" } });
+    try {
+      await sendMail({
+        from: `"STM Digital Library" <${(process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim()}>`,
+        to,
+        subject,
+        html,
+        _throwOnError: true
+      });
+      await prisma3.emailSend.update({ where: { id: row.id }, data: { status: "Sent", context: { day: win.isoDay, total } } });
+      console.log(`daily user digest ${win.isoDay}: sent, ${total} new users`);
+      return { sent: true, day: win.isoDay, total };
+    } catch (e2) {
+      await prisma3.emailSend.update({ where: { id: row.id }, data: { status: "Failed", error: String(e2?.message || e2) } }).catch(() => {
+      });
+      console.error(`daily user digest ${win.isoDay}: failed, will retry`, e2?.message);
+      return { failed: true, day: win.isoDay, error: e2?.message };
+    }
+  };
+  import_node_cron.default.schedule(
+    "0,30 0-5 * * *",
+    () => {
+      sendDailyUserDigest().catch((e2) => console.error("daily user digest:", e2?.message));
+    },
+    { timezone: "Asia/Kolkata" }
+  );
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const {
@@ -25407,8 +25734,8 @@ async function startServer() {
           return res.status(400).json({ error: "Please verify your email address before creating an account." });
         }
       }
-      const departmentNames = new Set(DOMAINS.map((d) => d.name));
-      const interests = Array.isArray(interestedDomains) ? [...new Set(interestedDomains.filter((d) => departmentNames.has(d)))].slice(0, 40) : [];
+      const departmentNames2 = new Set(DOMAINS.map((d) => d.name));
+      const interests = Array.isArray(interestedDomains) ? [...new Set(interestedDomains.filter((d) => departmentNames2.has(d)))].slice(0, 40) : [];
       const type = REGISTRANT_TYPES.some((t2) => t2.id === registrantType) ? registrantType : null;
       const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
       let accountRole = email === "info@celnet.in" ? "SuperAdmin" : "Subscriber";
@@ -25458,7 +25785,9 @@ async function startServer() {
           interestedDomains: interests,
           signupSource,
           signupTags: Object.keys(tags).length ? tags : void 0,
-          emailVerifiedAt: proof?.isVerified ? /* @__PURE__ */ new Date() : null
+          emailVerifiedAt: proof?.isVerified ? /* @__PURE__ */ new Date() : null,
+          // Signing up signs them in: the token below is a session.
+          lastLoginAt: /* @__PURE__ */ new Date()
         }
       });
       if (!STAFF_ROLES.includes(userObj.role)) {
@@ -25484,18 +25813,8 @@ async function startServer() {
           }
         }).catch((e2) => console.error("signup: could not file the lead", e2?.message));
       }
-      const token = import_jsonwebtoken.default.sign({ uid: userObj.id, email, role: userObj.role }, JWT_SECRET, { expiresIn: "24h" });
+      const token = (await startSession({ id: userObj.id, email, role: userObj.role }, req)).token;
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      joinedSinceLastAlert.push({
-        name,
-        email,
-        organization: organization || null,
-        designation: designation || null,
-        interests,
-        at: /* @__PURE__ */ new Date()
-      });
-      if (joinedSinceLastAlert.length >= 50) flushJoinAlerts().catch(() => {
-      });
       const userMailOptions = {
         from: `"STM Digital Library" <${emailFrom}>`,
         to: email,
@@ -25527,13 +25846,10 @@ async function startServer() {
             }
           });
         }
-        const token2 = import_jsonwebtoken.default.sign(
-          { uid: adminUser.id, email, role: "SuperAdmin" },
-          JWT_SECRET,
-          { expiresIn: "24h" }
-        );
+        const started2 = await startSession({ id: adminUser.id, email, role: "SuperAdmin" }, req, { replaceExisting: !!req.body?.replaceExisting });
+        if (!started2) return sendActiveSessionExists(res);
         const { password: _2, ...profile2 } = adminUser;
-        return res.json({ token: token2, user: profile2 });
+        return res.json({ token: started2.token, user: profile2 });
       }
       const userObj = await prisma3.user.findUnique({ where: { email } });
       if (!userObj) {
@@ -25549,11 +25865,15 @@ async function startServer() {
       if (!isPasswordValid) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
-      const token = import_jsonwebtoken.default.sign(
-        { uid: userObj.id, email, role: userObj.role, institutionId: userObj.institutionId },
-        JWT_SECRET,
-        { expiresIn: "24h" }
+      const started = await startSession(
+        { id: userObj.id, email, role: userObj.role, institutionId: userObj.institutionId },
+        req,
+        { replaceExisting: req.body?.replaceExisting === true }
       );
+      if (!started) return sendActiveSessionExists(res);
+      const token = started.token;
+      prisma3.user.update({ where: { id: userObj.id }, data: { lastLoginAt: /* @__PURE__ */ new Date() } }).catch(() => {
+      });
       if (!STAFF_ROLES.includes(userObj.role)) {
         getUserActiveSubscriptions(userObj.id, userObj.role, userObj.institutionId).then((subs) => subs.length === 0 ? allowanceFor(prisma3, userObj.id, { start: true }) : null).catch(() => {
         });
@@ -25570,6 +25890,17 @@ async function startServer() {
       await pauseFor(prisma3, req.user.uid);
     } catch (e2) {
       console.error("logout: could not stop the clock", e2);
+    }
+    try {
+      if (req.user.sid) {
+        await prisma3.userSession.updateMany({
+          where: { sessionId: req.user.sid, userId: req.user.uid, revokedAt: null },
+          data: { revokedAt: /* @__PURE__ */ new Date() }
+        });
+        lastTouched.delete(req.user.sid);
+      }
+    } catch (e2) {
+      console.error("logout: could not end the session", e2);
     }
     res.json({ ok: true });
   });
@@ -25661,7 +25992,7 @@ async function startServer() {
           take: 10
         }),
         prisma3.payment.aggregate({
-          where: { userId: uid, status: "Success" },
+          where: { userId: uid, status: { in: ["Success", "Paid"] } },
           _count: { _all: true },
           _sum: { amount: true }
         })
@@ -25692,6 +26023,143 @@ async function startServer() {
       res.json({ application: application || null });
     } catch {
       res.status(500).json({ error: "Failed to load your application" });
+    }
+  });
+  const soloDepartmentNames = new Set(DOMAINS.map((d) => d.name));
+  const soloAccount = async (req) => {
+    const me = await prisma3.user.findUnique({
+      where: { id: req.user.uid },
+      select: { id: true, displayName: true, email: true, state: true, role: true, registrantType: true, institutionId: true }
+    });
+    if (!me || me.registrantType !== "Solo" || me.role !== "Subscriber" || me.institutionId) return null;
+    return me;
+  };
+  const soloHoldings = async (userId) => {
+    const now = /* @__PURE__ */ new Date();
+    const subs = await prisma3.subscription.findMany({
+      where: { userId, institutionId: null, status: "Active", endDate: { gt: now } }
+    });
+    const wholeLibrary = subs.some((s2) => !Array.isArray(s2.domains) || s2.domains.length === 0);
+    const departments = subs.flatMap((s2) => (Array.isArray(s2.domains) ? s2.domains : []).filter((name) => soloDepartmentNames.has(name)).map((name) => ({ name, endDate: s2.endDate })));
+    return { wholeLibrary, departments };
+  };
+  const priceSoloPurchase = async (me, body) => {
+    const wanted = Array.isArray(body?.departments) ? body.departments.map(String) : [];
+    const unknown = wanted.filter((name) => !soloDepartmentNames.has(name));
+    if (unknown.length) return { error: `Unknown department: ${unknown.join(", ")}` };
+    const held = await soloHoldings(me.id);
+    if (held.wholeLibrary) return { error: "Your subscription already covers the whole library." };
+    const heldNames = new Set(held.departments.map((d) => d.name));
+    const fresh = [...new Set(wanted)].filter((name) => !heldNames.has(name));
+    if (!fresh.length) return { error: "Choose at least one department you do not already subscribe to." };
+    return { departments: fresh, price: calculateSoloSubscriptionPrice(fresh.length, { state: me.state }) };
+  };
+  app.get("/api/me/subscribe/plan", authenticateJWT, async (req, res) => {
+    try {
+      const me = await soloAccount(req);
+      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      const held = await soloHoldings(me.id);
+      res.json({
+        name: me.displayName,
+        email: me.email,
+        state: me.state,
+        wholeLibrary: held.wholeLibrary,
+        departments: held.departments,
+        allDepartments: DOMAINS.map((d) => d.name),
+        pricing: {
+          standardRate: SOLO_RATE_STANDARD,
+          bulkRate: SOLO_RATE_BULK,
+          bulkThreshold: SOLO_BULK_THRESHOLD,
+          gstRate: GST_RATE4,
+          termMonths: SOLO_TERM_MONTHS
+        }
+      });
+    } catch (err) {
+      console.error("GET /api/me/subscribe/plan:", err?.message);
+      res.status(500).json({ error: "Failed to load your subscription options" });
+    }
+  });
+  app.post("/api/me/subscribe/quote", authenticateJWT, async (req, res) => {
+    try {
+      const me = await soloAccount(req);
+      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      const quote = await priceSoloPurchase(me, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      res.json(quote);
+    } catch {
+      res.status(500).json({ error: "Failed to price this" });
+    }
+  });
+  app.post("/api/me/subscribe/checkout", authenticateJWT, async (req, res) => {
+    try {
+      const me = await soloAccount(req);
+      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      const quote = await priceSoloPurchase(me, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      const amountPaise = Math.round(quote.price.total * 100);
+      const receipt = `solo_${Date.now()}`;
+      let order;
+      if (process.env.NODE_ENV !== "production" && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+        order = { id: `order_mock_${Date.now()}`, amount: amountPaise, currency: "INR", receipt, isMock: true };
+      } else {
+        order = await getRazorpay().orders.create({ amount: amountPaise, currency: "INR", receipt });
+      }
+      await prisma3.payment.create({
+        data: {
+          orderId: order.id,
+          amount: quote.price.total,
+          status: "Pending",
+          userId: me.id,
+          items: { purpose: "solo", ...quote }
+        }
+      });
+      res.json({ ...order, razorpayKey: process.env.RAZORPAY_KEY_ID, quote });
+    } catch (err) {
+      console.error("POST /api/me/subscribe/checkout:", err?.message);
+      res.status(500).json({ error: "Failed to start the payment" });
+    }
+  });
+  app.post("/api/me/subscribe/checkout/verify", authenticateJWT, async (req, res) => {
+    try {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+      if (!razorpay_order_id) return res.status(400).json({ error: "Missing order." });
+      const payment = await prisma3.payment.findUnique({ where: { orderId: razorpay_order_id } });
+      const items = payment?.items;
+      if (!payment || items?.purpose !== "solo" || payment.userId !== req.user.uid) {
+        return res.status(404).json({ error: "No such payment." });
+      }
+      if (payment.status === "Paid") return res.json({ ok: true, alreadyActive: true });
+      const isMock = process.env.NODE_ENV !== "production" && String(razorpay_order_id).startsWith("order_mock_");
+      if (!isMock) {
+        const expected = import_crypto2.default.createHmac("sha256", (process.env.RAZORPAY_KEY_SECRET || "").trim()).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+        if (!razorpay_signature || razorpay_signature !== expected) {
+          console.warn(`[solo checkout] signature mismatch for ${razorpay_order_id}`);
+          return res.status(400).json({ error: "Payment could not be verified." });
+        }
+      }
+      const now = /* @__PURE__ */ new Date();
+      const end = termEnd(now);
+      await prisma3.$transaction(async (tx) => {
+        await tx.payment.update({ where: { id: payment.id }, data: { status: "Paid", paymentId: razorpay_payment_id || `mock_${Date.now()}` } });
+        await tx.subscription.create({
+          data: {
+            planName: "Premium Subscription",
+            planType: "Yearly",
+            durationMonths: SOLO_TERM_MONTHS,
+            status: "Active",
+            domains: items.departments,
+            contentTypes: [],
+            userId: payment.userId,
+            paymentId: payment.id,
+            startDate: now,
+            endDate: end
+          }
+        });
+      });
+      res.json({ ok: true, endDate: end });
+    } catch (err) {
+      console.error("POST /api/me/subscribe/checkout/verify:", err?.message);
+      res.status(500).json({ error: "Payment received, but activation failed. Our team will activate it \u2014 please contact support." });
     }
   });
   app.get("/api/me/allowance", authenticateJWT, async (req, res) => {
@@ -25822,8 +26290,13 @@ async function startServer() {
     const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
     return req._isFreeMember = subs.length === 0;
   };
-  const passesFreeClock = async (req, res) => {
-    if (!await isFreeMember(req)) return true;
+  const passesFreeClock = async (req, res, resolved) => {
+    if (!await isFreeMember(req)) {
+      if (!resolved || STAFF_ROLES.includes(req.user.role)) return true;
+      if (["OpenAccess", "Free"].includes(resolved.accessType || "")) return true;
+      const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      if (checkContentAccess(resolved.item, req.user.role, subs)) return true;
+    }
     const a = await allowanceFor(prisma3, req.user.uid, { start: true });
     if (a.allowed) return true;
     res.status(403).json({
@@ -26242,57 +26715,104 @@ async function startServer() {
       ...extra
     };
   };
+  const STALE_SENDING_MS = 10 * 6e4;
+  const AUTO_MIN_GAP_HOURS = 24;
   const sendMarketingEmail = async (opts) => {
     const template = TEMPLATES[opts.templateKey];
     if (!template) return { status: "Failed", reason: "no such template" };
     const user = await prisma3.user.findUnique({ where: { id: opts.userId } });
     if (!user) return { status: "Failed", reason: "no such member" };
-    const record = async (status, fields = {}) => {
-      const row = await prisma3.emailSend.upsert({
-        where: { userId_templateKey_dedupeKey: { userId: user.id, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey } },
-        update: { status, ...fields },
-        create: {
-          userId: user.id,
-          email: user.email,
-          templateKey: opts.templateKey,
-          dedupeKey: opts.dedupeKey,
-          status,
-          sentBy: opts.sentBy,
-          subject: fields.subject || template.name,
-          ...fields
-        }
-      }).catch((e2) => {
-        console.error("emailSend write failed", e2?.message);
-        return null;
-      });
-      return row;
-    };
-    if (!user.email) return { status: "Skipped", reason: "no address" };
-    if (user.marketingOptOut) {
-      await record("Skipped", { reason: "unsubscribed" });
-      return { status: "Skipped", reason: "this member has unsubscribed from updates" };
-    }
-    if (user.isBlocked || user.status !== "Active") {
-      await record("Skipped", { reason: "account not active" });
-      return { status: "Skipped", reason: "account is blocked or inactive" };
-    }
-    const already = await prisma3.emailSend.findFirst({
-      where: { userId: user.id, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey, status: "Sent" },
-      select: { id: true }
+    const where = { userId_templateKey_dedupeKey: { userId: user.id, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey } };
+    const record = async (status, fields = {}) => prisma3.emailSend.upsert({
+      where,
+      update: { status, ...fields },
+      create: {
+        userId: user.id,
+        email: user.email,
+        templateKey: opts.templateKey,
+        dedupeKey: opts.dedupeKey,
+        status,
+        sentBy: opts.sentBy,
+        subject: fields.subject || template.name,
+        ...fields
+      }
+    }).catch((e2) => {
+      console.error("emailSend write failed", e2?.message);
+      return null;
     });
-    if (already) return { status: "Skipped", reason: "already sent", id: already.id };
+    if (!user.email) return { status: "Skipped", reason: "no address" };
+    const refuse = async (reason, why) => {
+      const held = await prisma3.emailSend.findUnique({ where, select: { status: true } });
+      if (!held || held.status === "Failed" || held.status === "Skipped") await record("Skipped", { reason });
+      return { status: "Skipped", reason: why };
+    };
+    if (user.marketingOptOut) return refuse("unsubscribed", "this member has unsubscribed from updates");
+    if (user.isBlocked || user.status !== "Active") return refuse("account not active", "account is blocked or inactive");
     if (!opts.ignoreCap) {
       const last = user.lastMarketingAt;
       if (last && Date.now() - new Date(last).getTime() < MARKETING_MIN_GAP_DAYS * 864e5) {
-        await record("Skipped", { reason: "too soon after the last one" });
-        return { status: "Skipped", reason: `capped \u2014 last marketing mail was under ${MARKETING_MIN_GAP_DAYS} days ago` };
+        return refuse("too soon after the last one", `capped \u2014 last marketing mail was under ${MARKETING_MIN_GAP_DAYS} days ago`);
       }
       const month = await prisma3.emailSend.count({
         where: { userId: user.id, status: "Sent", createdAt: { gte: new Date(Date.now() - 30 * 864e5) } }
       });
-      if (month >= MARKETING_PER_MONTH) {
-        await record("Skipped", { reason: "monthly cap reached" });
-        return { status: "Skipped", reason: `capped \u2014 ${month} marketing mails already this month` };
+      if (month >= MARKETING_PER_MONTH) return refuse("monthly cap reached", `capped \u2014 ${month} marketing mails already this month`);
+    }
+    let claimed = false;
+    try {
+      await prisma3.emailSend.create({
+        data: {
+          userId: user.id,
+          email: user.email,
+          templateKey: opts.templateKey,
+          dedupeKey: opts.dedupeKey,
+          status: "Sending",
+          sentBy: opts.sentBy,
+          subject: template.name
+        }
+      });
+      claimed = true;
+    } catch (e2) {
+      if (e2?.code !== "P2002") throw e2;
+      const taken = await prisma3.emailSend.updateMany({
+        where: {
+          ...where.userId_templateKey_dedupeKey,
+          OR: [
+            { status: { in: ["Failed", "Skipped"] } },
+            { status: "Sending", updatedAt: { lt: new Date(Date.now() - STALE_SENDING_MS) } }
+          ]
+        },
+        data: { status: "Sending", sentBy: opts.sentBy, reason: null, error: null }
+      });
+      claimed = taken.count === 1;
+      if (!claimed) {
+        const held = await prisma3.emailSend.findUnique({ where, select: { id: true } });
+        return { status: "Skipped", reason: "already sent", id: held?.id };
+      }
+    }
+    if (opts.sentBy === "auto") {
+      const fresh = await prisma3.user.findUnique({ where: { id: user.id } });
+      const el = fresh && !fresh.marketingOptOut && !fresh.isBlocked && fresh.status === "Active" ? await mailEligibility(fresh, opts.templateKey, opts.rule) : { due: false, why: "the account changed" };
+      if (!el.due) {
+        await record("Skipped", { reason: `no longer eligible: ${el.why}`.slice(0, 200) });
+        return { status: "Skipped", reason: `no longer eligible \u2014 ${el.why}` };
+      }
+      const own = await prisma3.emailSend.findUnique({ where, select: { id: true, createdAt: true } });
+      const since = new Date(Date.now() - AUTO_MIN_GAP_HOURS * 36e5);
+      const ahead = own ? await prisma3.emailSend.findFirst({
+        where: {
+          userId: user.id,
+          sentBy: "auto",
+          status: { in: ["Sent", "Sending"] },
+          id: { not: own.id },
+          createdAt: { gte: since },
+          OR: [{ createdAt: { lt: own.createdAt } }, { createdAt: own.createdAt, id: { lt: own.id } }]
+        },
+        select: { id: true }
+      }) : null;
+      if (ahead) {
+        await record("Skipped", { reason: "another automatic mail went to this member in the last 24 hours" });
+        return { status: "Skipped", reason: `capped \u2014 one automatic mail per member per ${AUTO_MIN_GAP_HOURS} hours` };
       }
     }
     const ctx = await contextFor(user, opts.extra);
@@ -26319,13 +26839,27 @@ async function startServer() {
     }
   };
   const AUTOMATIC = [
-    { key: "profile-incomplete", delayDays: 2, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
-    { key: "never-read", delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 100 },
-    { key: "librarian-add-users", delayDays: 30, repeatAfterDays: 30, maxSends: 6, dailyCap: 50 }
+    { key: "profile-incomplete", delayDays: 2, repeatAfterDays: 7, maxSends: 2, dailyCap: 20 },
+    { key: "never-read", delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 30 },
+    { key: "librarian-add-users", delayDays: 30, repeatAfterDays: 30, maxSends: 6, dailyCap: 20 },
+    // Added with the activity signals. Every one starts switched off, like the
+    // rest, and is read in the dry run before it is ever turned on. For the
+    // verification reminder the repeat interval cannot usefully be shorter than
+    // the marketing gap, which holds every journey to one mail per member.
+    { key: "verify-email-reminder", delayDays: 1, repeatAfterDays: 5, maxSends: 3, dailyCap: 30 },
+    { key: "never-logged-in", delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 30 },
+    { key: "no-research-activity", delayDays: 3, repeatAfterDays: 7, maxSends: 2, dailyCap: 30 },
+    { key: "inactive-user", delayDays: 30, repeatAfterDays: 30, maxSends: 2, dailyCap: 20 }
     // 'pro-benefits' and 'new-features' are deliberately absent: both are sent
     // by hand, because both are announcements rather than nudges.
   ];
-  const emailEngineState = async () => prisma3.emailEngine.upsert({ where: { id: "singleton" }, update: {}, create: { id: "singleton" } });
+  const emailEngineState = async () => {
+    const state = await prisma3.emailEngine.upsert({ where: { id: "singleton" }, update: {}, create: { id: "singleton" } });
+    if (!state.loginTrackingSince) {
+      return prisma3.emailEngine.update({ where: { id: "singleton" }, data: { loginTrackingSince: /* @__PURE__ */ new Date() } });
+    }
+    return state;
+  };
   const emailRules = async () => {
     const held = await prisma3.emailRule.findMany();
     const missing = AUTOMATIC.filter((a) => !held.some((r2) => r2.templateKey === a.key));
@@ -26342,12 +26876,16 @@ async function startServer() {
     }
     return held;
   };
+  const istDayStart = () => {
+    const IST_MS = 330 * 6e4;
+    return new Date(Math.floor((Date.now() + IST_MS) / 864e5) * 864e5 - IST_MS);
+  };
   const istHour = () => Number(new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
     hour12: false
   }).format(/* @__PURE__ */ new Date()));
-  const dueFor = async (rule, limit, claimed) => {
+  const dueFor = async (rule, limit, claimed, trackingSince) => {
     const key = rule.templateKey;
     const since = new Date(Date.now() - rule.delayDays * 864e5);
     const base = {
@@ -26366,10 +26904,19 @@ async function startServer() {
         { lastMarketingAt: { lte: new Date(Date.now() - MARKETING_MIN_GAP_DAYS * 864e5) } }
       ]
     };
-    const narrow = key === "profile-incomplete" ? { role: "Institution", createdAt: { lte: since } } : key === "never-read" ? { lastReadAt: null, createdAt: { lte: since } } : key === "librarian-add-users" ? { role: "Institution", institutionId: { not: null } } : key === "pro-benefits" ? { lastReadAt: { not: null } } : {};
+    const narrow = key === "profile-incomplete" ? { role: "Institution", createdAt: { lte: since } } : key === "never-read" ? { lastReadAt: null, createdAt: { lte: since } } : key === "librarian-add-users" ? { role: "Institution", institutionId: { not: null } } : key === "pro-benefits" ? { lastReadAt: { not: null } } : key === "verify-email-reminder" ? { emailVerifiedAt: null, createdAt: { lte: since, gte: new Date(Date.now() - VERIFY_REMINDER_MAX_AGE_DAYS * 864e5) } } : key === "never-logged-in" ? {
+      lastLoginAt: null,
+      lastReadAt: null,
+      emailVerifiedAt: { not: null },
+      // Accounts older than the first recorded sign-in are unknowable, not "never".
+      createdAt: trackingSince ? { lte: since, gte: trackingSince } : { lte: since, gte: /* @__PURE__ */ new Date() }
+    } : key === "no-research-activity" ? { lastLoginAt: { not: null, lte: since }, lastReadAt: null } : key === "inactive-user" ? { lastReadAt: { not: null, lte: since } } : {};
     const candidates = await prisma3.user.findMany({
       where: { ...base, ...narrow },
-      orderBy: { createdAt: "asc" },
+      // The newer journeys start from the most recent accounts: somebody who
+      // joined last week can still be helped, and the oldest ones are the
+      // likeliest to have been abandoned. The older journeys keep their order.
+      orderBy: { createdAt: ["verify-email-reminder", "never-logged-in", "no-research-activity"].includes(key) ? "desc" : "asc" },
       take: Math.max(limit * 5, 50)
     });
     const due = [];
@@ -26383,112 +26930,174 @@ async function startServer() {
       });
       if (sends.length >= rule.maxSends) continue;
       if (sends.length && (!rule.repeatAfterDays || Date.now() - new Date(sends[0].createdAt).getTime() < rule.repeatAfterDays * 864e5)) continue;
-      const el = await mailEligibility(u, key);
+      const el = await mailEligibility(u, key, rule);
       if (!el.due) continue;
       due.push({ user: u, attempt: sends.length + 1, why: el.why });
     }
     return due;
   };
-  const sentToday = async () => {
-    const start = /* @__PURE__ */ new Date();
-    start.setHours(0, 0, 0, 0);
-    return prisma3.emailSend.count({ where: { status: "Sent", sentBy: "auto", createdAt: { gte: start } } });
-  };
+  const sentToday = async () => (
+    // "Sending" counts: a mail claimed a moment ago is part of today's total
+    // even before the provider has answered. The day is the Indian day, the
+    // same one the sending window is read in.
+    prisma3.emailSend.count({ where: { status: { in: ["Sent", "Sending"] }, sentBy: "auto", createdAt: { gte: istDayStart() } } })
+  );
+  const ENGINE_LEASE_MS = 10 * 6e4;
   const runEmailEngine = async (opts = {}) => {
     const state = await emailEngineState();
-    const rules = await emailRules();
+    const allRules = await emailRules();
+    const rules = opts.only ? allRules.filter((r2) => r2.templateKey === opts.only) : allRules;
     const dryRun = !!opts.dryRun;
-    const hour = istHour();
-    const inWindow = hour >= state.startHour && hour < state.endHour;
-    const reasons = [];
-    if (!state.enabled) reasons.push("the engine is switched off");
-    if (!inWindow) reasons.push(`outside the sending window (${state.startHour}:00\u2013${state.endHour}:00 IST, it is ${hour}:00)`);
-    const already = await sentToday();
-    let budget = Math.max(0, state.dailyCap - already);
-    if (!budget) reasons.push(`the day's cap of ${state.dailyCap} is used up`);
-    const journeys = [];
-    const claimedThisPass = /* @__PURE__ */ new Set();
-    let sent = 0, skipped = 0;
-    for (const rule of rules) {
-      const template = TEMPLATES[rule.templateKey];
-      if (!template) continue;
-      if (!rule.enabled && !opts.force && !dryRun) {
-        journeys.push({ templateKey: rule.templateKey, name: template.name, enabled: false, due: 0, sent: 0, note: "switched off" });
-        continue;
-      }
-      const todayForRule = await prisma3.emailSend.count({
-        where: {
-          templateKey: rule.templateKey,
-          status: "Sent",
-          sentBy: "auto",
-          createdAt: { gte: (() => {
-            const d = /* @__PURE__ */ new Date();
-            d.setHours(0, 0, 0, 0);
-            return d;
-          })() }
-        }
-      });
-      const room = Math.min(rule.dailyCap - todayForRule, dryRun ? 50 : Math.min(budget, 50));
-      const due = await dueFor(rule, Math.max(0, room), claimedThisPass);
-      for (const d of due) claimedThisPass.add(d.user.id);
-      const record = {
-        templateKey: rule.templateKey,
-        name: template.name,
-        enabled: rule.enabled,
-        due: due.length,
-        sent: 0,
-        examples: due.slice(0, 5).map((d) => ({ email: d.user.email, name: d.user.displayName, why: d.why, attempt: d.attempt }))
-      };
-      if (dryRun || reasons.length) {
-        record.note = dryRun ? rule.enabled ? "dry run \u2014 nothing sent" : "switched off \u2014 this is what it would send" : reasons[0];
-        journeys.push(record);
-        continue;
-      }
-      for (const d of due) {
-        const out = await sendMarketingEmail({
-          userId: d.user.id,
-          templateKey: rule.templateKey,
-          dedupeKey: `auto:${d.attempt}`,
-          sentBy: "auto",
-          extra: { ref: `mail-${rule.templateKey}` }
-        });
-        if (out.status === "Sent") {
-          record.sent++;
-          sent++;
-          budget--;
-        } else skipped++;
-        if (budget <= 0) break;
-      }
-      await prisma3.emailRule.update({
-        where: { templateKey: rule.templateKey },
-        data: { lastRunAt: /* @__PURE__ */ new Date(), lastDue: due.length, lastSent: record.sent }
-      }).catch(() => {
-      });
-      journeys.push(record);
-    }
-    const note = reasons.length ? reasons.join(" \xB7 ") : dryRun ? "dry run" : `${sent} sent, ${skipped} skipped`;
+    const holder = `${process.pid}:${Date.now()}`;
     if (!dryRun) {
-      await prisma3.emailEngine.update({
-        where: { id: "singleton" },
-        data: reasons.length ? { lastRunAt: /* @__PURE__ */ new Date(), lastNote: note } : { lastRunAt: /* @__PURE__ */ new Date(), lastSent: sent, lastSkipped: skipped, lastNote: note }
-      }).catch(() => {
+      const got = await prisma3.emailEngine.updateMany({
+        where: { id: "singleton", OR: [{ lockedUntil: null }, { lockedUntil: { lt: /* @__PURE__ */ new Date() } }] },
+        data: { lockedUntil: new Date(Date.now() + ENGINE_LEASE_MS), lockedBy: holder }
       });
-    } else {
-      await prisma3.emailEngine.update({ where: { id: "singleton" }, data: { lastDryRunAt: /* @__PURE__ */ new Date() } }).catch(() => {
-      });
+      if (got.count !== 1) {
+        return {
+          dryRun,
+          wouldSend: 0,
+          sent: 0,
+          skipped: 0,
+          inWindow: false,
+          hour: istHour(),
+          sentToday: await sentToday(),
+          dailyCap: state.dailyCap,
+          journeys: [],
+          note: "another pass is already running"
+        };
+      }
     }
-    return {
-      dryRun,
-      wouldSend: journeys.reduce((n2, j) => n2 + j.due, 0),
-      sent,
-      skipped,
-      note,
-      inWindow,
-      hour,
-      sentToday: already,
-      dailyCap: state.dailyCap,
-      journeys
-    };
+    try {
+      const hour = istHour();
+      const windowOpen = (h2, st) => h2 >= st.startHour && h2 < st.endHour;
+      const inWindow = windowOpen(hour, state);
+      const reasons = [];
+      if (!state.enabled) reasons.push("the engine is switched off");
+      if (!inWindow) reasons.push(`outside the sending window (${state.startHour}:00\u2013${state.endHour}:00 IST, it is ${hour}:00)`);
+      const already = await sentToday();
+      let budget = Math.max(0, state.dailyCap - already);
+      if (!budget) reasons.push(`the day's cap of ${state.dailyCap} is used up`);
+      const trackingSince = state.loginTrackingSince ? new Date(state.loginTrackingSince) : null;
+      const dayStart = istDayStart();
+      const journeys = [];
+      const claimedThisPass = /* @__PURE__ */ new Set();
+      let sent = 0, skipped = 0, failed = 0;
+      for (const rule of rules) {
+        const template = TEMPLATES[rule.templateKey];
+        if (!template) continue;
+        if (!rule.enabled && !opts.force && !dryRun) {
+          journeys.push({ templateKey: rule.templateKey, name: template.name, enabled: false, due: 0, sent: 0, note: "switched off" });
+          continue;
+        }
+        const todayForRule = await prisma3.emailSend.count({
+          where: {
+            templateKey: rule.templateKey,
+            status: { in: ["Sent", "Sending"] },
+            sentBy: "auto",
+            createdAt: { gte: dayStart }
+          }
+        });
+        const room = Math.max(0, Math.min(rule.dailyCap - todayForRule, Math.min(budget, 50)));
+        const due = await dueFor(rule, room, claimedThisPass, trackingSince);
+        for (const d of due) claimedThisPass.add(d.user.id);
+        const record = {
+          templateKey: rule.templateKey,
+          name: template.name,
+          enabled: rule.enabled,
+          due: due.length,
+          sent: 0,
+          skipped: 0,
+          failed: 0,
+          examples: due.slice(0, 5).map((d) => ({ email: d.user.email, name: d.user.displayName, why: d.why, attempt: d.attempt }))
+        };
+        if (dryRun) {
+          record.note = rule.enabled ? "dry run \u2014 nothing sent" : "switched off \u2014 this is what it would send";
+          if (reasons.length) record.blockedNow = reasons[0];
+          journeys.push(record);
+          await prisma3.emailRule.update({
+            where: { templateKey: rule.templateKey },
+            data: { lastDryRunAt: /* @__PURE__ */ new Date(), lastDryRunDue: due.length }
+          }).catch(() => {
+          });
+          continue;
+        }
+        if (reasons.length) {
+          record.note = reasons[0];
+          journeys.push(record);
+          continue;
+        }
+        for (const d of due) {
+          const [liveState, liveRule] = await Promise.all([
+            prisma3.emailEngine.findUnique({ where: { id: "singleton" } }),
+            prisma3.emailRule.findUnique({ where: { templateKey: rule.templateKey } })
+          ]);
+          if (!liveState?.enabled || !windowOpen(istHour(), liveState) || !liveRule?.enabled && !opts.force) {
+            record.note = "stopped part-way \u2014 switched off or the window closed";
+            break;
+          }
+          const out = await sendMarketingEmail({
+            userId: d.user.id,
+            templateKey: rule.templateKey,
+            dedupeKey: `auto:${d.attempt}`,
+            sentBy: "auto",
+            extra: { ref: `mail-${rule.templateKey}` },
+            rule
+          });
+          if (out.status === "Sent") {
+            record.sent++;
+            sent++;
+            budget--;
+          } else if (out.status === "Failed") {
+            record.failed++;
+            failed++;
+          } else {
+            record.skipped++;
+            skipped++;
+          }
+          if (budget <= 0) break;
+        }
+        await prisma3.emailRule.update({
+          where: { templateKey: rule.templateKey },
+          data: { lastRunAt: /* @__PURE__ */ new Date(), lastDue: due.length, lastSent: record.sent, lastSkipped: record.skipped, lastFailed: record.failed }
+        }).catch(() => {
+        });
+        journeys.push(record);
+      }
+      const note = reasons.length ? reasons.join(" \xB7 ") : dryRun ? "dry run" : `${sent} sent, ${skipped} skipped${failed ? `, ${failed} failed` : ""}`;
+      if (!dryRun) {
+        await prisma3.emailEngine.update({
+          where: { id: "singleton" },
+          data: reasons.length ? { lastRunAt: /* @__PURE__ */ new Date(), lastNote: note } : { lastRunAt: /* @__PURE__ */ new Date(), lastSent: sent, lastSkipped: skipped, lastNote: note }
+        }).catch(() => {
+        });
+      } else {
+        await prisma3.emailEngine.update({ where: { id: "singleton" }, data: { lastDryRunAt: /* @__PURE__ */ new Date() } }).catch(() => {
+        });
+      }
+      return {
+        dryRun,
+        wouldSend: journeys.reduce((n2, j) => n2 + j.due, 0),
+        sent,
+        skipped,
+        failed,
+        note,
+        inWindow,
+        hour,
+        sentToday: already,
+        dailyCap: state.dailyCap,
+        journeys
+      };
+    } finally {
+      if (!dryRun) {
+        await prisma3.emailEngine.updateMany({
+          where: { id: "singleton", lockedBy: holder },
+          data: { lockedUntil: null, lockedBy: null }
+        }).catch(() => {
+        });
+      }
+    }
   };
   let emailEngineBusy = false;
   import_node_cron.default.schedule("*/15 * * * *", async () => {
@@ -26503,12 +27112,36 @@ async function startServer() {
       emailEngineBusy = false;
     }
   });
+  const OVERLAPPING = { "never-read": "no-research-activity", "no-research-activity": "never-read" };
+  const triggerSummary = (r2) => {
+    const d = r2.delayDays;
+    const days = `${d} day${d === 1 ? "" : "s"}`;
+    switch (r2.templateKey) {
+      case "profile-incomplete":
+        return `Institution profile still has blank fields, ${days} after registering`;
+      case "never-read":
+        return `Registered, never opened anything, ${days} after registering`;
+      case "librarian-add-users":
+        return `Librarian has added nobody for ${days}`;
+      case "verify-email-reminder":
+        return `Email address not verified, ${days} after registering \u2014 stops once verified`;
+      case "never-logged-in":
+        return `Email verified but never signed in, ${days} after registering \u2014 stops at the first sign-in`;
+      case "no-research-activity":
+        return `Signed in ${days} ago or more, and has not searched or opened anything`;
+      case "inactive-user":
+        return `Has read before, but no searching or reading for ${days}`;
+      default:
+        return TEMPLATES[r2.templateKey]?.audience || "";
+    }
+  };
   app.get("/api/admin/email-engine", authenticateJWT, requireAdminOrManager, async (_req, res) => {
     try {
       const [state, rules] = await Promise.all([emailEngineState(), emailRules()]);
+      const tracking = state.loginTrackingSince ? new Date(state.loginTrackingSince) : null;
       const due = await Promise.all(rules.map(async (r2) => ({
         templateKey: r2.templateKey,
-        due: (await dueFor(r2, 500)).length
+        due: (await dueFor(r2, 500, void 0, tracking)).length
       })));
       res.json({
         state: { ...state, hour: istHour(), sentToday: await sentToday() },
@@ -26516,6 +27149,10 @@ async function startServer() {
           ...r2,
           name: TEMPLATES[r2.templateKey]?.name || r2.templateKey,
           audience: TEMPLATES[r2.templateKey]?.audience || "",
+          trigger: triggerSummary(r2),
+          legacy: r2.templateKey === "never-read",
+          overlapsWith: OVERLAPPING[r2.templateKey] || null,
+          recommendedDailyCap: AUTOMATIC.find((a) => a.key === r2.templateKey)?.dailyCap ?? null,
           due: due.find((d) => d.templateKey === r2.templateKey)?.due ?? 0
         }))
       });
@@ -26542,8 +27179,19 @@ async function startServer() {
     try {
       const key = req.params.key;
       if (!AUTOMATIC.some((a) => a.key === key)) return res.status(400).json({ error: "That mail is not sent automatically" });
-      const { enabled, delayDays, repeatAfterDays, maxSends, dailyCap } = req.body || {};
+      const { enabled, delayDays, repeatAfterDays, maxSends, dailyCap, confirmOverlap } = req.body || {};
       const data = {};
+      if (enabled === true && OVERLAPPING[key] && confirmOverlap !== true) {
+        const other = (await emailRules()).find((r2) => r2.templateKey === OVERLAPPING[key]);
+        if (other?.enabled) {
+          return res.status(409).json({
+            code: "OVERLAP",
+            other: other.templateKey,
+            otherName: TEMPLATES[other.templateKey]?.name || other.templateKey,
+            error: "These journeys target similar inactive members and may cause overlapping reminders. Disable one before continuing."
+          });
+        }
+      }
       if (typeof enabled === "boolean") data.enabled = enabled;
       if (Number.isInteger(delayDays) && delayDays >= 0 && delayDays <= 365) data.delayDays = delayDays;
       if (Number.isInteger(repeatAfterDays) && repeatAfterDays >= 0 && repeatAfterDays <= 365) data.repeatAfterDays = repeatAfterDays;
@@ -26555,9 +27203,60 @@ async function startServer() {
       res.status(500).json({ error: "Failed to change that journey" });
     }
   });
+  app.get("/api/admin/email-rules/:key/due-users", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const key = req.params.key;
+      if (!AUTOMATIC.some((a) => a.key === key)) return res.status(400).json({ error: "That mail is not sent automatically" });
+      const state = await emailEngineState();
+      const rule = (await emailRules()).find((r2) => r2.templateKey === key);
+      if (!rule) return res.status(404).json({ error: "No such journey" });
+      const tracking = state.loginTrackingSince ? new Date(state.loginTrackingSince) : null;
+      const LIMIT = 500;
+      const due = await dueFor(rule, LIMIT, void 0, tracking);
+      const ids = due.map((d) => d.user.id);
+      const lastAuto = ids.length ? await prisma3.emailSend.groupBy({
+        by: ["userId"],
+        where: { userId: { in: ids }, sentBy: "auto", status: "Sent" },
+        _max: { createdAt: true }
+      }) : [];
+      const lastById = new Map(lastAuto.map((g) => [g.userId, g._max.createdAt]));
+      const q = String(req.query.search || "").trim().toLowerCase();
+      let rows = due.map((d) => ({
+        id: d.user.id,
+        displayName: d.user.displayName || null,
+        email: d.user.email,
+        organization: d.user.organization || null,
+        role: d.user.role,
+        registrantType: d.user.registrantType || null,
+        reason: d.why,
+        attempt: d.attempt,
+        createdAt: d.user.createdAt,
+        lastLoginAt: d.user.lastLoginAt || null,
+        lastReadAt: d.user.lastReadAt || null,
+        lastAutomationAt: lastById.get(d.user.id) || null
+      }));
+      if (q) rows = rows.filter((r2) => `${r2.displayName || ""} ${r2.email} ${r2.organization || ""}`.toLowerCase().includes(q));
+      const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize || "25")) || 25));
+      const page = Math.max(1, parseInt(String(req.query.page || "1")) || 1);
+      res.json({
+        ruleKey: key,
+        name: TEMPLATES[key]?.name || key,
+        dueCount: due.length,
+        capped: due.length >= LIMIT,
+        matching: rows.length,
+        page,
+        pageSize,
+        users: rows.slice((page - 1) * pageSize, page * pageSize)
+      });
+    } catch (e2) {
+      console.error("due users failed", e2?.message);
+      res.status(500).json({ error: "Could not list who is due" });
+    }
+  });
   app.post("/api/admin/email-engine/run", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      res.json(await runEmailEngine({ dryRun: req.body?.dryRun !== false }));
+      const only = typeof req.body?.only === "string" && AUTOMATIC.some((a) => a.key === req.body.only) ? req.body.only : void 0;
+      res.json(await runEmailEngine({ dryRun: req.body?.dryRun !== false, only }));
     } catch (e2) {
       res.status(500).json({ error: String(e2?.message || e2) });
     }
@@ -26591,7 +27290,11 @@ async function startServer() {
         "librarian-add-users": { role: "Institution" },
         "never-read": { lastReadAt: null, role: { notIn: STAFF_ROLES } },
         "pro-benefits": { lastReadAt: { not: null }, role: { notIn: STAFF_ROLES } },
-        "new-features": { role: { notIn: STAFF_ROLES } }
+        "new-features": { role: { notIn: STAFF_ROLES } },
+        "verify-email-reminder": { emailVerifiedAt: null, role: { notIn: STAFF_ROLES } },
+        "never-logged-in": { lastLoginAt: null, role: { notIn: STAFF_ROLES } },
+        "no-research-activity": { lastLoginAt: { not: null }, lastReadAt: null, role: { notIn: STAFF_ROLES } },
+        "inactive-user": { lastReadAt: { not: null }, role: { notIn: STAFF_ROLES } }
       }[key] || { role: { notIn: STAFF_ROLES } };
       const user = userId ? await prisma3.user.findUnique({ where: { id: userId } }) : await prisma3.user.findFirst({ where: standIn, orderBy: { createdAt: "desc" } }) || await prisma3.user.findFirst({ where: { role: { notIn: STAFF_ROLES } } });
       if (!user) return res.status(404).json({ error: "There is no member to show this against yet" });
@@ -26610,6 +27313,24 @@ async function startServer() {
       });
     } catch (e2) {
       res.status(500).json({ error: String(e2?.message || e2) });
+    }
+  });
+  app.post("/api/admin/email-rules/:key/test", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const key = req.params.key;
+      if (!TEMPLATES[key]) return res.status(404).json({ error: "No such template" });
+      const me = await prisma3.user.findUnique({ where: { id: req.user.uid } });
+      if (!me?.email) return res.status(400).json({ error: "Your account has no email address" });
+      const ctx = await contextFor(me, { ref: `test-${key}` }, false);
+      const { subject, html } = renderTemplate(key, ctx);
+      await sendMail({ to: me.email, subject: `[Test] ${subject}`, html, _throwOnError: true }, true);
+      const st = getSystemSettings();
+      const live = Boolean(
+        (st.awsAccessKeyId || process.env.AWS_ACCESS_KEY_ID) && (st.awsSecretAccessKey || process.env.AWS_SECRET_ACCESS_KEY)
+      );
+      res.json({ ok: true, to: me.email, live });
+    } catch (e2) {
+      res.status(502).json({ error: String(e2?.message || e2).slice(0, 200) });
     }
   });
   app.post("/api/admin/email-templates/:key/send", authenticateJWT, requireAdminOrManager, async (req, res) => {
@@ -26636,20 +27357,37 @@ async function startServer() {
       res.status(500).json({ error: String(e2?.message || e2) });
     }
   });
-  const mailEligibility = async (user, key) => {
+  const DEFAULT_DELAY = Object.fromEntries(AUTOMATIC.map((a) => [a.key, a.delayDays]));
+  const VERIFY_REMINDER_MAX_AGE_DAYS = 90;
+  const RESEARCH_KINDS = ["search", "view", "read"];
+  const hasResearchSince = async (userId, since) => !!await prisma3.libraryEvent.findFirst({
+    where: { userId, kind: { in: RESEARCH_KINDS }, ...since ? { at: { gte: since } } : {} },
+    select: { id: true }
+  });
+  let trackingCache = null;
+  const loginTrackingSince = async () => {
+    if (trackingCache && Date.now() - trackingCache.at < 5 * 6e4) return trackingCache.value;
+    const st = await emailEngineState();
+    trackingCache = { at: Date.now(), value: st.loginTrackingSince ? new Date(st.loginTrackingSince) : null };
+    return trackingCache.value;
+  };
+  const mailEligibility = async (user, key, rule) => {
     const days = (d) => d ? Math.floor((Date.now() - new Date(d).getTime()) / 864e5) : null;
     const age = days(user.createdAt) ?? 0;
     const isInstitution = user.role === "Institution";
+    const wait = rule?.delayDays ?? DEFAULT_DELAY[key] ?? 0;
+    const waits = (n2, from) => `${from} ${n2} day${n2 === 1 ? "" : "s"} ago \u2014 the mail waits ${wait} day${wait === 1 ? "" : "s"}`;
+    if (STAFF_ROLES.includes(user.role)) return { due: false, why: "staff accounts are not mailed" };
     switch (key) {
       case "profile-incomplete": {
         if (!isInstitution) return { due: false, why: "only institution accounts have this profile" };
-        if (age < 2) return { due: false, why: `registered ${age === 0 ? "today" : "yesterday"} \u2014 the mail waits 2 days` };
+        if (age < wait) return { due: false, why: waits(age, "registered") };
         const missing = missingInstitutionFields(user);
         return missing.length ? { due: true, why: `${missing.length} field${missing.length === 1 ? "" : "s"} still blank` } : { due: false, why: "the profile is complete" };
       }
       case "never-read": {
         if (user.lastReadAt) return { due: false, why: `has read something \u2014 last ${days(user.lastReadAt)} days ago` };
-        if (age < 3) return { due: false, why: `registered ${age} day${age === 1 ? "" : "s"} ago \u2014 the mail waits 3 days` };
+        if (age < wait) return { due: false, why: waits(age, "registered") };
         return { due: true, why: "registered and has never opened anything" };
       }
       case "pro-benefits": {
@@ -26666,8 +27404,48 @@ async function startServer() {
           select: { createdAt: true }
         });
         const since = days(last?.createdAt);
-        if (since !== null && since < 30) return { due: false, why: `added someone ${since} day${since === 1 ? "" : "s"} ago` };
+        if (since !== null && since < wait) return { due: false, why: `added someone ${since} day${since === 1 ? "" : "s"} ago` };
         return { due: true, why: since === null ? "has never added anyone" : `nobody added in ${since} days` };
+      }
+      case "verify-email-reminder": {
+        if (!getSystemSettings().emailVerificationEnabled) return { due: false, why: "email verification is switched off" };
+        if (user.emailVerifiedAt) return { due: false, why: "the address is verified" };
+        const proof = await prisma3.emailVerification.findUnique({ where: { email: user.email }, select: { isVerified: true } }).catch(() => null);
+        if (proof?.isVerified) return { due: false, why: "the address is verified" };
+        if (age < wait) return { due: false, why: waits(age, "registered") };
+        if (age > VERIFY_REMINDER_MAX_AGE_DAYS) return { due: false, why: `registered ${age} days ago \u2014 too long ago to remind` };
+        return { due: true, why: `address still unverified after ${age} day${age === 1 ? "" : "s"}` };
+      }
+      case "never-logged-in": {
+        if (user.lastLoginAt) return { due: false, why: `has signed in \u2014 last ${days(user.lastLoginAt)} days ago` };
+        if (user.lastReadAt || await hasResearchSince(user.id)) return { due: false, why: "has used the library, so has signed in" };
+        if (!user.emailVerifiedAt) return { due: false, why: "the address is not verified yet" };
+        const since = await loginTrackingSince();
+        if (!since || new Date(user.createdAt) < since) {
+          return { due: false, why: 'created before sign-ins were recorded, so "never" cannot be told from "not since"' };
+        }
+        if (age < wait) return { due: false, why: waits(age, "registered") };
+        return { due: true, why: `verified ${age} day${age === 1 ? "" : "s"} ago and has never signed in` };
+      }
+      case "no-research-activity": {
+        if (!user.lastLoginAt) return { due: false, why: "has not signed in" };
+        const sinceLogin = days(user.lastLoginAt) ?? 0;
+        if (sinceLogin < wait) return { due: false, why: waits(sinceLogin, "signed in") };
+        if (user.lastReadAt || await hasResearchSince(user.id)) return { due: false, why: "has searched or opened something" };
+        const nudged = await prisma3.emailSend.findFirst({
+          where: { userId: user.id, templateKey: "never-read", status: "Sent" },
+          select: { id: true }
+        });
+        if (nudged) return { due: false, why: 'was already sent the "never read" mail' };
+        return { due: true, why: `signed in ${sinceLogin} days ago and has not searched or opened anything` };
+      }
+      case "inactive-user": {
+        if (!user.lastReadAt) return { due: false, why: 'has never read \u2014 that is the "never read" mail' };
+        const quiet = days(user.lastReadAt) ?? 0;
+        if (quiet < wait) return { due: false, why: `read ${quiet} day${quiet === 1 ? "" : "s"} ago \u2014 the mail waits until ${wait} days of quiet` };
+        const since = new Date(Date.now() - wait * 864e5);
+        if (await hasResearchSince(user.id, since)) return { due: false, why: "has searched or opened something recently" };
+        return { due: true, why: `no research for ${quiet} days` };
       }
       case "new-features":
       default:
@@ -26690,10 +27468,11 @@ async function startServer() {
           where: { userId: user.id, status: "Sent", createdAt: { gte: new Date(Date.now() - 30 * 864e5) } }
         })
       ]);
+      const ruleList = await emailRules();
       const templates = await Promise.all(TEMPLATE_LIST.map(async (t2) => {
         const mine = sends.filter((s2) => s2.templateKey === t2.key);
         const lastSent = mine.find((s2) => s2.status === "Sent");
-        const el = await mailEligibility(user, t2.key);
+        const el = await mailEligibility(user, t2.key, ruleList.find((r2) => r2.templateKey === t2.key));
         return {
           key: t2.key,
           name: t2.name,
@@ -27126,6 +27905,9 @@ async function startServer() {
         }).filter(Boolean)
       ));
       const free = req.user.role === "Subscriber" && activeSubs.length === 0;
+      const me = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { interestedDomains: true } });
+      const known = new Set(DOMAINS.map((d) => d.name));
+      const chosenDepartments = (Array.isArray(me?.interestedDomains) ? me.interestedDomains : []).map(String).filter((n2) => known.has(n2));
       const scope = seesWholeLibrary(req.user.role, activeSubs) ? void 0 : allowedDomains;
       const since12w = new Date(Date.now() - 84 * 864e5);
       const [counts, byDepartment, viewedItems, legacyRead, weekRows, deptRows, timeRow] = await Promise.all([
@@ -27169,7 +27951,7 @@ async function startServer() {
         allowedDomains,
         recentActivity: mappedRecent,
         planType: activeSubs[0]?.planType || (free ? "Free" : "Free/Demo"),
-        planName: activeSubs[0]?.planName || (free ? "Free membership" : "Basic Plan"),
+        planName: activeSubs[0]?.planName || (free ? "Free Subscription" : "Basic Plan"),
         expiredSubscriptions: expiredSubs,
         /** What the member holds, in the member's own word for it. */
         membership: {
@@ -27180,6 +27962,8 @@ async function startServer() {
         collection: { ...counts, byDepartment },
         /** Departments that actually hold something, not departments that exist. */
         departmentsCovered: byDepartment.length,
+        /** What the member selected; empty when they never chose any. */
+        selectedDepartments: chosenDepartments.length,
         itemsRead: readIds.size,
         readByWeek: weekRows.map((r2) => Number(r2.reads)),
         readByDepartment: deptRows.map((r2) => ({ name: r2.domain, reads: Number(r2._count?._all || 0) })).sort((a, b) => b.reads - a.reads).slice(0, 8),
@@ -27425,6 +28209,48 @@ async function startServer() {
       res.status(500).json({ error: "Failed to load subscriptions" });
     }
   });
+  const licensedSeats = async (institutionId, db = prisma3) => {
+    const now = /* @__PURE__ */ new Date();
+    const [withLimit, activeSubs, assigned, totalMembers] = await Promise.all([
+      db.subscription.findMany({
+        where: { institutionId, licensedUserLimit: { not: null } },
+        orderBy: { endDate: "desc" },
+        select: { id: true, planName: true, licensedUserLimit: true, endDate: true }
+      }),
+      db.subscription.findMany({
+        where: { institutionId, status: "Active", endDate: { gt: now } },
+        orderBy: { endDate: "desc" },
+        select: { id: true, planName: true, licensedUserLimit: true, endDate: true }
+      }),
+      db.institutionMemberAccess.count({
+        where: { institutionId, revokedAt: null, user: { institutionId, isBlocked: false } }
+      }),
+      db.user.count({ where: { institutionId } })
+    ]);
+    const managed = withLimit.length > 0;
+    const activeWithLimit = activeSubs.filter((x2) => x2.licensedUserLimit != null);
+    const limit = !managed ? null : activeWithLimit.length ? Math.max(...activeWithLimit.map((x2) => x2.licensedUserLimit)) : withLimit[0].licensedUserLimit;
+    const sub = activeWithLimit[0] || activeSubs[0] || withLimit[0] || null;
+    return {
+      managed,
+      limit,
+      assigned,
+      totalMembers,
+      available: limit == null ? null : Math.max(0, limit - assigned),
+      full: limit != null && assigned >= limit,
+      overLimit: limit != null && assigned > limit,
+      subscriptionActive: activeSubs.length > 0,
+      subscription: sub ? { id: sub.id, name: sub.planName, endsAt: sub.endDate } : null
+    };
+  };
+  const memberHasLicensedAccess = async (institutionId, uid) => {
+    const row = await prisma3.institutionMemberAccess.findFirst({
+      where: { userId: uid, institutionId, revokedAt: null, user: { institutionId, isBlocked: false } },
+      select: { id: true }
+    });
+    if (!row) return false;
+    return !(await licensedSeats(institutionId)).overLimit;
+  };
   const getUserActiveSubscriptions = async (uid, role, institutionId) => {
     const OR_clauses = [{ userId: uid }];
     let resolvedInstId = institutionId;
@@ -27435,20 +28261,33 @@ async function startServer() {
     if (resolvedInstId) {
       OR_clauses.push({ institutionId: resolvedInstId });
     }
-    return prisma3.subscription.findMany({
+    const subs = await prisma3.subscription.findMany({
       where: {
         OR: OR_clauses,
         status: "Active",
         endDate: { gt: /* @__PURE__ */ new Date() }
       }
     });
+    if (resolvedInstId && !STAFF_ROLES.includes(role)) {
+      const inherited = subs.filter((x2) => x2.institutionId === resolvedInstId && x2.userId !== uid);
+      if (inherited.length) {
+        const managed = await prisma3.subscription.findFirst({
+          where: { institutionId: resolvedInstId, licensedUserLimit: { not: null } },
+          select: { id: true }
+        });
+        if (managed && !await memberHasLicensedAccess(resolvedInstId, uid)) {
+          return subs.filter((x2) => !inherited.includes(x2));
+        }
+      }
+    }
+    return subs;
   };
   const checkContentAccess = (content, userRole, activeSubscriptions) => {
     if (userRole === "SuperAdmin" || userRole === "Admin" || userRole === "ContentManager") return true;
     if (!activeSubscriptions.length) return true;
     return activeSubscriptions.some((sub) => {
       const d = Array.isArray(sub.domains) ? sub.domains : sub.domains ? JSON.parse(sub.domains) : [];
-      const hasWildcardDomain = d.length === 0 && !sub.domainName;
+      const hasWildcardDomain = d.length === 0 && (!sub.domainName || /^all domains?$/i.test(String(sub.domainName).trim()));
       let domainMatch = false;
       if (hasWildcardDomain) {
         domainMatch = true;
@@ -27659,7 +28498,7 @@ async function startServer() {
       }
       const contents = await prisma3.content.findMany({
         where,
-        select: { domain: true, subjectArea: true, tags: true }
+        select: { domain: true, subjectArea: true, tags: true, title: true }
       });
       const subjectsSet = /* @__PURE__ */ new Set();
       const tagsSet = /* @__PURE__ */ new Set();
@@ -27667,7 +28506,8 @@ async function startServer() {
       const selectedSubjects = subjectArea ? String(subjectArea).split(",").map((s2) => s2.trim().toLowerCase()).filter(Boolean) : [];
       contents.forEach((c) => {
         if (c.domain) domainsSet.add(c.domain.trim());
-        if (c.subjectArea) subjectsSet.add(c.subjectArea.trim());
+        const cleanSubject = cleanSubjectArea(c.subjectArea, c.title);
+        if (cleanSubject) subjectsSet.add(cleanSubject);
         let shouldAddTags = true;
         if (selectedSubjects.length > 0) {
           const cSub = c.subjectArea ? c.subjectArea.trim().toLowerCase() : "";
@@ -27928,14 +28768,7 @@ async function startServer() {
       const isAdminRole = ["SuperAdmin", "Admin", "ContentManager"].includes(req.user.role);
       const resolved = await resolveViewable(contentId, isAdminRole);
       if (!resolved) return res.status(404).json({ error: "Content not found" });
-      if (!await passesFreeClock(req, res)) return;
-      const isOA = ["OpenAccess", "Free"].includes(resolved.accessType || "");
-      let hasAccess = true;
-      if (resolved.kind === "content" && !isOA) {
-        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-        hasAccess = checkContentAccess(resolved.item, req.user.role, activeSubs);
-      }
-      if (!hasAccess) return res.status(403).json({ error: "Access denied. Please upgrade your subscription." });
+      if (!await passesFreeClock(req, res, resolved)) return;
       if ((resolved.kind === "article" || resolved.kind === "book") && !isAdminRole) {
         prisma3[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {
         });
@@ -27995,17 +28828,9 @@ async function startServer() {
       if (!resolved || !resolved.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
-      if (!await passesFreeClock(req, res)) return;
+      if (!await passesFreeClock(req, res, resolved)) return;
       const content = resolved.item;
       content.fileUrl = resolved.fileUrl;
-      const isOA = ["OpenAccess", "Free"].includes(resolved.accessType || "");
-      if (!isAdmin && resolved.kind === "content" && !isOA) {
-        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-        const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
-        if (!hasAccess) {
-          return res.status(403).json({ error: "Access denied." });
-        }
-      }
       if (content.fileUrl.startsWith("/")) {
         const localPath = import_path2.default.join(process.cwd(), "public", content.fileUrl);
         if (import_fs2.default.existsSync(localPath)) {
@@ -28088,16 +28913,8 @@ async function startServer() {
       if (!resolved || !resolved.fileUrl) {
         return res.status(404).json({ error: "Content not found" });
       }
-      if (!await passesFreeClock(req, res)) return;
+      if (!await passesFreeClock(req, res, resolved)) return;
       const content = { ...resolved.item, fileUrl: resolved.fileUrl };
-      const isOA = ["OpenAccess", "Free"].includes(resolved.accessType || "");
-      if (!isAdmin && resolved.kind === "content" && !isOA) {
-        const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-        const hasAccess = checkContentAccess(content, req.user.role, activeSubs);
-        if (!hasAccess) {
-          return res.status(403).json({ error: "Access denied." });
-        }
-      }
       if (content.fileUrl.startsWith("/")) {
         const filePath = import_path2.default.join(process.cwd(), "dist", content.fileUrl);
         if (!import_fs2.default.existsSync(filePath)) {
@@ -28760,9 +29577,20 @@ async function startServer() {
         select: { code: true, name: true, channel: true, ownerName: true }
       }) : [];
       const byCode = new Map(named.map((c) => [c.code, c]));
+      const liveRows = await prisma3.userSession.findMany({
+        where: { userId: { in: users.map((u) => u.id) }, revokedAt: null, expiresAt: { gt: /* @__PURE__ */ new Date() } },
+        select: { userId: true, createdAt: true, lastSeenAt: true, expiresAt: true, deviceLabel: true }
+      });
+      const liveBy = new Map(liveRows.map((r2) => [r2.userId, {
+        loginAt: r2.createdAt,
+        lastActivity: r2.lastSeenAt,
+        expiresAt: r2.expiresAt,
+        device: r2.deviceLabel
+      }]));
       res.json({
         data: users.map((u) => ({
           ...u,
+          activeSession: liveBy.get(u.id) || null,
           isEmailVerified: !!u.emailVerifiedAt,
           campaign: u.signupSource ? byCode.get(u.signupSource) || null : null
         })),
@@ -28786,6 +29614,273 @@ async function startServer() {
       res.status(500).json({ error: "Failed to fetch users" });
     }
   });
+  app.get("/api/institution/user-addition", authenticateJWT, async (req, res) => {
+    try {
+      if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
+      const target = await resolveTargetInstitution(req);
+      if (target.error) return res.json({ restricted: false, institutionName: "" });
+      res.json({ restricted: !!await activeAddRestriction(target.id), institutionName: target.name });
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to load" });
+    }
+  });
+  const LICENSED_FULL = { code: "LICENSED_SEAT_LIMIT_REACHED", message: "All licensed user seats are currently assigned.", error: "All licensed user seats are currently assigned." };
+  const memberAccessStatus = (seat, row, member) => {
+    if (!seat.managed) return "Not managed";
+    if (member.isBlocked) return "Account suspended";
+    if (row && !row.revokedAt) {
+      if (!seat.subscriptionActive) return "Subscription Expired";
+      if (seat.overLimit) return "On hold \u2014 review needed";
+      return "Subscription Access Active";
+    }
+    return row?.revokedAt ? "Access Revoked" : "Access Not Assigned";
+  };
+  const accessOverview = async (institutionId, q) => {
+    const seat = await licensedSeats(institutionId);
+    const where = { institutionId };
+    if (q) where.OR = [{ displayName: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }];
+    const users = await prisma3.user.findMany({
+      where,
+      orderBy: [{ role: "asc" }, { displayName: "asc" }],
+      take: 500,
+      select: { id: true, displayName: true, email: true, role: true, designation: true, lastReadAt: true, isBlocked: true }
+    });
+    const rows = await prisma3.institutionMemberAccess.findMany({ where: { institutionId, userId: { in: users.map((u) => u.id) } } });
+    const byUser = new Map(rows.map((r2) => [r2.userId, r2]));
+    return {
+      summary: seat,
+      members: users.map((u) => {
+        const r2 = byUser.get(u.id);
+        return {
+          ...u,
+          accessStatus: memberAccessStatus(seat, r2, u),
+          hasSeat: !!r2 && !r2.revokedAt && !u.isBlocked,
+          assignedAt: r2 && !r2.revokedAt ? r2.assignedAt : null
+        };
+      })
+    };
+  };
+  const changeSeats = async (institutionId, userIds, mode, actor) => {
+    const ids = [...new Set(userIds.filter((x2) => typeof x2 === "string"))].slice(0, 1e3);
+    if (!ids.length) throw { status: 400, body: { error: "Choose at least one member." } };
+    const result = await prisma3.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"licensed-seats:" + institutionId}))`;
+      const now = /* @__PURE__ */ new Date();
+      if (mode === "revoke") {
+        const r2 = await tx.institutionMemberAccess.updateMany({
+          where: { institutionId, userId: { in: ids }, revokedAt: null },
+          data: { revokedAt: now, revokedBy: actor.uid }
+        });
+        return { changed: r2.count };
+      }
+      const seat = await licensedSeats(institutionId, tx);
+      if (!seat.managed) throw { status: 409, body: { code: "SEATS_NOT_MANAGED", error: "Licensed seats have not been set up for this institution." } };
+      if (!seat.subscriptionActive) throw { status: 409, body: { code: "NO_ACTIVE_SUBSCRIPTION", error: "The institution has no active subscription." } };
+      const members = await tx.user.findMany({ where: { id: { in: ids }, institutionId, isBlocked: false }, select: { id: true } });
+      if (members.length !== ids.length) throw { status: 400, body: { error: "Some of the selected members cannot be assigned access." } };
+      const held = await tx.institutionMemberAccess.findMany({ where: { institutionId, userId: { in: ids }, revokedAt: null }, select: { userId: true } });
+      const heldIds = new Set(held.map((h2) => h2.userId));
+      const toAssign = ids.filter((i2) => !heldIds.has(i2));
+      if (toAssign.length > (seat.available ?? 0)) {
+        throw { status: 409, body: {
+          ...LICENSED_FULL,
+          available: seat.available ?? 0,
+          requested: toAssign.length,
+          ...toAssign.length > 1 && (seat.available ?? 0) > 0 ? { message: `Only ${seat.available} licensed seat${seat.available === 1 ? " is" : "s are"} available. Reduce your selection or increase the user limit.` } : {}
+        } };
+      }
+      for (const userId of toAssign) {
+        await tx.institutionMemberAccess.upsert({
+          where: { userId_institutionId: { userId, institutionId } },
+          create: { userId, institutionId, subscriptionId: seat.subscription?.id || null, assignedBy: actor.uid },
+          update: { revokedAt: null, revokedBy: null, assignedAt: now, assignedBy: actor.uid, subscriptionId: seat.subscription?.id || null }
+        });
+      }
+      return { changed: toAssign.length };
+    });
+    await prisma3.usageLog.create({ data: {
+      action: mode === "assign" ? "LICENSED_ACCESS_ASSIGNED" : "LICENSED_ACCESS_REMOVED",
+      userId: actor.uid,
+      details: `${institutionId}: ${result.changed} member(s) [${ids.slice(0, 20).join(", ")}] by ${actor.email}`
+    } }).catch(() => {
+    });
+    return result;
+  };
+  const seatRoute = (fn) => async (req, res) => {
+    try {
+      res.json(await fn(req));
+    } catch (e2) {
+      if (e2?.status) return res.status(e2.status).json(e2.body);
+      console.error("licensed seats:", e2?.message);
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  };
+  app.get(
+    "/api/admin/institutions/:id/access",
+    authenticateJWT,
+    requireAdminOrManager,
+    seatRoute((req) => accessOverview(req.params.id, String(req.query.q || "").trim() || void 0))
+  );
+  app.post(
+    "/api/admin/institutions/:id/access/assign",
+    authenticateJWT,
+    requireAdminOrManager,
+    seatRoute(async (req) => {
+      await changeSeats(req.params.id, req.body?.userIds || [], "assign", req.user);
+      return accessOverview(req.params.id);
+    })
+  );
+  app.post(
+    "/api/admin/institutions/:id/access/revoke",
+    authenticateJWT,
+    requireAdminOrManager,
+    seatRoute(async (req) => {
+      await changeSeats(req.params.id, req.body?.userIds || [], "revoke", req.user);
+      return accessOverview(req.params.id);
+    })
+  );
+  app.put("/api/admin/institutions/:id/licensed-limit", authenticateJWT, requireSuperAdmin, seatRoute(async (req) => {
+    const institutionId = req.params.id;
+    const limit = Number(req.body?.limit);
+    if (!Number.isInteger(limit) || limit < 1) throw { status: 400, body: { error: "The limit must be a whole number, at least 1." } };
+    if (limit > MAX_INSTITUTION_USERS) throw { status: 400, body: { error: `The limit cannot exceed ${MAX_INSTITUTION_USERS.toLocaleString("en-IN")}.` } };
+    const note = String(req.body?.note || "").trim().slice(0, 500) || null;
+    const seeded = await prisma3.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"licensed-seats:" + institutionId}))`;
+      const before = await licensedSeats(institutionId, tx);
+      if (!before.subscriptionActive) throw { status: 409, body: { code: "NO_ACTIVE_SUBSCRIPTION", error: "The institution has no active subscription to set a limit on." } };
+      if (before.assigned > limit) {
+        throw { status: 409, body: {
+          code: "LIMIT_BELOW_ASSIGNED",
+          assigned: before.assigned,
+          error: `${before.assigned} users currently have access, which exceeds the new limit of ${limit}. Remove access from at least ${before.assigned - limit} first.`
+        } };
+      }
+      const active = await tx.subscription.findMany({
+        where: { institutionId, status: "Active", endDate: { gt: /* @__PURE__ */ new Date() } },
+        orderBy: { endDate: "desc" },
+        select: { id: true }
+      });
+      await tx.subscription.updateMany({ where: { id: { in: active.slice(1).map((x2) => x2.id) } }, data: { licensedUserLimit: null } });
+      await tx.subscription.update({ where: { id: active[0].id }, data: { licensedUserLimit: limit } });
+      let seeded2 = 0;
+      if (!before.managed && req.body?.keepCurrentMembers) {
+        const members = await tx.user.findMany({
+          where: { institutionId, isBlocked: false },
+          select: { id: true, role: true, lastReadAt: true, createdAt: true }
+        });
+        members.sort((a, b) => (a.role === "Institution" ? 0 : 1) - (b.role === "Institution" ? 0 : 1) || (b.lastReadAt ? 1 : 0) - (a.lastReadAt ? 1 : 0) || a.createdAt.getTime() - b.createdAt.getTime());
+        for (const m2 of members.slice(0, limit)) {
+          await tx.institutionMemberAccess.upsert({
+            where: { userId_institutionId: { userId: m2.id, institutionId } },
+            create: { userId: m2.id, institutionId, subscriptionId: active[0].id, assignedBy: req.user.uid },
+            update: { revokedAt: null, revokedBy: null, subscriptionId: active[0].id }
+          });
+          seeded2++;
+        }
+      }
+      await tx.usageLog.create({ data: {
+        action: "LICENSED_LIMIT_CHANGED",
+        userId: req.user.uid,
+        details: `${institutionId}: ${before.managed ? before.limit : "off"} -> ${limit} by ${req.user.email}${seeded2 ? `; ${seeded2} current members kept access` : ""}${note ? `; ${note}` : ""}`
+      } });
+      return seeded2;
+    });
+    return { ...await accessOverview(institutionId), seeded };
+  }));
+  const ownInstitution = async (req) => {
+    if (req.user.role !== "Institution") throw { status: 403, body: { error: "Unauthorized" } };
+    const id = await librarianInstitutionId(req);
+    if (!id) throw { status: 400, body: { error: "Your account is not linked to an institution." } };
+    return id;
+  };
+  app.get("/api/institution/access", authenticateJWT, seatRoute(async (req) => accessOverview(await ownInstitution(req), String(req.query.q || "").trim() || void 0)));
+  app.post("/api/institution/access/assign", authenticateJWT, seatRoute(async (req) => {
+    const id = await ownInstitution(req);
+    await changeSeats(id, req.body?.userIds || [], "assign", req.user);
+    return accessOverview(id);
+  }));
+  app.post("/api/institution/access/revoke", authenticateJWT, seatRoute(async (req) => {
+    const id = await ownInstitution(req);
+    await changeSeats(id, req.body?.userIds || [], "revoke", req.user);
+    return accessOverview(id);
+  }));
+  app.get("/api/me/institution-access", authenticateJWT, seatRoute(async (req) => {
+    const me = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true, institution: { select: { name: true } } } });
+    if (!me?.institutionId) return { linked: false };
+    const seat = await licensedSeats(me.institutionId);
+    if (!seat.managed) return { linked: true, managed: false, institutionName: me.institution?.name || "" };
+    const has = await memberHasLicensedAccess(me.institutionId, req.user.uid);
+    return {
+      linked: true,
+      managed: true,
+      institutionName: me.institution?.name || "",
+      hasAccess: has,
+      status: has ? seat.subscriptionActive ? "Subscription Access Active" : "Subscription Expired" : "Access Not Assigned",
+      seatsFull: seat.full
+    };
+  }));
+  app.post("/api/admin/institutions/:id/user-addition-restriction", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const reason = String(req.body?.reason || "").trim().slice(0, 500);
+      const note = String(req.body?.note || "").trim().slice(0, 1e3) || null;
+      if (!reason) return res.status(400).json({ error: "A reason is required." });
+      let until = null;
+      if (req.body?.until) {
+        until = /* @__PURE__ */ new Date(`${String(req.body.until).slice(0, 10)}T23:59:59.999+05:30`);
+        if (isNaN(until.getTime()) || until.getTime() <= Date.now()) return res.status(400).json({ error: "Choose an end date in the future." });
+      }
+      const inst = await prisma3.institution.findUnique({ where: { id: req.params.id }, select: { name: true } });
+      if (!inst) return res.status(404).json({ error: "Institution not found" });
+      await prisma3.institution.update({
+        where: { id: req.params.id },
+        data: {
+          userAdditionRestricted: true,
+          userAdditionRestrictionReason: reason,
+          userAdditionRestrictionNote: note,
+          userAdditionRestrictedAt: /* @__PURE__ */ new Date(),
+          userAdditionRestrictedBy: req.user.uid,
+          userAdditionRestrictionUntil: until
+        }
+      });
+      await prisma3.usageLog.create({ data: {
+        action: "INSTITUTION_USER_ADDITION_RESTRICTED",
+        userId: req.user.uid,
+        details: `${inst.name} (${req.params.id}) restricted by ${req.user.email}; until ${until ? until.toISOString() : "removed manually"}; reason: ${reason}`
+      } }).catch(() => {
+      });
+      res.json({ ok: true });
+    } catch (e2) {
+      console.error("restrict user addition:", e2?.message);
+      res.status(500).json({ error: "Failed to apply the restriction" });
+    }
+  });
+  app.delete("/api/admin/institutions/:id/user-addition-restriction", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const inst = await prisma3.institution.findUnique({ where: { id: req.params.id }, select: { name: true } });
+      if (!inst) return res.status(404).json({ error: "Institution not found" });
+      await prisma3.institution.update({
+        where: { id: req.params.id },
+        data: {
+          userAdditionRestricted: false,
+          userAdditionRestrictionReason: null,
+          userAdditionRestrictionNote: null,
+          userAdditionRestrictedAt: null,
+          userAdditionRestrictedBy: null,
+          userAdditionRestrictionUntil: null
+        }
+      });
+      await prisma3.usageLog.create({ data: {
+        action: "INSTITUTION_USER_ADDITION_RESTORED",
+        userId: req.user.uid,
+        details: `${inst.name} (${req.params.id}) restored by ${req.user.email}`
+      } }).catch(() => {
+      });
+      res.json({ ok: true });
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to remove the restriction" });
+    }
+  });
   app.get("/api/admin/users/by-institution", authenticateJWT, requireAdminOrManager, async (_req, res) => {
     try {
       const counts = (rows, key) => {
@@ -28807,7 +29902,18 @@ async function startServer() {
         prisma3.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null } }, _count: { _all: true } }),
         prisma3.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
         prisma3.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
-        prisma3.institution.findMany({ select: { id: true, name: true, status: true, createdAt: true } }),
+        prisma3.institution.findMany({ select: {
+          id: true,
+          name: true,
+          status: true,
+          createdAt: true,
+          userAdditionRestricted: true,
+          userAdditionRestrictionReason: true,
+          userAdditionRestrictedAt: true,
+          userAdditionRestrictedBy: true,
+          userAdditionRestrictionUntil: true,
+          userAdditionRestrictionNote: true
+        } }),
         // The account the institution runs on — the librarian who adds the rest.
         prisma3.user.findMany({
           where: { institutionId: { not: null }, role: "Institution" },
@@ -28824,12 +29930,44 @@ async function startServer() {
         const k = h2.institutionId;
         (headsBy.get(k) || headsBy.set(k, []).get(k)).push(h2);
       }
+      const limitRows = await prisma3.subscription.findMany({
+        where: { institutionId: { not: null }, licensedUserLimit: { not: null } },
+        select: { institutionId: true, licensedUserLimit: true, status: true, endDate: true },
+        orderBy: { endDate: "desc" }
+      });
+      const seatLimit = /* @__PURE__ */ new Map();
+      const running = /* @__PURE__ */ new Map();
+      const nowMs = Date.now();
+      for (const r2 of limitRows) {
+        if (!seatLimit.has(r2.institutionId)) seatLimit.set(r2.institutionId, r2.licensedUserLimit);
+        if (r2.status === "Active" && r2.endDate.getTime() > nowMs) {
+          running.set(r2.institutionId, Math.max(running.get(r2.institutionId) ?? 0, r2.licensedUserLimit));
+        }
+      }
+      for (const [id, v] of running) seatLimit.set(id, v);
+      const heldRows = await prisma3.institutionMemberAccess.findMany({
+        where: { revokedAt: null, user: { isBlocked: false } },
+        select: { institutionId: true, user: { select: { institutionId: true } } }
+      });
+      const heldBy = /* @__PURE__ */ new Map();
+      for (const h2 of heldRows) if (h2.user.institutionId === h2.institutionId) heldBy.set(h2.institutionId, (heldBy.get(h2.institutionId) || 0) + 1);
+      const byIds = [...new Set(institutions.map((i2) => i2.userAdditionRestrictedBy).filter(Boolean))];
+      const adminNames = new Map((byIds.length ? await prisma3.user.findMany({ where: { id: { in: byIds } }, select: { id: true, displayName: true, email: true } }) : []).map((a) => [a.id, a.displayName || a.email]));
       const groups = institutions.map((i2) => ({
         kind: "institution",
         id: i2.id,
         name: i2.name,
         status: i2.status,
         since: i2.createdAt,
+        access: seatLimit.has(i2.id) ? { managed: true, limit: seatLimit.get(i2.id), assigned: heldBy.get(i2.id) || 0, available: Math.max(0, seatLimit.get(i2.id) - (heldBy.get(i2.id) || 0)) } : { managed: false, limit: null, assigned: 0, available: null },
+        // Only a restriction still in force is shown as one.
+        addRestriction: i2.userAdditionRestricted && !(i2.userAdditionRestrictionUntil && new Date(i2.userAdditionRestrictionUntil).getTime() <= Date.now()) ? {
+          reason: i2.userAdditionRestrictionReason,
+          note: i2.userAdditionRestrictionNote,
+          at: i2.userAdditionRestrictedAt,
+          by: adminNames.get(i2.userAdditionRestrictedBy) || null,
+          until: i2.userAdditionRestrictionUntil
+        } : null,
         members: N.get(i2.id) || 0,
         verified: V.get(i2.id) || 0,
         readers: R.get(i2.id) || 0,
@@ -29214,8 +30352,8 @@ async function startServer() {
       res.status(500).json({ error: "Failed to delete user" });
     }
   });
-  const GST_RATE = 0.18;
-  const COMPANY_STATE = "Delhi";
+  const GST_RATE4 = 0.18;
+  const COMPANY_STATE2 = "Delhi";
   const USER_TYPES = [
     "General",
     "Student Scholar",
@@ -29281,8 +30419,8 @@ async function startServer() {
         };
       });
       const subtotal = breakdown.reduce((sum, b) => sum + b.price, 0);
-      const isInterState = userState && userState.toLowerCase() !== COMPANY_STATE.toLowerCase();
-      const gstAmount = parseFloat((subtotal * GST_RATE).toFixed(2));
+      const isInterState = userState && userState.toLowerCase() !== COMPANY_STATE2.toLowerCase();
+      const gstAmount = parseFloat((subtotal * GST_RATE4).toFixed(2));
       const total = parseFloat((subtotal + gstAmount).toFixed(2));
       res.json({
         breakdown,
@@ -29292,7 +30430,7 @@ async function startServer() {
         planType,
         userType,
         gstType: isInterState ? "IGST" : "CGST+SGST",
-        gstRate: GST_RATE
+        gstRate: GST_RATE4
       });
     } catch (error) {
       console.error("Calculate error:", error);
@@ -31745,13 +32883,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/library/journal/:issn", async (req, res) => {
     try {
       const key = decodeURIComponent(req.params.issn);
-      const norm = normaliseIssn(key);
+      const norm2 = normaliseIssn(key);
       const journal = await prisma3.journal.findFirst({
         where: { OR: [
           { issn: key },
           { eissn: key },
           { id: key },
-          ...norm ? [{ issn: norm }, { eissn: norm }] : []
+          ...norm2 ? [{ issn: norm2 }, { eissn: norm2 }] : []
         ] }
       });
       if (!journal) return res.status(404).json({ error: "Journal not found" });
@@ -31800,13 +32938,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const key = decodeURIComponent(req.params.issn);
       const volume = decodeURIComponent(req.params.volume);
-      const norm = normaliseIssn(key);
+      const norm2 = normaliseIssn(key);
       const journal = await prisma3.journal.findFirst({
         where: { OR: [
           { issn: key },
           { eissn: key },
           { id: key },
-          ...norm ? [{ issn: norm }, { eissn: norm }] : []
+          ...norm2 ? [{ issn: norm2 }, { eissn: norm2 }] : []
         ] },
         select: { id: true, title: true, domain: true, issn: true, licence: true }
       });
@@ -33056,7 +34194,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price, accessType, status, publishingMode } = req.body;
       const newContent = await prisma3.content.create({
-        data: { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price: parseFloat(price) || 0, accessType, status, publishingMode: publishingMode || "Direct" }
+        data: { title, description, authors, domain, contentType, subjectArea: cleanSubjectArea(subjectArea, title) ?? void 0, fileUrl, thumbnailUrl, tags, price: parseFloat(price) || 0, accessType, status, publishingMode: publishingMode || "Direct" }
       });
       res.json(newContent);
     } catch (error) {
@@ -33195,7 +34333,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
               authors: item.authors || "Unknown",
               domain: item.domain,
               contentType: item.contentType || "Book",
-              subjectArea: item.subjectArea,
+              // A column mapped to the wrong field puts a title or a number here; those are left out.
+              subjectArea: cleanSubjectArea(item.subjectArea, item.title) ?? void 0,
               fileUrl: item.fileUrl,
               thumbnailUrl: item.thumbnailUrl,
               tags: item.tags ? typeof item.tags === "string" ? item.tags.startsWith("[") ? JSON.parse(item.tags) : item.tags.split(",").map((t2) => t2.trim()) : item.tags : [],
@@ -33239,6 +34378,23 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     } catch (err) {
       console.error("Bulk Action Error:", err);
       res.status(500).json({ error: err.message || "Failed to process bulk action" });
+    }
+  });
+  app.post("/api/admin/users/:id/revoke-session", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const target = await prisma3.user.findUnique({ where: { id: req.params.id }, select: { role: true } });
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (target.role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
+        return res.status(403).json({ error: "Only a Super Admin can end a Super Admin's session" });
+      }
+      const r2 = await prisma3.userSession.updateMany({
+        where: { userId: req.params.id, revokedAt: null, expiresAt: { gt: /* @__PURE__ */ new Date() } },
+        data: { revokedAt: /* @__PURE__ */ new Date() }
+      });
+      res.json({ ok: true, revoked: r2.count });
+    } catch (error) {
+      console.error("revoke-session error:", error);
+      res.status(500).json({ error: "Failed to end the session" });
     }
   });
   app.post("/api/admin/users/:id/block", authenticateJWT, requireSuperAdmin, async (req, res) => {
@@ -33448,208 +34604,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to update subscription" });
     }
   });
-  app.post("/api/payment/order", async (req, res) => {
-    try {
-      const { amount, currency = "INR", receipt } = req.body;
-      if (process.env.NODE_ENV !== "production" && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
-        console.log("\u2139\uFE0F [Razorpay] Keys not configured. Falling back to local mock order...");
-        return res.json({
-          id: `order_mock_${Date.now()}`,
-          amount: Math.round(amount * 100),
-          currency,
-          receipt,
-          isMock: true
-        });
-      }
-      const razorpay = getRazorpay();
-      const options = {
-        amount: Math.round(amount * 100),
-        // amount in the smallest currency unit
-        currency,
-        receipt
-      };
-      const order = await razorpay.orders.create(options);
-      res.json({
-        ...order,
-        razorpayKey: process.env.RAZORPAY_KEY_ID
-      });
-    } catch (error) {
-      console.error("Razorpay Order Error:", error);
-      res.status(500).json({ error: "Failed to create order" });
-    }
+  app.post("/api/payment/order", (_req, res) => {
+    res.status(410).json({ error: 'This payment route is retired. Institution purchases use /api/institution/checkout; other plans go through "Request Subscription", which an administrator approves after taking payment manually.' });
   });
-  app.post("/api/payment/verify", async (req, res) => {
-    try {
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, items, userId, guestData } = req.body;
-      let isVerified = false;
-      const isMockOrder = process.env.NODE_ENV !== "production" && razorpay_order_id && razorpay_order_id.startsWith("order_mock_");
-      if (isMockOrder) {
-        console.log("\u2705 [Razorpay] Mock Order verified automatically for local development.");
-        isVerified = true;
-      } else {
-        const keySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
-        const sign = razorpay_order_id + "|" + razorpay_payment_id;
-        const expectedSign = import_crypto2.default.createHmac("sha256", keySecret).update(sign.toString()).digest("hex");
-        isVerified = razorpay_signature === expectedSign;
-        if (!isVerified) {
-          console.warn(`\u26A0\uFE0F [Razorpay] Payment signature mismatch for Order: ${razorpay_order_id}`);
-        }
-      }
-      if (isVerified) {
-        let finalUserId = userId || null;
-        let isNewUser = false;
-        let generatedPassword = "";
-        if (!finalUserId && guestData && guestData.email) {
-          try {
-            const existingUser = await prisma3.user.findUnique({ where: { email: guestData.email } });
-            if (existingUser) {
-              finalUserId = existingUser.id;
-            } else {
-              generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase() + "!";
-              const hashedPassword = await import_bcryptjs.default.hash(generatedPassword, 10);
-              const newUser = await prisma3.user.create({
-                data: {
-                  email: guestData.email,
-                  displayName: guestData.name || "New User",
-                  password: hashedPassword,
-                  role: guestData.userCategory === "Institution" || guestData.organization ? "Institution" : "Subscriber",
-                  organization: guestData.organization || null,
-                  status: "Active",
-                  isFirstLogin: true
-                }
-              });
-              finalUserId = newUser.id;
-              isNewUser = true;
-            }
-          } catch (userErr) {
-            console.error("Guest User Creation Error:", userErr);
-          }
-        }
-        if (items && amount) {
-          await prisma3.payment.create({
-            data: {
-              orderId: razorpay_order_id,
-              paymentId: razorpay_payment_id,
-              amount: parseFloat(amount),
-              status: "Success",
-              userId: finalUserId,
-              items: items || []
-            }
-          });
-          if (req.body.couponCode && req.body.discountAmount > 0) {
-            const coupon = await prisma3.coupon.findUnique({ where: { code: req.body.couponCode } });
-            if (coupon) {
-              await prisma3.couponUsage.create({
-                data: {
-                  couponId: coupon.id,
-                  userId: finalUserId,
-                  orderId: razorpay_order_id,
-                  discount: parseFloat(req.body.discountAmount)
-                }
-              });
-              await prisma3.coupon.update({
-                where: { id: coupon.id },
-                data: { usedCount: { increment: 1 } }
-              });
-            }
-          }
-          let newInstitutionId = null;
-          if (finalUserId) {
-            const u = await prisma3.user.findUnique({ where: { id: finalUserId } });
-            if (u && u.role === "Institution") {
-              if (u.institutionId) {
-                newInstitutionId = u.institutionId;
-              } else {
-                let inst = await prisma3.institution.findFirst({ where: { subscriptionId: u.id } });
-                if (!inst && u.organization) {
-                  inst = await prisma3.institution.create({
-                    data: {
-                      name: u.organization,
-                      status: "Active",
-                      subscriptionId: u.id
-                    }
-                  });
-                  await prisma3.user.update({
-                    where: { id: u.id },
-                    data: { institutionId: inst.id }
-                  });
-                }
-                newInstitutionId = inst?.id || null;
-              }
-            }
-          }
-          if (Array.isArray(items)) {
-            for (const item of items) {
-              const days = item.duration === "Yearly" ? 365 : item.duration === "Half-Yearly" ? 180 : item.duration === "Quarterly" ? 90 : 30;
-              const endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1e3);
-              await prisma3.subscription.create({
-                data: {
-                  domainId: item.domainId ? String(item.domainId) : null,
-                  domainName: item.domainName,
-                  planName: item.planName || item.plan?.name || "Trial",
-                  duration: item.duration || "Monthly",
-                  status: "Active",
-                  userId: finalUserId,
-                  institutionId: newInstitutionId,
-                  endDate
-                }
-              });
-            }
-          }
-          if (isNewUser && guestData && guestData.email) {
-            try {
-              await sendCredentialsEmail(
-                guestData.email,
-                guestData.name || "New User",
-                generatedPassword,
-                {
-                  planName: items[0]?.planName || "Purchased Subscription",
-                  validity: items[0]?.duration || "Monthly"
-                }
-              );
-            } catch (err) {
-              console.error("Failed to send guest credentials email:", err);
-            }
-          }
-          try {
-            let targetEmail = guestData?.email || "";
-            let targetName = guestData?.name || "Valued Customer";
-            if (!targetEmail && finalUserId) {
-              const dbUser = await prisma3.user.findUnique({ where: { id: finalUserId } });
-              if (dbUser) {
-                targetEmail = dbUser.email;
-                targetName = dbUser.displayName || "Subscriber";
-              }
-            }
-            const backendInvoiceNum = `INV-${(/* @__PURE__ */ new Date()).getFullYear()}-${Math.floor(1e5 + Math.random() * 9e5)}`;
-            if (targetEmail) {
-              sendPaymentSuccessEmails(
-                targetEmail,
-                targetName,
-                parseFloat(amount).toFixed(2),
-                items || [],
-                razorpay_payment_id || "",
-                razorpay_order_id || "",
-                backendInvoiceNum
-              ).catch((err) => console.error("\u26A0\uFE0F Auto-payment success email trigger failed:", err));
-            }
-          } catch (emailSendErr) {
-            console.error("Failed to trigger automated receipt notification:", emailSendErr);
-          }
-        }
-        res.json({ status: "success", message: "Payment verified successfully" });
-      } else {
-        res.status(400).json({ status: "failure", message: "Invalid signature" });
-      }
-    } catch (error) {
-      console.error("Payment Verification Error:", error);
-      if (!res.headersSent) {
-        res.status(500).json({ status: "error", message: "Payment verification failed" });
-      }
-    }
-  });
-  app.get("/api/debug-version", (req, res) => {
-    res.json({ version: "1.0.1", status: "New UI deployed!" });
+  app.post("/api/payment/verify", (_req, res) => {
+    res.status(410).json({ error: "This payment route is retired. Institution purchases use /api/institution/checkout/verify." });
   });
   app.post("/api/demo-request", async (req, res) => {
     try {
@@ -34369,8 +35328,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const logoPath = import_path2.default.join(process.cwd(), "public", "assets", "stm-logo.png");
       const logoExists = import_fs2.default.existsSync(logoPath);
       const items = quotationData.items || [];
-      const departmentNames = items.map((it) => it.domainName).filter(Boolean);
-      const departmentsHtml = departmentNames.length ? departmentNames.map((d) => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">\u2705 &nbsp;${d}</li>`).join("") : '<li style="color:#94a3b8;font-size:14px;">\u2014</li>';
+      const departmentNames2 = items.map((it) => it.domainName).filter(Boolean);
+      const departmentsHtml = departmentNames2.length ? departmentNames2.map((d) => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">\u2705 &nbsp;${d}</li>`).join("") : '<li style="color:#94a3b8;font-size:14px;">\u2014</li>';
       const issuedDate = quotationDate || (/* @__PURE__ */ new Date()).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
       const subscriptionDuration = duration || items[0]?.duration || "\u2014";
       const htmlBody = `<!DOCTYPE html>
@@ -34902,21 +35861,17 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const { contactName, city, contactPhone, address, website, logoUrl, coursesOffered, totalCourses, studentBodySize } = req.body;
       const userId = req.user.uid || req.user.id || req.user.userId;
+      const existing = await prisma3.user.findUnique({ where: { id: userId }, select: { institutionProfile: true } });
+      const current = existing?.institutionProfile && typeof existing.institutionProfile === "object" ? existing.institutionProfile : {};
+      const incoming = { contactPhone, address, city, website, logoUrl, coursesOffered, totalCourses, studentBodySize };
+      const merged = { ...current };
+      for (const [k, v] of Object.entries(incoming)) if (v !== void 0) merged[k] = v;
       await prisma3.user.update({
         where: { id: userId },
         data: {
           ...contactName ? { displayName: contactName } : {},
           ...city ? { state: city } : {},
-          institutionProfile: {
-            contactPhone,
-            address,
-            city,
-            website,
-            logoUrl,
-            coursesOffered,
-            totalCourses,
-            studentBodySize
-          }
+          institutionProfile: merged
         }
       });
       res.json({ message: "Profile updated successfully" });
@@ -34924,6 +35879,28 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
+  const activeAddRestriction = async (institutionId) => {
+    if (!institutionId) return null;
+    const inst = await prisma3.institution.findUnique({
+      where: { id: institutionId },
+      select: { userAdditionRestricted: true, userAdditionRestrictionUntil: true }
+    });
+    if (!inst?.userAdditionRestricted) return null;
+    if (inst.userAdditionRestrictionUntil && new Date(inst.userAdditionRestrictionUntil).getTime() <= Date.now()) return null;
+    return inst;
+  };
+  const assertInstitutionCanAddUsers = async (req, res, institutionId) => {
+    if (req.user?.role === "SuperAdmin") return true;
+    if (await activeAddRestriction(institutionId)) {
+      res.status(403).json({
+        code: "USER_ADDITION_RESTRICTED",
+        error: "New member addition is currently restricted for this institution.",
+        message: "New member addition is currently restricted for this institution."
+      });
+      return false;
+    }
+    return true;
+  };
   const resolveTargetInstitution = async (req) => {
     if (req.user.role === "Institution") {
       const me = await prisma3.user.findUnique({
@@ -34949,6 +35926,205 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     const wanted = String(given || "").trim();
     return INSTITUTION_MEMBER_ROLES.includes(wanted) ? wanted : null;
   };
+  const institutionSeats = async (institutionId) => {
+    const now = /* @__PURE__ */ new Date();
+    const librarians = await prisma3.user.findMany({ where: { institutionId, role: "Institution" }, select: { id: true } });
+    const subs = await prisma3.subscription.findMany({
+      where: {
+        status: "Active",
+        endDate: { gt: now },
+        OR: [{ institutionId }, ...librarians.length ? [{ userId: { in: librarians.map((l) => l.id) } }] : []]
+      }
+    });
+    const used = await prisma3.user.count({ where: { institutionId, isBlocked: false } });
+    const purchases = await prisma3.seatPurchase.findMany({
+      where: { institutionId, status: "Active", endDate: { gt: now } },
+      orderBy: { endDate: "asc" }
+    });
+    const extra = purchases.reduce((sum, p2) => sum + p2.seats, 0);
+    const newSystem = subs.filter((sub) => sub.seatsIncluded != null);
+    const unlimited = newSystem.length === 0;
+    const included = unlimited ? 0 : Math.max(
+      MAX_INSTITUTION_USERS,
+      newSystem.reduce((max, sub) => Math.max(max, sub.seatsIncluded ?? 0), 0)
+    );
+    const capacity = unlimited ? null : included + extra;
+    return {
+      unlimited,
+      capacity,
+      used,
+      available: capacity == null ? null : Math.max(0, capacity - used),
+      included,
+      extra,
+      purchases,
+      subscriptions: subs
+    };
+  };
+  const seatsFullResponse = (seats) => ({
+    code: seats.capacity ? "SEATS_FULL" : "NEEDS_SUBSCRIPTION",
+    error: seats.capacity ? `Your institution has reached its limit of ${seats.capacity.toLocaleString("en-IN")} users. Please contact us to add more.` : "Subscribe to at least one department before adding users.",
+    capacity: seats.capacity,
+    used: seats.used
+  });
+  const librarianInstitutionId = async (req) => {
+    if (req.user.role !== "Institution") return null;
+    const me = await prisma3.user.findUnique({ where: { id: req.user.uid || req.user.id || req.user.userId }, select: { institutionId: true } });
+    return me?.institutionId ?? null;
+  };
+  const departmentNames = new Set(DOMAINS.map((d) => d.name));
+  const coveredDepartments = (subs) => {
+    const names = /* @__PURE__ */ new Set();
+    for (const sub of subs) {
+      const list = Array.isArray(sub.domains) ? sub.domains : [];
+      for (const name of list) if (departmentNames.has(name)) names.add(name);
+    }
+    return [...names];
+  };
+  const priceInstitutionPurchase = async (institutionId, body) => {
+    const seats = await institutionSeats(institutionId);
+    if (body?.kind === "departments") {
+      const wanted = Array.isArray(body.departments) ? body.departments.map(String) : [];
+      const unknown = wanted.filter((name) => !departmentNames.has(name));
+      if (unknown.length) return { error: `Unknown department: ${unknown.join(", ")}` };
+      const held = new Set(coveredDepartments(seats.subscriptions));
+      const fresh = [...new Set(wanted)].filter((name) => !held.has(name));
+      if (!fresh.length) return { error: "Choose at least one department you do not already subscribe to." };
+      const total = held.size + fresh.length;
+      const price = priceDepartments(total);
+      const base = fresh.length * price.rate;
+      const gst = Math.round(base * GST_RATE4 * 100) / 100;
+      return {
+        kind: "departments",
+        departments: fresh,
+        price: { quantity: fresh.length, rate: price.rate, base, gst, total: Math.round((base + gst) * 100) / 100 }
+      };
+    }
+    if (body?.kind === "seats") {
+      return { error: `A subscription covers up to ${MAX_INSTITUTION_USERS.toLocaleString("en-IN")} users. For more, please contact us.`, code: "CONTACT_US" };
+    }
+    return { error: "Unknown purchase." };
+  };
+  app.get("/api/institution/plan", authenticateJWT, async (req, res) => {
+    try {
+      const institutionId = await librarianInstitutionId(req);
+      if (!institutionId) return res.status(403).json({ error: "Only an institution's librarian can see its plan." });
+      const seats = await institutionSeats(institutionId);
+      const departments = seats.subscriptions.flatMap((sub) => (Array.isArray(sub.domains) ? sub.domains : []).map((name) => ({ name, endDate: sub.endDate }))).filter((d) => departmentNames.has(d.name));
+      res.json({
+        unlimitedSeats: seats.unlimited,
+        hasSubscription: seats.subscriptions.length > 0,
+        departments,
+        seats: { capacity: seats.capacity, used: seats.used, available: seats.available, included: seats.included, extra: seats.extra },
+        seatPurchases: seats.purchases.map((p2) => ({ seats: p2.seats, rate: p2.rate, startDate: p2.startDate, endDate: p2.endDate })),
+        pricing: { maxUsers: MAX_INSTITUTION_USERS, gstRate: GST_RATE4, departmentRates: DEPARTMENT_RATES },
+        allDepartments: DOMAINS.map((d) => d.name)
+      });
+    } catch (err) {
+      console.error("GET /api/institution/plan:", err?.message);
+      res.status(500).json({ error: "Failed to load your plan" });
+    }
+  });
+  app.post("/api/institution/quote", authenticateJWT, async (req, res) => {
+    try {
+      const institutionId = await librarianInstitutionId(req);
+      if (!institutionId) return res.status(403).json({ error: "Only an institution's librarian can buy for it." });
+      const quote = await priceInstitutionPurchase(institutionId, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      res.json(quote);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to price this" });
+    }
+  });
+  app.post("/api/institution/checkout", authenticateJWT, async (req, res) => {
+    try {
+      const institutionId = await librarianInstitutionId(req);
+      if (!institutionId) return res.status(403).json({ error: "Only an institution's librarian can buy for it." });
+      const quote = await priceInstitutionPurchase(institutionId, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      const amountPaise = Math.round(quote.price.total * 100);
+      const receipt = `inst_${quote.kind}_${Date.now()}`;
+      let order;
+      if (process.env.NODE_ENV !== "production" && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+        order = { id: `order_mock_${Date.now()}`, amount: amountPaise, currency: "INR", receipt, isMock: true };
+      } else {
+        order = await getRazorpay().orders.create({ amount: amountPaise, currency: "INR", receipt });
+      }
+      await prisma3.payment.create({
+        data: {
+          orderId: order.id,
+          amount: quote.price.total,
+          status: "Pending",
+          userId: req.user.uid,
+          items: { purpose: "institution", institutionId, ...quote }
+        }
+      });
+      res.json({ ...order, razorpayKey: process.env.RAZORPAY_KEY_ID, quote });
+    } catch (err) {
+      console.error("POST /api/institution/checkout:", err?.message);
+      res.status(500).json({ error: "Failed to start the payment" });
+    }
+  });
+  app.post("/api/institution/checkout/verify", authenticateJWT, async (req, res) => {
+    try {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+      if (!razorpay_order_id) return res.status(400).json({ error: "Missing order." });
+      const payment = await prisma3.payment.findUnique({ where: { orderId: razorpay_order_id } });
+      const items = payment?.items;
+      if (!payment || items?.purpose !== "institution" || payment.userId !== req.user.uid) {
+        return res.status(404).json({ error: "No such payment." });
+      }
+      if (payment.status === "Paid") return res.json({ ok: true, alreadyActive: true });
+      const isMock = process.env.NODE_ENV !== "production" && String(razorpay_order_id).startsWith("order_mock_");
+      if (!isMock) {
+        const expected = import_crypto2.default.createHmac("sha256", (process.env.RAZORPAY_KEY_SECRET || "").trim()).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+        if (!razorpay_signature || razorpay_signature !== expected) {
+          console.warn(`[institution checkout] signature mismatch for ${razorpay_order_id}`);
+          return res.status(400).json({ error: "Payment could not be verified." });
+        }
+      }
+      const now = /* @__PURE__ */ new Date();
+      const end = termEnd(now);
+      await prisma3.$transaction(async (tx) => {
+        await tx.payment.update({ where: { id: payment.id }, data: { status: "Paid", paymentId: razorpay_payment_id || `mock_${Date.now()}` } });
+        if (items.kind === "departments") {
+          const existingMembers = await tx.user.count({ where: { institutionId: items.institutionId, isBlocked: false } });
+          const seatsIncluded = Math.max(MAX_INSTITUTION_USERS, existingMembers);
+          await tx.subscription.create({
+            data: {
+              planName: "Premium Department Subscription",
+              planType: "Yearly",
+              durationMonths: 12,
+              status: "Active",
+              domains: items.departments,
+              contentTypes: [],
+              institutionId: items.institutionId,
+              userId: payment.userId,
+              seatsIncluded,
+              paymentId: payment.id,
+              startDate: now,
+              endDate: end
+            }
+          });
+        } else if (items.kind === "seats") {
+          await tx.seatPurchase.create({
+            data: {
+              institutionId: items.institutionId,
+              seats: items.price.quantity,
+              rate: items.price.rate,
+              amount: items.price.total,
+              paymentId: payment.id,
+              startDate: now,
+              endDate: end
+            }
+          });
+        }
+      });
+      res.json({ ok: true, endDate: end });
+    } catch (err) {
+      console.error("POST /api/institution/checkout/verify:", err?.message);
+      res.status(500).json({ error: "Payment received, but activation failed. Our team will activate it \u2014 please contact support." });
+    }
+  });
   app.get("/api/institution/students", authenticateJWT, async (req, res) => {
     try {
       if (req.user.role !== "Institution" && req.user.role !== "SuperAdmin") return res.status(403).json({ error: "Unauthorized" });
@@ -34987,6 +36163,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (target.error) return res.status(400).json({ error: target.error });
       const institutionName = target.name;
       const targetInstitutionId = target.id;
+      if (!await assertInstitutionCanAddUsers(req, res, targetInstitutionId)) return;
       const role = memberRole(designation);
       if (!role) {
         return res.status(400).json({
@@ -34997,6 +36174,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       if (PRO_ONLY_MEMBER_ROLES.includes(role) && !await institutionOnPro(req, targetInstitutionId)) {
         return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: "STUDENT_NEEDS_PRO" });
+      }
+      if (req.user.role === "Institution") {
+        const seats = await institutionSeats(targetInstitutionId);
+        if (seats.available !== null && seats.available < 1) return res.status(403).json(seatsFullResponse(seats));
       }
       const student = await prisma3.user.create({
         data: {
@@ -35035,7 +36216,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (target.error) return res.status(400).json({ error: target.error });
       const institutionName = target.name;
       const targetInstitutionId = target.id;
+      if (!await assertInstitutionCanAddUsers(req, res, targetInstitutionId)) return;
       const onPro = await institutionOnPro(req, targetInstitutionId);
+      const seatsAtStart = await institutionSeats(targetInstitutionId);
+      let seatsLeft = req.user.role === "Institution" ? seatsAtStart.available : null;
+      if (seatsLeft !== null && seatsLeft < 1) return res.status(403).json(seatsFullResponse(seatsAtStart));
       let successCount = 0;
       let errorCount = 0;
       const errors = [];
@@ -35063,6 +36248,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             errors.push({ email: u.email, error: STUDENT_NEEDS_PRO });
             continue;
           }
+          if (seatsLeft !== null && seatsLeft < 1) {
+            errorCount++;
+            errors.push({ email: u.email, error: "No user seats left. Your institution has reached its user limit; contact us to add more." });
+            continue;
+          }
           const hashed = await import_bcryptjs.default.hash(u.password, 10);
           await prisma3.user.create({
             data: {
@@ -35082,6 +36272,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             }
           });
           successCount++;
+          if (seatsLeft !== null) seatsLeft--;
         } catch (err) {
           errorCount++;
           errors.push({ email: u.email, error: err.message });
@@ -35105,6 +36296,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         if (!target) return res.status(404).json({ error: "Student not found" });
         if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
+        }
+        if (isBlocked === false && target.isBlocked) {
+          const seats = await institutionSeats(caller.institutionId);
+          if (seats.available !== null && seats.available < 1) return res.status(403).json(seatsFullResponse(seats));
         }
       }
       const student = await prisma3.user.update({
@@ -36488,6 +37683,24 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to fetch sales team" });
     }
   });
+  app.delete("/api/admin/sales-team/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
+    try {
+      const { id } = req.params;
+      if (id === req.user.uid) return res.status(400).json({ error: "You cannot remove yourself" });
+      const member = await prisma3.user.findUnique({ where: { id }, select: { role: true } });
+      if (!member || !["SalesExecutive", "SalesManager"].includes(member.role)) {
+        return res.status(404).json({ error: "Sales team member not found" });
+      }
+      const [released] = await prisma3.$transaction([
+        prisma3.lead.updateMany({ where: { assignedToId: id }, data: { assignedToId: null, assignedAt: null } }),
+        prisma3.user.update({ where: { id }, data: { role: "Subscriber", isBlocked: true } })
+      ]);
+      res.json({ message: "Removed from sales team", unassignedLeads: released.count });
+    } catch (error) {
+      console.error("Remove sales member error:", error);
+      res.status(500).json({ error: "Failed to remove team member" });
+    }
+  });
   app.get("/api/sales/pro-applications", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const status = String(req.query.status || "");
@@ -36823,6 +38036,15 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     }
   });
   setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
+  app.get("/STM_Digital_Library_Brochure.pdf", (req, res) => {
+    const name = "STM_Digital_Library_Brochure.pdf";
+    const file = [import_path2.default.join(currentDir, "dist", name), import_path2.default.join(currentDir, "public", name)].find((f3) => import_fs2.default.existsSync(f3));
+    if (!file) return res.status(404).json({ error: "The brochure is not available right now." });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+    res.setHeader("Cache-Control", "public, max-age=600");
+    res.sendFile(file);
+  });
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowRight, BarChart3, Check, Clock, FileBarChart, Infinity as InfinityIcon, Layers, Loader2, Lock,
+  ArrowRight, BarChart3, Check, Clock, CreditCard, FileBarChart, Infinity as InfinityIcon, Layers, Lock,
   RefreshCw, ShieldCheck, Timer, UserPlus, Users,
 } from 'lucide-react';
 import {
@@ -9,6 +9,7 @@ import {
 import { SESSION_MS, SESSIONS_PER_DAY, HOLD_MS } from '../../lib/freeAllowance';
 import { usePricing } from './pricing/PricingContext';
 import { FROM_PRICE, seatsLabel, uniqueDepartments } from './pricing/PlanWidgets';
+import { Badge, EmptyState, Skeleton, StatusBadge, buttonClass } from '../ui';
 
 /**
  * Subscriptions: what Premium is, what the institution holds, and the way to buy more.
@@ -26,13 +27,14 @@ const gstPct = Math.round(GST_RATE * 100);
 const bestTier = DEPARTMENT_RATES[0];
 const footnote = `*${formatRupees(STARTING_DEPARTMENT_RATE)} per department/year applies when ${bestTier.minDepartments} or more departments are selected. ${gstPct}% GST extra.`;
 
-const btnPrimary = 'inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover';
-const btnSoft = 'inline-flex items-center gap-2 rounded-xl border border-rule bg-accent-soft px-4 py-2.5 text-[13px] font-semibold text-accent transition-colors hover:border-accent';
+const btnPrimary = buttonClass('primary');
+const btnSoft = buttonClass('outline', 'md', 'whitespace-normal text-left h-auto min-h-10 py-2');
+const SUB_LABEL = 'text-xs font-semibold uppercase tracking-wider text-muted';
 
 function Feature({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <li className="grid grid-cols-[26px_1fr] gap-2.5 border-b border-rule py-2.5 text-[13px] leading-relaxed text-ink-2 last:border-b-0">
-      <span className="mt-0.5 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent-soft text-accent">{icon}</span>
+    <li className="grid grid-cols-[24px_1fr] gap-3 border-b border-rule py-2.5 text-[13px] leading-relaxed text-ink-2 last:border-b-0">
+      <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">{icon}</span>
       <span>{children}</span>
     </li>
   );
@@ -56,9 +58,9 @@ function SubscriptionRecords() {
   };
 
   return (
-    <section className="rounded-2xl border border-rule bg-surface p-5">
-      <h2 className="font-serif text-[19px] font-medium text-ink">Subscription records</h2>
-      <p className="mt-1 text-[12.5px] text-muted">Every subscription on your institution's account, current and past.</p>
+    <section className="card card-pad">
+      <h2 className="card-title">Subscription records</h2>
+      <p className="mt-1 text-[13px] text-muted">Every subscription on your institution's account, current and past.</p>
       <ul className="mt-3 divide-y divide-rule">
         {subs.map((sub) => {
           const d = domainsOf(sub);
@@ -66,14 +68,13 @@ function SubscriptionRecords() {
           return (
             <li key={sub.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div className="min-w-0">
-                <p className="text-[13.5px] font-semibold text-ink">{sub.planName || 'Institution plan'}</p>
-                <p className="text-[12px] text-muted">
+                <p className="text-sm font-semibold text-ink">{sub.planName || 'Institution plan'}</p>
+                <p className="text-xs text-muted">
                   {shortDate(sub.startDate)} → {shortDate(sub.endDate)} · {d.length ? (d.length > 3 ? `${d.length} departments` : d.join(', ')) : 'All departments'}
                 </p>
               </div>
-              <span className={`rounded-full px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wider ${active ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-muted'}`}>
-                {active ? 'Active' : sub.status === 'Active' ? 'Ended' : sub.status}
-              </span>
+              <StatusBadge status={active ? 'active' : sub.status === 'Active' ? 'expired' : sub.status}
+                label={active ? 'Active' : sub.status === 'Active' ? 'Ended' : sub.status} />
             </li>
           );
         })}
@@ -87,13 +88,21 @@ export function InstitutionSubscriptions() {
   const plan = pricing?.plan;
 
   if (!pricing || pricing.loading) {
-    return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="animate-spin text-faint" size={26} /></div>;
+    return (
+      <div className="mx-auto max-w-6xl space-y-5" role="status" aria-label="Loading your subscription">
+        <div className="space-y-2"><Skeleton className="h-8 w-72" /><Skeleton className="h-4 w-full max-w-lg" /></div>
+        <div className="card card-pad space-y-4">
+          <Skeleton className="h-6 w-1/2" />
+          <div className="grid gap-3 md:grid-cols-2"><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
+        </div>
+      </div>
+    );
   }
   if (!plan) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-20 text-center">
-        <h1 className="font-serif text-xl font-medium text-ink">Subscription unavailable</h1>
-        <p className="mt-2 text-sm text-muted">Only your institution's librarian account can see and change its subscription.</p>
+      <div className="card mx-auto max-w-lg">
+        <EmptyState icon={CreditCard} title="Subscription unavailable"
+          description="Only your institution's librarian account can see and change its subscription." />
       </div>
     );
   }
@@ -107,62 +116,58 @@ export function InstitutionSubscriptions() {
   const holdH = Math.round(HOLD_MS / 3_600_000);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 pb-10">
+    <div className="mx-auto max-w-6xl space-y-5">
       <div>
-        <span className="rounded-full border border-rule bg-accent-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-accent">
-          Subscriptions
-        </span>
-        <h1 className="mt-2 font-serif text-[28px] font-medium tracking-tight text-ink">Premium Subscription</h1>
-        <p className="mt-1 text-[13.5px] text-muted">
+        <p className={SUB_LABEL}>Subscriptions</p>
+        <h1 className="type-page-title mt-1 text-ink">Premium Subscription</h1>
+        <p className="mt-1 text-sm text-muted">
           Review what Premium includes, choose your departments, and manage user access from one place.
         </p>
       </div>
 
       {!premium && (
-        <section className="rounded-2xl bg-gradient-to-br from-[#10263a] to-[#17324d] p-7 shadow-lg on-dark">
-          <p className="font-mono text-[10.5px] font-semibold uppercase tracking-wider text-[#9fe7e8]">Your institution has explored the platform</p>
-          <h2 className="mt-2 max-w-3xl font-serif text-[30px] font-medium leading-tight">
+        <section className="rounded-xl bg-navy p-5 on-dark sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber">Your institution has explored the platform</p>
+          <h2 className="type-section mt-2 max-w-3xl">
             Ready to move from preview to full institutional access?
           </h2>
-          <p className="mt-3 max-w-3xl text-[13.5px] leading-relaxed on-dark-2">
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed on-dark-2">
             Remove session limits, unlock full subscribed content, add your faculty, researchers and students, and follow
             institutional usage through live analytics, user controls and statistical reports. Choose your departments
             first — up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users come with it, at no extra charge.
           </p>
           <div className="mt-5 flex flex-wrap gap-2.5">
-            <button onClick={subscribe} className="inline-flex items-center gap-2 rounded-xl bg-[#72d8df] px-4 py-2.5 text-[13px] font-bold text-[#17324d] hover:bg-[#8be2e8]">
-              Subscribe from {FROM_PRICE} <ArrowRight size={15} />
+            <button type="button" onClick={subscribe} className={buttonClass('highlight')}>
+              Subscribe from {FROM_PRICE} <ArrowRight size={16} aria-hidden="true" />
             </button>
             <a href="mailto:info@celnet.in?subject=Premium%20institutional%20subscription"
-              className="inline-flex items-center gap-2 rounded-xl border on-dark-edge on-dark-fill px-4 py-2.5 text-[13px] font-semibold">
+              className="btn border on-dark-edge on-dark-fill transition-opacity hover:opacity-90">
               Talk to Our Team
             </a>
           </div>
-          <p className="mt-3 text-[11.5px] on-dark-3">{footnote}</p>
+          <p className="mt-3 text-xs on-dark-3">{footnote}</p>
         </section>
       )}
 
       {/* Current plan */}
-      <section className="rounded-2xl border border-rule bg-surface p-5">
+      <section className="card card-pad">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-serif text-[21px] font-medium text-ink">
+          <div className="min-w-0">
+            <h2 className="type-section text-ink">
               {premium ? 'Premium Institutional Subscription' : 'Free Institutional Preview'}
             </h2>
-            <p className="mt-1 text-[13px] text-muted">
+            <p className="mt-1 text-sm text-muted">
               {premium
                 ? 'Full subscribed access is active for the departments below.'
                 : 'You can evaluate the platform with timed sessions. Subscribe to departments when you are ready for full access.'}
             </p>
           </div>
-          <span className={`rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wider ${premium ? 'bg-accent-soft text-accent' : 'bg-caution-soft text-caution'}`}>
-            {premium ? 'Premium active' : 'Free preview'}
-          </span>
+          <StatusBadge status={premium ? 'subscription-active' : 'free-preview'} />
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl border border-rule p-4">
-            <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Department subscription</p>
+          <div className="rounded-lg border border-rule p-4">
+            <p className={SUB_LABEL}>Department subscription</p>
             <p className="mt-1 text-[15px] font-semibold text-ink">
               {departments.length
                 ? `${departments.length} department${departments.length === 1 ? '' : 's'} active`
@@ -171,20 +176,20 @@ export function InstitutionSubscriptions() {
             {departments.length > 0 && (
               <ul className="mt-2.5 space-y-1.5">
                 {departments.map((name) => (
-                  <li key={name} className="flex items-center justify-between gap-2 text-[12.5px]">
-                    <span className="flex items-center gap-1.5 text-ink-2"><Check size={13} className="text-accent" /> {name}</span>
+                  <li key={name} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[13px]">
+                    <span className="flex min-w-0 items-center gap-1.5 text-ink-2"><Check size={14} className="shrink-0 text-success" aria-hidden="true" /> {name}</span>
                     <span className="text-muted">until {shortDate(endOf(name))}</span>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-          <div className="rounded-xl border border-rule p-4">
-            <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Full-access users</p>
+          <div className="rounded-lg border border-rule p-4">
+            <p className={SUB_LABEL}>Full-access users</p>
             {plan.unlimitedSeats ? (
               <>
                 <p className="mt-1 text-[15px] font-semibold text-ink">Unlimited users (current plan)</p>
-                <p className="mt-1 text-[12.5px] text-muted">
+                <p className="mt-1 text-[13px] text-muted">
                   {plan.seats.used} in use. Your plan has no cap on users until it is renewed.
                 </p>
               </>
@@ -193,7 +198,7 @@ export function InstitutionSubscriptions() {
                 <p className="tnum mt-1 text-[15px] font-semibold text-ink">
                   {premium ? `${seatsLabel(plan)} users` : `Up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users with a subscription`}
                 </p>
-                <p className="mt-1 text-[12.5px] text-muted">
+                <p className="mt-1 text-[13px] text-muted">
                   {premium
                     ? `No charge per user, up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')}. You count as one.`
                     : 'Users are not charged for. Subscribe to at least one department to add them.'}
@@ -204,31 +209,31 @@ export function InstitutionSubscriptions() {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={subscribe} className={btnPrimary}>
-            {premium ? <>Add departments <ArrowRight size={15} /></> : <>Subscribe from {FROM_PRICE} <ArrowRight size={15} /></>}
+          <button type="button" onClick={subscribe} className={btnPrimary}>
+            {premium ? <>Add departments <ArrowRight size={16} aria-hidden="true" /></> : <>Subscribe from {FROM_PRICE} <ArrowRight size={16} aria-hidden="true" /></>}
           </button>
           {!plan.unlimitedSeats && premium && (
-            <button onClick={() => pricing.openUserLimit()} className={btnSoft}><Users size={15} /> Need more than {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users?</button>
+            <button type="button" onClick={() => pricing.openUserLimit()} className={btnSoft}><Users size={16} className="shrink-0" aria-hidden="true" /> Need more than {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users?</button>
           )}
         </div>
 
-        <div className="mt-4 rounded-xl border border-caution/40 bg-caution-soft px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-2">
+        <div className="mt-4 rounded-lg border border-caution/40 bg-caution-soft px-4 py-3 text-[13px] leading-relaxed text-ink-2">
           Departments are priced by the year, and users are not charged for: up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} per
           institution. Every purchase runs {TERM_MONTHS} months from the day it is bought, and
           the amount payable is shown before payment.{' '}
-          <button onClick={pricing.openTerms} className="font-semibold text-accent underline underline-offset-2">View pricing terms</button>
+          <button type="button" onClick={pricing.openTerms} className="font-semibold text-accent underline underline-offset-2">View pricing terms</button>
         </div>
       </section>
 
       {/* Free beside Premium */}
       <div className="grid gap-4 md:grid-cols-2">
-        <article className={`overflow-hidden rounded-2xl border bg-surface ${!premium ? 'border-accent' : 'border-rule'}`}>
+        <article className={`card overflow-hidden ${!premium ? '!border-accent' : ''}`}>
           <div className="border-b border-rule px-5 pb-4 pt-5">
-            <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+            <Badge tone="neutral">
               {premium ? 'Preview' : 'Current access'}
-            </span>
-            <h3 className="mt-2.5 font-serif text-[20px] font-medium text-ink">Free Institutional Preview</h3>
-            <p className="mt-1 text-[12.5px] text-muted">A working preview so your faculty and researchers can try the platform before subscribing.</p>
+            </Badge>
+            <h3 className="type-card-title mt-2.5 text-ink">Free Institutional Preview</h3>
+            <p className="mt-1 text-[13px] text-muted">A working preview so your faculty and researchers can try the platform before subscribing.</p>
           </div>
           <ul className="px-5 py-3">
             <Feature icon={<Check size={12} />}>Browse every <strong className="text-ink">department</strong> in the library.</Feature>
@@ -239,14 +244,14 @@ export function InstitutionSubscriptions() {
           </ul>
         </article>
 
-        <article className={`overflow-hidden rounded-2xl border-2 bg-surface ${premium ? 'border-accent' : 'border-accent/60'}`}>
+        <article className={`card overflow-hidden border-2 ${premium ? '!border-accent' : '!border-accent/60'}`}>
           <div className="border-b border-rule bg-accent-soft/40 px-5 pb-4 pt-5">
-            <span className="rounded-full bg-[#17324d] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+            <span className="badge bg-navy text-white">
               {premium ? 'Current access' : 'Upgrade'}
             </span>
-            <h3 className="mt-2.5 font-serif text-[20px] font-medium text-ink">Premium Institutional Subscription</h3>
-            <p className="mt-1 text-[18px] font-bold text-accent">Starting from {FROM_PRICE}</p>
-            <p className="mt-1 text-[12.5px] text-muted">Full access with no session clock, your own users, analytics, reports and central control.</p>
+            <h3 className="type-card-title mt-2.5 text-ink">Premium Institutional Subscription</h3>
+            <p className="mt-1 text-lg font-bold text-accent">Starting from {FROM_PRICE}</p>
+            <p className="mt-1 text-[13px] text-muted">Full access with no session clock, your own users, analytics, reports and central control.</p>
           </div>
           <ul className="px-5 py-3">
             <Feature icon={<Check size={12} />}><strong className="text-ink">Full subscribed content</strong> for the departments you choose.</Feature>
@@ -257,7 +262,7 @@ export function InstitutionSubscriptions() {
             <Feature icon={<FileBarChart size={12} />}><strong className="text-ink">Statistical reports</strong>, reading timeline and most-read content.</Feature>
             {!premium && (
               <li className="pt-3">
-                <button onClick={subscribe} className={btnPrimary}>Subscribe from {FROM_PRICE} <ArrowRight size={15} /></button>
+                <button type="button" onClick={subscribe} className={btnPrimary}>Subscribe from {FROM_PRICE} <ArrowRight size={16} aria-hidden="true" /></button>
               </li>
             )}
           </ul>
@@ -265,19 +270,19 @@ export function InstitutionSubscriptions() {
       </div>
 
       {!premium && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rule bg-accent-soft/50 p-4">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rule bg-accent-soft/50 p-4">
+          <div className="min-w-0">
             <h3 className="text-[15px] font-semibold text-ink">Start with the department subscription. Add your people at no extra charge.</h3>
-            <p className="mt-0.5 text-[12.5px] text-muted">Up to 1,000 users are included; contact us for more.</p>
+            <p className="mt-0.5 text-[13px] text-muted">Up to 1,000 users are included; contact us for more.</p>
           </div>
-          <button onClick={subscribe} className={btnPrimary}>Subscribe from {FROM_PRICE} <ArrowRight size={15} /></button>
+          <button type="button" onClick={subscribe} className={btnPrimary}>Subscribe from {FROM_PRICE} <ArrowRight size={16} aria-hidden="true" /></button>
         </div>
       )}
 
       {/* Benefits */}
-      <section className="rounded-2xl border border-rule bg-surface p-5">
-        <h2 className="font-serif text-[20px] font-medium text-ink">Premium Institutional Benefits</h2>
-        <p className="mt-1 text-[12.5px] text-muted">Beyond the preview: full subscribed access, unrestricted reading and institutional controls for your academic community.</p>
+      <section className="card card-pad">
+        <h2 className="type-section text-ink">Premium Institutional Benefits</h2>
+        <p className="mt-1 text-[13px] text-muted">Beyond the preview: full subscribed access, unrestricted reading and institutional controls for your academic community.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: <InfinityIcon size={16} />, t: 'Full Subscribed Access', d: `No ${sessionMin}-minute session limit or waiting period in your departments.` },
@@ -285,21 +290,21 @@ export function InstitutionSubscriptions() {
             { icon: <BarChart3 size={16} />, t: 'Live Analytics', d: 'Active readers, usage timing, engagement and reading activity.' },
             { icon: <Layers size={16} />, t: 'Reports & Live Sync', d: 'Statistical reports from continuously updated usage data.' },
           ].map((b) => (
-            <div key={b.t} className="rounded-xl border border-rule bg-surface-2/50 p-3.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">{b.icon}</span>
-              <h3 className="mt-2.5 text-[13.5px] font-semibold text-ink">{b.t}</h3>
-              <p className="mt-1 text-[12px] leading-relaxed text-muted">{b.d}</p>
+            <div key={b.t} className="rounded-lg border border-rule bg-surface-2/50 p-4">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent" aria-hidden="true">{b.icon}</span>
+              <h3 className="mt-3 text-sm font-semibold text-ink">{b.t}</h3>
+              <p className="mt-1 text-[13px] leading-relaxed text-muted">{b.d}</p>
             </div>
           ))}
         </div>
         {!premium && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rule bg-accent-soft/40 p-3.5">
-            <div>
-              <p className="text-[13.5px] font-semibold text-ink">Premium Institutional Subscription starts from {FROM_PRICE}</p>
-              <p className="mt-0.5 text-[12px] text-muted">Choose your departments first. Additional users can be added later, only when your institution needs them.</p>
-              <p className="mt-1 text-[11px] text-caution">{footnote}</p>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-accent-soft/40 p-4">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">Premium Institutional Subscription starts from {FROM_PRICE}</p>
+              <p className="mt-0.5 text-[13px] text-muted">Choose your departments first. Additional users can be added later, only when your institution needs them.</p>
+              <p className="mt-1 text-xs text-muted">{footnote}</p>
             </div>
-            <button onClick={subscribe} className={btnPrimary}>Subscribe from {FROM_PRICE} <ArrowRight size={15} /></button>
+            <button type="button" onClick={subscribe} className={btnPrimary}>Subscribe from {FROM_PRICE} <ArrowRight size={16} aria-hidden="true" /></button>
           </div>
         )}
       </section>

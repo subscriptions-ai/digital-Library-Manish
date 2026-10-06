@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Mail, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Button, friendlyError } from './ui';
 
 interface OTPVerifierProps {
   email: string;
@@ -37,10 +38,10 @@ export function OTPVerifier({ email, isOpen, onClose, onSuccess }: OTPVerifierPr
       if (res.ok && data.success) {
         onSuccess();
       } else {
-        setError(data.error || 'Invalid OTP');
+        setError(friendlyError(data?.error, 'That OTP is not valid. Please check it and try again.'));
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      setError(friendlyError(err, 'We could not reach the server. Check your connection and try again.'));
     } finally {
       setLoading(false);
     }
@@ -48,58 +49,72 @@ export function OTPVerifier({ email, isOpen, onClose, onSuccess }: OTPVerifierPr
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
+      <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-navy/60 p-4 pt-10 backdrop-blur-sm sm:items-center sm:pt-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl"
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.18 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="otp-verifier-title"
+          aria-describedby="otp-verifier-desc"
+          className="w-full max-w-md rounded-2xl border border-rule bg-surface p-6 shadow-2xl sm:p-8"
         >
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-6 mx-auto">
-            <Mail size={32} />
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
+            <Mail size={28} />
           </div>
-          
-          <h2 className="text-2xl font-bold text-center text-slate-900 mb-2">Verify Your Email</h2>
-          <p className="text-center text-slate-500 mb-6 text-sm">
-            We've sent a 6-digit OTP to <strong className="text-slate-800">{email}</strong>. Please enter it below to continue.
+
+          <h2 id="otp-verifier-title" className="mb-2 text-center text-xl font-bold text-ink">Verify Your Email</h2>
+          <p id="otp-verifier-desc" className="mb-6 text-center text-sm text-muted">
+            We've sent a 6-digit OTP to <strong className="break-all text-ink">{email}</strong>. Please enter it below to continue.
           </p>
 
           <form onSubmit={handleVerify} className="space-y-5">
-            <div>
+            <div className="field">
+              <label htmlFor="otp-verifier-code" className="field-label">6-digit OTP</label>
               <input
+                id="otp-verifier-code"
                 type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 maxLength={6}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="0 0 0 0 0 0"
-                className="w-full text-center tracking-[0.5em] text-3xl font-bold text-slate-900 rounded-xl border border-slate-200 bg-slate-50 p-4 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20"
+                placeholder="000000"
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'otp-verifier-error' : undefined}
+                className="input h-14 text-center text-2xl font-bold tracking-[0.5em]"
                 required
               />
             </div>
-            
+
             {error && (
-              <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                <AlertCircle size={16} /> {error}
-              </div>
+              <p id="otp-verifier-error" role="alert" className="flex items-start gap-2 rounded-lg bg-alarm-soft p-3 text-sm text-alarm">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" /> {error}
+              </p>
             )}
 
-            <div className="flex gap-4">
-              <button
-                type="button"
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <Button
+                variant="outline"
+                size="lg"
+                block
                 onClick={onClose}
-                className="w-full rounded-xl border border-slate-200 bg-white py-4 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
                 disabled={loading}
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                disabled={loading || otp.length !== 6}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+                variant="brand"
+                size="lg"
+                block
+                loading={loading}
+                disabled={otp.length !== 6}
               >
-                {loading ? 'Verifying...' : 'Verify OTP'}
-                {!loading && <ArrowRight size={16} />}
-              </button>
+                {loading ? 'Verifying...' : <>Verify OTP <ArrowRight size={16} aria-hidden="true" /></>}
+              </Button>
             </div>
           </form>
         </motion.div>

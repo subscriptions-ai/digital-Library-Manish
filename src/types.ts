@@ -23,6 +23,10 @@ export interface UserProfile {
   institutionProfile?: any;
   subscriptionId?: string;
   organization?: string;
+  /** What they registered as: Institute, Corporate or Solo. Null on accounts made before it was asked. */
+  registrantType?: string | null;
+  designation?: string | null;
+  state?: string | null;
   isFirstLogin?: boolean;
   isDemoAccount?: boolean;
   demoExpiresAt?: any;

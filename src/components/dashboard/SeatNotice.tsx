@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button, StatusBadge } from '../ui';
 
 /**
  * Shown to a member of an institution that manages licensed seats when none
@@ -23,19 +25,25 @@ export function SeatNotice() {
   const mail = `Hello, subscription access has not been assigned to my account at ${info.institutionName}. Could you please help?`;
 
   return (
-    <div role="status" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-      <p className="font-bold">{expired ? 'Subscription expired' : 'Subscription access has not been assigned to your account.'}</p>
-      <p className="mt-1 text-sm">
-        {info.seatsFull
-          ? 'All licensed user seats are currently assigned. Please contact your institution administrator or STM Digital Library support if additional access is required.'
-          : `Your account is linked to ${info.institutionName}, but a licensed subscription seat has not yet been assigned. Please contact your institution administrator for access.`}
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <a href={`mailto:?subject=${encodeURIComponent('Subscription access request')}&body=${encodeURIComponent(mail)}`}
-          className="rounded-md border border-amber-400 px-3 py-1.5 text-xs font-bold hover:bg-amber-100">Contact Institution Administrator</a>
-        <button onClick={() => navigate('/contact', { state: { prefill: {
-          fullName: profile?.displayName || '', email: profile?.email || '', organization: info.institutionName, message: mail } } })}
-          className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700">Contact Us</button>
+    <div role="status" className="mb-6 flex gap-3 rounded-xl border border-caution bg-caution-soft p-4">
+      <AlertTriangle size={20} className="mt-0.5 shrink-0 text-caution" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-semibold text-ink">{expired ? 'Subscription Expired' : 'Subscription access has not been assigned to your account.'}</p>
+          {!expired && <StatusBadge status="no-seat-assigned" />}
+        </div>
+        <p className="mt-1 text-sm text-ink-2">
+          {info.seatsFull
+            ? 'All licensed user seats are currently assigned. Please contact your institution administrator or STM Digital Library support if additional access is required.'
+            : `Your account is linked to ${info.institutionName}, but a licensed subscription seat has not yet been assigned. Please contact your institution administrator for access.`}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a href={`mailto:?subject=${encodeURIComponent('Subscription access request')}&body=${encodeURIComponent(mail)}`}
+            className="btn btn-outline btn-sm">Contact Institution Administrator</a>
+          <Button size="sm" onClick={() => navigate('/contact', { state: { prefill: {
+            fullName: profile?.displayName || '', email: profile?.email || '', organization: info.institutionName, message: mail } } })}
+          >Contact Us</Button>
+        </div>
       </div>
     </div>
   );

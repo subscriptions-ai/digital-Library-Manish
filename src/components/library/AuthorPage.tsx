@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ChevronRight, ExternalLink, Loader2 } from 'lucide-react';
+import { ChevronRight, ExternalLink } from 'lucide-react';
+import { Skeleton, buttonClass } from '../ui';
 
 /**
  * A person, and everything of theirs the library holds.
@@ -33,7 +34,10 @@ const auth = (): Record<string, string> | undefined => {
   return t ? { Authorization: `Bearer ${t}` } : undefined;
 };
 
-const LABEL = 'font-mono text-[10.5px] uppercase tracking-wider text-faint';
+// Parts of a record line, with a separator drawn only between two parts that are
+// present — a missing ISSN never leaves a dot hanging at the start of the line.
+const META = "tnum mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted [&>*+*]:before:mr-2 [&>*+*]:before:inline-block [&>*+*]:before:text-rule-2 [&>*+*]:before:content-['·']";
+const LABEL = 'font-mono text-[11px] uppercase tracking-wider text-muted';
 
 export function AuthorPage({
   journalBase = '/dashboard/journal',
@@ -59,8 +63,11 @@ export function AuthorPage({
 
   if (state === 'loading') {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="animate-spin text-faint" size={26} />
+      <div className="mx-auto max-w-5xl space-y-3 px-5 py-9" role="status" aria-label="Loading author">
+        <Skeleton className="h-3 w-1/4" />
+        <Skeleton className="h-8 w-3/5" />
+        <Skeleton className="h-3 w-2/5" />
+        <Skeleton className="mt-6 h-48 w-full rounded-xl" />
       </div>
     );
   }
@@ -69,7 +76,7 @@ export function AuthorPage({
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
         <h1 className="font-serif text-xl font-medium text-ink">Author not found</h1>
-        <button onClick={() => navigate(-1)} className="mt-6 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
+        <button type="button" onClick={() => navigate(-1)} className={buttonClass('outline', 'md', 'mt-6')}>
           Go back
         </button>
       </div>
@@ -85,9 +92,9 @@ export function AuthorPage({
 
       <header className="border-b border-rule bg-surface">
         <div className="mx-auto max-w-5xl px-5 py-9">
-          <nav className="mb-5 flex items-center gap-1.5 font-mono text-[11px] text-faint">
+          <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-1.5 font-mono text-[11px] text-muted">
             <Link to="/digital-library" className="hover:text-accent">Library</Link>
-            <ChevronRight size={11} />
+            <ChevronRight size={12} aria-hidden="true" />
             <span>Authors</span>
           </nav>
 
@@ -95,21 +102,21 @@ export function AuthorPage({
 
           <p className="tnum mt-2 flex flex-wrap items-center gap-x-2 font-mono text-[12px] text-muted">
             <span>{total} {total === 1 ? 'work' : 'works'} held</span>
-            {a.affiliation && <><span className="text-rule-2">·</span><span className="font-sans">{a.affiliation}</span></>}
+            {a.affiliation && <><span className="text-rule-2" aria-hidden="true">·</span><span className="font-sans">{a.affiliation}</span></>}
             {a.orcid && (
               <>
-                <span className="text-rule-2">·</span>
+                <span className="text-rule-2" aria-hidden="true">·</span>
                 <a href={`https://orcid.org/${a.orcid.replace(/^https?:\/\/orcid\.org\//, '')}`}
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-accent hover:underline">
-                  ORCID <ExternalLink size={10} />
+                  ORCID <ExternalLink size={12} aria-hidden="true" />
                 </a>
               </>
             )}
           </p>
 
           {inferred && (
-            <p className="mt-5 max-w-2xl rounded-md border border-rule bg-surface-2 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted">
+            <p className="mt-5 max-w-2xl card-2 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted">
               These works are grouped by name. Two researchers who publish under the same name will
               appear together here, and one who publishes under more than one spelling may appear twice.
             </p>
@@ -119,11 +126,11 @@ export function AuthorPage({
             <div className="mt-7 grid gap-7 sm:grid-cols-2">
               {a.journals.length > 0 && (
                 <div>
-                  <p className={LABEL}>Publishes in</p>
+                  <h2 className={LABEL}>Publishes in</h2>
                   <ul className="mt-2 space-y-1">
                     {a.journals.slice(0, 6).map(j => (
                       <li key={j.name} className="flex items-baseline gap-3 text-[13.5px]">
-                        <span className="tnum w-7 shrink-0 text-right font-mono text-[12px] text-faint">{j.count}</span>
+                        <span className="tnum w-7 shrink-0 text-right font-mono text-[12px] text-muted">{j.count}</span>
                         <span className="text-ink-2">{j.name}</span>
                       </li>
                     ))}
@@ -132,11 +139,11 @@ export function AuthorPage({
               )}
               {a.domains.length > 0 && (
                 <div>
-                  <p className={LABEL}>Subject areas</p>
+                  <h2 className={LABEL}>Subject areas</h2>
                   <ul className="mt-2 space-y-1">
                     {a.domains.slice(0, 6).map(d => (
                       <li key={d.name} className="flex items-baseline gap-3 text-[13.5px]">
-                        <span className="tnum w-7 shrink-0 text-right font-mono text-[12px] text-faint">{d.count}</span>
+                        <span className="tnum w-7 shrink-0 text-right font-mono text-[12px] text-muted">{d.count}</span>
                         <Link to={`${departmentBase}/${d.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
                           className="text-ink-2 hover:text-accent">{d.name}</Link>
                       </li>
@@ -150,14 +157,14 @@ export function AuthorPage({
       </header>
 
       <section className="mx-auto max-w-5xl px-5 py-8">
-        <p className={LABEL}>Works</p>
+        <h2 className={LABEL}>Works</h2>
 
         {a.articles.length === 0 ? (
-          <div className="mt-3 rounded-md border border-rule bg-surface p-10 text-center text-sm text-muted">
+          <div className="mt-3 card p-10 text-center text-sm text-muted">
             Nothing recorded for this author yet.
           </div>
         ) : (
-          <div className="mt-3 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-surface">
+          <div className="mt-3 divide-y divide-rule overflow-hidden card">
             {a.articles.map((art, i) => (
               <div key={art.id} className="flex gap-4 px-5 py-4">
                 <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{i + 1}</span>
@@ -166,20 +173,17 @@ export function AuthorPage({
                     className="block font-serif text-[16px] font-medium leading-snug text-ink hover:text-accent">
                     {art.title}
                   </Link>
-                  <p className="tnum mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
+                  <p className={META}>
                     {art.journalName && (
                       art.journalIssn
                         ? <Link to={`${journalBase}/${encodeURIComponent(art.journalIssn)}`}
                             className="text-ink-2 hover:text-accent hover:underline">{art.journalName}</Link>
                         : <span className="text-ink-2">{art.journalName}</span>
                     )}
-                    {art.year && <><span className="text-rule-2">·</span><span>{art.year}</span></>}
+                    {art.year && <span>{art.year}</span>}
                     {art.accessStatus === 'LinkOnly' && art.originalUrl && (
-                      <>
-                        <span className="text-rule-2">·</span>
-                        <a href={art.originalUrl} target="_blank" rel="noopener noreferrer"
+                      <a href={art.originalUrl} target="_blank" rel="noopener noreferrer"
                           className="text-accent hover:underline">read at publisher</a>
-                      </>
                     )}
                   </p>
                 </div>

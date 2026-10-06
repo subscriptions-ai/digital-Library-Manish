@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart3, Sparkles } from 'lucide-react';
 import { useAllowance } from '../membership/ReadingClock';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Download, Loader2, Search, TrendingDown, TrendingUp } from 'lucide-react';
+import { Download, Search, TrendingDown, TrendingUp } from 'lucide-react';
 import { usePricing } from './pricing/PricingContext';
 import { AnalyticsLock } from './pricing/PlanWidgets';
+import { ErrorState, Skeleton, buttonClass, friendlyError } from '../ui';
 
 /**
  * What the librarian came to find out.
@@ -20,7 +21,7 @@ import { AnalyticsLock } from './pricing/PlanWidgets';
  * scales on one chart is the mistake that makes every other reading of it wrong.
  */
 
-const LABEL = 'font-mono text-[10.5px] uppercase tracking-wider text-faint';
+const LABEL = 'text-xs font-semibold uppercase tracking-wider text-muted';
 
 type Data = {
   institution: { id: string; name: string };
@@ -52,13 +53,13 @@ function Stat({ label, value, prev, suffix }: { label: string; value: number; pr
   const up = (delta ?? 0) > 0;
   return (
     <div className="border-b border-rule p-4 sm:border-b-0">
-      <dt className={LABEL}>{label}</dt>
-      <dd className="tnum mt-1.5 font-mono text-[26px] leading-none text-ink">
+      <dt className="metric-label">{label}</dt>
+      <dd className="metric-value mt-1">
         {n(value)}{suffix && <span className="text-[15px] text-muted">{suffix}</span>}
       </dd>
       {delta !== null && delta !== 0 && (
-        <p className={`tnum mt-1.5 flex items-center gap-1 font-mono text-[11px] ${up ? 'text-accent' : 'text-caution'}`}>
-          {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+        <p className={`metric-context tnum mt-1 flex items-center gap-1 ${up ? 'text-success' : 'text-caution'}`}>
+          {up ? <TrendingUp size={12} aria-hidden="true" /> : <TrendingDown size={12} aria-hidden="true" />}
           {up ? '+' : ''}{n(delta)} on the period before
         </p>
       )}
@@ -98,7 +99,7 @@ function Trend({ points }: { points: { week: string; reads: number }[] }) {
           <g key={f}>
             <line x1={PAD.l} x2={W - PAD.r} y1={y(nice * f)} y2={y(nice * f)} stroke="var(--rule)" strokeWidth="1" />
             <text x={PAD.l - 8} y={y(nice * f) + 3.5} textAnchor="end"
-              className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--mono)">
+              className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--font-sans)">
               {n(Math.round(nice * f))}
             </text>
           </g>
@@ -113,14 +114,14 @@ function Trend({ points }: { points: { week: string; reads: number }[] }) {
           <circle cx={x(peak)} cy={y(points[peak].reads)} r="4" fill="var(--accent)"
             stroke="var(--surface)" strokeWidth="2" />
           <text x={x(peak)} y={y(points[peak].reads) - 10} textAnchor="middle"
-            className="tnum" fill="var(--ink-2)" fontSize="10.5" fontFamily="var(--mono)">
+            className="tnum" fill="var(--ink-2)" fontSize="10.5" fontFamily="var(--font-sans)">
             {n(points[peak].reads)}
           </text>
         </>}
 
         {empty && (
           <text x={W / 2} y={H / 2} textAnchor="middle" fill="var(--faint)"
-            fontSize="11.5" fontFamily="var(--mono)">
+            fontSize="11.5" fontFamily="var(--font-sans)">
             {points.length === 1 ? 'One day of activity so far' : 'No reads in this period yet'}
           </text>
         )}
@@ -134,10 +135,10 @@ function Trend({ points }: { points: { week: string; reads: number }[] }) {
         )}
 
         {points.length > 0 && <>
-          <text x={PAD.l} y={H - 8} className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--mono)">
+          <text x={PAD.l} y={H - 8} className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--font-sans)">
             {fmt(points[0].week)}
           </text>
-          <text x={W - PAD.r} y={H - 8} textAnchor="end" className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--mono)">
+          <text x={W - PAD.r} y={H - 8} textAnchor="end" className="tnum" fill="var(--faint)" fontSize="10" fontFamily="var(--font-sans)">
             {fmt(points[points.length - 1].week)}
           </text>
         </>}
@@ -150,8 +151,8 @@ function Trend({ points }: { points: { week: string; reads: number }[] }) {
       </svg>
 
       {!empty && hover !== null && (
-        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 rounded-md border border-rule bg-surface px-3 py-1.5 shadow-sm">
-          <p className="tnum font-mono text-[11px] text-ink">
+        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 rounded-lg border border-rule bg-surface px-3 py-1.5 shadow-sm">
+          <p className="tnum text-xs text-ink">
             {fmt(points[hover].week)} · {n(points[hover].reads)} reads
           </p>
         </div>
@@ -178,7 +179,7 @@ function Ranked({ rows, hrefOf }: { rows: { name: string; reads: number; key: st
               {href
                 ? <Link to={href} className="truncate text-[13.5px] text-ink-2 hover:text-accent hover:underline">{r.name}</Link>
                 : <span className="truncate text-[13.5px] text-ink-2">{r.name}</span>}
-              <span className="tnum shrink-0 font-mono text-[12px] text-muted">{n(r.reads)}</span>
+              <span className="tnum shrink-0 text-xs text-muted">{n(r.reads)}</span>
             </div>
             {worthComparing && (
               <div className="mt-1.5 h-[3px] w-full rounded-full bg-surface-2">
@@ -196,10 +197,10 @@ function Panel({ label, note, children, action }: {
   label: string; note?: string; children: React.ReactNode; action?: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-md border border-rule bg-surface">
+    <section className="card overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-rule px-5 py-3">
-        <div>
-          <p className={LABEL}>{label}</p>
+        <div className="min-w-0">
+          <h2 className={LABEL}>{label}</h2>
           {note && <p className="mt-0.5 text-[12px] text-muted">{note}</p>}
         </div>
         {action}
@@ -233,6 +234,8 @@ export function LibrarianAnalytics({
   const [d, setD] = useState<Data | null>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
   const [error, setError] = useState('');
+  // Bumped by "Try again" to ask the same question once more.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     setState('loading');
@@ -241,11 +244,11 @@ export function LibrarianAnalytics({
     fetch(`/api/analytics/institution?${q}`, { headers: auth() })
       .then(async r => {
         const j = await r.json();
-        if (!r.ok) { setError(j.error || 'Could not load analytics'); setState('error'); return; }
+        if (!r.ok) { setError(friendlyError(j, 'Could not load analytics')); setState('error'); return; }
         setD(j); setState('ok');
       })
-      .catch(() => { setError('Could not reach the server'); setState('error'); });
-  }, [days, forInstitution]);
+      .catch((e) => { setError(friendlyError(e, 'Could not reach the server')); setState('error'); });
+  }, [days, forInstitution, attempt]);
 
   // Everything on screen, as the rows behind it. A librarian who wants a pivot
   // table should get the data, not a picture of it.
@@ -287,13 +290,24 @@ export function LibrarianAnalytics({
   if (!forInstitution && pricing?.plan && !pricing.plan.hasSubscription) return <AnalyticsLock />;
 
   if (state === 'loading') {
-    return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="animate-spin text-faint" size={26} /></div>;
+    return (
+      <div className="mx-auto max-w-6xl space-y-5" role="status" aria-label="Loading analytics">
+        <div className="card card-pad space-y-3">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-8 w-2/3 max-w-md" />
+          <Skeleton className="h-8 w-64" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[0, 1, 2, 3].map(i => <div key={i} className="card card-pad space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-7 w-16" /></div>)}
+        </div>
+        <div className="card card-pad"><Skeleton className="h-44" /></div>
+      </div>
+    );
   }
   if (state === 'error' || !d) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-20 text-center">
-        <h1 className="font-serif text-xl font-medium text-ink">Analytics unavailable</h1>
-        <p className="mt-2 text-sm text-muted">{error}</p>
+      <div className="card mx-auto max-w-lg">
+        <ErrorState title="Analytics unavailable" description={error} onRetry={() => setAttempt(a => a + 1)} />
       </div>
     );
   }
@@ -302,7 +316,7 @@ export function LibrarianAnalytics({
   const quiet = u.students - u.activeStudents;
 
   return (
-    <div className="relative min-h-full bg-ground">
+    <div className="relative min-h-full">
       {/* Shown, but not readable.
           Hiding the analytics entirely would mean a free member never learns
           they exist, and what is never seen is never wanted. Blurred, the shape
@@ -310,60 +324,56 @@ export function LibrarianAnalytics({
           and the one thing standing between them and it is named on top of it. */}
       {locked && (
         <div className="absolute inset-0 z-20 flex items-start justify-center bg-ground/50 p-6 backdrop-blur-[6px]">
-          <div className="mt-24 w-full max-w-md rounded-2xl border border-rule bg-surface p-6 text-center shadow-xl">
-            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <div className="mt-24 w-full max-w-md rounded-xl border border-rule bg-surface p-6 text-center shadow-[var(--shadow-pop)]">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true">
               <BarChart3 size={20} />
             </div>
-            <h2 className="font-serif text-xl text-ink">See what your people actually read</h2>
+            <h2 className="text-xl font-semibold text-ink">See what your people actually read</h2>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
               Which subjects, which journals, who has never signed in, and how that changes
               month to month. It is all here — Pro membership opens it.
             </p>
-            <Link
-              to="/institution/membership"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-            >
-              <Sparkles size={15} /> Explore Subscription Options
+            <Link to="/institution/membership" className={buttonClass('primary', 'md', 'mt-5')}>
+              <Sparkles size={16} aria-hidden="true" /> Explore Subscription Options
             </Link>
-            <p className="mt-3 text-xs text-faint">
+            <p className="mt-3 text-xs text-muted">
               The summary on your dashboard stays open either way.
             </p>
           </div>
         </div>
       )}
       <div className={locked ? 'pointer-events-none select-none' : undefined} aria-hidden={locked || undefined}>
-      <header className="border-b border-rule bg-surface">
-        <div className="mx-auto max-w-6xl px-5 py-7">
+      {/* A div, not a <header>: the shell sizes an h1 inside a header as its top-bar title. */}
+      <div className="mx-auto max-w-6xl space-y-5">
+        <div className="card card-pad">
           <p className={LABEL}>Usage</p>
-          <h1 className="mt-1 font-serif text-[26px] font-medium tracking-tight text-ink sm:text-[31px]">
+          <h1 className="type-page-title mt-1 break-words text-ink">
             {d.institution.name}
           </h1>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            {[30, 90, 365].map(v => (
-              <button key={v} onClick={() => setDays(v)}
-                className={`rounded-md border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors ${
-                  days === v ? 'border-accent bg-accent-soft text-accent' : 'border-rule text-muted hover:border-accent hover:text-accent'}`}>
-                {v === 365 ? 'This year' : `${v} days`}
-              </button>
-            ))}
+            <div role="group" aria-label="Period" className="flex flex-wrap gap-2">
+              {[30, 90, 365].map(v => (
+                <button key={v} type="button" onClick={() => setDays(v)} aria-pressed={days === v}
+                  className={`btn btn-sm ${days === v ? 'border-accent bg-accent-soft text-accent' : 'btn-outline'}`}>
+                  {v === 365 ? 'This year' : `${v} days`}
+                </button>
+              ))}
+            </div>
             <div className="flex-1" />
-            <button onClick={download}
-              className="inline-flex items-center gap-1.5 rounded-md border border-rule px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted hover:border-accent hover:text-accent">
-              <Download size={12} /> CSV
+            <button type="button" onClick={download} className="btn btn-outline btn-sm" aria-label="Download this report as CSV">
+              <Download size={14} aria-hidden="true" /> CSV
             </button>
           </div>
         </div>
-      </header>
 
-      <div className="mx-auto max-w-6xl space-y-5 px-5 py-7">
 
         {/* An institution that has barely started should be told so plainly.
             Panels built for hundreds of rows, each showing one, read as a
             broken page rather than an early one. */}
         {u.reads < 25 && (
-          <div className="rounded-md border border-rule bg-surface p-5">
-            <p className={LABEL}>Just getting started</p>
+          <div className="card card-pad">
+            <h2 className={LABEL}>Just getting started</h2>
             <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-2">
               {u.reads === 0
                 ? <>Nobody has opened anything in the last {d.period.days} days, so there is nothing to
@@ -382,8 +392,8 @@ export function LibrarianAnalytics({
         )}
 
         {/* 01 — the renewal question */}
-        <dl className="grid grid-cols-2 divide-rule overflow-hidden rounded-md border border-rule bg-surface sm:grid-cols-4 sm:divide-x">
-          <Stat label="Students" value={u.students} />
+        <dl className="card grid grid-cols-2 divide-rule overflow-hidden sm:grid-cols-4 sm:divide-x">
+          <Stat label="Total Members" value={u.students} />
           <Stat label="Active this period" value={u.activeStudents} prev={u.previousActiveStudents} />
           <Stat label="Reads" value={u.reads} prev={u.previousReads} />
           <Stat label="Never opened it" value={u.neverRead} />
@@ -410,10 +420,10 @@ export function LibrarianAnalytics({
                   {d.demand.map(m => (
                     <li key={m.query} className="flex items-baseline justify-between gap-4 px-5 py-2.5">
                       <span className="flex min-w-0 items-baseline gap-2">
-                        <Search size={11} className="shrink-0 translate-y-0.5 text-faint" />
+                        <Search size={12} className="shrink-0 translate-y-0.5 text-faint" aria-hidden="true" />
                         <span className="truncate text-[13.5px] text-ink-2">{m.query}</span>
                       </span>
-                      <span className="tnum shrink-0 font-mono text-[12px] text-muted">
+                      <span className="tnum shrink-0 text-xs text-muted">
                         {n(m.searches)} {m.searches === 1 ? 'search' : 'searches'}
                       </span>
                     </li>
@@ -440,9 +450,9 @@ export function LibrarianAnalytics({
                   <li key={s.id} className="flex items-baseline justify-between gap-4 px-5 py-2.5">
                     <span className="truncate text-[13.5px] text-ink-2">
                       {s.name}
-                      {s.year && <span className="ml-2 font-mono text-[11px] text-faint">{s.year}</span>}
+                      {s.year && <span className="ml-2 text-xs text-muted">{s.year}</span>}
                     </span>
-                    <span className="tnum shrink-0 font-mono text-[11px] text-faint">
+                    <span className="tnum shrink-0 text-xs text-muted">
                       {s.everRead && s.lastSeen
                         ? `last ${new Date(s.lastSeen).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
                         : 'never signed in'}
@@ -450,7 +460,7 @@ export function LibrarianAnalytics({
                   </li>
                 ))}
                 {d.silentTotal > 12 && (
-                  <li className="px-5 py-2.5 font-mono text-[11px] text-faint">
+                  <li className="px-5 py-2.5 text-xs text-muted">
                     and {n(d.silentTotal - 12)} more
                   </li>
                 )}
@@ -488,13 +498,13 @@ export function LibrarianAnalytics({
             <ul className="divide-y divide-rule">
               {d.reading.topItems.map((t, i) => (
                 <li key={t.id} className="flex gap-3 px-5 py-3">
-                  <span className="tnum w-5 shrink-0 pt-0.5 font-mono text-[11px] text-faint">{i + 1}</span>
+                  <span className="tnum w-5 shrink-0 pt-0.5 text-xs text-muted">{i + 1}</span>
                   <div className="min-w-0 flex-1">
                     {t.itemType === 'article'
-                      ? <Link to={`${articleBase}/${t.id}`} className="block font-serif text-[14.5px] leading-snug text-ink hover:text-accent">{t.title}</Link>
-                      : <span className="block font-serif text-[14.5px] leading-snug text-ink-2">{t.title}</span>}
+                      ? <Link to={`${articleBase}/${t.id}`} className="block text-sm font-medium leading-snug text-ink hover:text-accent">{t.title}</Link>
+                      : <span className="block text-sm font-medium leading-snug text-ink-2">{t.title}</span>}
                   </div>
-                  <span className="tnum shrink-0 font-mono text-[12px] text-muted">{n(t.reads)}</span>
+                  <span className="tnum shrink-0 text-xs text-muted">{n(t.reads)}</span>
                 </li>
               ))}
             </ul>
@@ -508,10 +518,10 @@ export function LibrarianAnalytics({
               {d.topReaders.map((r, i) => (
                 <li key={r.id} className="flex items-baseline justify-between gap-4 px-5 py-2.5">
                   <span className="flex min-w-0 items-baseline gap-3">
-                    <span className="tnum w-4 shrink-0 font-mono text-[11px] text-faint">{i + 1}</span>
+                    <span className="tnum w-4 shrink-0 text-xs text-muted">{i + 1}</span>
                     <span className="truncate text-[13.5px] text-ink-2">{r.name}</span>
                   </span>
-                  <span className="tnum shrink-0 font-mono text-[12px] text-muted">{n(r.reads)}</span>
+                  <span className="tnum shrink-0 text-xs text-muted">{n(r.reads)}</span>
                 </li>
               ))}
             </ul>

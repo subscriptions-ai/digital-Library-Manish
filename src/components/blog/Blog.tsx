@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { PostImage } from './GeneratedCover';
-import { ArrowLeft, ArrowRight, BookOpen, Calendar, Clock, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Calendar, Clock, FileQuestion, Newspaper, Search } from 'lucide-react';
+import { Button, EmptyState, Skeleton, buttonClass } from '../ui';
 
 /**
  * The public blog: the list, and one post.
@@ -21,7 +22,7 @@ type Card = {
 const day = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
-const LABEL = 'font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint';
+const LABEL = 'text-xs font-semibold uppercase tracking-[0.14em] text-muted';
 
 function Cover({ post, className, loading = 'lazy' }: { post: Card; className: string; loading?: 'lazy' | 'eager' }) {
   return <PostImage src={post.coverUrl} seed={post.slug} loading={loading} className={className} />;
@@ -67,68 +68,98 @@ export function BlogList() {
         <meta name="description" content="Writing from STM Digital Library: what open-access research makes possible, how to get more from the library, and what has changed in the collection." />
       </Helmet>
 
-      <header className="border-b border-rule bg-surface">
-        <div className="mx-auto max-w-6xl px-5 py-12">
-          <p className={LABEL}>The blog</p>
-          <h1 className="mt-3 max-w-2xl font-serif text-[34px] font-medium leading-tight text-ink sm:text-[42px]">
+      <section className="bg-navy">
+        <div className="container-public py-12 text-center sm:py-16">
+          <p className="on-dark-fill on-dark-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em]">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber" aria-hidden="true" />
+            The blog
+          </p>
+          <h1 className="on-dark mt-4 text-3xl font-bold leading-tight sm:text-4xl">
             Writing from the library.
           </h1>
-          <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
+          <p className="on-dark-2 mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
             What open research makes possible, how to get more out of the library, and what has
             changed in the collection.
           </p>
+        </div>
+      </section>
 
-          <div className="mt-7 flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[240px] flex-1 sm:max-w-sm">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
-              <input value={search} onChange={e => { setSearch(e.target.value); set('q', e.target.value.trim()); }}
-                placeholder="Search the writing…"
-                className="w-full rounded-xl border border-rule bg-ground py-2.5 pl-10 pr-3 text-[14px] outline-none focus:border-accent" />
-            </div>
-            <button onClick={() => set('category', '')}
-              className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold ${!category ? 'bg-ink text-surface' : 'border border-rule text-ink-2 hover:bg-surface-2'}`}>
+      <div className="border-b border-rule bg-surface">
+        <div className="container-public flex flex-wrap items-center gap-2 py-4">
+          <div className="relative w-full sm:w-auto sm:min-w-[240px] sm:max-w-sm sm:flex-1">
+            <label htmlFor="blog-search" className="sr-only">Search the writing</label>
+            <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input id="blog-search" type="search" value={search} onChange={e => { setSearch(e.target.value); set('q', e.target.value.trim()); }}
+              placeholder="Search the writing…"
+              className="input pl-9" />
+          </div>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+            <button type="button" onClick={() => set('category', '')} aria-pressed={!category}
+              className={`btn btn-sm rounded-full ${!category ? 'btn-brand' : 'btn-outline'}`}>
               Everything
             </button>
             {(data?.categories || []).map(c => (
-              <button key={c.name} onClick={() => set('category', c.name)}
-                className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold ${
-                  category === c.name ? 'bg-ink text-surface' : 'border border-rule text-ink-2 hover:bg-surface-2'}`}>
-                {c.name} <span className="text-faint">{c.posts}</span>
+              <button key={c.name} type="button" onClick={() => set('category', c.name)} aria-pressed={category === c.name}
+                className={`btn btn-sm rounded-full ${category === c.name ? 'btn-brand' : 'btn-outline'}`}>
+                {c.name} <span className={category === c.name ? 'opacity-70' : 'text-muted'}>{c.posts}</span>
               </button>
             ))}
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="mx-auto max-w-6xl px-5 py-12">
+      <main className="container-public py-12">
         {loading && !data && (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="h-72 animate-pulse rounded-2xl bg-surface-2" />)}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading posts">
+            {[0, 1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-72 rounded-xl" />)}
           </div>
         )}
 
         {!loading && !posts.length && (
-          <div className="rounded-2xl border border-dashed border-rule-2 bg-surface p-16 text-center">
-            <p className="font-serif text-[20px] text-ink">Nothing here yet.</p>
-            <p className="mt-1.5 text-[14px] text-muted">The first post is being written.</p>
-            <Link to="/digital-library" className="mt-4 inline-block text-[14px] font-semibold text-accent hover:underline">
-              Browse the library instead
-            </Link>
+          <div className="card">
+            {q || category ? (
+              <EmptyState
+                icon={Search}
+                title="No posts match these filters"
+                description="Try a different word, or look through every category."
+                action={
+                  <Button variant="outline" onClick={() => {
+                    setSearch('');
+                    const next = new URLSearchParams(sp);
+                    ['q', 'category', 'page'].forEach(k => next.delete(k));
+                    setSp(next);
+                  }}>
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={Newspaper}
+                title="Nothing here yet."
+                description="The first post is being written."
+                action={
+                  <Link to="/digital-library" className={buttonClass('brand')}>
+                    Browse the library instead
+                  </Link>
+                }
+              />
+            )}
           </div>
         )}
 
         {lead && page === 1 && !q && !category && (
           <Link to={`/blog/${lead.slug}`}
-            className="group mb-10 grid grid-cols-1 overflow-hidden rounded-2xl border border-rule bg-surface lg:grid-cols-2">
+            className="card card-interactive group mb-10 grid grid-cols-1 overflow-hidden lg:grid-cols-2">
             <Cover post={lead} loading="eager" className="h-64 w-full lg:h-full" />
-            <div className="flex flex-col justify-center p-7">
+            <div className="flex flex-col justify-center p-6 sm:p-8">
               <p className={LABEL}>{lead.category || 'Latest'}</p>
-              <h2 className="mt-3 font-serif text-[28px] font-medium leading-tight text-ink group-hover:text-accent">
+              <h2 className="mt-3 text-2xl font-bold leading-tight text-ink transition-colors duration-150 group-hover:text-accent sm:text-[28px]">
                 {lead.title}
               </h2>
               {lead.excerpt && <p className="mt-3 line-clamp-3 text-[15px] leading-relaxed text-muted">{lead.excerpt}</p>}
-              <p className="mt-5 font-mono text-[11.5px] text-faint">
-                {lead.authorName} · {day(lead.publishedAt)} · {lead.readMinutes} min read
+              <p className="mt-5 text-xs text-muted">
+                {[lead.authorName, day(lead.publishedAt), `${lead.readMinutes} min read`].filter(Boolean).join(' · ')}
               </p>
             </div>
           </Link>
@@ -137,15 +168,15 @@ export function BlogList() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {(page === 1 && !q && !category ? rest : posts).map(p => (
             <Link key={p.slug} to={`/blog/${p.slug}`}
-              className="group flex flex-col overflow-hidden rounded-2xl border border-rule bg-surface transition-shadow hover:shadow-lg">
+              className="card card-interactive group flex flex-col overflow-hidden">
               <Cover post={p} className="h-44 w-full" />
               <div className="flex flex-1 flex-col p-5">
                 <p className={LABEL}>{p.category || 'Post'}</p>
-                <h3 className="mt-2 line-clamp-2 font-serif text-[19px] font-medium leading-tight text-ink group-hover:text-accent">
+                <h3 className="mt-2 line-clamp-2 text-lg font-bold leading-tight text-ink transition-colors duration-150 group-hover:text-accent">
                   {p.title}
                 </h3>
-                {p.excerpt && <p className="mt-2 line-clamp-2 text-[13.5px] leading-relaxed text-muted">{p.excerpt}</p>}
-                <p className="mt-auto pt-4 font-mono text-[11px] text-faint">
+                {p.excerpt && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted">{p.excerpt}</p>}
+                <p className="mt-auto pt-4 text-xs text-muted">
                   {day(p.publishedAt)} · {p.readMinutes} min
                 </p>
               </div>
@@ -155,15 +186,13 @@ export function BlogList() {
 
         {data && data.total > 9 && (
           <div className="mt-10 flex items-center justify-center gap-3">
-            <button disabled={page <= 1} onClick={() => set('page', String(page - 1))}
-              className="rounded-xl border border-rule px-4 py-2 text-[13px] font-semibold text-ink-2 hover:bg-surface-2 disabled:opacity-40">
-              Previous
-            </button>
-            <span className="font-mono text-[12px] text-faint">Page {page} of {Math.ceil(data.total / 9)}</span>
-            <button disabled={page >= Math.ceil(data.total / 9)} onClick={() => set('page', String(page + 1))}
-              className="rounded-xl border border-rule px-4 py-2 text-[13px] font-semibold text-ink-2 hover:bg-surface-2 disabled:opacity-40">
-              Next
-            </button>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => set('page', String(page - 1))}>
+              <ArrowLeft size={14} aria-hidden="true" /> Previous
+            </Button>
+            <span className="text-sm text-muted tnum">Page {page} of {Math.ceil(data.total / 9)}</span>
+            <Button variant="outline" size="sm" disabled={page >= Math.ceil(data.total / 9)} onClick={() => set('page', String(page + 1))}>
+              Next <ArrowRight size={14} aria-hidden="true" />
+            </Button>
           </div>
         )}
       </main>
@@ -186,14 +215,26 @@ export function BlogPost() {
 
   if (missing) {
     return (
-      <div className="mx-auto max-w-xl px-5 py-24 text-center">
-        <h1 className="font-serif text-[26px] text-ink">That post is not here</h1>
-        <p className="mt-2 text-[14.5px] text-muted">It may have been taken down, or the link may be wrong.</p>
-        <Link to="/blog" className="mt-5 inline-block text-[14px] font-semibold text-accent hover:underline">All posts</Link>
+      <div className="container-public max-w-xl py-16 sm:py-24">
+        <div className="card">
+          <EmptyState
+            icon={FileQuestion}
+            title={<span role="heading" aria-level={1}>That post is not here</span>}
+            description="It may have been taken down, or the link may be wrong."
+            action={<Link to="/blog" className={buttonClass('brand')}>All posts</Link>}
+          />
+        </div>
       </div>
     );
   }
-  if (!data) return <div className="mx-auto max-w-3xl px-5 py-16"><div className="h-96 animate-pulse rounded-2xl bg-surface-2" /></div>;
+  if (!data) return (
+    <div className="container-public max-w-3xl py-12" role="status" aria-label="Loading post">
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="mt-4 h-10 w-4/5" />
+      <Skeleton className="mt-3 h-5 w-3/5" />
+      <Skeleton className="mt-8 aspect-[5/3] h-auto rounded-xl" />
+    </div>
+  );
 
   const p = data.post;
   const related: Card[] = data.related || [];
@@ -222,45 +263,44 @@ export function BlogPost() {
         })}</script>
       </Helmet>
 
-      <article className="mx-auto max-w-3xl px-5 py-12">
-        <Link to="/blog" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink">
-          <ArrowLeft size={15} /> All posts
+      <article className="container-public max-w-3xl py-12">
+        <Link to="/blog" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
+          <ArrowLeft size={16} aria-hidden="true" /> All posts
         </Link>
 
         <p className={`${LABEL} mt-8`}>{p.category || 'Post'}</p>
-        <h1 className="mt-3 font-serif text-[34px] font-medium leading-[1.15] text-ink sm:text-[42px]">{p.title}</h1>
+        <h1 className="mt-3 text-3xl font-bold leading-[1.15] text-ink sm:text-[40px]">{p.title}</h1>
         {p.excerpt && <p className="mt-4 text-[17px] leading-relaxed text-muted">{p.excerpt}</p>}
 
-        <div className="mt-6 flex flex-wrap items-center gap-4 border-y border-rule py-3 font-mono text-[11.5px] text-faint">
+        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-rule py-3 text-xs text-muted">
           <span>{p.authorName || 'STM Digital Library'}</span>
-          <span className="flex items-center gap-1.5"><Calendar size={12} /> {day(p.publishedAt)}</span>
-          <span className="flex items-center gap-1.5"><Clock size={12} /> {p.readMinutes} min read</span>
+          <span className="flex items-center gap-1.5"><Calendar size={12} aria-hidden="true" /> {day(p.publishedAt)}</span>
+          <span className="flex items-center gap-1.5"><Clock size={12} aria-hidden="true" /> {p.readMinutes} min read</span>
         </div>
 
-        <PostImage src={p.coverUrl} seed={p.slug} loading="eager" className="mt-8 aspect-[5/3] w-full rounded-2xl border border-rule" />
+        <PostImage src={p.coverUrl} seed={p.slug} loading="eager" className="mt-8 aspect-[5/3] w-full rounded-xl border border-rule" />
 
         {/* The body is cleaned on the server before it is ever stored. */}
-        <div className="prose-post mt-8" dangerouslySetInnerHTML={{ __html: p.body }} />
+        <div className="prose-post mt-8 max-w-[72ch] break-words" dangerouslySetInnerHTML={{ __html: p.body }} />
 
         {/* What the library holds on this subject */}
         {fromLibrary.length > 0 && (
-          <section className="mt-12 rounded-2xl border border-rule bg-surface p-6">
+          <section className="card card-pad mt-12">
             <p className={LABEL}>In the library on this subject</p>
             <ul className="mt-4 divide-y divide-rule">
               {fromLibrary.map((a: any) => (
                 <li key={a.id} className="py-3 first:pt-0 last:pb-0">
                   <Link to={`/article/${a.id}`} className="group block">
-                    <p className="text-[14px] leading-snug text-ink-2 group-hover:text-accent">{a.title}</p>
-                    <p className="mt-0.5 font-mono text-[11px] text-faint">
+                    <p className="text-sm leading-snug text-ink-2 transition-colors duration-150 group-hover:text-accent">{a.title}</p>
+                    <p className="mt-0.5 text-xs text-muted">
                       {[a.journalName, a.domain, a.year].filter(Boolean).join(' · ')}
                     </p>
                   </Link>
                 </li>
               ))}
             </ul>
-            <Link to="/digital-library"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-[13.5px] font-semibold text-white hover:bg-accent-hover">
-              <BookOpen size={15} /> Browse the library
+            <Link to="/digital-library" className={buttonClass('brand', 'md', 'mt-5')}>
+              <BookOpen size={16} aria-hidden="true" /> Browse the library
             </Link>
           </section>
         )}
@@ -271,23 +311,22 @@ export function BlogPost() {
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
               {related.map(r => (
                 <Link key={r.slug} to={`/blog/${r.slug}`}
-                  className="group rounded-2xl border border-rule bg-surface p-4 hover:shadow-md">
-                  <p className="line-clamp-3 font-serif text-[15px] leading-snug text-ink group-hover:text-accent">{r.title}</p>
-                  <p className="mt-2 font-mono text-[10.5px] text-faint">{day(r.publishedAt)}</p>
+                  className="card card-interactive group p-4">
+                  <p className="line-clamp-3 text-[15px] font-semibold leading-snug text-ink transition-colors duration-150 group-hover:text-accent">{r.title}</p>
+                  <p className="mt-2 text-xs text-muted">{day(r.publishedAt)}</p>
                 </Link>
               ))}
             </div>
           </section>
         )}
 
-        <section className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-rule bg-surface p-6">
+        <section className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-navy p-6">
           <div>
-            <p className="font-serif text-[20px] text-ink">Read the research itself</p>
-            <p className="mt-1 text-[13.5px] text-muted">Free to register. The whole library, in half-hour sessions.</p>
+            <p className="on-dark text-xl font-bold">Read the research itself</p>
+            <p className="on-dark-2 mt-1 text-sm">Free to register. The whole library, in half-hour sessions.</p>
           </div>
-          <Link to="/signup?ref=blog"
-            className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-semibold text-surface hover:opacity-90">
-            Register Now <ArrowRight size={16} />
+          <Link to="/signup?ref=blog" className={buttonClass('highlight')}>
+            Register Now <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </section>
       </article>

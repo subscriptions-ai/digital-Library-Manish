@@ -10,6 +10,7 @@ import {
   RefreshCw, CheckCircle2, ArrowLeft, ArrowRight,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { EmptyState, ErrorState, Skeleton, buttonClass } from "./ui";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ContentSummaryItem { type: string; count: number; }
@@ -145,12 +146,16 @@ export function DomainLandingPage() {
   /* ---------- guard: domain not found ---------- */
   if (!domain) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-slate-500">
-        <BookOpen size={48} className="text-slate-300" />
-        <h1 className="text-2xl font-bold text-slate-800">Domain Not Found</h1>
-        <Link to="/digital-library" className="flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline">
-          <ArrowLeft size={14} /> Browse All Domains
-        </Link>
+      <div className="container-public flex min-h-[60vh] items-center justify-center py-16">
+        <EmptyState
+          icon={BookOpen}
+          title={<span role="heading" aria-level={1}>Domain Not Found</span>}
+          action={
+            <Link to="/digital-library" className={buttonClass("brand")}>
+              <ArrowLeft size={16} aria-hidden="true" /> Browse All Domains
+            </Link>
+          }
+        />
       </div>
     );
   }
@@ -169,7 +174,7 @@ export function DomainLandingPage() {
   };
 
   return (
-    <div className="flex flex-col bg-white">
+    <div className="flex flex-col bg-surface">
       <Helmet>
         <title>{domain.name} Research Collection | STM Digital Library</title>
         <meta name="description" content={`Explore comprehensive academic resources, journals, and books in ${domain.name}. ${domain.description}`} />
@@ -180,44 +185,41 @@ export function DomainLandingPage() {
       </Helmet>
 
       {/* ══ HERO ════════════════════════════════════════════════════════════════ */}
-      <section className="bg-white pt-6 pb-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="bg-navy py-12 sm:py-16">
+        <div className="container-public">
           {/* Breadcrumb */}
-          <nav className="mb-10 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
-            <Link to="/" className="hover:text-slate-600 transition-colors">Home</Link>
-            <ChevronRight size={13} />
-            <Link to="/digital-library" className="hover:text-slate-600 transition-colors">Digital Library</Link>
-            <ChevronRight size={13} />
-            <span className="text-slate-700">{domain.name}</span>
+          <nav aria-label="Breadcrumb" className="on-dark-3 mb-8 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-widest">
+            <Link to="/" className="transition-colors duration-150 hover:underline">Home</Link>
+            <ChevronRight size={13} aria-hidden="true" />
+            <Link to="/digital-library" className="transition-colors duration-150 hover:underline">Digital Library</Link>
+            <ChevronRight size={13} aria-hidden="true" />
+            <span className="on-dark-2" aria-current="page">{domain.name}</span>
           </nav>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
             {/* Left: text */}
-            <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 mb-5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-blue-600">
-                <DomainIcon size={13} />
+              <p className="on-dark-fill on-dark-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em]">
+                <DomainIcon size={14} aria-hidden="true" className="text-amber" />
                 Academic Domain
-              </div>
+              </p>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-tight">
+              <h1 className="on-dark mt-4 text-5xl font-bold leading-tight break-words">
                 {domain.name}
               </h1>
 
-              <p className="mt-5 text-base text-slate-500 leading-relaxed max-w-lg">
+              <p className="on-dark-2 mt-5 max-w-lg text-base leading-relaxed">
                 {domain.description}
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  to="/signup"
-                  className="rounded-full bg-indigo-600 hover:bg-indigo-700 px-7 py-3.5 text-sm font-bold text-white shadow-md transition-all"
-                >
+                <Link to="/signup" className={buttonClass("highlight", "lg")}>
                   Register Free
                 </Link>
                 <a
                   href="#content-types"
-                  className="rounded-full border border-slate-300 bg-white hover:bg-slate-50 px-7 py-3.5 text-sm font-bold text-slate-700 transition-all"
+                  className="btn btn-lg on-dark on-dark-fill on-dark-edge"
                   onClick={(e) => { e.preventDefault(); document.getElementById('content-types')?.scrollIntoView({ behavior: 'smooth' }); }}
                 >
                   Explore Content Types
@@ -227,27 +229,27 @@ export function DomainLandingPage() {
 
             {/* Right: hero image card */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
-              className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25, delay: 0.1 }}
+              className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10"
             >
               <img
                 src={heroImg}
                 alt={domain.name}
-                className="w-full h-full object-cover"
+                className="h-full w-full object-cover"
               />
               {/* Dark overlay gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/20 to-transparent" />
 
               {/* Quality badge */}
-              <div className="absolute bottom-5 left-5 flex items-center gap-3 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 px-4 py-3">
-                <div className="h-10 w-10 rounded-xl bg-amber-400 flex items-center justify-center shrink-0">
-                  <Icons.Star size={18} className="text-white fill-white" />
+              <div className="absolute bottom-4 left-4 right-4 flex items-center gap-3 rounded-xl border border-white/20 bg-navy/70 px-4 py-3 sm:bottom-5 sm:left-5 sm:right-auto">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber text-amber-ink" aria-hidden="true">
+                  <Icons.Star size={18} className="fill-current" />
                 </div>
-                <div>
-                  <div className="text-sm font-bold text-white">Curated Repository</div>
-                  <div className="text-xs text-white/70">Verified Academic Content</div>
+                <div className="min-w-0">
+                  <div className="on-dark text-sm font-bold">Curated Repository</div>
+                  <div className="on-dark-2 text-xs">Verified Academic Content</div>
                 </div>
               </div>
             </motion.div>
@@ -256,25 +258,23 @@ export function DomainLandingPage() {
       </section>
 
       {/* ══ IMPORTANCE ══════════════════════════════════════════════════════════ */}
-      <section className="bg-slate-50 py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-start">
+      <section className="bg-ground py-16 sm:py-20">
+        <div className="container-public">
+          <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-14">
             {/* Left */}
             <div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
+              <h2 className="text-3xl font-bold leading-tight text-ink sm:text-4xl">
                 Importance in Academic &amp; Industry
               </h2>
-              <div className="mt-3 h-1 w-14 rounded-full bg-indigo-600" />
+              <div className="mt-3 h-1 w-14 rounded-full bg-amber" aria-hidden="true" />
 
-              <p className="mt-6 text-slate-600 leading-relaxed">{domain.importance}</p>
+              <p className="mt-6 max-w-[72ch] leading-relaxed text-ink-2">{domain.importance}</p>
 
               {/* Feature list — 2 cols */}
-              <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6">
+              <ul className="mt-8 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                 {domain.features.map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-slate-700 text-sm">
-                    <div className="h-5 w-5 rounded-full border border-indigo-300 flex items-center justify-center shrink-0">
-                      <CheckCircle2 size={13} className="text-indigo-500" />
-                    </div>
+                  <li key={i} className="flex items-center gap-2 text-sm text-ink-2">
+                    <CheckCircle2 size={16} aria-hidden="true" className="shrink-0 text-accent" />
                     {f}
                   </li>
                 ))}
@@ -282,46 +282,46 @@ export function DomainLandingPage() {
             </div>
 
             {/* Right: stat cards grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {/* Active Researchers */}
-              <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm flex flex-col gap-2">
-                <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Users size={20} className="text-indigo-500" />
+              <div className="card flex flex-col gap-2 p-4 sm:p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
+                  <Users size={20} />
                 </div>
-                <div className="mt-4 text-2xl font-extrabold text-slate-900">10k+</div>
-                <div className="text-xs font-bold uppercase tracking-widest text-slate-400">Active Researchers</div>
+                <div className="mt-3 text-2xl font-bold text-ink">10k+</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Active Researchers</div>
               </div>
 
               {/* Verified Peer-Review */}
-              <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm flex flex-col gap-2">
-                <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Shield size={20} className="text-indigo-500" />
+              <div className="card flex flex-col gap-2 p-4 sm:p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
+                  <Shield size={20} />
                 </div>
-                <div className="mt-4 text-2xl font-extrabold text-slate-900">100%</div>
-                <div className="text-xs font-bold uppercase tracking-widest text-slate-400">Verified Peer-Review</div>
+                <div className="mt-3 text-2xl font-bold text-ink">100%</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Verified Peer-Review</div>
               </div>
 
               {/* Global Research Network */}
-              <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm flex flex-col gap-2">
-                <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Globe size={20} className="text-indigo-500" />
+              <div className="card flex flex-col gap-2 p-4 sm:p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
+                  <Globe size={20} />
                 </div>
-                <div className="mt-4 text-lg font-extrabold text-slate-900">Global</div>
-                <div className="text-xs font-bold uppercase tracking-widest text-slate-400">Research Network</div>
+                <div className="mt-3 text-2xl font-bold text-ink">Global</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Research Network</div>
               </div>
 
               {/* E-Books count - dynamic */}
-              <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm flex flex-col gap-2">
-                <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Icons.Layout size={20} className="text-indigo-500" />
+              <div className="card flex flex-col gap-2 p-4 sm:p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
+                  <Icons.Layout size={20} />
                 </div>
-                <div className="mt-4 text-2xl font-extrabold text-slate-900">
-                  {apiLoading ? "—" : (() => {
+                <div className="mt-3 text-2xl font-bold text-ink tnum">
+                  {apiLoading || apiError ? "—" : (() => {
                     const bk = contentCounts.find(c => c.type === "Books");
                     return bk ? bk.count.toLocaleString("en-IN") : "0";
                   })()}
                 </div>
-                <div className="text-xs font-bold uppercase tracking-widest text-slate-400">E-Books</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted">E-Books</div>
               </div>
             </div>
           </div>
@@ -329,34 +329,36 @@ export function DomainLandingPage() {
       </section>
 
       {/* ══ CONTENT TYPES ════════════════════════════════════════════════════════ */}
-      <section id="content-types" className="bg-white py-20 scroll-mt-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section id="content-types" className="scroll-mt-8 bg-surface py-16 sm:py-20">
+        <div className="container-public">
           {/* Heading */}
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold text-ink sm:text-4xl">
               What You Get in this Department
             </h2>
-            <p className="mt-4 text-slate-500 max-w-2xl mx-auto">
+            <p className="mx-auto mt-4 max-w-2xl text-ink-2">
               Get full access to a diverse range of academic materials specifically curated for the{" "}
-              <span className="text-indigo-600 font-semibold">{domain.name}</span> domain.
+              <span className="font-semibold text-accent">{domain.name}</span> domain.
             </p>
           </div>
 
+          {/* A failed request is not an empty department: say it failed, and offer to try again. */}
           {apiError && (
-            <div className="mb-6 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 text-amber-700 text-sm max-w-lg mx-auto">
-              <AlertCircle size={16} /> Could not load live counts — showing estimated figures.
+            <div className="card mx-auto max-w-3xl">
+              <ErrorState
+                description="We could not load the live counts for this department."
+                onRetry={fetchDomainData}
+              />
             </div>
           )}
 
-          {!apiLoading && contentCounts.length === 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-              <p className="text-sm font-semibold text-slate-700">
-                We are still building this department.
-              </p>
-              <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-slate-500">
-                Nothing is held under {domain.name} yet. Tell us what you need and we will
-                point the collection at it.
-              </p>
+          {!apiLoading && !apiError && contentCounts.length === 0 && (
+            <div className="card mx-auto max-w-3xl">
+              <EmptyState
+                icon={BookOpen}
+                title="We are still building this department."
+                description={`Nothing is held under ${domain.name} yet. Tell us what you need and we will point the collection at it.`}
+              />
             </div>
           )}
 
@@ -365,15 +367,15 @@ export function DomainLandingPage() {
               hold the articles, so the sum was wrong by design. The types are
               named underneath so a visitor knows what kinds of material there are. */}
           {(apiLoading || contentCounts.length > 0) && (
-            <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center">
+            <div className="card mx-auto max-w-3xl px-6 py-10 text-center">
               {apiLoading ? (
-                <span className="mx-auto block h-12 w-48 animate-pulse rounded-lg bg-slate-200" />
+                <Skeleton className="mx-auto h-12 w-48 rounded-lg" />
               ) : (
-                <p className="text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl">
+                <p className="text-5xl font-bold tracking-tight text-ink tnum">
                   {Number(domainData?.total ?? 0).toLocaleString('en-IN')}
                 </p>
               )}
-              <p className="mt-2 text-sm font-semibold text-slate-500">
+              <p className="mt-2 text-sm font-semibold text-muted">
                 items of content in {domain.name}
               </p>
 
@@ -388,8 +390,8 @@ export function DomainLandingPage() {
                     const CTIcon = (CT_META[ct.type] || { icon: Icons.BookOpen }).icon;
                     return (
                       <span key={ct.type}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50 px-3.5 py-1.5 text-sm font-semibold text-indigo-700">
-                        <CTIcon size={14} className="text-indigo-500" /> {ct.type}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent">
+                        <CTIcon size={14} aria-hidden="true" /> {ct.type}
                       </span>
                     );
                   })}
@@ -401,27 +403,27 @@ export function DomainLandingPage() {
       </section>
 
       {/* ══ WHY THIS DEPARTMENT ══════════════════════════════════════════════════ */}
-      <section className="bg-slate-900 py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-start">
+      <section className="bg-navy py-16 sm:py-20">
+        <div className="container-public">
+          <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-14">
             {/* Left */}
             <div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-snug">
+              <h2 className="on-dark text-3xl font-bold leading-snug sm:text-4xl">
                 Why this Department?
               </h2>
-              <p className="mt-5 text-slate-400 leading-relaxed">
+              <p className="on-dark-2 mt-5 leading-relaxed">
                 {domain.whyAccess}
               </p>
 
-              <div className="mt-10 space-y-7">
+              <div className="mt-10 space-y-6">
                 {WHY_FEATURES.map(({ icon: FeatureIcon, title, desc }, i) => (
-                  <div key={i} className="flex items-start gap-5">
-                    <div className="h-12 w-12 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0">
-                      <FeatureIcon size={20} className="text-white" />
+                  <div key={i} className="flex items-start gap-4">
+                    <div className="on-dark-fill flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-amber" aria-hidden="true">
+                      <FeatureIcon size={20} />
                     </div>
                     <div>
-                      <div className="text-base font-bold text-white">{title}</div>
-                      <p className="mt-1 text-sm text-slate-400 leading-relaxed">{desc}</p>
+                      <h3 className="on-dark text-base font-bold">{title}</h3>
+                      <p className="on-dark-2 mt-1 text-sm leading-relaxed">{desc}</p>
                     </div>
                   </div>
                 ))}
@@ -429,28 +431,26 @@ export function DomainLandingPage() {
             </div>
 
             {/* Right card */}
-            <div className="rounded-2xl bg-slate-800 border border-slate-700 p-7">
+            <div className="on-dark-edge rounded-2xl border bg-navy-2 p-5 sm:p-7">
               {/* Target audience */}
-              <div className="mb-7">
-                <h3 className="text-base font-bold text-white mb-4">Target Audience</h3>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="mb-6">
+                <h3 className="on-dark mb-4 text-base font-bold">Target Audience</h3>
+                <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
                   {domain.whoShouldAccess.map((who, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded-xl border border-slate-600 bg-slate-700/50 px-3 py-2.5 text-xs text-slate-300">
-                      <span className="h-2 w-2 rounded-full bg-indigo-400 shrink-0" />
+                    <div key={i} className="on-dark-fill on-dark-edge on-dark-2 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-amber" aria-hidden="true" />
                       {who}
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="border-t border-slate-700 pt-6">
-                <h3 className="text-base font-bold text-white mb-4">What You Get</h3>
-                <ul className="space-y-2.5">
+              <div className="on-dark-edge border-t pt-6">
+                <h3 className="on-dark mb-4 text-base font-bold">What You Get</h3>
+                <ul className="space-y-3">
                   {ACCESS_BENEFITS.map((benefit, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm text-slate-300">
-                      <div className="h-5 w-5 rounded-full border border-slate-500 flex items-center justify-center shrink-0">
-                        <CheckCircle2 size={12} className="text-indigo-400" />
-                      </div>
+                    <li key={i} className="on-dark-2 flex items-center gap-3 text-sm">
+                      <CheckCircle2 size={16} aria-hidden="true" className="shrink-0 text-amber" />
                       {benefit}
                     </li>
                   ))}
@@ -462,15 +462,15 @@ export function DomainLandingPage() {
       </section>
 
       {/* ══ ACCESS ═══════════════════════════════════════════════════════════════ */}
-      <section id="subscription" className="bg-white py-20 scroll-mt-8">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900">Access {domain.name} content</h2>
-          <p className="mt-3 text-slate-500 max-w-xl mx-auto">
+      <section id="subscription" className="scroll-mt-8 bg-surface py-16 sm:py-20">
+        <div className="container-public max-w-3xl text-center">
+          <h2 className="text-3xl font-bold text-ink sm:text-4xl">Access {domain.name} content</h2>
+          <p className="mx-auto mt-3 max-w-xl text-ink-2">
             Register free and start reading this department's journals, articles
             and resources straight away.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link to="/signup" className="inline-block rounded-full bg-indigo-600 hover:bg-indigo-700 px-8 py-3.5 text-sm font-bold text-white shadow-md transition-all">
+            <Link to="/signup" className={buttonClass("highlight", "lg")}>
               Register Free
             </Link>
           </div>
@@ -478,30 +478,30 @@ export function DomainLandingPage() {
       </section>
 
       {/* ══ RELATED DOMAINS ══════════════════════════════════════════════════════ */}
-      <section className="bg-slate-50 py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-slate-900">Explore Related Domains</h2>
-            <Link to="/digital-library" className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-700">
-              View all <ArrowRight size={14} />
+      <section className="bg-ground py-16">
+        <div className="container-public">
+          <div className="mb-8 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold text-ink">Explore Related Domains</h2>
+            <Link to="/digital-library" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-accent hover:underline">
+              View all <ArrowRight size={14} aria-hidden="true" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
             {relatedDomains.map((rd) => {
               const RdIcon = (Icons as any)[rd.icon] || Icons.BookOpen;
               return (
                 <Link
                   key={rd.id}
                   to={`/domain/${rd.id}`}
-                  className="group rounded-2xl border border-slate-200 bg-white p-6 hover:shadow-xl hover:border-indigo-200 transition-all"
+                  className="card card-interactive group p-5 sm:p-6"
                 >
-                  <div className="h-11 w-11 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
                     <RdIcon size={22} />
                   </div>
-                  <h3 className="mt-4 font-bold text-slate-900 text-sm">{rd.name}</h3>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">{rd.description}</p>
-                  <div className="mt-3 flex items-center gap-1 text-xs font-bold text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                    Explore <ArrowRight size={11} />
+                  <h3 className="mt-4 text-sm font-bold text-ink group-hover:text-accent">{rd.name}</h3>
+                  <p className="mt-1 line-clamp-2 text-sm text-muted">{rd.description}</p>
+                  <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-accent">
+                    Explore <ArrowRight size={12} aria-hidden="true" />
                   </div>
                 </Link>
               );

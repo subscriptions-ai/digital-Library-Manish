@@ -100,7 +100,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const isSubsActive = location.pathname.startsWith('/admin/subscription');
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="app-type min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
       <aside className={`sticky top-0 h-screen self-start bg-slate-900 text-white flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         {/* Logo + Toggle */}

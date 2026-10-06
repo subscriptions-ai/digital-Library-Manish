@@ -32,25 +32,25 @@ export function LibraryHome({
 }: { tab: 'browse' | 'access' | 'saved'; viewerBasePath?: string }) {
   return (
     <div>
-      <div className="mb-6 flex flex-wrap gap-1 border-b border-rule">
+      <nav aria-label="Library sections" className="mb-6 flex flex-wrap gap-1 border-b border-rule">
         {TABS.map(t => (
           <NavLink
             key={t.to}
             to={t.to}
             end={t.end}
             className={({ isActive }) =>
-              `-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+              `-mb-px flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm sm:px-4 font-semibold transition-colors ${
                 isActive
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted hover:border-rule-2 hover:text-ink-2'
               }`
             }
           >
-            <t.icon size={16} />
+            <t.icon size={16} aria-hidden="true" />
             {t.label}
           </NavLink>
         ))}
-      </div>
+      </nav>
 
       {tab === 'browse' && <StructuredLibrary viewerBasePath={viewerBasePath} />}
       {tab === 'access' && <MyContentAccess />}

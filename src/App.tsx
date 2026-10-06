@@ -54,6 +54,7 @@ import { PublisherReviewQueue } from "./components/admin/PublisherReviewQueue";
 import { DataIngestion } from "./components/admin/DataIngestion";
 import { StructuredLibrary } from "./components/StructuredLibrary";
 import { ProMembership } from "./components/membership/ProMembership";
+import { SoloSubscribe } from "./components/solo/SoloSubscribe";
 import { ProApplications } from "./components/sales/ProApplications";
 import { PublisherLayout } from "./components/publisher/PublisherLayout";
 import { PublisherDashboard } from "./components/publisher/PublisherDashboard";
@@ -95,7 +96,7 @@ import { EmailVerificationsPage } from './components/admin/EmailVerificationsPag
 import { AdminEmailSettings } from './components/admin/settings/AdminEmailSettings';
 import { DetailedAnalyticsPage } from './components/admin/dashboard/DetailedAnalyticsPage';
 
-import { CONTENT_MODULES } from "./constants";
+import { CONTENT_MODULES, isSoloAccount } from "./constants";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -120,6 +121,17 @@ function SubscriptionsOrMembership() {
   const { profile } = useAuth();
   if (profile?.role === 'Subscriber') return <Navigate to="/dashboard/pro" replace />;
   return <MySubscriptions />;
+}
+
+/**
+ * Subscription, for a reader. A Solo Learner buys departments online; everyone else — an
+ * institute's or a company's non-leader members — keeps the page that has always been here.
+ * Every existing link to /dashboard/pro lands in the right place without being changed.
+ */
+function ProOrSolo() {
+  const { profile } = useAuth();
+  if (isSoloAccount(profile as any)) return <Navigate to="/dashboard/subscribe" replace />;
+  return <ProMembership />;
 }
 
 function KeepQuery({ to }: { to: string }) {
@@ -193,7 +205,8 @@ export default function App() {
                 {/* Subscriber Dashboard routes with DashboardLayout */}
                 <Route path="/dashboard" element={<DashboardLayout><LMSDashboard /></DashboardLayout>} />
                 <Route path="/dashboard/content/:id" element={<DashboardLayout><ProtectedContentViewer /></DashboardLayout>} />
-                <Route path="/dashboard/pro" element={<DashboardLayout><ProMembership /></DashboardLayout>} />
+                <Route path="/dashboard/pro" element={<DashboardLayout><ProOrSolo /></DashboardLayout>} />
+                <Route path="/dashboard/subscribe" element={<DashboardLayout><SoloSubscribe /></DashboardLayout>} />
                 <Route path="/dashboard/library" element={<DashboardLayout><LibraryHome tab="browse" /></DashboardLayout>} />
                 <Route path="/dashboard/library/access" element={<DashboardLayout><LibraryHome tab="access" /></DashboardLayout>} />
                 <Route path="/dashboard/library/saved" element={<DashboardLayout><LibraryHome tab="saved" /></DashboardLayout>} />

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Search, FolderOpen, AlertCircle } from 'lucide-react';
+import { Play, Search, FolderOpen } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { Badge, Button, EmptyState, PageHeader, Skeleton, friendlyError } from '../ui';
 
 export function extractYoutubeId(urlOrId: string) {
   if (!urlOrId) return "";
@@ -21,7 +22,7 @@ export function VideoLibrary() {
     })
       .then(r => r.json())
       .then(data => {
-        if (data.error) toast.error(data.error);
+        if (data.error) toast.error(friendlyError(data.error, 'Failed to load video library'));
         else setGroupedVideos(data);
       })
       .catch(() => toast.error('Failed to load video library'))
@@ -47,10 +48,18 @@ export function VideoLibrary() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] text-muted">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-rule border-t-accent rounded-full animate-spin" />
-          <p>Loading Video Library...</p>
+      <div className="space-y-6" role="status" aria-label="Loading Video Library">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="card overflow-hidden" aria-hidden="true">
+              <Skeleton className="aspect-video h-auto rounded-none" />
+              <div className="space-y-2 p-4">
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-3 w-3/5" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -59,88 +68,96 @@ export function VideoLibrary() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-ink tracking-tight">Video Library</h1>
-          <p className="text-muted mt-1">Explore interactive educational videos across domains.</p>
-        </div>
-        <div className="relative w-full md:w-80">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-          <input
-            type="text"
-            placeholder="Search videos..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-surface border border-rule rounded-md focus:ring-2 focus:border-accent outline-none transition-shadow text-sm font-medium"
-          />
-        </div>
-      </div>
+      <PageHeader
+        className="mb-0"
+        title="Video Library"
+        description="Explore interactive educational videos across domains."
+        actions={
+          <div className="relative w-full md:w-80">
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden="true" />
+            <input
+              type="search"
+              aria-label="Search videos"
+              placeholder="Search videos..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="input pl-9"
+            />
+          </div>
+        }
+      />
 
       {/* Main Content */}
       {!hasVideos ? (
-        <div className="bg-surface border border-rule rounded-md p-16 text-center shadow-sm">
-          <FolderOpen size={48} className="mx-auto text-faint mb-4" />
-          <h3 className="text-lg font-bold text-ink">No videos found</h3>
-          <p className="text-muted mt-1">Try adjusting your search criteria.</p>
+        <div className="card">
+          {search.trim() ? (
+            <EmptyState
+              icon={Search}
+              title="No videos found"
+              description="Try adjusting your search criteria."
+              action={<Button variant="outline" size="sm" onClick={() => setSearch('')}>Clear search</Button>}
+            />
+          ) : (
+            <EmptyState icon={FolderOpen} title="No videos available yet" description="Videos open to you will appear here." />
+          )}
         </div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-10">
           {Object.entries(filtered).map(([domain, videos]) => (
-            <div key={domain} className="space-y-5">
+            <section key={domain} className="space-y-4" aria-label={domain}>
               {/* Domain Header */}
-              <div className="flex items-center gap-3 border-b border-rule pb-2">
-                <div className="h-8 w-1 bg-accent rounded-full" />
-                <h2 className="text-xl font-bold text-ink">{domain}</h2>
-                <span className="bg-surface-2 text-ink-2 text-xs font-bold px-2.5 py-1 rounded-lg">
+              <div className="flex flex-wrap items-center gap-3 border-b border-rule pb-2">
+                <h2 className="type-section text-ink">{domain}</h2>
+                <Badge tone="neutral">
                   {videos.length} Video{videos.length !== 1 && 's'}
-                </span>
+                </Badge>
               </div>
 
               {/* Video Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {videos.map(video => {
                   const ytId = extractYoutubeId(video.fileUrl);
                   const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : video.thumbnailUrl;
 
                   return (
-                    <div 
+                    <button 
+                      type="button"
                       key={video.id}
                       onClick={() => navigate(`/dashboard/videos/player/${video.id}`)}
-                      className="group bg-surface rounded-md border border-rule overflow-hidden cursor-pointer hover:border-accent hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col"
+                      className="card card-interactive group flex flex-col overflow-hidden text-left"
                     >
                       {/* Thumbnail Container */}
-                      <div className="relative aspect-video bg-surface-2 overflow-hidden">
+                      <div className="relative aspect-video w-full overflow-hidden bg-surface-2">
                         {thumb ? (
-                          <img src={thumb} alt={video.title} className="w-full h-full object-cover" />
+                          <img src={thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center text-faint">
+                          <div className="absolute inset-0 flex items-center justify-center text-faint" aria-hidden="true">
                             <Play size={40} />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-ink/20 group-hover:bg-transparent transition-colors" />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="bg-accent/90 text-white p-4 rounded-full backdrop-blur-sm transform scale-90 group-hover:scale-100 transition-transform">
-                            <Play size={24} className="ml-1" />
-                          </div>
+                        <div className="absolute inset-0 flex items-center justify-center bg-ink/10 opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true">
+                          <span className="rounded-full bg-accent p-3 text-accent-on">
+                            <Play size={20} className="ml-0.5" />
+                          </span>
                         </div>
                       </div>
 
                       {/* Info */}
-                      <div className="p-4 flex-1 flex flex-col">
-                        <h3 className="font-bold text-ink leading-snug line-clamp-2 mb-1 group-hover:text-accent transition-colors">
+                      <div className="flex flex-1 flex-col p-4">
+                        <h3 className="mb-1 line-clamp-2 font-semibold leading-snug text-ink transition-colors duration-150 group-hover:text-accent">
                           {video.title}
                         </h3>
                         {video.description && (
-                          <p className="text-xs text-muted line-clamp-2 mt-auto">
+                          <p className="mt-auto line-clamp-2 text-xs text-muted">
                             {video.description}
                           </p>
                         )}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}

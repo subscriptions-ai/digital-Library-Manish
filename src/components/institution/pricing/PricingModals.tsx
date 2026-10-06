@@ -26,7 +26,9 @@ export function departmentRateLine(): string {
   }).join('; ');
 }
 
-function ModalShell({ title, subtitle, onClose, children, footer, wide = false, z = 'z-50' }: {
+// Above the shared Dialog (z-110): the user-limit window can open on top of the
+// Add User dialog, which stays open so the form can be sent again.
+function ModalShell({ title, subtitle, onClose, children, footer, wide = false, z = 'z-[120]' }: {
   title: string; subtitle?: React.ReactNode; onClose: () => void; children: React.ReactNode;
   footer?: React.ReactNode; wide?: boolean; z?: string;
 }) {
@@ -37,24 +39,24 @@ function ModalShell({ title, subtitle, onClose, children, footer, wide = false, 
   }, [onClose]);
 
   return (
-    <div className={`fixed inset-0 ${z} flex items-center justify-center bg-ink/60 p-4 backdrop-blur-sm`}
+    <div className={`fixed inset-0 ${z} flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]`}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <motion.div
         role="dialog" aria-modal="true" aria-label={title}
-        initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-        className={`flex max-h-[90vh] w-full ${wide ? 'max-w-2xl' : 'max-w-xl'} flex-col overflow-hidden rounded-2xl border border-rule bg-surface shadow-2xl`}
+        initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.18 }}
+        className={`dialog-panel overflow-hidden ${wide ? 'max-w-2xl' : 'max-w-xl'}`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-rule px-6 py-4">
-          <div>
-            <h2 className="font-serif text-[20px] font-medium text-ink">{title}</h2>
-            {subtitle && <p className="mt-1 text-[12.5px] leading-snug text-muted">{subtitle}</p>}
+        <div className="flex items-start justify-between gap-4 border-b border-rule px-5 py-4 sm:px-6">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold leading-snug text-ink">{title}</h2>
+            {subtitle && <p className="mt-1 text-sm leading-snug text-muted">{subtitle}</p>}
           </div>
-          <button onClick={onClose} aria-label="Close" className="rounded-lg bg-surface-2 p-1.5 text-muted hover:text-ink">
-            <X size={18} />
+          <button type="button" onClick={onClose} aria-label="Close" className="btn btn-ghost btn-sm btn-icon -mr-2 shrink-0">
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
-        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-rule bg-surface-2 px-6 py-3.5">{footer}</div>}
+        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
+        {footer && <div className="flex flex-col-reverse gap-2 border-t border-rule bg-surface-2 px-5 py-4 sm:flex-row sm:flex-wrap sm:justify-end sm:px-6">{footer}</div>}
       </motion.div>
     </div>
   );
@@ -66,19 +68,19 @@ function PriceBox({ eyebrow, price, equation, metrics, pending }: {
   metrics: [string, string][]; pending: boolean;
 }) {
   return (
-    <div className="mt-4 rounded-2xl bg-gradient-to-br from-[#14284f] to-[#0b6e72] p-4 on-dark">
-      <div className="flex items-center justify-between gap-2">
-        <p className="font-mono text-[10.5px] uppercase tracking-wider on-dark-3">{eyebrow}</p>
-        <p className="font-mono text-[10px] uppercase tracking-wider on-dark-3">
-          {pending ? <span className="inline-flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Confirming</span> : 'Confirmed price'}
+    <div className="mt-4 rounded-xl bg-navy p-4 on-dark sm:p-5" aria-live="polite">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider on-dark-2">{eyebrow}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider on-dark-2">
+          {pending ? <span className="inline-flex items-center gap-1"><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Confirming</span> : 'Confirmed price'}
         </p>
       </div>
-      <p className="tnum mt-1.5 font-mono text-[28px] font-semibold leading-none">{formatRupees(price.total, 2)}</p>
-      <p className="mt-1.5 text-[12px] on-dark-2">{equation}</p>
+      <p className="tnum mt-2 text-[28px] font-bold leading-none">{formatRupees(price.total, 2)}</p>
+      <p className="mt-2 text-xs on-dark-2">{equation}</p>
       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {metrics.map(([k, v]) => (
           <div key={k} className="rounded-lg border on-dark-edge on-dark-fill px-3 py-2">
-            <p className="font-mono text-[9.5px] uppercase tracking-wider on-dark-3">{k}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider on-dark-2">{k}</p>
             <p className="tnum mt-0.5 text-[13px] font-semibold">{v}</p>
           </div>
         ))}
@@ -89,16 +91,15 @@ function PriceBox({ eyebrow, price, equation, metrics, pending }: {
 
 function Disclaimer({ children, onTerms, link = 'View full pricing terms' }: { children: React.ReactNode; onTerms: () => void; link?: string }) {
   return (
-    <div className="mt-3 rounded-xl border border-caution/40 bg-caution-soft px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-2">
+    <div className="mt-3 rounded-lg border border-caution/40 bg-caution-soft px-4 py-3 text-[13px] leading-relaxed text-ink-2">
       {children}{' '}
       <button type="button" onClick={onTerms} className="font-semibold text-accent underline underline-offset-2">{link}</button>
     </div>
   );
 }
 
-const btn = 'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-50';
-const btnGhost = `${btn} border border-rule bg-surface text-ink-2 hover:bg-surface-2`;
-const btnPrimary = `${btn} bg-accent text-white hover:bg-accent-hover`;
+const btnGhost = 'btn btn-outline';
+const btnPrimary = 'btn btn-primary';
 
 /** Asks the server for its price whenever the request settles, and keeps the answer only if it still matches. */
 function useServerQuote(key: string | null, body: () => Parameters<typeof fetchQuote>[0]) {
@@ -213,35 +214,35 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
       subtitle={`Choose the departments for full subscribed access. Your institution can add up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users at no extra charge.`}
       onClose={onClose}
       footer={<>
-        <button onClick={download} disabled={!count} className={btnGhost}><Download size={15} /> Download Quotation</button>
-        <button onClick={pay} disabled={!count || paying || !!server?.error} className={btnPrimary}>
-          {paying && <Loader2 size={15} className="animate-spin" />} Proceed to Payment
+        <button type="button" onClick={download} disabled={!count} className={btnGhost}><Download size={16} aria-hidden="true" /> Download Quotation</button>
+        <button type="button" onClick={pay} disabled={!count || paying || !!server?.error} aria-busy={paying || undefined} className={btnPrimary}>
+          {paying && <Loader2 size={16} className="animate-spin" aria-hidden="true" />} Proceed to Payment
         </button>
       </>}
     >
       <div className="flex items-center justify-between">
-        <label className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Select departments</label>
-        <span className="text-[12px] text-muted">{count} selected</span>
+        <label htmlFor="dept-modal-search" className="field-label">Select departments</label>
+        <span className="text-xs text-muted" aria-live="polite">{count} selected</span>
       </div>
-      <div className="mt-2 overflow-hidden rounded-xl border border-rule">
+      <div className="mt-2 overflow-hidden rounded-lg border border-rule">
         <div className="relative border-b border-rule">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search department…"
-            className="w-full bg-surface py-2.5 pl-9 pr-3 text-[13px] text-ink outline-none placeholder:text-faint" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden="true" />
+          <input id="dept-modal-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search department…"
+            className="h-10 w-full bg-surface pl-9 pr-3 text-sm text-ink outline-none placeholder:text-faint focus-visible:bg-surface-2" />
         </div>
         <ul className="max-h-60 overflow-y-auto p-1.5">
-          {visible.length === 0 && <li className="px-3 py-4 text-center text-[12.5px] text-faint">No department matches.</li>}
+          {visible.length === 0 && <li className="px-3 py-4 text-center text-[13px] text-muted">No department matches.</li>}
           {visible.map((name) => {
             const until = held.get(name);
             const on = selected.includes(name);
             return (
               <li key={name}>
-                <label className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] ${until ? 'cursor-default text-muted' : 'cursor-pointer text-ink hover:bg-surface-2'}`}>
-                  <input type="checkbox" className="accent-[var(--accent)]" checked={!!until || on} disabled={!!until}
+                <label className={`flex flex-wrap items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] ${until ? 'cursor-default text-muted' : 'cursor-pointer text-ink hover:bg-surface-2'}`}>
+                  <input type="checkbox" className="h-4 w-4 shrink-0 accent-[var(--accent)]" checked={!!until || on} disabled={!!until}
                     onChange={() => toggle(name)} />
-                  <span className="flex-1">{name}</span>
+                  <span className="min-w-0 flex-1">{name}</span>
                   {until && (
-                    <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10.5px] font-semibold text-accent">
+                    <span className="badge badge-success">
                       Active until {shortDate(until)}
                     </span>
                   )}
@@ -251,8 +252,8 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
           })}
         </ul>
         <div className="flex items-center justify-between border-t border-rule bg-surface-2 px-3 py-2">
-          <span className="truncate text-[11.5px] text-muted">{count ? selected.join(', ') : 'No department selected.'}</span>
-          {count > 0 && <button onClick={() => setSelected([])} className="shrink-0 text-[12px] font-semibold text-accent">Clear</button>}
+          <span className="min-w-0 truncate text-xs text-muted">{count ? selected.join(', ') : 'No department selected.'}</span>
+          {count > 0 && <button type="button" onClick={() => setSelected([])} className="shrink-0 text-xs font-semibold text-accent hover:underline">Clear</button>}
         </div>
       </div>
 
@@ -269,9 +270,9 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
           ]}
         />
       )}
-      {server?.error && <p className="mt-3 text-[12.5px] font-semibold text-alarm">{server.error}</p>}
+      {server?.error && <p role="alert" className="mt-3 text-[13px] font-semibold text-alarm">{server.error}</p>}
 
-      <div className="mt-4 rounded-xl border border-rule bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-2">
+      <div className="mt-4 rounded-lg border border-rule bg-surface-2 px-4 py-3 text-[13px] leading-relaxed text-ink-2">
         This purchase gives your institution full access to the selected departments for {TERM_MONTHS} months.{' '}
         Users are not charged for: your institution can have up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} of them.
       </div>
@@ -291,11 +292,11 @@ export function UserLimitModal({ onClose }: { onClose: () => void }) {
     <ModalShell title={`Need more than ${limit} users?`}
       subtitle={`A paid subscription covers up to ${limit} users at no extra charge.`}
       onClose={onClose}
-      footer={<button onClick={onClose} className={btnPrimary}>Close</button>}>
-      <p className="text-[13.5px] leading-relaxed text-ink-2">
+      footer={<button type="button" onClick={onClose} className={btnPrimary}>Close</button>}>
+      <p className="text-sm leading-relaxed text-ink-2">
         If your institution needs more than {limit} users, please contact us and we will arrange it with you.
       </p>
-      <ul className="mt-4 space-y-2 rounded-xl border border-rule bg-surface-2 px-4 py-3 text-[13px] text-ink">
+      <ul className="mt-4 space-y-2 rounded-lg border border-rule bg-surface-2 px-4 py-3 text-[13px] text-ink">
         <li>Email: <a className="font-semibold text-accent underline" href={`mailto:${COMPANY_DETAILS.email}`}>{COMPANY_DETAILS.email}</a></li>
         {COMPANY_DETAILS.tel.map((t: string) => (
           <li key={t}>Phone: <a className="font-semibold text-accent underline" href={`tel:${t.replace(/[^\d+]/g, '')}`}>{t}</a></li>
@@ -307,14 +308,16 @@ export function UserLimitModal({ onClose }: { onClose: () => void }) {
 
 /* ─────────────────────────────── Terms ─────────────────────────────── */
 
+/** A numbered heading in the terms. At module level, so it is not a new component on every render. */
+function H({ children }: { children: React.ReactNode }) {
+  return <h3 className="mb-1 mt-4 text-sm font-semibold text-ink first:mt-0">{children}</h3>;
+}
+
 export function TermsModal({ onClose }: { onClose: () => void }) {
-  const H = ({ children }: { children: React.ReactNode }) => (
-    <h3 className="mb-1 mt-4 text-[13.5px] font-semibold text-ink first:mt-0">{children}</h3>
-  );
   return (
     <ModalShell title="Subscription Pricing Terms" subtitle="How department subscriptions are priced."
-      onClose={onClose} z="z-[60]" wide
-      footer={<button onClick={onClose} className={btnPrimary}><Check size={15} /> Understood</button>}>
+      onClose={onClose} z="z-[130]" wide
+      footer={<button type="button" onClick={onClose} className={btnPrimary}><Check size={16} aria-hidden="true" /> Understood</button>}>
       <div className="text-[13px] leading-relaxed text-ink-2">
         <H>1. Department subscription</H>
         <p>Premium department access is priced per department per year, by how many departments your institution

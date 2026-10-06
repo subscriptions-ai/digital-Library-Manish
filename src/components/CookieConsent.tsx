@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cookie, X, Check, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -30,6 +30,7 @@ export function CookieConsent() {
       timestamp: new Date().toISOString()
     }));
     setIsVisible(false);
+    window.dispatchEvent(new Event('cookie-consent-saved'));
   };
 
   const handleSavePreferences = () => {
@@ -38,6 +39,7 @@ export function CookieConsent() {
       timestamp: new Date().toISOString()
     }));
     setIsVisible(false);
+    window.dispatchEvent(new Event('cookie-consent-saved'));
   };
 
   const handleRejectAll = () => {
@@ -48,130 +50,124 @@ export function CookieConsent() {
       timestamp: new Date().toISOString()
     }));
     setIsVisible(false);
+    window.dispatchEvent(new Event('cookie-consent-saved'));
   };
+
+  // The notice sits along the bottom of the screen; the floating WhatsApp and
+  // Feedback buttons step up over it rather than covering its buttons.
+  const boxRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!isVisible || !boxRef.current) return;
+    const set = () => root.style.setProperty('--cookie-offset', `${boxRef.current?.offsetHeight ?? 0}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(boxRef.current);
+    return () => { ro.disconnect(); root.style.removeProperty('--cookie-offset'); };
+  }, [isVisible, showPreferences]);
 
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ y: 150, opacity: 0 }}
+          ref={boxRef}
+          initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 150, opacity: 0 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed bottom-0 left-0 right-0 z-[100] p-4 sm:p-6 pointer-events-none"
+          exit={{ y: 40, opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="fixed bottom-0 left-0 right-0 z-[100] p-3 sm:p-4 pointer-events-none"
         >
-          <div className="max-w-5xl mx-auto bg-slate-900 text-slate-200 rounded-2xl shadow-2xl overflow-hidden pointer-events-auto border border-slate-700/50 backdrop-blur-xl">
+          <section
+            aria-labelledby="cookie-title"
+            className="mx-auto max-w-4xl max-h-[calc(100dvh-24px)] overflow-y-auto rounded-xl border border-rule bg-surface text-ink shadow-[var(--shadow-modal)] pointer-events-auto"
+          >
             {!showPreferences ? (
-              <div className="p-6 md:p-8 flex flex-col lg:flex-row items-center gap-8">
-                <div className="flex-1 flex gap-5 items-start">
-                  <div className="h-12 w-12 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center shrink-0">
-                    <Cookie size={24} />
-                  </div>
+              <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:gap-6">
+                <div className="flex flex-1 items-start gap-3">
+                  <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent sm:flex" aria-hidden="true">
+                    <Cookie size={18} />
+                  </span>
                   <div>
-                    <h3 className="text-xl font-bold text-white tracking-tight mb-2">We value your privacy</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">
-                      We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. 
+                    <h2 id="cookie-title" className="text-base font-semibold text-ink">We value your privacy</h2>
+                    <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
+                      We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic.
                       By clicking "Accept All", you consent to our use of cookies in accordance with the DPDP Act and GDPR guidelines.
-                      <Link to="/privacy-policy" className="text-indigo-400 hover:text-indigo-300 font-medium ml-1 underline underline-offset-2">Read our Privacy Policy.</Link>
+                      <Link to="/privacy-policy" className="ml-1 font-medium text-accent underline underline-offset-2 hover:text-accent-hover">Read our Privacy Policy.</Link>
                     </p>
                   </div>
                 </div>
-                
-                <div className="flex flex-wrap items-center gap-3 shrink-0 lg:flex-col lg:items-stretch w-full lg:w-auto">
-                  <button 
-                    onClick={handleAcceptAll}
-                    className="flex-1 lg:flex-none px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
-                  >
-                    Accept All
-                  </button>
-                  <div className="flex gap-3 w-full lg:w-auto">
-                    <button 
-                      onClick={() => setShowPreferences(true)}
-                      className="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all active:scale-95 border border-slate-700"
-                    >
-                      Preferences
-                    </button>
-                    <button 
-                      onClick={handleRejectAll}
-                      className="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all active:scale-95 border border-slate-700"
-                    >
-                      Reject All
-                    </button>
-                  </div>
+
+                <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-row-reverse sm:flex-wrap lg:flex-nowrap">
+                  <button type="button" onClick={handleAcceptAll} className="btn btn-brand col-span-2">Accept All</button>
+                  <button type="button" onClick={handleRejectAll} className="btn btn-outline">Reject All</button>
+                  <button type="button" onClick={() => setShowPreferences(true)} className="btn btn-outline">Preferences</button>
                 </div>
               </div>
             ) : (
-              <div className="p-6 md:p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <Shield className="text-indigo-400" size={24} />
-                    <h3 className="text-xl font-bold text-white">Privacy Preferences</h3>
+              <div className="p-4 sm:p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Shield className="text-accent" size={20} aria-hidden="true" />
+                    <h2 id="cookie-title" className="text-lg font-semibold text-ink">Privacy Preferences</h2>
                   </div>
-                  <button 
-                    onClick={() => setShowPreferences(false)}
-                    className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
-                  >
-                    <X size={20} />
+                  <button type="button" onClick={() => setShowPreferences(false)} aria-label="Back to the cookie notice" className="btn btn-ghost btn-sm btn-icon">
+                    <X size={18} aria-hidden="true" />
                   </button>
                 </div>
-                
-                <div className="space-y-4 mb-8">
-                  {/* Essential */}
-                  <div className="flex items-start justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-                    <div className="pr-8">
-                      <h4 className="font-bold text-slate-200 mb-1">Strictly Necessary Cookies</h4>
-                      <p className="text-xs text-slate-400">These cookies are essential for the website to function properly and cannot be disabled. They include security and session management.</p>
-                    </div>
-                    <div className="shrink-0 pt-1 flex items-center gap-2">
-                      <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Required</span>
-                      <div className="w-11 h-6 bg-indigo-600 rounded-full flex items-center p-1 justify-end cursor-not-allowed opacity-50">
-                        <div className="w-4 h-4 bg-white rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Analytics */}
-                  <div className="flex items-start justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-800 transition-colors"
-                       onClick={() => setPreferences(p => ({ ...p, analytics: !p.analytics }))}>
-                    <div className="pr-8">
-                      <h4 className="font-bold text-slate-200 mb-1">Analytics Cookies</h4>
-                      <p className="text-xs text-slate-400">Help us understand how visitors interact with the website by collecting and reporting information anonymously.</p>
-                    </div>
-                    <div className="shrink-0 pt-1">
-                      <div className={`w-11 h-6 rounded-full flex items-center p-1 transition-colors ${preferences.analytics ? 'bg-indigo-600 justify-end' : 'bg-slate-700 justify-start'}`}>
-                        <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Marketing */}
-                  <div className="flex items-start justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-800 transition-colors"
-                       onClick={() => setPreferences(p => ({ ...p, marketing: !p.marketing }))}>
-                    <div className="pr-8">
-                      <h4 className="font-bold text-slate-200 mb-1">Marketing Cookies</h4>
-                      <p className="text-xs text-slate-400">Used to track visitors across websites. The intention is to display ads that are relevant and engaging for the individual user.</p>
-                    </div>
-                    <div className="shrink-0 pt-1">
-                      <div className={`w-11 h-6 rounded-full flex items-center p-1 transition-colors ${preferences.marketing ? 'bg-indigo-600 justify-end' : 'bg-slate-700 justify-start'}`}>
-                        <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
-                      </div>
-                    </div>
-                  </div>
+                <div className="mb-5 space-y-2">
+                  <PreferenceRow
+                    title="Strictly Necessary Cookies"
+                    body="These cookies are essential for the website to function properly and cannot be disabled. They include security and session management."
+                    checked locked
+                  />
+                  <PreferenceRow
+                    title="Analytics Cookies"
+                    body="Help us understand how visitors interact with the website by collecting and reporting information anonymously."
+                    checked={preferences.analytics}
+                    onToggle={() => setPreferences(p => ({ ...p, analytics: !p.analytics }))}
+                  />
+                  <PreferenceRow
+                    title="Marketing Cookies"
+                    body="Used to track visitors across websites. The intention is to display ads that are relevant and engaging for the individual user."
+                    checked={preferences.marketing}
+                    onToggle={() => setPreferences(p => ({ ...p, marketing: !p.marketing }))}
+                  />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                  <button 
-                    onClick={handleSavePreferences}
-                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
-                  >
-                    <Check size={18} /> Save Preferences
+                <div className="flex justify-end border-t border-rule pt-4">
+                  <button type="button" onClick={handleSavePreferences} className="btn btn-brand">
+                    <Check size={16} aria-hidden="true" /> Save Preferences
                   </button>
                 </div>
               </div>
             )}
-          </div>
+          </section>
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/** One cookie category: what it is for, and a real switch a keyboard can reach. */
+function PreferenceRow({ title, body, checked, locked, onToggle }: {
+  title: string; body: string; checked: boolean; locked?: boolean; onToggle?: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-lg border border-rule bg-surface-2 p-3.5">
+      <div>
+        <h3 className="text-sm font-semibold text-ink">{title}</h3>
+        <p className="mt-0.5 text-xs leading-relaxed text-muted">{body}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2 pt-0.5">
+        {locked && <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">Required</span>}
+        <button
+          type="button" role="switch" aria-checked={checked} aria-label={title} disabled={locked} onClick={onToggle}
+          className={`flex h-6 w-11 items-center rounded-full p-1 transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 ${checked ? 'justify-end bg-accent' : 'justify-start bg-rule-2'}`}
+        >
+          <span className="h-4 w-4 rounded-full bg-white shadow-sm" />
+        </button>
+      </div>
+    </div>
   );
 }

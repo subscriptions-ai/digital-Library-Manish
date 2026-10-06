@@ -7,6 +7,7 @@ import {
   ShieldCheck, Users, UserSquare2,
 } from 'lucide-react';
 import { type DeptRow } from './charts';
+import { SearchBox } from './GlobalSearch';
 
 /**
  * The home page.
@@ -90,10 +91,12 @@ function useLibrary() {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [institutions, setInstitutions] = useState<Institutions | null>(null);
+  // Settled either way, so a figure that could not be read stops pulsing and says so.
+  const [statsSettled, setStatsSettled] = useState(false);
 
   useEffect(() => {
     const get = (u: string) => fetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null);
-    get('/api/library/stats').then(d => d && setStats(d));
+    get('/api/library/stats').then(d => { if (d) setStats(d); setStatsSettled(true); });
     get('/api/library/articles?limit=12&sort=newest').then(d => d?.data && setArticles(d.data.filter((a: NewArticle) => named(a.title))));
     get('/api/library/books?limit=36&sort=newest').then(d => d?.data && setBooks(d.data));
     get('/api/library/insights').then(d => d?.composition && setInsights(d));
@@ -101,7 +104,7 @@ function useLibrary() {
     get('/api/library/institutions').then(d => d?.total !== undefined && setInstitutions(d));
   }, []);
 
-  return { stats, articles, books, insights, subjects, institutions };
+  return { stats, statsSettled, articles, books, insights, subjects, institutions };
 }
 
 // ── The furniture the reference is built from ───────────────────────────────
@@ -125,15 +128,17 @@ function Heading({ children, className = '' }: { children: React.ReactNode; clas
 }
 
 /** A figure still loading shows a quiet bar, never a made-up number. */
-function Figure({ value, className = '' }: { value?: number; className?: string }) {
+function Figure({ value, settled, className = '' }: { value?: number; settled?: boolean; className?: string }) {
   if (typeof value !== 'number') {
-    return <span className={`inline-block h-[0.75em] w-20 animate-pulse rounded bg-[color:var(--np-soft)] align-middle ${className}`} />;
+    if (settled) return <span className={className} aria-label="Not available">—</span>;
+    return <span aria-hidden="true" className={`inline-block h-[0.75em] w-20 animate-pulse rounded bg-[color:var(--np-soft)] align-middle ${className}`} />;
   }
   return <span className={className}>{n(value)}</span>;
 }
 
-const btnPrimary = 'inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[14px] font-bold text-white transition-opacity hover:opacity-90';
-const btnGhost = 'inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[14px] font-bold transition-colors';
+// The shared button shape (48px, 8px radius); the colour comes from each call site.
+const btnPrimary = 'btn btn-lg text-white transition-opacity hover:opacity-90';
+const btnGhost = 'btn btn-lg border';
 
 /**
  * The hero's picture: photographs, one to a slide.
@@ -201,16 +206,22 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
       eyebrow: 'STM Digital Library',
       lead: 'An academic library your whole institution can',
       highlight: 'open.',
-      body: `${n(stats?.total)} items of research — ${n(stats?.articles)} articles and ${n(stats?.books)} books — catalogued by department, journal, volume and issue.`,
-      chips: [`${n(stats?.total)} items`, `${depts.length || '—'} departments`, `${n(stats?.articles)} articles`],
+      body: stats
+        ? `${n(stats.total)} items of research — ${n(stats.articles)} articles and ${n(stats.books)} books — catalogued by department, journal, volume and issue.`
+        : 'Articles, books and archived research, catalogued by department, journal, volume and issue.',
+      chips: stats
+        ? [`${n(stats.total)} items`, `${depts.length || '—'} departments`, `${n(stats.articles)} articles`]
+        : ['Articles', 'Books', 'Departments'],
     },
     {
       key: 'access',
       eyebrow: 'Where you read it',
       lead: 'Most of it opens right here, in the',
       highlight: 'browser.',
-      body: `${readPct ?? '—'}% of the ${n(accTotal || undefined)} catalogued works open in the reader itself. The rest link to the publisher's own copy, and say so.`,
-      chips: [`${readPct ?? '—'}% read here`, 'No download needed', 'Nothing to install'],
+      body: readPct !== undefined
+        ? `${readPct}% of the ${n(accTotal)} catalogued works open in the reader itself. The rest link to the publisher's own copy, and say so.`
+        : "Most catalogued works open in the reader itself. The rest link to the publisher's own copy, and say so.",
+      chips: [readPct !== undefined ? `${readPct}% read here` : 'Read in the browser', 'No download needed', 'Nothing to install'],
     },
     {
       key: 'institutions',
@@ -245,8 +256,8 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
       eyebrow: 'What it costs',
       lead: 'Free to register, and the whole library is',
       highlight: 'yours.',
-      body: 'Free membership reads the entire collection in half-hour sessions. Pro removes the clock, for you and for everyone your institution adds.',
-      chips: ['Free to register', 'No request forms', 'Pro removes the clock'],
+      body: 'Free Subscription reads the entire collection in half-hour sessions. Premium Subscription removes the clock, for you and for everyone your institution adds.',
+      chips: ['Free to register', 'No request forms', 'Premium removes the clock'],
     },
   ];
 }
@@ -302,7 +313,7 @@ function Hero({ stats, insights, institutions, depts }: {
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60"
         style={{ background: 'radial-gradient(900px 420px at 15% 0%, rgba(245,179,1,0.10), transparent 60%), radial-gradient(700px 400px at 85% 100%, rgba(99,102,241,0.18), transparent 60%)' }} />
 
-      <div className="relative mx-auto max-w-6xl px-5 pb-10 pt-14 sm:pb-14 sm:pt-20">
+      <div className="relative container-public pb-10 pt-14 sm:pb-14 sm:pt-20">
         <div className="min-h-[330px] max-w-2xl" aria-live={running ? 'off' : 'polite'}>
           <Eyebrow onDark>{s.eyebrow}</Eyebrow>
           <h1 className="np-display mt-5 max-w-[620px] text-[38px] leading-[1.08] text-white sm:text-[50px]">
@@ -320,16 +331,12 @@ function Hero({ stats, insights, institutions, depts }: {
           </div>
         </div>
 
-        <form
-          onSubmit={e => { e.preventDefault(); if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`); }}
-          className="mt-8 flex max-w-xl items-center gap-2 rounded-2xl bg-white p-1.5 shadow-2xl"
-        >
-          <Search size={18} className="ml-3 shrink-0 text-slate-400" />
-          <input value={q} onChange={e => setQ(e.target.value)}
-            placeholder="Search articles, books, journals, authors…"
-            className="min-w-0 flex-1 bg-transparent px-1 py-2.5 text-[14.5px] text-slate-900 outline-none placeholder:text-slate-400" />
-          <button type="submit" className={btnPrimary} style={{ background: 'var(--np-navy)' }}>Search</button>
-        </form>
+        {/* The same search as the navbar's, drawn larger. */}
+        <SearchBox
+          variant="hero" value={q} onChange={setQ}
+          onSubmit={term => navigate(`/search?q=${encodeURIComponent(term)}`)}
+          className="mt-8 max-w-[680px]"
+        />
 
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link to="/signup" className={btnPrimary} style={{ background: 'var(--np-amber)', color: '#1a1200' }}>
@@ -413,7 +420,7 @@ function InstitutionStrip({ inst }: { inst: Institutions | null }) {
 
 // ── 3. The figures ──────────────────────────────────────────────────────────
 
-function Impact({ stats, depts, inst }: { stats: Stats | null; depts: DeptRow[]; inst: Institutions | null }) {
+function Impact({ stats, settled, depts, inst }: { stats: Stats | null; settled: boolean; depts: DeptRow[]; inst: Institutions | null }) {
   const cards = [
     { icon: Library, value: stats?.total, label: 'Items of content', hint: 'Articles, books and archived material', tone: 1 },
     { icon: FileText, value: stats?.articles, label: 'Research articles', hint: 'Each in its journal, volume and issue', tone: 3 },
@@ -421,18 +428,18 @@ function Impact({ stats, depts, inst }: { stats: Stats | null; depts: DeptRow[];
     { icon: Layers, value: depts.length || undefined, label: 'Departments', hint: 'Every subject the library covers', tone: 6 },
   ];
   return (
-    <section className="mx-auto max-w-6xl px-5 py-20">
+    <section className="container-public py-20">
       <Eyebrow>Built for trust</Eyebrow>
       <Heading className="max-w-3xl">Every figure here is read from the catalogue as the page loads.</Heading>
       <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(c => (
-          <div key={c.label} className="rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
+          <div key={c.label} className="rounded-xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
             <span className="flex h-12 w-12 items-center justify-center rounded-xl"
               style={{ background: `var(--t${c.tone}-bg)`, color: `var(--t${c.tone}-ink)` }}>
               <c.icon size={21} />
             </span>
             <p className="np-display mt-5 text-[32px] leading-none" style={{ color: 'var(--np-ink)' }}>
-              <Figure value={c.value} />
+              <Figure value={c.value} settled={settled} />
             </p>
             <p className="np-strong mt-2 text-[14px]" style={{ color: 'var(--np-ink)' }}>{c.label}</p>
             <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: 'var(--np-body)' }}>{c.hint}</p>
@@ -486,7 +493,7 @@ function WithUs({ inst }: { inst: Institutions | null }) {
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border sm:grid-cols-2 lg:grid-cols-3"
+      <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-xl border sm:grid-cols-2 lg:grid-cols-3"
         style={{ background: 'var(--np-line)', borderColor: 'var(--np-line)' }}>
         {shown.map(i => (
           <div key={i.name} className="flex items-center gap-3 bg-surface px-5 py-4">
@@ -519,7 +526,7 @@ function WithUs({ inst }: { inst: Institutions | null }) {
 
       {/* And who, inside them, is actually reading. */}
       {roles.length > 0 && (
-        <div className="mt-8 rounded-2xl border p-6" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+        <div className="mt-8 rounded-xl border p-6" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
             Who reads here
           </p>
@@ -567,7 +574,7 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
 
   return (
     <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
-      <div className="mx-auto max-w-6xl px-5">
+      <div className="container-public">
         <Eyebrow>Core departments</Eyebrow>
         <Heading className="max-w-3xl">Explore the collection department by department.</Heading>
         <p className="mt-4 max-w-2xl text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
@@ -576,7 +583,7 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
         </p>
 
         <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="max-h-[560px] overflow-y-auto rounded-2xl border bg-surface p-2" style={{ borderColor: 'var(--np-line)' }}>
+          <div className="max-h-[560px] overflow-y-auto rounded-xl border bg-surface p-2" style={{ borderColor: 'var(--np-line)' }}>
             {(depts.length ? depts : Array.from({ length: 8 }) as any[]).map((x: DeptRow | undefined, k) => (
               x ? (
                 <button key={x.name} type="button" onClick={() => setChosen(x.name)} aria-current={x.name === current}
@@ -592,7 +599,7 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
             ))}
           </div>
 
-          <div className="overflow-hidden rounded-2xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
+          <div className="overflow-hidden rounded-xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
             <div className="px-6 py-7 text-white"
               style={{ background: 'linear-gradient(120deg, var(--np-navy) 0%, var(--np-navy-2) 70%, #23336b 100%)' }}>
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">Department</p>
@@ -663,12 +670,12 @@ const PRINCIPLES = [
 
 function Principles() {
   return (
-    <section className="mx-auto max-w-6xl px-5 py-20">
+    <section className="container-public py-20">
       <Eyebrow>How it is built</Eyebrow>
       <Heading className="max-w-3xl">Not a pile of PDFs. A catalogue, kept the way a library keeps one.</Heading>
       <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {PRINCIPLES.map(p => (
-          <div key={p.title} className="overflow-hidden rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
+          <div key={p.title} className="overflow-hidden rounded-xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
             <span aria-hidden className="-mx-6 -mt-6 mb-6 block h-1" style={{ background: `var(--t${p.tone}-ink)` }} />
             <span className="flex h-11 w-11 items-center justify-center rounded-xl"
               style={{ background: `var(--t${p.tone}-bg)`, color: `var(--t${p.tone}-ink)` }}>
@@ -708,7 +715,7 @@ function WhatIsNew({ books, articles }: { books: NewBook[]; articles: NewArticle
   const featured = (withCovers.length >= 3 ? withCovers : books).slice(0, 3);
   return (
     <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
-      <div className="mx-auto max-w-6xl px-5">
+      <div className="container-public">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Eyebrow>Just added</Eyebrow>
@@ -723,7 +730,7 @@ function WhatIsNew({ books, articles }: { books: NewBook[]; articles: NewArticle
           {(featured.length ? featured : Array.from({ length: 3 }) as any[]).map((b: NewBook | undefined, k) => (
             b ? (
               <Link key={b.id} to={record('book', b.id)}
-                className="group flex flex-col overflow-hidden rounded-2xl border bg-surface transition-shadow hover:shadow-xl"
+                className="group flex flex-col overflow-hidden rounded-xl border bg-surface transition-shadow hover:shadow-[var(--shadow-pop)]"
                 style={{ borderColor: 'var(--np-line)' }}>
                 <Cover book={b} tone={(k % 6) + 1} className="h-48 w-full" />
                 <div className="flex flex-1 flex-col p-5">
@@ -740,11 +747,11 @@ function WhatIsNew({ books, articles }: { books: NewBook[]; articles: NewArticle
                   </span>
                 </div>
               </Link>
-            ) : <div key={k} className="h-80 animate-pulse rounded-2xl" style={{ background: 'var(--np-line)' }} />
+            ) : <div key={k} className="h-80 animate-pulse rounded-xl" style={{ background: 'var(--np-line)' }} />
           ))}
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-2xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
+        <div className="mt-6 overflow-hidden rounded-xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
           <p className="border-b px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em]"
             style={{ borderColor: 'var(--np-line)', color: 'var(--np-body)' }}>Newest articles</p>
           <ul>
@@ -781,7 +788,7 @@ function Walkthrough({ stats, depts, subjects, articles }: {
     ['Come back to it', 'Your history is kept, the reader remembers the page, and the dashboard suggests what to read next.'],
   ];
   return (
-    <section className="mx-auto max-w-6xl px-5 py-20">
+    <section className="container-public py-20">
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
         <div>
           <Eyebrow>How reading works</Eyebrow>
@@ -804,7 +811,7 @@ function Walkthrough({ stats, depts, subjects, articles }: {
           </ol>
         </div>
 
-        <div className="overflow-hidden rounded-2xl p-5 shadow-2xl"
+        <div className="overflow-hidden rounded-xl p-5 shadow-[var(--shadow-modal)]"
           style={{ background: 'linear-gradient(140deg, var(--np-navy) 0%, #1b2f63 60%, var(--np-navy-2) 100%)' }}>
           <div className="flex items-center gap-2 pb-4">
             {[0, 1, 2].map(k => <span key={k} className="h-2.5 w-2.5 rounded-full bg-white/25" />)}
@@ -869,12 +876,12 @@ function Audiences({ stats }: { stats: Stats | null }) {
   ];
   return (
     <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
-      <div className="mx-auto max-w-6xl px-5">
+      <div className="container-public">
         <Eyebrow>Community</Eyebrow>
         <Heading className="max-w-3xl">One library, four ways in.</Heading>
         <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map(c => (
-            <div key={c.who} className="flex flex-col rounded-2xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
+            <div key={c.who} className="flex flex-col rounded-xl border bg-surface p-6" style={{ borderColor: 'var(--np-line)' }}>
               <span className="flex h-11 w-11 items-center justify-center rounded-xl"
                 style={{ background: `var(--t${c.tone}-bg)`, color: `var(--t${c.tone}-ink)` }}>
                 <c.icon size={19} />
@@ -904,9 +911,9 @@ function Audiences({ stats }: { stats: Stats | null }) {
 
 const FAQS: [string, string][] = [
   ['Is it really free?',
-    'Yes. A free membership reads the entire library — every subject and every kind of material — in half-hour sessions, four a day. Nothing is charged, and no card is asked for.'],
+    'Yes. A Free Subscription reads the entire library — every subject and every kind of material — in half-hour sessions, four a day. Nothing is charged, and no card is asked for.'],
   ['What is the half-hour session?',
-    'On free membership the library opens for thirty minutes at a time, four times a day, with two hours between sessions. The clock stops when you sign out, and whatever is left of a session is kept for your next visit. Pro removes the clock entirely.'],
+    'On the Free Subscription the library opens for thirty minutes at a time, four times a day, with two hours between sessions. The clock stops when you sign out, and whatever is left of a session is kept for your next visit. Premium Subscription removes the clock entirely.'],
   ['Why does some of it open elsewhere?',
     'Most of the library opens in the reader here, page by page. A small part is held as a catalogue record with a link to where the full text lives — and the page says so plainly, rather than letting you find out after a click.'],
   ['Can my college add its own people?',
@@ -924,7 +931,7 @@ function Questions() {
       <div className="mx-auto max-w-4xl px-5">
         <Eyebrow>Before you register</Eyebrow>
         <Heading>Common questions.</Heading>
-        <div className="mt-10 overflow-hidden rounded-2xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
+        <div className="mt-10 overflow-hidden rounded-xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
           {FAQS.map(([q, a], k) => (
             <div key={q} className="border-b last:border-b-0" style={{ borderColor: 'var(--np-line)' }}>
               <button type="button" onClick={() => setOpen(open === k ? null : k)} aria-expanded={open === k}
@@ -964,7 +971,7 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
             Open the library for your institution.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-[15.5px] text-white/75">
-            Join the colleges and universities already reading {n(stats?.total)} items — free to
+            Join the colleges and universities already reading {stats ? `${n(stats.total)} items` : 'the library'} — free to
             register, and open from the first minute.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -979,7 +986,7 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
       </section>
 
       <section className="py-8" style={{ background: 'var(--np-soft)' }}>
-        <div className="mx-auto max-w-6xl px-5">
+        <div className="container-public">
           <div className="flex items-start gap-3.5 rounded-xl border bg-white px-5 py-4" style={{ borderColor: 'var(--np-line)' }}>
             <ShieldCheck size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-[#1B5DFC]" />
             <div>
@@ -1000,7 +1007,7 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
 // ── The page ────────────────────────────────────────────────────────────────
 
 export function HomePreview() {
-  const { stats, articles, books, insights, subjects, institutions } = useLibrary();
+  const { stats, statsSettled, articles, books, insights, subjects, institutions } = useLibrary();
   const depts = stats?.departmentTotals || [];
 
   return (
@@ -1011,7 +1018,7 @@ export function HomePreview() {
 
       <Hero stats={stats} insights={insights} institutions={institutions} depts={depts} />
       <InstitutionStrip inst={institutions} />
-      <Impact stats={stats} depts={depts} inst={institutions} />
+      <Impact stats={stats} settled={statsSettled} depts={depts} inst={institutions} />
       <WithUs inst={institutions} />
       <DepartmentExplorer depts={depts} />
       <Principles />

@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Search, Plus, ShieldCheck, ShieldAlert, BookOpen, Clock,
-  ChevronDown, Pencil, Trash2, X, Save, Loader2, Activity, RefreshCw, Eye, EyeOff, Lock
+  Search, Plus, ShieldCheck, ShieldAlert, BookOpen, Clock, AlertTriangle, Download, Upload, Users,
+  ChevronDown, Pencil, Trash2, Save, Activity, RefreshCw, Eye, EyeOff, Lock
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from '../../constants';
-import { motion, AnimatePresence } from 'framer-motion';
 import { usePricing } from './pricing/PricingContext';
 import { seatsLabel } from './pricing/PlanWidgets';
 import { LicensedAccessPanel } from '../LicensedAccessPanel';
+import { Button, ConfirmDialog, Dialog, EmptyState, Field, SkeletonRows, Spinner, StatusBadge, friendlyError } from '../ui';
 
 function authHeader() {
   return { Authorization: `Bearer ${localStorage.getItem('token')}` };
@@ -43,17 +43,17 @@ function RolePicker({ value, onChange, onFree }: {
               aria-pressed={on}
               title={locked ? STUDENT_NEEDS_PRO : undefined}
               onClick={() => { if (locked) { toast.error(STUDENT_NEEDS_PRO); return; } onChange(on ? '' : r); }}
-              className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[12px] font-semibold transition-colors ${
-                locked ? 'cursor-not-allowed border-dashed border-rule bg-surface-2 text-faint'
-                : on ? 'border-accent bg-accent text-white'
-                : 'border-rule bg-surface text-ink-2 hover:border-accent hover:text-accent'}`}
+              className={`inline-flex h-8 items-center gap-1 rounded-lg border px-3 text-xs font-semibold transition-colors ${
+                locked ? 'cursor-not-allowed border-dashed border-rule bg-surface-2 text-muted'
+                : on ? 'border-accent bg-accent text-accent-on'
+                : 'border-rule-2 bg-surface text-ink-2 hover:border-accent hover:text-accent'}`}
             >
-              {locked && <Lock size={11} />}{r}
-              {locked && <span className="ml-0.5 rounded bg-accent-soft px-1 text-[9.5px] font-bold uppercase tracking-wider text-accent">Pro</span>}
+              {locked && <Lock size={12} aria-hidden="true" />}{r}
+              {locked && <span className="ml-0.5 rounded bg-accent-soft px-1 text-[11px] font-bold uppercase tracking-wider text-accent">Pro</span>}
             </button>
             {locked && (
               <span role="tooltip"
-                className="pointer-events-none absolute bottom-full left-0 z-20 mb-2 w-60 rounded-md bg-ink px-3 py-2 text-left text-[11.5px] leading-snug text-white shadow-lg">
+                className="pointer-events-none absolute bottom-full left-0 z-20 mb-2 w-60 max-w-[calc(100vw-48px)] rounded-lg bg-ink px-3 py-2 text-left text-xs leading-snug text-surface shadow-[var(--shadow-pop)]">
                 {STUDENT_NEEDS_PRO}
               </span>
             )}
@@ -114,6 +114,18 @@ export function InstitutionStudentManager() {
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Suspend confirm
+  const [suspendTarget, setSuspendTarget] = useState<any | null>(null);
+
+  // Stable closers: the dialog re-runs its focus handling whenever onClose
+  // changes, and a fresh arrow on every keystroke would pull the caret out of
+  // the field being typed in.
+  const closeAdd = useCallback(() => setShowAddModal(false), []);
+  const closeImport = useCallback(() => setShowImportModal(false), []);
+  const closeEdit = useCallback(() => setEditStudent(null), []);
+  const closeDelete = useCallback(() => setDeleteTarget(null), []);
+  const closeSuspend = useCallback(() => setSuspendTarget(null), []);
+
   const fetchStudents = async () => {
     setLoading(true);
     try {
@@ -122,7 +134,7 @@ export function InstitutionStudentManager() {
       try { data = await res.json(); } catch {}
       setStudents(Array.isArray(data) ? data : []);
     } catch {
-      toast.error('Could not load student roster');
+      toast.error('Could not load the user list');
     } finally {
       setLoading(false);
     }
@@ -198,13 +210,13 @@ export function InstitutionStudentManager() {
         if (handleSeatRefusal(data)) return;
         throw new Error(data?.error || 'Failed to add user');
       }
-      toast.success('User registered successfully');
+      toast.success('User added');
       setShowAddModal(false);
       setNewStudent({ name: '', email: '', password: '', mobile: '', designation: '', branch: '', department: '' });
       fetchStudents();
       pricing?.reload();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, 'Failed to add user'));
     } finally {
       setAddLoading(false);
     }
@@ -240,7 +252,7 @@ export function InstitutionStudentManager() {
       setEditStudent(null);
       fetchStudents();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, 'Update failed'));
     } finally {
       setEditSaving(false);
     }
@@ -255,13 +267,13 @@ export function InstitutionStudentManager() {
         method: 'DELETE',
         headers: authHeader(),
       });
-      if (!res.ok) throw new Error('Could not delete student');
+      if (!res.ok) throw new Error('Could not delete user');
       toast.success(`"${deleteTarget.displayName || deleteTarget.email}" removed`);
       setDeleteTarget(null);
       fetchStudents();
       pricing?.reload();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, 'Could not delete user'));
     } finally {
       setDeleteLoading(false);
     }
@@ -281,12 +293,19 @@ export function InstitutionStudentManager() {
         if (handleSeatRefusal(data, () => handleToggleBlock(id, isBlocked))) return;
         throw new Error();
       }
-      toast.success(isBlocked ? 'Student suspended' : 'Student access restored');
+      toast.success(isBlocked ? 'User suspended' : 'User access restored');
       fetchStudents();
       pricing?.reload();
     } catch {
       toast.error('Failed to update access status');
     }
+  };
+
+  const confirmSuspend = () => {
+    if (!suspendTarget) return;
+    const id = suspendTarget.id;
+    setSuspendTarget(null);
+    handleToggleBlock(id, true);
   };
 
   const filtered = students.filter(s =>
@@ -295,44 +314,50 @@ export function InstitutionStudentManager() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
+      {/* User Addition Restriction: whether new users may be added. It is not
+          the licensed-seat count below, and it never touches existing users. */}
       {addRestricted && (
-        <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
-          <p className="font-bold">⚠ Member addition is currently restricted</p>
-          <p className="mt-1 text-sm">
-            Your institution cannot add new users at this time. Existing users and library access are unaffected.
-            Please contact STM Digital Library support for assistance.
-          </p>
-          <button onClick={contactSupport} className="mt-3 rounded-md bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700">
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-caution/40 bg-caution-soft p-4 sm:flex-row sm:items-start">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-caution/15 text-caution" aria-hidden="true">
+            <AlertTriangle size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-ink">User Addition Restricted</p>
+              <StatusBadge status="user-addition-restricted" />
+            </div>
+            <p className="mt-1 text-sm text-ink-2">
+              Your institution cannot add new users at this time. Existing users and library access remain unaffected.
+              Please contact STM Digital Library support for assistance.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={contactSupport} className="shrink-0 self-start">
             Contact Us
-          </button>
+          </Button>
         </div>
       )}
-      {/* Subscription access: who holds the institution's licensed seats */}
-      <details className="rounded-md border border-rule bg-surface p-4">
-        <summary className="cursor-pointer text-sm font-bold text-ink">Subscription Access</summary>
-        <div className="mt-4"><LicensedAccessPanel base="/api/institution/access" institutionName={institutionName} /></div>
-      </details>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-ink">User Directory</h1>
+            <h1 className="type-page-title text-ink">User Directory</h1>
             {plan && (plan.hasSubscription || plan.unlimitedSeats) && (
               <button
                 type="button"
                 onClick={() => (plan.unlimitedSeats ? undefined : pricing?.openUserLimit())}
                 title={plan.unlimitedSeats ? 'Your current plan has no cap on users' : 'Every active member, you included, counts towards the limit. Click for more.'}
-                className={`tnum inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11px] font-semibold ${
+                className={`badge tnum ${
                   !plan.unlimitedSeats && (plan.seats.available ?? 0) < 1
-                    ? 'border-caution/50 bg-caution-soft text-caution'
-                    : 'border-rule bg-accent-soft text-accent'} ${plan.unlimitedSeats ? 'cursor-default' : 'hover:border-accent'}`}
+                    ? 'badge-caution'
+                    : 'badge-accent'} ${plan.unlimitedSeats ? 'cursor-default' : 'cursor-pointer hover:border-accent'}`}
               >
                 {plan.unlimitedSeats ? 'Users: Unlimited' : `Users: ${seatsLabel(plan)}`}
               </button>
             )}
           </div>
-          <p className="text-sm text-muted mt-0.5">
+          <p className="mt-1 text-sm text-muted">
             {!plan ? 'Everyone you have added to this institution.'
               : !plan.hasSubscription ? 'Subscribe to at least one Premium department before adding users.'
               : plan.unlimitedSeats ? 'Everyone you have added to this institution.'
@@ -340,459 +365,413 @@ export function InstitutionStudentManager() {
               : `Everyone you have added to this institution — room for ${Number(plan.seats.available).toLocaleString('en-IN')} more.`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative w-60">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={15} />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-60">
+            <label htmlFor="user-search" className="sr-only">Search users by name or email</label>
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
             <input
-              type="text"
+              id="user-search"
+              type="search"
               placeholder="Search name or email…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full border border-rule rounded-md py-2.5 pl-10 pr-4 text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none bg-surface"
+              className="input pl-9"
             />
           </div>
-          <button onClick={fetchStudents} className="p-2.5 bg-surface border border-rule rounded-md hover:bg-surface-2 text-muted">
-            <RefreshCw size={15} />
-          </button>
-          <button
+          <Button variant="outline" className="btn-icon" onClick={fetchStudents} aria-label="Refresh user list" title="Refresh">
+            <RefreshCw size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            variant="outline"
             onClick={openImport}
             disabled={addRestricted}
             title={addRestricted ? RESTRICTED_TEXT : undefined}
-            className="disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 bg-surface border border-rule text-ink-2 px-4 py-2.5 rounded-md text-sm font-bold hover:bg-surface-2 transition-colors"
           >
-            Import Users
-          </button>
-          <button
+            <Upload size={16} aria-hidden="true" /> Import Users
+          </Button>
+          <Button
             onClick={openAdd}
             disabled={addRestricted}
             title={addRestricted ? RESTRICTED_TEXT : undefined}
-            className="disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-md text-sm font-bold hover:bg-accent-hover shadow-md"
           >
-            <Plus size={16} /> Add User
-          </button>
+            <Plus size={16} aria-hidden="true" /> Add User
+          </Button>
         </div>
       </div>
 
+      {/* Subscription access: who holds the institution's licensed seats. A
+          separate thing from whether new users may be added (above). */}
+      <details className="card group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-ink">Manage Subscription Access</span>
+            <span className="mt-0.5 block text-xs text-muted">Who holds a licensed seat and can read subscribed content</span>
+          </span>
+          <ChevronDown size={18} className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="border-t border-rule p-4 sm:p-5"><LicensedAccessPanel base="/api/institution/access" institutionName={institutionName} /></div>
+      </details>
+
       {/* Table */}
-      <div className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-surface-2 sticky top-0 z-10">
+      <div className="card overflow-hidden">
+        <div className="table-wrap">
+          <table className="data-table min-w-[560px]">
+            <thead>
               <tr>
-                <th className="px-6 py-4 border-b border-rule text-xs font-bold text-muted uppercase">User</th>
-                <th className="px-6 py-4 border-b border-rule text-xs font-bold text-muted uppercase text-center">Designation</th>
-                <th className="px-6 py-4 border-b border-rule text-xs font-bold text-muted uppercase text-center">Status</th>
-                <th className="px-6 py-4 border-b border-rule text-xs font-bold text-muted uppercase text-right">Actions</th>
+                <th scope="col">User</th>
+                <th scope="col">Designation</th>
+                <th scope="col">Status</th>
+                <th scope="col" className="text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-rule">
+            <tbody>
               {loading ? (
-                <tr><td colSpan={3} className="px-6 py-14 text-center text-muted">
-                  <Loader2 className="animate-spin mx-auto mb-2 text-faint" size={24} />
-                  Loading students…
+                <tr><td colSpan={4} className="py-6">
+                  <SkeletonRows rows={4} />
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={3} className="px-6 py-14 text-center text-faint">No users found.</td></tr>
-              ) : filtered.map(student => (
+                <tr><td colSpan={4} className="p-0">
+                  <EmptyState icon={Users} title="No users found"
+                    description={search ? 'No one matches this search. Try another name or email.' : 'Users you add appear here.'}
+                    action={!search && !addRestricted ? <Button size="sm" onClick={openAdd}><Plus size={16} aria-hidden="true" /> Add User</Button> : undefined} />
+                </td></tr>
+              ) : filtered.map(student => {
+                const name = student.displayName || student.email || 'this user';
+                const open = expandedRow === student.id;
+                return (
                 <React.Fragment key={student.id}>
-                  <tr className="hover:bg-surface-2/70 transition-colors">
-                    <td className="px-6 py-4">
+                  <tr>
+                    <td>
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-accent text-white flex items-center justify-center font-bold shrink-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent" aria-hidden="true">
                           {(student.displayName || student.email || '?').charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <div className="font-bold text-ink text-sm">{student.displayName || 'Unnamed'}</div>
-                          <div className="text-xs text-muted">{student.email}</div>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-ink">{student.displayName || 'Unnamed'}</div>
+                          <div className="truncate text-xs text-muted">{student.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-surface-2 text-ink-2">
-                        {student.designation || 'Student'}
-                      </span>
+                    <td>
+                      <span className="badge badge-neutral">{student.designation || 'Student'}</span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                        student.isBlocked ? 'bg-alarm-soft text-alarm' : 'bg-accent-soft text-accent'
-                      }`}>
-                        {student.isBlocked ? <ShieldAlert size={11} /> : <ShieldCheck size={11} />}
-                        {student.isBlocked ? 'Suspended' : 'Active'}
-                      </span>
+                    <td>
+                      <StatusBadge status={student.isBlocked ? 'suspended' : 'active'} />
                     </td>
-                    <td className="px-6 py-4">
+                    <td>
                       <div className="flex items-center justify-end gap-1">
-                        {/* Edit */}
-                        <button onClick={() => openEdit(student)}
-                          className="p-2 text-muted hover:text-accent hover:bg-accent-soft rounded-lg transition-colors" title="Edit">
-                          <Pencil size={15} />
+                        <button type="button" onClick={() => openEdit(student)}
+                          className="btn btn-ghost btn-sm btn-icon hover:text-accent" title="Edit" aria-label={`Edit ${name}`}>
+                          <Pencil size={16} aria-hidden="true" />
                         </button>
-                        {/* Block/Unblock */}
-                        <button onClick={() => handleToggleBlock(student.id, !student.isBlocked)}
-                          className={`p-2 rounded-lg transition-colors ${student.isBlocked ? 'text-accent hover:bg-accent-soft' : 'text-caution hover:bg-caution-soft'}`}
-                          title={student.isBlocked ? 'Restore' : 'Suspend'}>
-                          {student.isBlocked ? <ShieldCheck size={15} /> : <ShieldAlert size={15} />}
+                        {/* Suspending asks first; restoring does not need to. */}
+                        <button type="button"
+                          onClick={() => (student.isBlocked ? handleToggleBlock(student.id, false) : setSuspendTarget(student))}
+                          className={`btn btn-ghost btn-sm btn-icon ${student.isBlocked ? 'text-accent hover:bg-accent-soft' : 'text-caution hover:bg-caution-soft'}`}
+                          title={student.isBlocked ? 'Restore' : 'Suspend'}
+                          aria-label={student.isBlocked ? `Restore access for ${name}` : `Suspend ${name}`}>
+                          {student.isBlocked ? <ShieldCheck size={16} aria-hidden="true" /> : <ShieldAlert size={16} aria-hidden="true" />}
                         </button>
-                        {/* Delete */}
-                        <button onClick={() => setDeleteTarget(student)}
-                          className="p-2 text-muted hover:text-alarm hover:bg-alarm-soft rounded-lg transition-colors" title="Delete">
-                          <Trash2 size={15} />
+                        <button type="button" onClick={() => setDeleteTarget(student)}
+                          className="btn btn-ghost btn-sm btn-icon hover:bg-alarm-soft hover:text-alarm" title="Delete" aria-label={`Delete ${name}`}>
+                          <Trash2 size={16} aria-hidden="true" />
                         </button>
-                        {/* Expand */}
-                        <button onClick={() => setExpandedRow(expandedRow === student.id ? null : student.id)}
-                          className="p-2 text-faint hover:text-ink-2 hover:bg-surface-2 rounded-lg transition-colors">
-                          <ChevronDown size={16} className={`transition-transform ${expandedRow === student.id ? 'rotate-180' : ''}`} />
+                        <button type="button" onClick={() => setExpandedRow(open ? null : student.id)}
+                          className="btn btn-ghost btn-sm btn-icon" aria-expanded={open}
+                          aria-label={open ? `Hide details for ${name}` : `Show details for ${name}`}>
+                          <ChevronDown size={16} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
                         </button>
                       </div>
                     </td>
                   </tr>
 
                   {/* Expanded */}
-                  {expandedRow === student.id && (
-                    <tr className="bg-surface-2/50">
-                      <td colSpan={3} className="px-6 py-5 border-b border-rule">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {open && (
+                    <tr className="bg-surface-2/50 hover:bg-surface-2/50">
+                      <td colSpan={4} className="py-5">
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                           <div>
-                            <h4 className="text-xs font-bold text-ink-2 uppercase tracking-widest mb-3 flex items-center gap-2">
-                              <BookOpen size={13} /> Access Grants
+                            <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                              <BookOpen size={14} aria-hidden="true" /> Access Grants
                             </h4>
                             {student.subscriptions?.length > 0 ? (
                               <ul className="space-y-2">
                                 {student.subscriptions.map((sub: any) => (
-                                  <li key={sub.id} className="bg-surface text-sm flex justify-between p-3 rounded-md border border-rule">
-                                    <div>
-                                      <div className="font-bold text-ink">{sub.domainName || sub.planName}</div>
+                                  <li key={sub.id} className="flex items-center justify-between gap-3 rounded-lg border border-rule bg-surface p-3 text-sm">
+                                    <div className="min-w-0">
+                                      <div className="font-semibold text-ink">{sub.domainName || sub.planName}</div>
                                       <div className="text-xs text-muted">Expires: {new Date(sub.endDate).toLocaleDateString('en-IN')}</div>
                                     </div>
-                                    <span className={`text-[10px] font-bold px-2 rounded-full self-center ${sub.status === 'Active' ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-muted'}`}>{sub.status}</span>
+                                    <StatusBadge status={sub.status} />
                                   </li>
                                 ))}
                               </ul>
-                            ) : <p className="text-sm text-faint italic">No access grants.</p>}
+                            ) : <p className="text-sm text-muted">No access grants.</p>}
                           </div>
                           <div>
-                            <h4 className="text-xs font-bold text-ink-2 uppercase tracking-widest mb-3 flex items-center gap-2">
-                              <Activity size={13} /> Recent Activity
+                            <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                              <Activity size={14} aria-hidden="true" /> Recent Activity
                             </h4>
                             {student.activities?.length > 0 ? (
                               <ul className="space-y-2">
                                 {student.activities.slice(0, 3).map((act: any) => (
-                                  <li key={act.id} className="bg-surface text-sm flex justify-between p-3 rounded-md border border-rule">
-                                    <div>
-                                      <div className="font-bold text-ink line-clamp-1">{act.content?.title || 'Resource'}</div>
-                                      <div className="text-xs text-muted flex items-center gap-1"><Clock size={10} />{Math.round((act.timeSpent || 0) / 60)} min</div>
+                                  <li key={act.id} className="flex items-center justify-between gap-3 rounded-lg border border-rule bg-surface p-3 text-sm">
+                                    <div className="min-w-0">
+                                      <div className="line-clamp-1 font-semibold text-ink">{act.content?.title || 'Resource'}</div>
+                                      <div className="flex items-center gap-1 text-xs text-muted"><Clock size={12} aria-hidden="true" />{Math.round((act.timeSpent || 0) / 60)} min</div>
                                     </div>
-                                    <div className="text-[10px] text-faint whitespace-nowrap self-center">{new Date(act.accessedAt).toLocaleDateString('en-IN')}</div>
+                                    <div className="shrink-0 whitespace-nowrap text-xs text-muted">{new Date(act.accessedAt).toLocaleDateString('en-IN')}</div>
                                   </li>
                                 ))}
                               </ul>
-                            ) : <p className="text-sm text-faint italic">No activity yet.</p>}
+                            ) : <p className="text-sm text-muted">No activity yet.</p>}
                           </div>
                         </div>
                       </td>
                     </tr>
                   )}
                 </React.Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-3 border-t border-rule bg-surface-2 text-xs text-faint">
+        <div className="border-t border-rule bg-surface-2 px-5 py-3 text-xs text-muted">
           {filtered.length} user{filtered.length !== 1 ? 's' : ''}
         </div>
       </div>
 
       {/* ── ADD MODAL ── */}
-      <AnimatePresence>
-        {showAddModal && (
-          <div className="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-surface rounded-md w-full max-w-md shadow-2xl overflow-hidden"
-            >
-              <div className="bg-accent px-6 py-4 flex items-center justify-between">
-                <h2 className="text-white font-bold text-lg">Register User</h2>
-                <button onClick={() => setShowAddModal(false)} className="text-faint hover:text-white"><X size={20} /></button>
-              </div>
-              <form onSubmit={handleAddStudent} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Full Name *</label>
-                    <input required type="text" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })}
-                      placeholder="User Name"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Email *</label>
-                    <input required type="email" value={newStudent.email} onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
-                      placeholder="user@university.edu"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Mobile Number</label>
-                    <input type="text" value={newStudent.mobile} onChange={e => setNewStudent({ ...newStudent, mobile: e.target.value })}
-                      placeholder="+91 9876543210"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Designation *</label>
-                    <RolePicker value={newStudent.designation} onFree={onFree}
-                      onChange={role => setNewStudent({ ...newStudent, designation: role })} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Branch</label>
-                    <input type="text" value={newStudent.branch} onChange={e => setNewStudent({ ...newStudent, branch: e.target.value })}
-                      placeholder="e.g. Computer Science"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Department</label>
-                    <input type="text" value={newStudent.department} onChange={e => setNewStudent({ ...newStudent, department: e.target.value })}
-                      placeholder="e.g. Engineering"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Temporary Password *</label>
-                  <div className="relative">
-                    <input required type={showPassword ? "text" : "password"} value={newStudent.password} onChange={e => setNewStudent({ ...newStudent, password: e.target.value })}
-                      placeholder="••••••••"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 pr-10 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-faint hover:text-ink-2 focus:outline-none"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3 pt-4 border-t border-rule">
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-md font-bold hover:bg-rule">Cancel</button>
-                  <button type="submit" disabled={addLoading}
-                    className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-md font-bold hover:bg-accent-hover disabled:opacity-50 shadow-md ">
-                    {addLoading ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-                    {addLoading ? 'Registering…' : 'Register User'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
+      <Dialog
+        open={showAddModal}
+        onClose={closeAdd}
+        title="Add User"
+        description="Register a member of your institution. Fields marked * are required."
+        footer={<>
+          <Button variant="outline" onClick={closeAdd}>Cancel</Button>
+          <Button type="submit" form="add-user-form" loading={addLoading}>
+            {!addLoading && <Plus size={16} aria-hidden="true" />}
+            {addLoading ? 'Registering…' : 'Register User'}
+          </Button>
+        </>}
+      >
+        <form id="add-user-form" onSubmit={handleAddStudent} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Full Name" required>
+              <input type="text" className="input" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })}
+                placeholder="User Name" autoComplete="off" />
+            </Field>
+            <Field label="Email" required>
+              <input type="email" className="input" value={newStudent.email} onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
+                placeholder="user@university.edu" autoComplete="off" />
+            </Field>
           </div>
-        )}
-      </AnimatePresence>
+
+          <Field label="Mobile Number">
+            <input type="tel" className="input" value={newStudent.mobile} onChange={e => setNewStudent({ ...newStudent, mobile: e.target.value })}
+              placeholder="+91 9876543210" />
+          </Field>
+
+          <div role="group" aria-labelledby="add-designation-label" className="field">
+            <p id="add-designation-label" className="field-label">Designation<span className="req" aria-hidden="true">*</span></p>
+            <RolePicker value={newStudent.designation} onFree={onFree}
+              onChange={role => setNewStudent({ ...newStudent, designation: role })} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Branch">
+              <input type="text" className="input" value={newStudent.branch} onChange={e => setNewStudent({ ...newStudent, branch: e.target.value })}
+                placeholder="e.g. Computer Science" />
+            </Field>
+            <Field label="Department">
+              <input type="text" className="input" value={newStudent.department} onChange={e => setNewStudent({ ...newStudent, department: e.target.value })}
+                placeholder="e.g. Engineering" />
+            </Field>
+          </div>
+
+          <div className="field">
+            <label htmlFor="add-user-password" className="field-label">Temporary Password<span className="req" aria-hidden="true">*</span></label>
+            <div className="relative">
+              <input id="add-user-password" required type={showPassword ? "text" : "password"} value={newStudent.password} onChange={e => setNewStudent({ ...newStudent, password: e.target.value })}
+                placeholder="••••••••" autoComplete="new-password"
+                className="input pr-11" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                className="btn btn-ghost btn-sm btn-icon absolute right-1 top-1/2 -translate-y-1/2"
+              >
+                {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+              </button>
+            </div>
+          </div>
+        </form>
+      </Dialog>
 
       {/* ── IMPORT MODAL ── */}
-      <AnimatePresence>
-        {showImportModal && (
-          <div className="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-surface rounded-md w-full max-w-md shadow-2xl overflow-hidden"
-            >
-              <div className="bg-accent px-6 py-4 flex items-center justify-between">
-                <h2 className="text-white font-bold text-lg">Import Users</h2>
-                <button onClick={() => setShowImportModal(false)} className="text-faint hover:text-white"><X size={20} /></button>
-              </div>
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-ink-2">Upload a CSV file containing multiple users to register them all at once. The file must include the headers: <strong>name, email, password, designation</strong>. Optional headers: <strong>mobile, branch, department</strong>.</p>
-                <p className="mt-2 text-xs text-muted">Designation must be one of: {INSTITUTION_MEMBER_ROLES.join(', ')}.{onFree ? ' Student rows are refused on this plan — upgrade to Pro to add students.' : ''}</p>
-                
-                <div className="flex justify-center my-4">
-                  <a href="data:text/csv;charset=utf-8,name,email,password,mobile,designation,branch,department%0AJohn%20Doe,john@example.com,pass123,9876543210,Professor,CSE,Engineering" 
-                     download="sample_users.csv"
-                     className="text-accent text-sm font-bold hover:underline">
-                    Download Sample CSV
-                  </a>
-                </div>
+      <Dialog
+        open={showImportModal}
+        onClose={closeImport}
+        title="Import Users"
+        description="Upload a CSV file to register several users at once."
+        footer={<Button variant="outline" onClick={closeImport}>Close</Button>}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-ink-2">The file must include the headers: <strong className="text-ink">name, email, password, designation</strong>. Optional headers: <strong className="text-ink">mobile, branch, department</strong>.</p>
+          <p className="text-xs text-muted">Designation must be one of: {INSTITUTION_MEMBER_ROLES.join(', ')}.{onFree ? ' Student rows are refused on this plan — upgrade to Pro to add students.' : ''}</p>
 
-                <input type="file" accept=".csv" className="w-full text-sm text-muted file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-accent-soft file:text-accent hover:file:bg-accent-soft" 
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setImporting(true);
-                    
-                    try {
-                      // Dynamically import papaparse for client-side parsing
-                      const Papa = (await import('papaparse')).default;
-                      
-                      Papa.parse(file, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: async (results) => {
-                          try {
-                            const res = await fetch('/api/institution/students/bulk', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json', ...authHeader() },
-                              body: JSON.stringify({ users: results.data })
-                            });
-                            const data = await res.json();
-                            if (!res.ok) {
-                              if (handleSeatRefusal(data)) { setShowImportModal(false); return; }
-                              throw new Error(data.error || 'Failed to import users');
-                            }
+          <a href="data:text/csv;charset=utf-8,name,email,password,mobile,designation,branch,department%0AJohn%20Doe,john@example.com,pass123,9876543210,Professor,CSE,Engineering"
+             download="sample_users.csv"
+             className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
+            <Download size={16} aria-hidden="true" /> Download Sample CSV
+          </a>
 
-                            toast.success(`Import complete! Successfully added ${data.successCount} users. ${data.errorCount > 0 ? `${data.errorCount} failed.` : ''}`);
-                            setShowImportModal(false);
-                            fetchStudents();
-                            pricing?.reload();
-                            // Rows refused for want of room: say how many, and say who to contact.
-                            const seatless = (data.errors || []).filter((x: any) => /no user seats left/i.test(x?.error || '')).length;
-                            if (seatless) {
-                              toast.error(`${seatless} user${seatless === 1 ? ' was' : 's were'} not added: your institution has reached its user limit. Contact us for more, then import them again.`, { duration: 7000 });
-                              pricing?.openUserLimit();
-                            }
-                          } catch (err: any) {
-                            toast.error(err.message);
-                          } finally {
-                            setImporting(false);
-                          }
-                        },
-                        error: () => {
-                          toast.error('Failed to parse CSV file');
-                          setImporting(false);
+          <div className="field">
+            <label htmlFor="import-users-file" className="field-label">CSV file</label>
+            <input id="import-users-file" type="file" accept=".csv" disabled={importing}
+              className="w-full text-sm text-muted file:mr-4 file:h-9 file:cursor-pointer file:rounded-lg file:border-0 file:bg-accent-soft file:px-4 file:text-sm file:font-semibold file:text-accent disabled:opacity-60"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setImporting(true);
+
+                try {
+                  // Dynamically import papaparse for client-side parsing
+                  const Papa = (await import('papaparse')).default;
+
+                  Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: async (results) => {
+                      try {
+                        const res = await fetch('/api/institution/students/bulk', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', ...authHeader() },
+                          body: JSON.stringify({ users: results.data })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                          if (handleSeatRefusal(data)) { setShowImportModal(false); return; }
+                          throw new Error(data.error || 'Failed to import users');
                         }
-                      });
-                    } catch (err) {
-                      setImporting(false);
-                      toast.error('Could not process the file');
-                    }
-                  }}
-                />
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <button onClick={() => setShowImportModal(false)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-md font-bold hover:bg-rule">Close</button>
-                </div>
-                {importing && <div className="text-center text-accent text-sm font-bold flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> Processing File...</div>}
-              </div>
-            </motion.div>
+                        toast.success(`Import complete. Added ${data.successCount} users.${data.errorCount > 0 ? ` ${data.errorCount} failed.` : ''}`);
+                        setShowImportModal(false);
+                        fetchStudents();
+                        pricing?.reload();
+                        // Rows refused for want of room: say how many, and say who to contact.
+                        const seatless = (data.errors || []).filter((x: any) => /no user seats left/i.test(x?.error || '')).length;
+                        if (seatless) {
+                          toast.error(`${seatless} user${seatless === 1 ? ' was' : 's were'} not added: your institution has reached its user limit. Contact us for more, then import them again.`, { duration: 7000 });
+                          pricing?.openUserLimit();
+                        }
+                      } catch (err: any) {
+                        toast.error(friendlyError(err, 'Failed to import users'));
+                      } finally {
+                        setImporting(false);
+                      }
+                    },
+                    error: () => {
+                      toast.error('Failed to parse CSV file');
+                      setImporting(false);
+                    }
+                  });
+                } catch (err) {
+                  setImporting(false);
+                  toast.error('Could not process the file');
+                }
+              }}
+            />
           </div>
-        )}
-      </AnimatePresence>
+
+          {importing && <Spinner label="Processing file" className="text-accent" />}
+        </div>
+      </Dialog>
 
       {/* ── EDIT MODAL ── */}
-      <AnimatePresence>
-        {editStudent && (
-          <div className="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-surface rounded-md w-full max-w-md shadow-2xl overflow-hidden"
-            >
-              <div className="bg-accent px-6 py-4 flex items-center justify-between">
-                <h2 className="text-white font-bold text-lg">Edit Student</h2>
-                <button onClick={() => setEditStudent(null)} className="text-faint hover:text-white"><X size={20} /></button>
-              </div>
-              <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Full Name</label>
-                    <input value={editForm.displayName} onChange={e => setEditForm(f => ({ ...f, displayName: e.target.value }))}
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Email</label>
-                    <input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Mobile Number</label>
-                    <input type="text" value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact: e.target.value }))}
-                      placeholder="+91 9876543210"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Designation</label>
-                    <select value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
-                      title={onFree ? STUDENT_NEEDS_PRO : undefined}
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none">
-                      <option value="">Select Role...</option>
-                      {editStudent?.designation && !(INSTITUTION_MEMBER_ROLES as readonly string[]).includes(editStudent.designation) && (
-                        <option value={editStudent.designation}>{editStudent.designation}</option>
-                      )}
-                      {INSTITUTION_MEMBER_ROLES.map(r => {
-                        const locked = onFree && PRO_ONLY_MEMBER_ROLES.includes(r) && editStudent?.designation !== r;
-                        return <option key={r} value={r} disabled={locked}>{locked ? `${r} — Pro only` : r}</option>;
-                      })}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Branch</label>
-                    <input type="text" value={editForm.branch} onChange={e => setEditForm(f => ({ ...f, branch: e.target.value }))}
-                      placeholder="e.g. Computer Science"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Department</label>
-                    <input type="text" value={editForm.department} onChange={e => setEditForm(f => ({ ...f, department: e.target.value }))}
-                      placeholder="e.g. Engineering"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Reset Password</label>
-                  <input type="text" value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
-                    placeholder="Leave blank to keep current password"
-                    className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none" />
-                  <p className="text-[10px] text-faint mt-1">Note: Passwords are encrypted for security so the old one cannot be displayed.</p>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-rule">
-                  <button onClick={() => setEditStudent(null)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-md font-bold hover:bg-rule">Cancel</button>
-                  <button onClick={handleSaveEdit} disabled={editSaving}
-                    className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-md font-bold hover:bg-accent-hover disabled:opacity-50">
-                    {editSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                    {editSaving ? 'Saving…' : 'Save Changes'}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+      <Dialog
+        open={!!editStudent}
+        onClose={closeEdit}
+        title="Edit User"
+        description={editStudent ? `Update the details for ${editStudent.displayName || editStudent.email}.` : undefined}
+        footer={<>
+          <Button variant="outline" onClick={closeEdit}>Cancel</Button>
+          <Button onClick={handleSaveEdit} loading={editSaving}>
+            {!editSaving && <Save size={16} aria-hidden="true" />}
+            {editSaving ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </>}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Full Name">
+              <input className="input" value={editForm.displayName} onChange={e => setEditForm(f => ({ ...f, displayName: e.target.value }))} />
+            </Field>
+            <Field label="Email">
+              <input type="email" className="input" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} />
+            </Field>
           </div>
-        )}
-      </AnimatePresence>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Mobile Number">
+              <input type="tel" className="input" value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact: e.target.value }))}
+                placeholder="+91 9876543210" />
+            </Field>
+            <Field label="Designation">
+              <select className="input" value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
+                title={onFree ? STUDENT_NEEDS_PRO : undefined}>
+                <option value="">Select Role...</option>
+                {editStudent?.designation && !(INSTITUTION_MEMBER_ROLES as readonly string[]).includes(editStudent.designation) && (
+                  <option value={editStudent.designation}>{editStudent.designation}</option>
+                )}
+                {INSTITUTION_MEMBER_ROLES.map(r => {
+                  const locked = onFree && PRO_ONLY_MEMBER_ROLES.includes(r) && editStudent?.designation !== r;
+                  return <option key={r} value={r} disabled={locked}>{locked ? `${r} — Pro only` : r}</option>;
+                })}
+              </select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Branch">
+              <input type="text" className="input" value={editForm.branch} onChange={e => setEditForm(f => ({ ...f, branch: e.target.value }))}
+                placeholder="e.g. Computer Science" />
+            </Field>
+            <Field label="Department">
+              <input type="text" className="input" value={editForm.department} onChange={e => setEditForm(f => ({ ...f, department: e.target.value }))}
+                placeholder="e.g. Engineering" />
+            </Field>
+          </div>
+
+          <Field label="Reset Password" help="Passwords are encrypted for security, so the old one cannot be displayed. Leave blank to keep it.">
+            <input type="text" className="input" value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
+              placeholder="Leave blank to keep current password" autoComplete="off" />
+          </Field>
+        </div>
+      </Dialog>
+
+      {/* ── SUSPEND CONFIRM ── */}
+      <ConfirmDialog
+        open={!!suspendTarget}
+        onClose={closeSuspend}
+        onConfirm={confirmSuspend}
+        title="Suspend this user?"
+        description={suspendTarget ? `${suspendTarget.displayName || suspendTarget.email} will lose access until you restore it.` : undefined}
+        confirmLabel="Suspend User"
+      />
 
       {/* ── DELETE CONFIRM ── */}
-      <AnimatePresence>
-        {deleteTarget && (
-          <div className="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-surface rounded-md w-full max-w-sm shadow-2xl p-6 space-y-4"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-full bg-alarm-soft flex items-center justify-center"><Trash2 className="text-alarm" size={20} /></div>
-                <div>
-                  <h3 className="font-bold text-ink">Remove Student?</h3>
-                  <p className="text-sm text-muted">This will permanently delete the student's account.</p>
-                </div>
-              </div>
-              <div className="bg-alarm-soft border border-alarm rounded-md p-3 text-sm font-bold text-alarm">
-                {deleteTarget.displayName || deleteTarget.email}
-              </div>
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-md font-bold hover:bg-rule">Cancel</button>
-                <button onClick={handleDelete} disabled={deleteLoading}
-                  className="flex items-center gap-2 px-5 py-2 bg-alarm text-white rounded-md font-bold hover:opacity-90 disabled:opacity-50">
-                  {deleteLoading ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                  {deleteLoading ? 'Removing…' : 'Remove Student'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={closeDelete}
+        onConfirm={handleDelete}
+        title="Remove this user?"
+        description={deleteTarget ? `This permanently deletes the account of ${deleteTarget.displayName || deleteTarget.email}. This cannot be undone.` : undefined}
+        confirmLabel={deleteLoading ? 'Removing…' : 'Remove User'}
+        danger
+        loading={deleteLoading}
+      />
     </div>
   );
 }

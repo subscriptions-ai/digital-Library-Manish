@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { DOMAINS } from '../../constants';
+import { Button, buttonClass, friendlyError } from '../ui';
 
 /**
  * Writing a post.
@@ -29,6 +30,20 @@ import { DOMAINS } from '../../constants';
 const CATEGORIES = ['Library updates', 'Research', 'How to', 'For librarians', 'For students', 'Announcements'];
 const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const jsonHeaders = () => ({ ...authHeader(), 'Content-Type': 'application/json' });
+
+/** A toolbar button. `on` is passed only for toggles (bold, lists…), which then
+    announce whether they are pressed; one-shot actions (undo, line) leave it out. */
+function ToolButton({ on, onClick, title, children }: { on?: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button type="button" title={title} aria-label={title} onClick={onClick}
+      aria-pressed={on === undefined ? undefined : !!on}
+      className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150 ${on ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-surface-2 hover:text-ink'}`}>
+      {children}
+    </button>
+  );
+}
+
+const ToolDivider = () => <span className="mx-1 h-5 w-px bg-rule" aria-hidden="true" />;
 
 export function PostEditor() {
   const { id } = useParams();
@@ -105,7 +120,7 @@ export function PostEditor() {
       if (!quiet) toast.success('Saved');
       return d;
     } catch (e: any) {
-      if (!quiet) toast.error(e.message || 'Could not save');
+      if (!quiet) toast.error(friendlyError(e, 'Could not save'));
       return null;
     } finally {
       setSaving(false);
@@ -127,7 +142,7 @@ export function PostEditor() {
       method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ publish: on }),
     });
     const d = await r.json();
-    if (!r.ok) { toast.error(d.error || 'Could not do that'); return; }
+    if (!r.ok) { toast.error(friendlyError(d, 'Could not do that')); return; }
     setPost(d);
     toast.success(on ? 'Published — it is on the site now' : 'Taken down — it is a draft again');
   };
@@ -161,7 +176,7 @@ export function PostEditor() {
       else editor?.chain().focus().setImage({ src: d.url, alt: file.name }).run();
       toast.success('Picture added');
     } catch (e: any) {
-      toast.error(e.message || 'Could not upload that');
+      toast.error(friendlyError(e, 'Could not upload that'));
     } finally {
       setUploading(false);
       setCoverTarget(false);
@@ -170,53 +185,46 @@ export function PostEditor() {
   };
 
   const published = post?.status === 'Published';
-  const Btn = ({ on, onClick, title: t, children }: { on?: boolean; onClick: () => void; title: string; children: React.ReactNode }) => (
-    <button type="button" title={t} onClick={onClick}
-      className={`rounded-lg p-2 transition-colors ${on ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-surface-2'}`}>
-      {children}
-    </button>
-  );
+  // Toggles pass `on` as a boolean even before the editor exists, so they
+  // always announce a pressed state.
+  const is = (name: string, attrs?: Record<string, any>) => !!editor?.isActive(name, attrs);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-      <input ref={fileInput} type="file" accept="image/*" className="hidden"
+      <input ref={fileInput} type="file" accept="image/*" className="hidden" aria-hidden="true" tabIndex={-1}
         onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); }} />
 
       {/* What it is, and what to do with it */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button onClick={() => navigate('/studio')} className="flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink">
-          <ArrowLeft size={15} /> All posts
+        <button onClick={() => navigate('/studio')} className={buttonClass('ghost', 'sm', '-ml-3')}>
+          <ArrowLeft size={16} aria-hidden="true" /> All posts
         </button>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11.5px] text-faint">
+          <span className="text-xs text-muted" aria-live="polite">
             {saving ? 'Saving…' : dirty ? 'Unsaved changes' : savedAt ? `Saved ${new Date(savedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : ''}
           </span>
           {post?.slug && (
-            <a href={`/blog/${post.slug}`} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 rounded-xl border border-rule px-3 py-2 text-[13px] font-semibold text-ink-2 hover:bg-surface-2">
-              <Eye size={14} /> {published ? 'View' : 'Preview'}
+            <a href={`/blog/${post.slug}`} target="_blank" rel="noreferrer" className={buttonClass('outline', 'sm')}>
+              <Eye size={16} aria-hidden="true" /> {published ? 'View' : 'Preview'}
             </a>
           )}
-          <button onClick={() => save()} disabled={saving}
-            className="rounded-xl border border-rule px-4 py-2 text-[13px] font-semibold text-ink hover:bg-surface-2 disabled:opacity-50">
+          <Button variant="outline" size="sm" onClick={() => save()} disabled={saving}>
             Save draft
-          </button>
-          <button onClick={() => publish(!published)}
-            className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold text-white ${
-              published ? 'bg-ink hover:opacity-90' : 'bg-accent hover:bg-accent-hover'}`}>
-            <Send size={14} /> {published ? 'Take down' : 'Publish'}
-          </button>
+          </Button>
+          <Button variant={published ? 'secondary' : 'primary'} size="sm" onClick={() => publish(!published)}>
+            <Send size={16} aria-hidden="true" /> {published ? 'Take down' : 'Publish'}
+          </Button>
           {post?.id && (
-            <button onClick={remove} title="Delete" className="rounded-xl border border-rule p-2 text-alarm hover:bg-alarm-soft">
-              <Trash2 size={15} />
+            <button onClick={remove} title="Delete" aria-label="Delete post" className={buttonClass('outline', 'sm', 'btn-icon text-alarm')}>
+              <Trash2 size={16} aria-hidden="true" />
             </button>
           )}
         </div>
       </div>
 
       {published && (
-        <p className="mt-3 rounded-xl bg-accent-soft px-4 py-2.5 text-[12.5px] text-accent">
-          Live at <b>/blog/{post.slug}</b> — published {post.publishedAt ? new Date(post.publishedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+        <p className="mt-3 rounded-lg bg-accent-soft px-4 py-3 text-sm text-ink-2">
+          Live at <b className="text-accent break-all">/blog/{post.slug}</b> — published {post.publishedAt ? new Date(post.publishedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
           {post.publishedBy ? ` by ${post.publishedBy}` : ''}. Saving now changes what readers see.
         </p>
       )}
@@ -225,90 +233,89 @@ export function PostEditor() {
         {/* The writing */}
         <div className="min-w-0">
           <input value={title} onChange={e => { setTitle(e.target.value); setDirty(true); }}
-            placeholder="The title"
-            className="w-full rounded-t-2xl border border-rule bg-surface px-5 py-4 font-serif text-[26px] text-ink outline-none placeholder:text-faint focus:border-accent" />
+            placeholder="The title" aria-label="Post title"
+            className="w-full rounded-t-xl border border-rule bg-surface px-4 py-4 font-serif text-2xl text-ink outline-none transition-colors placeholder:text-faint focus:border-accent sm:px-5 sm:text-[26px]" />
 
-          <div className="flex flex-wrap items-center gap-0.5 border-x border-rule bg-surface px-3 py-2">
-            <Btn title="Bold" on={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}><Bold size={16} /></Btn>
-            <Btn title="Italic" on={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}><Italic size={16} /></Btn>
-            <Btn title="Strikethrough" on={editor?.isActive('strike')} onClick={() => editor?.chain().focus().toggleStrike().run()}><Strikethrough size={16} /></Btn>
-            <span className="mx-1 h-5 w-px bg-rule" />
-            <Btn title="Heading" on={editor?.isActive('heading', { level: 2 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}><Heading2 size={16} /></Btn>
-            <Btn title="Sub-heading" on={editor?.isActive('heading', { level: 3 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}><Heading3 size={16} /></Btn>
-            <Btn title="Bulleted list" on={editor?.isActive('bulletList')} onClick={() => editor?.chain().focus().toggleBulletList().run()}><List size={16} /></Btn>
-            <Btn title="Numbered list" on={editor?.isActive('orderedList')} onClick={() => editor?.chain().focus().toggleOrderedList().run()}><ListOrdered size={16} /></Btn>
-            <Btn title="Quote" on={editor?.isActive('blockquote')} onClick={() => editor?.chain().focus().toggleBlockquote().run()}><Quote size={16} /></Btn>
-            <Btn title="Code" on={editor?.isActive('code')} onClick={() => editor?.chain().focus().toggleCode().run()}><Code size={16} /></Btn>
-            <Btn title="Line" onClick={() => editor?.chain().focus().setHorizontalRule().run()}><Minus size={16} /></Btn>
-            <span className="mx-1 h-5 w-px bg-rule" />
-            <Btn title="Link" on={editor?.isActive('link')} onClick={() => {
+          <div role="toolbar" aria-label="Formatting" className="flex flex-wrap items-center gap-0.5 border-x border-rule bg-surface px-2 py-2 sm:px-3">
+            <ToolButton title="Bold" on={is('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}><Bold size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Italic" on={is('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}><Italic size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Strikethrough" on={is('strike')} onClick={() => editor?.chain().focus().toggleStrike().run()}><Strikethrough size={16} aria-hidden="true" /></ToolButton>
+            <ToolDivider />
+            <ToolButton title="Heading" on={is('heading', { level: 2 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}><Heading2 size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Sub-heading" on={is('heading', { level: 3 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}><Heading3 size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Bulleted list" on={is('bulletList')} onClick={() => editor?.chain().focus().toggleBulletList().run()}><List size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Numbered list" on={is('orderedList')} onClick={() => editor?.chain().focus().toggleOrderedList().run()}><ListOrdered size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Quote" on={is('blockquote')} onClick={() => editor?.chain().focus().toggleBlockquote().run()}><Quote size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Code" on={is('code')} onClick={() => editor?.chain().focus().toggleCode().run()}><Code size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Line" onClick={() => editor?.chain().focus().setHorizontalRule().run()}><Minus size={16} aria-hidden="true" /></ToolButton>
+            <ToolDivider />
+            <ToolButton title="Link" on={is('link')} onClick={() => {
               const href = window.prompt('Link to where?', editor?.getAttributes('link').href || 'https://');
               if (href === null) return;
               if (!href.trim()) { editor?.chain().focus().unsetLink().run(); return; }
               editor?.chain().focus().extendMarkRange('link').setLink({ href: href.trim() }).run();
-            }}><Link2 size={16} /></Btn>
-            <Btn title="Picture" onClick={() => { setCoverTarget(false); fileInput.current?.click(); }}>
-              {uploading && !coverTarget ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
-            </Btn>
-            <span className="mx-1 h-5 w-px bg-rule" />
-            <Btn title="Undo" onClick={() => editor?.chain().focus().undo().run()}><Undo2 size={16} /></Btn>
-            <Btn title="Redo" onClick={() => editor?.chain().focus().redo().run()}><Redo2 size={16} /></Btn>
+            }}><Link2 size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Picture" onClick={() => { setCoverTarget(false); fileInput.current?.click(); }}>
+              {uploading && !coverTarget ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <ImageIcon size={16} aria-hidden="true" />}
+            </ToolButton>
+            <ToolDivider />
+            <ToolButton title="Undo" onClick={() => editor?.chain().focus().undo().run()}><Undo2 size={16} aria-hidden="true" /></ToolButton>
+            <ToolButton title="Redo" onClick={() => editor?.chain().focus().redo().run()}><Redo2 size={16} aria-hidden="true" /></ToolButton>
           </div>
 
-          <div className="rounded-b-2xl border border-rule bg-surface">
+          <div className="rounded-b-xl border border-rule bg-surface">
             <EditorContent editor={editor} />
           </div>
         </div>
 
         {/* How it looks to a stranger */}
         <div className="space-y-4">
-          <div className="rounded-2xl border border-rule bg-surface p-4">
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">Cover picture</p>
-            <div className="mt-2 overflow-hidden rounded-xl border border-rule bg-surface-2">
+          <div className="card p-4">
+            <h2 className="field-label">Cover picture</h2>
+            <div className="mt-2 overflow-hidden rounded-lg border border-rule bg-surface-2">
               {coverUrl
-                ? <img src={coverUrl} alt="" className="h-36 w-full object-cover" />
-                : <div className="flex h-36 items-center justify-center text-[12px] text-faint">None yet</div>}
+                ? <img src={coverUrl} alt="Cover preview" className="h-36 w-full object-cover" />
+                : <div className="flex h-36 items-center justify-center text-sm text-muted">None yet</div>}
             </div>
-            <div className="mt-2 flex gap-2">
-              <button onClick={() => { setCoverTarget(true); fileInput.current?.click(); }}
-                className="flex-1 rounded-lg border border-rule px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:bg-surface-2">
+            <div className="mt-3 flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setCoverTarget(true); fileInput.current?.click(); }}>
                 {uploading && coverTarget ? 'Uploading…' : coverUrl ? 'Change' : 'Add a picture'}
-              </button>
+              </Button>
               {coverUrl && (
-                <button onClick={() => { setCoverUrl(''); setDirty(true); }}
-                  className="rounded-lg border border-rule px-3 py-1.5 text-[12px] font-semibold text-muted hover:bg-surface-2">Remove</button>
+                <Button variant="ghost" size="sm" onClick={() => { setCoverUrl(''); setDirty(true); }}>Remove</Button>
               )}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-rule bg-surface p-4">
-            <label className="block">
-              <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">The line under the title</span>
-              <textarea value={excerpt} onChange={e => { setExcerpt(e.target.value); setDirty(true); }} rows={3}
+          <div className="card p-4 space-y-4">
+            <div className="field">
+              <label htmlFor="post-excerpt" className="field-label">The line under the title</label>
+              <textarea id="post-excerpt" value={excerpt} onChange={e => { setExcerpt(e.target.value); setDirty(true); }} rows={3}
                 placeholder="One or two sentences. Shown on the blog list and in search results."
-                className="mt-1.5 w-full rounded-xl border border-rule bg-ground p-3 text-[13px] outline-none focus:border-accent" />
-            </label>
+                className="input" />
+            </div>
 
-            <label className="mt-3 block">
-              <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">Category</span>
-              <select value={category} onChange={e => { setCategory(e.target.value); setDirty(true); }}
-                className="mt-1.5 w-full rounded-xl border border-rule bg-ground p-2.5 text-[13px] outline-none focus:border-accent">
+            <div className="field">
+              <label htmlFor="post-category" className="field-label">Category</label>
+              <select id="post-category" value={category} onChange={e => { setCategory(e.target.value); setDirty(true); }}
+                className="input">
                 <option value="">None</option>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-            </label>
+            </div>
           </div>
 
           {/* The part that sends a reader into the library */}
-          <div className="rounded-2xl border border-rule bg-surface p-4">
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">Departments this is about</p>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+          <fieldset className="card p-4">
+            <legend className="sr-only">Departments this is about</legend>
+            <p className="field-label" aria-hidden="true">Departments this is about</p>
+            <p className="field-help mt-1">
               Readers who finish the post are shown what the library holds in these.
             </p>
-            <div className="mt-2 max-h-44 space-y-1 overflow-y-auto">
+            <div className="mt-2 max-h-44 space-y-0.5 overflow-y-auto">
               {DOMAINS.map((d: any) => (
-                <label key={d.id} className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-[12.5px] text-ink-2 hover:bg-surface-2">
-                  <input type="checkbox" checked={domains.includes(d.name)}
+                <label key={d.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink-2 hover:bg-surface-2">
+                  <input type="checkbox" className="h-4 w-4 shrink-0 accent-accent" checked={domains.includes(d.name)}
                     onChange={e => {
                       setDomains(v => e.target.checked ? [...v, d.name].slice(0, 6) : v.filter(x => x !== d.name));
                       setDirty(true);
@@ -317,17 +324,23 @@ export function PostEditor() {
                 </label>
               ))}
             </div>
-          </div>
+          </fieldset>
 
-          <div className="rounded-2xl border border-rule bg-surface p-4">
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">In Google</p>
-            <input value={seoTitle} onChange={e => { setSeoTitle(e.target.value); setDirty(true); }}
-              placeholder={title || 'Title shown in search'} maxLength={120}
-              className="mt-2 w-full rounded-xl border border-rule bg-ground p-2.5 text-[12.5px] outline-none focus:border-accent" />
-            <textarea value={seoDescription} onChange={e => { setSeoDescription(e.target.value); setDirty(true); }} rows={3}
-              placeholder={excerpt || 'The two lines Google shows under the title'} maxLength={300}
-              className="mt-2 w-full rounded-xl border border-rule bg-ground p-2.5 text-[12.5px] outline-none focus:border-accent" />
-            <p className="mt-2 text-[11px] text-faint">Left blank, the title and the line above are used.</p>
+          <div className="card p-4 space-y-3">
+            <h2 className="field-label">In Google</h2>
+            <div className="field">
+              <label htmlFor="post-seo-title" className="field-help">Search title</label>
+              <input id="post-seo-title" value={seoTitle} onChange={e => { setSeoTitle(e.target.value); setDirty(true); }}
+                placeholder={title || 'Title shown in search'} maxLength={120}
+                className="input" />
+            </div>
+            <div className="field">
+              <label htmlFor="post-seo-description" className="field-help">Search description</label>
+              <textarea id="post-seo-description" value={seoDescription} onChange={e => { setSeoDescription(e.target.value); setDirty(true); }} rows={3}
+                placeholder={excerpt || 'The two lines Google shows under the title'} maxLength={300}
+                className="input" />
+            </div>
+            <p className="field-help">Left blank, the title and the line above are used.</p>
           </div>
         </div>
       </div>

@@ -44,6 +44,35 @@
   --caution-soft: #fbf0e0;
   --alarm: #a3302a;
   --alarm-soft: #fbeceb;
+  /* success: an action completed, access is live. A green kept apart from the
+     teal accent so "active" never reads as "this is a link". */
+  --success: #1d6b43;
+  --success-soft: #e3f2e9;
+
+  /* The public site's brand: the navy of the hero and the closing band, its
+     lighter sibling, and the amber the headline picks out. Same in both themes —
+     they are fields, not surfaces. */
+  --navy: #0b1b3a;
+  --navy-2: #14284f;
+  --amber: #f5b301;
+  --amber-ink: #1a1200;
+
+  /* Shape and depth — four radii and three shadows, and nothing in between.
+     Controls are 8px, cards 12px, dialogs 16px; pills are fully round. */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-card: 0 1px 2px rgba(22, 24, 29, 0.05);
+  --shadow-pop: 0 8px 24px rgba(22, 24, 29, 0.10), 0 1px 3px rgba(22, 24, 29, 0.06);
+  --shadow-modal: 0 24px 48px rgba(22, 24, 29, 0.18);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+
+  /* Page widths. Public pages share one, signed-in screens another, and long
+     reading text a third so a line never runs the full width of a monitor. */
+  --w-public: 1200px;
+  --w-app: 1280px;
+  --w-prose: 72ch;
 
   /* Charts only. Three shelves — articles, books, everything else — so three
      hues that stay apart for a colourblind reader as well as for everyone
@@ -134,6 +163,12 @@
   --caution-soft: #33250f;
   --alarm: #d9736b;
   --alarm-soft: #2c1513;
+  --success: #6cc496;
+  --success-soft: #14291e;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.55);
 
   /* Dark is stepped, not flipped: the same three hues re-chosen against the
      dark surface (L 0.48–0.67 there) so they neither glow nor sink. */
@@ -192,28 +227,69 @@
   --color-caution-soft: var(--caution-soft);
   --color-alarm: var(--alarm);
   --color-alarm-soft: var(--alarm-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-modal: var(--shadow-modal);
+  --color-navy: var(--navy);
+  --color-navy-2: var(--navy-2);
+  --color-amber: var(--amber);
+  --color-amber-ink: var(--amber-ink);
 
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
   --color-series-3: var(--series-3);
 }
 
-/* Three faces, three jobs: the serif carries titles, the sans carries the
-   interface, and the mono carries identifiers — ISSN, DOI, volume(issue) —
-   which is how a catalogue record has always been set. */
+/* One typeface for the whole product: Inter. The serif and mono utilities stay
+   in the code (hundreds of components use them) but resolve to the same family,
+   so no page can drift into a different face. Identifiers that used to be set in
+   mono — ISSN, DOI, volume(issue) — keep their aligned digits through
+   tabular figures instead.
+
+   Weights above 700 are not used: extrabold and black resolve to bold. */
 @theme {
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-serif: "Spectral", Georgia, "Times New Roman", serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--font-sans);
+  --font-mono: var(--font-sans);
+  --font-weight-extrabold: 700;
+  --font-weight-black: 700;
 }
 
-/* Public pages share the home page's Inter body and Sora titles.
+/* The type scale, defined once. New work uses these classes; the layouts below
+   apply the same values to the headings, table headers and labels that older
+   components still size for themselves. */
+:root {
+  --fs-page-title: clamp(1.5rem, 1.25rem + 1.1vw, 1.875rem);   /* 24 → 30px */
+  --fs-section: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);        /* 20 → 24px */
+  --fs-card: 1.0625rem;                                        /* 17px */
+  --fs-body: 0.9375rem;                                        /* 15px */
+  --fs-label: 0.8125rem;                                       /* 13px */
+  --fs-table-head: 0.75rem;                                    /* 12px */
+  --fs-table-body: 0.8125rem;                                  /* 13px */
+  --fs-meta: 0.75rem;                                          /* 12px */
+  --fs-button: 0.875rem;                                       /* 14px */
+}
+@layer components {
+  .type-page-title { font-size: var(--fs-page-title); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+  .type-section    { font-size: var(--fs-section); font-weight: 600; line-height: 1.3; letter-spacing: -0.005em; }
+  .type-card-title { font-size: var(--fs-card); font-weight: 600; line-height: 1.35; }
+  .type-body       { font-size: var(--fs-body); font-weight: 400; line-height: 1.6; }
+  .type-label      { font-size: var(--fs-label); font-weight: 500; line-height: 1.4; }
+  .type-table-head { font-size: var(--fs-table-head); font-weight: 600; line-height: 1.4; letter-spacing: 0.03em; }
+  .type-table-body { font-size: var(--fs-table-body); font-weight: 400; line-height: 1.5; }
+  .type-meta       { font-size: var(--fs-meta); font-weight: 400; line-height: 1.45; }
+  .type-button     { font-size: var(--fs-button); font-weight: 600; line-height: 1.25; }
+}
+
+/* Public pages: tokens scoped to the public layout.
    Keep these tokens scoped to the public layout. */
 .np {
-  font-family: Inter, "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --np-navy: #0b1b3a;
-  --np-navy-2: #14284f;
-  --np-amber: #f5b301;
+  font-family: var(--font-sans);
+  --np-navy: var(--navy);
+  --np-navy-2: var(--navy-2);
+  --np-amber: var(--amber);
   --np-ink: #0f172a;
   --np-body: #475569;
   --np-line: #e6e9ef;
@@ -225,8 +301,8 @@
   --np-line: #2b3340;
   --np-soft: #161b23;
 }
-.np-display { font-family: Sora, Inter, ui-sans-serif, system-ui, sans-serif; font-weight: 800; letter-spacing: -0.02em; }
-.np-strong  { font-family: Sora, Inter, ui-sans-serif, system-ui, sans-serif; font-weight: 700; }
+.np-display { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.02em; }
+.np-strong  { font-family: var(--font-sans); font-weight: 700; }
 
 /* The blog: what the editor types, and what a reader gets, set the same way.
    Tailwind's typography plugin is not installed, and one page does not justify
@@ -234,14 +310,14 @@
 .prose-editor, .prose-post { color: var(--ink-2); font-size: 16px; line-height: 1.75; }
 .prose-editor > * + *, .prose-post > * + * { margin-top: 1.1em; }
 .prose-editor h2, .prose-post h2 {
-  font-family: var(--font-serif); font-size: 27px; line-height: 1.25; color: var(--ink);
-  margin-top: 1.9em; margin-bottom: 0.5em; font-weight: 500;
+  font-family: var(--font-sans); font-size: 24px; line-height: 1.25; color: var(--ink);
+  margin-top: 1.9em; margin-bottom: 0.5em; font-weight: 600;
 }
 .prose-editor h3, .prose-post h3 {
-  font-family: var(--font-serif); font-size: 21px; line-height: 1.3; color: var(--ink);
-  margin-top: 1.6em; margin-bottom: 0.4em; font-weight: 500;
+  font-family: var(--font-sans); font-size: 20px; line-height: 1.3; color: var(--ink);
+  margin-top: 1.6em; margin-bottom: 0.4em; font-weight: 600;
 }
-.prose-editor h4, .prose-post h4 { font-size: 16.5px; font-weight: 700; color: var(--ink); margin-top: 1.4em; }
+.prose-editor h4, .prose-post h4 { font-size: 16.5px; font-weight: 600; color: var(--ink); margin-top: 1.4em; }
 .prose-editor a, .prose-post a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 .prose-editor ul, .prose-post ul { list-style: disc; padding-left: 1.4em; }
 .prose-editor ol, .prose-post ol { list-style: decimal; padding-left: 1.4em; }
@@ -319,6 +395,9 @@
 .role-chip:focus-within > [role="tooltip"] { display: block; }
 
 body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.6;
   background: var(--ground);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
@@ -356,19 +435,222 @@ body {
   background: transparent;
 }
 
-/* Override legacy font utilities only inside public page content. Header and
-   footer retain the exact typography used by the home page's shared chrome. */
-.public-content {
-  --font-sans: Inter, "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: Sora, Inter, ui-sans-serif, system-ui, sans-serif;
-  font-family: var(--font-sans);
-}
-.public-content :is(h1, h2, h3, h4, h5, h6) {
-  font-family: var(--font-serif);
-  font-weight: 700;
-}
-.public-content :is(h1, h2) {
-  font-weight: 800;
-  letter-spacing: -0.02em;
+/* Public pages: the same family as everywhere else, with headings set bold
+   rather than extra-bold. */
+.public-content { font-family: var(--font-sans); }
+.public-content :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-sans); font-weight: 700; }
+.public-content :is(h1, h2) { letter-spacing: -0.015em; }
+/* Banner titles that were set at 48px and above on the inner public pages are
+   brought to one size, 32 to 48px. The home hero (np-display) keeps its own, and
+   titles already set smaller are left alone. */
+.public-content h1:not(.np-display):is([class*="text-5xl"], [class*="text-6xl"], [class*="text-7xl"]) {
+  font-size: clamp(2rem, 1.5rem + 2.2vw, 3rem) !important; line-height: 1.12 !important;
 }
 .public-content .np-strong { font-weight: 700; }
+
+/* Everything signed-in — member, institution, admin, manager, sales, publisher
+   and studio screens. Older components size their own headings, table headers
+   and labels; these rules make the same element look the same on every one of
+   those screens. A page title is the h1; section and card headings keep the
+   size their component chose but share one weight. */
+.app-type { font-size: var(--fs-body); line-height: 1.6; }
+.app-type h1 {
+  font-size: var(--fs-page-title) !important; font-weight: 700 !important;
+  line-height: 1.2 !important; letter-spacing: -0.01em !important;
+}
+/* The bar across the top of a screen names the area; it is not the page title. */
+.app-type header h1 {
+  font-size: var(--fs-card) !important; font-weight: 600 !important; letter-spacing: 0 !important; line-height: 1.3 !important;
+}
+.app-type :is(h2, h3, h4) { font-weight: 600 !important; letter-spacing: -0.005em; }
+.app-type th {
+  font-size: var(--fs-table-head) !important; font-weight: 600 !important;
+  letter-spacing: 0.03em !important; line-height: 1.4;
+}
+.app-type td { line-height: 1.5; }
+.app-type label { font-size: var(--fs-label) !important; font-weight: 500 !important; letter-spacing: 0 !important; }
+.app-type button, .app-type [role="button"] { letter-spacing: 0; }
+.app-type p { line-height: 1.6; }
+
+/* Numbers and identifiers line up wherever they appear. */
+.font-mono, .tnum, table { font-variant-numeric: tabular-nums; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Shared components.
+
+   One button, one field, one card, one badge, one table — written once here,
+   in the tokens above, so a librarian's screen and an admin's screen are built
+   from the same parts. The React wrappers in src/components/ui use these
+   classes; a component that cannot use the wrapper can use the class.
+
+   Spacing stays on the 4px scale (4 8 12 16 20 24 32 40 48 64).
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* A visible focus ring for keyboard users everywhere, and none for a mouse
+   click. Components that draw their own ring keep it — and text fields that
+   draw theirs (the shared .input, or a wrapper with focus-within, marked
+   outline-none) are left out: this rule is unlayered, so it would otherwise
+   beat their own style and draw a second box inside the first. */
+:where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible:not(.input, :is(input, textarea, select).outline-none) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@layer components {
+  /* Page containers. */
+  .container-public { width: 100%; max-width: var(--w-public); margin-inline: auto; padding-inline: 16px; }
+  .container-app    { width: 100%; max-width: var(--w-app);    margin-inline: auto; padding-inline: 16px; }
+  .container-prose  { width: 100%; max-width: var(--w-prose);  margin-inline: auto; }
+  @media (min-width: 640px)  { .container-public, .container-app { padding-inline: 24px; } }
+  @media (min-width: 1024px) { .container-public, .container-app { padding-inline: 32px; } }
+
+  /* Readable long-form text: About, FAQ, legal, content sources. */
+  .prose-page { max-width: var(--w-prose); color: var(--ink-2); font-size: 1rem; line-height: 1.75; }
+  .prose-page > * + * { margin-top: 1em; }
+  .prose-page h2 { font-size: var(--fs-section); font-weight: 600; color: var(--ink); line-height: 1.3; margin-top: 2em; }
+  .prose-page h3 { font-size: var(--fs-card); font-weight: 600; color: var(--ink); line-height: 1.35; margin-top: 1.6em; }
+  .prose-page ul { list-style: disc; padding-left: 1.4em; }
+  .prose-page ol { list-style: decimal; padding-left: 1.4em; }
+  .prose-page li + li { margin-top: 0.4em; }
+  .prose-page a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* Buttons. One height per size, one radius, one weight. */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 40px; padding: 0 16px; border-radius: var(--radius-md);
+    font-size: var(--fs-button); font-weight: 600; line-height: 1; white-space: nowrap;
+    border: 1px solid transparent; cursor: pointer; user-select: none;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+  }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+  .btn-sm { height: 32px; padding: 0 12px; font-size: 0.8125rem; gap: 6px; }
+  .btn-lg { height: 48px; padding: 0 20px; font-size: 0.9375rem; }
+  .btn-icon { width: 40px; padding: 0; }
+  .btn-sm.btn-icon { width: 32px; }
+  .btn-block { width: 100%; }
+
+  .btn-primary   { background: var(--accent); color: var(--accent-on); }
+  .btn-primary:not(:disabled):hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface-2); color: var(--ink); border-color: var(--rule); }
+  .btn-secondary:not(:disabled):hover { background: var(--rule); }
+  .btn-outline   { background: var(--surface); color: var(--ink-2); border-color: var(--rule-2); }
+  .btn-outline:not(:disabled):hover { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost     { background: transparent; color: var(--ink-2); }
+  .btn-ghost:not(:disabled):hover { background: var(--surface-2); color: var(--ink); }
+  /* Public pages: navy for the main action, amber for the one invitation to sign up. */
+  .btn-brand     { background: var(--navy); color: #fff; }
+  .btn-brand:not(:disabled):hover { background: var(--navy-2); }
+  .btn-highlight { background: var(--amber); color: var(--amber-ink); }
+  .btn-highlight:not(:disabled):hover { background: color-mix(in srgb, var(--amber) 88%, #000); }
+  /* On a navy field, where the navy brand button would disappear. */
+  .btn-on-dark   { background: rgba(238, 242, 246, 0.07); color: #eef2f6; border-color: rgba(238, 242, 246, 0.22); }
+  .btn-on-dark:not(:disabled):hover { background: rgba(238, 242, 246, 0.14); }
+  .btn-danger    { background: var(--alarm); color: #fff; }
+  .btn-danger:not(:disabled):hover { background: color-mix(in srgb, var(--alarm) 86%, #000); }
+
+  /* Form fields. A label above, a 40px control, help or error below. */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: var(--fs-label); font-weight: 500; color: var(--ink-2); line-height: 1.4; }
+  .field-label .req { color: var(--alarm); margin-left: 2px; }
+  .field-help  { font-size: var(--fs-meta); color: var(--muted); line-height: 1.45; }
+  .field-error { font-size: var(--fs-meta); color: var(--alarm); line-height: 1.45; font-weight: 500; }
+  .input {
+    width: 100%; height: 40px; padding: 0 12px; border-radius: var(--radius-md);
+    background: var(--surface); color: var(--ink); border: 1px solid var(--rule-2);
+    font-size: 0.875rem; line-height: 1.4;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  textarea.input { height: auto; min-height: 96px; padding: 10px 12px; line-height: 1.55; resize: vertical; }
+  select.input { padding-right: 32px; }
+  .input::placeholder { color: var(--faint); }
+  .input:hover:not(:disabled) { border-color: var(--muted); }
+  .input:focus, .input:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+  .input:disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+  .input[aria-invalid="true"] { border-color: var(--alarm); }
+  .input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--alarm) 25%, transparent); }
+
+  /* Cards. A hairline, a restrained radius, a shadow you barely see. */
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+  .card-pad { padding: 20px; }
+  @media (min-width: 640px) { .card-pad { padding: 24px; } }
+  .card-title { font-size: var(--fs-card); font-weight: 600; color: var(--ink); line-height: 1.35; }
+  .card-interactive { transition: border-color 150ms ease, box-shadow 150ms ease; }
+  .card-interactive:hover { border-color: var(--rule-2); box-shadow: var(--shadow-pop); }
+
+  /* Status badges. Same shape everywhere; the tone carries the meaning and the
+     words always say it too, so nothing depends on colour alone. */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px;
+    border-radius: 9999px; font-size: 0.75rem; font-weight: 600; line-height: 1; white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .badge-neutral { background: var(--surface-2); color: var(--ink-2); border-color: var(--rule); }
+  .badge-accent  { background: var(--accent-soft); color: var(--accent); }
+  .badge-success { background: var(--success-soft); color: var(--success); }
+  .badge-caution { background: var(--caution-soft); color: var(--caution); }
+  .badge-alarm   { background: var(--alarm-soft); color: var(--alarm); }
+  .badge-dot::before { content: ""; width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }
+
+  /* Tables. One header, one row height, one hover. Wrap in .table-wrap so a
+     wide table scrolls inside its card instead of pushing the page sideways. */
+  .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: var(--fs-table-body); color: var(--ink-2); }
+  .data-table thead th {
+    background: var(--surface-2); color: var(--muted); text-align: left; white-space: nowrap;
+    font-size: var(--fs-table-head); font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+    padding: 10px 16px; border-bottom: 1px solid var(--rule);
+  }
+  .data-table tbody td { padding: 12px 16px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  .data-table tbody tr:last-child td { border-bottom: 0; }
+  .data-table tbody tr { transition: background-color 120ms ease; }
+  .data-table tbody tr:hover { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+  .data-table tbody tr[aria-selected="true"] { background: var(--accent-soft); }
+
+  /* Dense tables (logs, previews): tighter cells and a header that stays put. */
+  .data-table-sm thead th { padding: 8px 12px; position: sticky; top: 0; z-index: 1; }
+  .data-table-sm tbody td { padding: 8px 12px; }
+
+  /* A segmented control — period pickers, status filters, view toggles. Each
+     option is a button carrying aria-pressed, which is what styles it. */
+  .segmented { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--rule); }
+  .segmented > button {
+    height: 30px; padding: 0 12px; border-radius: var(--radius-sm); font-size: 0.8125rem; font-weight: 500;
+    color: var(--ink-2); transition: background-color 150ms ease, color 150ms ease;
+  }
+  .segmented > button:hover { color: var(--ink); }
+  .segmented > button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-card); }
+
+  /* A record's line of facts — journal · year · volume — with the dot drawn
+     only between the parts that are present. */
+  .meta-line { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; }
+  .meta-line > * + *::before { content: "·"; margin-right: 6px; color: var(--faint); }
+
+  /* Metric tiles on the dashboards: a label, a number, a line of context. */
+  .metric-label { font-size: var(--fs-label); font-weight: 500; color: var(--muted); line-height: 1.4; }
+  .metric-value { font-size: 1.75rem; font-weight: 700; color: var(--ink); line-height: 1.15; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .metric-context { font-size: var(--fs-meta); color: var(--muted); line-height: 1.45; }
+
+  /* Loading placeholders that hold the layout while data arrives. */
+  .skeleton { position: relative; overflow: hidden; background: var(--surface-2); border-radius: var(--radius-sm); }
+  .skeleton::after {
+    content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 60%, transparent), transparent);
+    animation: skeleton-sweep 1.4s ease-in-out infinite;
+  }
+  @keyframes skeleton-sweep { to { transform: translateX(100%); } }
+  @media (prefers-reduced-motion: reduce) { .skeleton::after { animation: none; } }
+
+  /* Dialogs and drawers. */
+  .overlay { position: fixed; inset: 0; background: rgba(15, 18, 22, 0.5); backdrop-filter: blur(2px); }
+  .dialog-panel {
+    background: var(--surface); color: var(--ink); border: 1px solid var(--rule);
+    border-radius: var(--radius-xl); box-shadow: var(--shadow-modal);
+    width: 100%; max-height: calc(100dvh - 32px); display: flex; flex-direction: column;
+  }
+}
+
+/* The floating helpers — WhatsApp, Feedback — share one stack in the bottom
+   right corner, and step up together over whatever sheet is open at the
+   bottom of the screen (the install card, the cookie notice). */
+:root { --fab-bottom: 24px; --fab-right: 24px; --fab-gap: 12px; }
+@media (max-width: 639px) { :root { --fab-bottom: 16px; --fab-right: 16px; } }

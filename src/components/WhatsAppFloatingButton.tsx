@@ -58,8 +58,11 @@ export function WhatsAppFloatingButton() {
   const text = `${messageFor(pathname)}\n\nPage: ${pageTitle}\nURL: ${pageUrl}`;
   const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 
-  // Feedback: bottom 24px + ~48px tall. 12px gap above it => 84px.
-  const position = aboveFeedback ? 'bottom-[84px]' : 'bottom-6';
+  // The stack: Feedback (48px) takes the corner where it is shown and WhatsApp
+  // sits one gap above it; both rise together over a sheet at the bottom.
+  const position = aboveFeedback
+    ? 'bottom-[calc(var(--fab-bottom)+48px+var(--fab-gap))]'
+    : 'bottom-[var(--fab-bottom)]';
 
   return (
     <a
@@ -73,9 +76,9 @@ export function WhatsAppFloatingButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with STM Digital Library on WhatsApp"
-      className={`group fixed right-6 ${position} mb-[var(--pwa-offset,0px)] z-40 flex items-center justify-center gap-2 rounded-full bg-[#25D366] text-white shadow-lg shadow-black/20 transition hover:bg-[#1ebe5b] hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 h-14 w-14`}
+      className={`group fixed right-[var(--fab-right)] ${position} mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))] z-40 flex h-12 w-12 items-center justify-center gap-2 rounded-full bg-[#25D366] text-white shadow-[var(--shadow-pop)] transition-[margin,background-color] duration-200 hover:bg-[#1ebe5b] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 sm:h-14 sm:w-14`}
     >
-      <WhatsAppIcon className="h-7 w-7 shrink-0" />
+      <WhatsAppIcon className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" />
       <span
         role="tooltip"
         className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:block"

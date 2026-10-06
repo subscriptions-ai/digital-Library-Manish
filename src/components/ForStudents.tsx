@@ -1,7 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { GraduationCap, BookOpen, Clock, Heart, Search, Smartphone, ArrowRight, Video, FileText } from 'lucide-react';
+import { GraduationCap, BookOpen, Clock, Heart, Search, Smartphone, ArrowRight, Video, FileText, Check, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from './ui';
+import { useAuth } from '../contexts/AuthContext';
+import { isSoloAccount } from '../constants';
+import { formatRupees } from '../lib/institutionPricing';
+import { SOLO_RATE_STANDARD, SOLO_RATE_BULK, SOLO_BULK_THRESHOLD } from '../lib/soloPricing';
 
 const features = [
   {
@@ -38,127 +43,164 @@ const features = [
 
 export function ForStudents() {
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const solo = isSoloAccount(profile as any);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-ground">
       {/* Hero Section */}
-      <div className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden bg-white">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-50 via-white to-white" />
-        <div className="max-w-7xl mx-auto px-6 relative z-10 flex flex-col lg:flex-row items-center gap-12">
+      <section className="relative overflow-hidden bg-navy py-12 sm:py-16 lg:py-24">
+        <div className="container-public relative flex flex-col items-center gap-12 lg:flex-row">
           <div className="lg:w-1/2">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-sm mb-6 border border-indigo-100"
+              transition={{ duration: 0.25 }}
+              className="on-dark-fill on-dark-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em]"
             >
-              <GraduationCap size={16} /> For Students & Researchers
-            </motion.div>
+              <GraduationCap size={14} aria-hidden="true" className="text-amber" /> For Students & Researchers
+            </motion.p>
             
             <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-4xl md:text-6xl font-extrabold text-slate-900 leading-tight mb-6 tracking-tight"
+              transition={{ duration: 0.25, delay: 0.05 }}
+              className="on-dark mt-4 mb-6 text-5xl font-bold leading-tight"
             >
               Your Personal <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">Research Assistant</span>
+              <span className="text-amber">Research Assistant</span>
             </motion.h1>
             
             <motion.p 
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-lg md:text-xl text-slate-600 mb-10 leading-relaxed"
+              transition={{ duration: 0.25, delay: 0.1 }}
+              className="on-dark-2 mb-8 text-base leading-relaxed sm:text-lg"
             >
               Access a universe of knowledge curated just for you. From your first semester to your final thesis, we provide the tools you need to excel.
             </motion.p>
             
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4"
+              transition={{ duration: 0.25, delay: 0.15 }}
+              className="flex flex-col gap-3 sm:flex-row"
             >
-              <button onClick={() => navigate('/digital-library')} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5">
-                Explore Library <ArrowRight size={20} />
-              </button>
+              <Button variant="highlight" size="lg" onClick={() => navigate('/digital-library')}>
+                Explore Library <ArrowRight size={18} aria-hidden="true" />
+              </Button>
             </motion.div>
           </div>
 
-          <div className="lg:w-1/2 relative w-full aspect-square max-w-lg mx-auto">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="absolute inset-0 bg-gradient-to-tr from-indigo-100 to-blue-50 rounded-full blur-3xl opacity-50"
-            />
-            {/* Abstract decorative elements representing study/research */}
+          {/* Abstract decorative elements representing study/research */}
+          <div className="relative mx-auto aspect-square w-full max-w-md lg:w-1/2" aria-hidden="true">
             <div className="relative h-full w-full">
-              <motion.div 
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-[10%] left-[10%] w-3/4 h-3/4 bg-white rounded-2xl shadow-xl border border-slate-100 p-6 flex flex-col gap-4 z-20"
-              >
-                <div className="w-1/3 h-4 bg-indigo-100 rounded-full" />
-                <div className="w-full h-32 bg-slate-50 rounded-xl" />
-                <div className="w-full h-3 bg-slate-100 rounded-full" />
-                <div className="w-5/6 h-3 bg-slate-100 rounded-full" />
-                <div className="w-4/6 h-3 bg-slate-100 rounded-full" />
-              </motion.div>
+              <div className="absolute left-[8%] top-[8%] z-20 flex h-3/4 w-3/4 flex-col gap-4 rounded-2xl border border-rule bg-surface p-5 shadow-[var(--shadow-pop)] sm:p-6">
+                <div className="h-4 w-1/3 rounded-full bg-accent-soft" />
+                <div className="h-24 w-full rounded-xl bg-surface-2 sm:h-32" />
+                <div className="h-3 w-full rounded-full bg-surface-2" />
+                <div className="h-3 w-5/6 rounded-full bg-surface-2" />
+                <div className="h-3 w-4/6 rounded-full bg-surface-2" />
+              </div>
 
-              <motion.div 
-                animate={{ y: [0, 15, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="absolute bottom-[5%] right-[5%] w-1/2 h-1/2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-30 flex flex-col items-center justify-center gap-3 text-center"
-              >
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                  <Heart size={24} fill="currentColor" />
+              <div className="absolute bottom-[5%] right-[5%] z-30 flex h-1/2 w-1/2 flex-col items-center justify-center gap-3 rounded-2xl border border-rule bg-surface p-4 text-center shadow-[var(--shadow-pop)]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+                  <Heart size={22} fill="currentColor" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-slate-800">Saved to Wish List</div>
-                  <div className="text-xs text-slate-500 mt-1">Research Materials</div>
+                  <div className="text-sm font-bold text-ink">Saved to Wish List</div>
+                  <div className="mt-1 text-xs text-muted">Research Materials</div>
                 </div>
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Features Grid */}
-      <div className="py-24 max-w-7xl mx-auto px-6">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Built for Modern Learners</h2>
-          <p className="text-slate-600 text-lg">We've designed every feature around how students actually study, read, and research today.</p>
+      <section className="container-public py-16 sm:py-24">
+        <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-16">
+          <h2 className="mb-4 text-3xl font-bold text-ink md:text-4xl">Built for Modern Learners</h2>
+          <p className="text-base text-ink-2 sm:text-lg">We've designed every feature around how students actually study, read, and research today.</p>
         </div>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-300 transition-colors group"
+              transition={{ duration: 0.25, delay: i * 0.05 }}
+              className="card card-pad card-interactive"
             >
-              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
                 {feature.icon}
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">{feature.title}</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">{feature.description}</p>
+              <h3 className="mb-2 text-lg font-bold text-ink">{feature.title}</h3>
+              <p className="text-sm leading-relaxed text-ink-2">{feature.description}</p>
             </motion.div>
           ))}
         </div>
-      </div>
+      </section>
       
+      {/* Subscription — Solo Learner pricing. Institutions have their own, on their own pages. */}
+      <section className="bg-surface-2 py-16 sm:py-20" aria-labelledby="solo-subscription">
+        <div className="container-public">
+          <div className="mx-auto mb-10 max-w-3xl text-center">
+            <h2 id="solo-subscription" className="mb-3 text-3xl font-bold text-ink md:text-4xl">Subscription</h2>
+            <p className="text-base text-ink-2 sm:text-lg">Start free. Subscribe to the departments you read most when you want to read without a clock.</p>
+          </div>
+          <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2">
+            <div className="flex flex-col rounded-xl border border-rule bg-surface p-6">
+              <div className="flex items-center gap-2">
+                <Clock size={18} className="text-muted" aria-hidden="true" />
+                <h3 className="text-lg font-bold text-ink">Free Subscription</h3>
+              </div>
+              <p className="mt-3 text-[28px] font-bold leading-none text-ink">Free</p>
+              <p className="mt-1 text-sm text-muted">No card, no request forms</p>
+              <ul className="mt-5 flex-1 space-y-2.5 text-sm text-ink-2">
+                <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> The whole library, every department</li>
+                <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> Half an hour at a time</li>
+              </ul>
+              <Button variant="outline" size="lg" className="mt-6 w-full" onClick={() => navigate(profile ? '/dashboard' : '/signup')}>
+                {profile ? 'Go to Dashboard' : 'Register Free'}
+              </Button>
+            </div>
+            <div className="flex flex-col rounded-xl border border-accent bg-accent-soft p-6">
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} className="text-accent" aria-hidden="true" />
+                <h3 className="text-lg font-bold text-ink">Premium Subscription</h3>
+              </div>
+              <p className="tnum mt-3 text-[28px] font-bold leading-none text-ink">{formatRupees(SOLO_RATE_STANDARD)}</p>
+              <p className="mt-1 text-sm text-muted">per department / year</p>
+              <div className="mt-4 rounded-lg border border-accent/30 bg-surface px-3 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">{SOLO_BULK_THRESHOLD}+ Departments</p>
+                <p className="tnum text-sm font-semibold text-ink">{formatRupees(SOLO_RATE_BULK)} per department / year</p>
+              </div>
+              <ul className="mt-5 flex-1 space-y-2.5 text-sm text-ink-2">
+                <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> Read your departments without the clock</li>
+                <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> Twelve months from the day you subscribe</li>
+              </ul>
+              <Button variant="highlight" size="lg" className="mt-6 w-full" onClick={() => navigate(solo ? '/dashboard/subscribe' : profile ? '/dashboard' : '/signup')}>
+                Choose Departments
+              </Button>
+              <p className="mt-3 text-xs text-muted">Plus GST. For individual learners; colleges and companies subscribe from their own dashboard.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
-      <div className="py-20 bg-white border-t border-slate-100 text-center px-6">
-        <h2 className="text-3xl font-bold text-slate-900 mb-4">Ready to accelerate your research?</h2>
-        <p className="text-slate-600 mb-8 max-w-2xl mx-auto">Join students and researchers who are using our platform to discover and manage academic content.</p>
-        <button onClick={() => navigate('/login')} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">
-          Start Your Journey
-        </button>
-      </div>
+      <section className="bg-navy py-16 text-center sm:py-20">
+        <div className="container-public">
+          <h2 className="on-dark mb-4 text-3xl font-bold">Ready to accelerate your research?</h2>
+          <p className="on-dark-2 mx-auto mb-8 max-w-2xl">Join students and researchers who are using our platform to discover and manage academic content.</p>
+          <Button variant="highlight" size="lg" onClick={() => navigate('/login')}>
+            Start Your Journey
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }

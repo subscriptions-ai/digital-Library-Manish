@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Building2, Phone, MapPin, Globe, Mail, Camera, Lock, Save, Loader2, AlertCircle, User, Users } from 'lucide-react';
+import { Building2, Phone, MapPin, Globe, Camera, Lock, Save, User, Users, BookOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { Button, PageHeader, friendlyError } from '../ui';
 
 interface InstitutionProfileData {
   institutionName: string;   // read-only — set by admin at creation
@@ -119,9 +119,9 @@ export function InstitutionProfile() {
       if (!res.ok) throw new Error(result?.error || 'Failed to save profile');
 
       setData(d => ({ ...d, logoUrl }));
-      toast.success('Profile saved successfully!');
+      toast.success('Profile saved');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to save profile');
+      toast.error(friendlyError(err, 'Failed to save profile'));
     } finally {
       setSaving(false);
     }
@@ -131,34 +131,33 @@ export function InstitutionProfile() {
   const initials = (data.institutionName || 'IN').substring(0, 2).toUpperCase();
 
   return (
-    <div className="max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-ink tracking-tight">Institution Profile</h1>
-        <p className="text-muted text-sm mt-1">
-          Manage your institution's contact info and branding. The institution name is set by your administrator.
-        </p>
-      </div>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        title="Institution Profile"
+        description="Manage your institution's contact info and branding. The institution name is set by your administrator."
+      />
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Logo + Institution Name card */}
-        <div className="bg-accent rounded-md p-8 text-white">
-          <div className="flex items-center gap-6">
+        <div className="card card-pad">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
             {/* Logo circle */}
-            <div className="relative group">
-              <div className="h-24 w-24 rounded-md overflow-hidden bg-accent flex items-center justify-center shrink-0 shadow-xl shadow-black/20">
+            <div className="relative shrink-0 self-start sm:self-auto">
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-rule bg-accent sm:h-24 sm:w-24">
                 {displayLogo ? (
-                  <img src={displayLogo} alt="Logo" className="w-full h-full object-cover" />
+                  <img src={displayLogo} alt={`${data.institutionName} logo`} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-3xl font-black text-white">{initials}</span>
+                  <span className="text-3xl font-bold text-accent-on" aria-hidden="true">{initials}</span>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-2 -right-2 h-8 w-8 bg-surface text-accent rounded-full flex items-center justify-center shadow-md hover:bg-accent-soft transition-colors"
+                className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full border border-rule bg-surface text-accent shadow-sm transition-colors hover:bg-accent-soft"
                 title="Upload logo"
+                aria-label="Upload logo (image under 2 MB)"
               >
-                <Camera size={14} />
+                <Camera size={16} aria-hidden="true" />
               </button>
               <input
                 ref={fileInputRef}
@@ -168,16 +167,16 @@ export function InstitutionProfile() {
                 onChange={handleLogoChange}
               />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-2xl font-black tracking-tight truncate">{data.institutionName}</div>
-              <div className="flex items-center gap-1.5 text-faint text-sm mt-1">
-                <Lock size={12} />
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-xl font-bold text-ink sm:text-2xl">{data.institutionName}</p>
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+                <Lock size={14} className="shrink-0" aria-hidden="true" />
                 <span>Institution name is managed by your administrator</span>
-              </div>
+              </p>
               {data.website && (
                 <a href={data.website} target="_blank" rel="noreferrer"
-                  className="text-faint hover:text-white text-sm flex items-center gap-1.5 mt-2 transition-colors">
-                  <Globe size={13} /> {data.website.replace(/^https?:\/\//, '')}
+                  className="mt-2 inline-flex max-w-full items-center gap-1.5 text-sm text-accent hover:underline">
+                  <Globe size={14} className="shrink-0" aria-hidden="true" /> <span className="truncate">{data.website.replace(/^https?:\/\//, '')}</span>
                 </a>
               )}
             </div>
@@ -187,109 +186,109 @@ export function InstitutionProfile() {
 
 
         {/* Editable fields */}
-        <div className="bg-surface rounded-md border border-rule shadow-sm p-8 space-y-6">
-          <h2 className="text-base font-bold text-ink">Contact Information</h2>
+        <div className="card card-pad space-y-6">
+          <h2 className="card-title">Contact Information</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Contact Person Name</label>
+              <label htmlFor="pf-contact" className="field-label mb-1.5 block">Contact Person Name</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
+                <User className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
                 <input
-                  type="text" value={data.contactName}
+                  type="text" id="pf-contact" value={data.contactName}
                   onChange={e => setData(d => ({ ...d, contactName: e.target.value }))}
                   placeholder="Dr. Priya Sharma"
-                  className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
+                  className="input pl-9"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Contact Phone</label>
+              <label htmlFor="pf-phone" className="field-label mb-1.5 block">Contact Phone</label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
+                <Phone className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
                 <input
-                  type="tel" value={data.contactPhone}
+                  type="tel" id="pf-phone" value={data.contactPhone}
                   onChange={e => setData(d => ({ ...d, contactPhone: e.target.value }))}
                   placeholder="+91 98765 43210"
-                  className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
+                  className="input pl-9"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">City / District</label>
+              <label htmlFor="pf-city" className="field-label mb-1.5 block">City / District</label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
+                <MapPin className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
                 <input
-                  type="text" value={data.city}
+                  type="text" id="pf-city" value={data.city}
                   onChange={e => setData(d => ({ ...d, city: e.target.value }))}
                   placeholder="New Delhi"
-                  className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
+                  className="input pl-9"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Website</label>
+              <label htmlFor="pf-website" className="field-label mb-1.5 block">Website</label>
               <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
+                <Globe className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
                 <input
-                  type="url" value={data.website}
+                  type="url" id="pf-website" value={data.website}
                   onChange={e => setData(d => ({ ...d, website: e.target.value }))}
                   placeholder="https://university.edu.in"
-                  className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
+                  className="input pl-9"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Full Address</label>
+            <label htmlFor="pf-address" className="field-label mb-1.5 block">Full Address</label>
             <textarea
-              value={data.address}
+              id="pf-address" value={data.address}
               onChange={e => setData(d => ({ ...d, address: e.target.value }))}
               rows={3}
               placeholder="Building / Block, Street, State — PIN Code"
-              className="w-full px-4 py-3 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all resize-none"
+              className="input resize-none"
             />
           </div>
 
-          <div className="pt-4 border-t border-rule">
-            <h2 className="text-base font-bold text-ink mb-6">Institution Details (For Marketing & Suggestions)</h2>
+          <div className="border-t border-rule pt-6">
+            <h2 className="card-title mb-4">Institution Details (For Marketing & Suggestions)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Courses Offered (Comma separated)</label>
+                <label htmlFor="pf-courses" className="field-label mb-1.5 block">Courses Offered (Comma separated)</label>
                 <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
+                  <BookOpen className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
                   <input
-                    type="text" value={data.coursesOffered}
+                    type="text" id="pf-courses" aria-describedby="pf-courses-help" value={data.coursesOffered}
                     onChange={e => setData(d => ({ ...d, coursesOffered: e.target.value }))}
                     placeholder="e.g. Engineering, Nursing, Architecture, MBA"
-                    className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
+                    className="input pl-9"
                   />
                 </div>
-                <p className="text-[11px] text-faint mt-1">This helps us suggest relevant domains and subscriptions.</p>
+                <p id="pf-courses-help" className="field-help mt-1.5">This helps us suggest relevant domains and subscriptions.</p>
               </div>
               
               <div>
-                <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Total Number of Courses</label>
+                <label htmlFor="pf-total" className="field-label mb-1.5 block">Total Number of Courses</label>
                 <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
+                  <Building2 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
                   <input
-                    type="number" value={data.totalCourses}
+                    type="number" id="pf-total" value={data.totalCourses}
                     onChange={e => setData(d => ({ ...d, totalCourses: e.target.value }))}
                     placeholder="e.g. 15"
-                    className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all"
+                    className="input pl-9"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Student Body Size</label>
+                <label htmlFor="pf-size" className="field-label mb-1.5 block">Student Body Size</label>
                 <div className="relative">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
+                  <Users className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
                   <select
-                    value={data.studentBodySize}
+                    id="pf-size" value={data.studentBodySize}
                     onChange={e => setData(d => ({ ...d, studentBodySize: e.target.value }))}
-                    className="w-full pl-9 pr-4 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:border-accent focus:ring-2 focus:border-accent outline-none transition-all appearance-none"
+                    className="input pl-9"
                   >
                     <option value="">Select Size...</option>
                     <option value="1-500">1 - 500</option>
@@ -302,17 +301,12 @@ export function InstitutionProfile() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full py-3.5 bg-accent text-white rounded-md font-bold text-sm hover:bg-accent-hover transition-all shadow-lg  disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {saving ? (
-              <><Loader2 size={16} className="animate-spin" /> Saving...</>
-            ) : (
-              <><Save size={16} /> Save Profile</>
-            )}
-          </button>
+          <div className="flex justify-end border-t border-rule pt-6">
+            <Button type="submit" loading={saving} className="w-full sm:w-auto">
+              {!saving && <Save size={16} aria-hidden="true" />}
+              {saving ? 'Saving…' : 'Save Profile'}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

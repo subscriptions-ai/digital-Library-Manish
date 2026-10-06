@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown, Search, BookOpen, Key, Download, Upload, School, User, HelpCircle } from "lucide-react";
-import { cn } from "../lib/utils";
+import { Link } from "react-router-dom";
+import { Button, EmptyState, buttonClass } from "./ui";
 import { COMPANY_DETAILS } from "../config";
 
 interface FAQItem {
@@ -20,7 +21,7 @@ const FAQ_DATA: FAQCategory[] = [
   {
     id: "general",
     title: "General Questions",
-    icon: <BookOpen className="text-blue-600" size={20} />,
+    icon: <BookOpen size={20} aria-hidden="true" />,
     items: [
       {
         question: "What is STM Digital Library?",
@@ -35,7 +36,7 @@ const FAQ_DATA: FAQCategory[] = [
   {
     id: "getting-access",
     title: "Access & Institutional Licensing",
-    icon: <Key className="text-emerald-600" size={20} />,
+    icon: <Key size={20} aria-hidden="true" />,
     items: [
       {
         question: "How do I get access?",
@@ -54,7 +55,7 @@ const FAQ_DATA: FAQCategory[] = [
   {
     id: "access",
     title: "Content Access",
-    icon: <Download className="text-purple-600" size={20} />,
+    icon: <Download size={20} aria-hidden="true" />,
     items: [
       {
         question: "How can I access journals/books?",
@@ -73,7 +74,7 @@ const FAQ_DATA: FAQCategory[] = [
   {
     id: "contribution",
     title: "Listing Content",
-    icon: <Upload className="text-orange-600" size={20} />,
+    icon: <Upload size={20} aria-hidden="true" />,
     items: [
       {
         question: "Who can list content here?",
@@ -92,7 +93,7 @@ const FAQ_DATA: FAQCategory[] = [
   {
     id: "institutional",
     title: "Institutional Access",
-    icon: <School className="text-indigo-600" size={20} />,
+    icon: <School size={20} aria-hidden="true" />,
     items: [
       {
         question: "How can colleges/universities get access?",
@@ -107,7 +108,7 @@ const FAQ_DATA: FAQCategory[] = [
   {
     id: "account",
     title: "Account & Login",
-    icon: <User className="text-rose-600" size={20} />,
+    icon: <User size={20} aria-hidden="true" />,
     items: [
       {
         question: "How to create an account?",
@@ -121,32 +122,44 @@ const FAQ_DATA: FAQCategory[] = [
   }
 ];
 
-const AccordionItem: React.FC<{ item: FAQItem; isOpen: boolean; onClick: () => void }> = ({ item, isOpen, onClick }) => {
+const AccordionItem: React.FC<{ id: string; item: FAQItem; isOpen: boolean; onClick: () => void }> = ({ id, item, isOpen, onClick }) => {
+  const buttonId = `faq-${id}-question`;
+  const panelId = `faq-${id}-answer`;
   return (
-    <div className="border-b border-slate-100 last:border-0">
-      <button
-        onClick={onClick}
-        className="flex w-full items-center justify-between py-5 text-left transition-all hover:text-blue-600"
-      >
-        <span className="text-base font-semibold text-slate-800">{item.question}</span>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="text-slate-400"
+    <div className="border-b border-rule last:border-0">
+      <h3>
+        <button
+          type="button"
+          id={buttonId}
+          onClick={onClick}
+          aria-expanded={isOpen}
+          aria-controls={panelId}
+          className="group flex w-full items-center justify-between gap-4 py-4 text-left"
         >
-          <ChevronDown size={20} />
-        </motion.div>
-      </button>
+          <span className="text-base font-semibold text-ink transition-colors duration-150 group-hover:text-accent">{item.question}</span>
+          <motion.span
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="shrink-0 text-muted"
+            aria-hidden="true"
+          >
+            <ChevronDown size={20} />
+          </motion.span>
+        </button>
+      </h3>
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
+            id={panelId}
+            role="region"
+            aria-labelledby={buttonId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="pb-5 text-sm leading-relaxed text-slate-600">
+            <div className="max-w-[72ch] pb-5 text-[15px] leading-relaxed text-ink-2">
               {item.answer}
             </div>
           </motion.div>
@@ -175,72 +188,56 @@ export function FAQ() {
   })).filter(category => category.items.length > 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-ground pb-16 sm:pb-24">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 pt-24 pb-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-sm font-bold text-blue-600 mb-6"
-          >
-            <HelpCircle size={16} />
+      <section className="bg-navy">
+        <div className="container-public py-12 text-center sm:py-16">
+          <p className="on-dark-fill on-dark-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em]">
+            <HelpCircle size={14} aria-hidden="true" className="text-amber" />
             Support Center
-          </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl mb-4"
-          >
+          </p>
+          <h1 className="on-dark mt-4 text-3xl font-bold leading-tight sm:text-4xl">
             Frequently Asked Questions
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-lg text-slate-600 max-w-2xl mx-auto mb-10"
-          >
+          </h1>
+          <p className="on-dark-2 mx-auto mt-4 max-w-2xl text-base sm:text-lg">
             Find answers to common queries about our platform and content access.
-          </motion.p>
+          </p>
 
           {/* Search Bar */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3 }}
-            className="relative max-w-xl mx-auto"
-          >
-            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-              <Search size={20} className="text-slate-400" />
+          <div className="relative mx-auto mt-8 max-w-xl">
+            <label htmlFor="faq-search" className="sr-only">Search the questions</label>
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4" aria-hidden="true">
+              <Search size={18} className="text-muted" />
             </div>
             <input
-              type="text"
+              id="faq-search"
+              type="search"
               placeholder="Search your question..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white py-4 pl-12 pr-4 text-slate-900 shadow-xl shadow-slate-200/50 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all"
+              className="input h-12 pl-11 text-base"
             />
-          </motion.div>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* FAQ Content */}
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 mt-16">
+      <div className="container-public mt-12 max-w-4xl sm:mt-16">
         {filteredData.length > 0 ? (
-          <div className="space-y-12">
+          <div className="space-y-10">
             {filteredData.map((category) => (
-              <section key={category.id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 rounded-lg bg-white shadow-sm border border-slate-100">
+              <section key={category.id} aria-labelledby={`faq-cat-${category.id}`}>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft text-accent">
                     {category.icon}
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">{category.title}</h2>
+                  <h2 id={`faq-cat-${category.id}`} className="text-xl font-bold text-ink">{category.title}</h2>
                 </div>
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden px-6">
+                <div className="card px-4 sm:px-6">
                   {category.items.map((item, index) => (
                     <AccordionItem
                       key={index}
+                      id={`${category.id}-${index}`}
                       item={item}
                       isOpen={openItems.includes(`${category.id}-${index}`)}
                       onClick={() => toggleItem(`${category.id}-${index}`)}
@@ -251,37 +248,33 @@ export function FAQ() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20">
-            <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-4">
-              <Search size={32} />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900">No results found</h3>
-            <p className="text-slate-500">We couldn't find any answers matching your search.</p>
-            <button
-              onClick={() => setSearchQuery("")}
-              className="mt-6 text-blue-600 font-bold hover:underline"
-            >
-              Clear search
-            </button>
+          <div className="card">
+            <EmptyState
+              icon={Search}
+              title="No results found"
+              description="We couldn't find any answers matching your search."
+              action={
+                <Button variant="outline" onClick={() => setSearchQuery("")}>
+                  Clear search
+                </Button>
+              }
+            />
           </div>
         )}
 
         {/* Still need help? */}
-        <div className="mt-20 rounded-3xl bg-blue-600 p-8 md:p-12 text-center text-white shadow-2xl shadow-blue-200">
-          <h2 className="text-2xl font-bold mb-4">Still have questions?</h2>
-          <p className="text-blue-100 mb-8 max-w-lg mx-auto">
+        <div className="card mt-16 p-6 text-center sm:p-10">
+          <h2 className="text-2xl font-bold text-ink">Still have questions?</h2>
+          <p className="mx-auto mt-3 max-w-lg text-muted">
             If you couldn't find the answer you're looking for, please feel free to contact our support team.
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <a
-              href="/contact"
-              className="rounded-full bg-white px-8 py-3 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all"
-            >
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link to="/contact" className={buttonClass("brand")}>
               Contact Support
-            </a>
+            </Link>
             <a
               href={`mailto:${COMPANY_DETAILS.email}`}
-              className="rounded-full bg-blue-700 px-8 py-3 text-sm font-bold text-white hover:bg-blue-800 transition-all"
+              className={buttonClass("outline")}
             >
               Email Us
             </a>

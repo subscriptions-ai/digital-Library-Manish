@@ -54,6 +54,7 @@ export function ContentPricingModule() {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error('modules');
       setModules(data);
       const domains = [...new Set(data.map((m: ContentModule) => m.domain))];
       setExpandedDomains(new Set(domains as string[]));
@@ -111,11 +112,12 @@ export function ContentPricingModule() {
 
   const toggleToggle = async (m: ContentModule) => {
     try {
-      await fetch(`/api/admin/content-modules/${m.id}`, {
+      const res = await fetch(`/api/admin/content-modules/${m.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ isActive: !m.isActive })
       });
+      if (!res.ok) throw new Error('update failed');
       toast.success(m.isActive ? 'Module hidden from users' : 'Module visible to users');
       fetchModules(selectedUserType);
     } catch {

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'reac
 import { toast } from 'react-hot-toast';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ReadingLimitNotice } from '../membership/ReadingClock';
+import { buttonClass, friendlyError } from '../ui';
 import {
   ArrowLeft,
   Loader2,
@@ -326,7 +327,7 @@ export function ProtectedContentViewer() {
         setIsFavorite(data.favorited);
         toast.success(data.favorited ? "Added to your Wish List!" : "Removed from Wish List");
       } else {
-        toast.error(data.error || "Could not update your Wish List");
+        toast.error(friendlyError(data.error, "Could not update your Wish List"));
       }
     } catch (err) {
       toast.error("Failed to update Wish List");
@@ -475,15 +476,15 @@ export function ProtectedContentViewer() {
   // ────────────────────────────────────────────────────
   if (loadingMeta) {
     return (
-      <div className="flex min-h-[80vh] flex-col items-center justify-center bg-ground">
+      <div className="flex min-h-[80vh] flex-col items-center justify-center bg-ground" role="status">
         <div className="flex flex-col items-center gap-5">
-          <div className="relative w-16 h-16">
+          <div className="relative w-12 h-12" aria-hidden="true">
             <div className="absolute inset-0 rounded-full border-4 border-rule" />
             <div className="absolute inset-0 animate-spin rounded-full border-4 border-accent border-t-transparent" />
           </div>
           <div className="text-center">
-            <p className="text-white font-semibold text-lg">Verifying Access</p>
-            <p className="mt-1 text-[13.5px] text-muted">Establishing a secure reading session…</p>
+            <p className="text-ink font-semibold text-lg">Verifying Access</p>
+            <p className="mt-1 text-sm text-muted">Establishing a secure reading session…</p>
           </div>
         </div>
       </div>
@@ -510,18 +511,19 @@ export function ProtectedContentViewer() {
   // ────────────────────────────────────────────────────
   if (metaError) {
     return (
-      <div className="flex min-h-[80vh] flex-col items-center justify-center bg-ground px-4 text-center">
-        <div className="max-w-md space-y-5">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-alarm-soft">
-            <AlertCircle size={30} className="text-alarm" />
+      <div className="flex min-h-[80vh] flex-col items-center justify-center bg-ground px-4 text-center" role="alert">
+        <div className="max-w-md space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-caution-soft" aria-hidden="true">
+            <AlertCircle size={24} className="text-caution" />
           </div>
-          <h2 className="text-2xl font-bold text-white">Access Restricted</h2>
-          <p className="text-[13.5px] text-muted">{metaError}</p>
+          <h2 className="type-section text-ink">Access Restricted</h2>
+          <p className="text-sm text-muted">{friendlyError(metaError, 'You do not have access to this item.')}</p>
           <button
+            type="button"
             onClick={() => navigate('/dashboard/library/access')}
-            className="inline-flex items-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover"
+            className={buttonClass('primary')}
           >
-            <BookOpen size={18} /> View My Access
+            <BookOpen size={16} aria-hidden="true" /> View My Access
           </button>
         </div>
       </div>
@@ -554,10 +556,13 @@ export function ProtectedContentViewer() {
         {/* Left: back + title */}
         <div className="flex items-center gap-3 min-w-0">
           <button
+            type="button"
             onClick={() => navigate(-1)}
-            className={`p-2 rounded-xl transition-colors shrink-0 ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            aria-label="Go back"
+            title="Go back"
+            className={`p-2 rounded-lg transition-colors shrink-0 ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={20} aria-hidden="true" />
           </button>
           <div className="min-w-0">
             <h1 className={`font-bold leading-tight line-clamp-1 text-sm sm:text-base ${darkMode ? 'text-white' : 'text-ink'}`}>
@@ -565,7 +570,7 @@ export function ProtectedContentViewer() {
             </h1>
             {/* The way back into the catalogue: which journal this came from, and
                 its full record. Without this the reader is a dead end. */}
-            <p className="flex items-center gap-1.5 truncate font-mono text-[10.5px] uppercase tracking-wider text-faint">
+            <p className="flex items-center gap-1.5 truncate font-mono text-[11px] uppercase tracking-wider text-muted">
               <span className="shrink-0">{content?.contentType}</span>
               {content?.journalIssn && content?.journalName && (
                 <>
@@ -604,10 +609,12 @@ export function ProtectedContentViewer() {
           {isPdf && (
             <button
               onClick={() => setScale(s => Math.max(0.4, s - 0.2))}
+              type="button"
               title="Zoom Out"
-              className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+              aria-label="Zoom out"
+              className={`p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             >
-              <ZoomOut size={18} />
+              <ZoomOut size={18} aria-hidden="true" />
             </button>
           )}
 
@@ -615,10 +622,12 @@ export function ProtectedContentViewer() {
           {isPdf && (
             <button
               onClick={() => setScale(s => Math.min(3.0, s + 0.2))}
+              type="button"
               title="Zoom In"
-              className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+              aria-label="Zoom in"
+              className={`p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             >
-              <ZoomIn size={18} />
+              <ZoomIn size={18} aria-hidden="true" />
             </button>
           )}
 
@@ -626,10 +635,12 @@ export function ProtectedContentViewer() {
           {isPdf && (
             <button
               onClick={() => setScale(window.innerWidth < 640 ? 0.6 : 1.4)}
+              type="button"
               title="Reset Zoom"
-              className={`hidden sm:block p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+              aria-label="Reset zoom"
+              className={`hidden sm:block p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             >
-              <RotateCcw size={16} />
+              <RotateCcw size={16} aria-hidden="true" />
             </button>
           )}
 
@@ -637,44 +648,54 @@ export function ProtectedContentViewer() {
           <button
             onClick={toggleFavorite}
             disabled={togglingFavorite}
+            type="button"
             title={isFavorite ? "Remove from Wish List" : "Add to Wish List"}
-            className={`p-2 rounded-xl transition-all ${isFavorite ? 'text-red-500 hover:bg-red-500/10' : (darkMode ? 'text-slate-400 hover:text-red-400 hover:bg-white/10' : 'text-muted hover:text-alarm hover:bg-surface-2')}`}
+            aria-label={isFavorite ? "Remove from Wish List" : "Add to Wish List"}
+            aria-pressed={isFavorite}
+            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${isFavorite ? 'text-alarm hover:bg-alarm-soft' : (darkMode ? 'text-slate-400 hover:text-red-400 hover:bg-white/10' : 'text-muted hover:text-alarm hover:bg-surface-2')}`}
           >
-            <Heart size={18} fill={isFavorite ? "currentColor" : "none"} className={isFavorite ? "animate-pulse" : ""} />
+            <Heart size={18} fill={isFavorite ? "currentColor" : "none"} aria-hidden="true" />
           </button>
 
           {/* Context rail — only offered when there is a record to show */}
           {record && (
             <button
               onClick={() => setRailOpen(o => !o)}
+              type="button"
               title={railOpen ? 'Hide record' : 'Show record'}
-              className={`hidden lg:block p-2 rounded-xl transition-colors ${railOpen ? 'text-accent' : (darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2')}`}
+              aria-label={railOpen ? 'Hide record' : 'Show record'}
+              aria-pressed={railOpen}
+              className={`hidden lg:block p-2 rounded-lg transition-colors ${railOpen ? 'text-accent' : (darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2')}`}
             >
-              <PanelRight size={18} />
+              <PanelRight size={18} aria-hidden="true" />
             </button>
           )}
 
           {/* Dark mode toggle */}
           <button
             onClick={toggleDark}
+            type="button"
             title={darkMode ? 'Light Mode' : 'Dark Mode'}
-            className={`p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            className={`p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
           >
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            {darkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
           </button>
 
           {/* Fullscreen (Hidden on mobile) */}
           <button
             onClick={toggleFullscreen}
+            type="button"
             title="Fullscreen"
-            className={`hidden sm:block p-2 rounded-xl transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            aria-label="Fullscreen"
+            className={`hidden sm:block p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
           >
-            <Maximize2 size={18} />
+            <Maximize2 size={18} aria-hidden="true" />
           </button>
 
           {/* Secure badge */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-soft text-accent text-[10px] font-bold uppercase tracking-wider">
-            <Shield size={11} /> Secure
+          <div className="badge badge-accent hidden sm:inline-flex">
+            <Shield size={12} aria-hidden="true" /> Secure
           </div>
         </div>
       </div>
@@ -683,21 +704,25 @@ export function ProtectedContentViewer() {
       {isPdf && numPages > 0 && (
         <div className={`shrink-0 flex items-center justify-center gap-3 py-2 border-b ${darkMode ? 'bg-slate-900/80 border-white/5' : 'bg-white/80 border-slate-200'} backdrop-blur z-10`}>
           <button
+            type="button"
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
+            aria-label="Previous page"
             className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-surface-2 text-ink-2 hover:bg-rule'}`}
           >
-            <ChevronLeft size={14} /> Prev
+            <ChevronLeft size={14} aria-hidden="true" /> Prev
           </button>
           <span className={`text-xs font-mono ${darkMode ? 'text-slate-400' : 'text-muted'}`}>
             Page <strong className={darkMode ? 'text-white' : 'text-ink'}>{currentPage}</strong> of <strong className={darkMode ? 'text-white' : 'text-ink'}>{numPages}</strong>
           </span>
           <button
+            type="button"
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= numPages}
+            aria-label="Next page"
             className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-surface-2 text-ink-2 hover:bg-rule'}`}
           >
-            Next <ChevronRight size={14} />
+            Next <ChevronRight size={14} aria-hidden="true" />
           </button>
         </div>
       )}
@@ -750,7 +775,7 @@ export function ProtectedContentViewer() {
 
             {record?.abstract && (
               <div className={`mt-6 border-t pt-5 ${darkMode ? 'border-white/10' : 'border-slate-200'}`}>
-                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Abstract</p>
+                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Abstract</p>
                 <p className={`mt-2 whitespace-pre-wrap text-[14.5px] leading-relaxed ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{record.abstract}</p>
               </div>
             )}
@@ -879,7 +904,7 @@ export function ProtectedContentViewer() {
 
             {record.journal && (
               <section>
-                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Published in</p>
+                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Published in</p>
                 <Link
                   to={`${libBase}/journal/${encodeURIComponent(record.journal.issn || record.journal.id)}`}
                   className={`mt-1.5 block font-serif text-[15px] font-medium leading-snug hover:text-accent ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}
@@ -901,14 +926,14 @@ export function ProtectedContentViewer() {
                 goes nowhere. */}
             {!record.authors_structured?.length && record.authors && (
               <section>
-                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Authors</p>
+                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Authors</p>
                 <p className={`mt-1.5 text-[13.5px] leading-snug ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{record.authors}</p>
               </section>
             )}
 
             {record.authors_structured?.length > 0 && (
               <section>
-                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Authors</p>
+                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Authors</p>
                 <ul className="mt-1.5 space-y-1">
                   {record.authors_structured.map((a: any) => (
                     <li key={a.id}>
@@ -925,7 +950,7 @@ export function ProtectedContentViewer() {
             )}
 
             <section>
-              <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>This record</p>
+              <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>This record</p>
               <dl className="mt-1.5 space-y-1.5 text-[12.5px]">
                 {record.contentType && <RailRow k="Type">{record.contentType}</RailRow>}
                 {record.domain && <RailRow k="Dept">{record.domain}</RailRow>}
@@ -948,7 +973,7 @@ export function ProtectedContentViewer() {
 
             {(record.siblings?.length > 0 || record.related?.length > 0) && (
               <section>
-                <p className={`font-mono text-[10.5px] uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                   {record.siblings?.length ? 'Also in this issue' : (record.relatedLabel || 'Related')}
                 </p>
                 <ul className={`mt-1.5 divide-y border-t ${darkMode ? 'divide-white/10 border-white/10' : 'divide-slate-200 border-slate-200'}`}>

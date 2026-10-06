@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import { Badge, Skeleton, buttonClass } from '../ui';
 
 /**
  * A subject, and the journals classed under it.
@@ -36,7 +37,10 @@ const auth = (): Record<string, string> | undefined => {
   return t ? { Authorization: `Bearer ${t}` } : undefined;
 };
 
-const LABEL = 'font-mono text-[10.5px] uppercase tracking-wider text-faint';
+// Parts of a record line, with a separator drawn only between two parts that are
+// present — a missing ISSN never leaves a dot hanging at the start of the line.
+const META = "tnum mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted [&>*+*]:before:mr-2 [&>*+*]:before:inline-block [&>*+*]:before:text-rule-2 [&>*+*]:before:content-['·']";
+const LABEL = 'font-mono text-[11px] uppercase tracking-wider text-muted';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 export function SubjectPage({
@@ -62,8 +66,11 @@ export function SubjectPage({
 
   if (state === 'loading') {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="animate-spin text-faint" size={26} />
+      <div className="mx-auto max-w-5xl space-y-3 px-5 py-9" role="status" aria-label="Loading subject">
+        <Skeleton className="h-3 w-1/4" />
+        <Skeleton className="h-8 w-3/5" />
+        <Skeleton className="h-3 w-2/5" />
+        <Skeleton className="mt-6 h-48 w-full rounded-xl" />
       </div>
     );
   }
@@ -73,7 +80,7 @@ export function SubjectPage({
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
         <h1 className="font-serif text-xl font-medium text-ink">Subject not found</h1>
         <p className="mt-2 text-sm text-muted">We hold no journals classed under that subject.</p>
-        <button onClick={() => navigate(-1)} className="mt-6 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
+        <button type="button" onClick={() => navigate(-1)} className={buttonClass('outline', 'md', 'mt-6')}>
           Go back
         </button>
       </div>
@@ -89,9 +96,9 @@ export function SubjectPage({
 
       <header className="border-b border-rule bg-surface">
         <div className="mx-auto max-w-5xl px-5 py-9">
-          <nav className="mb-5 flex items-center gap-1.5 font-mono text-[11px] text-faint">
+          <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-1.5 font-mono text-[11px] text-muted">
             <Link to="/digital-library" className="hover:text-accent">Library</Link>
-            <ChevronRight size={11} />
+            <ChevronRight size={12} aria-hidden="true" />
             <span>Subjects</span>
           </nav>
 
@@ -121,11 +128,11 @@ export function SubjectPage({
 
           {s.departments.length > 0 && (
             <div className="mt-8">
-              <p className={LABEL}>Sits in these departments</p>
+              <h2 className={LABEL}>Sits in these departments</h2>
               <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-1.5">
                 {s.departments.map(d => (
                   <li key={d.name} className="flex items-baseline gap-2 text-[13px]">
-                    <span className="tnum font-mono text-[11.5px] text-faint">{d.journals}</span>
+                    <span className="tnum font-mono text-[11.5px] text-muted">{d.journals}</span>
                     <Link to={`${departmentBase}/${slugify(d.name)}`} className="text-ink-2 hover:text-accent">
                       {d.name}
                     </Link>
@@ -138,10 +145,10 @@ export function SubjectPage({
       </header>
 
       <section className="mx-auto max-w-5xl px-5 py-8">
-        <p className={LABEL}>Journals</p>
-        <div className="mt-3 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-surface">
+        <h2 className={LABEL}>Journals</h2>
+        <div className="mt-3 divide-y divide-rule overflow-hidden card">
           {s.journals.map((j, i) => (
-            <div key={j.id} className="flex gap-4 px-5 py-4">
+            <div key={j.id} className="flex gap-4 px-4 py-4 sm:px-5">
               <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{i + 1}</span>
 
               <div className="min-w-0 flex-1">
@@ -151,32 +158,29 @@ export function SubjectPage({
                 >
                   {j.title}
                 </Link>
-                <p className="tnum mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
+                <p className={META}>
                   {j.publisherName && <span className="text-ink-2">{j.publisherName}</span>}
                   {j.domain && (
-                    <>
-                      <span className="text-rule-2">·</span>
-                      <Link to={`${departmentBase}/${slugify(j.domain)}`} className="hover:text-accent hover:underline">
+                    <Link to={`${departmentBase}/${slugify(j.domain)}`} className="hover:text-accent hover:underline">
                         {j.domain}
                       </Link>
-                    </>
                   )}
-                  {j.issn && <><span className="text-rule-2">·</span><span>ISSN {j.issn}</span></>}
-                  {j.firstYear && j.lastYear && <><span className="text-rule-2">·</span><span>{j.firstYear}–{j.lastYear}</span></>}
+                  {j.issn && <span>ISSN {j.issn}</span>}
+                  {j.firstYear && j.lastYear && <span>{j.firstYear}–{j.lastYear}</span>}
                 </p>
                 {j.licence && (
-                  <span className={`mt-2 inline-block rounded-[3px] border px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide ${
-                    j.licenceIsNC ? 'border-caution bg-caution-soft text-caution' : 'border-accent bg-accent-soft text-accent'}`}>
-                    {j.licence}
-                  </span>
+                  <Badge tone={j.licenceIsNC ? 'caution' : 'accent'} className="mt-2">{j.licence}{j.licenceIsNC && ' · non-commercial'}</Badge>
                 )}
+                <p className="tnum mt-2 font-mono text-[11.5px] text-muted sm:hidden">
+                  {typeof j.articleCount === 'number' ? j.articleCount.toLocaleString() : '—'} articles · {typeof j.volumeCount === 'number' ? j.volumeCount.toLocaleString() : '—'} volumes · {typeof j.issueCount === 'number' ? j.issueCount.toLocaleString() : '—'} issues
+                </p>
               </div>
 
-              <dl className="hidden shrink-0 gap-6 text-right sm:flex">
+              <dl className="hidden shrink-0 gap-6 text-right sm:flex" aria-label="Holdings">
                 {([['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]] as const).map(([label, n]) => (
                   <div key={label}>
-                    <dt className="font-mono text-[10px] uppercase tracking-wider text-faint">{label}</dt>
-                    <dd className="tnum mt-0.5 font-mono text-[14px] text-ink-2">{Number(n ?? 0).toLocaleString()}</dd>
+                    <dt className="font-mono text-[11px] uppercase tracking-wider text-muted">{label}</dt>
+                    <dd className="tnum mt-0.5 font-mono text-[14px] text-ink-2">{typeof n === 'number' ? n.toLocaleString() : '—'}</dd>
                   </div>
                 ))}
               </dl>

@@ -137,78 +137,78 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4"
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-navy/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       role="dialog"
       aria-modal="true"
-      aria-label="Record details"
+      aria-labelledby="metadata-modal-title"
     >
-      <div className="bg-white dark:bg-slate-800 w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[88vh] rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
+      <div className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-rule bg-surface shadow-2xl sm:max-h-[88vh] sm:max-w-3xl sm:rounded-2xl">
 
         {/* header */}
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-700 shrink-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Pill className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-rule px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <span className="badge badge-accent">
               {book ? 'Book' : (item?.contentType || 'Journal Article')}
-            </Pill>
+            </span>
             {isOA
-              ? <Pill className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"><Unlock size={9} className="inline -mt-0.5 mr-0.5" />Open Access</Pill>
-              : <Pill className="bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"><Lock size={9} className="inline -mt-0.5 mr-0.5" />Subscription</Pill>}
-            {!hasFile && <Pill className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">Metadata Only</Pill>}
-            {item?.domain && <Pill className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">{item.domain}</Pill>}
+              ? <span className="badge badge-success"><Unlock size={12} aria-hidden="true" />Open Access</span>
+              : <span className="badge badge-caution"><Lock size={12} aria-hidden="true" />Subscription</span>}
+            {!hasFile && <span className="badge badge-neutral">Metadata Only</span>}
+            {item?.domain && <span className="badge badge-neutral max-w-full truncate">{item.domain}</span>}
           </div>
-          <button onClick={onClose} aria-label="Close"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 shrink-0">
-            <X size={18} />
+          <button type="button" onClick={onClose} aria-label="Close" autoFocus
+            className="btn btn-ghost btn-sm btn-icon -mr-2 shrink-0 text-muted">
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
         {/* body */}
-        <div className="overflow-y-auto px-5 py-4 space-y-5">
+        <div className="space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
           <div className="flex gap-4">
             {cover && !coverBroken && (
               <img src={cover} alt="" loading="lazy" onError={() => setCoverBroken(true)}
-                className="h-32 w-22 shrink-0 rounded-md border border-slate-200 object-cover shadow-sm dark:border-slate-700" />
+                className="h-28 w-20 shrink-0 rounded-md border border-rule object-cover sm:h-32 sm:w-22" />
             )}
             <div className="min-w-0 flex-1">
-            <h2 className="text-lg sm:text-xl font-black leading-snug text-slate-900 dark:text-white">
-              {book ? <BookOpen size={16} className="inline -mt-1 mr-1.5 text-indigo-500" /> : <FileText size={16} className="inline -mt-1 mr-1.5 text-emerald-500" />}
+            <h2 id="metadata-modal-title" className="break-words text-lg font-bold leading-snug text-ink sm:text-xl">
+              {book ? <BookOpen size={16} className="mr-1.5 -mt-1 inline text-accent" aria-hidden="true" /> : <FileText size={16} className="mr-1.5 -mt-1 inline text-accent" aria-hidden="true" />}
               {item?.title || 'Untitled'}
             </h2>
             {authors.length > 0 && (
-              <p className="text-[13px] mt-2 text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="mt-2 text-sm leading-relaxed text-ink-2">
                 {authors.map((a, i) => (
-                  <span key={i}><span className="text-blue-700 dark:text-blue-400 font-medium">{a}</span>{i < authors.length - 1 ? ', ' : ''}</span>
+                  <span key={i}><span className="font-medium text-ink">{a}</span>{i < authors.length - 1 ? ', ' : ''}</span>
                 ))}
               </p>
             )}
-            {citation && <p className="text-[12px] italic text-slate-500 dark:text-slate-400 mt-1">{citation}</p>}
+            {citation && <p className="mt-1 text-xs italic text-muted">{citation}</p>}
             </div>
           </div>
 
           {abstract ? (
-            <Section icon={<Quote size={13} />} title="Abstract">
-              <p className="text-[13.5px] leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-line">{abstract}</p>
+            <Section icon={<Quote size={14} />} title="Abstract">
+              <p className="whitespace-pre-line text-sm leading-relaxed text-ink-2">{abstract}</p>
             </Section>
           ) : (
-            <Section icon={<Quote size={13} />} title="Abstract">
-              <p className="text-[13px] italic text-slate-400">No abstract available for this record.</p>
+            <Section icon={<Quote size={14} />} title="Abstract">
+              <p className="text-sm italic text-muted">No abstract available for this record.</p>
             </Section>
           )}
 
           {keywords.length > 0 && (
-            <Section icon={<Tag size={13} />} title="Keywords &amp; Tags">
+            <Section icon={<Tag size={14} />} title="Keywords &amp; Tags">
               <div className="flex flex-wrap gap-1.5">
                 {keywords.map((k, i) => (
-                  <span key={i} className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300">{k}</span>
+                  <span key={i} className="badge badge-neutral max-w-full truncate">{k}</span>
                 ))}
               </div>
             </Section>
           )}
 
           {shown.length > 0 && (
-            <Section icon={<Info size={13} />} title="Bibliographic Details">
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+            <Section icon={<Info size={14} />} title="Bibliographic Details">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2">
                 {shown.map(([label, value]) => (
                   <Row key={label} label={label} value={String(value)} />
                 ))}
@@ -217,33 +217,33 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
           )}
 
           {doi && (
-            <Section icon={<ExternalLink size={13} />} title="DOI">
+            <Section icon={<ExternalLink size={14} />} title="DOI">
               <div className="flex flex-wrap items-center gap-2">
                 <a href={doiUrl} target="_blank" rel="noopener noreferrer"
-                  className="text-[13px] font-mono text-blue-700 dark:text-blue-400 hover:underline break-all">{doi}</a>
-                <button onClick={() => copy(doi, 'doi')}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600">
-                  {copied === 'doi' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                  className="break-all font-mono text-sm text-accent hover:underline">{doi}</a>
+                <button type="button" onClick={() => copy(doi, 'doi')} aria-label={copied === 'doi' ? 'DOI copied' : 'Copy DOI'}
+                  className="btn btn-outline btn-sm">
+                  {copied === 'doi' ? <><Check size={14} aria-hidden="true" /> Copied</> : <><Copy size={14} aria-hidden="true" /> Copy</>}
                 </button>
               </div>
             </Section>
           )}
 
           {extras.length > 0 && (
-            <Section icon={<Info size={13} />} title="Additional Details">
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+            <Section icon={<Info size={14} />} title="Additional Details">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2">
                 {extras.map(([k, v]) => <Row key={k} label={labelize(k)} value={String(v)} />)}
               </dl>
             </Section>
           )}
 
           {book && Array.isArray(item?.chapters) && item.chapters.length > 0 && (
-            <Section icon={<BookOpen size={13} />} title={`Chapters (${item.chapters.length})`}>
+            <Section icon={<BookOpen size={14} />} title={`Chapters (${item.chapters.length})`}>
               <ul className="space-y-1.5">
                 {item.chapters.map((ch: any, i: number) => (
-                  <li key={ch.id || i} className="text-[13px] text-slate-600 dark:text-slate-300 flex gap-2">
-                    <span className="text-slate-400 shrink-0">{ch.chapterNumber ?? i + 1}.</span>
-                    <span>{ch.title}{ch.pages ? <span className="text-slate-400"> · pp. {ch.pages}</span> : null}</span>
+                  <li key={ch.id || i} className="flex gap-2 text-sm text-ink-2">
+                    <span className="shrink-0 tabular-nums text-muted">{ch.chapterNumber ?? i + 1}.</span>
+                    <span className="min-w-0 break-words">{ch.title}{ch.pages ? <span className="text-muted"> · pp. {ch.pages}</span> : null}</span>
                   </li>
                 ))}
               </ul>
@@ -252,27 +252,24 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
         </div>
 
         {/* footer */}
-        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 shrink-0">
-          <p className="text-[11px] text-slate-400">
+        <div className="flex shrink-0 flex-col gap-3 border-t border-rule bg-surface-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p className="text-xs text-muted">
             {hasFile ? 'Full text available in the secure viewer.'
               : linkOut ? 'Not hosted here — the full text opens at the publisher.'
               : 'Full text not hosted — cite using the details above.'}
           </p>
-          <div className="flex items-center gap-2">
-            <button onClick={onClose}
-              className="text-xs font-bold px-3.5 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700">
+          <div className="flex items-center justify-end gap-2">
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
               Close
             </button>
             {hasFile && onOpen && (
-              <button onClick={onOpen}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-lg shadow-sm">
+              <button type="button" onClick={onOpen} className="btn btn-primary btn-sm">
                 Read Full Text
               </button>
             )}
             {!hasFile && linkOut && (
-              <a href={linkOut} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-lg shadow-sm">
-                <ExternalLink size={13} /> Read at publisher
+              <a href={linkOut} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">
+                <ExternalLink size={14} aria-hidden="true" /> Read at publisher
               </a>
             )}
           </div>
@@ -283,24 +280,20 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
 }
 
 // ───────── small helpers ─────────
-function Pill({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${className}`}>{children}</span>;
-}
-
 function Section({ icon, title, children }: { icon: React.ReactNode; title: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">{icon} {title}</p>
+    <section>
+      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted"><span aria-hidden="true" className="inline-flex">{icon}</span> {title}</h3>
       {children}
-    </div>
+    </section>
   );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex gap-2 min-w-0">
-      <dt className="text-[12px] font-semibold text-slate-400 shrink-0 w-28">{label}</dt>
-      <dd className="text-[13px] text-slate-700 dark:text-slate-200 min-w-0 break-words">{value}</dd>
+    <div className="flex min-w-0 gap-2">
+      <dt className="w-28 shrink-0 text-xs font-semibold text-muted">{label}</dt>
+      <dd className="min-w-0 break-words text-sm text-ink">{value}</dd>
     </div>
   );
 }

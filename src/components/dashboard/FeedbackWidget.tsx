@@ -13,6 +13,14 @@ export function FeedbackWidget() {
   
   const [viewingHistory, setViewingHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
+
+  // Escape closes the dialog, as every other overlay closes — but never mid-send.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !isSubmitting) setIsOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, isSubmitting]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
@@ -82,17 +90,17 @@ export function FeedbackWidget() {
   return (
     <>
       {/* Floating Action Button */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+      {/* The bottom of the floating stack; WhatsApp sits one gap above it. A
+          round icon on a phone, a labelled pill from sm up — 48px tall either way. */}
+      <button
+        type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 mb-[var(--pwa-offset,0px)] z-40 bg-accent text-white px-5 py-3.5 rounded-full shadow-2xl shadow-indigo-500/40 hover:shadow-indigo-500/60 transition-all flex items-center justify-center gap-2 hover:-translate-y-1 border border-white/10"
+        aria-label="Send feedback"
+        className="fixed bottom-[var(--fab-bottom)] right-[var(--fab-right)] mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))] z-40 flex h-12 w-12 items-center justify-center gap-2 rounded-full bg-accent text-accent-on shadow-[var(--shadow-pop)] transition-[margin,background-color] duration-200 hover:bg-accent-hover sm:w-auto sm:px-5"
       >
-        <MessageSquareHeart size={20} className="animate-pulse" />
-        <span className="whitespace-nowrap font-bold text-sm">
-          Feedback
-        </span>
-      </motion.button>
+        <MessageSquareHeart size={20} aria-hidden="true" />
+        <span className="hidden whitespace-nowrap text-sm font-semibold sm:inline">Feedback</span>
+      </button>
 
       {/* Feedback Modal */}
       <AnimatePresence>
@@ -107,36 +115,39 @@ export function FeedbackWidget() {
             />
             
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.97, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-surface rounded-md shadow-2xl overflow-hidden"
+              exit={{ opacity: 0, scale: 0.97, y: 8 }}
+              transition={{ duration: 0.2 }}
+              role="dialog" aria-modal="true" aria-label="Feedback"
+              className="relative w-full max-w-md max-h-[calc(100dvh-32px)] overflow-y-auto bg-surface rounded-2xl border border-rule shadow-[var(--shadow-modal)]"
             >
               <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                 {!isSuccess && !viewingHistory && (
                   <button
                     onClick={() => setViewingHistory(true)}
-                    className="p-2 bg-accent-soft hover:bg-accent-soft text-accent rounded-full transition-colors tooltip-trigger"
-                    title="View Past Feedbacks"
+                    className="btn btn-ghost btn-sm btn-icon text-accent"
+                    title="View past feedback" aria-label="View past feedback"
                   >
-                    <History size={18} />
+                    <History size={18} aria-hidden="true" />
                   </button>
                 )}
                 {viewingHistory && (
                   <button
                     onClick={() => setViewingHistory(false)}
-                    className="p-2 bg-surface-2 hover:bg-surface-2 text-ink-2 rounded-full transition-colors tooltip-trigger"
-                    title="Back to Form"
+                    className="btn btn-ghost btn-sm btn-icon"
+                    title="Back to the form" aria-label="Back to the form"
                   >
-                    <ArrowLeft size={18} />
+                    <ArrowLeft size={18} aria-hidden="true" />
                   </button>
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
                   disabled={isSubmitting}
-                  className="p-2 bg-surface-2/50 hover:bg-rule text-muted rounded-full transition-colors"
+                  className="btn btn-ghost btn-sm btn-icon"
+                  aria-label="Close"
                 >
-                  <X size={18} />
+                  <X size={18} aria-hidden="true" />
                 </button>
               </div>
 
@@ -145,27 +156,27 @@ export function FeedbackWidget() {
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ type: "spring", bounce: 0.5 }}
-                    className="w-20 h-20 bg-accent-soft text-accent rounded-full flex items-center justify-center mb-6"
+                    transition={{ duration: 0.2 }}
+                    className="w-16 h-16 bg-success-soft text-success rounded-full flex items-center justify-center mb-5"
                   >
-                    <CheckCircle2 size={40} />
+                    <CheckCircle2 size={32} aria-hidden="true" />
                   </motion.div>
-                  <h3 className="text-2xl font-bold text-ink mb-2">Thank You!</h3>
+                  <h3 className="text-xl font-semibold text-ink mb-2">Thank you</h3>
                   <p className="text-muted">Your feedback helps us improve your digital library experience.</p>
                 </div>
               ) : !viewingHistory ? (
-                <div className="p-8">
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-accent-soft text-accent rounded-md flex items-center justify-center mx-auto mb-4 rotate-12">
-                      <MessageSquareHeart size={32} />
+                <div className="p-6 sm:p-8">
+                  <div className="text-center mb-6">
+                    <div className="w-12 h-12 bg-accent-soft text-accent rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <MessageSquareHeart size={24} aria-hidden="true" />
                     </div>
-                    <h2 className="text-2xl font-bold text-ink mb-2">We value your feedback</h2>
+                    <h2 className="text-xl font-semibold text-ink mb-1.5">We value your feedback</h2>
                     <p className="text-sm text-muted">How would you rate your experience with the platform so far?</p>
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Star Rating */}
-                    <div className="flex justify-center gap-2">
+                    <div className="flex justify-center gap-1" role="group" aria-label="Rating">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
@@ -174,10 +185,12 @@ export function FeedbackWidget() {
                           onMouseEnter={() => setHoverRating(star)}
                           onMouseLeave={() => setHoverRating(0)}
                           onClick={() => setRating(star)}
-                          className="p-2 transition-transform hover:scale-110 focus:outline-none"
+                          aria-label={`${star} out of 5`} aria-pressed={rating === star}
+                          className="rounded-lg p-2 transition-transform duration-150 hover:scale-110"
                         >
                           <Star
-                            size={36}
+                            size={32}
+                            aria-hidden="true"
                             className={`transition-colors ${
                               star <= (hoverRating || rating)
                                 ? 'fill-caution text-caution'
@@ -189,13 +202,15 @@ export function FeedbackWidget() {
                     </div>
 
                     {/* Comment Area */}
-                    <div>
+                    <div className="field">
+                      <label htmlFor="feedback-comment" className="field-label">Comments <span className="font-normal text-muted">(optional)</span></label>
                       <textarea
+                        id="feedback-comment"
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="Tell us what you love or what we can improve..."
-                        className="w-full px-4 py-3 bg-surface-2/50 border border-rule rounded-md text-sm focus:outline-none focus:ring-2 focus:border-accent resize-none h-32"
+                        className="input h-32 resize-none"
                       />
                     </div>
 
@@ -203,49 +218,49 @@ export function FeedbackWidget() {
                     <button
                       type="submit"
                       disabled={isSubmitting || rating === 0}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 bg-accent text-white rounded-md font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      className="btn btn-primary btn-lg btn-block"
                     >
                       {isSubmitting ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" /> Sending…</>
                       ) : (
                         <>
-                          <Send size={18} /> Submit Feedback
+                          <Send size={16} aria-hidden="true" /> Submit Feedback
                         </>
                       )}
                     </button>
                   </form>
                 </div>
               ) : (
-                <div className="p-8">
+                <div className="p-6 sm:p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 bg-accent-soft text-accent rounded-md flex items-center justify-center">
                       <History size={20} />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-ink">Your Feedbacks</h2>
+                      <h2 className="text-lg font-semibold text-ink">Your feedback</h2>
                       <p className="text-xs text-muted">History of your past submissions</p>
                     </div>
                   </div>
 
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
                     {loadingHistory ? (
-                      <div className="flex justify-center py-10"><div className="w-8 h-8 border-2 border-accent border-t-indigo-600 rounded-full animate-spin" /></div>
+                      <div className="flex justify-center py-10"><div role="status" aria-label="Loading" className="w-7 h-7 border-2 border-rule border-t-accent rounded-full animate-spin" /></div>
                     ) : history.length === 0 ? (
                       <div className="text-center py-10">
                         <MessageSquareHeart size={32} className="mx-auto text-faint mb-2" />
-                        <p className="text-muted text-sm">No past feedbacks found.</p>
+                        <p className="text-sm font-semibold text-ink">No feedback submitted yet</p>
                       </div>
                     ) : (
                       history.map((h, i) => (
-                        <div key={i} className="bg-surface-2 border border-rule rounded-md p-4">
+                        <div key={i} className="bg-surface-2 border border-rule rounded-lg p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-1">
                               {[1,2,3,4,5].map(s => (
                                 <Star key={s} size={12} className={s <= h.rating ? "fill-caution text-caution" : "fill-rule text-faint"} />
                               ))}
                             </div>
-                            <span className="text-[10px] text-faint font-bold flex items-center gap-1">
-                              <Calendar size={10} /> {new Date(h.createdAt).toLocaleDateString()}
+                            <span className="text-xs text-muted flex items-center gap-1">
+                              <Calendar size={12} aria-hidden="true" /> {new Date(h.createdAt).toLocaleDateString()}
                             </span>
                           </div>
                           {h.comment && <p className="text-sm text-ink-2 italic">"{h.comment}"</p>}

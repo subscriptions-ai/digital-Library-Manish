@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { issuerOf, bankRowsOf, statutoryLineOf } from '../../config';
+import { Button, EmptyState, PageHeader, SkeletonRows, StatusBadge } from '../ui';
 
 export function InvoicesPayments() {
   const [payments, setPayments] = useState<any[]>([]);
@@ -17,6 +17,8 @@ export function InvoicesPayments() {
       fetch('/api/user/quotations', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }).then(res => res.json())
     ])
       .then(([paymentsData, quotationsData]) => {
+        // An error answers with an object, not a list; never hand one to .map.
+        if (!Array.isArray(paymentsData) || !Array.isArray(quotationsData)) throw new Error();
         setPayments(paymentsData);
         setQuotations(quotationsData);
       })
@@ -32,226 +34,208 @@ export function InvoicesPayments() {
     toast.success("Invoice downloaded!");
   };
 
+  // The quotation preview is a dialog; Escape puts it away like any other.
+  useEffect(() => {
+    if (!selectedQuotation) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedQuotation(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedQuotation]);
+
   return (
     <div className="space-y-6 pb-12">
-      <div>
-        <h1 className="text-2xl font-bold text-ink tracking-tight">Quotations & Invoices</h1>
-        <p className="text-sm text-muted mt-1">Review your quotations, payment history, and download tax invoices.</p>
+      <PageHeader
+        className="mb-0"
+        title="Quotations & Invoices"
+        description="Review your quotations, payment history, and download tax invoices."
+      />
+
+      <div className="flex w-fit max-w-full gap-1 rounded-lg border border-rule bg-surface-2 p-1" role="group" aria-label="Show">
+        <button type="button" aria-pressed={activeTab === 'quotations'} onClick={() => setActiveTab('quotations')} className={`h-8 rounded-md px-4 text-sm font-semibold transition-colors duration-150 ${activeTab === 'quotations' ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink-2'}`}>My Quotations</button>
+        <button type="button" aria-pressed={activeTab === 'invoices'} onClick={() => setActiveTab('invoices')} className={`h-8 rounded-md px-4 text-sm font-semibold transition-colors duration-150 ${activeTab === 'invoices' ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink-2'}`}>My Invoices</button>
       </div>
 
-      <div className="flex gap-2 bg-surface p-1 rounded-md w-fit shadow-sm border border-rule">
-        <button onClick={() => setActiveTab('quotations')} className={`px-5 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'quotations' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-surface-2'}`}>My Quotations</button>
-        <button onClick={() => setActiveTab('invoices')} className={`px-5 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'invoices' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-surface-2'}`}>My Invoices</button>
-      </div>
-
-      <div className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden">
+      <div className="card overflow-hidden">
         {loading ? (
-          <div className="animate-pulse p-6 space-y-4">
-            {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-surface-2 rounded-md" />)}
+          <div className="p-6">
+            <SkeletonRows rows={5} />
           </div>
         ) : activeTab === 'quotations' ? (
-          <div className="overflow-x-auto min-h-[400px]">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-surface-2 text-xs text-muted font-bold uppercase tracking-widest border-b border-rule">
+          quotations.length === 0 ? (
+            <EmptyState
+              icon={FileText}
+              title="No quotations yet"
+              description="You haven't requested any quotations yet."
+            />
+          ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4">Quotation ID</th>
-                  <th className="px-6 py-4">Date</th>
-                  <th className="px-6 py-4">Amount</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Details</th>
+                  <th scope="col">Quotation ID</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Amount</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="text-right">Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-rule">
-                <AnimatePresence>
-                  {quotations.map((quotation, idx) => (
-                    <motion.tr 
-                      key={quotation.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="hover:bg-surface-2/50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="font-mono text-xs font-bold text-ink-2 bg-surface-2 px-2 py-1 rounded w-max">
-                          {quotation.id}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-muted">
-                        {new Date(quotation.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 font-extrabold text-ink border-x border-rule">
-                        ₹{quotation.total?.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${
-                          quotation.status === 'Approved' ? 'bg-accent-soft text-accent' :
-                          quotation.status === 'Paid' ? 'bg-accent-soft text-accent' :
-                          quotation.status === 'Cancelled' ? 'bg-surface-2 text-ink-2' :
-                          'bg-caution-soft text-caution'
-                        }`}>
-                          {quotation.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => setSelectedQuotation(quotation)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-accent hover:text-accent hover:bg-accent-soft rounded-lg transition-colors"
-                        >
-                          View Email Template
-                        </button>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
+              <tbody>
+                {quotations.map((quotation) => (
+                  <tr key={quotation.id}>
+                    <td>
+                      <span className="whitespace-nowrap rounded bg-surface-2 px-2 py-1 font-mono text-xs font-semibold text-ink-2">
+                        {quotation.id}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap text-muted">
+                      {new Date(quotation.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="whitespace-nowrap font-semibold text-ink tabular-nums">
+                      ₹{quotation.total?.toLocaleString()}
+                    </td>
+                    <td>
+                      <StatusBadge status={quotation.status} />
+                    </td>
+                    <td className="text-right">
+                      <Button variant="ghost" size="sm" className="text-accent" onClick={() => setSelectedQuotation(quotation)}>
+                        View Email Template
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-
-            {quotations.length === 0 && (
-              <div className="text-center p-12">
-                <FileText size={48} className="mx-auto text-faint mb-4" />
-                <h3 className="text-lg font-bold text-ink-2">No Quotations found</h3>
-                <p className="text-faint text-sm mt-1">You haven't requested any quotations yet.</p>
-              </div>
-            )}
           </div>
+          )
+        ) : payments.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="No invoices yet"
+            description="You haven't made any transactions yet."
+          />
         ) : (
-          <div className="overflow-x-auto min-h-[400px]">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-surface-2 text-xs text-muted font-bold uppercase tracking-widest border-b border-rule">
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4">Transaction ID</th>
-                  <th className="px-6 py-4">Date</th>
-                  <th className="px-6 py-4">Amount</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Invoice</th>
+                  <th scope="col">Transaction ID</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Amount</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="text-right">Invoice</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-rule">
-                <AnimatePresence>
-                  {payments.map((payment, idx) => (
-                    <motion.tr 
-                      key={payment.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="hover:bg-surface-2/50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="font-mono text-xs font-bold text-ink-2 bg-surface-2 px-2 py-1 rounded w-max">
-                          {payment.id.split('_').pop()?.toUpperCase()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-muted">
-                        {new Date(payment.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 font-extrabold text-ink border-x border-rule">
-                        ₹{payment.amount?.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${
-                          payment.status === 'Success' ? 'bg-accent-soft text-accent' : 'bg-alarm-soft text-alarm'
-                        }`}>
-                          {payment.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {payment.status === 'Success' ? (
-                          <button
-                            onClick={() => downloadDummyInvoice(payment.id)}
-                            className="inline-flex items-center gap-2 p-2 text-muted hover:text-accent hover:bg-accent-soft rounded-lg transition-colors"
-                            title="Download PDF Invoice"
-                          >
-                            <Download size={18} />
-                          </button>
-                        ) : (
-                          <span className="text-faint">-</span>
-                        )}
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
+              <tbody>
+                {payments.map((payment) => (
+                  <tr key={payment.id}>
+                    <td>
+                      <span className="whitespace-nowrap rounded bg-surface-2 px-2 py-1 font-mono text-xs font-semibold text-ink-2">
+                        {payment.id.split('_').pop()?.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap text-muted">
+                      {new Date(payment.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="whitespace-nowrap font-semibold text-ink tabular-nums">
+                      ₹{payment.amount?.toLocaleString()}
+                    </td>
+                    <td>
+                      {payment.status === 'Success'
+                        ? <StatusBadge status="paid" label={payment.status} />
+                        : <StatusBadge status={payment.status} />}
+                    </td>
+                    <td className="text-right">
+                      {payment.status === 'Success' ? (
+                        <button
+                          type="button"
+                          onClick={() => downloadDummyInvoice(payment.id)}
+                          className="btn btn-ghost btn-icon btn-sm text-muted hover:text-accent"
+                          title="Download PDF Invoice"
+                          aria-label="Download invoice"
+                        >
+                          <Download size={16} aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <span className="text-faint" aria-label="Not available">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-
-            {payments.length === 0 && (
-              <div className="text-center p-12">
-                <FileText size={48} className="mx-auto text-faint mb-4" />
-                <h3 className="text-lg font-bold text-ink-2">No payment history</h3>
-                <p className="text-faint text-sm mt-1">You haven't made any transactions yet.</p>
-              </div>
-            )}
           </div>
         )}
       </div>
 
       {selectedQuotation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-surface rounded-md w-full max-w-7xl h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 bg-ink text-white flex justify-between items-center shrink-0">
-              <h2 className="font-bold flex items-center gap-2">
-                <FileText size={18} className="text-accent" />
-                Quotation Details <span className="text-faint font-normal">#{selectedQuotation.id}</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-2 backdrop-blur-sm sm:p-4" onClick={() => setSelectedQuotation(null)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quotation-dialog-title"
+            className="flex h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-rule bg-surface shadow-2xl sm:h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-rule px-4 py-3 sm:px-6">
+              <h2 id="quotation-dialog-title" className="flex min-w-0 items-center gap-2 type-card-title text-ink">
+                <FileText size={18} className="shrink-0 text-accent" aria-hidden="true" />
+                <span className="truncate">Quotation Details <span className="font-normal text-muted">#{selectedQuotation.id}</span></span>
               </h2>
-              <button onClick={() => setSelectedQuotation(null)} className="text-faint hover:text-white px-3 py-1 bg-ink-2 rounded-lg transition-colors">Close</button>
+              <Button variant="outline" size="sm" onClick={() => setSelectedQuotation(null)} autoFocus>
+                <X size={16} aria-hidden="true" /> Close
+              </Button>
             </div>
             
-            <div className="flex-1 overflow-hidden min-h-0">
-              <div className="grid grid-cols-1 lg:grid-cols-5 h-full min-h-0">
+            <div className="min-h-0 flex-1 overflow-y-auto lg:overflow-hidden">
+              <div className="grid min-h-0 grid-cols-1 lg:h-full lg:grid-cols-5">
                 
                 {/* Left side: Info */}
-                <div className="lg:col-span-2 bg-surface p-6 overflow-y-auto border-r border-rule">
-                  <h3 className="text-sm font-bold text-faint uppercase tracking-wider mb-4">Quotation Summary</h3>
+                <div className="overflow-y-auto border-b border-rule bg-surface p-4 sm:p-6 lg:col-span-2 lg:border-b-0 lg:border-r">
+                  <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">Quotation Summary</h3>
                   
-                  <div className="space-y-6">
-                    <div className="bg-surface-2 p-4 rounded-md border border-rule">
-                      <p className="text-xs text-muted mb-1">Status</p>
-                      <span className={`inline-flex px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-md ${
-                        selectedQuotation.status === 'Approved' ? 'bg-accent-soft text-accent' :
-                        selectedQuotation.status === 'Paid' ? 'bg-accent-soft text-accent' :
-                        selectedQuotation.status === 'Cancelled' ? 'bg-surface-2 text-ink-2' :
-                        'bg-caution-soft text-caution'
-                      }`}>
-                        {selectedQuotation.status}
-                      </span>
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-rule bg-surface-2 p-4">
+                      <p className="mb-1 text-xs text-muted">Status</p>
+                      <StatusBadge status={selectedQuotation.status} />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-muted mb-1">Plan</p>
-                        <p className="font-bold text-ink">{selectedQuotation.planType || 'Monthly'}</p>
+                        <p className="mb-1 text-xs text-muted">Plan</p>
+                        <p className="font-semibold text-ink">{selectedQuotation.planType || 'Monthly'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted mb-1">Date</p>
-                        <p className="font-bold text-ink">{new Date(selectedQuotation.createdAt).toLocaleDateString()}</p>
+                        <p className="mb-1 text-xs text-muted">Date</p>
+                        <p className="font-semibold text-ink">{new Date(selectedQuotation.createdAt).toLocaleDateString()}</p>
                       </div>
                     </div>
 
-                    <div className="border border-rule rounded-md p-4 bg-surface-2">
-                      <p className="text-xs text-muted mb-2">Pricing Breakdown</p>
-                      <div className="flex justify-between text-sm mb-1">
+                    <div className="rounded-xl border border-rule bg-surface-2 p-4">
+                      <p className="mb-2 text-xs text-muted">Pricing Breakdown</p>
+                      <div className="mb-1 flex justify-between text-sm">
                         <span className="text-ink-2">Subtotal</span>
-                        <span className="font-semibold text-ink">₹{selectedQuotation.subtotal?.toLocaleString()}</span>
+                        <span className="font-semibold text-ink tabular-nums">₹{selectedQuotation.subtotal?.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between text-sm mb-3">
+                      <div className="mb-3 flex justify-between text-sm">
                         <span className="text-ink-2">GST (18%)</span>
-                        <span className="font-semibold text-ink">₹{selectedQuotation.gstAmount?.toLocaleString()}</span>
+                        <span className="font-semibold text-ink tabular-nums">₹{selectedQuotation.gstAmount?.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between text-base pt-2 border-t border-rule">
-                        <span className="font-bold text-ink">Total</span>
-                        <span className="font-black text-accent">₹{selectedQuotation.total?.toLocaleString()}</span>
+                      <div className="flex justify-between border-t border-rule pt-2 text-base">
+                        <span className="font-semibold text-ink">Total</span>
+                        <span className="font-bold text-accent tabular-nums">₹{selectedQuotation.total?.toLocaleString()}</span>
                       </div>
                     </div>
 
-                    <div className="bg-accent-soft text-accent p-4 rounded-md border border-rule">
-                      <p className="text-sm font-medium">To proceed with this quotation, please contact your account manager or click upgrade in your dashboard.</p>
+                    <div className="rounded-xl border border-rule bg-accent-soft p-4">
+                      <p className="text-sm text-ink-2">To proceed with this quotation, please contact your account manager or click upgrade in your dashboard.</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Right side: Email Preview */}
-                <div className="lg:col-span-3 bg-surface-2 flex flex-col h-full min-h-0">
-                  <div className="bg-rule p-3 text-ink-2 flex justify-between items-center shrink-0 border-b border-rule-2">
-                    <span className="text-xs font-bold uppercase tracking-wide">Sent Email Copy</span>
+                <div className="flex min-h-0 flex-col bg-surface-2 lg:col-span-3 lg:h-full">
+                  <div className="flex shrink-0 items-center justify-between border-b border-rule px-4 py-3">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted">Sent Email Copy</span>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 md:p-8">
                     <div className="bg-surface shadow-lg mx-auto max-w-2xl min-h-full border border-rule rounded-sm">

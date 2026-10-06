@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Book, User, Calendar, Tag, FileText, Lock } from "lucide-react";
+import { Book, User, Calendar, Tag, Lock, SearchX } from "lucide-react";
+import { EmptyState, Skeleton, buttonClass } from "./ui";
 
 export function PublicContentPreview() {
   const { id } = useParams();
@@ -21,8 +22,34 @@ export function PublicContentPreview() {
       });
   }, [id]);
 
-  if (loading) return <div className="p-24 text-center">Loading preview...</div>;
-  if (!content || content.error) return <div className="p-24 text-center">Content not found.</div>;
+  if (loading) return (
+    <div className="bg-ground px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <div className="card mx-auto max-w-4xl p-6 md:p-10" role="status" aria-label="Loading preview">
+        <div className="flex flex-col gap-8 md:flex-row">
+          <Skeleton className="aspect-[3/4] h-auto w-full max-w-[240px] rounded-xl md:w-1/3" />
+          <div className="flex-1 space-y-4">
+            <Skeleton className="h-5 w-24 rounded-full" />
+            <Skeleton className="h-8 w-4/5" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-11/12" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+  if (!content || content.error) return (
+    <div className="bg-ground px-4 py-8 sm:py-12">
+      <div className="card mx-auto max-w-xl">
+        <EmptyState
+          icon={SearchX}
+          title="Content not found."
+          description="This item may have been moved or removed from the library."
+          action={<Link to="/search" className={buttonClass('outline')}>Search the library</Link>}
+        />
+      </div>
+    </div>
+  );
 
   const contentSchema = {
     "@context": "https://schema.org",
@@ -38,7 +65,7 @@ export function PublicContentPreview() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="bg-ground px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       <Helmet>
         <title>{content.title} | STM Digital Library</title>
         <meta name="description" content={content.description || `Explore ${content.title} on STM Digital Library.`} />
@@ -48,75 +75,80 @@ export function PublicContentPreview() {
         </script>
       </Helmet>
 
-      <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
-        <div className="p-8 md:p-12">
-          <div className="flex flex-col md:flex-row gap-8">
-            <div className="md:w-1/3 shrink-0">
+      <div className="card mx-auto max-w-4xl overflow-hidden">
+        <div className="p-5 sm:p-8 md:p-10">
+          <div className="flex flex-col gap-6 md:flex-row md:gap-8">
+            <div className="mx-auto w-full max-w-[240px] shrink-0 md:mx-0 md:w-1/3 md:max-w-none">
               {content.coverImage ? (
-                <img src={content.coverImage} alt={content.title} className="w-full h-auto rounded-xl shadow-lg border border-slate-200" />
+                <img src={content.coverImage} alt={content.title} className="h-auto w-full rounded-xl border border-rule" />
               ) : (
-                <div className="w-full aspect-[3/4] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center">
-                  <Book className="w-16 h-16 text-slate-300" />
+                <div className="flex aspect-[3/4] w-full items-center justify-center rounded-xl border border-rule bg-surface-2" aria-hidden="true">
+                  <Book className="h-16 w-16 text-faint" />
                 </div>
               )}
             </div>
-            
-            <div className="md:w-2/3 flex flex-col justify-center">
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-wider mb-4 w-fit">
-                {content.contentType}
-              </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 leading-tight">{content.title}</h1>
-              
-              <div className="flex flex-wrap gap-4 text-sm text-slate-600 mb-6">
+
+            <div className="flex min-w-0 flex-col justify-center md:w-2/3">
+              {content.contentType && (
+                <span className="badge badge-accent mb-4 w-fit">{content.contentType}</span>
+              )}
+              <h1 className="mb-4 break-words text-2xl font-bold leading-tight text-ink sm:text-3xl md:text-4xl">{content.title}</h1>
+
+              <div className="mb-6 flex flex-wrap gap-2 text-sm text-ink-2">
                 {content.author && (
-                  <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                    <User size={16} className="text-slate-400" />
-                    <span className="font-medium">{content.author}</span>
+                  <div className="flex min-w-0 items-center gap-2 rounded-lg border border-rule bg-surface-2 px-3 py-1.5">
+                    <User size={16} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="sr-only">Authors: </span>
+                    <span className="min-w-0 break-words font-medium">{content.author}</span>
                   </div>
                 )}
                 {content.publishedYear && (
-                  <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                    <Calendar size={16} className="text-slate-400" />
+                  <div className="flex items-center gap-2 rounded-lg border border-rule bg-surface-2 px-3 py-1.5">
+                    <Calendar size={16} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="sr-only">Year: </span>
                     <span className="font-medium">{content.publishedYear}</span>
                   </div>
                 )}
                 {content.publisher && (
-                  <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                    <Tag size={16} className="text-slate-400" />
-                    <span className="font-medium">{content.publisher}</span>
+                  <div className="flex min-w-0 items-center gap-2 rounded-lg border border-rule bg-surface-2 px-3 py-1.5">
+                    <Tag size={16} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="sr-only">Publisher: </span>
+                    <span className="min-w-0 break-words font-medium">{content.publisher}</span>
                   </div>
                 )}
               </div>
 
-              <div className="prose prose-slate max-w-none text-slate-600 mb-8">
+              <div className="mb-8 max-w-none text-ink-2">
                 {content.description ? (
                   <p className="leading-relaxed">{content.description}</p>
                 ) : (
-                  <p className="italic text-slate-400">No description available for this content.</p>
+                  <p className="italic text-muted">No description available for this content.</p>
                 )}
               </div>
 
-              <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
-                <div className="flex items-center gap-3 text-blue-900">
-                  <Lock className="w-8 h-8 text-blue-500" />
+              <div className="mt-auto flex flex-col gap-4 rounded-xl border border-rule bg-surface-2 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent" aria-hidden="true">
+                    <Lock size={18} />
+                  </span>
                   <div>
-                    <h3 className="font-bold text-sm">Full Content is Protected</h3>
-                    <p className="text-xs text-blue-700">Log in, or register free to read the complete document.</p>
+                    <h2 className="text-sm font-semibold text-ink">Full Content is Protected</h2>
+                    <p className="text-sm text-muted">Log in, or register free to read the complete document.</p>
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  <Link to="/login" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-colors shadow-lg shadow-blue-500/30 whitespace-nowrap">
+                <div className="flex gap-2 sm:shrink-0">
+                  <Link to="/login" className={buttonClass('brand', 'md', 'flex-1 whitespace-nowrap sm:flex-none')}>
                     Login
                   </Link>
-                  <Link to="/signup" className="px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-bold text-sm transition-colors border border-slate-200 whitespace-nowrap">
+                  <Link to="/signup" className={buttonClass('outline', 'md', 'flex-1 whitespace-nowrap sm:flex-none')}>
                     Register Free
                   </Link>
                 </div>
               </div>
 
-              <p className="mt-6 text-center text-[11px] text-slate-400">
+              <p className="mt-6 text-center text-xs text-muted">
                 Rights holder?{" "}
-                <Link to="/content-removal" className="font-semibold text-slate-500 underline hover:text-slate-700">
+                <Link to="/content-removal" className="font-semibold text-accent underline hover:text-accent-hover">
                   Request removal of this content
                 </Link>
               </p>

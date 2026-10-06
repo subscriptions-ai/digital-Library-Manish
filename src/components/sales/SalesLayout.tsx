@@ -1,8 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell, FileText, Sparkles } from 'lucide-react';
+import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell, FileText, Sparkles, Menu, X, ArrowRight } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import { Spinner } from '../ui';
+
+// The workspace's sections, in order. `exact` matches the path itself only;
+// otherwise the section owns everything beneath it.
+const NAV = [
+  { to: '/sales', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { to: '/sales/leads', label: 'My Leads', icon: Users, exact: false },
+  { to: '/sales/pro-applications', label: 'Pro Applications', icon: Sparkles, exact: false },
+  { to: '/sales/activity', label: 'Activity Log', icon: ClipboardList, exact: true },
+  { to: '/sales/quotations', label: 'My Quotations', icon: FileText, exact: false },
+  { to: '/sales/performance', label: 'Performance', icon: BarChart3, exact: true },
+] as const;
 
 export function SalesLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -10,6 +22,7 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
   const { profile, logout, loading } = useAuth();
   const [notif, setNotif] = useState<any>({ total: 0, list: [] });
   const [bellOpen, setBellOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const prevCount = useRef(0);
 
   const loadNotif = async () => {
@@ -31,6 +44,8 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
   }, [profile]);
   // Refresh the badge shortly after landing on My Leads (opening it clears the flags server-side)
   useEffect(() => { if (location.pathname.startsWith('/sales/leads')) setTimeout(loadNotif, 1500); /* eslint-disable-next-line */ }, [location.pathname]);
+  // The phone menu closes once a section is chosen.
+  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
   useEffect(() => { if (!bellOpen) return; const c = () => setBellOpen(false); window.addEventListener('click', c); return () => window.removeEventListener('click', c); }, [bellOpen]);
 
   useEffect(() => {
@@ -53,142 +68,120 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (loading || !profile) return <div className="min-h-screen bg-slate-50 flex items-center justify-center animate-pulse">Loading...</div>;
+  if (loading || !profile) return <div className="min-h-screen bg-ground flex items-center justify-center"><Spinner /></div>;
+
+  const isActive = (to: string, exact: boolean) => exact ? location.pathname === to : location.pathname.startsWith(to);
+
+  const nav = (
+    <nav aria-label="Sales workspace" className="space-y-1">
+      {NAV.map(({ to, label, icon: Icon, exact }) => {
+        const active = isActive(to, exact);
+        return (
+          <button
+            key={to}
+            onClick={() => navigate(to)}
+            aria-current={active ? 'page' : undefined}
+            className={`w-full flex items-center gap-3 px-3 h-11 rounded-lg text-sm font-semibold transition-colors duration-150 ${
+              active ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
+            }`}
+          >
+            <Icon size={18} aria-hidden="true" /> {label}
+            {to === '/sales/leads' && notif.total > 0 && (
+              <span className="ml-auto badge badge-caution">{notif.total > 9 ? '9+' : notif.total}<span className="sr-only"> new</span></span>
+            )}
+          </button>
+        );
+      })}
+
+      {profile.role === 'SuperAdmin' && (
+        <div className="pt-3 mt-3 border-t border-rule">
+          <button onClick={() => navigate('/admin/leads')} className="btn btn-outline btn-block">
+            Return to Admin
+          </button>
+        </div>
+      )}
+    </nav>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div className="app-type min-h-screen bg-ground flex flex-col">
+      <header className="bg-surface border-b border-rule sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-indigo-900">
-              <Target className="text-indigo-600" />
-              Sales Workspace
+          <div className="flex justify-between items-center gap-2 h-16">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                onClick={() => setMenuOpen(o => !o)}
+                className="btn btn-ghost btn-icon md:hidden -ml-2 shrink-0"
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={menuOpen}
+                aria-controls="sales-mobile-nav"
+              >
+                {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+              </button>
+              <div className="flex items-center gap-2 font-bold text-base sm:text-lg tracking-tight text-ink min-w-0">
+                <Target size={20} className="text-accent shrink-0" aria-hidden="true" />
+                <span className="truncate">Sales Workspace</span>
+              </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="relative" onClick={e => e.stopPropagation()}>
-                <button onClick={() => { setBellOpen(o => !o); loadNotif(); }} className="relative p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors">
-                  <Bell size={19} />
+            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+              <div className="sm:relative" onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={() => { setBellOpen(o => !o); loadNotif(); }}
+                  className="btn btn-ghost btn-icon relative"
+                  aria-label={notif.total > 0 ? `Notifications, ${notif.total} new` : 'Notifications'}
+                  aria-expanded={bellOpen}
+                >
+                  <Bell size={20} aria-hidden="true" />
                   {notif.total > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 bg-rose-500 text-[9px] text-white min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center font-bold">{notif.total > 9 ? '9+' : notif.total}</span>
+                    <span className="absolute top-1 right-1 bg-alarm text-[11px] text-white min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center font-bold" aria-hidden="true">{notif.total > 9 ? '9+' : notif.total}</span>
                   )}
                 </button>
                 {bellOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[80] overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                      <span className="text-sm font-bold text-slate-800">Notifications</span>
-                      {notif.total > 0 && <span className="text-[11px] font-bold text-rose-500">{notif.total} new</span>}
+                  <div className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 bg-surface border border-rule rounded-xl shadow-[var(--shadow-pop)] z-[80] overflow-hidden">
+                    <div className="px-4 py-3 border-b border-rule flex items-center justify-between">
+                      <span className="text-sm font-semibold text-ink">Notifications</span>
+                      {notif.total > 0 && <span className="badge badge-caution">{notif.total} new</span>}
                     </div>
-                    <div className="max-h-96 overflow-y-auto divide-y divide-slate-50">
-                      {(!notif.list || notif.list.length === 0) && <div className="px-4 py-8 text-center text-sm text-slate-400">You're all caught up 🎉</div>}
+                    <div className="max-h-96 overflow-y-auto divide-y divide-rule">
+                      {(!notif.list || notif.list.length === 0) && <div className="px-4 py-8 text-center text-sm text-muted">You're all caught up.</div>}
                       {(notif.list || []).map((l: any) => (
-                        <button key={l.id} onClick={() => { setBellOpen(false); navigate('/sales/leads'); }} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-start gap-3">
-                          <Users size={16} className="text-indigo-600 mt-0.5 shrink-0" />
-                          <div className="min-w-0"><div className="text-sm font-semibold text-slate-800 truncate">New lead: {l.name}</div>
-                            <div className="text-[12px] text-slate-500 truncate">{[l.organization, l.source].filter(Boolean).join(' · ') || 'Assigned to you'}</div></div>
+                        <button key={l.id} onClick={() => { setBellOpen(false); navigate('/sales/leads'); }} className="w-full text-left px-4 py-3 hover:bg-surface-2 transition-colors flex items-start gap-3">
+                          <Users size={16} className="text-accent mt-0.5 shrink-0" aria-hidden="true" />
+                          <div className="min-w-0"><div className="text-sm font-semibold text-ink truncate">New lead: {l.name}</div>
+                            <div className="text-xs text-muted truncate">{[l.organization, l.source].filter(Boolean).join(' · ') || 'Assigned to you'}</div></div>
                         </button>
                       ))}
                       {notif.total > 0 && (
-                        <button onClick={() => { setBellOpen(false); navigate('/sales/leads'); }} className="w-full text-center px-4 py-2.5 text-xs font-bold text-indigo-600 hover:bg-indigo-50">View all my leads →</button>
+                        <button onClick={() => { setBellOpen(false); navigate('/sales/leads'); }} className="w-full flex items-center justify-center gap-1 px-4 py-3 text-sm font-semibold text-accent hover:bg-accent-soft transition-colors">View all my leads <ArrowRight size={14} aria-hidden="true" /></button>
                       )}
                     </div>
                   </div>
                 )}
               </div>
-              <span className="text-sm font-semibold text-slate-600 hidden sm:block">
+              <span className="text-sm font-medium text-ink-2 hidden sm:block max-w-[200px] truncate">
                 {profile.displayName || profile.email}
               </span>
-              <button onClick={handleSignOut} className="text-slate-400 hover:text-rose-600 transition-colors p-2" title="Sign Out">
-                <LogOut size={18} />
+              <button onClick={handleSignOut} className="btn btn-ghost btn-icon" title="Sign Out" aria-label="Sign Out">
+                <LogOut size={18} aria-hidden="true" />
               </button>
             </div>
           </div>
         </div>
+        {menuOpen && (
+          <div id="sales-mobile-nav" className="md:hidden border-t border-rule bg-surface px-4 py-3 shadow-[var(--shadow-pop)]">
+            {nav}
+          </div>
+        )}
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-6 flex-1 flex flex-col md:flex-row gap-6">
-        {/* Stacked above the content on a phone, pinned beside it on a desktop —
-            clear of the sticky header rather than under it. */}
-        <aside className="w-full space-y-2 md:sticky md:top-20 md:w-64 md:shrink-0 md:self-start">
-          <button
-            onClick={() => navigate('/sales')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              location.pathname === '/sales'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            <LayoutDashboard size={18} /> Dashboard
-          </button>
-
-          <button
-            onClick={() => navigate('/sales/leads')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              location.pathname.startsWith('/sales/leads')
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            <Users size={18} /> My Leads
-            {notif.total > 0 && <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{notif.total > 9 ? '9+' : notif.total}</span>}
-          </button>
-
-          <button
-            onClick={() => navigate('/sales/pro-applications')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              location.pathname.startsWith('/sales/pro-applications')
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            <Sparkles size={18} /> Pro Applications
-          </button>
-
-          <button
-            onClick={() => navigate('/sales/activity')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              location.pathname === '/sales/activity'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            <ClipboardList size={18} /> Activity Log
-          </button>
-
-          <button
-            onClick={() => navigate('/sales/quotations')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              location.pathname.startsWith('/sales/quotations')
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            <FileText size={18} /> My Quotations
-          </button>
-
-          <button
-            onClick={() => navigate('/sales/performance')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
-              location.pathname === '/sales/performance'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            <BarChart3 size={18} /> Performance
-          </button>
-          
-          {profile.role === 'SuperAdmin' && (
-            <div className="pt-4 mt-4 border-t border-slate-200">
-              <button
-                onClick={() => navigate('/admin/leads')}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold bg-slate-800 text-white hover:bg-slate-900 transition-all"
-              >
-                Return to Admin
-              </button>
-            </div>
-          )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-4 sm:py-6 flex-1 flex flex-col md:flex-row gap-6">
+        {/* Pinned beside the content on a desktop, clear of the sticky header
+            rather than under it; on a phone the header's menu holds it. */}
+        <aside className="hidden md:block md:sticky md:top-20 md:w-60 md:shrink-0 md:self-start">
+          {nav}
         </aside>
 
-        <main className="flex-1 bg-white rounded-3xl shadow-sm border border-slate-200 p-6 min-h-[500px]">
+        <main className="flex-1 min-w-0 card p-4 sm:p-6 min-h-[500px]">
           {children}
         </main>
       </div>

@@ -26,8 +26,10 @@ export function PublisherReviewQueue() {
   const act = async (model: 'article' | 'book', id: string, action: 'approve' | 'reject') => {
     let note = '';
     if (action === 'reject') {
-      note = window.prompt('Reason for rejection (shown to the publisher):') || '';
-      if (note === null) return;
+      // Cancel on the prompt means "don't reject" — not "reject with no reason".
+      const reason = window.prompt('Reason for rejection (shown to the publisher):');
+      if (reason === null) return;
+      note = reason;
     }
     setBusy(id);
     try {

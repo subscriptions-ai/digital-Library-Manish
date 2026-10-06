@@ -33,6 +33,7 @@ import {
 } from "./src/lib/marketingEmails.js";
 import { allowanceFor, pauseFor, SESSION_MS, SESSIONS_PER_DAY } from "./src/lib/freeAllowance.js";
 import { priceDepartments, termEnd, MAX_INSTITUTION_USERS, DEPARTMENT_RATES, GST_RATE } from "./src/lib/institutionPricing.js";
+import { calculateSoloSubscriptionPrice, SOLO_RATE_STANDARD, SOLO_RATE_BULK, SOLO_BULK_THRESHOLD, SOLO_TERM_MONTHS } from "./src/lib/soloPricing.js";
 import { cleanSubjectArea } from "./src/lib/subjects.js";
 import { previousIstDay, buildDailyUserDigest, DIGEST_ROW_LIMIT, DIGEST_TEMPLATE_KEY } from "./src/lib/dailyUserDigest.js";
 import {
@@ -1293,7 +1294,7 @@ async function startServer() {
           where: { userId: uid }, orderBy: { createdAt: 'desc' }, take: 10,
         }),
         prisma.payment.aggregate({
-          where: { userId: uid, status: 'Success' }, _count: { _all: true }, _sum: { amount: true },
+          where: { userId: uid, status: { in: ['Success', 'Paid'] } }, _count: { _all: true }, _sum: { amount: true },
         }),
       ]);
 
@@ -1333,6 +1334,172 @@ async function startServer() {
       });
       res.json({ application: application || null });
     } catch { res.status(500).json({ error: "Failed to load your application" }); }
+  });
+
+  /**
+   * Premium Subscription for a Solo Learner: departments, by the year, paid for online.
+   *
+   * This is its own flow, priced by its own file (soloPricing.ts). It shares nothing with the
+   * institution checkout below, which is reachable only by a librarian and priced from the
+   * institution's rate card. A Solo account is one that registered as Solo — a Professor
+   * registered under an institute is also a "Subscriber" but is not eligible here.
+   *
+   * As with the institution checkout, the browser's price is only a preview: every quote and
+   * every order is priced again here from the departments asked for, and what a verified
+   * payment activates is read back from the pending Payment, never from the request.
+   */
+  const soloDepartmentNames = new Set<string>(DOMAINS.map((d: any) => d.name));
+
+  /** The signed-in Solo Learner, or null for anyone else. */
+  const soloAccount = async (req: any) => {
+    const me = await prisma.user.findUnique({
+      where: { id: req.user.uid },
+      select: { id: true, displayName: true, email: true, state: true, role: true, registrantType: true, institutionId: true },
+    });
+    if (!me || me.registrantType !== 'Solo' || me.role !== 'Subscriber' || me.institutionId) return null;
+    return me;
+  };
+
+  /** What this Solo Learner's running subscriptions already cover. */
+  const soloHoldings = async (userId: string) => {
+    const now = new Date();
+    const subs = await prisma.subscription.findMany({
+      where: { userId, institutionId: null, status: 'Active', endDate: { gt: now } },
+    });
+    // An active subscription with no departments listed is whole-library access, granted by
+    // staff; there is nothing left to sell to it.
+    const wholeLibrary = subs.some((s: any) => !Array.isArray(s.domains) || s.domains.length === 0);
+    const departments = subs.flatMap((s: any) =>
+      (Array.isArray(s.domains) ? s.domains : [])
+        .filter((name: string) => soloDepartmentNames.has(name))
+        .map((name: string) => ({ name, endDate: s.endDate })));
+    return { wholeLibrary, departments };
+  };
+
+  /** Prices the departments asked for. Those already held are not sold again. */
+  const priceSoloPurchase = async (me: any, body: any) => {
+    const wanted: string[] = Array.isArray(body?.departments) ? body.departments.map(String) : [];
+    const unknown = wanted.filter((name) => !soloDepartmentNames.has(name));
+    if (unknown.length) return { error: `Unknown department: ${unknown.join(', ')}` };
+    const held = await soloHoldings(me.id);
+    if (held.wholeLibrary) return { error: 'Your subscription already covers the whole library.' };
+    const heldNames = new Set(held.departments.map((d) => d.name));
+    const fresh = [...new Set(wanted)].filter((name) => !heldNames.has(name));
+    if (!fresh.length) return { error: 'Choose at least one department you do not already subscribe to.' };
+    return { departments: fresh, price: calculateSoloSubscriptionPrice(fresh.length, { state: me.state }) };
+  };
+
+  app.get("/api/me/subscribe/plan", authenticateJWT, async (req: any, res) => {
+    try {
+      const me = await soloAccount(req);
+      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      const held = await soloHoldings(me.id);
+      res.json({
+        name: me.displayName,
+        email: me.email,
+        state: me.state,
+        wholeLibrary: held.wholeLibrary,
+        departments: held.departments,
+        allDepartments: DOMAINS.map((d: any) => d.name),
+        pricing: {
+          standardRate: SOLO_RATE_STANDARD, bulkRate: SOLO_RATE_BULK,
+          bulkThreshold: SOLO_BULK_THRESHOLD, gstRate: GST_RATE, termMonths: SOLO_TERM_MONTHS,
+        },
+      });
+    } catch (err: any) {
+      console.error('GET /api/me/subscribe/plan:', err?.message);
+      res.status(500).json({ error: "Failed to load your subscription options" });
+    }
+  });
+
+  app.post("/api/me/subscribe/quote", authenticateJWT, async (req: any, res) => {
+    try {
+      const me = await soloAccount(req);
+      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      const quote: any = await priceSoloPurchase(me, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      res.json(quote);
+    } catch {
+      res.status(500).json({ error: "Failed to price this" });
+    }
+  });
+
+  app.post("/api/me/subscribe/checkout", authenticateJWT, async (req: any, res) => {
+    try {
+      const me = await soloAccount(req);
+      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      const quote: any = await priceSoloPurchase(me, req.body);
+      if (quote.error) return res.status(400).json(quote);
+
+      const amountPaise = Math.round(quote.price.total * 100);
+      const receipt = `solo_${Date.now()}`;
+      let order: any;
+      if (process.env.NODE_ENV !== "production" && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+        order = { id: `order_mock_${Date.now()}`, amount: amountPaise, currency: 'INR', receipt, isMock: true };
+      } else {
+        order = await getRazorpay().orders.create({ amount: amountPaise, currency: 'INR', receipt });
+      }
+      await prisma.payment.create({
+        data: {
+          orderId: order.id,
+          amount: quote.price.total,
+          status: 'Pending',
+          userId: me.id,
+          items: { purpose: 'solo', ...quote } as any,
+        }
+      });
+      res.json({ ...order, razorpayKey: process.env.RAZORPAY_KEY_ID, quote });
+    } catch (err: any) {
+      console.error('POST /api/me/subscribe/checkout:', err?.message);
+      res.status(500).json({ error: "Failed to start the payment" });
+    }
+  });
+
+  app.post("/api/me/subscribe/checkout/verify", authenticateJWT, async (req: any, res) => {
+    try {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+      if (!razorpay_order_id) return res.status(400).json({ error: "Missing order." });
+      const payment = await prisma.payment.findUnique({ where: { orderId: razorpay_order_id } });
+      const items: any = payment?.items;
+      if (!payment || items?.purpose !== 'solo' || payment.userId !== req.user.uid) {
+        return res.status(404).json({ error: "No such payment." });
+      }
+      if (payment.status === 'Paid') return res.json({ ok: true, alreadyActive: true });
+
+      const isMock = process.env.NODE_ENV !== "production" && String(razorpay_order_id).startsWith("order_mock_");
+      if (!isMock) {
+        const expected = crypto.createHmac("sha256", (process.env.RAZORPAY_KEY_SECRET || "").trim())
+          .update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+        if (!razorpay_signature || razorpay_signature !== expected) {
+          console.warn(`[solo checkout] signature mismatch for ${razorpay_order_id}`);
+          return res.status(400).json({ error: "Payment could not be verified." });
+        }
+      }
+
+      const now = new Date();
+      const end = termEnd(now);
+      await prisma.$transaction(async (tx: any) => {
+        await tx.payment.update({ where: { id: payment.id }, data: { status: 'Paid', paymentId: razorpay_payment_id || `mock_${Date.now()}` } });
+        await tx.subscription.create({
+          data: {
+            planName: 'Premium Subscription',
+            planType: 'Yearly',
+            durationMonths: SOLO_TERM_MONTHS,
+            status: 'Active',
+            domains: items.departments,
+            contentTypes: [],
+            userId: payment.userId,
+            paymentId: payment.id,
+            startDate: now,
+            endDate: end,
+          }
+        });
+      });
+      res.json({ ok: true, endDate: end });
+    } catch (err: any) {
+      console.error('POST /api/me/subscribe/checkout/verify:', err?.message);
+      res.status(500).json({ error: "Payment received, but activation failed. Our team will activate it — please contact support." });
+    }
   });
 
   /**
@@ -3416,7 +3583,7 @@ async function startServer() {
         allowedDomains,
         recentActivity: mappedRecent,
         planType: activeSubs[0]?.planType || (free ? 'Free' : 'Free/Demo'),
-        planName: activeSubs[0]?.planName || (free ? 'Free membership' : 'Basic Plan'),
+        planName: activeSubs[0]?.planName || (free ? 'Free Subscription' : 'Basic Plan'),
         expiredSubscriptions: expiredSubs,
 
         /** What the member holds, in the member's own word for it. */
@@ -14970,6 +15137,22 @@ async function startServer() {
 
   // Mount extraction routes BEFORE Vite/Static middleware
   setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
+
+  // The institutional brochure, sent as a download with its own name. It has to
+  // be a route of its own: the static handler below falls back to index.html for
+  // anything it cannot find, so a missing or misnamed file used to come back as
+  // a 200 carrying the website's HTML — which a browser then saved as a ".pdf"
+  // that no reader could open. Here a missing file is a plain 404.
+  // Built by `npm run brochure`; the build copies public/ into dist/.
+  app.get("/STM_Digital_Library_Brochure.pdf", (req: any, res: any) => {
+    const name = "STM_Digital_Library_Brochure.pdf";
+    const file = [path.join(currentDir, "dist", name), path.join(currentDir, "public", name)].find(f => fs.existsSync(f));
+    if (!file) return res.status(404).json({ error: "The brochure is not available right now." });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+    res.setHeader("Cache-Control", "public, max-age=600");
+    res.sendFile(file);
+  });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

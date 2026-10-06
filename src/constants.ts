@@ -518,10 +518,6 @@ export const DESIGNATIONS_BY_TYPE: Record<string, string[]> = {
     'Associate Professor',
     'Assistant Professor',
     'Faculty Member',
-    'Research Scientist',
-    'Research Associate',
-    'Principal Investigator (PI)',
-    'Research / Academic Coordinator',
   ],
   Corporate: [
     'HR Manager',
@@ -556,6 +552,10 @@ export const DESIGNATIONS_BY_TYPE: Record<string, string[]> = {
     'Consultant',
     'Freelancer',
     'Independent Researcher',
+    'Research Scientist',
+    'Research Associate',
+    'Principal Investigator (PI)',
+    'Research / Academic Coordinator',
   ],
 };
 
@@ -573,7 +573,6 @@ export const DESIGNATION_GROUPS: Record<string, { label: string; roles: string[]
     { label: 'Library', roles: ['Librarian'] },
     { label: 'Leadership', roles: ['Principal', 'Vice Principal', 'Dean', 'Director', 'Head of Department (HOD)'] },
     { label: 'Faculty', roles: ['Professor', 'Associate Professor', 'Assistant Professor', 'Faculty Member'] },
-    { label: 'Research', roles: ['Research Scientist', 'Research Associate', 'Principal Investigator (PI)', 'Research / Academic Coordinator'] },
   ],
   Corporate: [
     { label: 'Leadership', roles: ['CEO / Managing Director', 'Director', 'Vice President (VP)', 'General Manager', 'Department Head'] },
@@ -582,7 +581,7 @@ export const DESIGNATION_GROUPS: Record<string, { label: string; roles: string[]
   ],
   Solo: [
     { label: 'Studying', roles: ['Undergraduate Student', "Master's Student", 'PhD Scholar', 'Postdoctoral Researcher'] },
-    { label: 'Research & academia', roles: ['Researcher / Scientist', 'Faculty / Academic Professional', 'Independent Researcher'] },
+    { label: 'Research & academia', roles: ['Researcher / Scientist', 'Faculty / Academic Professional', 'Independent Researcher', 'Research Scientist', 'Research Associate', 'Principal Investigator (PI)', 'Research / Academic Coordinator'] },
     { label: 'Working', roles: ['Working Professional', 'Industry Professional', 'Entrepreneur / Founder', 'Consultant', 'Freelancer'] },
   ],
 };
@@ -612,6 +611,15 @@ export function opensInstitutionDashboard(type?: string | null, designation?: st
   return (DESIGNATION_GROUPS[type] || [])
     .filter(g => wanted.includes(g.label))
     .some(g => g.roles.includes(designation));
+}
+
+/**
+ * Whether this account registered as a Solo Learner — a person on their own, not part of an
+ * institute or a company. The role alone cannot say: a Professor registered under an institute
+ * is a "Subscriber" too, and is not eligible for the Solo subscription and its pricing.
+ */
+export function isSoloAccount(profile?: { registrantType?: string | null; role?: string | null; institutionId?: string | null } | null): boolean {
+  return !!profile && profile.registrantType === 'Solo' && profile.role === 'Subscriber' && !profile.institutionId;
 }
 
 /** Where a member is. India first, because that is where nearly all of them are. */

@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  Search, BookOpen, Play, FileText, BookMarked, Layers, Lock, Clock,
-  ChevronRight, ChevronLeft, TrendingUp, Star, CheckCircle, Sparkles, Filter,
-  RefreshCw, Eye, AlertCircle, GraduationCap, Newspaper
+  Search, BookOpen, Play, FileText, BookMarked, Lock, Clock,
+  ChevronRight, ChevronLeft, CheckCircle,
+  RefreshCw, Eye, AlertCircle, AlertTriangle, GraduationCap, Newspaper
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Weeks, Bars, Collection } from '../charts';
+import { Button, EmptyState, MetricCard, SkeletonRows, StatusBadge } from '../ui';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -78,17 +79,18 @@ function ContentCard({ item, n, onOpen }: { item: ContentItem; n: number; onOpen
   const isLocked = item.locked;
 
   return (
-    <div className="group flex gap-4 px-5 py-4">
-      <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{n}</span>
+    <div className="group flex gap-4 px-4 py-4 sm:px-5">
+      <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-xs text-faint sm:block" aria-hidden="true">{n}</span>
 
       <div className="min-w-0 flex-1">
         <button
+          type="button"
           onClick={() => !isLocked && onOpen(item)}
           disabled={isLocked}
           className="block w-full text-left disabled:cursor-default"
         >
-          <h3 className={`font-serif text-[16px] font-medium leading-snug ${
-            isLocked ? 'text-faint' : 'text-ink group-hover:text-accent'}`}>
+          <h3 className={`font-serif text-base font-medium leading-snug transition-colors duration-150 ${
+            isLocked ? 'text-muted' : 'text-ink group-hover:text-accent'}`}>
             {item.title}
           </h3>
         </button>
@@ -97,35 +99,37 @@ function ContentCard({ item, n, onOpen }: { item: ContentItem; n: number; onOpen
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {item.contentType && (
-            <span className="inline-flex items-center gap-1 rounded-[3px] border border-rule-2 px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted">
-              {contentTypeIcon(item.contentType)} {item.contentType}
+            <span className="badge badge-neutral">
+              <span aria-hidden="true">{contentTypeIcon(item.contentType)}</span> {item.contentType}
             </span>
           )}
           {item.domain && (
-            <span className="rounded-[3px] border border-rule-2 px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted">
-              {item.domain}
-            </span>
+            <span className="badge badge-neutral max-w-full truncate">{item.domain}</span>
           )}
           {isLocked && (
-            <span className="inline-flex items-center gap-1 rounded-[3px] border border-caution bg-caution-soft px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-caution">
-              <Lock size={9} /> Not in your subscription
+            <span className="badge badge-caution">
+              <Lock size={12} aria-hidden="true" /> Not in your subscription
             </span>
           )}
         </div>
       </div>
 
-      <div className="shrink-0 self-start pt-0.5">
+      <div className="shrink-0 self-start">
         {isLocked ? (
           <button
+            type="button"
             onClick={() => navigate('/contact')}
-            className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
+            aria-label={`Request access to ${item.title}`}
+            className="btn btn-ghost btn-sm text-accent"
           >
             Request access
           </button>
         ) : (
           <button
+            type="button"
             onClick={() => onOpen(item)}
-            className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline"
+            aria-label={`Open ${item.title}`}
+            className="btn btn-ghost btn-sm text-accent"
           >
             Open
           </button>
@@ -181,10 +185,10 @@ function WorthOpening({ navigate }: { navigate: (to: string) => void }) {
   if (!data?.departments?.length) return null;
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4" aria-labelledby="dash-recommended">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="font-serif text-[19px] font-medium text-ink">Worth opening next</h2>
-        <p className="text-[12px] text-faint">
+        <h2 id="dash-recommended" className="type-section text-ink">Worth opening next</h2>
+        <p className="text-xs text-muted">
           {data.chosenBy === 'registration'
             ? 'In the departments you chose when you registered'
             : data.chosenBy === 'asked' ? 'In the departments you asked for'
@@ -192,28 +196,29 @@ function WorthOpening({ navigate }: { navigate: (to: string) => void }) {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {data.departments.map(d => (
-          <div key={d.name} className="flex flex-col rounded-md border border-rule bg-surface p-4">
-            <p className="truncate font-mono text-[10.5px] uppercase tracking-wider text-faint" title={d.name}>
+          <div key={d.name} className="card card-pad flex flex-col">
+            <h3 className="truncate text-sm font-semibold text-ink" title={d.name}>
               {d.name}
+            </h3>
+            <p className="mt-1 text-xs text-muted">
+              {d.basis === 'read' ? 'Most opened here, last 30 days' : 'Nobody has opened these yet — newest first'}
             </p>
-            <p className="mt-1 text-[11.5px] text-faint">
-              {d.basis === 'read' ? 'most opened here, last 30 days' : 'nobody has opened these yet — newest first'}
-            </p>
-            <ul className="mt-3 space-y-2.5">
+            <ul className="mt-4 space-y-3">
               {d.items.map(it => (
                 <li key={it.id}>
                   <button
+                    type="button"
                     onClick={() => navigate(readerPath(it.type, it.id))}
-                    className="group w-full text-left"
+                    className="group w-full rounded-lg text-left"
                   >
-                    <p className="line-clamp-2 text-[13px] leading-snug text-ink-2 group-hover:text-accent">
+                    <p className="line-clamp-2 text-[13px] leading-snug text-ink-2 transition-colors duration-150 group-hover:text-accent">
                       {it.title}
                     </p>
-                    <p className="mt-0.5 flex items-baseline gap-1.5 text-[11px] text-faint">
+                    <p className="mt-1 flex items-baseline gap-1.5 text-xs text-muted">
                       {it.where && <span className="min-w-0 truncate">{it.where}</span>}
-                      {it.where && <span className="shrink-0">·</span>}
+                      {it.where && <span className="shrink-0" aria-hidden="true">·</span>}
                       <span className="shrink-0 tabular-nums">
                         {d.basis === 'read'
                           ? `${it.reads} ${it.reads === 1 ? 'read' : 'reads'}`
@@ -225,10 +230,11 @@ function WorthOpening({ navigate }: { navigate: (to: string) => void }) {
               ))}
             </ul>
             <button
+              type="button"
               onClick={() => navigate(`/dashboard/department/${d.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`)}
-              className="mt-3 self-start font-mono text-[10.5px] uppercase tracking-wider text-accent hover:underline"
+              className="mt-4 inline-flex items-center gap-1 self-start text-sm font-semibold text-accent hover:underline"
             >
-              Browse the department →
+              Browse the department <ChevronRight size={16} aria-hidden="true" />
             </button>
           </div>
         ))}
@@ -292,7 +298,7 @@ export function LMSDashboard() {
   // Fetch dashboard summary
   useEffect(() => {
     fetch('/api/user/dashboard', { headers: authHeader() })
-      .then(r => r.json()).then(setDashData)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(setDashData)
       .catch(() => toast.error('Failed to load dashboard data'))
       .finally(() => setLoadingDash(false));
   }, []);
@@ -311,7 +317,7 @@ export function LMSDashboard() {
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
 
     fetch(url, { headers: authHeader() })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => setAvailableFilters(data))
       .catch(err => console.error("Failed to fetch filters", err));
   }, [domainFilter, typeFilter, debouncedSearch, showLocked]);
@@ -376,343 +382,336 @@ export function LMSDashboard() {
   const domains = Object.keys(grouped);
 
 
+  // Labels for the four headline figures. A figure that did not arrive shows
+  // "—" (MetricCard's null), never a 0 the member could take for the truth.
+  const fmt = (n?: number | null) => (typeof n === 'number' ? n.toLocaleString() : null);
+
   return (
-    <div className="min-h-full bg-ground">
+    <div className="space-y-8">
       {/* ── DEMO ACCOUNT BANNER ── */}
       {profile?.isDemoAccount && (
-        <div className="relative z-40 border-b border-caution bg-caution-soft px-4 py-2 text-center text-[13px] text-caution">
-          ⚠️ This is a Demo Account. It is valid for 30 days and will expire on {profile.demoExpiresAt ? new Date(profile.demoExpiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its expiry date'}.
+        <div role="status" className="flex items-start gap-3 rounded-xl border border-caution bg-caution-soft px-4 py-3 text-sm text-ink-2">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-caution" aria-hidden="true" />
+          <p>This is a Demo Account. It is valid for 30 days and will expire on {profile.demoExpiresAt ? new Date(profile.demoExpiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its expiry date'}.</p>
         </div>
       )}
 
-      {/* ── TOP HEADER ── */}
-      <div className="bg-surface/80 backdrop-blur-xl border-b border-rule/50 sticky top-0 z-30 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          {/* Welcome */}
-          <div className="flex-1 min-w-0">
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-faint">
-              {dashboardTitle(profile as any)}
-            </p>
-            <h1 className="truncate text-xl font-bold text-ink">
-              Welcome back, <span className="text-accent">{dashData?.displayName || profile?.displayName || 'Reader'}</span> 👋
-            </h1>
-            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-              {expiryStr && (
-                <span className="flex items-center gap-1 text-xs text-muted">
-                  <Clock size={12} /> Subscription expires {expiryStr}
-                </span>
-              )}
-              {dashData?.organization && (
-                <span className="flex items-center gap-1 text-xs text-accent font-medium">
-                  <GraduationCap size={12} /> {dashData.organization}
-                </span>
-              )}
-            </div>
-          </div>
-          {/* What is open to them — the library's figure, not the page's.
-              This read "20 Accessible" on a library of 61,706, because it
-              counted the rows of the page that had just been fetched. */}
-          <div className="hidden lg:flex items-center gap-4">
-            <div className="flex items-center gap-2 rounded-md border border-rule bg-accent-soft px-4 py-2 text-sm font-semibold text-accent">
-              <CheckCircle size={15} />
-              {loadingDash ? 'Loading…' : `${Number(dashData?.collection?.total ?? 0).toLocaleString()} items open to you`}
-            </div>
+      {/* ── WELCOME ── */}
+      {/* This used to be a second sticky bar under the layout's own sticky
+          header, so the two stacked over the content as the page scrolled. */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+            {dashboardTitle(profile as any)}
+          </p>
+          <h1 className="type-page-title mt-1 truncate text-ink">
+            Welcome back, <span className="text-accent">{dashData?.displayName || profile?.displayName || 'Reader'}</span>
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {expiryStr && (
+              <span className="inline-flex items-center gap-1.5 text-sm text-muted">
+                <Clock size={14} aria-hidden="true" /> Subscription expires {expiryStr}
+              </span>
+            )}
+            {dashData?.organization && (
+              <span className="inline-flex min-w-0 items-center gap-1.5 text-sm font-medium text-accent">
+                <GraduationCap size={14} className="shrink-0" aria-hidden="true" /> <span className="truncate">{dashData.organization}</span>
+              </span>
+            )}
           </div>
         </div>
+        {/* What is open to them — the library's figure, not the page's.
+            This read "20 Accessible" on a library of 61,706, because it
+            counted the rows of the page that had just been fetched. */}
+        {!loadingDash && typeof dashData?.collection?.total === 'number' && (
+          <span className="badge badge-accent hidden shrink-0 lg:inline-flex">
+            <CheckCircle size={14} aria-hidden="true" />
+            {dashData.collection.total.toLocaleString()} items open to you
+          </span>
+        )}
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+      {/* ── EXPIRED SUBSCRIPTION ALERT ── */}
+      {/* Expiry is something to act on, not a failure, so it reads as a
+          caution rather than an error. */}
+      {dashData?.expiredSubscriptions && dashData.expiredSubscriptions.length > 0 && (
+        (() => {
+          const recentExpired = dashData.expiredSubscriptions[0];
+          let domainsArr: string[] = [];
+          try {
+            domainsArr = Array.isArray(recentExpired.domains) ? recentExpired.domains : (recentExpired.domains ? JSON.parse(recentExpired.domains as string) : []);
+          } catch (e) {}
+          const coveredDomainsStr = domainsArr.length > 0 ? domainsArr.join(', ') : 'All Domains';
+          const displayName = recentExpired.domainName || coveredDomainsStr;
+          
+          return (
+            <div role="status" className="flex flex-col items-start justify-between gap-4 rounded-xl border border-caution bg-caution-soft p-5 md:flex-row md:items-center">
+              <div className="flex min-w-0 items-start gap-3">
+                <AlertCircle size={20} className="mt-0.5 shrink-0 text-caution" aria-hidden="true" />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-semibold text-ink">
+                      {recentExpired.planName || 'Subscription'} Expired
+                    </h2>
+                    <StatusBadge status="subscription-expired" />
+                  </div>
+                  <p className="mt-1 text-sm text-ink-2">
+                    Your access to <span className="font-semibold text-ink">{displayName}</span> ended on {new Date(recentExpired.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                  </p>
+                </div>
+              </div>
+              <Button onClick={() => navigate('/dashboard/subscriptions')} className="shrink-0">
+                Renew Access Now
+              </Button>
+            </div>
+          );
+        })()
+      )}
 
-        {/* ── SUBSCRIPTION COUNTDOWN WIDGET ── */}
-        {expiryDate && (
-          <div className={`flex flex-col gap-4 rounded-md border p-5 sm:flex-row sm:items-center sm:justify-between ${
-            isExpired || maxDaysLeft <= 10 ? 'border-caution bg-caution-soft' : 'border-rule bg-surface'}`}>
+      {/* ── SUBSCRIPTION ACCESS ── */}
+      {expiryDate && (
+        <section aria-label="Subscription access" className={`flex flex-col gap-4 rounded-xl border p-5 sm:flex-row sm:items-center sm:justify-between ${
+          isExpired || maxDaysLeft <= 10 ? 'border-caution bg-caution-soft' : 'card'}`}>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+              {dashData?.planName ? `${dashData.planName} · ${dashData.planType}` : 'Your access'}
+            </p>
+            <div className="mt-2">
+              <StatusBadge status={isExpired ? 'subscription-expired' : 'subscription-active'} />
+            </div>
+            <p className="mt-2 text-sm text-ink-2">
+              {isExpired
+                ? 'Renew to open the collection again.'
+                : `Runs until ${new Date(expiryDate).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.`}
+            </p>
+          </div>
+          {!isExpired && (
+            <div className="shrink-0 text-left sm:text-right">
+              <p className={`tnum font-mono text-3xl leading-none ${maxDaysLeft <= 10 ? 'text-caution' : 'text-ink'}`}>
+                {maxDaysLeft}
+              </p>
+              <p className="mt-1 text-xs font-medium text-muted">
+                {maxDaysLeft === 1 ? 'day left' : 'days left'}
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── WHAT THE SUBSCRIPTION COVERS ── */}
+      {/* Four figures a member can act on. Three of these were wrong: the
+          first counted subscriptions on a product that no longer sells the
+          member one, the second counted the page instead of the library, and
+          the last counted the recent-activity list, which stops at six. */}
+      <section aria-label="Your account at a glance" className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label="Subscription"
+          loading={loadingDash}
+          value={dashData ? (dashData.membership?.name || 'Basic') : null}
+          context={dashData ? (dashData.membership?.timed ? 'Free · half an hour at a time' : 'No session limit') : undefined}
+        />
+        <MetricCard
+          label="Open to you"
+          loading={loadingDash}
+          value={fmt(dashData?.collection?.total)}
+          context={dashData?.collection
+            ? `${Number(dashData.collection.articles ?? 0).toLocaleString()} articles · ${Number(dashData.collection.books ?? 0).toLocaleString()} books`
+            : undefined}
+        />
+        {dashData?.selectedDepartments
+          ? <MetricCard label="Your departments" loading={loadingDash} value={fmt(dashData.selectedDepartments)} context="The ones you selected" />
+          : <MetricCard label="Departments" loading={loadingDash} value={fmt(dashData?.departmentsCovered)} context="Holding something you can open" />}
+        <MetricCard
+          label="Items you have read"
+          loading={loadingDash}
+          value={fmt(dashData?.itemsRead)}
+          context={(dashData?.minutesRead ?? 0) > 0 ? `${dashData?.minutesRead} minutes on the page` : undefined}
+        />
+      </section>
+
+      {/* ── CONTINUE READING ── */}
+      {dashData?.recentActivity && dashData.recentActivity.length > 0 && (
+        <section aria-labelledby="dash-continue">
+          <div className="mb-4 flex items-end justify-between gap-3">
             <div>
-              <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">
-                {dashData?.planName ? `${dashData.planName} · ${dashData.planType}` : 'Your access'}
-              </p>
-              <h2 className="mt-1.5 font-serif text-[19px] font-medium text-ink">
-                {isExpired ? 'Your access has expired' : 'Your access is active'}
-              </h2>
-              <p className="mt-1 text-[13.5px] text-ink-2">
-                {isExpired
-                  ? 'Renew to open the collection again.'
-                  : `Runs until ${new Date(expiryDate).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.`}
-              </p>
+              <h2 id="dash-continue" className="type-section text-ink">Continue Reading</h2>
+              <p className="mt-1 text-sm text-muted">Pick up right where you left off</p>
             </div>
-            {!isExpired && (
-              <div className="shrink-0 text-left sm:text-right">
-                <p className={`tnum font-mono text-[30px] leading-none ${maxDaysLeft <= 10 ? 'text-caution' : 'text-ink'}`}>
-                  {maxDaysLeft}
-                </p>
-                <p className="mt-1 font-mono text-[10.5px] uppercase tracking-wider text-faint">
-                  {maxDaysLeft === 1 ? 'day left' : 'days left'}
-                </p>
-              </div>
-            )}
+            <button type="button" onClick={() => navigate('/dashboard/history')} className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-accent hover:underline">
+              View history <ChevronRight size={16} aria-hidden="true" />
+            </button>
           </div>
-        )}
 
-        {/* ── WHAT THE SUBSCRIPTION COVERS ── */}
-        {/* These four were gradient tiles in four different hues. They are the
-            headline figures of the page, so they stay big — but one surface,
-            one rule, and the numbers set in mono so they line up. */}
-        {/* Four figures a member can act on. Three of these were wrong: the
-            first counted subscriptions on a product that no longer sells the
-            member one, the second counted the page instead of the library, and
-            the last counted the recent-activity list, which stops at six. */}
-        <dl className="grid grid-cols-2 divide-rule overflow-hidden rounded-md border border-rule bg-surface sm:grid-cols-4 sm:divide-x">
-          {[
-            { label: 'Membership',        text: dashData?.membership?.name || 'Basic',
-              note: dashData?.membership?.timed ? 'Free · half an hour at a time' : 'No session limit' },
-            { label: 'Open to you',       value: dashData?.collection?.total ?? 0,
-              note: `${Number(dashData?.collection?.articles ?? 0).toLocaleString()} articles · ${Number(dashData?.collection?.books ?? 0).toLocaleString()} books` },
-            dashData?.selectedDepartments
-              ? { label: 'Your departments', value: dashData.selectedDepartments, note: 'the ones you selected' }
-              : { label: 'Departments',       value: dashData?.departmentsCovered ?? 0, note: 'holding something you can open' },
-            { label: 'Items you have read', value: dashData?.itemsRead ?? 0,
-              note: (dashData?.minutesRead ?? 0) > 0 ? `${dashData?.minutesRead} minutes on the page` : undefined },
-          ].map(st => (
-            <div key={st.label} className="border-b border-rule p-4 sm:border-b-0">
-              <dt className="font-mono text-[10.5px] uppercase tracking-wider text-faint">{st.label}</dt>
-              <dd className={`tnum mt-1.5 font-mono leading-none text-ink ${st.text ? 'text-[22px]' : 'text-[26px]'}`}>
-                {loadingDash ? <span className="text-faint">—</span>
-                  : st.text ?? Number(st.value ?? 0).toLocaleString()}
-              </dd>
-              {!loadingDash && st.note && (
-                <p className="mt-1.5 text-[11px] leading-snug text-faint">{st.note}</p>
-              )}
-            </div>
-          ))}
-        </dl>
-
-        {/* ── WHAT YOU READ, AND WHAT THERE IS TO READ ────────────────────── */}
-        {/* A dashboard for one reader has a hard problem: on the first day
-            there is no reading to show, and a page of empty frames is worse
-            than no page. So half of this is about the member and appears once
-            they have read something, and half is about the library and is
-            there from the first minute — which is also the half that tells
-            them where to go next. */}
-        {!loadingDash && (
-          <section className="space-y-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-serif text-[19px] font-medium text-ink">Your reading</h2>
-              {(dashData?.itemsRead ?? 0) > 0 && (
-                <button onClick={() => navigate('/dashboard/history')}
-                  className="font-mono text-[10.5px] uppercase tracking-wider text-accent hover:underline">
-                  View history
-                </button>
-              )}
-            </div>
-
-            {(dashData?.readByWeek?.length || dashData?.readByDepartment?.length) ? (
-              <div className="grid gap-3 lg:grid-cols-2">
-                <div className="rounded-md border border-rule bg-surface p-5">
-                  <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Reading, by week</p>
-                  <p className="mt-1 text-[12px] text-faint">the last twelve weeks</p>
-                  <div className="mt-4">
-                    {dashData?.readByWeek?.length
-                      ? <Weeks data={dashData.readByWeek} />
-                      : <p className="py-8 text-center text-[13px] text-faint">Nothing opened in the last twelve weeks.</p>}
-                  </div>
+          {/* The bar that used to sit under each card was drawn from the page
+              number over a guessed fifty pages — a progress figure we do not
+              hold — so it has gone and the page number stays. */}
+          <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2 scrollbar-hide">
+            {dashData.recentActivity.slice(0, 6).map(a => (
+              <button
+                type="button"
+                key={a.id}
+                className="card card-interactive group w-[260px] min-w-[260px] snap-start overflow-hidden text-left sm:w-[280px] sm:min-w-[280px]"
+                onClick={() => navigate(`/dashboard/viewer/${a.id}?page=${a.lastPage || 1}`)}
+                aria-label={`Continue reading ${a.title}, page ${a.lastPage}`}
+              >
+                <div className="flex h-14 items-center justify-between border-b border-rule bg-surface-2 px-4">
+                  <span className="badge badge-neutral">{a.type || 'Book'}</span>
+                  <BookOpen size={20} className="text-faint" aria-hidden="true" />
                 </div>
-                <div className="rounded-md border border-rule bg-surface p-5">
-                  <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">What you read</p>
-                  <p className="mt-1 text-[12px] text-faint">by subject, since you joined</p>
-                  <div className="mt-4">
-                    {dashData?.readByDepartment?.length
-                      ? <Bars rows={dashData.readByDepartment.map(x => ({ name: x.name, value: x.reads }))} unit="opened" />
-                      : <p className="py-8 text-center text-[13px] text-faint">Nothing opened yet.</p>}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-md border border-rule bg-surface p-5">
-                <p className="text-[13.5px] text-ink-2">
-                  You have not opened anything yet. Once you do, this is where your reading shows up —
-                  week by week, and by subject.
-                </p>
-              </div>
-            )}
-
-            {dashData?.collection?.byDepartment?.length ? (
-              <div className="rounded-md border border-rule bg-surface p-5">
-                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Where the library is deep</p>
-                <p className="mt-1 text-[12px] text-faint">everything open to you, by department</p>
-                <div className="mt-4">
-                  <Collection rows={dashData.collection.byDepartment} />
-                </div>
-              </div>
-            ) : null}
-          </section>
-        )}
-
-        {/* ── EXPIRED SUBSCRIPTION ALERT ── */}
-        {dashData?.expiredSubscriptions && dashData.expiredSubscriptions.length > 0 && (
-          (() => {
-            const recentExpired = dashData.expiredSubscriptions[0];
-            let domainsArr: string[] = [];
-            try {
-              domainsArr = Array.isArray(recentExpired.domains) ? recentExpired.domains : (recentExpired.domains ? JSON.parse(recentExpired.domains as string) : []);
-            } catch (e) {}
-            const coveredDomainsStr = domainsArr.length > 0 ? domainsArr.join(', ') : 'All Domains';
-            const displayName = recentExpired.domainName || coveredDomainsStr;
-            
-            return (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-md border border-alarm bg-alarm-soft p-5 md:flex-row md:items-center">
-                  <div className="absolute -top-10 -right-10 opacity-[0.03] text-alarm pointer-events-none">
-                    <AlertCircle size={200} />
-                  </div>
-                  <div className="flex items-start gap-4 relative z-10">
-                    <div className="w-12 h-12 rounded-md bg-alarm-soft flex items-center justify-center flex-shrink-0 shadow-inner">
-                      <AlertCircle size={24} className="text-alarm" />
+                <div className="p-4">
+                  <h3 className="line-clamp-1 text-sm font-semibold text-ink transition-colors duration-150 group-hover:text-accent">
+                    {a.title}
+                  </h3>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted">Last page read</span>
+                      <span className="text-sm font-semibold text-accent">Page {a.lastPage}</span>
                     </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-alarm">
-                        {recentExpired.planName || 'Subscription'} Expired
-                      </h2>
-                      <p className="text-sm text-alarm/90 font-medium mt-1">
-                        Your access to <span className="font-bold text-alarm">{displayName}</span> ended on {new Date(recentExpired.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.
-                      </p>
-                    </div>
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-on" aria-hidden="true">
+                      <Play size={14} className="fill-current" />
+                    </span>
                   </div>
-                  <button onClick={() => navigate('/dashboard/subscriptions')} className="shrink-0 bg-alarm hover:opacity-90 text-white font-bold px-6 py-3 rounded-md transition-all shadow-lg shadow-red-600/20 hover:shadow-red-600/40 hover:-translate-y-0.5 relative z-10">
-                    Renew Access Now
-                  </button>
                 </div>
-              </motion.div>
-            );
-          })()
-        )}
-
-        {/* ── CONTINUE LEARNING (Netflix Style) ── */}
-        {dashData?.recentActivity && dashData.recentActivity.length > 0 && (
-          <div className="relative">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="h-6 w-1 rounded-full bg-accent" />
-                <div>
-                  <h2 className="text-xl font-bold text-ink tracking-tight">Continue Reading</h2>
-                  <p className="text-xs text-muted font-medium">Pick up right where you left off</p>
-                </div>
-              </div>
-              <button onClick={() => navigate('/dashboard/history')} className="text-xs font-bold text-accent hover:underline flex items-center gap-1">
-                View History <ChevronRight size={14} />
               </button>
-            </div>
-
-            <div className="flex gap-5 overflow-x-auto pb-6 px-1 -mx-1 scrollbar-hide snap-x snap-mandatory">
-              {dashData.recentActivity.slice(0, 6).map((a, i) => (
-                <motion.div
-                  key={a.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="min-w-[280px] w-[280px] snap-start group relative bg-surface rounded-md border border-rule overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 hover:border-accent transition-all cursor-pointer"
-                  onClick={() => navigate(`/dashboard/viewer/${a.id}?page=${a.lastPage || 1}`)}
-                >
-                  {/* Domain header */}
-                  <div className="relative flex h-16 items-center justify-center border-b border-rule bg-surface-2">
-                    <BookOpen size={24} className="text-faint" />
-                    
-                    {/* Badge */}
-                    <div className="absolute top-3 left-3">
-                      <span className="px-2 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[9px] font-black text-white uppercase tracking-widest border border-white/10">
-                        {a.type || 'Book'}
-                      </span>
-                    </div>
-
-                    {/* Progress Bar (Mock for now, lastPage / 100 as fallback) */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, (a.lastPage / 50) * 100)}%` }}
-                        className="h-full bg-accent"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="font-bold text-sm text-ink line-clamp-1 mb-1 group-hover:text-accent transition-colors">
-                      {a.title}
-                    </h3>
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-faint uppercase tracking-tighter">Current Progress</span>
-                        <span className="text-xs font-black text-accent">Page {a.lastPage}</span>
-                      </div>
-                      <div className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
-                        <Play size={14} className="fill-current" />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            ))}
           </div>
-        )}
+        </section>
+      )}
 
-        {/* ── WHERE TO GO NEXT ── */}
-        <WorthOpening navigate={navigate} />
+      {/* ── WHAT YOU READ ────────────────────────────────────────────────── */}
+      {/* A dashboard for one reader has a hard problem: on the first day
+          there is no reading to show, and a page of empty frames is worse
+          than no page. So half of this is about the member and appears once
+          they have read something, and half is about the library and is
+          there from the first minute — which is also the half that tells
+          them where to go next. */}
+      {!loadingDash && (
+        <section className="space-y-4" aria-labelledby="dash-reading">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 id="dash-reading" className="type-section text-ink">Your reading</h2>
+            {(dashData?.itemsRead ?? 0) > 0 && (
+              <button type="button" onClick={() => navigate('/dashboard/history')}
+                className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-accent hover:underline">
+                Reading History <ChevronRight size={16} aria-hidden="true" />
+              </button>
+            )}
+          </div>
 
-        {/* ── FILTERS & SEARCH ── */}
+          {(dashData?.readByWeek?.length || dashData?.readByDepartment?.length) ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="card card-pad">
+                <h3 className="card-title">Reading, by week</h3>
+                <p className="mt-1 text-sm text-muted">The last twelve weeks</p>
+                <div className="mt-4">
+                  {dashData?.readByWeek?.length
+                    ? <Weeks data={dashData.readByWeek} />
+                    : <p className="py-8 text-center text-sm text-muted">Nothing opened in the last twelve weeks.</p>}
+                </div>
+              </div>
+              <div className="card card-pad">
+                <h3 className="card-title">What you read</h3>
+                <p className="mt-1 text-sm text-muted">By subject, since you joined</p>
+                <div className="mt-4">
+                  {dashData?.readByDepartment?.length
+                    ? <Bars rows={dashData.readByDepartment.map(x => ({ name: x.name, value: x.reads }))} unit="opened" />
+                    : <p className="py-8 text-center text-sm text-muted">Nothing opened yet.</p>}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="card">
+              <EmptyState
+                icon={BookOpen}
+                title="No reading yet"
+                description="You have not opened anything yet. Once you do, this is where your reading shows up — week by week, and by subject."
+                action={<Button variant="outline" size="sm" onClick={() => navigate('/dashboard/library')}>Browse the library</Button>}
+              />
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── WHERE TO GO NEXT ── */}
+      <WorthOpening navigate={navigate} />
+
+      {!loadingDash && dashData?.collection?.byDepartment?.length ? (
+        <section className="card card-pad" aria-labelledby="dash-depth">
+          <h2 id="dash-depth" className="card-title">Where the library is deep</h2>
+          <p className="mt-1 text-sm text-muted">Everything open to you, by department</p>
+          <div className="mt-4">
+            <Collection rows={dashData.collection.byDepartment} />
+          </div>
+        </section>
+      ) : null}
+
+      {/* ── BROWSE: FILTERS & SEARCH ── */}
+      <section className="space-y-4" aria-labelledby="dash-browse">
+        <h2 id="dash-browse" className="type-section text-ink">Browse your library</h2>
         <div className="flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center bg-surface rounded-md border border-rule p-4 shadow-sm w-full">
+          <div className="card flex w-full flex-col flex-wrap items-stretch gap-3 p-4 sm:flex-row sm:items-center">
             {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} />
+            <div className="relative min-w-0 flex-1 sm:min-w-[220px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={16} aria-hidden="true" />
               <input
-                type="text"
+                type="search"
+                aria-label="Search titles, authors, subjects and tags"
                 placeholder="Search titles, authors, subjects, tags..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-md bg-surface-2 border border-rule text-sm focus:outline-none focus:border-accent text-ink placeholder:text-faint"
+                className="input pl-9"
               />
             </div>
             {/* Domain Filter */}
-            <select value={domainFilter} onChange={e => { setDomainFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
-              className="w-full sm:w-auto min-w-[150px] px-3 py-2.5 rounded-md bg-surface-2 border border-rule text-sm focus:outline-none focus:border-accent text-ink-2">
+            <select aria-label="Domain" value={domainFilter} onChange={e => { setDomainFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
+              className="input sm:w-auto sm:min-w-[150px]">
               <option value="">All Domains</option>
               {(avail?.legacy?.departments || dashData?.allowedDomains || domains).map((d: string) => <option key={d} value={d}>{d}</option>)}
             </select>
             {/* Content Type Filter */}
-            <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
-              className="w-full sm:w-auto min-w-[150px] px-3 py-2.5 rounded-md bg-surface-2 border border-rule text-sm focus:outline-none focus:border-accent text-ink-2">
+            <select aria-label="Content type" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setSubjectFilter(''); setTagFilter(''); setPage(1); }}
+              className="input sm:w-auto sm:min-w-[150px]">
               <option value="">All Types</option>
               {(avail?.legacy?.contentTypes || CONTENT_TYPES).map((t: string) => <option key={t} value={t}>{t}</option>)}
             </select>
             {/* Subject Filter */}
             {availableFilters.subjects.length > 0 && (
-              <select value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}
-                className="w-full sm:w-auto min-w-[150px] max-w-full px-3 py-2.5 rounded-md bg-surface-2 border border-rule text-sm focus:outline-none focus:border-accent text-ink-2 truncate">
+              <select aria-label="Subject" value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}
+                className="input max-w-full truncate sm:w-auto sm:min-w-[150px]">
                 <option value="">All Subjects</option>
                 {availableFilters.subjects.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             )}
             {/* View Toggle */}
-            <div className="flex gap-1 bg-surface-2 rounded-md p-1 w-full sm:w-auto overflow-x-auto shrink-0">
-              <button onClick={() => setViewMode('grouped')} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grouped' ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink-2'}`}>
+            <div className="flex w-full shrink-0 gap-1 rounded-lg bg-surface-2 p-1 sm:w-auto" role="group" aria-label="Layout">
+              <button type="button" aria-pressed={viewMode === 'grouped'} onClick={() => setViewMode('grouped')} className={`h-8 flex-1 rounded-md px-3 text-xs font-semibold transition-colors duration-150 sm:flex-none ${viewMode === 'grouped' ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink-2'}`}>
                 Grouped
               </button>
-              <button onClick={() => setViewMode('grid')} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${viewMode === 'grid' ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink-2'}`}>
+              <button type="button" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')} className={`h-8 flex-1 rounded-md px-3 text-xs font-semibold transition-colors duration-150 sm:flex-none ${viewMode === 'grid' ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink-2'}`}>
                 Grid
               </button>
             </div>
             {/* Toggle Locked */}
             {lockedCount > 0 && (
               <button 
+                type="button"
+                aria-pressed={showLocked}
                 onClick={() => setShowLocked(!showLocked)}
-                className={`flex justify-center items-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all border w-full sm:w-auto shrink-0
-                  ${showLocked 
-                    ? 'bg-alarm-soft border-alarm text-alarm' 
-                    : 'bg-surface-2 border-rule text-muted hover:border-accent'
-                  }`}
+                className={`btn btn-sm w-full shrink-0 sm:w-auto ${showLocked ? 'btn-secondary' : 'btn-outline'}`}
               >
-                {showLocked ? <Eye size={14} /> : <Lock size={14} />}
+                {showLocked ? <Eye size={14} aria-hidden="true" /> : <Lock size={14} aria-hidden="true" />}
                 {showLocked ? 'Hide Locked' : 'Show All'}
               </button>
             )}
+            {/* Refresh */}
+            <button
+              type="button"
+              onClick={fetchContent}
+              aria-label="Refresh results"
+              title="Refresh results"
+              className="btn btn-outline btn-icon shrink-0 self-end sm:self-auto"
+            >
+              <RefreshCw size={16} className={loadingContent ? 'animate-spin' : ''} aria-hidden="true" />
+            </button>
           </div>
           
           {/* Quick-Tag Chips */}
@@ -722,17 +721,19 @@ export function LMSDashboard() {
                 initial={{ opacity: 0, height: 0 }} 
                 animate={{ opacity: 1, height: 'auto' }} 
                 exit={{ opacity: 0, height: 0 }}
-                className="flex flex-wrap gap-2 items-center bg-surface rounded-md border border-rule p-4 shadow-sm"
+                className="card flex flex-wrap items-center gap-2 p-4"
               >
-                <span className="text-xs font-bold text-faint uppercase tracking-widest mr-1">Popular Tags:</span>
+                <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-muted">Popular tags</span>
                 {availableFilters.tags.slice(0, 15).map(tag => (
                   <button
+                    type="button"
                     key={tag}
+                    aria-pressed={tagFilter === tag}
                     onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}
-                    className={`max-w-full truncate px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border
+                    className={`max-w-full truncate rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors duration-150
                       ${tagFilter === tag 
-                        ? 'bg-accent border-accent text-white shadow-md shadow-blue-500/20' 
-                        : 'bg-surface-2 border-rule text-ink-2 hover:border-accent hover:text-accent'
+                        ? 'border-accent bg-accent text-accent-on' 
+                        : 'border-rule bg-surface-2 text-ink-2 hover:border-accent hover:text-accent'
                       }`}
                   >
                     {tag}
@@ -741,69 +742,60 @@ export function LMSDashboard() {
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Refresh */}
-          <button onClick={fetchContent} className="p-2.5 rounded-md bg-surface-2 border border-rule text-muted hover:bg-accent-soft hover:text-accent transition-colors">
-            <RefreshCw size={16} className={loadingContent ? 'animate-spin' : ''} />
-          </button>
         </div>
 
         {/* ── CONTENT AREA ── */}
         {loadingContent ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="rounded-md bg-surface-2 h-60 animate-pulse" />
-            ))}
+          <div className="card card-pad">
+            <SkeletonRows rows={6} />
           </div>
         ) : content.length === 0 ? (
           // A shelf that comes back empty because of a filter set on a previous
           // visit — the state survives in sessionStorage — used to end in advice
           // to adjust filters, with nothing to press. Now there is something to
           // press, and a way into the rest of the library.
-          <div className="py-16 text-center">
-            <div className="mb-4 text-5xl">📚</div>
-            <h3 className="mb-2 text-xl font-bold text-ink-2">Nothing matches these filters</h3>
-            <p className="text-sm text-faint">
-              {[search && `“${search}”`, domainFilter, typeFilter, subjectFilter, tagFilter].filter(Boolean).join(' · ') || 'No filters are set.'}
-            </p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
-              <button
-                onClick={() => {
-                  setSearch(''); setDebouncedSearch('');
-                  setDomainFilter(''); setTypeFilter(''); setSubjectFilter(''); setTagFilter('');
-                  setPage(1);
-                }}
-                className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover"
-              >
-                Clear filters
-              </button>
-              <button
-                onClick={() => navigate('/dashboard/library')}
-                className="rounded-md border border-rule px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-2"
-              >
-                Search the whole library
-              </button>
-            </div>
+          <div className="card">
+            <EmptyState
+              icon={Search}
+              title="No research results match these filters"
+              description={[search && `“${search}”`, domainFilter, typeFilter, subjectFilter, tagFilter].filter(Boolean).join(' · ') || 'No filters are set.'}
+              action={
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    onClick={() => {
+                      setSearch(''); setDebouncedSearch('');
+                      setDomainFilter(''); setTypeFilter(''); setSubjectFilter(''); setTagFilter('');
+                      setPage(1);
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate('/dashboard/library')}>
+                    Search the whole library
+                  </Button>
+                </div>
+              }
+            />
           </div>
         ) : viewMode === 'grouped' ? (
           // Grouped by Domain
-          <div className="space-y-10">
+          <div className="space-y-8">
             {Object.entries(grouped).map(([domain, items]) => (
               <div key={domain}>
                 {/* Domain Header */}
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent-soft text-accent">
-                    <BookMarked size={15} />
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent" aria-hidden="true">
+                    <BookMarked size={16} />
                   </div>
-                  <div className="flex-1">
-                    <h2 className="text-lg font-bold text-ink">{domain}</h2>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-base font-semibold text-ink">{domain}</h3>
                     <p className="text-xs text-muted">{items.length} items · {items.filter(i => !i.locked).length} accessible</p>
                   </div>
-                  <button onClick={() => setDomainFilter(domain)} className="text-xs font-semibold text-accent hover:underline flex items-center gap-1">
-                    See all <ChevronRight size={13} />
+                  <button type="button" onClick={() => setDomainFilter(domain)} className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-accent hover:underline" aria-label={`See all in ${domain}`}>
+                    See all <ChevronRight size={16} aria-hidden="true" />
                   </button>
                 </div>
-                <div className="divide-y divide-rule rounded-md border border-rule bg-surface">
+                <div className="card divide-y divide-rule overflow-hidden">
                   {items.map((item, i) => <ContentCard key={item.id} item={item} n={i + 1} onOpen={handleOpen} />)}
                 </div>
               </div>
@@ -811,7 +803,7 @@ export function LMSDashboard() {
           </div>
         ) : (
           // Flat grid
-          <div className="divide-y divide-rule rounded-md border border-rule bg-surface">
+          <div className="card divide-y divide-rule overflow-hidden">
             {displayContent.map((item, i) => (
               <ContentCard key={item.id} item={item} n={(page - 1) * ITEMS_PER_PAGE + i + 1} onOpen={handleOpen} />
             ))}
@@ -820,45 +812,45 @@ export function LMSDashboard() {
 
         {/* ── PAGINATION ── */}
         {totalItems > ITEMS_PER_PAGE && (
-          <div className="flex items-center justify-center gap-3 py-4">
-            <button
+          <nav className="flex flex-wrap items-center justify-center gap-3 py-2" aria-label="Pagination">
+            <Button
+              variant="outline"
+              size="sm"
               disabled={page <= 1}
               onClick={() => setPage(p => Math.max(1, p - 1))}
-              className="flex items-center gap-1 px-4 py-2 rounded-md bg-surface border border-rule text-sm font-semibold text-ink-2 disabled:opacity-40 hover:border-accent hover:text-accent transition-all shadow-sm"
+              aria-label="Previous page"
             >
-              <ChevronLeft size={16} /> Prev
-            </button>
-            <span className="text-sm font-medium text-ink-2 bg-surface border border-rule px-4 py-2 rounded-md shadow-sm">
-              Page <strong className="text-accent">{page}</strong> of <strong>{Math.ceil(totalItems / ITEMS_PER_PAGE)}</strong>
+              <ChevronLeft size={16} aria-hidden="true" /> Previous
+            </Button>
+            <span className="text-sm text-ink-2" aria-current="page">
+              Page <strong className="text-ink">{page}</strong> of <strong className="text-ink">{Math.ceil(totalItems / ITEMS_PER_PAGE)}</strong>
             </span>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               disabled={page >= Math.ceil(totalItems / ITEMS_PER_PAGE)}
               onClick={() => setPage(p => p + 1)}
-              className="flex items-center gap-1 px-4 py-2 rounded-md bg-surface border border-rule text-sm font-semibold text-ink-2 disabled:opacity-40 hover:border-accent hover:text-accent transition-all shadow-sm"
+              aria-label="Next page"
             >
-              Next <ChevronRight size={16} />
-            </button>
-          </div>
+              Next <ChevronRight size={16} aria-hidden="true" />
+            </Button>
+          </nav>
         )}
 
         {/* ── LOCKED CONTENT NOTICE ── */}
         {lockedCount > 0 && !domainFilter && !typeFilter && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 rounded-md border border-alarm bg-alarm-soft p-5">
-            <div className="w-12 h-12 rounded-md bg-alarm-soft flex items-center justify-center flex-shrink-0">
-              <AlertCircle size={24} className="text-alarm" />
-            </div>
+          <div className="flex flex-col gap-4 rounded-xl border border-caution bg-caution-soft p-5 sm:flex-row sm:items-center">
+            <Lock size={20} className="shrink-0 text-caution" aria-hidden="true" />
             <div className="flex-1">
-              <p className="text-sm font-bold text-alarm">Some items here are locked</p>
-              <p className="text-xs text-alarm mt-0.5">Ask your administrator to extend your access</p>
+              <p className="text-sm font-semibold text-ink">Some items here are locked</p>
+              <p className="mt-1 text-sm text-ink-2">Ask your administrator to extend your access</p>
             </div>
-            <button onClick={() => navigate('/contact')} className="shrink-0 bg-alarm hover:opacity-90 text-white px-4 py-2 rounded-md text-xs font-bold transition-colors">
+            <Button size="sm" variant="outline" onClick={() => navigate('/contact')} className="shrink-0">
               Request Access
-            </button>
-          </motion.div>
+            </Button>
+          </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
-

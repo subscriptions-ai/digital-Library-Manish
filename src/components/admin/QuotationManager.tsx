@@ -78,11 +78,13 @@ export function QuotationManager() {
       if (q) { openPaymentModal(q); return; }
     }
     try {
-      await fetch(`/api/admin/quotations/${id}`, {
+      const res = await fetch(`/api/admin/quotations/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ status })
       });
+      // Only say it worked when it did.
+      if (!res.ok) throw new Error('update failed');
       toast.success(`Quotation ${status.toLowerCase()}`);
       fetchData();
       setSelected(null);

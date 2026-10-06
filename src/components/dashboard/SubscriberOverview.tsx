@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { CreditCard, Library, Clock, ArrowRight, AlertCircle } from 'lucide-react';
+import { CreditCard, Library, Clock, ArrowRight, AlertCircle, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { buttonClass, Card, CardHeader, EmptyState, MetricCard, PageHeader, StatusBadge } from '../ui';
 
 export function SubscriberOverview() {
   const { profile } = useAuth();
@@ -25,133 +25,144 @@ export function SubscriberOverview() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="h-32 bg-rule rounded-md" />
-          <div className="h-32 bg-rule rounded-md" />
-          <div className="h-32 bg-rule rounded-md" />
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3" aria-busy="true">
+        <MetricCard label="Active subscriptions" value={null} loading />
+        <MetricCard label="Covered domains" value={null} loading />
+        <MetricCard label="Nearest expiry" value={null} loading />
       </div>
     );
   }
 
-  const nearestExpiryStr = data?.nearestExpiry ? new Date(data.nearestExpiry).toLocaleDateString() : 'None';
+  // "None" only once we know there is none; if the request failed, "—".
+  const nearestExpiryStr = data?.nearestExpiry ? new Date(data.nearestExpiry).toLocaleDateString() : (data ? 'None' : null);
 
   return (
     <div className="space-y-8 pb-12">
       {profile?.isDemoAccount && (
-        <div className="flex items-center justify-between rounded-md border border-caution bg-caution-soft p-4 text-caution">
-          <div>
-            <h2 className="font-bold text-lg">⚠️ Demo Account</h2>
-            <p className="mt-1 text-[13px]">
-              This demo account is valid for 30 days and will expire on {profile.demoExpiresAt ? new Date(profile.demoExpiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its expiry date'}.
-            </p>
+        <div role="status" className="flex flex-col gap-4 rounded-xl border border-caution bg-caution-soft p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="mt-0.5 shrink-0 text-caution" aria-hidden="true" />
+            <div>
+              <h2 className="text-base font-semibold text-ink">Demo Account</h2>
+              <p className="mt-1 text-sm text-ink-2">
+                This demo account is valid for 30 days and will expire on {profile.demoExpiresAt ? new Date(profile.demoExpiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its expiry date'}.
+              </p>
+            </div>
           </div>
-          <Link to="/contact" className="bg-surface text-caution px-4 py-2 rounded-md text-sm font-bold shadow-sm hover:bg-caution-soft transition-colors">
+          <Link to="/contact" className={buttonClass('outline', 'sm', 'shrink-0')}>
             Request Access
           </Link>
         </div>
       )}
 
-      <div>
-        <h1 className="text-2xl font-bold text-ink tracking-tight">Welcome back!</h1>
-        <p className="text-sm text-muted mt-1">Here's an overview of your active subscriptions and content access.</p>
-      </div>
+      <PageHeader
+        title="Welcome back!"
+        description="Here's an overview of your active subscriptions and content access."
+      />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-accent rounded-md p-6 text-white shadow-lg shadow-emerald-500/20 relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 opacity-20"><CreditCard size={100} /></div>
-          <div className="relative z-10">
-            <div className="mb-2 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-wider text-faint"><CreditCard size={16}/> Active Subs</div>
-            <div className="text-4xl font-extrabold">{data?.activeSubscriptions || 0}</div>
-            <div className="mt-4 text-xs font-medium bg-accent/50 px-3 py-1.5 rounded-lg w-max backdrop-blur-md">
-              Total Spent: ₹{data?.totalSpent?.toLocaleString() || 0}
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-accent rounded-md p-6 text-white shadow-lg shadow-blue-500/20 relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 opacity-20"><Library size={100} /></div>
-          <div className="relative z-10">
-            <div className="mb-2 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-wider text-faint"><Library size={16}/> Covered Domains</div>
-            <div className="text-4xl font-extrabold">{data?.allowedDomains?.length || 0}</div>
-            <div className="mt-4 text-[11.5px] text-muted">Across the library platforms</div>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-accent rounded-md p-6 text-white shadow-lg  relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 opacity-20"><Clock size={100} /></div>
-          <div className="relative z-10">
-            <div className="mb-2 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-wider text-faint"><Clock size={16}/> Nearest Expiry</div>
-            <div className="text-2xl font-extrabold mt-2 whitespace-nowrap">{nearestExpiryStr}</div>
-            {data?.nearestExpiry && (
-              <Link to="/dashboard/subscriptions" className="mt-4 inline-flex items-center gap-1 text-xs font-bold bg-surface text-caution px-3 py-1.5 rounded-lg hover:bg-caution-soft transition-colors">
-                Manage <ArrowRight size={14} />
-              </Link>
-            )}
-          </div>
-        </motion.div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard
+          label="Active subscriptions"
+          icon={CreditCard}
+          value={data ? (data.activeSubscriptions ?? 0).toLocaleString() : null}
+          context={data ? `Total spent: ₹${(data.totalSpent ?? 0).toLocaleString()}` : undefined}
+        />
+        <MetricCard
+          label="Covered domains"
+          icon={Library}
+          value={data ? (data.allowedDomains?.length ?? 0).toLocaleString() : null}
+          context="Across the library platforms"
+        />
+        <MetricCard
+          label="Nearest expiry"
+          icon={Clock}
+          value={nearestExpiryStr}
+          context={data?.nearestExpiry ? (
+            <Link to="/dashboard/subscriptions" className="inline-flex items-center gap-1 font-semibold text-accent hover:underline">
+              Manage <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+          ) : undefined}
+        />
       </div>
 
       {/* Expired Subscriptions Alert */}
       {data?.expiredSubscriptions?.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-sm font-bold text-alarm uppercase tracking-widest flex items-center gap-2">
-            <AlertCircle size={16} /> Expired Subscriptions
+        <section className="space-y-4" aria-labelledby="overview-expired">
+          <h2 id="overview-expired" className="flex items-center gap-2 type-section text-ink">
+            <AlertCircle size={20} className="text-caution" aria-hidden="true" /> Expired Subscriptions
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {data.expiredSubscriptions.map((sub: any) => (
-              <div key={sub.id} className="bg-alarm-soft border border-alarm rounded-md p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-ink">{sub.domainName}</h3>
-                  <p className="text-xs text-alarm font-medium mt-1">
+              <div key={sub.id} className="flex flex-col items-start justify-between gap-4 rounded-xl border border-caution bg-caution-soft p-5 sm:flex-row sm:items-center">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-ink">{sub.domainName}</h3>
+                    <StatusBadge status="subscription-expired" />
+                  </div>
+                  <p className="mt-1 text-sm text-ink-2">
                     Expired on: {new Date(sub.endDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                 </div>
-                <Link to="/contact" className="shrink-0 bg-alarm hover:opacity-90 text-white text-xs font-bold px-4 py-2 rounded-md transition-colors shadow-sm shadow-red-600/20">
+                <Link to="/contact" className={buttonClass('primary', 'sm', 'shrink-0')}>
                   Request Renewal
                 </Link>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {/* Mini Activity & Allowed Domains */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-surface rounded-md p-6 border border-rule shadow-sm">
-          <h2 className="text-sm font-bold text-ink uppercase tracking-widest mb-4">Your Purchased Domains</h2>
-          <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader title="Your Purchased Domains" />
+          <div className="space-y-2">
             {data?.allowedDomains?.length > 0 ? data.allowedDomains.map((domain: string) => (
-              <div key={domain} className="flex items-center justify-between p-4 bg-surface-2 rounded-md">
-                <span className="font-bold text-ink">{domain}</span>
-                <Link to="/dashboard/library/access" className="p-2 bg-surface rounded-lg shadow-sm text-accent hover:text-accent hover:shadow">
-                  <ArrowRight size={18} />
-                </Link>
-              </div>
+              <Link
+                key={domain}
+                to="/dashboard/library/access"
+                className="group flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-4 py-3 transition-colors duration-150 hover:bg-accent-soft"
+              >
+                <span className="min-w-0 truncate font-semibold text-ink">{domain}</span>
+                <ArrowRight size={18} className="shrink-0 text-accent" aria-hidden="true" />
+              </Link>
             )) : (
-              <p className="text-sm text-muted">You don't have any active subscriptions yet.</p>
+              <EmptyState
+                icon={Library}
+                title="No subscriptions found"
+                description="You don't have any active subscriptions yet."
+                className="py-8"
+              />
             )}
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-surface rounded-md p-6 border border-rule shadow-sm">
-          <h2 className="text-sm font-bold text-ink uppercase tracking-widest mb-4">Recent Activity</h2>
-          <div className="space-y-4">
-            {data?.recentActivity?.map((activity: any) => (
-              <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-rule last:border-0 last:pb-0">
-                <div>
-                  <div className="font-bold text-ink">{activity.title}</div>
-                  <div className="text-xs text-muted mt-1">{activity.type}</div>
-                </div>
-                <div className="text-xs font-medium text-faint mt-2 sm:mt-0">
-                  {new Date(activity.date).toLocaleDateString()}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card>
+          <CardHeader title="Recent Activity" />
+          {data?.recentActivity?.length ? (
+            <ul className="divide-y divide-rule">
+              {data.recentActivity.map((activity: any) => (
+                <li key={activity.id} className="flex flex-col justify-between gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:gap-4">
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-ink">{activity.title}</div>
+                    <div className="mt-1 text-xs text-muted">{activity.type}</div>
+                  </div>
+                  <div className="shrink-0 text-xs text-muted">
+                    {new Date(activity.date).toLocaleDateString()}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              icon={Clock}
+              title="No reading activity yet"
+              description="What you open will show up here."
+              className="py-8"
+            />
+          )}
+        </Card>
       </div>
     </div>
   );

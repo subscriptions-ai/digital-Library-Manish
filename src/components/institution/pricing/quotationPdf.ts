@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { addDays, format } from 'date-fns';
 import { COMPANY_DETAILS } from '../../../config';
+import { loadPdfLogo } from '../../../lib/pdfLogo';
 import { GST_RATE, MAX_INSTITUTION_USERS, TERM_MONTHS } from '../../../lib/institutionPricing';
 import { COMPANY_STATE } from '../../../lib/gstUtils';
 
@@ -58,7 +59,8 @@ export type QuotationInput = {
 /** A reference, not a stored record: it ties this document to the day and moment it was made. */
 const quotationNumber = (d: Date) => `STMQ-${format(d, 'yyMMdd-HHmm')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-export function downloadQuotation(q: QuotationInput) {
+export async function downloadQuotation(q: QuotationInput) {
+  const logo = await loadPdfLogo();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const today = new Date();
   const expires = addDays(today, VALID_DAYS);
@@ -71,13 +73,16 @@ export function downloadQuotation(q: QuotationInput) {
   // ── Letterhead ──
   doc.setFillColor(...TEAL);
   doc.rect(0, 0, 210, 3, 'F');
+  // The seal sits at the left of the letterhead; the company block moves right to make room.
+  if (logo) { try { doc.addImage(logo, 'PNG', L, 9, 22, 22); } catch { /* the quotation stands without it */ } }
+  const HX = logo ? L + 26 : L;
   doc.setFont('helvetica', 'bold'); doc.setFontSize(19); doc.setTextColor(...INK);
-  doc.text(COMPANY_DETAILS.name, L, 18);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
-  doc.text(COMPANY_DETAILS.positioning, L, 23);
-  doc.text(COMPANY_DETAILS.registeredOffice, L, 27.5);
-  doc.text(`${COMPANY_DETAILS.email}  |  ${COMPANY_DETAILS.tel.join(' / ')}  |  ${COMPANY_DETAILS.website}`, L, 32);
-  doc.text(`GSTIN: ${COMPANY_DETAILS.gstin}   |   PAN: ${COMPANY_DETAILS.pan}   |   CIN: ${COMPANY_DETAILS.cin}`, L, 36.5);
+  doc.text(COMPANY_DETAILS.name, HX, 18);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(logo ? 7.8 : 8.5); doc.setTextColor(...MUTED);
+  doc.text(COMPANY_DETAILS.positioning, HX, 23);
+  doc.text(COMPANY_DETAILS.registeredOffice, HX, 27.5);
+  doc.text(`${COMPANY_DETAILS.email}  |  ${COMPANY_DETAILS.tel.join(' / ')}  |  ${COMPANY_DETAILS.website}`, HX, 32);
+  doc.text(`GSTIN: ${COMPANY_DETAILS.gstin}   |   PAN: ${COMPANY_DETAILS.pan}   |   CIN: ${COMPANY_DETAILS.cin}`, HX, 36.5);
 
   // Title block, on the right of the letterhead.
   doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(...TEAL);

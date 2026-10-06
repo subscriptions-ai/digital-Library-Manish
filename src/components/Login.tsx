@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2, X } from "lucide-react";
+import { Mail, Lock, ArrowRight, Eye, EyeOff, AlertTriangle, Building2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
+import { Button, Dialog, friendlyError } from "./ui";
 
 export function Login() {
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ export function Login() {
       // and it will redirect if admin. Or better, check current profile if available.
     } catch (error: any) {
       if (error?.code === 'ACTIVE_SESSION_EXISTS') setSessionElsewhere(true);
-      else toast.error(error.message || 'Failed to login');
+      else toast.error(friendlyError(error, 'We could not sign you in. Please check your email and password and try again.'));
     } finally {
       setLoading(false);
     }
@@ -114,7 +115,7 @@ export function Login() {
       toast.success(data.message);
       setForgotStep(2);
     } catch (err: any) {
-      toast.error(err.message || 'Network error');
+      toast.error(friendlyError(err, 'We could not send the OTP. Please try again.'));
     } finally {
       setForgotLoading(false);
     }
@@ -143,196 +144,219 @@ export function Login() {
       setShowForgotModal(false);
       setPassword(''); // Clear current password field
     } catch (err: any) {
-      toast.error(err.message || 'Network error');
+      toast.error(friendlyError(err, 'We could not reset your password. Please try again.'));
     } finally {
       setForgotLoading(false);
     }
   };
 
+  // Stable, because the Dialog re-runs its focus handling whenever onClose
+  // changes — an inline arrow would move focus away on every keystroke.
+  const closeForgotModal = useCallback(() => setShowForgotModal(false), []);
+
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <Link to="/" className="inline-flex items-center gap-3 mb-8">
-            <img src="/logo.png" alt="STM Digital Library Logo" className="h-12 w-12 object-contain" />
+    // The public layout already supplies the header and footer, so the page
+    // only needs a little top padding: a min-h-screen + vertical centring
+    // here pushed the card hundreds of pixels down the page.
+    <div className="bg-ground px-4 pt-6 pb-12 sm:pt-12 lg:pt-16">
+      <div className="mx-auto w-full max-w-[440px]">
+        <div className="mb-6 text-center">
+          <Link to="/" className="mb-6 inline-flex items-center gap-3">
+            <img src="/logo.png" alt="STM Digital Library Logo" className="h-10 w-10 object-contain" />
             <div className="flex flex-col text-left leading-none">
-              <span className="text-xl font-bold tracking-tight text-slate-900">STM Library</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mt-1">Digital Access</span>
+              <span className="text-lg font-bold tracking-tight text-ink">STM Library</span>
+              <span className="mt-1 text-[11px] font-bold uppercase tracking-widest text-accent">Digital Access</span>
             </div>
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
-          <p className="mt-2 text-sm text-slate-500">Enter your credentials to access your account</p>
+          <h1 className="type-page-title text-ink">Welcome Back</h1>
+          <p className="mt-2 text-sm text-muted">Enter your credentials to access your account</p>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50">
-          <form className="space-y-6" onSubmit={handleLogin}>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Email Address</label>
+        <div className="card card-pad sm:p-8">
+          <form className="space-y-5" onSubmit={handleLogin}>
+            <div className="field">
+              <label htmlFor="login-email" className="field-label">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="email" 
+                <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
+                <input
+                  id="login-email"
+                  type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@university.edu"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  className="input h-11 pl-10"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-bold text-slate-700">Password</label>
-                <button 
+            <div className="field">
+              <div className="flex items-center justify-between">
+                <label htmlFor="login-password" className="field-label">Password</label>
+                <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                  className="text-sm font-semibold text-accent hover:underline"
                 >
-                  Forgot?
+                  Forgot password?
                 </button>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type={showPassword ? "text" : "password"} 
+                <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
+                <input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  placeholder="Your password"
+                  className="input h-11 pl-10 pr-11"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                  className="btn btn-ghost btn-sm btn-icon absolute right-1.5 top-1/2 -translate-y-1/2 text-muted"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
                 </button>
               </div>
             </div>
             {sessionElsewhere && (
-              <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                <p className="font-bold">Already signed in elsewhere</p>
+              <div role="alert" className="rounded-lg border border-caution/30 bg-caution-soft p-4 text-sm text-ink-2">
+                <p className="flex items-center gap-2 font-semibold text-ink">
+                  <AlertTriangle size={16} className="shrink-0 text-caution" aria-hidden="true" />
+                  Already signed in elsewhere
+                </p>
                 <p className="mt-1">This account is already signed in on another device or browser. Please sign out from the active session before signing in here.</p>
-                <button
-                  type="button"
-                  disabled={loading}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  loading={loading}
                   onClick={(e) => handleLogin(e as any, true)}
-                  className="mt-3 text-xs font-bold text-amber-900 underline underline-offset-2 hover:text-amber-700 disabled:opacity-50"
                 >
                   Sign out the other session and sign in here
-                </button>
-                <p className="mt-1 text-[11px] text-amber-800">Uses the password you entered above.</p>
+                </Button>
+                <p className="mt-2 text-xs text-muted">Uses the password you entered above.</p>
               </div>
             )}
-            <button 
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-slate-900 py-4 text-sm font-bold text-white hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {loading ? 'Signing In...' : 'Sign In'} <ArrowRight size={16} />
-            </button>
+            <Button type="submit" variant="brand" size="lg" block loading={loading}>
+              {loading ? 'Signing In...' : <>Sign In <ArrowRight size={16} aria-hidden="true" /></>}
+            </Button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-slate-100 text-center">
-            <p className="text-sm text-slate-500">
-              Don't have an account? <Link to="/signup" className="font-bold text-blue-600 hover:text-blue-700">Create an account</Link>
+          <div className="mt-6 border-t border-rule pt-6 text-center">
+            <p className="text-sm text-muted">
+              Don't have an account? <Link to="/signup" className="font-semibold text-accent hover:underline">Create an account</Link>
             </p>
           </div>
         </div>
 
-        <div className="mt-8 text-center">
-          <Link to="/institutional-access" className="text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600">
-            Institutional Login via IP / Shibboleth
-          </Link>
-        </div>
-
-        {/* Forgot Password Modal */}
-        {showForgotModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-slate-900">Reset Password</h3>
-                <button onClick={() => setShowForgotModal(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-6">
-                {forgotStep === 1 ? (
-                  <form onSubmit={handleSendOtp} className="space-y-4">
-                    <p className="text-sm text-slate-600">Enter your registered email address to receive a 6-digit OTP for password reset.</p>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Email Address</label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input 
-                          type="email" 
-                          required
-                          value={forgotEmail}
-                          onChange={(e) => setForgotEmail(e.target.value)}
-                          placeholder="name@university.edu"
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 transition-all"
-                        />
-                      </div>
-                    </div>
-                    <button 
-                      type="submit"
-                      disabled={forgotLoading}
-                      className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {forgotLoading ? <Loader2 className="animate-spin" size={16} /> : 'Send OTP'}
-                    </button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleResetPassword} className="space-y-4">
-                    <p className="text-sm text-slate-600">An OTP has been sent to <strong>{forgotEmail}</strong>. Please enter it below along with your new password.</p>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">6-Digit OTP</label>
-                      <input 
-                        type="text" 
-                        required
-                        maxLength={6}
-                        value={forgotOtp}
-                        onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
-                        placeholder="000000"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center tracking-[0.5em] font-bold outline-none focus:border-blue-500 transition-all"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">New Password</label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input 
-                          type={showForgotNewPassword ? "text" : "password"} 
-                          required
-                          minLength={8}
-                          value={forgotNewPassword}
-                          onChange={(e) => setForgotNewPassword(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-3 text-sm outline-none focus:border-blue-500 transition-all"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
-                        >
-                          {showForgotNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      </div>
-                    </div>
-                    <button 
-                      type="submit"
-                      disabled={forgotLoading}
-                      className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
-                    >
-                      {forgotLoading ? <Loader2 className="animate-spin" size={16} /> : 'Reset Password'}
-                    </button>
-                  </form>
-                )}
-              </div>
+        {/* Institutional access is a separate route (IP range / Shibboleth),
+            so it sits below the card as a quiet secondary option. */}
+        <div className="mt-4 rounded-xl border border-rule bg-surface p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent" aria-hidden="true">
+              <Building2 size={18} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">Institutional access</p>
+              <p className="mt-1 text-sm text-muted">Reading through your university or library? Access is available via IP range or Shibboleth.</p>
+              <Link to="/institutional-access" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline">
+                Institutional login options <ArrowRight size={14} aria-hidden="true" />
+              </Link>
             </div>
           </div>
-        )}
+        </div>
+
+        <p className="mt-4 text-center text-sm text-muted">
+          Need help signing in? <Link to="/contact" className="font-semibold text-accent hover:underline">Contact support</Link>
+        </p>
+
+        {/* Forgot Password Modal */}
+        <Dialog
+          open={showForgotModal}
+          onClose={closeForgotModal}
+          title="Reset Password"
+          description={forgotStep === 1
+            ? 'Enter your registered email address to receive a 6-digit OTP for password reset.'
+            : <>An OTP has been sent to <strong className="text-ink">{forgotEmail}</strong>. Please enter it below along with your new password.</>}
+        >
+          {forgotStep === 1 ? (
+            <form onSubmit={handleSendOtp} className="space-y-4">
+              <div className="field">
+                <label htmlFor="forgot-email" className="field-label">Email Address</label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="name@university.edu"
+                    className="input h-11 pl-10"
+                  />
+                </div>
+              </div>
+              <Button type="submit" variant="brand" block loading={forgotLoading}>
+                Send OTP
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="field">
+                <label htmlFor="forgot-otp" className="field-label">6-Digit OTP</label>
+                <input
+                  id="forgot-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  maxLength={6}
+                  value={forgotOtp}
+                  onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  className="input h-12 text-center text-lg font-semibold tracking-[0.5em]"
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="forgot-new-password" className="field-label">New Password</label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
+                  <input
+                    id="forgot-new-password"
+                    type={showForgotNewPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={forgotNewPassword}
+                    onChange={(e) => setForgotNewPassword(e.target.value)}
+                    placeholder="At least 8 characters"
+                    className="input h-11 pl-10 pr-11"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                    aria-label={showForgotNewPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showForgotNewPassword}
+                    className="btn btn-ghost btn-sm btn-icon absolute right-1.5 top-1/2 -translate-y-1/2 text-muted"
+                  >
+                    {showForgotNewPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                  </button>
+                </div>
+                <p className="field-help">Use at least 8 characters.</p>
+              </div>
+              <Button type="submit" variant="brand" block loading={forgotLoading}>
+                Reset Password
+              </Button>
+            </form>
+          )}
+        </Dialog>
       </div>
     </div>
   );

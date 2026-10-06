@@ -1,24 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Phone, Clock, MapPin, Building2, Search, Filter, ArrowRight, User } from 'lucide-react';
+import { Mail, Phone, Clock, MapPin, Building2, Search, ArrowRight, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { Badge, EmptyState, ErrorState, Skeleton, SkeletonRows, type BadgeTone } from '../ui';
 
 const PIPELINE_STAGES = ['All', 'Positive', 'No Response', 'Subscriber', 'In Progress', 'Negative', 'Repeated'];
 
-const STAGE_COLORS: Record<string, string> = {
-  'All': 'bg-slate-100 border-slate-200 text-slate-800',
-  'Positive': 'bg-blue-100 border-blue-200 text-blue-800',
-  'No Response': 'bg-amber-100 border-amber-200 text-amber-800',
-  'Subscriber': 'bg-emerald-100 border-emerald-200 text-emerald-800',
-  'In Progress': 'bg-purple-100 border-purple-200 text-purple-800',
-  'Negative': 'bg-rose-100 border-rose-200 text-rose-800',
-  'Repeated': 'bg-orange-100 border-orange-200 text-orange-800',
+// How each pipeline stage reads as a badge. The word always carries the
+// meaning; the tone only helps the eye find what needs attention.
+const STAGE_TONE: Record<string, BadgeTone> = {
+  'Positive': 'accent',
+  'No Response': 'caution',
+  'Subscriber': 'success',
+  'In Progress': 'accent',
+  'Negative': 'neutral',
+  'Repeated': 'neutral',
 };
+
+/** A lead's pipeline stage as a badge — shared by the dashboard and the lead page. */
+export function LeadStatusBadge({ status }: { status: string }) {
+  return <Badge tone={STAGE_TONE[status] ?? 'neutral'} dot>{status || 'Unknown'}</Badge>;
+}
 
 export function SalesLeadTable() {
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   
   // Filters
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
@@ -34,6 +42,7 @@ export function SalesLeadTable() {
 
   const fetchLeads = async () => {
     setLoading(true);
+    setLoadFailed(false);
     try {
       const res = await fetch('/api/sales/my-leads', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -41,6 +50,7 @@ export function SalesLeadTable() {
       if (!res.ok) throw new Error();
       setLeads(await res.json());
     } catch {
+      setLoadFailed(true);
       toast.error('Failed to load leads list');
     } finally {
       setLoading(false);
@@ -72,12 +82,16 @@ export function SalesLeadTable() {
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-6">
-        <div className="h-8 bg-slate-100 rounded w-1/4"></div>
-        <div className="h-12 bg-slate-100 rounded"></div>
-        <div className="h-64 bg-slate-100 rounded"></div>
+      <div className="space-y-6">
+        <div className="space-y-2"><Skeleton className="h-7 w-48" /><Skeleton className="h-4 w-2/3" /></div>
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="card card-pad"><SkeletonRows rows={6} /></div>
       </div>
     );
+  }
+
+  if (loadFailed) {
+    return <ErrorState title="Your leads could not be loaded" onRetry={fetchLeads} />;
   }
 
   // Derived filter options
@@ -117,12 +131,12 @@ export function SalesLeadTable() {
     <div className="space-y-6">
       {/* Title */}
       <div>
-        <h1 className="text-2xl font-black text-slate-900">My Leads</h1>
-        <p className="text-slate-500 text-sm font-semibold mt-1">Manage and call your assigned leads. Filter by state or status to organize your day.</p>
+        <h1 className="type-page-title text-ink">My Leads</h1>
+        <p className="text-muted text-sm mt-1">Manage and call your assigned leads. Filter by state or status to organize your day.</p>
       </div>
 
       {/* Status Pills */}
-      <div className="flex flex-wrap gap-2 pb-2 border-b border-slate-100">
+      <div className="flex flex-wrap gap-2 pb-4 border-b border-rule" role="group" aria-label="Filter by pipeline status">
         {PIPELINE_STAGES.map(stage => {
           const count = getStatusCount(stage);
           const isActive = selectedStatus === stage;
@@ -130,15 +144,16 @@ export function SalesLeadTable() {
             <button
               key={stage}
               onClick={() => setSelectedStatus(stage)}
-              className={`flex items-center gap-2 py-2 px-4 rounded-xl text-xs font-bold transition-all border ${
-                isActive 
-                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-600/10'
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              aria-pressed={isActive}
+              className={`flex items-center gap-2 h-8 px-3 rounded-full text-xs font-semibold transition-colors duration-150 border ${
+                isActive
+                  ? 'bg-accent border-accent text-accent-on'
+                  : 'bg-surface border-rule text-ink-2 hover:bg-surface-2'
               }`}
             >
               {stage}
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                isActive ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-500'
+              <span className={`px-1.5 py-0.5 rounded-full text-[11px] tabular-nums ${
+                isActive ? 'bg-white/20 text-accent-on' : 'bg-surface-2 text-muted'
               }`}>
                 {count}
               </span>
@@ -148,26 +163,29 @@ export function SalesLeadTable() {
       </div>
 
       {/* Search & Filters Row */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-        {/* Search */}
-        <div className="relative w-full sm:flex-1">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search leads by name, email, phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-slate-400"
-          />
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 items-end">
+        <div className="field">
+          <label htmlFor="lead-search" className="field-label">Search</label>
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden="true" />
+            <input
+              id="lead-search"
+              type="text"
+              placeholder="Name, email, phone or organization"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pl-9"
+            />
+          </div>
         </div>
 
-        {/* State Filter */}
-        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 bg-white border border-slate-200 rounded-xl px-3 py-2">
-          <MapPin size={15} className="text-slate-400" />
+        <div className="field">
+          <label htmlFor="lead-state" className="field-label">State</label>
           <select
+            id="lead-state"
             value={stateFilter}
             onChange={(e) => setStateFilter(e.target.value)}
-            className="text-xs font-bold text-slate-700 bg-transparent border-none outline-none pr-6 cursor-pointer"
+            className="input sm:w-44"
           >
             <option value="All">All States</option>
             {uniqueStates.map(state => (
@@ -176,13 +194,13 @@ export function SalesLeadTable() {
           </select>
         </div>
 
-        {/* Source Filter */}
-        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 bg-white border border-slate-200 rounded-xl px-3 py-2">
-          <Filter size={15} className="text-slate-400" />
+        <div className="field">
+          <label htmlFor="lead-source" className="field-label">Source</label>
           <select
+            id="lead-source"
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value)}
-            className="text-xs font-bold text-slate-700 bg-transparent border-none outline-none pr-6 cursor-pointer"
+            className="input sm:w-44"
           >
             <option value="All">All Sources</option>
             {uniqueSources.map(source => (
@@ -193,94 +211,96 @@ export function SalesLeadTable() {
       </div>
 
       {/* Main Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="card overflow-hidden">
         {filteredLeads.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="table-wrap">
+            <table className="data-table">
               <thead>
-                <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase bg-slate-50/50">
-                  <th className="py-4 px-6 font-extrabold">Lead / Organization</th>
-                  <th className="py-4 px-4 font-extrabold">State</th>
-                  <th className="py-4 px-4 font-extrabold text-center">Quick Contact</th>
-                  <th className="py-4 px-4 font-extrabold">Source</th>
-                  <th className="py-4 px-4 font-extrabold">Pipeline Status</th>
-                  <th className="py-4 px-4 font-extrabold">Created At</th>
-                  <th className="py-4 pr-6 text-right"></th>
+                <tr>
+                  <th>Lead / Organization</th>
+                  <th>State</th>
+                  <th className="text-center">Quick Contact</th>
+                  <th>Source</th>
+                  <th>Pipeline Status</th>
+                  <th>Created At</th>
+                  <th><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody>
                 {filteredLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <tr key={lead.id}>
                     {/* Lead info */}
-                    <td className="py-4 px-6 cursor-pointer" onClick={() => navigate(`/sales/leads/${lead.id}`)}>
-                      <div className="font-bold text-slate-800 hover:text-indigo-600 transition-colors">{lead.name}</div>
+                    <td className="cursor-pointer" onClick={() => navigate(`/sales/leads/${lead.id}`)}>
+                      <div className="font-semibold text-ink hover:text-accent transition-colors">{lead.name}</div>
                       {lead.organization ? (
-                        <div className="text-xs text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
-                          <Building2 size={12} className="text-slate-400 shrink-0" />
+                        <div className="text-xs text-muted flex items-center gap-1 mt-0.5">
+                          <Building2 size={12} className="text-faint shrink-0" aria-hidden="true" />
                           <span className="truncate max-w-[200px]">{lead.organization}</span>
                         </div>
                       ) : (
-                        <div className="text-xs text-slate-400 italic">No organization</div>
+                        <div className="text-xs text-muted">No organization</div>
                       )}
                     </td>
 
                     {/* State */}
-                    <td className="py-4 px-4 whitespace-nowrap">
+                    <td className="whitespace-nowrap">
                       {lead.state ? (
-                        <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px] uppercase">
-                          <MapPin size={10} className="text-indigo-500" /> {lead.state}
+                        <span className="inline-flex items-center gap-1 text-ink-2">
+                          <MapPin size={12} className="text-faint" aria-hidden="true" /> {lead.state}
                         </span>
                       ) : (
-                        <span className="text-slate-400 text-xs italic">N/A</span>
+                        <span className="text-muted text-xs">N/A</span>
                       )}
                     </td>
 
                     {/* Contact Icons */}
-                    <td className="py-4 px-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-1">
                         <a
                           href={`mailto:${lead.email}`}
                           title={lead.email}
+                          aria-label={`Email ${lead.name}${lead.email ? ` at ${lead.email}` : ''}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl transition-all inline-block"
+                          className="btn btn-ghost btn-sm btn-icon text-accent"
                         >
-                          <Mail size={14} />
+                          <Mail size={16} aria-hidden="true" />
                         </a>
                         {lead.phone ? (
                           <a
                             href={`tel:${lead.phone}`}
                             title={lead.phone}
+                            aria-label={`Call ${lead.name} on ${lead.phone}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all inline-block"
+                            className="btn btn-ghost btn-sm btn-icon text-success"
                           >
-                            <Phone size={14} />
+                            <Phone size={16} aria-hidden="true" />
                           </a>
                         ) : (
                           <button
                             disabled
-                            className="p-2 bg-slate-50 text-slate-300 rounded-xl cursor-not-allowed inline-block"
+                            className="btn btn-ghost btn-sm btn-icon"
                             title="No Phone"
+                            aria-label="No phone number"
                           >
-                            <Phone size={14} />
+                            <Phone size={16} aria-hidden="true" />
                           </button>
                         )}
                       </div>
                     </td>
 
                     {/* Source */}
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded font-extrabold text-[10px] uppercase border border-indigo-100 tracking-wider">
-                        {lead.source}
-                      </span>
+                    <td className="whitespace-nowrap">
+                      <span className="badge badge-neutral">{lead.source}</span>
                     </td>
 
                     {/* Status inline selector */}
-                    <td className="py-4 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <td className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={lead.status}
                         onChange={(e) => updateStatus(lead.id, e.target.value)}
                         disabled={updatingId === lead.id}
-                        className="bg-white border border-slate-200 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                        aria-label={`Pipeline status for ${lead.name}`}
+                        className="input h-8 w-auto text-xs font-semibold"
                       >
                         {PIPELINE_STAGES.map(s => (
                           <option key={s} value={s}>{s}</option>
@@ -289,20 +309,21 @@ export function SalesLeadTable() {
                     </td>
 
                     {/* Date */}
-                    <td className="py-4 px-4 whitespace-nowrap font-medium text-slate-500">
+                    <td className="whitespace-nowrap text-muted">
                       <div className="flex items-center gap-1.5">
-                        <Clock size={13} className="text-slate-400" />
+                        <Clock size={14} className="text-faint" aria-hidden="true" />
                         {new Date(lead.createdAt).toLocaleDateString()}
                       </div>
                     </td>
 
                     {/* Details Action */}
-                    <td className="py-4 pr-6 text-right whitespace-nowrap">
+                    <td className="text-right whitespace-nowrap">
                       <button
                         onClick={() => navigate(`/sales/leads/${lead.id}`)}
-                        className="text-xs font-black text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5 ml-auto bg-slate-100/50 py-1.5 px-3 rounded-xl transition-all hover:bg-slate-100"
+                        className="btn btn-outline btn-sm"
+                        aria-label={`Open ${lead.name}`}
                       >
-                        Action <ArrowRight size={13} />
+                        Action <ArrowRight size={14} aria-hidden="true" />
                       </button>
                     </td>
                   </tr>
@@ -310,20 +331,16 @@ export function SalesLeadTable() {
               </tbody>
             </table>
           </div>
+        ) : leads.length === 0 ? (
+          <EmptyState icon={User} title="No leads assigned yet" description="Leads assigned to you will appear here." />
         ) : (
-          <div className="text-center py-16 bg-slate-50/20">
-            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
-              <User size={20} />
-            </div>
-            <h4 className="font-extrabold text-slate-700 text-sm">No Matching Leads</h4>
-            <p className="text-slate-400 text-xs mt-1">Try adjusting your filters or search query to find your leads.</p>
-          </div>
+          <EmptyState icon={User} title="No matching leads" description="Try adjusting your filters or search query to find your leads." />
         )}
       </div>
-      
-      <div className="text-xs font-bold text-slate-400 text-right">
+
+      <p className="text-xs text-muted text-right">
         Showing {filteredLeads.length} of {leads.length} assigned leads
-      </div>
+      </p>
     </div>
   );
 }

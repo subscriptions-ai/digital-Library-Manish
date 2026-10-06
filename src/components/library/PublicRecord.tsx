@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, BookOpen, Building2, Calendar, FileText, Hash, Layers } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { buttonClass } from '../ui';
 
 /**
  * One article, or one book, on a page of its own.
@@ -18,7 +19,8 @@ import { useAuth } from '../../contexts/AuthContext';
  * shown a login they did not ask for.
  */
 
-const LABEL = 'font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint';
+const LABEL = 'font-mono text-[11px] uppercase tracking-[0.14em] text-muted';
+const SECONDARY = buttonClass('outline', 'md');
 const n = (x?: number | null) => (typeof x === 'number' ? x.toLocaleString('en-IN') : '');
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -32,7 +34,7 @@ function Missing({ what }: { what: string }) {
       <p className="mt-2 text-[14.5px] text-muted">
         It may have been withdrawn, or the link may be wrong.
       </p>
-      <Link to="/digital-library" className="mt-5 inline-block text-[14px] font-semibold text-accent hover:underline">
+      <Link to="/digital-library" className={buttonClass('brand', 'md', 'mt-5')}>
         Browse the library
       </Link>
     </Shell>
@@ -43,11 +45,11 @@ function Facts({ rows }: { rows: [string, React.ReactNode][] }) {
   const shown = rows.filter(([, v]) => v !== null && v !== undefined && v !== '');
   if (!shown.length) return null;
   return (
-    <dl className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-rule bg-rule sm:grid-cols-2">
+    <dl className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-2">
       {shown.map(([k, v]) => (
-        <div key={k} className="bg-surface px-5 py-3.5">
+        <div key={k} className="bg-surface px-5 py-3">
           <dt className={LABEL}>{k}</dt>
-          <dd className="mt-1 text-[14px] leading-snug text-ink-2">{v}</dd>
+          <dd className="tnum mt-1 text-[14px] leading-snug text-ink-2 [overflow-wrap:anywhere]">{v}</dd>
         </div>
       ))}
       {/* An odd number of facts leaves a hole in the second column, which reads
@@ -61,17 +63,17 @@ function Facts({ rows }: { rows: [string, React.ReactNode][] }) {
 function OpenIt({ to, label }: { to: string; label: string }) {
   const { profile } = useAuth();
   return (
-    <div className="mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-rule bg-surface p-5">
+    <div className="card mt-8 flex flex-wrap items-center gap-3 p-5">
       {profile ? (
-        <Link to={to} className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-[14px] font-semibold text-white hover:bg-accent-hover">
-          {label} <ArrowRight size={16} />
+        <Link to={to} className={buttonClass('brand', 'lg')}>
+          {label} <ArrowRight size={16} aria-hidden="true" />
         </Link>
       ) : (
         <>
-          <Link to="/signup?ref=record" className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-semibold text-surface hover:opacity-90">
-            Register free to read it <ArrowRight size={16} />
+          <Link to="/signup?ref=record" className={buttonClass('highlight', 'lg')}>
+            Register free to read it <ArrowRight size={16} aria-hidden="true" />
           </Link>
-          <Link to="/login" className="text-[13.5px] font-semibold text-accent hover:underline">Already a member? Sign in</Link>
+          <Link to="/login" className="text-sm font-semibold text-accent hover:underline">Already a member? Sign in</Link>
         </>
       )}
     </div>
@@ -92,7 +94,7 @@ export function ArticleRecord() {
   }, [id]);
 
   if (missing) return <Missing what="article" />;
-  if (!item) return <Shell><div className="h-72 animate-pulse rounded-2xl bg-surface-2" /></Shell>;
+  if (!item) return <Shell><div role="status" aria-label="Loading" className="space-y-3"><div className="skeleton h-3 w-1/4" /><div className="skeleton h-9 w-4/5" /><div className="skeleton h-4 w-2/5" /><div className="skeleton mt-6 h-56 w-full rounded-xl" /></div></Shell>;
 
   const where = [item.journalName, item.volume && `Volume ${item.volume}`, item.issue && `Issue ${item.issue}`]
     .filter(Boolean).join(' · ');
@@ -105,15 +107,15 @@ export function ArticleRecord() {
       </Helmet>
 
       <Link to="/digital-library?kind=articles" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink">
-        <ArrowLeft size={15} /> All articles
+        <ArrowLeft size={16} aria-hidden="true" /> All articles
       </Link>
 
       <p className={`${LABEL} mt-7`}>
-        <FileText size={12} className="mr-1.5 inline" />Research article{item.domain ? ` · ${item.domain}` : ''}
+        <FileText size={12} className="mr-1.5 inline" aria-hidden="true" />Research article{item.domain ? ` · ${item.domain}` : ''}
       </p>
       <h1 className="mt-3 font-serif text-[30px] font-medium leading-snug text-ink sm:text-[34px]">{item.title}</h1>
       {item.authors && <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{item.authors}</p>}
-      {where && <p className="mt-1.5 font-mono text-[12px] text-faint">{where}</p>}
+      {where && <p className="tnum mt-1.5 font-mono text-[12px] text-muted">{where}</p>}
 
       {item.abstract && (
         <p className="mt-6 whitespace-pre-line text-[15px] leading-relaxed text-muted">{item.abstract}</p>
@@ -128,6 +130,7 @@ export function ArticleRecord() {
         ['Pages', item.pages],
         ['Department', item.domain],
         ['Subject', item.subject],
+        ['ISSN', item.journalIssn ? <span className="font-mono text-[12.5px]">{item.journalIssn}</span> : null],
         ['DOI', item.doi ? <span className="font-mono text-[12.5px]">{item.doi}</span> : null],
         ['Language', item.language],
       ]} />
@@ -135,14 +138,14 @@ export function ArticleRecord() {
       <div className="mt-8 flex flex-wrap gap-3">
         {item.domain && (
           <Link to={`/domain/${String(item.domain).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-rule px-4 py-2.5 text-[13.5px] font-semibold text-ink hover:bg-surface-2">
-            <Layers size={15} /> More in {item.domain}
+            className={SECONDARY}>
+            <Layers size={16} aria-hidden="true" /> More in {item.domain}
           </Link>
         )}
         {item.journalId && (
           <Link to={`/journal/${item.journalId}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-rule px-4 py-2.5 text-[13.5px] font-semibold text-ink hover:bg-surface-2">
-            <BookOpen size={15} /> The journal
+            className={SECONDARY}>
+            <BookOpen size={16} aria-hidden="true" /> The journal
           </Link>
         )}
       </div>
@@ -164,7 +167,7 @@ export function BookRecord() {
   }, [id]);
 
   if (missing) return <Missing what="book" />;
-  if (!data) return <Shell><div className="h-72 animate-pulse rounded-2xl bg-surface-2" /></Shell>;
+  if (!data) return <Shell><div role="status" aria-label="Loading" className="space-y-3"><div className="skeleton h-3 w-1/4" /><div className="skeleton h-9 w-4/5" /><div className="skeleton h-4 w-2/5" /><div className="skeleton mt-6 h-56 w-full rounded-xl" /></div></Shell>;
 
   const b = data.book;
   const alongside: any[] = data.alongside || [];
@@ -177,11 +180,11 @@ export function BookRecord() {
       </Helmet>
 
       <Link to="/digital-library?kind=books" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink">
-        <ArrowLeft size={15} /> All books
+        <ArrowLeft size={16} aria-hidden="true" /> All books
       </Link>
 
       <div className="mt-7 flex flex-col gap-6 sm:flex-row">
-        <div className="h-60 w-40 shrink-0 overflow-hidden rounded-2xl border border-rule bg-accent-soft">
+        <div className="h-60 w-40 shrink-0 overflow-hidden rounded-xl border border-rule bg-accent-soft">
           {/* Through our own cache, which keeps a copy and refuses the heavy ones. */}
           <img src={`/api/library/cover/${b.id}`} alt="" loading="lazy"
             className="h-full w-full object-cover"
@@ -189,13 +192,15 @@ export function BookRecord() {
         </div>
         <div className="min-w-0">
           <p className={LABEL}>
-            <BookOpen size={12} className="mr-1.5 inline" />Book{b.domain ? ` · ${b.domain}` : ''}
+            <BookOpen size={12} className="mr-1.5 inline" aria-hidden="true" />Book{b.domain ? ` · ${b.domain}` : ''}
           </p>
           <h1 className="mt-3 font-serif text-[28px] font-medium leading-snug text-ink sm:text-[32px]">{b.title}</h1>
           {b.authors && <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{b.authors}</p>}
-          <p className="mt-1.5 font-mono text-[12px] text-faint">
-            {[b.publisherName, b.year].filter(Boolean).join(' · ')}
-          </p>
+          {(b.publisherName || b.year) && (
+            <p className="tnum mt-1.5 font-mono text-[12px] text-muted">
+              {[b.publisherName, b.year].filter(Boolean).join(' · ')}
+            </p>
+          )}
         </div>
       </div>
 
@@ -224,7 +229,7 @@ export function BookRecord() {
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {alongside.map(x => (
               <Link key={x.id} to={`/book/${x.id}`}
-                className="group flex gap-3 rounded-2xl border border-rule bg-surface p-4 hover:shadow-md">
+                className="card group flex gap-3 p-4 transition-colors hover:border-accent">
                 <span className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-accent-soft">
                   <img src={`/api/library/cover/${x.id}`} alt="" loading="lazy"
                     className="h-full w-full object-cover"
@@ -232,7 +237,7 @@ export function BookRecord() {
                 </span>
                 <span className="min-w-0">
                   <span className="line-clamp-2 text-[13.5px] leading-snug text-ink-2 group-hover:text-accent">{x.title}</span>
-                  <span className="mt-1 block truncate font-mono text-[10.5px] text-faint">
+                  <span className="tnum mt-1 block truncate font-mono text-[11px] text-muted">
                     {[x.authors, x.year].filter(Boolean).join(' · ')}
                   </span>
                 </span>
@@ -245,13 +250,13 @@ export function BookRecord() {
       <div className="mt-8 flex flex-wrap gap-3">
         {b.domain && (
           <Link to={`/domain/${String(b.domain).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-rule px-4 py-2.5 text-[13.5px] font-semibold text-ink hover:bg-surface-2">
-            <Layers size={15} /> More in {b.domain}
+            className={SECONDARY}>
+            <Layers size={16} aria-hidden="true" /> More in {b.domain}
           </Link>
         )}
         <Link to="/digital-library?kind=books"
-          className="inline-flex items-center gap-2 rounded-xl border border-rule px-4 py-2.5 text-[13.5px] font-semibold text-ink hover:bg-surface-2">
-          <Building2 size={15} /> Every book
+          className={SECONDARY}>
+          <Building2 size={16} aria-hidden="true" /> Every book
         </Link>
       </div>
     </Shell>
@@ -280,7 +285,7 @@ export function JournalRecord() {
   }, [journalId]);
 
   if (missing) return <Missing what="journal" />;
-  if (!j) return <Shell><div className="h-72 animate-pulse rounded-2xl bg-surface-2" /></Shell>;
+  if (!j) return <Shell><div role="status" aria-label="Loading" className="space-y-3"><div className="skeleton h-3 w-1/4" /><div className="skeleton h-9 w-4/5" /><div className="skeleton h-4 w-2/5" /><div className="skeleton mt-6 h-56 w-full rounded-xl" /></div></Shell>;
 
   const years = j.firstYear && j.lastYear
     ? (j.firstYear === j.lastYear ? String(j.firstYear) : `${j.firstYear}–${j.lastYear}`)
@@ -298,24 +303,25 @@ export function JournalRecord() {
       </Helmet>
 
       <Link to="/digital-library?kind=articles" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink">
-        <ArrowLeft size={15} /> All articles
+        <ArrowLeft size={16} aria-hidden="true" /> All articles
       </Link>
 
       <p className={`${LABEL} mt-7`}>
-        <BookOpen size={12} className="mr-1.5 inline" />Journal{j.domain ? ` · ${j.domain}` : ''}
+        <BookOpen size={12} className="mr-1.5 inline" aria-hidden="true" />Journal{j.domain ? ` · ${j.domain}` : ''}
       </p>
       <h1 className="mt-3 font-serif text-[30px] font-medium leading-snug text-ink sm:text-[34px]">{j.title}</h1>
-      {issn && <p className="mt-2 font-mono text-[12px] text-faint"><Hash size={11} className="mr-1 inline" />{issn}</p>}
+      {issn && <p className="tnum mt-2 font-mono text-[12px] text-muted"><Hash size={11} className="mr-1 inline" aria-hidden="true" />{issn}</p>}
 
       {j.description && (
         <p className="mt-6 whitespace-pre-line text-[15px] leading-relaxed text-muted">{j.description}</p>
       )}
 
       {/* What we hold of it, in plain numbers. */}
-      <div className="mt-7 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-rule bg-rule">
+      <div className="mt-7 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-rule bg-rule">
         {[['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]].map(([k, v]) => (
-          <div key={String(k)} className="bg-surface px-5 py-4 text-center">
-            <p className="font-serif text-[24px] leading-none text-ink">{n(Number(v) || 0)}</p>
+          <div key={String(k)} className="bg-surface px-2 py-4 text-center sm:px-5">
+            {/* A count the server did not send is a dash, not a zero. */}
+            <p className="tnum font-serif text-[24px] leading-none text-ink">{typeof v === 'number' ? n(v) : '—'}</p>
             <p className={`${LABEL} mt-1.5`}>{k}</p>
           </div>
         ))}
@@ -334,14 +340,14 @@ export function JournalRecord() {
 
       {volumes.length > 0 && (
         <section className="mt-10">
-          <p className={LABEL}><Layers size={12} className="mr-1.5 inline" />Volumes held</p>
+          <p className={LABEL}><Layers size={12} className="mr-1.5 inline" aria-hidden="true" />Volumes held</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {volumes.slice(0, 40).map((v: any) => (
               <span key={`${v.volume}-${v.year}`}
-                className="rounded-xl border border-rule bg-surface px-3.5 py-2 text-[13px] text-ink-2">
+                className="rounded-lg border border-rule bg-surface px-3 py-2 text-[13px] text-ink-2">
                 Vol {v.volume}
-                <span className="ml-1.5 font-mono text-[11px] text-faint">
-                  {[v.year, `${n(v.articles)} articles`].filter(Boolean).join(' · ')}
+                <span className="tnum ml-1.5 font-mono text-[11px] text-muted">
+                  {[v.year, typeof v.articles === 'number' ? `${n(v.articles)} articles` : ''].filter(Boolean).join(' · ')}
                 </span>
               </span>
             ))}
@@ -351,13 +357,13 @@ export function JournalRecord() {
 
       {recent.length > 0 && (
         <section className="mt-10">
-          <p className={LABEL}><Calendar size={12} className="mr-1.5 inline" />Latest in this journal</p>
-          <ul className="mt-4 divide-y divide-rule overflow-hidden rounded-2xl border border-rule bg-surface">
+          <p className={LABEL}><Calendar size={12} className="mr-1.5 inline" aria-hidden="true" />Latest in this journal</p>
+          <ul className="card mt-4 divide-y divide-rule overflow-hidden">
             {recent.map((a: any) => (
               <li key={a.id}>
                 <Link to={`/article/${a.id}`} className="group block px-5 py-3.5 hover:bg-surface-2">
                   <span className="block text-[14px] leading-snug text-ink-2 group-hover:text-accent">{a.title}</span>
-                  <span className="mt-1 block truncate font-mono text-[10.5px] text-faint">
+                  <span className="tnum mt-1 block truncate font-mono text-[11px] text-muted">
                     {[a.authors, a.year, a.volume && `Vol ${a.volume}`, a.issue && `Issue ${a.issue}`]
                       .filter(Boolean).join(' · ')}
                   </span>
@@ -371,13 +377,13 @@ export function JournalRecord() {
       <div className="mt-8 flex flex-wrap gap-3">
         {j.domain && (
           <Link to={`/domain/${String(j.domain).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-rule px-4 py-2.5 text-[13.5px] font-semibold text-ink hover:bg-surface-2">
-            <Layers size={15} /> More in {j.domain}
+            className={SECONDARY}>
+            <Layers size={16} aria-hidden="true" /> More in {j.domain}
           </Link>
         )}
         <Link to="/digital-library?kind=articles"
-          className="inline-flex items-center gap-2 rounded-xl border border-rule px-4 py-2.5 text-[13.5px] font-semibold text-ink hover:bg-surface-2">
-          <FileText size={15} /> Every article
+          className={SECONDARY}>
+          <FileText size={16} aria-hidden="true" /> Every article
         </Link>
       </div>
     </Shell>

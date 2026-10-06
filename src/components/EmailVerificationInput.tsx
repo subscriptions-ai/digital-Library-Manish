@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Mail, CheckCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useId } from 'react';
+import { Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { Button, friendlyError } from './ui';
 
 interface Props {
   value: string;
@@ -22,6 +23,8 @@ export function EmailVerificationInput({
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
   const [isVerificationRequired, setIsVerificationRequired] = useState(true);
+  // Ids for the label and OTP field; this input appears on more than one form.
+  const uid = useId();
 
   // Fetch settings to check if email verification is enabled globally
   useEffect(() => {
@@ -70,10 +73,10 @@ export function EmailVerificationInput({
         setShowOtp(true);
         toast.success('OTP sent to your email');
       } else {
-        toast.error(data.error || 'Failed to check email');
+        toast.error(friendlyError(data?.error, 'We could not check this email address. Please try again.'));
       }
     } catch (err) {
-      toast.error('Network error');
+      toast.error(friendlyError(err, 'We could not reach the server. Check your connection and try again.'));
     } finally {
       setIsChecking(false);
     }
@@ -95,81 +98,90 @@ export function EmailVerificationInput({
         setShowOtp(false);
         toast.success('Email verified successfully!');
       } else {
-        toast.error(data.error || 'Invalid OTP');
+        toast.error(friendlyError(data?.error, 'That OTP is not valid. Please check it and try again.'));
       }
     } catch (err) {
-      toast.error('Network error');
+      toast.error(friendlyError(err, 'We could not reach the server. Check your connection and try again.'));
     } finally {
       setIsChecking(false);
     }
   };
 
+  const verifiedLocked = isVerified && isVerificationRequired;
+
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-bold text-slate-700">{label}</label>
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="email" 
+    <div className="field">
+      <label htmlFor={`${uid}-email`} className="field-label">{label}</label>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Mail className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${verifiedLocked ? 'text-success' : 'text-faint'}`} size={18} aria-hidden="true" />
+          <input
+            id={`${uid}-email`}
+            type="email"
             required
+            autoComplete="email"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            disabled={(isVerified && isVerificationRequired) || showOtp}
+            disabled={verifiedLocked || showOtp}
             placeholder={placeholder}
-            className={`w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 transition-all ${(isVerified && isVerificationRequired) ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'focus:bg-white'}`}
+            className={`input h-11 pl-10 ${verifiedLocked ? 'border-success/40 bg-success-soft text-ink' : ''}`}
           />
         </div>
         {isVerificationRequired && (
           <>
             {!isVerified && !showOtp && (
-              <button
-                type="button"
+              <Button
+                variant="brand"
                 onClick={checkEmail}
-                disabled={isChecking || !value}
-                className="px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2 shrink-0 transition-all h-[46px]"
+                loading={isChecking}
+                disabled={!value}
+                className="h-11 shrink-0"
               >
-                {isChecking ? <Loader2 className="animate-spin" size={16} /> : 'Verify'}
-              </button>
+                Verify
+              </Button>
             )}
             {isVerified && (
-              <div className="px-4 py-3 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-bold flex items-center gap-2 shrink-0 h-[46px]">
-                <CheckCircle size={18} /> Already Verified
-              </div>
+              <span role="status" className="badge badge-success h-11 shrink-0 justify-center gap-2 rounded-lg px-4 text-sm">
+                <CheckCircle size={16} aria-hidden="true" /> Already Verified
+              </span>
             )}
           </>
         )}
       </div>
 
       {showOtp && !isVerified && (
-        <div className="mt-3 p-4 bg-blue-50 rounded-xl border border-blue-100 flex flex-col gap-3">
-          <div className="flex justify-between items-center">
-            <p className="text-xs font-medium text-blue-800">Enter the 6-digit OTP sent to your email.</p>
-            <button 
-              type="button" 
+        <div className="mt-2 flex flex-col gap-3 rounded-xl border border-accent/30 bg-accent-soft p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor={`${uid}-otp`} className="text-sm font-medium text-ink-2">Enter the 6-digit OTP sent to your email.</label>
+            <button
+              type="button"
               onClick={() => setShowOtp(false)}
-              className="text-xs font-bold text-blue-600 hover:text-blue-800"
+              className="text-sm font-semibold text-accent hover:underline"
             >
               Change Email
             </button>
           </div>
           <div className="flex gap-2">
             <input
+              id={`${uid}-otp`}
               type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
               maxLength={6}
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
               placeholder="000000"
-              className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-center tracking-[0.5em] font-bold outline-none focus:border-blue-500"
+              className="input h-11 min-w-0 flex-1 text-center text-lg font-semibold tracking-[0.5em]"
             />
-            <button
-              type="button"
+            <Button
+              variant="brand"
               onClick={verifyOtp}
-              disabled={isChecking || otp.length !== 6}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              loading={isChecking}
+              disabled={otp.length !== 6}
+              className="h-11 shrink-0"
             >
-              {isChecking ? <Loader2 className="animate-spin" size={16} /> : 'Submit'}
-            </button>
+              Submit
+            </Button>
           </div>
         </div>
       )}

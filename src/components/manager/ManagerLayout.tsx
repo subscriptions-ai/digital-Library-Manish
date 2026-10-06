@@ -3,6 +3,7 @@ import { LayoutDashboard, FileText, CreditCard, LogOut, ChevronLeft, Menu, Bell,
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { Spinner } from '../ui';
 
 interface ManagerLayoutProps {
   children: React.ReactNode;
@@ -12,7 +13,9 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, logout, loading, isSubscriptionManager } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Open on a desktop; collapsed to the icon rail on a phone, where a 256px
+  // sidebar would leave the content almost no room.
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768);
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
@@ -44,31 +47,36 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
 
   if (loading || !profile) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600" />
+      <div className="min-h-screen bg-ground flex items-center justify-center">
+        <Spinner />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="app-type min-h-screen bg-ground flex">
       {/* Sidebar */}
-      <aside className={`sticky top-0 h-screen self-start bg-emerald-950 text-white flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
-        <div className={`flex items-center gap-2 p-5 mb-2 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
+      <aside className={`sticky top-0 h-screen self-start bg-emerald-950 text-white flex flex-col transition-[width] duration-200 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-16 sm:w-20'}`}>
+        <div className={`flex items-center gap-2 px-3 py-4 sm:px-4 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
-            <div className="flex items-center gap-2.5 font-extrabold tracking-tight">
-              <div className="h-8 w-8 bg-emerald-600 rounded-lg flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-2 font-bold tracking-tight min-w-0">
+              <div className="h-8 w-8 bg-emerald-600 rounded-lg flex items-center justify-center shrink-0" aria-hidden="true">
                 <Bell size={18} />
               </div>
               <span className="text-base truncate">SALES PORTAL</span>
             </div>
           )}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-white/10 rounded-lg text-emerald-200">
-            {isSidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-emerald-200 transition-colors"
+            aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-expanded={isSidebarOpen}
+          >
+            {isSidebarOpen ? <ChevronLeft size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 space-y-1 pb-4 mt-4">
+        <nav aria-label="Manager" className="flex-1 overflow-y-auto px-2 sm:px-3 space-y-1 pb-4 mt-2">
           <NavButton
             icon={<LayoutDashboard size={18} />}
             label="Sales Overview"
@@ -83,14 +91,15 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
               active={location.pathname.startsWith('/manager/requests')}
               collapsed={!isSidebarOpen}
               onClick={() => navigate('/manager/requests')}
+              hint={pendingCount > 0 ? `${pendingCount} pending` : undefined}
             />
             {pendingCount > 0 && isSidebarOpen && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-amber-500 text-white text-[10px] font-bold h-5 min-w-[20px] px-1 rounded-full flex items-center justify-center shadow-sm">
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 bg-amber-500 text-emerald-950 text-xs font-bold h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center" aria-hidden="true">
                 {pendingCount}
               </div>
             )}
             {pendingCount > 0 && !isSidebarOpen && (
-              <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500 border border-emerald-950" />
+              <div className="pointer-events-none absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500 border border-emerald-950" aria-hidden="true" />
             )}
           </div>
           <NavButton
@@ -116,41 +125,42 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
           />
         </nav>
 
-        <div className="pt-4 pb-5 px-3 border-t border-white/10 space-y-0.5">
+        <div className="pt-3 pb-4 px-2 sm:px-3 border-t border-white/10 space-y-1">
           <NavButton icon={<LogOut size={18} />} label="Sign Out" active={false} collapsed={!isSidebarOpen}
             onClick={handleSignOut} danger />
-          <div className={`flex items-center gap-3 px-3 py-2 ${!isSidebarOpen && 'justify-center'} mt-2`}>
-            <div className="h-8 w-8 rounded-full bg-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">
+          <div className={`flex items-center gap-3 px-3 py-2 ${!isSidebarOpen && 'justify-center'}`}>
+            <div className="h-8 w-8 rounded-full bg-emerald-700 flex items-center justify-center text-xs font-bold shrink-0" aria-hidden="true">
               {profile.displayName?.substring(0, 2).toUpperCase() || 'SM'}
             </div>
             {isSidebarOpen && (
               <div className="overflow-hidden">
-                <div className="text-xs font-bold truncate">{profile.displayName || 'Sales Manager'}</div>
-                <div className="text-[10px] text-emerald-300">Subscription Manager</div>
+                <div className="text-sm font-semibold truncate">{profile.displayName || 'Sales Manager'}</div>
+                <div className="text-xs text-emerald-300">Subscription Manager</div>
               </div>
             )}
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-slate-50">
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 z-10 sticky top-0 h-16 flex items-center justify-between px-8 shrink-0 shadow-sm">
-          <h1 className="text-lg font-bold text-slate-800">
+      <main className="flex-1 min-w-0 flex flex-col min-h-screen overflow-hidden bg-ground">
+        <header className="bg-surface/90 backdrop-blur-md border-b border-rule z-10 sticky top-0 h-16 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 shrink-0">
+          <h1 className="text-lg font-bold text-ink truncate">
             {location.pathname === '/manager' ? 'Sales Revenue Analytics'
             : location.pathname.startsWith('/manager/requests') ? 'Incoming Requests'
             : location.pathname.startsWith('/manager/quotations') ? 'Quotation Workflow'
             : location.pathname.startsWith('/manager/subscriptions') ? 'Global Subscriptions'
             : 'Dashboard'}
           </h1>
-          <button 
+          <button
             onClick={handleSignOut}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+            className="btn btn-ghost btn-sm shrink-0"
+            aria-label="Sign Out"
           >
-            <LogOut size={16} />
+            <LogOut size={16} aria-hidden="true" />
             <span className="hidden sm:inline">Sign Out</span>
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </main>
@@ -158,19 +168,21 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
   );
 }
 
-function NavButton({ icon, label, active, collapsed, onClick, danger = false }: {
-  icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; onClick: () => void; danger?: boolean;
+function NavButton({ icon, label, active, collapsed, onClick, danger = false, hint }: {
+  icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; onClick: () => void; danger?: boolean; hint?: string;
 }) {
   return (
     <button onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all ${
-        active ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20'
-        : danger ? 'text-red-300 hover:bg-red-500/10'
+      aria-current={active ? 'page' : undefined}
+      aria-label={collapsed || hint ? [label, hint].filter(Boolean).join(', ') : undefined}
+      className={`w-full flex items-center gap-3 px-3 h-11 rounded-lg text-sm font-semibold transition-colors duration-150 ${
+        active ? 'bg-emerald-600 text-white'
+        : danger ? 'text-red-300 hover:bg-white/5 hover:text-red-200'
         : 'text-emerald-200 hover:bg-white/5 hover:text-white'
-      } ${collapsed && 'justify-center'}`}
+      } ${collapsed ? 'justify-center' : ''}`}
       title={collapsed ? label : undefined}
     >
-      <div className="shrink-0">{icon}</div>
+      <span className="shrink-0" aria-hidden="true">{icon}</span>
       {!collapsed && <span className="truncate">{label}</span>}
     </button>
   );

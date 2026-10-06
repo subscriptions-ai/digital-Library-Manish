@@ -23,25 +23,25 @@ export function PublisherLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-slate-900 text-white">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/10 rounded-xl"><Building2 size={20} /></div>
-            <div>
-              <p className="font-bold leading-tight">Publisher Portal</p>
-              <p className="text-[11px] text-slate-400">STM Digital Library</p>
+    <div className="app-type min-h-screen bg-ground">
+      <header className="sticky top-0 z-40 bg-surface border-b border-rule">
+        <div className="max-w-6xl mx-auto h-16 px-4 sm:px-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 shrink-0 flex items-center justify-center bg-accent-soft text-accent rounded-lg" aria-hidden="true"><Building2 size={18} /></div>
+            <div className="min-w-0">
+              <p className="font-bold text-ink leading-tight truncate">Publisher Portal</p>
+              <p className="text-xs text-muted truncate">STM Digital Library</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-300 hidden sm:block">{profile?.displayName || profile?.email}</span>
-            <button onClick={signOut} className="inline-flex items-center gap-2 text-sm font-bold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors">
-              <LogOut size={15} /> Sign Out
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-sm text-ink-2 hidden sm:block max-w-[220px] truncate">{profile?.displayName || profile?.email}</span>
+            <button onClick={signOut} className="btn btn-outline btn-sm" aria-label="Sign Out">
+              <LogOut size={16} aria-hidden="true" /> <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </div>
       </header>
-      <main className="max-w-6xl mx-auto px-6 py-8">{children}</main>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">{children}</main>
     </div>
   );
 }

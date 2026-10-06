@@ -4,6 +4,7 @@ import { MailWarning, X, Clock, Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { EmailVerificationInput } from '../EmailVerificationInput';
 import { toast } from 'react-hot-toast';
+import { Button } from '../ui';
 
 export function EmailVerificationPopup() {
   const { profile, fetchProfile } = useAuth();
@@ -49,6 +50,14 @@ export function EmailVerificationPopup() {
     toast.success(`Reminder snoozed for ${hours === 24 ? 'tomorrow' : hours + ' hour(s)'}`);
   };
 
+  // The popup can already be closed with its X, so Escape does the same.
+  useEffect(() => {
+    if (!isVisible) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsVisible(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isVisible]);
+
   const handleVerified = async (verified: boolean) => {
     if (verified) {
       // Re-fetch profile to update context
@@ -61,31 +70,38 @@ export function EmailVerificationPopup() {
   return (
     <AnimatePresence>
       {isVisible && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-ink/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm sm:p-6">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="email-verify-title"
+            aria-describedby="email-verify-desc"
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-md bg-surface rounded-md shadow-2xl overflow-hidden border border-caution"
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            transition={{ duration: 0.2 }}
+            className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-rule bg-surface shadow-2xl"
           >
-            <div className="bg-caution-soft p-6 flex flex-col items-center text-center relative border-b border-caution">
+            <div className="relative flex shrink-0 flex-col items-center border-b border-rule bg-caution-soft p-6 text-center">
               <button 
+                type="button"
                 onClick={() => setIsVisible(false)}
-                className="absolute top-4 right-4 p-2 text-caution hover:bg-caution-soft rounded-full transition-colors"
+                aria-label="Close"
+                className="btn btn-ghost btn-icon btn-sm absolute right-3 top-3 text-ink-2"
               >
-                <X size={20} />
+                <X size={18} aria-hidden="true" />
               </button>
               
-              <div className="w-16 h-16 bg-caution-soft text-caution rounded-full flex items-center justify-center mb-4">
-                <MailWarning size={32} />
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-surface text-caution" aria-hidden="true">
+                <MailWarning size={24} />
               </div>
-              <h3 className="text-xl font-bold text-ink mb-2">Verify Your Email</h3>
-              <p className="text-sm text-ink-2 mb-2">
+              <h2 id="email-verify-title" className="mb-2 type-card-title text-ink">Verify Your Email</h2>
+              <p id="email-verify-desc" className="text-sm text-ink-2">
                 We noticed your email address <strong>{profile?.email}</strong> is not verified yet. Please verify it to ensure you don't lose access to your account.
               </p>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="space-y-6 overflow-y-auto p-6">
               {isVerifying ? (
                 <div className="space-y-4">
                   <EmailVerificationInput 
@@ -93,37 +109,25 @@ export function EmailVerificationPopup() {
                     onChange={() => {}} // Readonly
                     onVerified={handleVerified}
                   />
-                  <button 
-                    onClick={() => setIsVerifying(false)}
-                    className="w-full py-2 text-sm font-bold text-muted hover:text-ink-2 transition-colors"
-                  >
+                  <Button variant="ghost" block onClick={() => setIsVerifying(false)}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <button 
-                    onClick={() => setIsVerifying(true)}
-                    className="w-full py-3.5 bg-caution hover:opacity-90 text-white font-bold rounded-md transition-all shadow-lg "
-                  >
+                  <Button size="lg" block onClick={() => setIsVerifying(true)} autoFocus>
                     Verify Email Now
-                  </button>
+                  </Button>
                   
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <button 
-                      onClick={() => snooze(1)}
-                      className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 bg-surface-2 hover:bg-surface-2 border border-rule rounded-md text-ink-2 hover:text-ink transition-colors"
-                    >
-                      <Clock size={16} />
-                      <span className="text-xs font-bold">Remind in 1 Hour</span>
-                    </button>
-                    <button 
-                      onClick={() => snooze(24)}
-                      className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 bg-surface-2 hover:bg-surface-2 border border-rule rounded-md text-ink-2 hover:text-ink transition-colors"
-                    >
-                      <Calendar size={16} />
-                      <span className="text-xs font-bold">Remind Tomorrow</span>
-                    </button>
+                  <div className="grid grid-cols-1 gap-3 pt-2 min-[400px]:grid-cols-2">
+                    <Button variant="outline" onClick={() => snooze(1)}>
+                      <Clock size={16} aria-hidden="true" />
+                      <span className="truncate">Remind in 1 Hour</span>
+                    </Button>
+                    <Button variant="outline" onClick={() => snooze(24)}>
+                      <Calendar size={16} aria-hidden="true" />
+                      <span className="truncate">Remind Tomorrow</span>
+                    </Button>
                   </div>
                 </div>
               )}

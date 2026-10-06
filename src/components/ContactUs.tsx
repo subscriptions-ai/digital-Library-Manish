@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { cn } from "../lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { useLocation } from "react-router-dom";
+import { Button } from "./ui";
 
 const INDIA_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", 
@@ -24,12 +25,16 @@ function MultiSelect({
   options, 
   selected, 
   onChange, 
-  placeholder = "Select Department(s)" 
+  placeholder = "Select Department(s)",
+  id,
+  labelledBy,
 }: { 
   options: string[], 
   selected: string[], 
   onChange: (val: string) => void,
-  placeholder?: string
+  placeholder?: string,
+  id?: string,
+  labelledBy?: string,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -52,78 +57,101 @@ function MultiSelect({
   return (
     <div className="relative" ref={dropdownRef}>
       <div 
+        id={id}
+        role="button"
+        tabIndex={0}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-labelledby={labelledBy}
         onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setIsOpen(!isOpen); }
+          if (e.key === "Escape") setIsOpen(false);
+        }}
         className={cn(
-          "w-full min-h-[54px] rounded-2xl border bg-slate-50 px-4 py-2 text-sm outline-none transition-all cursor-pointer flex flex-wrap gap-2 items-center",
-          isOpen ? "border-blue-500 bg-white ring-4 ring-blue-500/5" : "border-slate-200"
+          "flex min-h-10 w-full cursor-pointer flex-wrap items-center gap-2 rounded-lg border bg-surface px-3 py-1.5 text-sm transition-colors duration-150",
+          isOpen ? "border-accent shadow-[var(--focus-ring)]" : "border-rule-2 hover:border-muted"
         )}
       >
         {selected.length === 0 ? (
-          <span className="text-slate-400 ml-1">{placeholder}</span>
+          <span className="text-faint">{placeholder}</span>
         ) : (
           selected.map(item => (
             <span 
               key={item} 
-              className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-blue-100 animate-in fade-in zoom-in duration-200"
+              className="inline-flex items-center gap-1 rounded-md bg-accent-soft py-1 pl-2 pr-1 text-xs font-semibold text-accent"
             >
               {item}
               <button 
                 type="button"
+                aria-label={`Remove ${item}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onChange(item);
                 }}
-                className="hover:text-blue-900 p-0.5"
+                className="rounded p-0.5 hover:bg-surface"
               >
-                <X size={12} />
+                <X size={12} aria-hidden="true" />
               </button>
             </span>
           ))
         )}
         <ChevronDown 
           size={18} 
-          className={cn("ml-auto text-slate-400 transition-transform duration-200", isOpen && "rotate-180")} 
+          aria-hidden="true"
+          className={cn("ml-auto shrink-0 text-muted transition-transform duration-200", isOpen && "rotate-180")} 
         />
       </div>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute z-50 mt-2 w-full bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden"
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-rule bg-surface shadow-[var(--shadow-pop)]"
           >
-            <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+            <div className="border-b border-rule bg-surface-2 p-3">
               <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={14} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                 <input 
                   autoFocus
                   type="text"
+                  aria-label="Search departments"
                   placeholder="Search departments..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs outline-none focus:border-blue-500 transition-all"
+                  onKeyDown={(e) => { if (e.key === "Escape") setIsOpen(false); }}
+                  className="input h-9 pl-9"
                 />
               </div>
             </div>
-            <div className="max-h-64 overflow-y-auto p-2 custom-scrollbar">
+            <div role="listbox" aria-multiselectable="true" aria-labelledby={labelledBy} className="max-h-64 overflow-y-auto p-2">
               {filteredOptions.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs">No departments found</div>
+                <div className="py-8 text-center text-sm text-muted">No departments found</div>
               ) : (
                 filteredOptions.map(dept => (
                   <div 
                     key={dept}
+                    role="option"
+                    tabIndex={0}
+                    aria-selected={selected.includes(dept)}
                     onClick={() => onChange(dept)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onChange(dept); }
+                      if (e.key === "Escape") setIsOpen(false);
+                    }}
                     className={cn(
-                      "flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all text-sm",
+                      "flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors duration-150",
                       selected.includes(dept) 
-                        ? "bg-blue-50 text-blue-700 font-medium" 
-                        : "hover:bg-slate-50 text-slate-600"
+                        ? "bg-accent-soft font-medium text-accent" 
+                        : "text-ink-2 hover:bg-surface-2"
                     )}
                   >
                     <span>{dept}</span>
-                    {selected.includes(dept) && <Check size={16} className="text-blue-600" />}
+                    {selected.includes(dept) && <Check size={16} aria-hidden="true" className="shrink-0 text-accent" />}
                   </div>
                 ))
               )}
@@ -220,84 +248,78 @@ export function ContactUs() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center border border-slate-100">
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 size={40} />
+      <div className="flex min-h-screen items-center justify-center bg-ground p-4">
+        <div className="card w-full max-w-md p-6 text-center sm:p-8">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-success-soft text-success" aria-hidden="true">
+            <CheckCircle2 size={32} />
           </div>
-          <h2 className="text-3xl font-bold text-slate-900 mb-4">Thank You!</h2>
-          <p className="text-slate-600 mb-8 leading-relaxed">
-            Your inquiry has been submitted successfully. We have sent a confirmation email to <strong>{formData.email}</strong>. Our team will get back to you shortly.
+          <h2 className="mb-3 text-2xl font-bold text-ink">Thank You!</h2>
+          <p className="mb-8 leading-relaxed text-ink-2">
+            Your inquiry has been submitted successfully. We have sent a confirmation email to <strong className="break-all">{formData.email}</strong>. Our team will get back to you shortly.
           </p>
-          <button 
-            onClick={() => setIsSuccess(false)}
-            className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-          >
+          <Button variant="brand" size="lg" block onClick={() => setIsSuccess(false)}>
             Back to Contact
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-ground">
       {/* Header */}
-      <section className="bg-white border-b border-slate-200 py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl">Get in Touch</h1>
-            <p className="mt-6 text-xl text-slate-600 leading-relaxed">
-              Have questions about our journals or institutional access? Our dedicated team is here to provide you with the support you need.
-            </p>
-          </div>
+      <section className="bg-navy">
+        <div className="container-public py-12 text-center sm:py-16">
+          <h1 className="on-dark text-3xl font-bold leading-tight sm:text-4xl">Get in Touch</h1>
+          <p className="on-dark-2 mx-auto mt-4 max-w-2xl text-base sm:text-lg">
+            Have questions about our journals or institutional access? Our dedicated team is here to provide you with the support you need.
+          </p>
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+      <section className="py-12 sm:py-16">
+        <div className="container-public">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
             {/* Contact Info */}
-            <div className="space-y-8">
-              <div className="rounded-[2.5rem] bg-slate-900 p-10 text-white shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-                <h3 className="text-2xl font-bold mb-10 relative">Contact Information</h3>
-                <div className="space-y-10 relative">
-                  <div className="flex items-start gap-5">
-                    <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
-                      <Mail size={24} className="text-blue-400" />
+            <div className="space-y-6">
+              <div className="rounded-xl bg-navy p-6 sm:p-8">
+                <h2 className="on-dark mb-8 text-xl font-bold">Contact Information</h2>
+                <div className="space-y-8">
+                  <div className="flex items-start gap-4">
+                    <div className="on-dark-fill on-dark-edge flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border" aria-hidden="true">
+                      <Mail size={20} className="text-amber" />
                     </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Email Us</div>
-                      <div className="text-lg font-medium">{COMPANY_DETAILS.email}</div>
-                      <div className="text-sm text-slate-500 mt-1">Response within 24 hours</div>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-5">
-                    <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
-                      <Phone size={24} className="text-blue-400" />
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Call Us</div>
-                      <div className="text-lg font-medium">{COMPANY_DETAILS.tel[0]}</div>
-                      <div className="text-sm text-slate-500 mt-1">Mon-Fri, 9am - 6pm IST</div>
+                    <div className="min-w-0">
+                      <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">Email Us</div>
+                      <a href={`mailto:${COMPANY_DETAILS.email}`} className="on-dark break-all text-base font-medium hover:underline">{COMPANY_DETAILS.email}</a>
+                      <div className="on-dark-3 mt-1 text-sm">Response within 24 hours</div>
                     </div>
                   </div>
-                  <div className="flex items-start gap-5">
-                    <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
-                      <MapPin size={24} className="text-blue-400" />
+                  <div className="flex items-start gap-4">
+                    <div className="on-dark-fill on-dark-edge flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border" aria-hidden="true">
+                      <Phone size={20} className="text-amber" />
                     </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Visit Us</div>
-                      <div className="text-base leading-relaxed text-slate-300">{COMPANY_DETAILS.address}</div>
+                    <div className="min-w-0">
+                      <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">Call Us</div>
+                      <div className="on-dark text-base font-medium">{COMPANY_DETAILS.tel[0]}</div>
+                      <div className="on-dark-3 mt-1 text-sm">Mon-Fri, 9am - 6pm IST</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="on-dark-fill on-dark-edge flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border" aria-hidden="true">
+                      <MapPin size={20} className="text-amber" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">Visit Us</div>
+                      <div className="on-dark-2 text-sm leading-relaxed">{COMPANY_DETAILS.address}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="p-8 rounded-[2rem] bg-blue-50 border border-blue-100">
-                <h4 className="font-bold text-blue-900 mb-2">Institutional Support</h4>
-                <p className="text-sm text-blue-700 leading-relaxed">
+              <div className="rounded-xl border border-rule bg-accent-soft p-6">
+                <h3 className="mb-2 font-bold text-ink">Institutional Support</h3>
+                <p className="text-sm leading-relaxed text-ink-2">
                   Looking for campus-wide library access? Mention your institution name and department and our team will get back to you.
                 </p>
               </div>
@@ -305,115 +327,126 @@ export function ContactUs() {
 
             {/* Contact Form */}
             <div className="lg:col-span-2">
-              <div className="rounded-[2.5rem] border border-slate-200 bg-white p-8 md:p-12 shadow-sm">
-                <h2 className="text-3xl font-bold text-slate-900 mb-2">Send us a Message</h2>
-                <p className="text-slate-500 mb-10">Fill out the form below and we'll get back to you as soon as possible.</p>
+              <div className="card p-5 sm:p-8">
+                <h2 className="mb-2 text-2xl font-bold text-ink">Send us a Message</h2>
+                <p className="mb-8 text-muted">Fill out the form below and we'll get back to you as soon as possible.</p>
                 
-                <form onSubmit={handleSubmit} className="space-y-8">
+                <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Basic Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Full Name *</label>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div className="field">
+                      <label htmlFor="contact-fullName" className="field-label">Full Name <span className="req" aria-hidden="true">*</span></label>
                       <input 
+                        id="contact-fullName"
                         required
                         type="text" 
                         name="fullName"
+                        autoComplete="name"
                         value={formData.fullName}
                         onChange={handleInputChange}
                         placeholder="e.g. Dr. Rajesh Kumar"
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all"
+                        className="input"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Email Address *</label>
+                    <div className="field">
+                      <label htmlFor="contact-email" className="field-label">Email Address <span className="req" aria-hidden="true">*</span></label>
                       <input 
+                        id="contact-email"
                         required
                         type="email" 
                         name="email"
+                        autoComplete="email"
                         value={formData.email}
                         onChange={handleInputChange}
                         placeholder="rajesh@university.edu"
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all"
+                        className="input"
                       />
                     </div>
                   </div>
 
                   {/* Mobile & WhatsApp */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Mobile Number *</label>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div className="field">
+                      <label htmlFor="contact-mobile" className="field-label">Mobile Number <span className="req" aria-hidden="true">*</span></label>
                       <input 
+                        id="contact-mobile"
                         required
                         type="tel" 
                         name="mobile"
+                        autoComplete="tel"
                         value={formData.mobile}
                         onChange={handleInputChange}
                         placeholder="+91 98765 43210"
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all"
+                        className="input"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between ml-1">
-                        <label className="text-sm font-bold text-slate-700">WhatsApp Number</label>
-                        <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer select-none">
+                    <div className="field">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <label htmlFor="contact-whatsapp" className="field-label">WhatsApp Number</label>
+                        <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-muted">
                           <input 
                             type="checkbox" 
                             checked={formData.sameAsMobile}
                             onChange={handleCheckboxChange}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            className="h-4 w-4 accent-accent"
                           />
                           Same as mobile
                         </label>
                       </div>
                       <input 
+                        id="contact-whatsapp"
                         type="tel" 
                         name="whatsapp"
                         value={formData.whatsapp}
                         onChange={handleInputChange}
                         disabled={formData.sameAsMobile}
                         placeholder="+91 98765 43210"
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all disabled:opacity-50"
+                        className="input"
                       />
                     </div>
                   </div>
 
                   {/* Designation & Organization */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Designation</label>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div className="field">
+                      <label htmlFor="contact-designation" className="field-label">Designation</label>
                       <input 
+                        id="contact-designation"
                         type="text" 
                         name="designation"
                         value={formData.designation}
                         onChange={handleInputChange}
                         placeholder="e.g. Head Librarian"
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all"
+                        className="input"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Organization / Institution *</label>
+                    <div className="field">
+                      <label htmlFor="contact-organization" className="field-label">Organization / Institution <span className="req" aria-hidden="true">*</span></label>
                       <input 
+                        id="contact-organization"
                         required
                         type="text" 
                         name="organization"
+                        autoComplete="organization"
                         value={formData.organization}
                         onChange={handleInputChange}
                         placeholder="e.g. IIT Delhi"
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all"
+                        className="input"
                       />
                     </div>
                   </div>
 
                   {/* State & Departments */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">State *</label>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div className="field">
+                      <label htmlFor="contact-state" className="field-label">State <span className="req" aria-hidden="true">*</span></label>
                       <select 
+                        id="contact-state"
                         required
                         name="state"
                         value={formData.state}
                         onChange={handleInputChange}
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all appearance-none"
+                        className="input"
                       >
                         <option value="">Select State</option>
                         {INDIA_STATES.map(state => (
@@ -421,9 +454,11 @@ export function ContactUs() {
                         ))}
                       </select>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Department Selection *</label>
+                    <div className="field">
+                      <span id="contact-departments-label" className="field-label">Department Selection <span className="req" aria-hidden="true">*</span></span>
                       <MultiSelect 
+                        id="contact-departments"
+                        labelledBy="contact-departments-label"
                         options={DEPARTMENTS}
                         selected={formData.departments}
                         onChange={handleDeptToggle}
@@ -432,26 +467,24 @@ export function ContactUs() {
                   </div>
 
                   {/* Message */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Message / Query *</label>
+                  <div className="field">
+                    <label htmlFor="contact-message" className="field-label">Message / Query <span className="req" aria-hidden="true">*</span></label>
                     <textarea 
+                      id="contact-message"
                       required
                       name="message"
                       value={formData.message}
                       onChange={handleInputChange}
                       rows={5}
                       placeholder="Please describe your requirement or query in detail..."
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all resize-none"
+                      className="input"
                     />
                   </div>
 
-                  <button 
-                    disabled={isSubmitting}
-                    className="w-full md:w-auto flex items-center justify-center gap-3 rounded-2xl bg-blue-600 px-10 py-5 text-base font-bold text-white hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
+                  <Button type="submit" variant="brand" size="lg" loading={isSubmitting} className="w-full md:w-auto">
                     {isSubmitting ? "Sending..." : "Send Message"} 
-                    {!isSubmitting && <Send size={20} />}
-                  </button>
+                    {!isSubmitting && <Send size={18} aria-hidden="true" />}
+                  </Button>
                 </form>
               </div>
             </div>

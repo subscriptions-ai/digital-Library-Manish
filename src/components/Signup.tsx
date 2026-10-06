@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, Lock, ArrowRight, Eye, EyeOff, Mail, User, Building, Building2, Briefcase, GraduationCap, MapPin, MessageCircle } from "lucide-react";
+import { Lock, ArrowRight, Eye, EyeOff, Mail, User, Building, Building2, Briefcase, GraduationCap, MapPin, MessageCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
+import { Button, friendlyError } from "./ui";
 
 import { EmailVerificationInput } from "./EmailVerificationInput";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATION_GROUPS, COUNTRIES } from "../constants";
@@ -20,9 +21,9 @@ import { INDIAN_STATES } from "../lib/gstUtils";
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="space-y-4">
-      <legend className="mb-3 flex w-full items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+      <legend className="mb-3 flex w-full items-center gap-3 text-xs font-bold uppercase tracking-[0.12em] text-muted">
         {title}
-        <span className="h-px flex-1 bg-slate-100" />
+        <span className="h-px flex-1 bg-rule" aria-hidden="true" />
       </legend>
       {children}
     </fieldset>
@@ -66,9 +67,10 @@ export function Signup() {
         whatsapp: contactIsWhatsapp ? formData.contact : formData.whatsapp.trim(),
       });
       toast.success('Account created successfully!');
-      navigate('/dashboard');
+      // A Solo Learner picks Free or Premium straight away; everyone else goes to the dashboard.
+      navigate(formData.registrantType === 'Solo' ? '/dashboard/subscribe' : '/dashboard');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create account');
+      toast.error(friendlyError(error, 'We could not create your account. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -117,31 +119,31 @@ export function Signup() {
 
   const chosenType = REGISTRANT_TYPES.find(t => t.id === formData.registrantType) || null;
 
-  const field =
-    'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white';
-  const withIcon =
-    'w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white';
+  const field = 'input h-11';
+  const withIcon = 'input h-11 pl-10';
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-14">
+    // Inside the public layout, which already has a header and footer — so
+    // top padding only, never a min-h-screen of its own.
+    <div className="bg-ground px-4 pt-6 pb-12 sm:pt-12 lg:pt-16">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center">
           <Link to="/" className="mb-6 inline-flex items-center gap-3">
-            <img src="/logo.png" alt="STM Digital Library Logo" className="h-11 w-11 object-contain" />
+            <img src="/logo.png" alt="STM Digital Library Logo" className="h-10 w-10 object-contain" />
             <div className="flex flex-col text-left leading-none">
-              <span className="text-xl font-bold tracking-tight text-slate-900">STM Library</span>
-              <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-blue-600">Digital Access</span>
+              <span className="text-lg font-bold tracking-tight text-ink">STM Library</span>
+              <span className="mt-1 text-[11px] font-bold uppercase tracking-widest text-accent">Digital Access</span>
             </div>
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">Create Your Account</h1>
-          <p className="mt-2 text-sm text-slate-500">Free membership — the whole library, half an hour at a time.</p>
+          <h1 className="type-page-title text-ink">Create Your Account</h1>
+          <p className="mt-2 text-sm text-muted">Free Subscription — the whole library, half an hour at a time.</p>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-9">
+        <div className="card p-5 sm:p-8">
           <form className="space-y-8" onSubmit={handleSignup}>
 
             {/* The address gates everything after it, so it stands alone. */}
-            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+            <div className="rounded-xl border border-rule bg-surface-2 p-4">
               <EmailVerificationInput
                 value={formData.email}
                 onChange={(email) => setFormData({ ...formData, email })}
@@ -160,10 +162,10 @@ export function Signup() {
                     panel and appears the moment that is answered — rather than
                     sitting three fields further down with a note telling the
                     member to go back up. */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">I am registering as a *</label>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-                    <div className="grid grid-cols-3 gap-2">
+                <div className="field">
+                  <p id="signup-registrant-label" className="field-label">I am registering as<span className="req" aria-hidden="true">*</span></p>
+                  <div className="rounded-xl border border-rule bg-surface-2 p-1.5">
+                    <div role="group" aria-labelledby="signup-registrant-label" className="grid grid-cols-3 gap-1.5 sm:gap-2">
                       {REGISTRANT_TYPES.map(t => {
                         const Icon = t.id === 'Institute' ? Building2 : t.id === 'Corporate' ? Briefcase : GraduationCap;
                         const on = formData.registrantType === t.id;
@@ -173,11 +175,12 @@ export function Signup() {
                             type="button"
                             disabled={!isEmailVerified}
                             onClick={() => setFormData(f => ({ ...f, registrantType: t.id, designation: '' }))}
-                            className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center text-[12px] font-bold leading-tight transition-all ${
-                              on ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200'
-                                 : 'text-slate-500 hover:bg-white/70 hover:text-slate-700'}`}
+                            aria-pressed={on}
+                            className={`flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-lg px-2 py-3 text-center text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                              on ? 'bg-surface text-accent shadow-sm ring-1 ring-rule-2'
+                                 : 'text-muted hover:bg-surface hover:text-ink'}`}
                           >
-                            <Icon size={18} className={on ? 'text-blue-600' : 'text-slate-400'} />
+                            <Icon size={18} className={on ? 'text-accent' : 'text-faint'} aria-hidden="true" />
                             {t.label}
                           </button>
                         );
@@ -185,11 +188,11 @@ export function Signup() {
                     </div>
 
                     {chosenType ? (
-                      <div className="space-y-3 rounded-xl bg-white px-4 pb-4 pt-3.5">
-                        <label className="flex flex-wrap items-baseline gap-x-2 text-sm font-bold text-slate-700">
-                          Designation / Role *
-                          <span className="text-[11px] font-medium text-slate-400">{chosenType.hint}</span>
-                        </label>
+                      <div className="mt-1.5 space-y-3 rounded-lg bg-surface p-4">
+                        <p className="field-label flex flex-wrap items-baseline gap-x-2">
+                          <span>Designation / Role<span className="req" aria-hidden="true">*</span></span>
+                          <span className="text-xs font-normal text-muted">{chosenType.hint}</span>
+                        </p>
 
                         {/* Laid out rather than hidden behind a dropdown.
                             A native select is drawn by the operating system —
@@ -203,13 +206,13 @@ export function Signup() {
                             about a question that has been settled. */}
                         {formData.designation ? (
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11.5px] font-semibold text-white">
+                            <span className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-on">
                               {formData.designation}
                             </span>
                             <button
                               type="button"
                               onClick={() => setFormData(f => ({ ...f, designation: '' }))}
-                              className="text-[11.5px] font-semibold text-slate-500 underline underline-offset-2 hover:text-slate-700"
+                              className="text-xs font-semibold text-accent underline underline-offset-2 hover:text-accent-hover"
                             >
                               Change
                             </button>
@@ -218,10 +221,10 @@ export function Signup() {
                         <div className="space-y-2.5">
                           {(DESIGNATION_GROUPS[chosenType.id] || []).map(g => (
                             <div key={g.label}>
-                              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
                                 {g.label}
                               </p>
-                              <div className="flex flex-wrap gap-1.5">
+                              <div role="group" aria-label={g.label} className="flex flex-wrap gap-1.5">
                                 {g.roles.map(r => {
                                   const on = formData.designation === r;
                                   return (
@@ -230,9 +233,10 @@ export function Signup() {
                                       type="button"
                                       disabled={!isEmailVerified}
                                       onClick={() => setFormData(f => ({ ...f, designation: on ? '' : r }))}
-                                      className={`rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold transition-colors ${
-                                        on ? 'bg-blue-600 text-white shadow-sm'
-                                           : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700'}`}
+                                      aria-pressed={on}
+                                      className={`min-h-[32px] rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                                        on ? 'bg-accent text-accent-on'
+                                           : 'border border-rule bg-surface-2 text-ink-2 hover:border-accent/40 hover:bg-accent-soft hover:text-accent'}`}
                                     >
                                       {r}
                                     </button>
@@ -245,7 +249,7 @@ export function Signup() {
                         )}
                       </div>
                     ) : (
-                      <p className="px-3 py-3 text-center text-xs text-slate-400">
+                      <p className="px-3 py-3 text-center text-xs text-muted">
                         Choose one above, and the roles for it appear here.
                       </p>
                     )}
@@ -253,11 +257,12 @@ export function Signup() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Full Name *</label>
+                  <div className="field">
+                    <label htmlFor="signup-name" className="field-label">Full Name<span className="req" aria-hidden="true">*</span></label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <User className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
                       <input
+                        id="signup-name"
                         type="text" autoComplete="name" required={isEmailVerified}
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -268,11 +273,12 @@ export function Signup() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Organization / University *</label>
+                  <div className="field">
+                    <label htmlFor="signup-organization" className="field-label">Organization / University<span className="req" aria-hidden="true">*</span></label>
                     <div className="relative">
-                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <Building className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
                       <input
+                        id="signup-organization"
                         type="text" autoComplete="organization" required={isEmailVerified}
                         value={formData.organization}
                         onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
@@ -290,9 +296,10 @@ export function Signup() {
                 {/* Indian states are a known list and are offered as one;
                     everywhere else is typed, because it is not. */}
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Country *</label>
+                  <div className="field">
+                    <label htmlFor="signup-country" className="field-label">Country<span className="req" aria-hidden="true">*</span></label>
                     <select
+                      id="signup-country"
                       required={isEmailVerified} autoComplete="country-name"
                       value={formData.country}
                       onChange={(e) => setFormData({ ...formData, country: e.target.value, state: '' })}
@@ -302,10 +309,11 @@ export function Signup() {
                       {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">State *</label>
+                  <div className="field">
+                    <label htmlFor="signup-state" className="field-label">State<span className="req" aria-hidden="true">*</span></label>
                     {formData.country === 'India' ? (
                       <select
+                        id="signup-state"
                         required={isEmailVerified} autoComplete="address-level1"
                         value={formData.state}
                         onChange={(e) => setFormData({ ...formData, state: e.target.value })}
@@ -317,8 +325,9 @@ export function Signup() {
                       </select>
                     ) : (
                       <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <MapPin className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
                         <input
+                          id="signup-state"
                           type="text" autoComplete="address-level1" required={isEmailVerified}
                           value={formData.state}
                           onChange={(e) => setFormData({ ...formData, state: e.target.value })}
@@ -336,9 +345,10 @@ export function Signup() {
                 {/* One number fills the row; a second one splits it. A half-empty
                     row reads as something missing rather than something optional. */}
                 <div className={`grid gap-4 ${contactIsWhatsapp ? '' : 'sm:grid-cols-2'}`}>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Contact Number *</label>
+                  <div className="field">
+                    <label htmlFor="signup-contact" className="field-label">Contact Number<span className="req" aria-hidden="true">*</span></label>
                     <input
+                      id="signup-contact"
                       type="tel" autoComplete="tel" required={isEmailVerified}
                       value={formData.contact}
                       onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
@@ -346,25 +356,26 @@ export function Signup() {
                       disabled={!isEmailVerified}
                       className={field}
                     />
-                    <label className="flex items-center gap-2 pt-0.5 text-xs text-slate-600">
+                    <label className="flex cursor-pointer items-center gap-2 pt-1 text-sm text-ink-2">
                       <input
                         type="checkbox"
                         checked={contactIsWhatsapp}
                         disabled={!isEmailVerified}
                         onChange={(e) => setContactIsWhatsapp(e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300"
+                        className="h-4 w-4 rounded border-rule-2 accent-[var(--accent)]"
                       />
-                      <MessageCircle size={13} className="text-emerald-600" />
+                      <MessageCircle size={14} className="text-success" aria-hidden="true" />
                       This is also my WhatsApp number
                     </label>
                   </div>
 
                   {!contactIsWhatsapp && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">WhatsApp Number *</label>
+                    <div className="field">
+                      <label htmlFor="signup-whatsapp" className="field-label">WhatsApp Number<span className="req" aria-hidden="true">*</span></label>
                       <div className="relative">
-                        <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600" size={18} />
+                        <MessageCircle className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-success" size={18} aria-hidden="true" />
                         <input
+                          id="signup-whatsapp"
                           type="tel" autoComplete="tel" required={isEmailVerified}
                           value={formData.whatsapp}
                           onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
@@ -379,7 +390,7 @@ export function Signup() {
               </Section>
 
               <Section title="Departments Relevant to Your Institution">
-                <p className="-mt-1 text-xs text-slate-500">
+                <p id="signup-departments-help" className="-mt-1 text-sm text-muted">
                   Select the departments relevant to your institution. Your selection helps us identify
                   areas where additional resources and materials are needed.
                 </p>
@@ -391,7 +402,7 @@ export function Signup() {
                 {/* The inner scroll only exists where there is a mouse. On a
                     phone a short scrolling box inside a long scrolling page
                     catches the finger and holds it. */}
-                <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:max-h-52 sm:overflow-y-auto">
+                <div role="group" aria-label="Departments" aria-describedby="signup-departments-help" className="flex flex-wrap gap-1.5 rounded-xl border border-rule bg-surface-2 p-3 sm:max-h-52 sm:overflow-y-auto">
                   {[...DOMAINS].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
                     const chosen = formData.interestedDomains.includes(d.name);
                     return (
@@ -405,16 +416,17 @@ export function Signup() {
                             ? f.interestedDomains.filter(x => x !== d.name)
                             : [...f.interestedDomains, d.name],
                         }))}
-                        className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                          chosen ? 'bg-blue-600 text-white'
-                                 : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
+                        aria-pressed={chosen}
+                        className={`min-h-[32px] rounded-lg px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                          chosen ? 'border border-accent bg-accent text-accent-on'
+                                 : 'border border-rule bg-surface text-ink-2 hover:border-accent/40 hover:bg-accent-soft hover:text-accent'}`}
                       >
                         {d.name}
                       </button>
                     );
                   })}
                 </div>
-                <p className="-mt-1 text-[11px] text-slate-400">
+                <p className="-mt-1 text-xs text-muted" aria-live="polite">
                   {formData.interestedDomains.length
                     ? `${formData.interestedDomains.length} chosen`
                     : 'Choose at least one'}
@@ -423,27 +435,30 @@ export function Signup() {
 
               <Section title="Your password">
                 <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Password *</label>
+                  <div className="field">
+                    <label htmlFor="signup-password" className="field-label">Password<span className="req" aria-hidden="true">*</span></label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
                       <input
+                        id="signup-password"
                         type={showPassword ? 'text' : 'password'}
                         autoComplete="new-password"
                         required={isEmailVerified}
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        placeholder="••••••••"
+                        placeholder="Choose a password"
                         disabled={!isEmailVerified}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white"
+                        className="input h-11 pl-10 pr-11"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         disabled={!isEmailVerified}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        aria-pressed={showPassword}
+                        className="btn btn-ghost btn-sm btn-icon absolute right-1.5 top-1/2 -translate-y-1/2 text-muted"
                       >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
                       </button>
                     </div>
                   </div>
@@ -452,16 +467,16 @@ export function Signup() {
             </div>
 
             <div className={`transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'pointer-events-none opacity-50'}`}>
-              <div className="mb-5 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-5 space-y-3 rounded-xl border border-rule bg-surface-2 p-4">
                 <label className="group flex cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
                     checked={acceptedTerms}
                     onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-rule-2 accent-[var(--accent)]"
                   />
-                  <span className="text-xs leading-snug text-slate-600">
-                    I explicitly consent and agree to the <Link to="/terms-and-conditions" className="font-bold text-blue-600 hover:underline">Terms of Service</Link>.
+                  <span className="text-sm leading-snug text-ink-2">
+                    I explicitly consent and agree to the <Link to="/terms-and-conditions" className="font-semibold text-accent hover:underline">Terms of Service</Link>.
                   </span>
                 </label>
 
@@ -470,27 +485,30 @@ export function Signup() {
                     type="checkbox"
                     checked={acceptedPrivacy}
                     onChange={(e) => setAcceptedPrivacy(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-rule-2 accent-[var(--accent)]"
                   />
-                  <span className="text-xs leading-snug text-slate-600">
-                    I explicitly consent to the collection, processing, and storage of my personal data as described in the <Link to="/privacy-policy" className="font-bold text-blue-600 hover:underline">Privacy Policy</Link> (in compliance with GDPR and DPDP Act).
+                  <span className="text-sm leading-snug text-ink-2">
+                    I explicitly consent to the collection, processing, and storage of my personal data as described in the <Link to="/privacy-policy" className="font-semibold text-accent hover:underline">Privacy Policy</Link> (in compliance with GDPR and DPDP Act).
                   </span>
                 </label>
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={loading || !isEmailVerified || !acceptedTerms || !acceptedPrivacy}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                variant="brand"
+                size="lg"
+                block
+                loading={loading}
+                disabled={!isEmailVerified || !acceptedTerms || !acceptedPrivacy}
               >
-                {loading ? 'Creating Account…' : 'Create Account'} <ArrowRight size={16} />
-              </button>
+                {loading ? 'Creating Account…' : <>Create Account <ArrowRight size={16} aria-hidden="true" /></>}
+              </Button>
             </div>
           </form>
 
-          <div className="mt-8 border-t border-slate-100 pt-6 text-center">
-            <p className="text-sm text-slate-500">
-              Already have an account? <Link to="/login" className="font-bold text-blue-600 hover:text-blue-700">Sign in</Link>
+          <div className="mt-8 border-t border-rule pt-6 text-center">
+            <p className="text-sm text-muted">
+              Already have an account? <Link to="/login" className="font-semibold text-accent hover:underline">Sign in</Link>
             </p>
           </div>
         </div>

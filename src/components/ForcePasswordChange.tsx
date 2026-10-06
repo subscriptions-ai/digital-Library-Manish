@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import { Button } from './ui';
 
 interface ForcePasswordChangeProps {
   onComplete: () => void;
@@ -26,7 +27,7 @@ export function ForcePasswordChange({ onComplete }: ForcePasswordChangeProps) {
   })();
 
   const strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong'][strength];
-  const strengthColor = ['', 'bg-red-400', 'bg-amber-400', 'bg-blue-400', 'bg-emerald-500'][strength];
+  const strengthColor = ['', 'bg-alarm', 'bg-caution', 'bg-accent', 'bg-success'][strength];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,101 +60,103 @@ export function ForcePasswordChange({ onComplete }: ForcePasswordChangeProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+    // Rendered on its own (not inside a page layout), so it owns the whole
+    // viewport. It scrolls on short phones instead of clipping the button, and
+    // sits near the top there rather than being centred off-screen.
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-navy/80 p-4 pt-6 backdrop-blur-sm sm:items-center sm:pt-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="force-password-title" className="w-full max-w-[440px] overflow-hidden rounded-2xl bg-surface shadow-2xl">
         {/* Header */}
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4 backdrop-blur-sm">
-            <ShieldCheck className="text-white" size={32} />
+        <div className="bg-navy px-6 py-8 text-center sm:px-8">
+          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-xl on-dark-fill" aria-hidden="true">
+            <ShieldCheck className="text-amber" size={28} />
           </div>
-          <h1 className="text-white text-2xl font-bold">Set Your Password</h1>
-          <p className="text-blue-100 mt-2 text-sm">
+          <h1 id="force-password-title" className="text-2xl font-bold on-dark">Set Your Password</h1>
+          <p className="mt-2 text-sm on-dark-2">
             Welcome, {profile?.displayName || 'User'}! Please set a permanent password before continuing.
           </p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+        <form onSubmit={handleSubmit} className="space-y-5 p-6 sm:p-8">
+          <div className="field">
+            <label htmlFor="force-new-password" className="field-label">
               New Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
               <input
+                id="force-new-password"
                 type={showNew ? 'text' : 'password'}
                 required
+                autoComplete="new-password"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 placeholder="At least 8 characters"
-                className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                aria-describedby={newPassword.length > 0 ? 'force-password-strength' : undefined}
+                className="input h-11 pl-10 pr-11"
               />
               <button
                 type="button"
                 onClick={() => setShowNew(!showNew)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                aria-label={showNew ? 'Hide password' : 'Show password'}
+                aria-pressed={showNew}
+                className="btn btn-ghost btn-sm btn-icon absolute right-1.5 top-1/2 -translate-y-1/2 text-muted"
               >
-                {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showNew ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
               </button>
             </div>
             {/* Password strength bar */}
             {newPassword.length > 0 && (
-              <div className="mt-2 space-y-1">
-                <div className="flex gap-1">
+              <div className="space-y-1">
+                <div className="flex gap-1" aria-hidden="true">
                   {[1, 2, 3, 4].map(i => (
                     <div
                       key={i}
-                      className={`h-1 flex-1 rounded-full transition-all ${i <= strength ? strengthColor : 'bg-slate-100'}`}
+                      className={`h-1 flex-1 rounded-full transition-colors ${i <= strength ? strengthColor : 'bg-surface-2'}`}
                     />
                   ))}
                 </div>
-                <p className="text-xs text-slate-500">{strengthLabel} password</p>
+                <p id="force-password-strength" className="field-help">{strengthLabel} password</p>
               </div>
             )}
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+          <div className="field">
+            <label htmlFor="force-confirm-password" className="field-label">
               Confirm Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
               <input
+                id="force-confirm-password"
                 type={showConfirm ? 'text' : 'password'}
                 required
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Repeat your new password"
-                className={`w-full pl-10 pr-10 py-3 bg-slate-50 border rounded-xl text-sm focus:ring-2 outline-none transition-all ${
-                  confirmPassword && confirmPassword !== newPassword
-                    ? 'border-red-300 focus:ring-red-100 focus:border-red-400'
-                    : 'border-slate-200 focus:border-blue-500 focus:ring-blue-100'
-                }`}
+                aria-invalid={confirmPassword && confirmPassword !== newPassword ? true : undefined}
+                aria-describedby={confirmPassword && confirmPassword !== newPassword ? 'force-confirm-error' : undefined}
+                className="input h-11 pl-10 pr-11"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(!showConfirm)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                aria-pressed={showConfirm}
+                className="btn btn-ghost btn-sm btn-icon absolute right-1.5 top-1/2 -translate-y-1/2 text-muted"
               >
-                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showConfirm ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
               </button>
             </div>
             {confirmPassword && confirmPassword !== newPassword && (
-              <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+              <p id="force-confirm-error" className="field-error">Passwords do not match</p>
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving...</>
-            ) : (
-              <><ShieldCheck size={18} /> Set Password & Continue</>
-            )}
-          </button>
+          <Button type="submit" variant="brand" size="lg" block loading={loading}>
+            {loading ? 'Saving...' : <><ShieldCheck size={18} aria-hidden="true" /> Set Password & Continue</>}
+          </Button>
         </form>
       </div>
     </div>

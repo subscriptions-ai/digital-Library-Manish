@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, BookOpen, ChevronLeft, CreditCard, LayoutDashboard, LogOut, Menu, MessageSquareHeart, Moon, Search, Sun, UserCircle, Users } from 'lucide-react';
+import { Activity, BookOpen, ChevronLeft, CreditCard, LayoutDashboard, LogOut, Menu, MessageSquareHeart, Moon, Search, Sun, UserCircle, Users, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -24,6 +24,19 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   const { dark, toggleDark } = useTheme();
   const [q, setQ] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // The phone drawer is its own state: collapsing the desktop rail to icons
+  // and opening the menu on a phone are different things.
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // A tap on a menu item lands on the page, not on the menu still covering it.
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
 
   useEffect(() => {
     if (!loading && profile) {
@@ -55,14 +68,20 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   if (loading || !profile) {
     return (
       <div className="min-h-screen bg-surface-2 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent" />
+        <div role="status" aria-label="Loading" className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent" />
       </div>
     );
   }
 
+  // On a phone the drawer always shows labels; the icon-only rail is a desktop choice.
+  const collapsed = !isSidebarOpen && !mobileOpen;
+
   return (
     <PricingProvider enabled={profile.role === 'Institution'}>
-    <div className="min-h-screen bg-surface-2 flex">
+    <div className="app-type min-h-screen bg-surface-2 flex">
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
+      )}
       {/* Sidebar */}
       {/* It stays put. The rail scrolled away with the page, taking Sign Out,
           the member block and the Pro card off screen on exactly the pages
@@ -71,73 +90,86 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
       {/* A light rail, not a dark slab. The dark one read as a different piece
           of software bolted to the left of this one; against a light page the
           weight belongs on the content, not on the furniture. */}
-      <aside className={`sticky top-0 flex h-screen shrink-0 flex-col self-start border-r border-rule bg-surface transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+      {/* A drawer on a phone, where a 64px rail would leave too little room for
+          the page itself; the rail that stays put from tablet width up. */}
+      <aside
+        id="institution-nav"
+        aria-label="Institution menu"
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-64 shrink-0 flex-col border-r border-rule bg-surface transition-[transform,width] duration-200 md:sticky md:top-0 md:z-auto md:self-start md:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'} ${isSidebarOpen ? 'md:w-64' : 'md:w-20'}`}>
         {/* Everything below is sized so the rail fits a 1366×768 laptop without a
             scrollbar: the menu overflowed by 33px there, and the last item sat
             half out of sight. The nav still scrolls, but only on a shorter screen. */}
-        <div className={`flex items-center gap-2 px-5 py-4 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
-          {isSidebarOpen && (
+        <div className={`flex items-center gap-2 px-5 py-4 ${!collapsed ? 'justify-between' : 'justify-center'}`}>
+          {!collapsed && (
             <div className="flex min-w-0 items-center gap-2.5 font-extrabold tracking-tight text-ink">
               {profile.institutionProfile?.logoUrl ? (
                 <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 bg-surface shadow-sm border border-accent/30">
-                  <img src={profile.institutionProfile.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                  <img src={profile.institutionProfile.logoUrl} alt="" className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="h-8 w-8 bg-accent rounded-lg flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 bg-accent text-accent-on rounded-lg flex items-center justify-center shrink-0" aria-hidden="true">
                   <LayoutDashboard size={18} />
                 </div>
               )}
               <span className="text-sm truncate">{profile.organization || 'INSTITUTION'}</span>
             </div>
           )}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="rounded-lg p-1.5 text-muted hover:bg-surface-2">
-            {isSidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
+          {/* On a phone this closes the drawer; from tablet width up it folds the rail to icons. */}
+          <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close menu"
+            className="btn btn-ghost btn-sm btn-icon md:hidden">
+            <X size={18} aria-hidden="true" />
+          </button>
+          <button type="button" onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            aria-label={isSidebarOpen ? 'Collapse menu' : 'Expand menu'} aria-expanded={isSidebarOpen}
+            className="btn btn-ghost btn-sm btn-icon hidden md:inline-flex">
+            {isSidebarOpen ? <ChevronLeft size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
           </button>
         </div>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-2">
-          {isSidebarOpen && <p className="px-3 pb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">Menu</p>}
+        <nav aria-label="Main" className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-2">
+          {!collapsed && <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted">Menu</p>}
           <NavButton
             icon={<LayoutDashboard size={18} />}
             label="Dashboard Overview"
             active={location.pathname === '/institution'}
-            collapsed={!isSidebarOpen}
+            collapsed={collapsed}
             onClick={() => navigate('/institution')}
           />
           <NavButton
             icon={<Users size={18} />}
             label="User Management"
             active={location.pathname.startsWith('/institution/students')}
-            collapsed={!isSidebarOpen}
+            collapsed={collapsed}
             onClick={() => navigate('/institution/students')}
           />
           <NavButton
             icon={<Activity size={18} />}
             label="Learning Analytics"
             active={location.pathname === '/institution/analytics'}
-            collapsed={!isSidebarOpen}
+            collapsed={collapsed}
             onClick={() => navigate('/institution/analytics')}
           />
           <NavButton
             icon={<BookOpen size={18} />}
             label="Content Library"
             active={['/institution/library', '/institution/access', '/institution/explore'].includes(location.pathname)}
-            collapsed={!isSidebarOpen}
+            collapsed={collapsed}
             onClick={() => navigate('/institution/access')}
           />
-          <PlanNavItem timed={!!allowance?.timed} collapsed={!isSidebarOpen} pathname={location.pathname} navigate={navigate} />
+          <PlanNavItem timed={!!allowance?.timed} collapsed={collapsed} pathname={location.pathname} navigate={navigate} />
           <NavButton
             icon={<UserCircle size={18} />}
             label="Profile"
             active={location.pathname === '/institution/profile'}
-            collapsed={!isSidebarOpen}
+            collapsed={collapsed}
             onClick={() => navigate('/institution/profile')}
           />
           <NavButton
             icon={<MessageSquareHeart size={18} />}
             label="My Feedbacks"
             active={location.pathname === '/institution/feedbacks'}
-            collapsed={!isSidebarOpen}
+            collapsed={collapsed}
             onClick={() => navigate('/institution/feedbacks')}
           />
         </nav>
@@ -145,20 +177,25 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
         {/* The plan, where the prototype puts it: the free preview with the way to
             Premium, or what is running and the seats it has. An account that is
             not the librarian has no plan to show, and keeps the Pro card. */}
-        {isSidebarOpen && <RailPlan timed={!!allowance?.timed} onPro={() => navigate('/institution/membership')} />}
+        {!collapsed && <RailPlan timed={!!allowance?.timed} onPro={() => navigate('/institution/membership')} />}
 
         {/* Who is signed in is named in the top bar, on every page. Saying it
             a second time at the foot of the rail cost the height that pushed
             the menu into a scroll. */}
         <div className="border-t border-rule px-3 py-2">
-          <NavButton icon={<LogOut size={18} />} label="Sign Out" active={false} collapsed={!isSidebarOpen}
+          <NavButton icon={<LogOut size={18} />} label="Sign Out" active={false} collapsed={collapsed}
             onClick={handleSignOut} danger />
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-surface-2">
-        <header className="sticky top-0 z-10 flex h-[68px] shrink-0 items-center justify-between gap-6 border-b border-rule bg-surface px-6 lg:px-8">
-          <h1 className="shrink-0 text-[17px] font-bold text-ink">
+      <main className="flex min-w-0 flex-1 flex-col min-h-screen overflow-hidden bg-surface-2">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-rule bg-surface px-4 sm:gap-6 sm:px-6 lg:px-8">
+          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open menu"
+            aria-expanded={mobileOpen} aria-controls="institution-nav"
+            className="btn btn-ghost btn-sm btn-icon -ml-2 shrink-0 md:hidden">
+            <Menu size={20} aria-hidden="true" />
+          </button>
+          <h1 className="min-w-0 flex-1 truncate text-[17px] font-bold text-ink md:flex-none md:shrink-0">
             {location.pathname === '/institution' ? dashboardTitle(profile as any)
             : location.pathname.startsWith('/institution/students') ? 'User Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
@@ -177,10 +214,13 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
               whole catalogue as though nothing had been asked. */}
           <form
             onSubmit={(e) => { e.preventDefault(); if (q.trim()) navigate(`/institution/explore?q=${encodeURIComponent(q.trim())}`); }}
-            className="hidden min-w-0 flex-1 items-center gap-2 rounded-xl border border-rule bg-surface-2 px-3 py-2 md:flex lg:max-w-md"
+            role="search"
+            className="hidden h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-rule bg-surface-2 px-3 transition-colors focus-within:border-accent md:flex lg:max-w-md"
           >
-            <Search size={16} className="shrink-0 text-faint" />
+            <Search size={16} className="shrink-0 text-faint" aria-hidden="true" />
             <input
+              aria-label="Search the entire library"
+              type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search the entire library…"
@@ -188,34 +228,38 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             />
           </form>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ReadingClock allowance={allowance} msLeft={msLeft} msUntil={msUntil} />
             <div className="hidden items-center gap-2.5 border-l border-rule pl-3 sm:flex">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-bold text-accent">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-bold text-accent" aria-hidden="true">
                 {(profile.displayName || profile.organization || 'IN').substring(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 leading-tight">
                 <p className="truncate text-[13px] font-semibold text-ink">{profile.displayName || 'Librarian'}</p>
-                <p className="max-w-[160px] truncate text-[11px] text-faint">{profile.email}</p>
+                <p className="max-w-[160px] truncate text-xs text-muted">{profile.email}</p>
               </div>
             </div>
             <button
+              type="button"
               onClick={toggleDark}
               title={dark ? 'Light theme' : 'Dark theme'}
-              className="rounded-xl border border-rule p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+              aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+              className="btn btn-outline btn-sm btn-icon"
             >
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
+              {dark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
             </button>
             <button
+              type="button"
               onClick={handleSignOut}
               title="Sign out"
-              className="rounded-xl border border-rule p-2 text-muted transition-colors hover:bg-alarm-soft hover:text-alarm"
+              aria-label="Sign out"
+              className="btn btn-outline btn-sm btn-icon hidden hover:bg-alarm-soft hover:text-alarm sm:inline-flex"
             >
-              <LogOut size={16} />
+              <LogOut size={16} aria-hidden="true" />
             </button>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </main>
@@ -256,10 +300,10 @@ function RailPlan({ timed, onPro }: { timed: boolean; onPro: () => void }) {
   if (pricing?.plan) return <PlanMiniCard />;
   if (pricing?.loading || !timed) return null;
   return (
-    <div className="mx-3 mb-2 rounded-2xl bg-accent px-4 py-3 text-white">
-      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/70">Free membership</p>
+    <div className="mx-3 mb-2 rounded-xl bg-accent px-4 py-3 text-accent-on">
+      <p className="text-[11px] font-semibold uppercase tracking-wider opacity-80">Free membership</p>
       <p className="mt-1 text-[13px] font-semibold leading-snug">Read without a limit</p>
-      <button onClick={onPro} className="mt-2.5 w-full rounded-xl bg-white/15 py-1.5 text-[12px] font-bold hover:bg-white/25">
+      <button type="button" onClick={onPro} className="mt-2.5 h-8 w-full rounded-lg bg-white/15 text-[12px] font-semibold transition-colors hover:bg-white/25">
         Explore Subscription Options
       </button>
     </div>
@@ -270,8 +314,10 @@ function NavButton({ icon, label, active, collapsed, onClick, danger = false }: 
   icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; onClick: () => void; danger?: boolean;
 }) {
   return (
-    <button onClick={onClick}
-      className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13.5px] font-semibold transition-colors ${
+    <button type="button" onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      aria-label={collapsed ? label : undefined}
+      className={`relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
         active ? 'bg-accent-soft text-accent'
         : danger ? 'text-muted hover:bg-alarm-soft hover:text-alarm'
         : 'text-muted hover:bg-surface-2 hover:text-ink'
@@ -280,9 +326,9 @@ function NavButton({ icon, label, active, collapsed, onClick, danger = false }: 
     >
       {/* The mark that says where you are, on the edge where the eye runs down. */}
       {active && !collapsed && (
-        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-accent" />
+        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-accent" aria-hidden="true" />
       )}
-      <div className="shrink-0">{icon}</div>
+      <span className="shrink-0" aria-hidden="true">{icon}</span>
       {!collapsed && <span className="truncate">{label}</span>}
     </button>
   );

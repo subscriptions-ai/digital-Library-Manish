@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { FileText, LogOut, PenLine, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { Spinner } from '../ui';
 
 /**
  * The writer's dashboard.
@@ -23,51 +24,54 @@ export function StudioLayout({ children }: { children: React.ReactNode }) {
     }
   }, [profile, loading, navigate]);
 
-  if (loading || !profile) return null;
+  if (loading || !profile) return <div className="flex min-h-screen items-center justify-center bg-ground"><Spinner /></div>;
 
   const link = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium transition-colors ${
+    `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${
+      isActive ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-surface-2'}`;
+  const mobileLink = ({ isActive }: { isActive: boolean }) =>
+    `rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors duration-150 ${
       isActive ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-surface-2'}`;
 
   return (
-    <div className="flex min-h-screen bg-ground text-ink">
+    <div className="app-type flex min-h-screen bg-ground text-ink">
       <aside className="hidden w-60 shrink-0 flex-col border-r border-rule bg-surface p-3 md:flex">
         <div className="flex items-center gap-2.5 px-2 py-3">
           <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
           <span className="leading-tight">
             <span className="block font-serif text-[15px] font-medium text-ink">Studio</span>
-            <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-faint">The blog</span>
+            <span className="block font-mono text-[11px] uppercase tracking-[0.14em] text-faint">The blog</span>
           </span>
         </div>
 
-        <nav className="mt-4 space-y-1">
-          <NavLink to="/studio" end className={link}><FileText size={16} /> Posts</NavLink>
-          <NavLink to="/studio/new" className={link}><PenLine size={16} /> Write a post</NavLink>
+        <nav aria-label="Studio" className="mt-4 space-y-1">
+          <NavLink to="/studio" end className={link}><FileText size={16} aria-hidden="true" /> Posts</NavLink>
+          <NavLink to="/studio/new" className={link}><PenLine size={16} aria-hidden="true" /> Write a post</NavLink>
         </nav>
 
         <div className="mt-auto space-y-1 border-t border-rule pt-3">
           <a href="/blog" target="_blank" rel="noreferrer"
-            className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink-2 hover:bg-surface-2">
-            <ExternalLink size={16} /> See the blog
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-2 transition-colors duration-150 hover:bg-surface-2">
+            <ExternalLink size={16} aria-hidden="true" /> See the blog
           </a>
           <button onClick={() => { logout(); navigate('/'); }}
-            className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] text-alarm hover:bg-alarm-soft">
-            <LogOut size={16} /> Sign out
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-2 transition-colors duration-150 hover:bg-surface-2 hover:text-ink">
+            <LogOut size={16} aria-hidden="true" /> Sign out
           </button>
-          <p className="px-3.5 pt-2 text-[11px] text-faint">
+          <p className="px-3 pt-2 text-xs text-muted">
             {profile.displayName || profile.email}
-            <span className="block text-[10px] uppercase tracking-wide">Editor</span>
+            <span className="block text-[11px] uppercase tracking-wide text-faint">Editor</span>
           </p>
         </div>
       </aside>
 
       {/* On a phone the rail becomes a strip along the top. */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 border-b border-rule bg-surface px-4 py-2 md:hidden">
-          <img src="/logo.png" alt="" className="h-7 w-7 object-contain" />
-          <NavLink to="/studio" end className="rounded-lg px-3 py-1.5 text-[13px] font-semibold text-ink-2">Posts</NavLink>
-          <NavLink to="/studio/new" className="rounded-lg px-3 py-1.5 text-[13px] font-semibold text-ink-2">Write</NavLink>
-          <button onClick={() => { logout(); navigate('/'); }} className="ml-auto text-[13px] font-semibold text-alarm">Sign out</button>
+        <div className="sticky top-0 z-30 flex h-14 items-center gap-1 border-b border-rule bg-surface px-4 md:hidden">
+          <img src="/logo.png" alt="" className="mr-1 h-7 w-7 object-contain" />
+          <NavLink to="/studio" end className={mobileLink}>Posts</NavLink>
+          <NavLink to="/studio/new" className={mobileLink}>Write</NavLink>
+          <button onClick={() => { logout(); navigate('/'); }} className="btn btn-ghost btn-sm ml-auto">Sign out</button>
         </div>
         <main className="min-w-0">{children}</main>
       </div>

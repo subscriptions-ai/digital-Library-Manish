@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ChevronRight, Loader2, Lock, Search } from 'lucide-react';
+import { ChevronRight, Lock, Search } from 'lucide-react';
+import { Badge, Skeleton, buttonClass } from '../ui';
 
 /**
  * A department, as a shelf of journals.
@@ -33,7 +34,10 @@ const auth = (): Record<string, string> | undefined => {
   return t ? { Authorization: `Bearer ${t}` } : undefined;
 };
 
-const LABEL = 'font-mono text-[10.5px] uppercase tracking-wider text-faint';
+// Parts of a record line, with a separator drawn only between two parts that are
+// present — a missing ISSN never leaves a dot hanging at the start of the line.
+const META = "tnum mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted [&>*+*]:before:mr-2 [&>*+*]:before:inline-block [&>*+*]:before:text-rule-2 [&>*+*]:before:content-['·']";
+const LABEL = 'font-mono text-[11px] uppercase tracking-wider text-muted';
 
 export function DepartmentPage({
   journalBase = '/dashboard/journal',
@@ -60,8 +64,11 @@ export function DepartmentPage({
 
   if (state === 'loading') {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="animate-spin text-faint" size={26} />
+      <div className="mx-auto max-w-5xl space-y-3 px-5 py-9" role="status" aria-label="Loading department">
+        <Skeleton className="h-3 w-1/4" />
+        <Skeleton className="h-8 w-3/5" />
+        <Skeleton className="h-3 w-2/5" />
+        <Skeleton className="mt-6 h-48 w-full rounded-xl" />
       </div>
     );
   }
@@ -69,10 +76,10 @@ export function DepartmentPage({
   if (state === 'denied') {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <Lock className="mx-auto mb-4 text-faint" size={32} />
+        <Lock className="mx-auto mb-4 text-muted" size={32} aria-hidden="true" />
         <h1 className="font-serif text-xl font-medium text-ink">Not in your subscription</h1>
         <p className="mt-2 text-sm text-muted">Your account does not cover this department.</p>
-        <Link to="/contact" className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
+        <Link to="/contact" className={buttonClass('primary', 'md', 'mt-6')}>
           Request access
         </Link>
       </div>
@@ -84,7 +91,7 @@ export function DepartmentPage({
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
         <h1 className="font-serif text-xl font-medium text-ink">Department not found</h1>
         <p className="mt-2 text-sm text-muted">We hold no journals under that name.</p>
-        <button onClick={() => navigate(-1)} className="mt-6 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
+        <button type="button" onClick={() => navigate(-1)} className={buttonClass('outline', 'md', 'mt-6')}>
           Go back
         </button>
       </div>
@@ -106,9 +113,9 @@ export function DepartmentPage({
 
       <header className="border-b border-rule bg-surface">
         <div className="mx-auto max-w-5xl px-5 py-9">
-          <nav className="mb-5 flex items-center gap-1.5 font-mono text-[11px] text-faint">
+          <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-1.5 font-mono text-[11px] text-muted">
             <Link to="/digital-library" className="hover:text-accent">Library</Link>
-            <ChevronRight size={11} />
+            <ChevronRight size={12} aria-hidden="true" />
             <span>Departments</span>
           </nav>
 
@@ -139,7 +146,7 @@ export function DepartmentPage({
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               to={`${browseBase}?domain=${encodeURIComponent(d.domain)}`}
-              className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover"
+              className={buttonClass('primary')}
             >
               Search this department
             </Link>
@@ -147,11 +154,11 @@ export function DepartmentPage({
 
           {d.publishers.length > 0 && (
             <div className="mt-8">
-              <p className={LABEL}>Publishers</p>
+              <h2 className={LABEL}>Publishers</h2>
               <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-1.5">
                 {d.publishers.slice(0, 8).map(p => (
                   <li key={p.name} className="flex items-baseline gap-2 text-[13px]">
-                    <span className="tnum font-mono text-[11.5px] text-faint">{p.journals}</span>
+                    <span className="tnum font-mono text-[11.5px] text-muted">{p.journals}</span>
                     <span className="text-ink-2">{p.name}</span>
                   </li>
                 ))}
@@ -163,28 +170,29 @@ export function DepartmentPage({
 
       <section className="mx-auto max-w-5xl px-5 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className={LABEL}>
+          <h2 className={LABEL} aria-live="polite">
             Journals held {q && <span className="normal-case tracking-normal">&mdash; {shown.length} of {d.journals.length}</span>}
-          </p>
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+          </h2>
+          <div className="relative w-full sm:w-64">
+            <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input
               value={q}
               onChange={e => setQ(e.target.value)}
+              aria-label="Filter journals in this department"
               placeholder="Filter journals…"
-              className="w-56 rounded-md border border-rule bg-surface py-1.5 pl-8 pr-3 text-[13px] outline-none transition-colors focus:border-accent"
+              className="input h-9 pl-9 text-[13px]"
             />
           </div>
         </div>
 
         {shown.length === 0 ? (
-          <div className="mt-3 rounded-md border border-rule bg-surface p-10 text-center text-sm text-muted">
+          <div className="mt-3 card p-10 text-center text-sm text-muted">
             No journal matches that.
           </div>
         ) : (
-          <div className="mt-3 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-surface">
+          <div className="mt-3 divide-y divide-rule overflow-hidden card">
             {shown.map((j, i) => (
-              <div key={j.id} className="flex gap-4 px-5 py-4">
+              <div key={j.id} className="flex gap-4 px-4 py-4 sm:px-5">
                 <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{i + 1}</span>
 
                 <div className="min-w-0 flex-1">
@@ -194,25 +202,25 @@ export function DepartmentPage({
                   >
                     {j.title}
                   </Link>
-                  <p className="tnum mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
+                  <p className={META}>
                     {j.publisherName && <span className="text-ink-2">{j.publisherName}</span>}
-                    {j.issn && <><span className="text-rule-2">·</span><span>ISSN {j.issn}</span></>}
-                    {j.firstYear && j.lastYear && <><span className="text-rule-2">·</span><span>{j.firstYear}–{j.lastYear}</span></>}
+                    {j.issn && <span>ISSN {j.issn}</span>}
+                    {j.firstYear && j.lastYear && <span>{j.firstYear}–{j.lastYear}</span>}
                   </p>
                   {j.licence && (
-                    <span className={`mt-2 inline-block rounded-[3px] border px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide ${
-                      j.licenceIsNC ? 'border-caution bg-caution-soft text-caution' : 'border-accent bg-accent-soft text-accent'}`}>
-                      {j.licence}
-                    </span>
+                    <Badge tone={j.licenceIsNC ? 'caution' : 'accent'} className="mt-2">{j.licence}{j.licenceIsNC && ' · non-commercial'}</Badge>
                   )}
+                  <p className="tnum mt-2 font-mono text-[11.5px] text-muted sm:hidden">
+                    {typeof j.articleCount === 'number' ? j.articleCount.toLocaleString() : '—'} articles · {typeof j.volumeCount === 'number' ? j.volumeCount.toLocaleString() : '—'} volumes · {typeof j.issueCount === 'number' ? j.issueCount.toLocaleString() : '—'} issues
+                  </p>
                 </div>
 
                 {/* What we hold of it — the reason a shelf is worth anything */}
-                <dl className="hidden shrink-0 gap-6 text-right sm:flex">
+                <dl className="hidden shrink-0 gap-6 text-right sm:flex" aria-label="Holdings">
                   {([['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]] as const).map(([label, n]) => (
                     <div key={label}>
-                      <dt className="font-mono text-[10px] uppercase tracking-wider text-faint">{label}</dt>
-                      <dd className="tnum mt-0.5 font-mono text-[14px] text-ink-2">{Number(n ?? 0).toLocaleString()}</dd>
+                      <dt className="font-mono text-[11px] uppercase tracking-wider text-muted">{label}</dt>
+                      <dd className="tnum mt-0.5 font-mono text-[14px] text-ink-2">{typeof n === 'number' ? n.toLocaleString() : '—'}</dd>
                     </div>
                   ))}
                 </dl>

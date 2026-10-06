@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Search, Filter, Lock, FileText, PlayCircle, ArrowLeft, X } from 'lucide-react';
+import { BookOpen, Search, Lock, PlayCircle, ArrowLeft, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { Button, EmptyState, Skeleton } from '../ui';
 
 export function InstitutionContentLibrary() {
   const navigate = useNavigate();
@@ -153,29 +154,32 @@ export function InstitutionContentLibrary() {
   const totalPages = Math.ceil(totalItems / PER_PAGE);
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 pb-12 items-start">
+    <div className="mx-auto flex max-w-7xl flex-col items-start gap-6 md:flex-row">
       {/* Sidebar for Filters */}
-      <div className="w-full md:w-[280px] shrink-0 space-y-6 md:sticky md:top-24">
-        <div className="bg-surface rounded-md border border-rule p-6 shadow-sm">
+      <div className="w-full shrink-0 space-y-6 md:sticky md:top-24 md:w-[280px]">
+        <div className="card card-pad">
           {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => navigate('/institution/access')} className="p-2 bg-surface-2 hover:bg-surface-2 rounded-md transition-colors shrink-0 border border-rule">
-              <ArrowLeft size={18} className="text-ink-2" />
+          <div className="mb-6 flex items-center gap-3">
+            <button type="button" onClick={() => navigate('/institution/access')} aria-label="Back to My Content Access"
+              className="btn btn-outline btn-icon shrink-0">
+              <ArrowLeft size={18} aria-hidden="true" />
             </button>
-            <div>
-              <h1 className="text-xl font-bold text-ink tracking-tight leading-tight">Content Library</h1>
-              <p className="text-xs font-semibold text-muted mt-0.5">Advanced Filters</p>
+            <div className="min-w-0">
+              <h1 className="!text-xl leading-tight text-ink">Content Library</h1>
+              <p className="mt-0.5 text-xs font-semibold text-muted">Advanced Filters</p>
             </div>
           </div>
 
           <div className="space-y-5">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none" size={16} />
+              <label htmlFor="lib-search" className="sr-only">Search resources</label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" size={16} aria-hidden="true" />
               <input
+                id="lib-search"
                 type="text"
                 placeholder="Search resources..."
-                className="w-full pl-10 pr-9 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent transition-all outline-none text-ink placeholder:text-faint"
+                className="input pl-9 pr-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -185,23 +189,23 @@ export function InstitutionContentLibrary() {
                   onClick={() => setSearch('')}
                   title="Clear search"
                   aria-label="Clear search"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-faint hover:text-ink rounded-full hover:bg-surface transition-colors focus:outline-none"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                 >
-                  <X size={14} />
+                  <X size={14} aria-hidden="true" />
                 </button>
               )}
             </div>
 
             {/* Content Type Filter */}
-            <div className="pt-2">
-              <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Content Type</h3>
-              <select value={filterType} onChange={e => {
+            <div className="field pt-2">
+              <label htmlFor="lib-type" className="field-label">Content Type</label>
+              <select id="lib-type" value={filterType} onChange={e => {
                 setFilterType(e.target.value);
                 setFilterSubjects([]);
                 setFilterTags([]);
                 setPage(1);
               }}
-                className="w-full px-3 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent outline-none text-ink transition-all cursor-pointer appearance-none">
+                className="input cursor-pointer">
                 <option value="">All Types</option>
                 {(subscribedTypes.length > 0 ? subscribedTypes : ['Books', 'Periodicals', 'Magazines', 'Theses', 'Educational Videos']).map(t => (
                   <option key={t} value={t}>{t}</option>
@@ -211,15 +215,15 @@ export function InstitutionContentLibrary() {
 
             {/* Domain Filter */}
             {availableFilters.domains.length > 0 && (
-              <div className="pt-4 border-t border-rule">
-                <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Domain</h3>
-                <select value={filterDomain} onChange={e => {
+              <div className="field border-t border-rule pt-4">
+                <label htmlFor="lib-domain" className="field-label">Domain</label>
+                <select id="lib-domain" value={filterDomain} onChange={e => {
                   setFilterDomain(e.target.value);
                   setFilterSubjects([]);
                   setFilterTags([]);
                   setPage(1);
                 }}
-                  className="w-full px-3 py-2.5 bg-surface-2 border border-rule rounded-md text-sm focus:ring-2 focus:border-accent outline-none text-ink transition-all cursor-pointer appearance-none">
+                  className="input cursor-pointer">
                   <option value="">All Subscribed Domains</option>
                   {availableFilters.domains
                     .filter(d => subscribedDomains.length === 0 || subscribedDomains.includes(d))
@@ -231,9 +235,9 @@ export function InstitutionContentLibrary() {
             {/* Subject Filter */}
             <AnimatePresence>
               {availableFilters.subjects.length > 0 && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-rule">
-                  <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Subject Area</h3>
-                  <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                <motion.fieldset initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="border-t border-rule pt-4">
+                  <legend className="field-label mb-3 float-left w-full">Subject Area</legend>
+                  <div className="clear-both max-h-[220px] space-y-2.5 overflow-y-auto pr-2 custom-scrollbar">
                     {availableFilters.subjects.map(s => (
                       <label key={s} className="flex items-start gap-3 cursor-pointer group">
                         <input
@@ -244,33 +248,36 @@ export function InstitutionContentLibrary() {
                             else setFilterSubjects(filterSubjects.filter(sub => sub !== s));
                             setPage(1);
                           }}
-                          className="mt-0.5 rounded text-accent focus:border-accent bg-surface-2 border-rule-2 w-4 h-4 cursor-pointer"
+                          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-rule-2 accent-[var(--accent)]"
                         />
-                        <span className="text-sm text-ink-2 group-hover:text-accent transition-colors leading-tight">{s}</span>
+                        <span className="text-sm leading-tight text-ink-2 transition-colors group-hover:text-accent">{s}</span>
                       </label>
                     ))}
                   </div>
-                </motion.div>
+                </motion.fieldset>
               )}
             </AnimatePresence>
 
             {/* Tags Filter */}
             <AnimatePresence>
               {availableFilters.tags.length > 0 && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-rule">
-                  <h3 className="text-xs font-bold text-faint uppercase tracking-wider mb-3">Topics & Tags</h3>
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="border-t border-rule pt-4"
+                  role="group" aria-labelledby="lib-tags-label">
+                  <p id="lib-tags-label" className="field-label mb-3">Topics & Tags</p>
                   <div className="flex flex-wrap gap-1.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                     {availableFilters.tags.map(t => {
                       const isSelected = filterTags.includes(t);
                       return (
                         <button
                           key={t}
+                          type="button"
+                          aria-pressed={isSelected}
                           onClick={() => {
                             if (isSelected) setFilterTags(filterTags.filter(tag => tag !== t));
                             else setFilterTags([...filterTags, t]);
                             setPage(1);
                           }}
-                          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${isSelected
+                          className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors ${isSelected
                               ? 'bg-accent text-accent-on border-accent'
                               : 'bg-surface text-ink-2 border-rule hover:border-accent hover:text-accent'
                             }`}
@@ -289,87 +296,83 @@ export function InstitutionContentLibrary() {
 
       {/* Main Content Grid */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-muted text-sm font-medium">
-            Showing <span className="text-ink font-bold">{totalItems}</span> results
-          </div>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-sm text-muted" aria-live="polite">
+            Showing <span className="font-semibold text-ink">{totalItems}</span> results
+          </p>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4" role="status" aria-label="Loading content">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="animate-pulse flex flex-col h-[280px]">
-                <div className="bg-rule rounded-md aspect-[3/4] w-full" />
-                <div className="mt-3 space-y-2">
-                  <div className="h-4 bg-rule rounded w-full" />
-                  <div className="h-3 bg-rule rounded w-2/3" />
-                </div>
-              </div>
+              <Skeleton key={i} className="aspect-[3/4] h-auto rounded-xl" />
             ))}
           </div>
         ) : contents.length === 0 ? (
-          <div className="text-center py-20 bg-surface rounded-md border border-rule shadow-sm">
-            <BookOpen className="mx-auto h-12 w-12 text-faint mb-4" />
-            <h3 className="text-lg font-bold text-ink">No content found</h3>
-            <p className="text-muted text-sm max-w-md mx-auto mt-2">Try adjusting your filters or search query to find what you're looking for.</p>
-            {(search || filterSubjects.length > 0 || filterTags.length > 0) && (
-              <button
-                onClick={() => { setSearch(''); setFilterSubjects([]); setFilterTags([]); setFilterDomain(''); setFilterType(''); }}
-                className="mt-6 text-accent font-bold text-sm hover:text-accent"
-              >
-                Clear all filters
-              </button>
-            )}
+          <div className="card">
+            <EmptyState
+              icon={BookOpen}
+              title="No content found"
+              description="Try adjusting your filters or search query to find what you're looking for."
+              action={(search || filterSubjects.length > 0 || filterTags.length > 0) ? (
+                <Button variant="outline" size="sm"
+                  onClick={() => { setSearch(''); setFilterSubjects([]); setFilterTags([]); setFilterDomain(''); setFilterType(''); }}>
+                  Clear all filters
+                </Button>
+              ) : undefined}
+            />
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
             {contents.map((item, idx) => {
               const isVideo = item.contentType === 'Educational Videos';
               return (
-                <motion.div
+                <motion.button
+                  type="button"
                   key={item.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: Math.min(idx, 12) * 0.03, duration: 0.2 }}
                   onClick={() => handleOpen(item)}
-                  className="group relative flex flex-col bg-surface rounded-md overflow-hidden cursor-pointer border border-rule shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                  aria-label={`${item.locked ? 'Locked: ' : ''}${item.title}${item.author ? `, ${item.author}` : ''}`}
+                  className="card card-interactive group relative flex flex-col overflow-hidden text-left"
                 >
                   <div className={`relative w-full ${isVideo ? 'aspect-video' : 'aspect-[3/4]'} ${item.coverImage ? 'bg-ink' : 'bg-accent'} overflow-hidden`}>
                     {item.coverImage ? (
-                      <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90" loading="lazy" />
+                      <img src={item.coverImage} alt="" className="h-full w-full object-cover opacity-90" loading="lazy" />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
                         {isVideo ? <PlayCircle size={64} className="text-white/10" /> : <BookOpen size={64} className="text-white/10" />}
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-ink/45" />
+                    <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
 
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                      <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white bg-black/40 backdrop-blur-md rounded-md border border-white/10">
+                      <span className="rounded-md border border-white/10 bg-black/45 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-white backdrop-blur-md">
                         {item.contentType}
                       </span>
                     </div>
 
                     {item.locked && (
-                      <div className="absolute top-3 right-3 bg-surface/90 backdrop-blur text-ink-2 p-1.5 rounded-lg shadow-sm border border-rule">
+                      <div className="absolute top-3 right-3 rounded-lg border border-rule bg-surface/90 p-1.5 text-ink-2 shadow-sm backdrop-blur" aria-hidden="true">
                         <Lock size={14} />
                       </div>
                     )}
 
                     {isVideo && (
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="bg-accent text-white rounded-full p-3 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true">
+                        <div className="rounded-full bg-accent p-3 text-accent-on shadow-lg">
                           <PlayCircle size={28} fill="currentColor" />
                         </div>
                       </div>
                     )}
 
                     <div className="absolute bottom-3 left-3 right-3 text-white">
-                      <h3 className="font-bold text-sm leading-snug group-hover:text-accent transition-colors">{item.title}</h3>
-                      <p className="text-[11px] text-white/70 line-clamp-1 mt-1 font-medium">{item.author}</p>
+                      <h3 className="line-clamp-3 text-sm font-semibold leading-snug">{item.title}</h3>
+                      {item.author && <p className="mt-1 line-clamp-1 text-xs text-white/80">{item.author}</p>}
                     </div>
                   </div>
-                </motion.div>
+                </motion.button>
               );
             })}
           </div>
@@ -377,25 +380,25 @@ export function InstitutionContentLibrary() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-12 mb-8">
-            <button
+          <nav aria-label="Pagination" className="mt-10 flex items-center justify-center gap-2">
+            <Button
+              variant="outline" size="sm"
               disabled={page === 1}
               onClick={() => { setPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className="px-4 py-2 border border-rule rounded-md text-sm font-bold text-ink-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-2 transition-colors"
             >
               Previous
-            </button>
-            <div className="px-4 py-2 text-sm font-bold text-ink">
+            </Button>
+            <p className="px-3 text-sm font-semibold text-ink" aria-current="page">
               Page {page} of {totalPages}
-            </div>
-            <button
+            </p>
+            <Button
+              variant="outline" size="sm"
               disabled={page === totalPages}
               onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className="px-4 py-2 border border-rule rounded-md text-sm font-bold text-ink-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-2 transition-colors"
             >
               Next
-            </button>
-          </div>
+            </Button>
+          </nav>
         )}
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useId } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { DOMAINS, CONTENT_TYPES } from '../constants';
 import { SmartPagination } from './SmartPagination';
@@ -7,6 +7,7 @@ import {
   FileText, Search, Archive, Sparkles, ChevronRight, ChevronDown,
   Unlock, Copy, SlidersHorizontal, X, BookMarked, Check, Lock,
 } from 'lucide-react';
+import { Badge, Button, EmptyState, ErrorState, PageHeader, Skeleton, buttonClass, type BadgeTone } from './ui';
 import { useAllowance, inCooldown, clockTime } from './membership/ReadingClock';
 
 type Mode = 'new' | 'archived';
@@ -71,6 +72,9 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(Number(sp.get('page')) || 1);
   const [loading, setLoading] = useState(false);
+  // A failed load is said as a failure, not shown as "0 results" — the shelf is not empty.
+  const [failed, setFailed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [mobileFilters, setMobileFilters] = useState(false);
   const [subjectQuery, setSubjectQuery] = useState('');
   // The free member's clock. While they are waiting, the way into a reader is shut, and the
@@ -176,6 +180,7 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
   // Results
   useEffect(() => {
     setLoading(true);
+    setFailed(false);
     const q = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
     if (debounced) q.set('search', debounced);
     if (domain) q.set('domain', domain);
@@ -202,10 +207,10 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
         url = `/api/library/articles?${q}`;
       }
     }
-    fetch(url, authOpts()).then(r => r.json())
+    fetch(url, authOpts()).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(d => { setItems(d.data || []); setTotal(d.total || 0); })
-      .catch(() => setItems([])).finally(() => setLoading(false));
-  }, [mode, kind, domain, publisher, jidsKey, year, volume, issue, debounced, page, aType, aSubjects, aTags, oaOnly, sort]);
+      .catch(() => { setItems([]); setFailed(true); }).finally(() => setLoading(false));
+  }, [mode, kind, domain, publisher, jidsKey, year, volume, issue, debounced, page, aType, aSubjects, aTags, oaOnly, sort, retryKey]);
 
   const displayed = items;
 
@@ -244,81 +249,89 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
   if (aType) activeChips.push({ label: aType, clear: () => setAType('') });
   aSubjects.forEach(s => activeChips.push({ label: s, clear: () => setASubjects(p => p.filter(x => x !== s)) }));
   aTags.forEach(t => activeChips.push({ label: `#${t}`, clear: () => setATags(p => p.filter(x => x !== t)) }));
+  // The search words are a narrowing too, so they get a chip like the rest.
+  if (search) activeChips.push({ label: `“${search}”`, clear: () => { setSearch(''); setDebounced(''); setPage(1); lastSearch.current = ''; } });
 
   const clearAll = () => { setDomain(''); setPublisher(''); setSelJournalIds([]); setYear(''); setVolume(''); setIssue(''); setOaOnly(false); setRecentOnly(false); setSearch(''); setAType(''); setASubjects([]); setATags([]); };
 
+  const hasNarrowing = activeChips.length > 0;
+
   return (
     <div className="text-ink pb-28">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-ink flex items-center gap-2">
-            <BookMarked className="text-accent" size={24} aria-hidden="true" /> Content Library
-          </h1>
-          <p className="text-sm text-muted">Discover academic research — filter precisely and read in your secure viewer.</p>
-        </div>
-        {/* These are two views of the library, shown only where the member has something in them. */}
-        {(showCollection && showArchive) && (
-          <div className="inline-flex bg-surface-2 rounded-md p-1 w-fit">
-            <button onClick={() => setMode('new')} className={seg(mode === 'new')}><Sparkles size={14} /> New Collection</button>
-            <button onClick={() => setMode('archived')} className={seg(mode === 'archived')}><Archive size={14} /> Archived</button>
+      <PageHeader
+        title={<span className="flex items-center gap-2"><BookMarked className="shrink-0 text-accent" size={24} aria-hidden="true" /> Content Library</span>}
+        description="Discover academic research — filter precisely and read in your secure viewer."
+        actions={(showCollection && showArchive) ? (
+          // These are two views of the library, shown only where the member has something in them.
+          <div role="group" aria-label="Collection" className="inline-flex w-fit rounded-lg bg-surface-2 p-1">
+            <button type="button" aria-pressed={mode === 'new'} onClick={() => setMode('new')} className={seg(mode === 'new')}><Sparkles size={14} aria-hidden="true" /> New Collection</button>
+            <button type="button" aria-pressed={mode === 'archived'} onClick={() => setMode('archived')} className={seg(mode === 'archived')}><Archive size={14} aria-hidden="true" /> Archived</button>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
-      {/* Search bar */}
-      <div className="relative mb-5">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
-        <input
-          ref={searchInputRef}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          aria-label="Search within these results"
-          placeholder="Search within these results…"
-          className="w-full pl-12 pr-20 lg:pr-12 py-3.5 rounded-md border border-rule bg-surface text-sm outline-none transition-colors focus:border-accent text-ink placeholder:text-faint"
-        />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-          {search && (
-            <button
-              type="button"
-              onClick={clearSearch}
-              title="Clear search"
-              aria-label="Clear search"
-              className="p-1 rounded-full text-muted hover:text-ink hover:bg-surface-2 transition-colors focus:outline-none"
-            >
-              <X size={16} />
-            </button>
-          )}
+      {/* Search inside the current filters. The header's search box is the one that
+          covers the whole library; this one is named so the two are not confused. */}
+      <div className="mb-6">
+        <label htmlFor="library-search" className="field-label">Search within these results</label>
+        <div className="mt-1.5 flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+            <input
+              id="library-search"
+              ref={searchInputRef}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              aria-describedby="library-search-help"
+              placeholder="Title, author or keyword…"
+              className="input pl-9 pr-10"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                title="Clear search"
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => setMobileFilters(v => !v)}
-            className="lg:hidden p-2 rounded-md bg-surface-2 text-ink-2 hover:bg-surface transition-colors"
-            aria-label="Toggle filters"
+            aria-expanded={mobileFilters}
+            aria-controls="library-filters"
+            className={buttonClass('outline', 'md', 'shrink-0 lg:hidden')}
           >
-            <SlidersHorizontal size={16} />
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            Filters
+            {hasNarrowing && <span className="tnum rounded-full bg-accent px-1.5 text-xs text-accent-on">{activeChips.length}</span>}
           </button>
         </div>
+        <p id="library-search-help" className="field-help mt-1.5">Works together with the filters you have chosen.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
         {/* ── Sidebar filters ── */}
-        <aside className={`lg:col-span-1 space-y-4 ${mobileFilters ? 'block' : 'hidden lg:block'}`}>
-          <div className="bg-surface rounded-md border border-rule shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-rule">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-1.5"><SlidersHorizontal size={13} /> Refine</span>
-              {activeChips.length > 0 && <button onClick={clearAll} className="text-[11px] font-bold text-accent hover:underline">Clear All</button>}
+        <aside id="library-filters" aria-label="Filters" className={`min-w-0 space-y-4 lg:col-span-1 ${mobileFilters ? 'block' : 'hidden lg:block'}`}>
+          <div className="card overflow-hidden">
+            <div className="flex items-center justify-between border-b border-rule px-4 py-3">
+              <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted"><SlidersHorizontal size={14} aria-hidden="true" /> Refine</h2>
+              {hasNarrowing && <button type="button" onClick={clearAll} className="text-xs font-semibold text-accent hover:underline">Clear all</button>}
             </div>
 
-            <div className="p-4 space-y-4">
+            <div className="space-y-5 p-4">
               {mode === 'new' && (showArticles || showBooks) && (
-                <div className="inline-flex w-full bg-surface-2/60 rounded-lg p-1">
-                  {showArticles && <button onClick={() => setKind('articles')} className={seg2(kind === 'articles')}>Articles</button>}
-                  {showBooks && <button onClick={() => setKind('books')} className={seg2(kind === 'books')}>Books</button>}
+                <div role="group" aria-label="Content kind" className="inline-flex w-full rounded-lg bg-surface-2 p-1">
+                  {showArticles && <button type="button" aria-pressed={kind === 'articles'} onClick={() => setKind('articles')} className={seg2(kind === 'articles')}>Articles</button>}
+                  {showBooks && <button type="button" aria-pressed={kind === 'books'} onClick={() => setKind('books')} className={seg2(kind === 'books')}>Books</button>}
                 </div>
               )}
 
               <Group label="Department">
-                <select value={domain} onChange={e => { setDomain(e.target.value); setPublisher(''); setPage(1); }} className={selCls}>
+                <select aria-label="Department" value={domain} onChange={e => { setDomain(e.target.value); setPublisher(''); setPage(1); }} className={selCls}>
                   <option value="">{isAll ? 'All Departments' : 'All My Departments'}</option>
                   {deptOptions.map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
@@ -326,7 +339,7 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
 
               {mode === 'new' && publishers.length > 0 && (
                 <Group label="Publisher">
-                  <select value={publisher} onChange={e => { setPublisher(e.target.value); setPage(1); }} className={selCls}>
+                  <select aria-label="Publisher" value={publisher} onChange={e => { setPublisher(e.target.value); setPage(1); }} className={selCls}>
                     <option value="">All Publishers</option>
                     {publishers.map((p: any) => <option key={p.name} value={p.name}>{p.name} ({p.count})</option>)}
                   </select>
@@ -335,23 +348,25 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
 
               {mode === 'new' && (
                 <Group label="Independent Filters">
-                  <label className="flex items-center gap-2 text-sm text-ink-2 cursor-pointer">
-                    <input type="checkbox" checked={oaOnly} onChange={e => setOaOnly(e.target.checked)} className="h-4 w-4 rounded-[3px] accent-[var(--accent)]" />
-                    <Unlock size={13} className="text-accent" /> Open Access only
-                  </label>
-                  {kind === 'articles' && (
-                    <label className="flex items-center gap-2 text-sm text-ink-2 cursor-pointer mt-2">
-                      <input type="checkbox" checked={recentOnly} onChange={e => setRecentOnly(e.target.checked)} className="rounded text-accent w-4 h-4" />
-                      <Sparkles size={13} className="text-accent" /> New journals (last 2 yrs)
+                  <div className="space-y-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-2">
+                      <input type="checkbox" checked={oaOnly} onChange={e => setOaOnly(e.target.checked)} className={checkCls} />
+                      <Unlock size={14} aria-hidden="true" className="text-accent" /> Open Access only
                     </label>
-                  )}
+                    {kind === 'articles' && (
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-2">
+                        <input type="checkbox" checked={recentOnly} onChange={e => setRecentOnly(e.target.checked)} className={checkCls} />
+                        <Sparkles size={14} aria-hidden="true" className="text-accent" /> New journals (last 2 yrs)
+                      </label>
+                    )}
+                  </div>
                 </Group>
               )}
 
               {mode === 'archived' && (
                 <>
                   <Group label="Content Type">
-                    <select value={aType} onChange={e => { setAType(e.target.value); setASubjects([]); setATags([]); setPage(1); }} className={selCls}>
+                    <select aria-label="Content type" value={aType} onChange={e => { setAType(e.target.value); setASubjects([]); setATags([]); setPage(1); }} className={selCls}>
                       <option value="">{isAll ? 'All Types' : 'All My Types'}</option>
                       {allowedTypes.map((c: any) => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
@@ -359,31 +374,31 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                   {aFilters.subjects.length > 0 && (
                     <Group label="Subject Area">
                       <div className="relative mb-2">
-                        <Search size={13} aria-hidden="true" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
+                        <Search size={14} aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
                         <input value={subjectQuery} onChange={e => setSubjectQuery(e.target.value)}
                           aria-label="Filter subject areas" placeholder="Filter subject areas…"
-                          className="w-full pl-8 pr-2 py-1.5 text-xs rounded-lg border border-rule bg-surface-2 outline-none focus:border-accent" />
+                          className={miniInputCls} />
                       </div>
-                      <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                      <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
                         {/* A subject you have ticked stays listed even when the filter hides its neighbours. */}
                         {aFilters.subjects.filter(s => !subjectQuery || aSubjects.includes(s) || s.toLowerCase().includes(subjectQuery.trim().toLowerCase())).map(s => (
-                          <label key={s} className="flex items-start gap-2.5 cursor-pointer group">
-                            <input type="checkbox" checked={aSubjects.includes(s)} onChange={() => { setASubjects(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]); setATags([]); setPage(1); }} className="mt-0.5 w-4 h-4 rounded text-accent" />
-                            <span className="text-[13px] font-medium text-ink-2 group-hover:text-accent leading-tight">{s}</span>
+                          <label key={s} className="group flex cursor-pointer items-start gap-2">
+                            <input type="checkbox" checked={aSubjects.includes(s)} onChange={() => { setASubjects(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]); setATags([]); setPage(1); }} className={`mt-0.5 ${checkCls}`} />
+                            <span className="text-[13px] leading-tight text-ink-2 group-hover:text-accent">{s}</span>
                           </label>
                         ))}
                         {subjectQuery && !aFilters.subjects.some(s => s.toLowerCase().includes(subjectQuery.trim().toLowerCase())) && (
-                          <p className="text-xs text-faint">No subject area matches.</p>
+                          <p className="text-xs text-muted">No subject area matches.</p>
                         )}
                       </div>
                     </Group>
                   )}
                   {aSubjects.length > 0 && aFilters.tags.length > 0 && (
                     <Group label="Popular Tags">
-                      <div className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto">
+                      <div className="flex max-h-56 flex-wrap gap-1.5 overflow-y-auto">
                         {aFilters.tags.map(t => (
-                          <button key={t} onClick={() => { setATags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]); setPage(1); }}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${aTags.includes(t) ? 'bg-accent border-accent text-accent-on' : 'bg-surface-2 border-rule text-ink-2 hover:border-accent'}`}>{t}</button>
+                          <button key={t} type="button" aria-pressed={aTags.includes(t)} onClick={() => { setATags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]); setPage(1); }}
+                            className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${aTags.includes(t) ? 'border-accent bg-accent text-accent-on' : 'border-rule bg-surface-2 text-ink-2 hover:border-accent'}`}>{t}</button>
                         ))}
                       </div>
                     </Group>
@@ -395,19 +410,20 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
 
           {/* Journals list + cascade */}
           {mode === 'new' && kind === 'articles' && (
-            <div className="bg-surface rounded-md border border-rule shadow-sm">
-              <div className="px-4 py-3 border-b border-rule">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Journals ({journals.length})</span>
-                  {selJournalIds.length > 0 && <button onClick={() => { setSelJournalIds([]); setYear(''); setVolume(''); setIssue(''); }} className="text-[10px] font-bold text-accent hover:underline">{selJournalIds.length} selected · clear</button>}
+            <div className="card">
+              <div className="border-b border-rule px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Journals <span className="tnum">({journals.length})</span></h2>
+                  {selJournalIds.length > 0 && <button type="button" onClick={() => { setSelJournalIds([]); setYear(''); setVolume(''); setIssue(''); }} className="text-xs font-semibold text-accent hover:underline">{selJournalIds.length} selected · clear</button>}
                 </div>
                 <div className="relative mt-2">
-                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
+                  <Search size={14} aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
                   <input
                     value={journalQuery}
                     onChange={e => setJournalQuery(e.target.value)}
+                    aria-label="Filter journals"
                     placeholder="Filter journals…"
-                    className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border border-rule bg-surface-2 outline-none focus:border-accent"
+                    className={`${miniInputCls} pr-7`}
                   />
                   {journalQuery && (
                     <button
@@ -415,47 +431,43 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                       onClick={() => setJournalQuery('')}
                       title="Clear filter"
                       aria-label="Clear journal filter"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-faint hover:text-ink transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-faint transition-colors hover:text-ink"
                     >
-                      <X size={12} />
+                      <X size={12} aria-hidden="true" />
                     </button>
                   )}
                 </div>
               </div>
-              <div className="max-h-64 overflow-y-auto p-2">
-                {filteredJournals.length === 0 ? <p className="text-xs text-faint px-2 py-3">No journals yet.</p> :
+              <ul className="max-h-64 overflow-y-auto p-2">
+                {filteredJournals.length === 0 ? <li className="px-2 py-3 text-xs text-muted">{journalQuery ? 'No journal matches.' : 'No journals yet.'}</li> :
                   filteredJournals.map(j => {
                     const on = selJournalIds.includes(j.id);
                     return (
-                      <button key={j.id} onClick={() => toggleJournal(j.id)}
-                        className={`w-full text-left px-2 py-2 rounded-lg text-xs mb-0.5 flex items-center justify-between gap-2 transition-colors ${on ? 'bg-accent-soft text-accent font-bold' : 'text-ink-2 hover:bg-surface-2'}`}>
-                        <span className="flex items-center gap-2 min-w-0">
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${on ? 'bg-accent border-accent' : 'border-rule-2'}`}>{on && <Check size={11} className="text-accent-on" />}</span>
+                      <li key={j.id} className={`mb-0.5 flex items-center gap-1 rounded-lg transition-colors ${on ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
+                        <button type="button" onClick={() => toggleJournal(j.id)} aria-pressed={on} title={j.title}
+                          className={`flex min-w-0 flex-1 items-center gap-2 py-2 pl-2 text-left text-xs ${on ? 'font-semibold text-accent' : 'text-ink-2'}`}>
+                          <span aria-hidden="true" className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${on ? 'border-accent bg-accent' : 'border-rule-2'}`}>{on && <Check size={11} className="text-accent-on" />}</span>
                           <span className="truncate">{j.title}</span>
-                        </span>
-                        <span className="flex items-center gap-1 shrink-0">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-2 text-muted">{j.articleCount}</span>
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            title="Open this journal and its volumes"
-                            onClick={e => { e.stopPropagation(); navigate(`${journalBase}/${encodeURIComponent(j.issn || j.id)}`); }}
-                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); navigate(`${journalBase}/${encodeURIComponent(j.issn || j.id)}`); } }}
-                            className="p-0.5 rounded text-faint hover:text-accent hover:bg-accent-soft cursor-pointer"
-                          >
-                            <ChevronRight size={13} />
-                          </span>
-                        </span>
-                      </button>
+                          <span className="tnum ml-auto shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted" aria-label={`${j.articleCount} articles`}>{j.articleCount}</span>
+                        </button>
+                        <Link
+                          to={`${journalBase}/${encodeURIComponent(j.issn || j.id)}`}
+                          title="Open this journal and its volumes"
+                          aria-label={`Open ${j.title} and its volumes`}
+                          className="mr-1 shrink-0 rounded p-1 text-faint hover:bg-accent-soft hover:text-accent"
+                        >
+                          <ChevronRight size={14} aria-hidden="true" />
+                        </Link>
+                      </li>
                     );
                   })}
-              </div>
+              </ul>
               {selJournalIds.length > 0 && (
-                <div className="border-t border-rule p-3 space-y-3">
+                <div className="space-y-3 border-t border-rule p-3">
                   {facets.years.length > 0 && <ChipRow label="Year" values={facets.years.map(String)} active={year} onPick={v => { setYear(v === year ? '' : v); setVolume(''); setIssue(''); setPage(1); }} />}
                   {selJournalIds.length === 1 && facets.volumes.length > 0 && <ChipRow label="Volume" prefix="Vol " values={facets.volumes} active={volume} onPick={v => { setVolume(v === volume ? '' : v); setIssue(''); setPage(1); }} />}
                   {selJournalIds.length === 1 && facets.issues.length > 0 && <ChipRow label="Issue" prefix="Iss " values={facets.issues} active={issue} onPick={v => { setIssue(v === issue ? '' : v); setPage(1); }} />}
-                  {selJournalIds.length > 1 && <p className="text-[10px] text-faint">Volume/Issue drill-down shows when a single journal is selected.</p>}
+                  {selJournalIds.length > 1 && <p className="text-xs text-muted">Volume/Issue drill-down shows when a single journal is selected.</p>}
                 </div>
               )}
             </div>
@@ -463,23 +475,19 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
         </aside>
 
         {/* ── Results ── */}
-        <main className="lg:col-span-3">
+        <section aria-label="Results" className="min-w-0 lg:col-span-3">
           {/* result toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-            <div className="flex items-center flex-wrap gap-2">
-              <span className="text-sm"><b className="text-ink">{total}</b> <span className="text-muted">results</span></span>
-              {activeChips.map((c, i) => (
-                <span key={i} className="inline-flex items-center gap-1 text-[11px] font-semibold bg-accent-soft text-accent px-2 py-1 rounded-full">
-                  {c.label.length > 22 ? c.label.slice(0, 22) + '…' : c.label}
-                  <button onClick={c.clear}><X size={11} /></button>
-                </span>
-              ))}
-            </div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm" aria-live="polite">
+              {failed ? null
+                : loading && items.length === 0 ? <span className="text-muted">Loading results…</span>
+                : <><b className="tnum text-ink">{total.toLocaleString()}</b> <span className="text-muted">{total === 1 ? 'result' : 'results'}</span></>}
+            </p>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-faint hidden sm:block">Sort</span>
-              <select value={mode === 'archived' ? 'title' : sort} onChange={e => setSort(e.target.value as Sort)}
+              <label htmlFor="library-sort" className="text-xs text-muted">Sort by</label>
+              <select id="library-sort" value={mode === 'archived' ? 'title' : sort} onChange={e => setSort(e.target.value as Sort)}
                 title={mode === 'archived' ? 'Archived items carry no reliable publication date' : undefined}
-                className="text-xs font-semibold rounded-lg border border-rule bg-surface px-2.5 py-1.5 outline-none focus:border-accent">
+                className="input h-8 w-auto py-0 pl-2.5 text-xs font-semibold">
                 {mode !== 'archived' && <option value="newest">Newest first</option>}
                 {mode !== 'archived' && <option value="oldest">Oldest first</option>}
                 <option value="title">Title A–Z</option>
@@ -487,34 +495,77 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
             </div>
           </div>
 
-          {loading ? (
-            <div className="py-20 flex justify-center"><div className="w-7 h-7 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>
+          {hasNarrowing && (
+            <ul aria-label="Active filters" className="mb-4 flex flex-wrap items-center gap-2">
+              {activeChips.map((c, i) => (
+                <li key={i} className="badge badge-accent max-w-full gap-1 pr-1" title={c.label}>
+                  <span className="max-w-[14rem] truncate">{c.label}</span>
+                  <button type="button" onClick={c.clear} aria-label={`Remove filter: ${c.label}`}
+                    className="rounded-full p-0.5 transition-colors hover:bg-accent hover:text-accent-on">
+                    <X size={12} aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+              <li><button type="button" onClick={clearAll} className="text-xs font-semibold text-accent hover:underline">Clear all</button></li>
+            </ul>
+          )}
+
+          {failed ? (
+            <div className="card">
+              <ErrorState description="We could not load these results right now. Please try again." onRetry={() => setRetryKey(k => k + 1)} />
+            </div>
+          ) : loading ? (
+            <ResultSkeleton />
           ) : displayed.length === 0 ? (
-            <div className="py-20 text-center text-muted bg-surface rounded-md border border-rule">
-              <FileText size={30} className="mx-auto mb-2 opacity-40" />
-              No results. {mode === 'new' ? 'Try another department, or ingest data.' : 'No archived items match.'}
+            <div className="card">
+              <EmptyState
+                icon={FileText}
+                title={hasNarrowing ? 'No research results match these filters' : 'No research results yet'}
+                description={mode === 'new' ? 'Try another department, or remove a filter.' : 'No archived items match.'}
+                action={hasNarrowing ? <Button variant="outline" size="sm" onClick={clearAll}>Clear filters</Button> : undefined}
+              />
             </div>
           ) : (
-            <div className="bg-surface border border-rule rounded-md divide-y divide-rule">
+            <ol className="card divide-y divide-rule overflow-hidden">
               {displayed.map((it, i) => (
-                <ResultCard
-                  key={it.id || i}
-                  it={it}
-                  n={(page - 1) * PAGE_SIZE + i + 1}
-                  kind={kind}
-                  mode={mode}
-                  journalBase={journalBase}
-                  lockedLabel={lockedLabel}
-                  onOpen={() => navigate(`${viewerBasePath}/${it.id}`)}
-                />
+                <li key={it.id || i}>
+                  <ResultCard
+                    it={it}
+                    n={(page - 1) * PAGE_SIZE + i + 1}
+                    kind={kind}
+                    mode={mode}
+                    journalBase={journalBase}
+                    lockedLabel={lockedLabel}
+                    onOpen={() => navigate(`${viewerBasePath}/${it.id}`)}
+                  />
+                </li>
               ))}
-            </div>
+            </ol>
           )}
 
           {/* smart pagination */}
-          <SmartPagination page={page} totalPages={totalPages} onChange={setPage} total={total} pageSize={PAGE_SIZE} className="mt-6" />
-        </main>
+          {!failed && <SmartPagination page={page} totalPages={totalPages} onChange={setPage} total={total} pageSize={PAGE_SIZE} className="mt-6" />}
+        </section>
       </div>
+    </div>
+  );
+}
+
+/** Placeholder rows in the shape of a result, so the list does not jump when it arrives. */
+function ResultSkeleton() {
+  return (
+    <div className="card divide-y divide-rule overflow-hidden" role="status" aria-label="Loading results">
+      {Array.from({ length: 5 }, (_, i) => (
+        <div key={i} className="space-y-2 px-4 py-4 sm:px-5">
+          <Skeleton className="h-4 w-4/5" />
+          <Skeleton className="h-3 w-2/5" />
+          <Skeleton className="h-3 w-3/5" />
+          <div className="flex gap-2 pt-1">
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -549,9 +600,9 @@ const ResultCard = React.memo(function ResultCard({ it, n, kind, mode, onOpen, j
   // Volume and issue read as 9(3), the way a citation is written.
   const volIss = it.volume ? `${it.volume}${it.issue ? `(${it.issue})` : ''}` : (it.issue ? `(${it.issue})` : '');
   const bits: string[] = isBook
-    ? [it.publisherName, it.isbn ? `ISBN ${it.isbn}` : '', it.edition ? `${it.edition} ed.` : '', it.year].filter(Boolean)
-    // Source · year · volume(issue) · pages · ISSN. A missing part is left out, never filled in.
-    : [it.year, volIss, it.pages ? `pp ${it.pages}` : '', it.journalIssn ? `ISSN ${it.journalIssn}` : ''].filter(Boolean);
+    ? [it.publisherName, it.isbn ? `ISBN ${it.isbn}` : '', it.edition ? `${it.edition} ed.` : '', it.year, it.doi ? `DOI ${it.doi}` : ''].filter(Boolean)
+    // Source · year · volume(issue) · pages · ISSN · DOI. A missing part is left out, never filled in.
+    : [it.year, volIss, it.pages ? `pp ${it.pages}` : '', it.journalIssn ? `ISSN ${it.journalIssn}` : '', it.doi ? `DOI ${it.doi}` : ''].filter(Boolean);
 
   const open = metaOnly ? () => setShowMeta(true) : onOpen;
   const copyDoi = (e: React.MouseEvent) => {
@@ -567,42 +618,44 @@ const ResultCard = React.memo(function ResultCard({ it, n, kind, mode, onOpen, j
   const typeMark = isBook ? 'Book' : (mode === 'archived' && it.contentType !== 'Periodicals' ? it.contentType : null);
 
   return (
-    <div className="group flex gap-3 px-4 py-4 sm:gap-4 sm:px-5">
-      <span className="tnum hidden shrink-0 pt-1 font-mono text-[11px] text-faint sm:block sm:w-7">{n}</span>
+    <article className="group flex flex-col gap-3 px-4 py-4 sm:flex-row sm:gap-4 sm:px-5">
+      <span className="tnum hidden shrink-0 pt-1 font-mono text-[11px] text-faint sm:block sm:w-7" aria-hidden="true">{n}</span>
 
       <div className="min-w-0 flex-1">
-        <button onClick={open} className="block w-full text-left">
-          <h3 className="font-serif text-[17px] font-medium leading-snug text-ink group-hover:text-accent sm:text-[17.5px]">
+        <h3 className="font-serif text-[17px] font-medium leading-snug text-ink">
+          <button type="button" onClick={open} className="text-left transition-colors hover:text-accent group-hover:text-accent">
             {it.title}
-          </h3>
-        </button>
+          </button>
+        </h3>
 
         {authors.length > 0 && (
-          <p className="mt-1 text-[13.5px] leading-snug text-ink-2">
+          <p className="mt-1 text-[13px] leading-snug text-ink-2">
             {shown.join(' · ')}
-            {authors.length > 3 && <span className="text-faint"> +{authors.length - 3} more</span>}
+            {authors.length > 3 && <span className="text-muted"> +{authors.length - 3} more</span>}
           </p>
         )}
 
-        <p className="tnum mt-1.5 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
-          {!isBook && it.journalName && (
-            journalKey ? (
-              <Link
-                to={`${journalBase}/${encodeURIComponent(journalKey)}`}
-                onClick={e => e.stopPropagation()}
-                className="text-ink-2 hover:text-accent hover:underline"
-              >
-                {it.journalName}
-              </Link>
-            ) : <span className="text-ink-2">{it.journalName}</span>
-          )}
-          {bits.map((b, i) => (
-            <React.Fragment key={i}>
-              {(i > 0 || (!isBook && it.journalName)) && <span className="text-rule-2">·</span>}
-              <span>{b}</span>
-            </React.Fragment>
-          ))}
-        </p>
+        {((!isBook && it.journalName) || bits.length > 0) && (
+          <p className="tnum mt-1.5 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-muted">
+            {!isBook && it.journalName && (
+              journalKey ? (
+                <Link
+                  to={`${journalBase}/${encodeURIComponent(journalKey)}`}
+                  onClick={e => e.stopPropagation()}
+                  className="text-ink-2 hover:text-accent hover:underline"
+                >
+                  {it.journalName}
+                </Link>
+              ) : <span className="text-ink-2">{it.journalName}</span>
+            )}
+            {bits.map((b, i) => (
+              <React.Fragment key={i}>
+                {(i > 0 || (!isBook && it.journalName)) && <span className="text-rule-2" aria-hidden="true">·</span>}
+                <span className="min-w-0 [overflow-wrap:anywhere]">{b}</span>
+              </React.Fragment>
+            ))}
+          </p>
+        )}
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {hasPdf && <Mark tone="accent">Full text</Mark>}
@@ -614,78 +667,77 @@ const ResultCard = React.memo(function ResultCard({ it, n, kind, mode, onOpen, j
           {it.domain && <Mark>{it.domain}</Mark>}
           {it.doi && (
             <button
+              type="button"
               onClick={copyDoi}
               title="Copy DOI"
-              className="inline-flex items-center gap-1 rounded-[3px] border border-rule-2 px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted hover:border-accent hover:text-accent"
+              className="badge badge-neutral transition-colors hover:border-accent hover:text-accent"
             >
-              {copied ? <Check size={10} /> : <Copy size={10} />} {copied ? 'Copied' : 'DOI'}
+              {copied ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />} {copied ? 'Copied' : 'Copy DOI'}
             </button>
           )}
         </div>
       </div>
 
-      <div className="shrink-0 self-start pt-0.5">
+      <div className="shrink-0 sm:self-start sm:pt-0.5">
         {lockedLabel && !metaOnly ? (
           // Said in words and with a lock, not by colour: reading is shut until the time shown.
-          <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-caution"
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-caution"
             aria-label={`Reading is locked. ${lockedLabel}`}>
-            <Lock size={11} aria-hidden="true" />
-            <span className="max-w-[9rem] text-right leading-tight">{lockedLabel}</span>
+            <Lock size={12} aria-hidden="true" />
+            <span className="leading-tight sm:max-w-[9rem] sm:text-right">{lockedLabel}</span>
           </span>
         ) : (
-          <button
-            onClick={open}
-            className="font-mono text-[11px] uppercase tracking-wider text-muted underline-offset-4 hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            {metaOnly ? 'Details' : hasPdf ? 'Read →' : 'Open'}
+          <button type="button" onClick={open} className={buttonClass('outline', 'sm')}>
+            {metaOnly ? 'Details' : hasPdf ? 'Read' : 'Open'}
           </button>
         )}
       </div>
 
       {showMeta && <MetadataModal item={it} isBook={isBook} onClose={() => setShowMeta(false)} />}
-    </div>
+    </article>
   );
 });
 
-/** An outlined mark. Colour is spent only on whether the record can be read. */
-function Mark({ children, tone }: { children: React.ReactNode; tone?: 'accent' | 'caution' }) {
-  const t = tone === 'accent' ? 'border-accent text-accent bg-accent-soft'
-          : tone === 'caution' ? 'border-caution text-caution bg-caution-soft'
-          : 'border-rule-2 text-muted';
+/** A status mark, in the shared badge shape. Colour is spent only on whether the record can be read. */
+function Mark({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: BadgeTone }) {
   return (
-    <span className={`rounded-[3px] border px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide ${t}`}>
-      {children}
-    </span>
+    <Badge tone={tone} className="max-w-full">
+      <span className="truncate">{children}</span>
+    </Badge>
   );
 }
 
 // ───────── small helpers ─────────
-const seg = (active: boolean) => `inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${active ? 'bg-accent text-accent-on' : 'text-muted hover:text-ink-2'}`;
-const seg2 = (active: boolean) => `flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${active ? 'bg-surface text-ink shadow-sm' : 'text-muted'}`;
-const selCls = "w-full text-sm rounded-lg border border-rule bg-surface-2 px-3 py-2 outline-none focus:border-accent";
+const seg = (active: boolean) => `inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-semibold transition-colors ${active ? 'bg-accent text-accent-on' : 'text-muted hover:text-ink-2'}`;
+const seg2 = (active: boolean) => `flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${active ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink-2'}`;
+const selCls = 'input text-sm';
+const checkCls = 'h-4 w-4 shrink-0 rounded accent-[var(--accent)]';
+const miniInputCls = 'w-full rounded-lg border border-rule bg-surface-2 py-1.5 pl-8 pr-2 text-xs outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/30';
 
-function Pill({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${className}`}>{children}</span>;
-}
+/** A collapsible filter section. The heading is the toggle, and says whether it is open. */
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
+  const id = useId();
   return (
     <div>
-      <button onClick={() => setOpen(o => !o)} className="flex items-center justify-between w-full text-[11px] font-bold uppercase tracking-wider text-muted mb-2">
-        {label} {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-      </button>
-      {open && children}
+      <h3 className="mb-2">
+        <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls={id}
+          className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted hover:text-ink-2">
+          {label} {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+        </button>
+      </h3>
+      <div id={id} hidden={!open}>{children}</div>
     </div>
   );
 }
 function ChipRow({ label, values, active, onPick, prefix = '' }: { label: string; values: string[]; active: string; onPick: (v: string) => void; prefix?: string }) {
   return (
-    <div>
-      <p className="text-[10px] font-bold uppercase tracking-wider text-faint mb-1.5">{label}</p>
+    <div role="group" aria-label={label}>
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</p>
       <div className="flex flex-wrap gap-1.5">
         {values.map(v => (
-          <button key={v} onClick={() => onPick(v)}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${active === v ? 'bg-accent text-accent-on border-accent' : 'bg-surface text-ink-2 border-rule hover:border-accent'}`}>
+          <button key={v} type="button" aria-pressed={active === v} onClick={() => onPick(v)}
+            className={`tnum rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${active === v ? 'border-accent bg-accent text-accent-on' : 'border-rule bg-surface text-ink-2 hover:border-accent'}`}>
             {prefix}{v}
           </button>
         ))}

@@ -19,7 +19,13 @@ import {
   Users,
   ShieldCheck,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  GraduationCap,
+  School,
+  Globe,
+  Briefcase,
+  Loader2,
+  type LucideIcon,
 } from 'lucide-react';
 import { DOMAINS } from '../constants';
 import { SUBSCRIPTION_PLANS } from '../lib/adminPricingData';
@@ -33,6 +39,7 @@ import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { STM_LOGO_BASE64 } from '../logoBase64';
 import { EmailVerificationInput } from './EmailVerificationInput';
+import { Button, friendlyError } from './ui';
 
 type Step = 1 | 2 | 3;
 
@@ -54,13 +61,44 @@ interface FormData {
   userCategory: string;
 }
 
-const USER_CATEGORIES = [
-  { label: 'Student Scholar',     emoji: '🎓', planId: 'student-plan'   },
-  { label: 'College Excellence',  emoji: '🏫', planId: 'college-plan'   },
-  { label: 'University Global',   emoji: '🌐', planId: 'university-plan' },
-  { label: 'Corporate Innovator', emoji: '💼', planId: 'corporate-plan'  },
+const USER_CATEGORIES: { label: string; icon: LucideIcon; planId: string }[] = [
+  { label: 'Student Scholar',     icon: GraduationCap, planId: 'student-plan'   },
+  { label: 'College Excellence',  icon: School,        planId: 'college-plan'   },
+  { label: 'University Global',   icon: Globe,         planId: 'university-plan' },
+  { label: 'Corporate Innovator', icon: Briefcase,     planId: 'corporate-plan'  },
 ];
 const DURATIONS = ['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
+const STEP_LABELS = ['Details', 'Selection', 'Preview'];
+
+/**
+ * A labelled control with an optional leading icon. Kept at module level so a
+ * keystroke does not remount the input and drop the caret.
+ */
+function WizardField({ id, label, icon: Icon, className, children, trailing }: {
+  id: string; label: string; icon?: LucideIcon; className?: string; children: React.ReactNode; trailing?: React.ReactNode;
+}) {
+  return (
+    <div className={cn('field', className)}>
+      <label htmlFor={id} className="field-label">{label}</label>
+      <div className="relative">
+        {Icon && <Icon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />}
+        {children}
+        {trailing && <div className="absolute right-3 top-1/2 -translate-y-1/2">{trailing}</div>}
+      </div>
+    </div>
+  );
+}
+
+/** A small uppercase caption inside the quotation preview. */
+function DocLabel({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <p className={cn('text-[11px] font-semibold uppercase tracking-wider text-muted', className)}>{children}</p>;
+}
+
+/** A choice that is either selected or not — user type, department, duration. */
+const choiceClass = (selected: boolean) => cn(
+  'rounded-lg border transition-colors duration-150',
+  selected ? 'border-accent bg-accent-soft text-accent' : 'border-rule bg-surface text-ink-2 hover:border-rule-2 hover:bg-surface-2',
+);
 
 export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean }) {
   const navigate = useNavigate();
@@ -244,7 +282,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
       setAppliedCoupon({ id: data.couponId, discount: data.discount, code: couponCode.toUpperCase() });
       toast.success('Coupon applied successfully!');
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(friendlyError(e, 'Invalid coupon'));
       setAppliedCoupon(null);
     } finally {
       setCouponLoading(false);
@@ -754,7 +792,7 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
       toast.success('Quotation downloaded!', { id: toastId });
     } catch (error: any) {
       console.error('PDF Generation failed:', error);
-      toast.error(`PDF Error: ${error?.message || 'Unknown error'}`, { id: toastId, duration: 5000 });
+      toast.error(friendlyError(error, 'Could not generate the PDF. Please try again.'), { id: toastId, duration: 5000 });
     }
   };
 
@@ -823,40 +861,44 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
       setQuotationNumber('');
     } catch (error: any) {
       console.error("Email send failed:", error);
-      toast.error(error?.message || 'Failed to send email', { id: 'send-email' });
+      toast.error(friendlyError(error, 'Failed to send email'), { id: 'send-email' });
     }
   };
 
+  const inr2 = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
   return (
-    <div className="min-h-screen bg-slate-50 py-12">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+    <div className="py-2 sm:py-4">
+      <div className="mx-auto max-w-4xl">
         {/* Progress Indicator */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between max-w-2xl mx-auto relative">
-            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-200 -translate-y-1/2 z-0" />
-            <div 
-              className="absolute top-1/2 left-0 h-0.5 bg-blue-600 -translate-y-1/2 z-0 transition-all duration-500" 
-              style={{ width: `${((step - 1) / 2) * 100}%` }}
+        <nav aria-label="Quotation steps" className="mb-8 sm:mb-10">
+          <ol className="flex items-start justify-between max-w-xl mx-auto relative">
+            <div className="absolute top-4 sm:top-5 left-[16.66%] right-[16.66%] h-0.5 bg-rule" aria-hidden="true" />
+            <div
+              className="absolute top-4 sm:top-5 left-[16.66%] h-0.5 bg-accent transition-all duration-300"
+              style={{ width: `${((step - 1) / 2) * 66.68}%` }}
+              aria-hidden="true"
             />
-            
+
             {[1, 2, 3].map((s) => (
-              <div key={s} className="relative z-10 flex flex-col items-center gap-2">
+              <li key={s} className="relative z-10 flex flex-1 flex-col items-center gap-2" aria-current={step === s ? 'step' : undefined}>
                 <div className={cn(
-                  "h-10 w-10 rounded-full flex items-center justify-center font-bold transition-all duration-300",
-                  step >= s ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-white text-slate-400 border-2 border-slate-200"
+                  "h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center text-sm font-semibold transition-colors duration-200",
+                  step >= s ? "bg-accent text-accent-on" : "bg-surface text-muted border-2 border-rule-2"
                 )}>
-                  {step > s ? <CheckCircle2 size={20} /> : s}
+                  {step > s ? <CheckCircle2 size={18} aria-hidden="true" /> : s}
                 </div>
                 <span className={cn(
-                  "text-xs font-bold uppercase tracking-wider",
-                  step >= s ? "text-blue-600" : "text-slate-400"
+                  "text-xs font-semibold",
+                  step >= s ? "text-accent" : "text-muted"
                 )}>
-                  {s === 1 ? 'Details' : s === 2 ? 'Selection' : 'Preview'}
+                  {STEP_LABELS[s - 1]}
+                  {step > s && <span className="sr-only"> (completed)</span>}
                 </span>
-              </div>
+              </li>
             ))}
-          </div>
-        </div>
+          </ol>
+        </nav>
 
         <AnimatePresence mode="wait">
           {step === 1 && (
@@ -865,34 +907,31 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 md:p-12"
+              className="card p-5 sm:p-8"
             >
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                  <User className="text-blue-600" />
+              <div className="mb-6">
+                <h2 className="type-section text-ink flex items-center gap-2">
+                  <User size={20} className="text-accent shrink-0" aria-hidden="true" />
                   Basic Details
                 </h2>
-                <p className="text-slate-500 mt-1">Tell us about yourself and your organization.</p>
+                <p className="text-sm text-muted mt-1">Tell us about yourself and your organization.</p>
               </div>
 
               {isAdminMode ? (
-                <div className="space-y-2 mb-6">
-                  <label className="text-sm font-bold text-slate-700">Client Email ID *</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="email"
-                      name="email"
-                      required
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="Enter client's email address"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
+                <WizardField id="qw-email" label="Client Email ID *" icon={Mail} className="mb-6">
+                  <input
+                    id="qw-email"
+                    type="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter client's email address"
+                    className="input pl-10"
+                  />
+                </WizardField>
               ) : (
-                <div className="mb-6 space-y-1.5 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                <div className="mb-6 bg-surface-2 p-4 rounded-lg border border-rule">
                   <EmailVerificationInput
                     label="Email ID *"
                     value={formData.email}
@@ -902,82 +941,70 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                 </div>
               )}
 
-              <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 transition-opacity duration-200 ${isEmailVerified ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
                 {/* Row 1: Organization Name – full width */}
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Organization Name *</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      name="organization"
-                      required={isEmailVerified}
-                      disabled={!isEmailVerified}
-                      value={formData.organization}
-                      onChange={handleInputChange}
-                      placeholder="University / College / Company"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
+                <WizardField id="qw-organization" label="Organization Name *" icon={Building2} className="md:col-span-2">
+                  <input
+                    id="qw-organization"
+                    type="text"
+                    name="organization"
+                    required={isEmailVerified}
+                    disabled={!isEmailVerified}
+                    value={formData.organization}
+                    onChange={handleInputChange}
+                    placeholder="University / College / Company"
+                    className="input pl-10"
+                  />
+                </WizardField>
 
                 {/* Row 2: Full Name | Designation */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Full Name *</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      name="fullName"
-                      required={isEmailVerified}
-                      disabled={!isEmailVerified}
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                      placeholder="Enter your full name"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
+                <WizardField id="qw-fullName" label="Full Name *" icon={User}>
+                  <input
+                    id="qw-fullName"
+                    type="text"
+                    name="fullName"
+                    required={isEmailVerified}
+                    disabled={!isEmailVerified}
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    placeholder="Enter your full name"
+                    className="input pl-10"
+                  />
+                </WizardField>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Designation *</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      name="designation"
-                      required={isEmailVerified}
-                      disabled={!isEmailVerified}
-                      value={formData.designation}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Librarian, HOD, Director"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
+                <WizardField id="qw-designation" label="Designation *" icon={User}>
+                  <input
+                    id="qw-designation"
+                    type="text"
+                    name="designation"
+                    required={isEmailVerified}
+                    disabled={!isEmailVerified}
+                    value={formData.designation}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Librarian, HOD, Director"
+                    className="input pl-10"
+                  />
+                </WizardField>
 
                 {/* Row 3: Mobile Number | Email ID */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Mobile Number *</label>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="tel"
-                      name="mobile"
-                      required={isEmailVerified}
-                      disabled={!isEmailVerified}
-                      value={formData.mobile}
-                      onChange={handleInputChange}
-                      placeholder="10-digit mobile number"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
-                
+                <WizardField id="qw-mobile" label="Mobile Number *" icon={Phone}>
+                  <input
+                    id="qw-mobile"
+                    type="tel"
+                    name="mobile"
+                    required={isEmailVerified}
+                    disabled={!isEmailVerified}
+                    value={formData.mobile}
+                    onChange={handleInputChange}
+                    placeholder="10-digit mobile number"
+                    className="input pl-10"
+                  />
+                </WizardField>
+
                 {/* Row 4: Full Address – full width */}
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Full Address *</label>
+                <WizardField id="qw-address" label="Full Address *" className="md:col-span-2">
                   <textarea
+                    id="qw-address"
                     name="address"
                     required={isEmailVerified}
                     disabled={!isEmailVerified}
@@ -985,37 +1012,35 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                     onChange={handleInputChange}
                     placeholder="Street, Building, Area details"
                     rows={3}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all resize-none"
+                    className="input resize-none"
                   />
-                </div>
+                </WizardField>
 
                 {/* Row 5: Pincode | City */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Pincode *</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      name="pincode"
-                      required={isEmailVerified}
-                      disabled={!isEmailVerified}
-                      value={formData.pincode}
-                      onChange={handleInputChange}
-                      maxLength={6}
-                      placeholder="6-digit pincode"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
-                    />
-                    {isPincodeLoading && (
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">City *</label>
+                <WizardField
+                  id="qw-pincode"
+                  label="Pincode *"
+                  icon={MapPin}
+                  trailing={isPincodeLoading ? <Loader2 size={16} className="animate-spin text-accent" aria-label="Looking up pincode" /> : undefined}
+                >
                   <input
+                    id="qw-pincode"
+                    type="text"
+                    name="pincode"
+                    required={isEmailVerified}
+                    disabled={!isEmailVerified}
+                    value={formData.pincode}
+                    onChange={handleInputChange}
+                    maxLength={6}
+                    inputMode="numeric"
+                    placeholder="6-digit pincode"
+                    className="input pl-10 pr-10"
+                  />
+                </WizardField>
+
+                <WizardField id="qw-city" label="City *">
+                  <input
+                    id="qw-city"
                     type="text"
                     name="city"
                     required={isEmailVerified}
@@ -1023,31 +1048,31 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                     value={formData.city}
                     onChange={handleInputChange}
                     placeholder="City"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    className="input"
                   />
-                </div>
+                </WizardField>
 
                 {/* Row 6: State | Country */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">State *</label>
+                <WizardField id="qw-state" label="State *">
                   <select
+                    id="qw-state"
                     name="state"
                     required={isEmailVerified}
                     disabled={!isEmailVerified}
                     value={formData.state}
                     onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none"
+                    className="input"
                   >
                     <option value="">Select State</option>
                     {INDIAN_STATES.map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
-                </div>
+                </WizardField>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Country *</label>
+                <WizardField id="qw-country" label="Country *">
                   <input
+                    id="qw-country"
                     type="text"
                     name="country"
                     required={isEmailVerified}
@@ -1055,36 +1080,30 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                     value={formData.country}
                     onChange={handleInputChange}
                     placeholder="Country"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    className="input"
                   />
-                </div>
+                </WizardField>
 
                 {/* Row 7: GST Number – full width */}
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-slate-700">GST Number (Optional)</label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      name="gstNumber"
-                      disabled={!isEmailVerified}
-                      value={formData.gstNumber}
-                      onChange={handleInputChange}
-                      placeholder="ENTER GSTIN IF APPLICABLE"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all uppercase"
-                    />
-                  </div>
-                </div>
+                <WizardField id="qw-gstNumber" label="GST Number (Optional)" icon={ShieldCheck} className="md:col-span-2">
+                  <input
+                    id="qw-gstNumber"
+                    type="text"
+                    name="gstNumber"
+                    disabled={!isEmailVerified}
+                    value={formData.gstNumber}
+                    onChange={handleInputChange}
+                    placeholder="ENTER GSTIN IF APPLICABLE"
+                    className="input pl-10 uppercase"
+                  />
+                </WizardField>
               </div>
 
-              <div className="mt-12 flex justify-end">
-                <button 
-                  onClick={nextStep}
-                  className="flex items-center gap-2 rounded-2xl bg-blue-600 px-8 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-xl shadow-blue-200"
-                >
+              <div className="mt-8 flex justify-end border-t border-rule pt-6">
+                <Button onClick={nextStep} className="w-full sm:w-auto">
                   Next Step
-                  <ChevronRight size={18} />
-                </button>
+                  <ChevronRight size={18} aria-hidden="true" />
+                </Button>
               </div>
             </motion.div>
           )}
@@ -1095,131 +1114,117 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 md:p-12"
+              className="card p-5 sm:p-8"
             >
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                  <LayoutGrid className="text-blue-600" />
+              <div className="mb-6">
+                <h2 className="type-section text-ink flex items-center gap-2">
+                  <LayoutGrid size={20} className="text-accent shrink-0" aria-hidden="true" />
                   Selection
                 </h2>
-                <p className="text-slate-500 mt-1">Choose your departments and subscription plan.</p>
+                <p className="text-sm text-muted mt-1">Choose your departments and subscription plan.</p>
               </div>
 
               <div className="space-y-8">
                 {/* User Category */}
-                <div className="space-y-4">
-                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                    <Users size={16} className="text-blue-600" />
+                <fieldset className="space-y-3">
+                  <legend className="field-label flex items-center gap-2 mb-3">
+                    <Users size={16} className="text-accent" aria-hidden="true" />
                     User Type
-                  </label>
+                  </legend>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {USER_CATEGORIES.map(({ label, emoji, planId }) => (
+                    {USER_CATEGORIES.map(({ label, icon: Icon, planId }) => (
                       <button
                         key={label}
+                        type="button"
+                        aria-pressed={formData.userCategory === label}
                         onClick={() => setFormData(prev => ({ ...prev, userCategory: label, subscriptionPlanId: planId }))}
-                        className={cn(
-                          "rounded-xl border-2 py-3 px-2 text-xs font-bold transition-all flex flex-col items-center gap-1",
-                          formData.userCategory === label
-                            ? "border-blue-600 bg-blue-50 text-blue-700"
-                            : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
-                        )}
+                        className={cn(choiceClass(formData.userCategory === label), "py-3 px-2 text-xs font-semibold flex flex-col items-center gap-2")}
                       >
-                        <span className="text-xl">{emoji}</span>
+                        <Icon size={20} aria-hidden="true" />
                         <span className="leading-tight text-center">{label}</span>
                       </button>
                     ))}
                   </div>
-                </div>
+                </fieldset>
 
                 {/* Departments */}
-                <div className="space-y-4">
-                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                    <BookOpen size={16} className="text-blue-600" />
+                <fieldset className="space-y-3">
+                  <legend className="field-label flex items-center gap-2 mb-3">
+                    <BookOpen size={16} className="text-accent" aria-hidden="true" />
                     Select Departments (Multi-select)
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                    {DOMAINS.map(dept => (
-                      <button
-                        key={dept.id}
-                        onClick={() => toggleDepartment(dept.id)}
-                        className={cn(
-                          "flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all",
-                          formData.selectedDepartments.includes(dept.id)
-                            ? "border-blue-600 bg-blue-50"
-                            : "border-slate-100 bg-slate-50 hover:border-slate-200"
-                        )}
-                      >
-                        <div className={cn(
-                          "h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all",
-                          formData.selectedDepartments.includes(dept.id)
-                            ? "bg-blue-600 border-blue-600 text-white"
-                            : "bg-white border-slate-300"
-                        )}>
-                          {formData.selectedDepartments.includes(dept.id) && <CheckCircle2 size={14} />}
-                        </div>
-                        <span className={cn(
-                          "text-sm font-bold",
-                          formData.selectedDepartments.includes(dept.id) ? "text-blue-700" : "text-slate-600"
-                        )}>
-                          {dept.name}
-                        </span>
-                      </button>
-                    ))}
+                    {formData.selectedDepartments.length > 0 && (
+                      <span className="badge badge-accent">{formData.selectedDepartments.length} selected</span>
+                    )}
+                  </legend>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                    {DOMAINS.map(dept => {
+                      const on = formData.selectedDepartments.includes(dept.id);
+                      return (
+                        <button
+                          key={dept.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleDepartment(dept.id)}
+                          className={cn(choiceClass(on), "flex items-center gap-3 px-3 py-3 text-left")}
+                        >
+                          <span className={cn(
+                            "h-5 w-5 shrink-0 rounded-md border flex items-center justify-center transition-colors duration-150",
+                            on ? "bg-accent border-accent text-accent-on" : "bg-surface border-rule-2"
+                          )} aria-hidden="true">
+                            {on && <CheckCircle2 size={14} />}
+                          </span>
+                          <span className={cn("text-sm font-medium", on ? "text-accent" : "text-ink-2")}>
+                            {dept.name}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
+                </fieldset>
 
                 {/* Subscription Plan */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-blue-600" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="field">
+                    <p className="field-label flex items-center gap-2">
+                      <ShieldCheck size={16} className="text-accent" aria-hidden="true" />
                       Subscription Plan
-                    </label>
-                    <div className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-sm font-bold text-slate-700">
+                    </p>
+                    <div className="flex h-10 items-center rounded-lg border border-rule bg-surface-2 px-3 text-sm font-semibold text-ink" aria-live="polite">
                       {SUBSCRIPTION_PLANS.find(p => p.id === formData.subscriptionPlanId)?.name || 'Select User Type above'}
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                      <Calendar size={16} className="text-blue-600" />
+                  <fieldset className="field">
+                    <legend className="field-label flex items-center gap-2 mb-1.5">
+                      <Calendar size={16} className="text-accent" aria-hidden="true" />
                       Duration
-                    </label>
+                    </legend>
                     <div className="grid grid-cols-2 gap-2">
                       {DURATIONS.map(dur => (
                         <button
                           key={dur}
+                          type="button"
+                          aria-pressed={formData.duration === dur}
                           onClick={() => setFormData(prev => ({ ...prev, duration: dur }))}
-                          className={cn(
-                            "rounded-xl border-2 py-2 text-xs font-bold transition-all",
-                            formData.duration === dur 
-                              ? "border-blue-600 bg-blue-50 text-blue-700" 
-                              : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
-                          )}
+                          className={cn(choiceClass(formData.duration === dur), "h-10 text-xs font-semibold")}
                         >
                           {dur}
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </fieldset>
                 </div>
               </div>
 
-              <div className="mt-12 flex justify-between">
-                <button 
-                  onClick={prevStep}
-                  className="flex items-center gap-2 rounded-2xl border border-slate-200 px-8 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
-                >
-                  <ChevronLeft size={18} />
+              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-rule pt-6 sm:flex-row sm:justify-between">
+                <Button variant="outline" onClick={prevStep}>
+                  <ChevronLeft size={18} aria-hidden="true" />
                   Back
-                </button>
-                <button 
-                  onClick={nextStep}
-                  className="flex items-center gap-2 rounded-2xl bg-blue-600 px-8 py-4 text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-xl shadow-blue-200"
-                >
+                </Button>
+                <Button onClick={nextStep}>
                   Preview Quotation
-                  <ChevronRight size={18} />
-                </button>
+                  <ChevronRight size={18} aria-hidden="true" />
+                </Button>
               </div>
             </motion.div>
           )}
@@ -1227,92 +1232,92 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
           {step === 3 && (
             <motion.div
               key="step3"
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              exit={{ opacity: 0, scale: 0.98 }}
               className="space-y-6"
             >
               {/* ── PROFORMA INVOICE card ── */}
-              <div ref={previewRef} className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+              <div ref={previewRef} className="card overflow-hidden">
 
                 {/* Header */}
-                <div className="p-8 border-b border-slate-100">
-                  <div className="flex justify-between items-center mb-7">
-                    <span className="text-[10px] font-extrabold tracking-widest uppercase border border-blue-300 text-blue-600 rounded-full px-3 py-1">Quotation</span>
-                    <span className="text-[10px] font-bold tracking-widest uppercase text-slate-400">Subject to Delhi Jurisdiction</span>
+                <div className="p-4 sm:p-8 border-b border-rule">
+                  <div className="flex flex-wrap justify-between items-center gap-2 mb-6">
+                    <span className="badge badge-accent uppercase tracking-wider">Quotation</span>
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted">Subject to Delhi Jurisdiction</span>
                   </div>
 
                   {/* Branding */}
-                  <div className="flex flex-col items-center text-center gap-3 mb-7">
-                    <div className="w-20 h-20 flex items-center justify-center">
-                      <img src="/logo.png" alt="STM Digital Library Logo" className="w-full h-full object-contain drop-shadow-md" />
+                  <div className="flex flex-col items-center text-center gap-3 mb-6">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+                      <img src="/logo.png" alt="STM Digital Library Logo" className="w-full h-full object-contain" />
                     </div>
                     <div>
-                      <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">{COMPANY_DETAILS.name}</h1>
-                      <p className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">{COMPANY_DETAILS.positioning.replace(/^A /, "")}</p>
+                      <p className="text-xl sm:text-2xl font-bold tracking-tight text-ink uppercase">{COMPANY_DETAILS.name}</p>
+                      <p className="text-[11px] font-semibold text-accent uppercase tracking-wider mt-0.5">{COMPANY_DETAILS.positioning.replace(/^A /, "")}</p>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 bg-green-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wide">
-                      <CheckCircle2 size={11} /> 21 Years of Trusted Excellence in Education &amp; Academic Publishing
+                    <span className="badge badge-success h-auto py-1 whitespace-normal text-center leading-snug uppercase tracking-wide">
+                      <CheckCircle2 size={12} className="shrink-0" aria-hidden="true" /> 21 Years of Trusted Excellence in Education &amp; Academic Publishing
                     </span>
-                    <p className="text-xs text-slate-400">{COMPANY_DETAILS.address} - 201301</p>
+                    <p className="text-xs text-muted">{COMPANY_DETAILS.address} - 201301</p>
                   </div>
 
                   {/* 3-col info grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 border border-slate-200 rounded-2xl overflow-hidden text-[11px]">
+                  <div className="grid grid-cols-1 md:grid-cols-3 border border-rule rounded-xl overflow-hidden text-xs">
 
                     {/* Left: Quotation meta */}
-                    <div className="p-5 space-y-4 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/40">
+                    <div className="p-4 sm:p-5 space-y-4 border-b md:border-b-0 md:border-r border-rule bg-surface-2">
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Quotation Number</p>
-                        <p className="font-black text-blue-600">{quotationNumber || 'Generating...'}</p>
+                        <DocLabel className="mb-0.5">Quotation Number</DocLabel>
+                        <p className="font-bold text-accent break-all">{quotationNumber || 'Generating...'}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Issue Date</p>
-                        <p className="font-bold text-slate-800">{format(new Date(), 'dd MMM yyyy')}</p>
+                        <DocLabel className="mb-0.5">Issue Date</DocLabel>
+                        <p className="font-semibold text-ink">{format(new Date(), 'dd MMM yyyy')}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Valid Till</p>
-                        <p className="font-bold text-green-600">{format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'dd MMM yyyy')}</p>
+                        <DocLabel className="mb-0.5">Valid Till</DocLabel>
+                        <p className="font-semibold text-success">{format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'dd MMM yyyy')}</p>
                       </div>
                     </div>
 
                     {/* Middle: Bank details */}
-                    <div className="p-5 border-b md:border-b-0 md:border-r border-slate-200">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-3">Bank Details (NEFT/RTGS)</p>
-                      <div className="space-y-2 text-slate-700">
+                    <div className="p-4 sm:p-5 border-b md:border-b-0 md:border-r border-rule">
+                      <DocLabel className="mb-3">Bank Details (NEFT/RTGS)</DocLabel>
+                      <dl className="space-y-2 text-ink-2">
                         <div className="flex justify-between gap-2">
-                          <span className="text-slate-500">Bank:</span>
-                          <span className="font-bold text-right">{COMPANY_DETAILS.bank.bankName}</span>
+                          <dt className="text-muted">Bank:</dt>
+                          <dd className="font-semibold text-right text-ink">{COMPANY_DETAILS.bank.bankName}</dd>
                         </div>
                         <div className="flex justify-between gap-2">
-                          <span className="text-slate-500">Account:</span>
-                          <span className="font-bold text-right">{COMPANY_DETAILS.bank.accountNumber}</span>
+                          <dt className="text-muted">Account:</dt>
+                          <dd className="font-semibold text-right text-ink break-all">{COMPANY_DETAILS.bank.accountNumber}</dd>
                         </div>
                         <div className="flex justify-between gap-2">
-                          <span className="text-slate-500">IFSC:</span>
-                          <span className="font-bold text-right">{COMPANY_DETAILS.bank.ifscCode}</span>
+                          <dt className="text-muted">IFSC:</dt>
+                          <dd className="font-semibold text-right text-ink">{COMPANY_DETAILS.bank.ifscCode}</dd>
                         </div>
-                      </div>
-                      <div className="mt-3 border border-slate-200 rounded-lg px-3 py-2 bg-white">
-                        <p className="text-[9px] text-slate-400 mb-0.5">Holder:</p>
-                        <p className="font-bold text-slate-800 text-xs">{COMPANY_DETAILS.bank.accountName}</p>
+                      </dl>
+                      <div className="mt-3 border border-rule rounded-lg px-3 py-2 bg-surface">
+                        <p className="text-[11px] text-muted mb-0.5">Holder:</p>
+                        <p className="font-semibold text-ink text-xs">{COMPANY_DETAILS.bank.accountName}</p>
                       </div>
                     </div>
 
                     {/* Right: Legal identifiers */}
-                    <div className="p-5 bg-slate-50/40 space-y-3">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Legal Identifiers</p>
+                    <div className="p-4 sm:p-5 bg-surface-2 space-y-3">
+                      <DocLabel className="mb-1">Legal Identifiers</DocLabel>
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">GSTIN</p>
-                        <p className="font-bold text-slate-800">{COMPANY_DETAILS.gstin}</p>
+                        <DocLabel>GSTIN</DocLabel>
+                        <p className="font-semibold text-ink break-all">{COMPANY_DETAILS.gstin}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Pan Number</p>
-                        <p className="font-bold text-slate-800">{COMPANY_DETAILS.pan}</p>
+                        <DocLabel>Pan Number</DocLabel>
+                        <p className="font-semibold text-ink">{COMPANY_DETAILS.pan}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">CIN Number</p>
-                        <p className="font-bold text-slate-800">{COMPANY_DETAILS.cin}</p>
+                        <DocLabel>CIN Number</DocLabel>
+                        <p className="font-semibold text-ink break-all">{COMPANY_DETAILS.cin}</p>
                       </div>
                     </div>
 
@@ -1320,74 +1325,74 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                 </div>
 
                 {/* Body */}
-                <div className="p-8 space-y-8">
+                <div className="p-4 sm:p-8 space-y-8">
 
                   {/* Receiver + Subscription summary */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-blue-500 mb-3 flex items-center gap-1.5">
-                        <User size={10} /> Receiver Details (Billed To)
-                      </p>
+                    <div className="min-w-0">
+                      <DocLabel className="mb-3 flex items-center gap-1.5 text-accent">
+                        <User size={12} aria-hidden="true" /> Receiver Details (Billed To)
+                      </DocLabel>
                       <div className="space-y-0.5">
-                        <p className="text-xl font-black text-slate-900">{formData.fullName}</p>
-                        {formData.designation && <p className="text-sm font-bold text-blue-600">{formData.designation}</p>}
-                        {formData.organization && <p className="text-sm text-slate-700">{formData.organization}</p>}
-                        <div className="pt-2 space-y-0.5 text-xs text-slate-500">
+                        <p className="text-lg sm:text-xl font-bold text-ink break-words">{formData.fullName}</p>
+                        {formData.designation && <p className="text-sm font-semibold text-accent">{formData.designation}</p>}
+                        {formData.organization && <p className="text-sm text-ink-2">{formData.organization}</p>}
+                        <div className="pt-2 space-y-0.5 text-xs text-muted break-words">
                           {formData.city && <p>{formData.city}</p>}
                           <p>{[formData.address, formData.state, formData.pincode && `- ${formData.pincode}`, formData.country].filter(Boolean).join(', ')}</p>
-                          {formData.gstNumber && <p className="font-bold text-blue-600 uppercase mt-1">GSTIN: {formData.gstNumber}</p>}
+                          {formData.gstNumber && <p className="font-semibold text-accent uppercase mt-1">GSTIN: {formData.gstNumber}</p>}
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-blue-700 rounded-2xl p-5 text-white">
+                    <div className="bg-navy rounded-xl p-5 on-dark">
                       <div className="flex justify-end mb-4">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-blue-300 flex items-center gap-1.5">
-                          <Calendar size={9} /> Subscription Summary
+                        <span className="text-[11px] font-semibold uppercase tracking-wider on-dark-2 flex items-center gap-1.5">
+                          <Calendar size={12} aria-hidden="true" /> Subscription Summary
                         </span>
                       </div>
                       <div className="space-y-4">
                         <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-blue-300">Category</p>
-                          <p className="text-base font-bold">{formData.userCategory}</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider on-dark-2">Category</p>
+                          <p className="text-base font-semibold">{formData.userCategory}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-blue-300">Duration Plan</p>
-                          <p className="text-3xl font-black">{formData.duration}</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider on-dark-2">Duration Plan</p>
+                          <p className="text-2xl sm:text-3xl font-bold">{formData.duration}</p>
                         </div>
-                        <div className="flex items-center gap-2 pt-3 border-t border-blue-600">
-                          <Users size={14} className="text-blue-300" />
-                          <span className="text-sm font-bold">{formData.selectedDepartments.length} Department(s)</span>
+                        <div className="flex items-center gap-2 pt-3 border-t on-dark-edge">
+                          <Users size={16} className="on-dark-2" aria-hidden="true" />
+                          <span className="text-sm font-semibold">{formData.selectedDepartments.length} Department(s)</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Department table */}
-                  <div className="rounded-2xl overflow-hidden border border-slate-200">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-900 text-white">
+                  <div className="table-wrap rounded-xl border border-rule">
+                    <table className="data-table min-w-[36rem]">
+                      <thead>
                         <tr>
-                          <th className="px-5 py-3 font-bold uppercase tracking-widest">SR.NO</th>
-                          <th className="px-5 py-3 font-bold uppercase tracking-widest">Department</th>
-                          <th className="px-5 py-3 font-bold uppercase tracking-widest">SAC Code</th>
-                          <th className="px-5 py-3 font-bold uppercase tracking-widest text-right">Base Price</th>
-                          <th className="px-5 py-3 font-bold uppercase tracking-widest text-right">GST (18%)</th>
-                          <th className="px-5 py-3 font-bold uppercase tracking-widest text-right">Total</th>
+                          <th>Sr. No</th>
+                          <th>Department</th>
+                          <th>SAC Code</th>
+                          <th className="text-right">Base Price</th>
+                          <th className="text-right">GST (18%)</th>
+                          <th className="text-right">Total</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody>
                         {formData.selectedDepartments.map((deptId, idx) => {
                           const dept = DOMAINS.find(d => d.id === deptId);
                           const gst = basePricePerDept * 0.18;
                           return (
-                            <tr key={deptId} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-5 py-3 text-blue-500 font-bold">{String(idx + 1).padStart(2, '0')}</td>
-                              <td className="px-5 py-3 font-black text-slate-800 uppercase">{dept?.name}</td>
-                              <td className="px-5 py-3 font-medium text-slate-500">998439</td>
-                              <td className="px-5 py-3 font-bold text-slate-800 text-right">₹{basePricePerDept.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                              <td className="px-5 py-3 font-bold text-slate-500 text-right">₹{gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                              <td className="px-5 py-3 font-black text-blue-600 text-right">₹{(basePricePerDept + gst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <tr key={deptId}>
+                              <td className="text-muted font-semibold tabular-nums">{String(idx + 1).padStart(2, '0')}</td>
+                              <td className="font-semibold text-ink uppercase">{dept?.name}</td>
+                              <td className="text-muted">998439</td>
+                              <td className="font-semibold text-ink text-right tabular-nums whitespace-nowrap">₹{basePricePerDept.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td className="text-muted text-right tabular-nums whitespace-nowrap">₹{gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td className="font-bold text-accent text-right tabular-nums whitespace-nowrap">₹{(basePricePerDept + gst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             </tr>
                           );
                         })}
@@ -1396,36 +1401,36 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                   </div>
 
                   {/* GST Breakdown + Grand Total */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-3">GST Breakdown</p>
-                      <div className="rounded-xl overflow-hidden border border-slate-200">
-                        <table className="w-full text-xs">
-                          <thead className="bg-slate-50">
+                      <DocLabel className="mb-3">GST Breakdown</DocLabel>
+                      <div className="table-wrap rounded-xl border border-rule">
+                        <table className="data-table">
+                          <thead>
                             <tr>
-                              <th className="px-4 py-2 text-left font-bold text-slate-500">Type</th>
-                              <th className="px-4 py-2 text-center font-bold text-slate-500">Rate</th>
-                              <th className="px-4 py-2 text-right font-bold text-slate-500">Amount</th>
+                              <th>Type</th>
+                              <th className="text-center">Rate</th>
+                              <th className="text-right">Amount</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
+                          <tbody>
                             {isInterState ? (
                               <tr>
-                                <td className="px-4 py-2">IGST</td>
-                                <td className="px-4 py-2 text-center">18%</td>
-                                <td className="px-4 py-2 text-right font-bold">₹{gstBreakdown.igst.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
+                                <td>IGST</td>
+                                <td className="text-center">18%</td>
+                                <td className="text-right font-semibold text-ink tabular-nums">₹{gstBreakdown.igst.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
                               </tr>
                             ) : (
                               <>
                                 <tr>
-                                  <td className="px-4 py-2">CGST</td>
-                                  <td className="px-4 py-2 text-center">9%</td>
-                                  <td className="px-4 py-2 text-right font-bold">₹{gstBreakdown.cgst.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
+                                  <td>CGST</td>
+                                  <td className="text-center">9%</td>
+                                  <td className="text-right font-semibold text-ink tabular-nums">₹{gstBreakdown.cgst.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-4 py-2">SGST</td>
-                                  <td className="px-4 py-2 text-center">9%</td>
-                                  <td className="px-4 py-2 text-right font-bold">₹{gstBreakdown.sgst.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
+                                  <td>SGST</td>
+                                  <td className="text-center">9%</td>
+                                  <td className="text-right font-semibold text-ink tabular-nums">₹{gstBreakdown.sgst.toLocaleString('en-IN', { minimumFractionDigits: 1 })}</td>
                                 </tr>
                               </>
                             )}
@@ -1434,58 +1439,61 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                       </div>
                     </div>
                     <div className="flex flex-col justify-center gap-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Subtotal (Base Price Total)</span>
-                        <span className="font-bold text-slate-900">₹{gstBreakdown.basePrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <div className="flex justify-between gap-4 text-sm">
+                        <span className="text-muted">Subtotal (Base Price Total)</span>
+                        <span className="font-semibold text-ink tabular-nums whitespace-nowrap">{inr2(gstBreakdown.basePrice)}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Total GST (18%)</span>
-                        <span className="font-bold text-slate-900">₹{gstBreakdown.totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <div className="flex justify-between gap-4 text-sm">
+                        <span className="text-muted">Total GST (18%)</span>
+                        <span className="font-semibold text-ink tabular-nums whitespace-nowrap">{inr2(gstBreakdown.totalGst)}</span>
                       </div>
 
                       {/* Coupon Code Section */}
                       {!appliedCoupon ? (
-                        <div className="mt-2 flex items-center space-x-2">
-                          <input 
-                            type="text" 
-                            placeholder="Have a coupon code?" 
-                            className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm uppercase focus:border-blue-500 focus:outline-none"
+                        <div className="mt-2 flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="Have a coupon code?"
+                            aria-label="Coupon code"
+                            className="input h-9 flex-1 min-w-0 uppercase"
                             value={couponCode}
                             onChange={(e) => setCouponCode(e.target.value)}
                           />
-                          <button 
-                            type="button"
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={handleApplyCoupon}
-                            disabled={couponLoading || !couponCode}
-                            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                            loading={couponLoading}
+                            disabled={!couponCode}
+                            className="h-9"
                           >
-                            {couponLoading ? '...' : 'Apply'}
-                          </button>
+                            Apply
+                          </Button>
                         </div>
                       ) : (
-                        <div className="mt-2 rounded-md bg-green-50 px-3 py-2 flex items-center justify-between border border-green-200">
-                          <div>
-                            <span className="text-xs font-bold text-green-700 uppercase">{appliedCoupon.code}</span>
-                            <span className="ml-2 text-sm font-bold text-green-700">-₹{appliedCoupon.discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <div className="mt-2 rounded-lg bg-success-soft px-3 py-2 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <span className="text-xs font-semibold text-success uppercase">{appliedCoupon.code}</span>
+                            <span className="ml-2 text-sm font-semibold text-success tabular-nums">-{inr2(appliedCoupon.discount)}</span>
                           </div>
-                          <button type="button" onClick={removeCoupon} className="text-xs text-green-700 hover:underline">Remove</button>
+                          <button type="button" onClick={removeCoupon} className="text-xs font-semibold text-success hover:underline shrink-0">Remove</button>
                         </div>
                       )}
 
-                      <div className="h-px bg-slate-200 my-1" />
-                      <div className="flex justify-between items-center">
-                        <span className="text-base font-black text-slate-900">GRAND TOTAL</span>
-                        <span className="text-2xl font-black text-blue-600">₹{gstBreakdown.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <div className="h-px bg-rule my-1" />
+                      <div className="flex flex-wrap justify-between items-center gap-2">
+                        <span className="text-base font-bold text-ink">GRAND TOTAL</span>
+                        <span className="text-xl sm:text-2xl font-bold text-accent tabular-nums">{inr2(gstBreakdown.totalAmount)}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Terms & Signature */}
-                  <div className="pt-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="pt-6 border-t border-rule grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
-                        <ShieldCheck size={10} /> Terms &amp; Conditions
-                      </p>
+                      <DocLabel className="mb-3 flex items-center gap-1.5">
+                        <ShieldCheck size={12} aria-hidden="true" /> Terms &amp; Conditions
+                      </DocLabel>
                       <ul className="space-y-2">
                         {[
                           'Subscription will be activated post-payment confirmation.',
@@ -1493,43 +1501,44 @@ export function QuotationWizard({ isAdminMode = false }: { isAdminMode?: boolean
                           'Quotation is valid for 30 days from the date of issue.',
                           <span key="jd">All disputes are subject to <strong>Delhi Jurisdiction</strong> only.</span>
                         ].map((t, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-slate-500">
-                            <CheckCircle2 size={13} className="text-blue-400 mt-0.5 shrink-0" />
+                          <li key={i} className="flex items-start gap-2 text-xs text-muted">
+                            <CheckCircle2 size={14} className="text-accent mt-0.5 shrink-0" aria-hidden="true" />
                             <span>{t}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
-                    <div className="flex flex-col items-end justify-between gap-4">
-                      <div className="text-right">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">For Publisher</p>
-                        <p className="text-sm font-bold text-slate-800 mt-1">STM Digital Library</p>
+                    <div className="flex flex-col items-start md:items-end justify-between gap-4">
+                      <div className="md:text-right">
+                        <DocLabel>For Publisher</DocLabel>
+                        <p className="text-sm font-semibold text-ink mt-1">STM Digital Library</p>
                       </div>
-                      <div className="w-44 h-24 flex items-center justify-center">
+                      {/* The signature image is dark ink, so it keeps a white ground in dark mode. */}
+                      <div className="w-44 h-24 flex items-center justify-center rounded-lg bg-white">
                         <img src="/assets/signature.png" alt="Authorized Signature" className="max-h-full max-w-full object-contain" />
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">Authorized Signatory</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-2">Authorized Signatory</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Action buttons */}
-              <div className="flex flex-wrap gap-3 justify-center">
-                <button onClick={prevStep} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
-                  <ChevronLeft size={16} /> Edit
-                </button>
-                <button onClick={generatePDF} className="flex items-center gap-2 rounded-2xl bg-slate-900 px-7 py-3.5 text-sm font-bold text-white hover:bg-slate-800 transition-all">
-                  <Download size={16} /> Download
-                </button>
-                <button onClick={handleSendEmail} className="flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-7 py-3.5 text-sm font-bold text-blue-700 hover:bg-blue-100 transition-all">
-                  <Send size={16} /> Send Email
-                </button>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+                <Button variant="outline" onClick={prevStep}>
+                  <ChevronLeft size={16} aria-hidden="true" /> Edit
+                </Button>
+                <Button variant="outline" onClick={generatePDF}>
+                  <Download size={16} aria-hidden="true" /> Download
+                </Button>
+                <Button onClick={handleSendEmail}>
+                  <Send size={16} aria-hidden="true" /> Send Email
+                </Button>
               </div>
 
               <div className="text-center">
-                <p className="text-xs text-slate-400">
-                  By proceeding, you agree to our <Link to="/terms-and-conditions" className="underline">Terms of Service</Link> and <Link to="/privacy-policy" className="underline">Privacy Policy</Link>.
+                <p className="text-xs text-muted">
+                  By proceeding, you agree to our <Link to="/terms-and-conditions" className="text-accent underline">Terms of Service</Link> and <Link to="/privacy-policy" className="text-accent underline">Privacy Policy</Link>.
                 </p>
               </div>
             </motion.div>

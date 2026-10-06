@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, Building2, Search, Users } from 'lucide-react';
+import { Button, EmptyState, Skeleton, buttonClass } from './ui';
 
 /**
  * Every institution whose people read here, on a page of its own.
@@ -68,68 +69,69 @@ export function InstitutionsPage() {
         <meta name="description" content="Colleges, universities and institutes whose faculty, researchers and students read on the STM Digital Library." />
       </Helmet>
 
-      <section className="px-5 py-14 text-white"
-        style={{ background: 'linear-gradient(120deg, var(--np-navy) 0%, var(--np-navy-2) 70%, #23336b 100%)' }}>
-        <div className="mx-auto max-w-6xl">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-white/70 hover:text-white">
-            <ArrowLeft size={15} /> Back
+      <section className="bg-navy">
+        <div className="container-public py-12 sm:py-16">
+          <Link to="/" className="on-dark-2 inline-flex items-center gap-1.5 text-sm font-semibold hover:underline">
+            <ArrowLeft size={16} aria-hidden="true" /> Back
           </Link>
-          <h1 className="np-display mt-5 text-[32px] leading-tight sm:text-[42px]">
+          <h1 className="on-dark mt-4 text-3xl font-bold leading-tight sm:text-4xl">
             The institutions whose people read here.
           </h1>
-          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-white/75">
+          <p className="on-dark-2 mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
             Universities, colleges and institutes put their faculty, researchers and students on the
             library — the whole department on one account, however many of them there are.
           </p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 py-12">
+      <section className="container-public py-12">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by kind of institution">
             {kinds.map(k => (
               <button key={k} type="button" onClick={() => setKind(k)}
-                className="np-strong rounded-full px-4 py-2 text-[12.5px] transition-colors"
-                style={kind === k
-                  ? { background: 'var(--np-navy)', color: '#fff' }
-                  : { border: '1px solid var(--np-line)', color: 'var(--np-ink)' }}>
+                aria-pressed={kind === k}
+                className={`btn btn-sm rounded-full ${kind === k ? 'btn-brand' : 'btn-outline'}`}>
                 {k === 'All' ? 'All of them' : plural(k, 2)}
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 rounded-xl border px-4 py-2.5 sm:w-72"
-            style={{ borderColor: 'var(--np-line)' }}>
-            <Search size={15} style={{ color: 'var(--np-body)' }} />
-            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Find an institution"
-              className="w-full bg-transparent text-[13.5px] outline-none"
-              style={{ color: 'var(--np-ink)' }} />
-          </label>
+          <div className="relative sm:w-72">
+            <label htmlFor="institution-search" className="sr-only">Find an institution</label>
+            <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input id="institution-search" type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Find an institution"
+              className="input pl-9" />
+          </div>
         </div>
 
-        {!data && <div className="mt-10 h-64 animate-pulse rounded-2xl" style={{ background: 'var(--np-soft)' }} />}
+        {!data && (
+          <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading institutions">
+            {Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+          </div>
+        )}
 
         {data && rows.length === 0 && (
-          <p className="mt-10 text-[14.5px]" style={{ color: 'var(--np-body)' }}>
-            Nothing matches “{q}”.
-          </p>
+          <EmptyState
+            className="mt-6"
+            icon={Search}
+            title={`Nothing matches “${q}”.`}
+            action={q ? <Button variant="outline" size="sm" onClick={() => setQ('')}>Clear search</Button> : undefined}
+          />
         )}
 
         {groups.map(([k, list]) => (
           <div key={k} className="mt-10">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
-              {plural(k, 2)} <span style={{ color: 'var(--np-ink)' }}>{n(list.length)}</span>
-            </p>
-            <div className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border sm:grid-cols-2 lg:grid-cols-3"
-              style={{ background: 'var(--np-line)', borderColor: 'var(--np-line)' }}>
+            <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
+              {plural(k, 2)} <span className="text-ink tnum">{n(list.length)}</span>
+            </h2>
+            <div className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
               {list.map(i => (
-                <div key={i.name} className="flex items-center gap-3 bg-surface px-5 py-4">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                    style={{ background: 'var(--t6-bg)', color: 'var(--t6-ink)' }}>
+                <div key={i.name} className="flex items-center gap-3 bg-surface px-4 py-4 sm:px-5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent" aria-hidden="true">
                     <Building2 size={16} />
                   </span>
                   <span className="min-w-0">
-                    <span className="np-strong block truncate text-[13.5px]" style={{ color: 'var(--np-ink)' }}>{i.name}</span>
-                    <span className="block text-[11.5px]" style={{ color: 'var(--np-body)' }}>{i.kind}</span>
+                    <span className="block truncate text-sm font-semibold text-ink" title={i.name}>{i.name}</span>
+                    <span className="block text-xs text-muted">{i.kind}</span>
                   </span>
                 </div>
               ))}
@@ -145,16 +147,14 @@ export function InstitutionsPage() {
           </div>
         ))}
 
-        <div className="mt-12 rounded-2xl border p-6" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
-          <p className="np-strong text-[15px]" style={{ color: 'var(--np-ink)' }}>
-            <Users size={15} className="mr-2 inline" /> Is your institution not on this list?
-          </p>
-          <p className="mt-2 max-w-2xl text-[14px] leading-relaxed">
+        <div className="mt-12 rounded-xl border border-rule bg-surface-2 p-6">
+          <h2 className="flex items-center gap-2 text-base font-bold text-ink">
+            <Users size={16} aria-hidden="true" className="text-accent" /> Is your institution not on this list?
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-2">
             Put your faculty and students on the library on one account.
           </p>
-          <Link to="/for-institutions"
-            className="np-strong mt-4 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[14px] text-white"
-            style={{ background: 'var(--np-navy)' }}>
+          <Link to="/for-institutions" className={buttonClass('brand', 'md', 'mt-4')}>
             For institutions
           </Link>
         </div>

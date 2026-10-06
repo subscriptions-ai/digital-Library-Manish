@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Heart, Loader2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Heart } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { Badge, EmptyState, ErrorState, SkeletonRows, buttonClass } from '../ui';
 
 export default function MyFavorites() {
   const [favorites, setFavorites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // A list that failed to load is not an empty list, so it is not shown as one.
+  const [failed, setFailed] = useState(false);
   const navigate = useNavigate();
 
   const fetchFavorites = async () => {
+    setLoading(true);
+    setFailed(false);
     try {
       const res = await fetch('/api/user/favorites', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -17,10 +22,10 @@ export default function MyFavorites() {
         const data = await res.json();
         setFavorites(data);
       } else {
-        toast.error("Failed to load wish list");
+        setFailed(true);
       }
     } catch (err) {
-      toast.error("Network error");
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -53,46 +58,53 @@ export default function MyFavorites() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="animate-spin text-faint" size={26} />
+      <div className="mx-auto max-w-5xl">
+        <div className="card card-pad"><SkeletonRows rows={4} /></div>
+      </div>
+    );
+  }
+
+  if (failed) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <div className="card">
+          <ErrorState description="We could not load your saved research right now. Please try again." onRetry={fetchFavorites} />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-5xl">
-      <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">
+      <h2 className="tnum font-mono text-[11px] uppercase tracking-wider text-muted">
         Saved &mdash; {favorites.length} {favorites.length === 1 ? 'item' : 'items'}
-      </p>
+      </h2>
 
       {favorites.length === 0 ? (
-        <div className="mt-3 rounded-md border border-rule bg-surface p-12 text-center">
-          <h3 className="font-serif text-lg font-medium text-ink">Nothing saved yet</h3>
-          <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed text-muted">
-            While reading, use the heart in the reader to keep something here.
-          </p>
-          <button
-            onClick={() => navigate('/dashboard/library')}
-            className="mt-6 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover"
-          >
-            Browse the library
-          </button>
+        <div className="card mt-3">
+          <EmptyState
+            icon={Heart}
+            title="No saved research yet"
+            description="While reading, use the heart in the reader to keep something here."
+            action={<Link to="/dashboard/library" className={buttonClass('primary')}>Browse the library</Link>}
+          />
         </div>
       ) : (
-        <div className="mt-3 divide-y divide-rule rounded-md border border-rule bg-surface">
+        <ul className="card mt-3 divide-y divide-rule overflow-hidden">
           {favorites.map((item, i) => (
-            <div key={item.id} className="group flex gap-4 px-5 py-4">
-              <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{i + 1}</span>
+            <li key={item.id} className="group flex gap-4 px-4 py-4 sm:px-5">
+              <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block" aria-hidden="true">{i + 1}</span>
 
               <div className="min-w-0 flex-1">
-                <button
-                  onClick={() => navigate(item.itemType === 'Article' ? `/dashboard/article/${item.id}` : `/dashboard/viewer/${item.id}`)}
-                  className="block w-full text-left"
-                >
-                  <h3 className="font-serif text-[16px] font-medium leading-snug text-ink group-hover:text-accent">
+                <h3 className="font-serif text-[16px] font-medium leading-snug text-ink">
+                  <button
+                    type="button"
+                    onClick={() => navigate(item.itemType === 'Article' ? `/dashboard/article/${item.id}` : `/dashboard/viewer/${item.id}`)}
+                    className="text-left transition-colors hover:text-accent"
+                  >
                     {item.title}
-                  </h3>
-                </button>
+                  </button>
+                </h3>
 
                 {(item.authors || item.description) && (
                   <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-ink-2">
@@ -101,32 +113,28 @@ export default function MyFavorites() {
                 )}
 
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {item.contentType && (
-                    <span className="rounded-[3px] border border-rule-2 px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted">
-                      {item.contentType}
+                  {item.contentType && <Badge className="max-w-full"><span className="truncate">{item.contentType}</span></Badge>}
+                  {item.domain && <Badge className="max-w-full"><span className="truncate">{item.domain}</span></Badge>}
+                  {item.favoritedAt && (
+                    <span className="tnum font-mono text-[11px] text-muted">
+                      saved {new Date(item.favoritedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
                   )}
-                  {item.domain && (
-                    <span className="rounded-[3px] border border-rule-2 px-1.5 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted">
-                      {item.domain}
-                    </span>
-                  )}
-                  <span className="tnum font-mono text-[10.5px] text-faint">
-                    saved {new Date(item.favoritedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={(e) => removeFavorite(item.id, e)}
                 title="Remove from your saved items"
-                className="h-7 shrink-0 self-start rounded-md px-2 text-alarm hover:bg-alarm-soft"
+                aria-label={`Remove "${item.title}" from your saved items`}
+                className={buttonClass('ghost', 'sm', 'btn-icon shrink-0 self-start text-accent hover:bg-alarm-soft hover:text-alarm')}
               >
-                <Heart size={15} fill="currentColor" />
+                <Heart size={16} fill="currentColor" aria-hidden="true" />
               </button>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

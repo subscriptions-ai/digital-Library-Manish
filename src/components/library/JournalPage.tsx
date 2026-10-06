@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ChevronRight, ChevronDown, ExternalLink, Loader2, Lock } from 'lucide-react';
+import { ChevronRight, ChevronDown, ExternalLink, Lock } from 'lucide-react';
+import { Badge, Skeleton, buttonClass } from '../ui';
 
 /**
  * A journal, and its run of volumes.
@@ -29,23 +30,20 @@ const auth = (): Record<string, string> | undefined => {
   return t ? { Authorization: `Bearer ${t}` } : undefined;
 };
 
-const LABEL = 'font-mono text-[10.5px] uppercase tracking-wider text-faint';
+const LABEL = 'font-mono text-[11px] uppercase tracking-wider text-muted';
 
 /** Access follows from the licence, so it is stated plainly rather than implied. */
 function LicenceMark({ licence, isNC }: { licence?: string | null; isNC?: boolean | null }) {
   if (!licence) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-[3px] border border-rule-2 px-2 py-[3px] font-mono text-[10.5px] uppercase tracking-wide text-muted">
-        <Lock size={10} /> Licence not recorded
-      </span>
+      <Badge tone="neutral"><Lock size={12} aria-hidden="true" /> Licence not recorded</Badge>
     );
   }
   const ok = !isNC;
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-[3px] border px-2 py-[3px] font-mono text-[10.5px] uppercase tracking-wide ${
-      ok ? 'border-accent bg-accent-soft text-accent' : 'border-caution bg-caution-soft text-caution'}`}>
+    <Badge tone={ok ? 'accent' : 'caution'}>
       {licence}{!ok && ' · read at publisher'}
-    </span>
+    </Badge>
   );
 }
 
@@ -73,26 +71,26 @@ function VolumeRow({ issn, vol, articleBase }: { issn: string; vol: Volume; arti
 
   return (
     <div>
-      <button onClick={toggle}
-        className="flex w-full items-center gap-4 px-5 py-3 text-left hover:bg-surface-2">
-        {open ? <ChevronDown size={14} className="shrink-0 text-faint" />
-              : <ChevronRight size={14} className="shrink-0 text-faint" />}
-        <span className="tnum w-24 shrink-0 font-mono text-[13px] text-ink">Vol {vol.volume}</span>
-        <span className="tnum w-14 shrink-0 font-mono text-[12px] text-muted">{vol.year ?? '—'}</span>
+      <button type="button" onClick={toggle} aria-expanded={open}
+        className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left transition-colors hover:bg-surface-2 sm:flex-nowrap sm:px-5">
+        {open ? <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-muted" />
+              : <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-muted" />}
+        <span className="tnum shrink-0 font-mono text-[13px] text-ink sm:w-24">Vol {vol.volume}</span>
+        <span className="tnum shrink-0 font-mono text-[12px] text-muted sm:w-14">{vol.year ?? '—'}</span>
         <span className="tnum font-mono text-[12px] text-muted">
           {vol.issues} {vol.issues === 1 ? 'issue' : 'issues'} · {vol.articles} articles
         </span>
       </button>
 
       {open && (
-        <div className="border-t border-rule bg-surface-2/60 px-5 pb-4 pl-14">
-          {loading && <p className="py-3 font-mono text-[12px] text-faint">Loading…</p>}
+        <div className="border-t border-rule bg-surface-2/60 px-4 pb-4 sm:px-5 sm:pl-14">
+          {loading && <div className="space-y-2 py-3" role="status" aria-label="Loading issues"><Skeleton className="h-3 w-1/3" /><Skeleton className="h-4 w-4/5" /><Skeleton className="h-4 w-3/5" /></div>}
           {issues?.length === 0 && !loading && (
-            <p className="py-3 font-mono text-[12px] text-faint">Nothing recorded in this volume yet.</p>
+            <p className="py-3 text-[13px] text-muted">Nothing recorded in this volume yet.</p>
           )}
           {issues?.map(iss => (
             <div key={iss.issue} className="py-3">
-              <p className={LABEL}>Issue {iss.issue} — {iss.articles.length} articles</p>
+              <h3 className={LABEL}>Issue {iss.issue} — {iss.articles.length} {iss.articles.length === 1 ? 'article' : 'articles'}</h3>
               <ul className="mt-2 space-y-2.5">
                 {iss.articles.map((a: any) => (
                   <li key={a.id}>
@@ -148,8 +146,11 @@ export function JournalPage({
 
   if (state === 'loading') {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="animate-spin text-faint" size={26} />
+      <div className="mx-auto max-w-5xl space-y-3 px-5 py-9" role="status" aria-label="Loading journal">
+        <Skeleton className="h-3 w-1/4" />
+        <Skeleton className="h-8 w-3/5" />
+        <Skeleton className="h-3 w-2/5" />
+        <Skeleton className="mt-6 h-48 w-full rounded-xl" />
       </div>
     );
   }
@@ -157,10 +158,10 @@ export function JournalPage({
   if (state === 'denied') {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <Lock className="mx-auto mb-4 text-faint" size={32} />
+        <Lock className="mx-auto mb-4 text-muted" size={32} aria-hidden="true" />
         <h1 className="font-serif text-xl font-medium text-ink">Not in your subscription</h1>
         <p className="mt-2 text-sm text-muted">This journal sits in a department your account does not cover.</p>
-        <Link to="/contact" className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-on hover:bg-accent-hover">
+        <Link to="/contact" className={buttonClass('primary', 'md', 'mt-6')}>
           Request access
         </Link>
       </div>
@@ -171,7 +172,7 @@ export function JournalPage({
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
         <h1 className="font-serif text-xl font-medium text-ink">Journal not found</h1>
-        <button onClick={() => navigate(-1)} className="mt-6 font-mono text-[11px] uppercase tracking-wider text-accent hover:underline">
+        <button type="button" onClick={() => navigate(-1)} className={buttonClass('outline', 'md', 'mt-6')}>
           Go back
         </button>
       </div>
@@ -190,11 +191,11 @@ export function JournalPage({
       {/* The spine */}
       <header className="border-b border-rule bg-surface">
         <div className="mx-auto max-w-5xl px-5 py-9">
-          <nav className="mb-5 flex flex-wrap items-center gap-1.5 font-mono text-[11px] text-faint">
+          <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-1.5 font-mono text-[11px] text-muted">
             <Link to="/digital-library" className="hover:text-accent">Library</Link>
             {j.domain && domainSlug && (
               <>
-                <ChevronRight size={11} />
+                <ChevronRight size={12} aria-hidden="true" />
                 <Link to={`${departmentBase}/${domainSlug}`} className="hover:text-accent">{j.domain}</Link>
               </>
             )}
@@ -209,14 +210,16 @@ export function JournalPage({
               <Link to={`${publisherBase}/${j.publisherName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`}
                 className="text-ink-2 hover:text-accent hover:underline">{j.publisherName}</Link>
             )}
-            {j.issn && <><span className="text-rule-2">·</span><span>ISSN {j.issn}</span></>}
-            {j.firstYear && j.lastYear && <><span className="text-rule-2">·</span><span>{j.firstYear}–{j.lastYear}</span></>}
+            {/* A separator goes only between two parts, never at the start of the line. */}
+            {j.issn && <>{j.publisherName && <span className="text-rule-2" aria-hidden="true">·</span>}<span>ISSN {j.issn}</span></>}
+            {j.eissn && j.eissn !== j.issn && <>{(j.publisherName || j.issn) && <span className="text-rule-2" aria-hidden="true">·</span>}<span>eISSN {j.eissn}</span></>}
+            {j.firstYear && j.lastYear && <>{(j.publisherName || j.issn || j.eissn) && <span className="text-rule-2" aria-hidden="true">·</span>}<span>{j.firstYear}–{j.lastYear}</span></>}
             {j.homepage && (
               <>
-                <span className="text-rule-2">·</span>
+                {(j.publisherName || j.issn || j.eissn || (j.firstYear && j.lastYear)) && <span className="text-rule-2" aria-hidden="true">·</span>}
                 <a href={j.homepage} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-accent hover:underline">
-                  Publisher site <ExternalLink size={10} />
+                  Publisher site <ExternalLink size={12} aria-hidden="true" />
                 </a>
               </>
             )}
@@ -227,7 +230,7 @@ export function JournalPage({
           {/* The publisher's own classification, which cuts across our departments. */}
           {Array.isArray(j.subjects) && j.subjects.length > 0 && (
             <div className="mt-5">
-              <p className={LABEL}>Classed under</p>
+              <h2 className={LABEL}>Classed under</h2>
               <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
                 {j.subjects.map(sub => (
                   <li key={sub}>
@@ -251,7 +254,7 @@ export function JournalPage({
             {([['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]] as const).map(([label, n]) => (
               <div key={label}>
                 <dt className={LABEL}>{label}</dt>
-                <dd className="tnum mt-0.5 font-mono text-[17px] text-ink">{Number(n ?? 0).toLocaleString()}</dd>
+                <dd className="tnum mt-0.5 font-mono text-[17px] text-ink">{typeof n === 'number' ? n.toLocaleString() : '—'}</dd>
               </div>
             ))}
           </dl>
@@ -260,15 +263,15 @@ export function JournalPage({
 
       {/* The run */}
       <section className="mx-auto max-w-5xl px-5 py-8">
-        <p className={LABEL}>Volumes</p>
+        <h2 className={LABEL}>Volumes</h2>
 
         {j.volumes.length === 0 ? (
-          <div className="mt-3 rounded-md border border-rule bg-surface p-10 text-center">
+          <div className="mt-3 card p-10 text-center">
             <p className="text-sm text-muted">No volumes recorded yet</p>
-            <p className="mt-1 font-mono text-[11px] text-faint">Articles appear here as the collection is built.</p>
+            <p className="mt-1 text-[13px] text-muted">Articles appear here as the collection is built.</p>
           </div>
         ) : (
-          <div className="mt-3 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-surface">
+          <div className="mt-3 divide-y divide-rule overflow-hidden card">
             {j.volumes.map(v => (
               <VolumeRow key={v.volume} issn={j.issn || j.id} vol={v} articleBase={articleBase} />
             ))}

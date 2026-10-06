@@ -45,6 +45,9 @@ const isIosSafari = () => {
 
 const dismissedNow = () => Number(store.get(DISMISS_KEY) || 0) > Date.now();
 
+/** The cookie notice gets its answer first; two sheets at the bottom of a phone is one too many. */
+const cookieAnswered = () => !!store.get('cookie-consent');
+
 export function InstallWebAppPrompt() {
   const { pathname } = useLocation();
   const [mode, setMode] = useState<'native' | 'ios' | null>(null);
@@ -65,10 +68,18 @@ export function InstallWebAppPrompt() {
     };
     // The browser's event can land after the wait is over.
     const late = () => { if (waited.current) decide(); };
-    const timer = setTimeout(() => { waited.current = true; decide(); setReady(true); }, DELAY_MS);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const start = () => { timer = setTimeout(() => { waited.current = true; decide(); setReady(true); }, DELAY_MS); };
+    if (cookieAnswered()) start();
+    else window.addEventListener('cookie-consent-saved', start, { once: true });
     window.addEventListener('appinstalled', onInstalled);
     window.addEventListener('beforeinstallprompt', late);
-    return () => { clearTimeout(timer); window.removeEventListener('appinstalled', onInstalled); window.removeEventListener('beforeinstallprompt', late); };
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('cookie-consent-saved', start);
+      window.removeEventListener('appinstalled', onInstalled);
+      window.removeEventListener('beforeinstallprompt', late);
+    };
   }, []);
 
   const staff = STAFF_PREFIXES.some(p => pathname === p || pathname.startsWith(`${p}/`));
@@ -114,26 +125,26 @@ export function InstallWebAppPrompt() {
       role="dialog"
       aria-labelledby="pwa-install-title"
       aria-describedby="pwa-install-body"
-      className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border border-slate-200 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl
-                 sm:inset-x-auto sm:bottom-6 sm:left-6 sm:w-[380px] sm:rounded-2xl"
+      className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border border-rule bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-modal)]
+                 sm:inset-x-auto sm:bottom-6 sm:left-6 sm:w-[380px] sm:rounded-xl"
     >
       <button
         type="button" onClick={dismiss} aria-label="Close install prompt"
-        className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B5DFC]"
+        className="btn btn-ghost btn-sm btn-icon absolute right-3 top-3"
       >
         <X size={18} aria-hidden="true" />
       </button>
       <div className="flex items-start gap-3 pr-8">
         <img src="/icons/icon-192.png" alt="" width={44} height={44} className="h-11 w-11 shrink-0 rounded-xl" />
         <div>
-          <h2 id="pwa-install-title" className="text-base font-bold text-[#0F172B]">Install STM Digital Library</h2>
-          <p id="pwa-install-body" className="mt-1 text-sm leading-relaxed text-slate-600">
+          <h2 id="pwa-install-title" className="text-base font-semibold text-ink">Install STM Digital Library</h2>
+          <p id="pwa-install-body" className="mt-1 text-sm leading-relaxed text-ink-2">
             {mode === 'ios'
               ? 'To add this app to your Home Screen:'
               : 'Add STM Digital Library to your device for quicker access to journals, books, research resources and your library account.'}
           </p>
           {mode === 'ios' && (
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-ink-2">
               <li>Tap the Share icon <Share size={14} className="inline -mt-0.5" aria-label="Share" /></li>
               <li>Select “Add to Home Screen”</li>
               <li>Tap “Add”</li>
@@ -145,21 +156,21 @@ export function InstallWebAppPrompt() {
         {mode === 'native' ? (
           <button
             ref={installButton} type="button" onClick={install} autoFocus
-            className="min-h-11 flex-1 rounded-xl bg-[#1B5DFC] px-4 text-sm font-bold text-white hover:bg-[#164bd0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F172B] focus-visible:ring-offset-2"
+            className="btn btn-brand flex-1 min-h-11"
           >
             Install App
           </button>
         ) : (
           <button
             type="button" onClick={dismiss} autoFocus
-            className="min-h-11 flex-1 rounded-xl bg-[#1B5DFC] px-4 text-sm font-bold text-white hover:bg-[#164bd0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F172B] focus-visible:ring-offset-2"
+            className="btn btn-brand flex-1 min-h-11"
           >
             Got it
           </button>
         )}
         <button
           type="button" onClick={dismiss}
-          className="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B5DFC]"
+          className="btn btn-outline min-h-11"
         >
           Not Now
         </button>

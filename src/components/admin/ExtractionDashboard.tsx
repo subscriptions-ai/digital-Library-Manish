@@ -24,6 +24,8 @@ export function ExtractionDashboard() {
     })
       .then(r => r.json())
       .then(data => {
+        // An error answers with an object; never hand one to jobs.map.
+        if (!Array.isArray(data)) throw new Error('jobs');
         setJobs(data);
         setLoading(false);
       })

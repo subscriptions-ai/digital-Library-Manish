@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Clock, Lock, Sparkles } from 'lucide-react';
+import { buttonClass, StatusBadge } from '../ui';
 
 /**
  * The free member's clock, on screen.
@@ -141,10 +142,11 @@ export function ReadingClock({ allowance, msLeft, msUntil, className = '' }: {
     <Link
       to={proPath}
       title={title}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold tabular-nums transition-colors hover:opacity-80 ${tone} ${className}`}
+      aria-label={`Free Preview: ${label}. ${title}`}
+      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold tabular-nums transition-opacity duration-150 hover:opacity-80 ${tone} ${className}`}
     >
-      {s === 'waiting' || s === 'spent' ? <Lock size={12} /> : <Clock size={12} />}
-      <span className="hidden sm:inline">Free Preview ·</span> {label}
+      {s === 'waiting' || s === 'spent' ? <Lock size={12} aria-hidden="true" /> : <Clock size={12} aria-hidden="true" />}
+      <span aria-hidden="true"><span className="hidden sm:inline">Free Preview ·</span> {label}</span>
     </Link>
   );
 }
@@ -165,17 +167,18 @@ export function ReadingLimitNotice({
   const perDay = allowance.sessionsPerDay ?? 4;
   const left = allowance.sessionsLeft;
   return (
-    <div className={`mx-auto w-full max-w-lg rounded-2xl border border-rule bg-surface p-6 text-center ${compact ? '' : 'my-10'}`}>
+    <div className={`mx-auto w-full max-w-lg card card-pad text-center ${compact ? '' : 'my-10'}`}>
       <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-caution-soft text-caution">
         <Lock size={20} aria-hidden="true" />
       </div>
+      {!spent && <StatusBadge status="session-ended" className="mb-2" />}
       <h2 className="font-serif text-xl text-ink">
         {spent ? 'That is today’s two hours' : 'Your reading session has ended'}
       </h2>
 
       {spent ? (
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
-          A free membership includes {perDay} half-hour sessions a day. The next one opens after midnight.
+          A Free Subscription includes {perDay} half-hour sessions a day. The next one opens after midnight.
         </p>
       ) : allowance.nextOpensAt ? (
         <div className="mt-3">
@@ -196,25 +199,19 @@ export function ReadingLimitNotice({
       {typeof left === 'number' && (
         <p className="mt-3 text-sm font-semibold text-ink">
           {left} {left === 1 ? 'session' : 'sessions'} remaining today
-          <span className="block text-xs font-normal text-faint">{perDay} sessions available per day</span>
+          <span className="block text-xs font-normal text-muted">{perDay} sessions available per day</span>
         </p>
       )}
 
-      <div className="mt-5 flex flex-col items-stretch gap-2.5 sm:flex-row sm:justify-center">
-        <Link
-          to={proPath}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <Sparkles size={15} aria-hidden="true" /> Explore Subscription Options
+      <div className="mt-5 flex flex-col items-stretch gap-2 sm:flex-row sm:justify-center">
+        <Link to={proPath} className={buttonClass('primary')}>
+          <Sparkles size={16} aria-hidden="true" /> Explore Subscription Options
         </Link>
-        <Link
-          to={libraryPath}
-          className="inline-flex items-center justify-center rounded-xl border border-rule bg-surface px-5 py-2.5 text-sm font-semibold text-ink-2 transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
+        <Link to={libraryPath} className={buttonClass('outline')}>
           Back to Content Library
         </Link>
       </div>
-      <p className="mt-3 text-xs text-faint">
+      <p className="mt-3 text-xs text-muted">
         You can still search and browse the whole catalogue while you wait.
       </p>
     </div>

@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useAllowance, countdown, clockTime } from './ReadingClock';
 import { MAX_INSTITUTION_USERS } from '../../lib/institutionPricing';
+import { Badge, Button, Field, PageHeader, Skeleton, StatusBadge, buttonClass, friendlyError } from '../ui';
 
 /**
  * Membership: everything about this member's account, in one place.
@@ -27,6 +28,39 @@ const date = (d?: string | null) =>
 
 const daysLeft = (end: string) =>
   Math.max(0, Math.ceil((new Date(end).getTime() - Date.now()) / 864e5));
+
+/**
+ * One column of the comparison. It lives out here rather than inside
+ * PlanComparison because a component declared in another's body is a new
+ * component on every render, and React remounts it each time.
+ */
+function PlanCard({ title, tag, active, tone, items }: {
+  title: string; tag: string; active: boolean; tone: 'free' | 'pro';
+  items: { text: string; yes: boolean }[];
+}) {
+  return (
+    <div className={`rounded-xl border p-5 ${active ? 'border-accent bg-accent-soft' : 'border-rule bg-surface'}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {tone === 'pro' ? <Sparkles size={16} className="text-accent" aria-hidden="true" /> : <Clock size={16} className="text-muted" aria-hidden="true" />}
+          <h3 className="text-base font-semibold text-ink">{title}</h3>
+        </div>
+        {active && <Badge tone="accent">You are here</Badge>}
+      </div>
+      <p className="mt-1 text-sm text-muted">{tag}</p>
+      <ul className="mt-4 space-y-2.5">
+        {items.map(i => (
+          <li key={i.text} className="flex gap-2.5 text-sm leading-snug">
+            {i.yes
+              ? <Check size={16} className="mt-0.5 shrink-0 text-accent" aria-label="Included" />
+              : <Minus size={16} className="mt-0.5 shrink-0 text-faint" aria-label="Limited" />}
+            <span className={i.yes ? 'text-ink-2' : 'text-muted'}>{i.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /**
  * Free beside Pro.
@@ -54,49 +88,19 @@ function PlanComparison({ pro, institution, sessionsPerDay }: {
     { freeHas: true, free: 'Never expires, nothing to pay', proText: 'Runs for an agreed term, and can be renewed' },
   ];
 
-  const Card = ({ title, tag, active, tone, items }: {
-    title: string; tag: string; active: boolean; tone: 'free' | 'pro';
-    items: { text: string; yes: boolean }[];
-  }) => (
-    <div className={`rounded-2xl border p-5 ${active ? 'border-accent bg-accent-soft/40' : 'border-rule bg-surface'}`}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {tone === 'pro' ? <Sparkles size={16} className="text-accent" /> : <Clock size={16} className="text-muted" />}
-          <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
-        </div>
-        {active && (
-          <span className="rounded-full bg-accent px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-white">
-            You are here
-          </span>
-        )}
-      </div>
-      <p className="mt-1 text-[12.5px] text-muted">{tag}</p>
-      <ul className="mt-4 space-y-2.5">
-        {items.map(i => (
-          <li key={i.text} className="flex gap-2.5 text-[13.5px] leading-snug">
-            {i.yes
-              ? <Check size={15} className="mt-0.5 shrink-0 text-accent" />
-              : <Minus size={15} className="mt-0.5 shrink-0 text-faint" />}
-            <span className={i.yes ? 'text-ink-2' : 'text-muted'}>{i.text}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-
   return (
     <section>
       <div className="mb-3 flex items-center gap-2">
-        <Users size={15} className="text-faint" />
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Free beside Pro</p>
+        <Users size={16} className="text-muted" aria-hidden="true" />
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Free beside Pro</h2>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Card title="Free membership" tag="What you have now" active={!pro} tone="free"
+        <PlanCard title="Free membership" tag="What you have now" active={!pro} tone="free"
           items={rows.map(r => ({ text: r.free, yes: r.freeHas }))} />
-        <Card title="Pro membership" tag="What changes" active={pro} tone="pro"
+        <PlanCard title="Pro membership" tag="What changes" active={pro} tone="pro"
           items={rows.map(r => ({ text: r.proText, yes: true }))} />
       </div>
-      <p className="mt-3 text-[12px] leading-relaxed text-faint">
+      <p className="mt-3 text-xs leading-relaxed text-muted">
         Pro takes nothing away and adds no extra shelf: the library is the same on both.
         What it removes is the clock{institution ? ', for you and for everyone you add' : ''}.
       </p>
@@ -149,7 +153,7 @@ export function ProMembership() {
       toast.success('Application sent — we will be in touch');
       load();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(friendlyError(err, 'Could not send your application'));
     } finally {
       setSending(false);
     }
@@ -165,19 +169,34 @@ export function ProMembership() {
   const payments = membership?.payments;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 px-4 py-8 sm:px-6">
-      <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Membership</p>
-        <h1 className="mt-1 font-serif text-2xl text-ink sm:text-3xl">
-          {pro ? 'You read without a limit' : 'Your free membership'}
-        </h1>
-      </div>
+    <div className="mx-auto max-w-3xl space-y-6">
+      {/* Until the membership arrives we do not know which of the two pages
+          this is, so it waits rather than greeting a Pro member as free. */}
+      {loading ? (
+        <div className="space-y-6" role="status" aria-label="Loading">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-8 w-64" />
+          </div>
+          <div className="card card-pad space-y-3" aria-hidden="true">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-2 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        </div>
+      ) : (
+      <>
+      <PageHeader
+        className="mb-0"
+        eyebrow="Membership"
+        title={pro ? 'You read without a limit' : 'Your free membership'}
+      />
 
       {/* ── 1. what you can read now ──────────────────────────────────────── */}
-      <section className="rounded-2xl border border-rule bg-surface p-5">
+      <section className="card card-pad" aria-label="What you can read now">
         {pro ? (
           <div className="flex items-start gap-3">
-            <InfinityIcon className="mt-0.5 shrink-0 text-accent" size={20} />
+            <InfinityIcon className="mt-0.5 shrink-0 text-accent" size={20} aria-hidden="true" />
             <div>
               <p className="text-sm font-semibold text-ink">Pro membership is active</p>
               <p className="mt-1 text-sm text-muted">
@@ -187,8 +206,9 @@ export function ProMembership() {
           </div>
         ) : (
           <>
+            <StatusBadge status="free-preview" className="mb-3" />
             {lapsed && (
-              <p className="mb-4 rounded-lg bg-caution-soft px-3 py-2 text-[12.5px] text-caution">
+              <p className="mb-4 rounded-lg border border-caution bg-caution-soft px-3 py-2 text-sm text-ink-2">
                 Your {lapsed.planName || 'Pro membership'} ended on <b>{date(lapsed.endDate)}</b>, so you are back
                 on the free allowance. Nothing has been taken away — the whole library is still yours to read,
                 half an hour at a time.
@@ -202,12 +222,16 @@ export function ProMembership() {
                   : allowance?.state === 'spent' ? <>Today’s two hours are used</>
                   : <>Ready when you are</>}
               </p>
-              <p className="font-mono text-xs text-faint">
+              <p className="font-mono text-xs text-muted">
                 {Math.round((allowance?.usedTodayMs ?? 0) / 60_000)} of 120 min today
               </p>
             </div>
 
-            <div className="mt-3 flex gap-1">
+            <div
+              className="mt-3 flex gap-1"
+              role="img"
+              aria-label={`${allowance?.sessionsToday ?? 0} of ${allowance?.sessionsPerDay ?? 4} sessions used today`}
+            >
               {Array.from({ length: allowance?.sessionsPerDay ?? 4 }).map((_, i) => (
                 <div key={i} className={`h-1.5 flex-1 rounded-full ${
                   i < (allowance?.sessionsToday ?? 0) ? 'bg-accent' : 'bg-rule'}`} />
@@ -215,11 +239,11 @@ export function ProMembership() {
             </div>
 
             <ul className="mt-4 space-y-1.5 text-sm text-muted">
-              <li className="flex gap-2"><Check size={15} className="mt-0.5 shrink-0 text-accent" />
+              <li className="flex gap-2"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
                 The whole library — every subject, every kind of material.</li>
-              <li className="flex gap-2"><Clock size={15} className="mt-0.5 shrink-0 text-muted" />
+              <li className="flex gap-2"><Clock size={16} className="mt-0.5 shrink-0 text-muted" aria-hidden="true" />
                 Half an hour at a time, four times a day, with two hours between sessions.</li>
-              <li className="flex gap-2"><Clock size={15} className="mt-0.5 shrink-0 text-muted" />
+              <li className="flex gap-2"><Clock size={16} className="mt-0.5 shrink-0 text-muted" aria-hidden="true" />
                 <span><b className="text-ink">The clock stops when you sign out</b> — closing the tab does not stop it,
                   and whatever is left of the session is kept for your next visit.</span></li>
             </ul>
@@ -228,15 +252,15 @@ export function ProMembership() {
       </section>
 
       {/* ── 2. how long it runs ───────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-rule bg-surface p-5">
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">How long it runs</p>
+      <section className="card card-pad" aria-labelledby="membership-term">
+        <h2 id="membership-term" className="text-xs font-semibold uppercase tracking-wider text-muted">How long it runs</h2>
         {current ? (
           <>
             <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
               {/* A Pro membership covers no particular department, so the plan's
                   own name is what it is called. Heading it with the department
                   left the first Pro member looking at a card with no title. */}
-              <h2 className="text-lg font-semibold text-ink">{current.domainName || current.planName || 'Membership'}</h2>
+              <h3 className="type-card-title text-ink">{current.domainName || current.planName || 'Membership'}</h3>
               <p className="font-mono text-xs text-muted">{daysLeft(current.endDate)} days left</p>
             </div>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-rule">
@@ -247,11 +271,11 @@ export function ProMembership() {
                    (new Date(current.endDate).getTime() - new Date(current.startDate).getTime())) * 100)))}%` }}
               />
             </div>
-            <p className="mt-2 font-mono text-xs text-faint">
+            <p className="mt-2 font-mono text-xs text-muted">
               {date(current.startDate)} — {date(current.endDate)}
             </p>
             {daysLeft(current.endDate) <= 30 && (
-              <Link to="/contact" className="mt-3 inline-block rounded-lg border border-rule px-3 py-1.5 text-xs font-semibold text-ink hover:bg-surface-2">
+              <Link to="/contact" className={buttonClass('outline', 'sm', 'mt-3')}>
                 Request renewal
               </Link>
             )}
@@ -269,19 +293,22 @@ export function ProMembership() {
       {/* ── 4. asking for more ────────────────────────────────────────────── */}
       {!pro && !loading && (
         waiting ? (
-          <section className="rounded-2xl border border-accent bg-accent-soft p-5">
-            <p className="text-sm font-semibold text-accent">Your application is with us</p>
-            <p className="mt-1 text-sm text-muted">
+          <section className="rounded-xl border border-accent bg-accent-soft p-5" role="status">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-ink">Your application is with us</p>
+              <StatusBadge status="pending" />
+            </div>
+            <p className="mt-1 text-sm text-ink-2">
               Sent {date(waiting.createdAt)}. Someone will call you to agree the terms, and your reading
               limit lifts as soon as it is approved.
             </p>
           </section>
         ) : (
-          <form onSubmit={apply} className="rounded-2xl border border-rule bg-surface p-5">
+          <form onSubmit={apply} className="card card-pad">
             <div className="flex items-start gap-3">
-              <Sparkles className="mt-0.5 shrink-0 text-accent" size={20} />
+              <Sparkles className="mt-0.5 shrink-0 text-accent" size={20} aria-hidden="true" />
               <div>
-                <h2 className="text-sm font-semibold text-ink">Apply for Pro</h2>
+                <h2 className="type-card-title text-ink">Apply for Pro</h2>
                 <p className="mt-1 text-sm text-muted">
                   Pro removes the sessions entirely — read for as long as you like, whenever you like.
                   Tell us a little and we will call to agree the terms.
@@ -290,49 +317,43 @@ export function ProMembership() {
             </div>
 
             {rejected && (
-              <p className="mt-3 rounded-lg bg-caution-soft px-3 py-2 text-xs text-caution">
+              <p className="mt-4 rounded-lg border border-caution bg-caution-soft px-3 py-2 text-sm text-ink-2">
                 A previous application was not taken forward
                 {rejected.rejectionNote ? `: ${rejected.rejectionNote}` : '.'} You are welcome to apply again.
               </p>
             )}
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {([
                 ['organization', 'Organisation', 'College, hospital or company'],
                 ['contact', 'Phone', 'So we can call you'],
                 ['designation', 'Your role', 'Student, researcher, librarian…'],
               ] as const).map(([key, label, hint]) => (
-                <label key={key} className="text-xs">
-                  <span className="mb-1 block font-semibold text-muted">{label}</span>
+                <Field key={key} label={label}>
                   <input
                     value={(form as any)[key]}
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                     placeholder={hint}
-                    className="w-full rounded-lg border border-rule bg-ground px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+                    className="input"
                   />
-                </label>
+                </Field>
               ))}
             </div>
 
-            <label className="mt-3 block text-xs">
-              <span className="mb-1 block font-semibold text-muted">What do you need it for?</span>
+            <Field label="What do you need it for?" className="mt-4">
               <textarea
                 value={form.purpose}
                 onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))}
                 rows={3}
                 placeholder="A thesis, a course, keeping up with a field…"
-                className="w-full rounded-lg border border-rule bg-ground px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+                className="input"
               />
-            </label>
+            </Field>
 
-            <button
-              type="submit"
-              disabled={sending}
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
-            >
-              <Send size={15} /> {sending ? 'Sending…' : 'Send application'}
-            </button>
-            <p className="mt-2 text-xs text-faint">
+            <Button type="submit" loading={sending} className="mt-5 w-full sm:w-auto">
+              {!sending && <Send size={16} aria-hidden="true" />} {sending ? 'Sending…' : 'Send application'}
+            </Button>
+            <p className="mt-2 text-xs text-muted">
               Nothing is charged here. We will agree everything with you on the call first.
             </p>
           </form>
@@ -341,23 +362,23 @@ export function ProMembership() {
 
       {/* ── 4. what came before ───────────────────────────────────────────── */}
       {(previous.length > 0 || applications.length > 0) && (
-        <section className="rounded-2xl border border-rule bg-surface p-5">
-          <p className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
-            <History size={12} /> What came before
-          </p>
+        <section className="card card-pad" aria-labelledby="membership-history">
+          <h2 id="membership-history" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+            <History size={14} aria-hidden="true" /> What came before
+          </h2>
           <ul className="mt-3 divide-y divide-rule">
             {previous.map((s: any) => (
-              <li key={s.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm">
+              <li key={s.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm">
                 <span className="text-ink">{s.domainName || s.planName || 'Membership'}</span>
-                <span className="font-mono text-xs text-faint">
+                <span className="font-mono text-xs text-muted">
                   {date(s.startDate)} — {date(s.endDate)} · {s.status}
                 </span>
               </li>
             ))}
             {applications.map((a: any) => (
-              <li key={a.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm">
-                <span className="text-muted">Applied for {a.planType === 'Pro' ? 'Pro' : a.planType}</span>
-                <span className="font-mono text-xs text-faint">{date(a.createdAt)} · {a.status}</span>
+              <li key={a.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm">
+                <span className="text-ink-2">Applied for {a.planType === 'Pro' ? 'Pro' : a.planType}</span>
+                <span className="font-mono text-xs text-muted">{date(a.createdAt)} · {a.status}</span>
               </li>
             ))}
           </ul>
@@ -367,25 +388,27 @@ export function ProMembership() {
       {/* ── 5. billing, only if there has ever been any ───────────────────── */}
       {payments?.count > 0 && (
         inInstitution ? (
-          <div className="flex items-center justify-between rounded-2xl border border-rule bg-surface p-5">
+          <div className="card card-pad flex flex-wrap items-center justify-between gap-2">
             <span className="flex items-center gap-2 text-sm text-ink">
-              <Receipt size={16} className="text-muted" />
+              <Receipt size={16} className="text-muted" aria-hidden="true" />
               {payments.count} payment{payments.count > 1 ? 's' : ''} on record
             </span>
-            <span className="font-mono text-xs text-faint">Ask us for a copy</span>
+            <span className="text-xs text-muted">Ask us for a copy</span>
           </div>
         ) : (
           <Link
             to="/dashboard/invoices"
-            className="flex items-center justify-between rounded-2xl border border-rule bg-surface p-5 hover:bg-surface-2"
+            className="card card-pad card-interactive flex flex-wrap items-center justify-between gap-2"
           >
             <span className="flex items-center gap-2 text-sm text-ink">
-              <Receipt size={16} className="text-muted" />
+              <Receipt size={16} className="text-muted" aria-hidden="true" />
               {payments.count} payment{payments.count > 1 ? 's' : ''} on record
             </span>
-            <span className="font-mono text-xs text-muted">Invoices &amp; payments →</span>
+            <span className="text-sm font-semibold text-accent">Invoices &amp; payments →</span>
           </Link>
         )
+      )}
+      </>
       )}
     </div>
   );

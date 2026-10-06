@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Mail, Phone, Calendar, MessageSquare, Clock, ArrowRight, User } from 'lucide-react';
+import { Search, Mail, Phone, Calendar, MessageSquare, Clock, ArrowRight, ClipboardList } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { EmptyState, Skeleton } from '../ui';
 
 export function SalesActivityLog() {
   const [activities, setActivities] = useState<any[]>([]);
@@ -31,11 +32,11 @@ export function SalesActivityLog() {
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-6">
-        <div className="h-8 bg-slate-100 rounded w-1/4"></div>
-        <div className="h-12 bg-slate-100 rounded"></div>
-        <div className="space-y-4">
-          {[1,2,3].map(i => <div key={i} className="h-24 bg-slate-100 rounded-2xl"></div>)}
+      <div className="space-y-6" role="status" aria-label="Loading activity">
+        <Skeleton className="h-8 w-1/4" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="space-y-3">
+          {[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
       </div>
     );
@@ -45,26 +46,26 @@ export function SalesActivityLog() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'Call':
-        return <Phone size={14} className="text-emerald-600" />;
+        return <Phone size={16} aria-hidden="true" />;
       case 'Email':
-        return <Mail size={14} className="text-indigo-600" />;
+        return <Mail size={16} aria-hidden="true" />;
       case 'Meeting':
-        return <Calendar size={14} className="text-purple-600" />;
+        return <Calendar size={16} aria-hidden="true" />;
       default:
-        return <MessageSquare size={14} className="text-amber-600" />;
+        return <MessageSquare size={16} aria-hidden="true" />;
     }
   };
 
   const getBadgeColor = (type: string) => {
     switch (type) {
       case 'Call':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+        return 'bg-success-soft text-success';
       case 'Email':
-        return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+        return 'bg-accent-soft text-accent';
       case 'Meeting':
-        return 'bg-purple-50 text-purple-700 border-purple-100';
+        return 'bg-surface-2 text-ink-2';
       default:
-        return 'bg-amber-50 text-amber-700 border-amber-100';
+        return 'bg-caution-soft text-caution';
     }
   };
 
@@ -113,53 +114,51 @@ export function SalesActivityLog() {
   const renderSection = (title: string, items: any[]) => {
     if (items.length === 0) return null;
     return (
-      <div className="space-y-3">
-        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">{title}</h3>
+      <section className="space-y-3" aria-label={title}>
+        <h2 className="text-xs font-semibold text-muted uppercase tracking-wider pl-1">{title}</h2>
         <div className="space-y-3">
           {items.map(act => (
-            <div 
-              key={act.id} 
+            <button
+              type="button"
+              key={act.id}
               onClick={() => navigate(`/sales/leads/${act.leadId}`)}
-              className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer flex gap-4 items-start group"
+              className="card card-interactive w-full text-left p-4 sm:p-5 flex gap-3 sm:gap-4 items-start group"
             >
               {/* Left icon wrapper */}
-              <div className={`p-2.5 rounded-xl border shrink-0 ${getBadgeColor(act.type)}`}>
+              <span className={`h-9 w-9 flex items-center justify-center rounded-lg shrink-0 ${getBadgeColor(act.type)}`} title={act.type}>
                 {getIcon(act.type)}
-              </div>
-              
+              </span>
+
               {/* Middle details */}
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-slate-800 text-sm">{act.lead?.name || 'Unknown Lead'}</span>
+              <span className="flex-1 min-w-0 block">
+                <span className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-ink text-sm truncate">{act.lead?.name || 'Unknown Lead'}</span>
                     {act.lead?.organization && (
-                      <span className="text-xs text-slate-400 font-semibold truncate hidden md:inline">• {act.lead.organization}</span>
+                      <span className="text-xs text-muted truncate hidden md:inline">• {act.lead.organization}</span>
                     )}
-                  </div>
-                  <span className="text-xs text-slate-400 font-bold flex items-center gap-1">
-                    <Clock size={12} />
+                  </span>
+                  <span className="text-xs text-muted flex items-center gap-1 shrink-0">
+                    <Clock size={12} aria-hidden="true" />
                     {new Date(act.createdAt).toLocaleString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true })}
-                    {title === 'Older' && ` - ${new Date(act.createdAt).toLocaleDateString()}`}
+                    {title === 'Older Activities' && ` - ${new Date(act.createdAt).toLocaleDateString()}`}
                   </span>
-                </div>
-                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap font-medium">{act.notes}</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border border-indigo-100">
-                    {act.lead?.source}
-                  </span>
-                </div>
-              </div>
+                </span>
+                <span className="block text-ink-2 text-sm leading-relaxed whitespace-pre-wrap break-words">{act.notes}</span>
+                <span className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="badge badge-neutral">{act.type}</span>
+                  {act.lead?.source && <span className="badge badge-neutral">{act.lead.source}</span>}
+                </span>
+              </span>
 
               {/* Right View action */}
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0">
-                <button className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5 bg-slate-100 py-1.5 px-3 rounded-lg">
-                  Lead Details <ArrowRight size={12} />
-                </button>
-              </div>
-            </div>
+              <span className="hidden sm:inline-flex self-center shrink-0 items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
+                Lead Details <ArrowRight size={14} aria-hidden="true" />
+              </span>
+            </button>
           ))}
         </div>
-      </div>
+      </section>
     );
   };
 
@@ -169,31 +168,35 @@ export function SalesActivityLog() {
     <div className="space-y-6">
       {/* Title */}
       <div>
-        <h1 className="text-2xl font-black text-slate-900">Activity Log</h1>
-        <p className="text-slate-500 text-sm font-semibold mt-1">A consolidated timeline of all your notes, phone calls, emails, and meetings.</p>
+        <h1 className="type-page-title text-ink">Activity Log</h1>
+        <p className="text-muted text-sm mt-1">A consolidated timeline of all your notes, phone calls, emails, and meetings.</p>
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-        {/* Search */}
-        <div className="relative w-full sm:flex-1">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search logs by lead name or note details..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-slate-400"
-          />
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+        <div className="field">
+          <label htmlFor="activity-search" className="field-label">Search</label>
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden="true" />
+            <input
+              id="activity-search"
+              type="text"
+              placeholder="Lead name or note details"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pl-9"
+            />
+          </div>
         </div>
 
         {/* Interaction Type dropdown */}
-        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 bg-white border border-slate-200 rounded-xl px-3 py-2">
-          <Clock size={15} className="text-slate-400" />
+        <div className="field">
+          <label htmlFor="activity-type" className="field-label">Interaction type</label>
           <select
+            id="activity-type"
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="text-xs font-bold text-slate-700 bg-transparent border-none outline-none pr-6 cursor-pointer"
+            className="input sm:w-48"
           >
             <option value="All">All Interactions</option>
             <option value="Note">Notes Only</option>
@@ -214,12 +217,12 @@ export function SalesActivityLog() {
             {renderSection('Older Activities', groups.older)}
           </>
         ) : (
-          <div className="text-center py-16 bg-slate-50/20 rounded-3xl border border-slate-200 border-dashed">
-            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
-              <User size={20} />
-            </div>
-            <h4 className="font-extrabold text-slate-700 text-sm">No Activities Logged</h4>
-            <p className="text-slate-400 text-xs mt-1">You haven't logged any notes, calls, emails, or meetings matching the current filters.</p>
+          <div className="card">
+            <EmptyState
+              icon={ClipboardList}
+              title="No activities logged"
+              description="You haven't logged any notes, calls, emails, or meetings matching the current filters."
+            />
           </div>
         )}
       </div>

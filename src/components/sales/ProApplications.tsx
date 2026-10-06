@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Mail, Phone, Building2, Clock, Loader2 } from 'lucide-react';
+import { Sparkles, Mail, Phone, Building2, Clock } from 'lucide-react';
+import { Badge, EmptyState, ErrorState, SkeletonRows } from '../ui';
 
 /**
  * Pro applications, for the sales team.
@@ -40,23 +41,24 @@ export function ProApplications() {
   const rows: any[] = data?.applications || [];
 
   return (
-    <div className="p-4 sm:p-6">
+    <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Sales</p>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-black text-slate-900">
-            <Sparkles size={22} className="text-indigo-600" /> Pro applications
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">Sales</p>
+          <h1 className="type-page-title mt-1 flex items-center gap-2 text-ink">
+            <Sparkles size={20} className="text-accent shrink-0" aria-hidden="true" /> Pro applications
           </h1>
-          <p className="mt-1 max-w-xl text-sm text-slate-500">
+          <p className="mt-1 max-w-xl text-sm text-muted">
             Members who have run into the free reading limit and asked for a membership without one.
             Call to agree terms; an administrator grants the access under Subscription Requests.
           </p>
         </div>
-        <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
+        <div className="flex gap-1 rounded-lg border border-rule bg-surface p-1" role="group" aria-label="Show applications">
           {([['Pending', 'Waiting'], ['', 'All']] as const).map(([v, label]) => (
             <button key={label} onClick={() => setFilter(v as any)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-                filter === v ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+              aria-pressed={filter === v}
+              className={`h-8 rounded-md px-3 text-xs font-semibold transition-colors duration-150 ${
+                filter === v ? 'bg-accent text-accent-on' : 'text-ink-2 hover:bg-surface-2'}`}>
               {label}
             </button>
           ))}
@@ -64,50 +66,50 @@ export function ProApplications() {
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-16 text-sm text-slate-400">
-          <Loader2 className="animate-spin" size={16} /> Loading…
-        </div>
+        <div className="card card-pad mt-6"><SkeletonRows rows={4} /></div>
+      ) : data === null ? (
+        // The request failed (a success always returns an object), so say so
+        // rather than claim nobody has applied.
+        <ErrorState className="mt-6" title="Applications could not be loaded" onRetry={load} />
       ) : !rows.length ? (
-        <p className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center text-sm text-slate-400">
-          {filter ? 'Nobody is waiting for a decision.' : 'No applications yet.'}
-        </p>
+        <div className="card mt-6">
+          <EmptyState
+            icon={Sparkles}
+            title={filter ? 'Nobody is waiting for a decision.' : 'No applications yet.'}
+          />
+        </div>
       ) : (
-        <div className="mt-5 space-y-3">
+        <div className="mt-6 space-y-3">
           {rows.map(a => (
-            <div key={a.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div key={a.id} className="card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-slate-900">{a.member?.displayName || a.userName}</p>
-                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                    <span className="inline-flex items-center gap-1"><Mail size={12} /> {a.email}</span>
-                    {(a.member?.contact) && <span className="inline-flex items-center gap-1"><Phone size={12} /> {a.member.contact}</span>}
-                    {(a.member?.organization) && <span className="inline-flex items-center gap-1"><Building2 size={12} /> {a.member.organization}</span>}
-                    <span className="inline-flex items-center gap-1"><Clock size={12} /> {ago(a.createdAt)}</span>
+                  <p className="font-semibold text-ink">{a.member?.displayName || a.userName}</p>
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+                    <span className="inline-flex items-center gap-1 min-w-0 break-all"><Mail size={12} className="shrink-0" aria-hidden="true" /> {a.email}</span>
+                    {(a.member?.contact) && <span className="inline-flex items-center gap-1"><Phone size={12} aria-hidden="true" /> {a.member.contact}</span>}
+                    {(a.member?.organization) && <span className="inline-flex items-center gap-1"><Building2 size={12} aria-hidden="true" /> {a.member.organization}</span>}
+                    <span className="inline-flex items-center gap-1"><Clock size={12} aria-hidden="true" /> {ago(a.createdAt)}</span>
                   </div>
                 </div>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                  a.status === 'Pending' ? 'bg-amber-100 text-amber-700'
-                  : a.status === 'Approved' ? 'bg-emerald-100 text-emerald-700'
-                  : 'bg-slate-100 text-slate-500'}`}>
+                <Badge dot tone={a.status === 'Pending' ? 'caution' : a.status === 'Approved' ? 'success' : 'neutral'}>
                   {a.status === 'Pending' ? 'Waiting' : a.status}
-                </span>
+                </Badge>
               </div>
 
               {a.notes && (
-                <pre className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 px-3 py-2.5 font-sans text-[12.5px] leading-relaxed text-slate-600">
+                <pre className="mt-3 whitespace-pre-wrap break-words rounded-lg bg-surface-2 px-3 py-2 font-sans text-[13px] leading-relaxed text-ink-2">
                   {a.notes}
                 </pre>
               )}
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <a href={`mailto:${a.email}`}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50">
-                  Email
+                <a href={`mailto:${a.email}`} className="btn btn-outline btn-sm">
+                  <Mail size={14} aria-hidden="true" /> Email
                 </a>
                 {a.member?.contact && (
-                  <a href={`tel:${a.member.contact}`}
-                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700">
-                    Call
+                  <a href={`tel:${a.member.contact}`} className="btn btn-primary btn-sm">
+                    <Phone size={14} aria-hidden="true" /> Call
                   </a>
                 )}
               </div>
