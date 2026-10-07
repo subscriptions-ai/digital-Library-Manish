@@ -376,6 +376,13 @@
   .hero-float, .hero-float-slow, .hero-float-slower, .hero-float-fast { animation: none; }
 }
 
+/* The institution bars draw themselves in once, slowly enough to read as a
+   settle rather than a show. */
+.mix-bar { transition: width 0.9s cubic-bezier(0.22, 0.61, 0.36, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .mix-bar { transition: none; }
+}
+
 /* The publishers strip on the home page, which walks slowly to the left and
    stops when a reader points at it. The track holds the list twice, so the
    second copy is under the cursor by the time the first has left. */

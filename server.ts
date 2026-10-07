@@ -10167,6 +10167,88 @@ async function startServer() {
       // page cannot quote different figures for the same shelf.
       const [counts, byDomain, authors, departmentTotals] = await Promise.all([
         collectionCounts(),
+  /**
+   * The homepage's "Academic Community" figures: counts only, never a name.
+   *
+   * Nobody has ever been asked to record an institution's type or country, so
+   * both are read from what exists. The type comes from the name — and, unlike
+   * `institutionKind` above, a name that matches nothing is "other" rather than
+   * quietly counted as an organisation, so a guess never inflates a category.
+   * The country comes from the institution's own account, then from its
+   * members. An institution with no country is counted as "unknown", never as
+   * India, so the geography is a share of the records that have one.
+   */
+  const INSTITUTION_TYPE_RULES: [string, RegExp][] = [
+    ['universities', /\buniversit|vishwavidyalaya|vidyapith|deemed\b/],
+    ['colleges', /\bcollege|mahavidyalaya\b/],
+    ['institutes', /\binstitut|\biit\b|\bnit\b|\biiit\b|\biim\b|academy|polytechnic|\bres(earch)?\b|laborator/],
+    ['schools', /\bschool|vidyalaya|vidya mandir\b/],
+    ['organisations', /\borgani[sz]ation|\b(pvt|private|ltd|limited|llp|inc|corp|corporation|company|foundation|trust|society|association|council|ministry|bank|technologies|solutions|enterprises|industries)\b/],
+  ];
+  const institutionType = (name: string): string => {
+    const n2 = String(name || '').toLowerCase();
+    for (const [key, re] of INSTITUTION_TYPE_RULES) if (re.test(n2)) return key;
+    return 'other';
+  };
+  const isIndia = (c: string) => ['india', 'bharat', 'republic of india', 'in', 'ind'].includes(c.trim().toLowerCase());
+  let institutionStatsCache: { at: number; value: any } | null = null;
+
+  app.get("/api/public/institution-stats", async (_req: any, res: any) => {
+    try {
+      if (institutionStatsCache && Date.now() - institutionStatsCache.at < 15 * 60_000) {
+        res.set('Cache-Control', 'public, max-age=300');
+        return res.json(institutionStatsCache.value);
+      }
+
+      const rows: { name: string; members: number; country: string | null }[] =
+        await (prisma as any).$queryRawUnsafe(`
+          select i."name" as name, count(u."id")::int as members,
+                 coalesce(
+                   max(case when u."role" = 'Institution' then nullif(trim(u."country"), '') end),
+                   mode() within group (order by nullif(trim(u."country"), ''))
+                     filter (where nullif(trim(u."country"), '') is not null)
+                 ) as country
+          from "Institution" i
+          left join "User" u on u."institutionId" = i."id"
+          where i."status" = 'Active'
+          group by i."id", i."name"`);
+
+      // One institution typed in twice is one institution; our own demo and
+      // test accounts are not; and one with nobody on it is not "with us".
+      const pretend = /\b(demo|test|testing|sample|dummy|example)\b/i;
+      const seen = new Map<string, { name: string; members: number; country: string | null }>();
+      for (const r of rows) {
+        const key = String(r.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        if (!key || pretend.test(key)) continue;
+        const held = seen.get(key);
+        if (held) { held.members += r.members; held.country = held.country || r.country; continue; }
+        seen.set(key, { name: String(r.name).trim(), members: r.members, country: r.country });
+      }
+      const list = [...seen.values()].filter(i => i.members > 0);
+
+      const byType: Record<string, number> = { universities: 0, colleges: 0, institutes: 0, schools: 0, organisations: 0, other: 0 };
+      let india = 0, outsideIndia = 0;
+      for (const i of list) {
+        byType[institutionType(i.name)]++;
+        if (i.country) (isIndia(i.country) ? india++ : outsideIndia++);
+      }
+      const total = list.length;
+      const known = india + outsideIndia;
+      const geography = { india, outsideIndia, unknown: total - known };
+
+      // The data-quality report that stays inside the server.
+      console.info(`[institution-stats] total=${total} other=${byType.other} noCountry=${total - known}`);
+
+      const value = { total, byType, geography };
+      institutionStatsCache = { at: Date.now(), value };
+      res.set('Cache-Control', 'public, max-age=300');
+      res.json(value);
+    } catch (e: any) {
+      console.error('institution-stats error', e?.message);
+      res.status(500).json({ error: "Failed to read the institution figures" });
+    }
+  });
+
         (prisma as any).$queryRawUnsafe(`
           select a."domain" as domain,
                  count(distinct a."journalId")::int as journals,

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
-  ArrowRight, BookMarked, BookOpen, Building2, ChevronDown, ChevronLeft, ChevronRight,
-  FileText, GraduationCap, Layers, Library, Minus, Pause, Play, RefreshCw, Search,
-  ShieldCheck, Users, UserSquare2,
+  ArrowRight, Award, BookMarked, BookOpen, Building2, ChevronDown, ChevronLeft, ChevronRight,
+  FileText, GraduationCap, Landmark, Layers, Library, Microscope, Minus, Network, Pause, Play,
+  Presentation, RefreshCw, School, Search, ShieldCheck, Users, UserSquare2,
 } from 'lucide-react';
 import { type DeptRow } from './charts';
 import { SearchBox } from './GlobalSearch';
@@ -46,14 +46,6 @@ type Institutions = {
   institutions: { name: string; kind: string; members: number }[];
   designations: { name: string; members: number }[];
 };
-/** Universities first, then the rest, and inside each the busiest first. */
-const KIND_ORDER = ['University', 'College', 'Institute', 'School', 'Organisation'];
-const byKindThenSize = (a: { kind: string; members: number; name: string },
-                        b: { kind: string; members: number; name: string }) => {
-  const ka = KIND_ORDER.indexOf(a.kind), kb = KIND_ORDER.indexOf(b.kind);
-  return (ka < 0 ? 99 : ka) - (kb < 0 ? 99 : kb) || b.members - a.members || a.name.localeCompare(b.name);
-};
-
 type Department = {
   domain: string; slug: string; articles: number; books: number; authors: number;
   firstYear: number | null; lastYear: number | null;
@@ -91,6 +83,7 @@ function useLibrary() {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [institutions, setInstitutions] = useState<Institutions | null>(null);
+  const [community, setCommunity] = useState<Community | null | undefined>(undefined);
   // Settled either way, so a figure that could not be read stops pulsing and says so.
   const [statsSettled, setStatsSettled] = useState(false);
 
@@ -102,9 +95,10 @@ function useLibrary() {
     get('/api/library/insights').then(d => d?.composition && setInsights(d));
     get('/api/library/subjects').then(d => Array.isArray(d) && setSubjects(d));
     get('/api/library/institutions').then(d => d?.total !== undefined && setInstitutions(d));
+    get('/api/public/institution-stats').then(d => setCommunity(d?.byType && d?.geography ? d : null));
   }, []);
 
-  return { stats, statsSettled, articles, books, insights, subjects, institutions };
+  return { stats, statsSettled, articles, books, insights, subjects, institutions, community };
 }
 
 // ── The furniture the reference is built from ───────────────────────────────
@@ -450,99 +444,228 @@ function Impact({ stats, settled, depts, inst }: { stats: Stats | null; settled:
   );
 }
 
-// ── 4. Who is with us, in full ─────────────────────────────────────────────
+// ── 4. The academic community, in aggregate ─────────────────────────────────
 
-const WITH_US_SHOWN = 18;
+/**
+ * Who is with us — as figures, never as names.
+ *
+ * This used to be a directory: every college and university on the library,
+ * by name. A name is the institution's to give, not ours, so the page now says
+ * how many, of what kind, and from where, and nothing that identifies one.
+ */
+type TypeKey = 'universities' | 'colleges' | 'institutes' | 'schools' | 'organisations' | 'other';
+type Community = {
+  total: number;
+  byType: Record<TypeKey, number>;
+  geography: { india: number; outsideIndia: number; unknown: number };
+};
 
-function WithUs({ inst }: { inst: Institutions | null }) {
-  // Universities lead, and the page opens on them: they are what a visitor
-  // asking "who else is on this" is looking for.
-  const [chosen, setChosen] = useState<string | null>(null);
-  if (!inst?.institutions?.length) return null;
-  const kind = chosen ?? (inst.byKind?.University ? 'University' : 'All');
-  const setKind = setChosen;
-  const kinds = [...KIND_ORDER.filter(k => inst.byKind?.[k]),
-    ...Object.keys(inst.byKind || {}).filter(k => !KIND_ORDER.includes(k)), 'All'];
-  const all = [...inst.institutions].sort(byKindThenSize);
-  const matching = kind === 'All' ? all : all.filter(i => i.kind === kind);
-  const shown = matching.slice(0, WITH_US_SHOWN);
-  const rest = matching.length - shown.length;
-  const roles = inst.designations || [];
+/** Fixed order and fixed set: a category with none is still a category, shown as 0. */
+const TYPE_CARDS: { key: Exclude<TypeKey, 'other'>; label: string; icon: typeof Landmark }[] = [
+  { key: 'universities', label: 'Universities', icon: Landmark },
+  { key: 'colleges', label: 'Colleges', icon: GraduationCap },
+  { key: 'institutes', label: 'Institutes', icon: Microscope },
+  { key: 'schools', label: 'Schools', icon: School },
+  { key: 'organisations', label: 'Organisations', icon: Building2 },
+];
+
+/** Who the library is for — audience groups, not a dump of whatever roles are on file. */
+const AUDIENCES: { label: string; icon: typeof Users }[] = [
+  { label: 'Students', icon: GraduationCap },
+  { label: 'Faculty', icon: Users },
+  { label: 'Researchers', icon: Microscope },
+  { label: 'Librarians', icon: Library },
+  { label: 'Professors', icon: Presentation },
+  { label: 'PhD Scholars', icon: Award },
+];
+
+/** Whole-number shares that add up to 100, so the rows never read 99 or 101. */
+function shares(counts: number[]): number[] {
+  const sum = counts.reduce((a, b) => a + b, 0);
+  if (!sum) return counts.map(() => 0);
+  const raw = counts.map(c => (c / sum) * 100);
+  const out = raw.map(Math.floor);
+  let left = 100 - out.reduce((a, b) => a + b, 0);
+  raw.map((r, i) => [r - out[i], i] as const).sort((a, b) => b[0] - a[0])
+    .forEach(([, i]) => { if (left > 0) { out[i]++; left--; } });
+  return out;
+}
+/** A real but tiny share is "<1%", not a 0% that reads as none. */
+const pctText = (pct: number, count: number) => (count > 0 && pct === 0 ? '<1%' : `${pct}%`);
+
+/** Draws itself in once, after the first paint. */
+function useSettled() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return ready;
+}
+
+const panel = 'rounded-xl border bg-surface p-5';
+
+/** One labelled bar. The figure is always text, so the bar is never the only signal. */
+function BarRow({ label, pct, count, color, ready, size = 'sm' }: {
+  label: string; pct: number; count: number; color: string; ready: boolean; size?: 'sm' | 'lg';
+}) {
+  return (
+    <div className="grid grid-cols-[6.25rem_minmax(0,1fr)_auto] items-center gap-x-3 text-[13px] sm:grid-cols-[7.5rem_minmax(0,1fr)_auto]">
+      <span className="truncate" style={{ color: 'var(--np-ink)' }}>{label}</span>
+      <span className={`block overflow-hidden rounded-full ${size === 'lg' ? 'h-3' : 'h-2'}`}
+        style={{ background: 'var(--np-soft)' }} aria-hidden="true">
+        <span className="mix-bar block h-full rounded-full"
+          style={{ width: ready ? `${Math.max(pct, count ? 2 : 0)}%` : '0%', background: color }} />
+      </span>
+      <span className="np-strong tnum min-w-[4.25rem] text-right" style={{ color: 'var(--np-ink)' }}>
+        {pctText(pct, count)}
+        <span className="np-strong font-normal" style={{ color: 'var(--np-body)' }}> · {n(count)}</span>
+      </span>
+    </div>
+  );
+}
+
+function TypePanel({ community }: { community: Community }) {
+  const ready = useSettled();
+  const rows = [
+    ...TYPE_CARDS.map(c => ({ label: c.label, count: community.byType[c.key], color: 'var(--accent)' })),
+    { label: 'Other', count: community.byType.other, color: 'color-mix(in srgb, var(--np-body) 55%, transparent)' },
+  ];
+  const pct = shares(rows.map(r => r.count));
+  return (
+    <div className={panel} style={{ borderColor: 'var(--np-line)' }}>
+      <h4 className="np-strong text-[14px]" style={{ color: 'var(--np-ink)' }}>Institution type</h4>
+      <div className="mt-4 space-y-3.5">
+        {rows.map((r, i) => <BarRow key={r.label} {...r} pct={pct[i]} ready={ready} />)}
+      </div>
+    </div>
+  );
+}
+
+function GeoPanel({ geography }: { geography: Community['geography'] }) {
+  const ready = useSettled();
+  const known = geography.india + geography.outsideIndia;
+  const [inPct, outPct] = shares([geography.india, geography.outsideIndia]);
+  const rows = [
+    { label: 'India', pct: inPct, count: geography.india, color: 'var(--accent)' },
+    { label: 'Outside India', pct: outPct, count: geography.outsideIndia, color: 'color-mix(in srgb, var(--accent) 50%, var(--np-line))' },
+  ];
+  return (
+    <div className={`${panel} flex flex-col`} style={{ borderColor: 'var(--np-line)' }}>
+      <h4 className="np-strong text-[14px]" style={{ color: 'var(--np-ink)' }}>Geographic reach</h4>
+      {known > 0 ? (
+        <div className="mt-4 space-y-6">
+          {rows.map(r => (
+            <div key={r.label}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="np-strong text-[14px]" style={{ color: 'var(--np-ink)' }}>{r.label}</span>
+                <span className="np-display tnum text-[24px] leading-none" style={{ color: 'var(--np-ink)' }}>{pctText(r.pct, r.count)}</span>
+              </div>
+              <div className="mt-2 h-3 overflow-hidden rounded-full" style={{ background: 'var(--np-soft)' }} aria-hidden="true">
+                <div className="mix-bar h-full rounded-full" style={{ width: ready ? `${Math.max(r.pct, r.count ? 2 : 0)}%` : '0%', background: r.color }} />
+              </div>
+              <p className="mt-1.5 text-[12.5px]" style={{ color: 'var(--np-body)' }}>
+                {n(r.count)} {r.count === 1 ? 'institution' : 'institutions'}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-4 text-[13px]" style={{ color: 'var(--np-body)' }}>Country data is not yet available.</p>
+      )}
+      {known > 0 && (
+        <p className="mt-auto pt-4 text-[12px]" style={{ color: 'var(--np-body)' }}>
+          {geography.unknown > 0
+            ? `Based on the ${n(known)} ${known === 1 ? 'institution' : 'institutions'} with available country data.`
+            : 'Based on institutions with available country data.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function CommunitySkeleton() {
+  const block = 'animate-pulse rounded-xl border';
+  const look = { borderColor: 'var(--np-line)', background: 'var(--np-soft)' };
+  return (
+    <div role="status" aria-label="Loading institution figures">
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }, (_, i) => <div key={i} className={`${block} h-[116px]`} style={look} />)}
+      </div>
+      <div className="mt-12 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {[0, 1].map(i => <div key={i} className={`${block} h-[264px]`} style={look} />)}
+      </div>
+    </div>
+  );
+}
+
+/** `undefined` while loading, `null` once the figures could not be read. */
+function AcademicCommunity({ community }: { community: Community | null | undefined }) {
+  const cards = community ? [
+    ...TYPE_CARDS.map(c => ({ key: c.key as string, label: c.label, icon: c.icon, value: community.byType[c.key], total: false })),
+    { key: 'total', label: 'Total institutions', icon: Network, value: community.total, total: true },
+  ] : [];
 
   return (
-    <section className="mx-auto max-w-6xl border-t px-5 py-20" style={{ borderColor: 'var(--np-line)' }}>
+    <section className="mx-auto max-w-6xl border-t px-5 py-16" style={{ borderColor: 'var(--np-line)' }}>
       <Eyebrow>Who is with us</Eyebrow>
-      <Heading className="max-w-3xl">
-        The institutions whose people read here.
-      </Heading>
+      <Heading className="max-w-4xl">Academic Community on STM Digital Library</Heading>
       <p className="mt-4 max-w-2xl text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
-        Colleges, universities and institutes have their faculty, researchers and students on the
-        library — the whole department on one account, however many of them there are.
+        Used across universities, colleges, institutes, schools and organisations for academic discovery.
       </p>
 
-      {/* Kind rather than count: how many is our business, who is theirs. */}
-      <div className="mt-7 flex flex-wrap gap-2">
-        {kinds.map(k => (
-          <button key={k} type="button" onClick={() => setKind(k)}
-            className="np-strong rounded-full px-4 py-2 text-[12.5px] transition-colors"
-            style={kind === k
-              ? { background: 'var(--np-navy)', color: '#fff' }
-              : { border: '1px solid var(--np-line)', color: 'var(--np-ink)' }}>
-            {k === 'All' ? 'All of them' : plural(k, 2)}
-          </button>
-        ))}
-      </div>
+      {community === undefined && <CommunitySkeleton />}
 
-      <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-xl border sm:grid-cols-2 lg:grid-cols-3"
-        style={{ background: 'var(--np-line)', borderColor: 'var(--np-line)' }}>
-        {shown.map(i => (
-          <div key={i.name} className="flex items-center gap-3 bg-surface px-5 py-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-              style={{ background: 'var(--t6-bg)', color: 'var(--t6-ink)' }}>
-              <Building2 size={16} />
-            </span>
-            <span className="min-w-0">
-              <span className="np-strong block truncate text-[13.5px]" style={{ color: 'var(--np-ink)' }}>{i.name}</span>
-              <span className="block text-[11.5px]" style={{ color: 'var(--np-body)' }}>{i.kind}</span>
-            </span>
-          </div>
-        ))}
-        {/* As on the institutions page: no grey holes in a part-filled row. */}
-        {Array.from({ length: (3 - shown.length % 3) % 3 }).map((_, f) => (
-          <div key={`w${f}`} className="hidden bg-surface lg:block" />
-        ))}
-        {Array.from({ length: (2 - shown.length % 2) % 2 }).map((_, f) => (
-          <div key={`n${f}`} className="hidden bg-surface sm:block lg:hidden" />
-        ))}
-      </div>
-
-      {rest > 0 && (
-        <Link to="/institutions" className={`${btnGhost} mt-6`}
-          style={{ borderColor: 'var(--np-line)', color: 'var(--np-ink)' }}>
-          See all {n(matching.length)} {kind === 'All' ? 'institutions' : plural(kind, 2).toLowerCase()}
-          <ArrowRight size={15} />
-        </Link>
+      {/* Nothing numeric when the figures could not be read, and no stand-in for them. */}
+      {community === null && (
+        <p className="mt-8 rounded-xl border px-6 py-5 text-[14px]"
+          style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)', color: 'var(--np-body)' }}>
+          Academic institutions and organisations are part of the STM Digital Library community.
+        </p>
       )}
 
-      {/* And who, inside them, is actually reading. */}
-      {roles.length > 0 && (
-        <div className="mt-8 rounded-xl border p-6" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
-            Who reads here
-          </p>
-          <p className="mt-2 max-w-3xl text-[14px] leading-relaxed" style={{ color: 'var(--np-ink)' }}>
-            The people on the library describe themselves as:
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {roles.map((r, k) => (
-              <span key={r.name} className="np-strong inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12.5px]"
-                style={{ background: `var(--t${(k % 6) + 1}-bg)`, color: `var(--t${(k % 6) + 1}-ink)` }}>
-                <Users size={13} /> {plural(r.name, 2)}
-              </span>
+      {community && (
+        <>
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {cards.map(c => (
+              <div key={c.key} className="rounded-xl border bg-surface p-4 transition-colors hover:border-[color:var(--accent)]"
+                style={{ borderColor: 'var(--np-line)' }}>
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg"
+                  style={c.total ? { background: 'var(--np-navy)', color: '#fff' } : { background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+                  <c.icon size={18} aria-hidden="true" />
+                </span>
+                <p className="np-display tnum mt-3 text-[28px] leading-none" style={{ color: 'var(--np-ink)' }}>{n(c.value)}</p>
+                <p className="mt-1.5 text-[13px] leading-snug" style={{ color: 'var(--np-body)' }}>{c.label}</p>
+              </div>
             ))}
           </div>
-        </div>
+
+          <h3 className="np-strong mt-12 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
+            Institutional reach
+          </h3>
+          <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <TypePanel community={community} />
+            <GeoPanel geography={community.geography} />
+          </div>
+        </>
       )}
+
+      {/* Audience groups are part of the page, not of the figures: they stay if the figures fail. */}
+      <h3 className="np-strong mt-10 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
+        Who uses the library
+      </h3>
+      <ul className="mt-4 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-3">
+        {AUDIENCES.map(a => (
+          <li key={a.label} className="np-strong flex h-11 items-center gap-2.5 rounded-full border bg-surface px-4 text-[13px]"
+            style={{ borderColor: 'var(--np-line)', color: 'var(--np-ink)' }}>
+            <a.icon size={15} aria-hidden="true" style={{ color: 'var(--accent)' }} /> {a.label}
+          </li>
+        ))}
+      </ul>
+
+      <Link to="/for-institutions" className={`${btnPrimary} mt-8 w-full sm:w-auto`} style={{ background: 'var(--np-navy)' }}>
+        Explore institutional access <ArrowRight size={15} aria-hidden="true" />
+      </Link>
     </section>
   );
 }
@@ -1007,7 +1130,7 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
 // ── The page ────────────────────────────────────────────────────────────────
 
 export function HomePreview() {
-  const { stats, statsSettled, articles, books, insights, subjects, institutions } = useLibrary();
+  const { stats, statsSettled, articles, books, insights, subjects, institutions, community } = useLibrary();
   const depts = stats?.departmentTotals || [];
 
   return (
@@ -1019,7 +1142,7 @@ export function HomePreview() {
       <Hero stats={stats} insights={insights} institutions={institutions} depts={depts} />
       <InstitutionStrip inst={institutions} />
       <Impact stats={stats} settled={statsSettled} depts={depts} inst={institutions} />
-      <WithUs inst={institutions} />
+      <AcademicCommunity community={community} />
       <DepartmentExplorer depts={depts} />
       <Principles />
       <WhatIsNew books={books} articles={articles} />
