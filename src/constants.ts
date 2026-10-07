@@ -661,12 +661,16 @@ export function opensInstitutionDashboard(type?: string | null, designation?: st
 }
 
 /**
- * Whether this account registered as a Solo Learner — a person on their own, not part of an
- * institute or a company. The role alone cannot say: a Professor registered under an institute
- * is a "Subscriber" too, and is not eligible for the Solo subscription and its pricing.
+ * Whether this is an individual's own account: a Subscriber who belongs to no institution. Such an
+ * account buys Premium departments online, at the Solo Learner rates, for itself.
+ *
+ * It does not depend on which box was ticked at sign-up. A person who registered under an institute
+ * but was given no institution account is just as much on their own, and so is anyone who joined
+ * before sign-up asked. What does exclude an account is belonging to an institution — a member a
+ * librarian added reads under that institution's plan, and its role is Student, not Subscriber.
  */
-export function isSoloAccount(profile?: { registrantType?: string | null; role?: string | null; institutionId?: string | null } | null): boolean {
-  return !!profile && profile.registrantType === 'Solo' && profile.role === 'Subscriber' && !profile.institutionId;
+export function isIndividualAccount(profile?: { role?: string | null; institutionId?: string | null } | null): boolean {
+  return !!profile && profile.role === 'Subscriber' && !profile.institutionId;
 }
 
 /** Where a member is. India first, because that is where nearly all of them are. */

@@ -4,7 +4,7 @@ import { GraduationCap, BookOpen, Clock, Heart, Search, Smartphone, ArrowRight, 
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui';
 import { useAuth } from '../contexts/AuthContext';
-import { isSoloAccount } from '../constants';
+import { isIndividualAccount } from '../constants';
 import { formatRupees } from '../lib/institutionPricing';
 import { SOLO_RATE_STANDARD, SOLO_RATE_BULK, SOLO_BULK_THRESHOLD } from '../lib/soloPricing';
 
@@ -44,7 +44,7 @@ const features = [
 export function ForStudents() {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const solo = isSoloAccount(profile as any);
+  const solo = isIndividualAccount(profile as any);
 
   return (
     <div className="min-h-screen bg-ground">

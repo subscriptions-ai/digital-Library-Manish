@@ -1,295 +1,272 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Users, CheckCircle2, Phone, Clock, ArrowRight, MapPin, Building2, Calendar } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Users, CheckCircle2, Phone, Clock, ArrowRight, Sparkles, FileText, Hourglass, UserPlus, ClipboardList } from 'lucide-react';
+import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
 import { toast } from 'react-hot-toast';
+import { isPast } from 'date-fns';
 import { useAuth } from '../../contexts/AuthContext';
-import { EmptyState, ErrorState, MetricCard, Skeleton, buttonClass } from '../ui';
-import { LeadStatusBadge } from './SalesLeadTable';
+import { EmptyState, ErrorState, Skeleton, buttonClass, PageHeader } from '../ui';
+import {
+  AttentionTile, AXIS_TICK, ChartTooltip, DataNote, NO_STATE, STAGE_COLOR, STAGE_ORDER, StatCard,
+  formatStamp, interactionIcon, isQuiet, pct, stageLabel, timeAgo,
+} from './salesUi';
 
-const STAGE_COLORS: Record<string, string> = {
-  'All': '#64748b',
-  'Positive': '#3b82f6',
-  'No Response': '#f59e0b',
-  'Subscriber': '#10b981',
-  'In Progress': '#a855f7',
-  'Negative': '#ef4444',
-  'Repeated': '#f97316',
+const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const getJson = (url: string) => fetch(url, { headers: authHeaders() }).then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))));
+
+type Extras = {
+  enquiries: number | null;          // subscription enquiries waiting (whole team)
+  openQuotes: number | null;         // raised by this person, not paid or cancelled
+  expiredQuotes: number | null;      // of those, past their valid-until date
+  activity: any[] | null;            // latest interactions
 };
-
-const CHART_COLORS = ['#64748b', '#3b82f6', '#f59e0b', '#10b981', '#a855f7', '#ef4444', '#f97316'];
 
 export function SalesDashboard() {
   const { profile } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
+  const [extras, setExtras] = useState<Extras | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchLeads();
-  }, []);
-
-  const fetchLeads = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setLoadFailed(false);
+    setExtras(null);
     try {
-      const res = await fetch('/api/sales/my-leads', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch dashboard data');
-      setLeads(await res.json());
-    } catch (error) {
+      setLeads(await getJson('/api/sales/my-leads'));
+    } catch {
       setLoadFailed(true);
-      toast.error('Could not load dashboard metrics');
-    } finally {
+      toast.error('Could not load dashboard metrics', { id: 'sales-dash' });
       setLoading(false);
+      return;
     }
-  };
+    setLoading(false);
+
+    // The rest of the page is useful without these, so each one fails on its
+    // own — to a dash, never to a zero that reads as fact.
+    const [enq, quotes, act] = await Promise.allSettled([
+      getJson('/api/sales/pro-applications?status=Pending'),
+      getJson('/api/my/quotations'),
+      getJson('/api/sales/my-activity'),
+    ]);
+    const open = quotes.status === 'fulfilled'
+      ? (quotes.value.quotations || []).filter((q: any) => !['Paid', 'Cancelled'].includes(q.status))
+      : null;
+    setExtras({
+      enquiries: enq.status === 'fulfilled' ? enq.value.pending ?? 0 : null,
+      openQuotes: open ? open.length : null,
+      expiredQuotes: open ? open.filter((q: any) => q.expiresAt && isPast(new Date(q.expiresAt))).length : null,
+      activity: act.status === 'fulfilled' ? act.value : null,
+    });
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const total = leads.length;
+  const count = (status: string) => leads.filter(l => l.status === status).length;
+  const subscribers = count('Subscriber'), positive = count('Positive'), inProgress = count('In Progress');
+  const fresh = count('All');
+  const quiet = useMemo(() => leads.filter(isQuiet).length, [leads]);
+  const lastMonth = leads.filter(l => Date.now() - new Date(l.assignedAt || l.createdAt).getTime() < 30 * 864e5).length;
+
+  // Status breakdown — only stages that have leads, in pipeline order.
+  const statusData = useMemo(() => {
+    const by: Record<string, number> = {};
+    leads.forEach(l => { by[l.status || 'All'] = (by[l.status || 'All'] || 0) + 1; });
+    return Object.keys(by)
+      .sort((a, b) => (STAGE_ORDER.indexOf(a) < 0 ? 99 : STAGE_ORDER.indexOf(a)) - (STAGE_ORDER.indexOf(b) < 0 ? 99 : STAGE_ORDER.indexOf(b)))
+      .map(s => ({ key: s, name: stageLabel(s), value: by[s], color: STAGE_COLOR[s] || 'var(--faint)' }));
+  }, [leads]);
+
+  // State distribution: real states by size; leads with none are counted and said so, not buried.
+  const { stateData, noState, stateCount } = useMemo(() => {
+    const by: Record<string, number> = {};
+    let none = 0;
+    leads.forEach(l => { const s = (l.state || '').trim(); if (s) by[s] = (by[s] || 0) + 1; else none++; });
+    const all = Object.entries(by).map(([name, n]) => ({ name, count: n })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    return { stateData: all.slice(0, 8), noState: none, stateCount: all.length };
+  }, [leads]);
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
+  })();
 
   if (loading) {
     return (
       <div className="space-y-6" role="status" aria-label="Loading dashboard">
-        <Skeleton className="h-8 w-1/3" />
+        <div className="space-y-2"><Skeleton className="h-8 w-1/3" /><Skeleton className="h-4 w-1/2" /></div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[124px] rounded-xl" />)}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Skeleton className="h-64 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl lg:col-span-2" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[76px] rounded-xl" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-[360px] rounded-xl" /><Skeleton className="h-[360px] rounded-xl" />
         </div>
       </div>
     );
   }
 
   // A failed load would otherwise show every count as 0, which reads as fact.
-  if (loadFailed) {
-    return <ErrorState title="Your dashboard could not be loaded" onRetry={fetchLeads} />;
-  }
+  if (loadFailed) return <ErrorState title="Your dashboard could not be loaded" onRetry={load} />;
 
-  // Calculate statistics
-  const total = leads.length;
-  const subscribers = leads.filter(l => l.status === 'Subscriber').length;
-  const positive = leads.filter(l => l.status === 'Positive').length;
-  const inProgress = leads.filter(l => l.status === 'In Progress').length;
-
-  // Status breakdown data for Pie Chart
-  const statusCounts = leads.reduce((acc: any, lead) => {
-    acc[lead.status] = (acc[lead.status] || 0) + 1;
-    return acc;
-  }, {});
-
-  const pieData = Object.keys(statusCounts).map(status => ({
-    name: status,
-    value: statusCounts[status],
-  })).filter(item => item.value > 0);
-
-  // State distribution data for Bar Chart
-  const stateCounts = leads.reduce((acc: any, lead) => {
-    const stateName = lead.state || 'Unknown';
-    acc[stateName] = (acc[stateName] || 0) + 1;
-    return acc;
-  }, {});
-
-  const barData = Object.keys(stateCounts)
-    .map(state => ({
-      name: state,
-      count: stateCounts[state],
-    }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8); // Top 8 states
-
-  // Recent 5 leads
-  const recentLeads = [...leads]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
+  const recent = (extras?.activity || []).slice(0, 5);
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Top Greeting */}
-      <div>
-        <h1 className="type-page-title text-ink">
-          {getGreeting()}, {profile?.displayName || 'Executive'}
-        </h1>
-        <p className="text-muted mt-1 text-sm">
-          Here is your sales pipeline overview. Track your performance and upcoming actions.
-        </p>
-      </div>
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        className="mb-0"
+        title={`${greeting}, ${profile?.displayName?.trim() || 'Executive'}`}
+        description="Today's sales overview — what needs you first, and where your pipeline stands."
+      />
 
-      {/* KPI Stats Row */}
-      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Total Leads" value={total} icon={Users} />
-        <MetricCard label="Subscribers" value={subscribers} icon={CheckCircle2} />
-        <MetricCard label="Positive Contacts" value={positive} icon={Phone} />
-        <MetricCard label="In Progress" value={inProgress} icon={Clock} />
-      </div>
+      {/* Headline numbers */}
+      <section aria-label="Lead totals" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard to="/sales/leads" label="Total Leads" value={total} icon={Users}
+          context={total ? `${lastMonth} assigned in the last 30 days` : 'Nothing assigned yet'} />
+        <StatCard to="/sales/leads?status=Subscriber" label="Subscribers" value={subscribers} icon={CheckCircle2}
+          context={total ? `${pct(subscribers, total)}% of your leads` : 'No leads yet'} />
+        <StatCard to="/sales/leads?status=Positive" label="Positive Contacts" value={positive} icon={Phone}
+          context={total ? `${pct(positive, total)}% of your leads` : 'No leads yet'} />
+        <StatCard to="/sales/leads?status=In%20Progress" label="In Progress" value={inProgress} icon={Clock}
+          context={total ? `${pct(inProgress, total)}% of your leads` : 'No leads yet'} />
+      </section>
 
-      {/* Main Charts & Analytics Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Pie Chart: Status Breakdown */}
-        <div className="card card-pad flex flex-col justify-between">
-          <div className="mb-4">
-            <h2 className="card-title">Status Breakdown</h2>
-            <p className="text-sm text-muted mt-1">Distribution of your leads by pipeline stage</p>
+      {/* What wants doing */}
+      <section aria-labelledby="attention-h" className="space-y-3">
+        <h2 id="attention-h" className="text-xs font-semibold uppercase tracking-wider text-muted">Needs attention</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <AttentionTile to="/sales/leads?status=new" icon={UserPlus} label="New leads" count={fresh}
+            context="Waiting for a first contact" />
+          <AttentionTile to="/sales/leads?quiet=1" icon={Hourglass} label="Gone quiet" count={quiet}
+            context="Positive or in progress, no activity for 7+ days" />
+          <AttentionTile to="/sales/quotations?scope=open" icon={FileText} label="Open quotations" count={extras ? extras.openQuotes : null}
+            context={extras?.expiredQuotes ? `${extras.expiredQuotes} past their valid-until date` : 'Raised, not yet paid'} />
+          <AttentionTile to="/sales/pro-applications" icon={Sparkles} label="Enquiries waiting" count={extras ? extras.enquiries : null}
+            context="Members asking for help to subscribe" />
+        </div>
+      </section>
+
+      {/* Pipeline */}
+      <section aria-labelledby="pipeline-h" className="space-y-3">
+        <h2 id="pipeline-h" className="text-xs font-semibold uppercase tracking-wider text-muted">Pipeline overview</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Status breakdown */}
+          <div className="card card-pad flex flex-col min-w-0">
+            <h3 className="card-title">Status breakdown</h3>
+            <p className="mt-1 text-sm text-muted">Your leads by pipeline stage</p>
+            {statusData.length > 0 ? (
+              <div className="mt-4 flex flex-1 flex-col items-center gap-6 sm:flex-row">
+                <div className="relative h-48 w-48 shrink-0" role="img"
+                  aria-label={`Leads by status: ${statusData.map(d => `${d.name} ${d.value}, ${pct(d.value, total)} percent`).join('; ')}.`}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={58} outerRadius={84}
+                        paddingAngle={statusData.length > 1 ? 2 : 0} stroke="none" isAnimationActive={false}>
+                        {statusData.map(d => <Cell key={d.key} fill={d.color} />)}
+                      </Pie>
+                      <Tooltip content={<ChartTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center" aria-hidden="true">
+                    <span className="text-3xl font-bold leading-none tabular-nums text-ink">{total}</span>
+                    <span className="mt-1 text-xs text-muted">Total leads</span>
+                  </div>
+                </div>
+                <ul className="w-full min-w-0 flex-1 space-y-2.5">
+                  {statusData.map(d => (
+                    <li key={d.key} className="flex items-center gap-2.5 text-sm">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate text-ink-2">{d.name}</span>
+                      <span className="font-semibold tabular-nums text-ink">{d.value}</span>
+                      <span className="w-10 text-right text-xs tabular-nums text-muted">{pct(d.value, total)}%</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <EmptyState icon={Users} title="No leads yet" description="Your status breakdown appears once leads are assigned." className="flex-1" />
+            )}
           </div>
 
-          <div className="h-56 relative flex items-center justify-center">
-            {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={STAGE_COLORS[entry.name] || CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value} Leads`, 'Count']} />
-                </PieChart>
-              </ResponsiveContainer>
+          {/* State distribution */}
+          <div className="card card-pad flex flex-col min-w-0">
+            <h3 className="card-title">State distribution</h3>
+            <p className="mt-1 text-sm text-muted">
+              {stateData.length > 0
+                ? `Where your leads are — top ${stateData.length} of ${stateCount} ${stateCount === 1 ? 'state' : 'states'}`
+                : 'Where your leads are'}
+            </p>
+            {stateData.length > 0 ? (
+              <div className="mt-4 w-full" style={{ height: Math.max(160, stateData.length * 36 + 8) }}
+                role="img" aria-label={`Leads by state: ${stateData.map(d => `${d.name} ${d.count}`).join(', ')}.`}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stateData} layout="vertical" margin={{ left: 0, right: 32, top: 0, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" width={116} tick={AXIS_TICK} axisLine={false} tickLine={false} interval={0} />
+                    <Tooltip cursor={{ fill: 'var(--surface-2)' }} content={<ChartTooltip />} />
+                    <Bar dataKey="count" fill="var(--accent)" radius={[0, 6, 6, 0]} barSize={16} isAnimationActive={false}>
+                      <LabelList dataKey="count" position="right" style={{ fill: 'var(--ink)', fontSize: 12, fontWeight: 600 }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             ) : (
-              <span className="text-muted text-sm">No data available</span>
+              <EmptyState icon={Users} title="No state recorded" description="None of your leads has a state on file yet." className="flex-1" />
             )}
-            {pieData.length > 0 && (
-              <div className="absolute flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-2xl font-bold text-ink tabular-nums">{total}</span>
-                <span className="text-xs text-muted font-medium">Leads</span>
+            {noState > 0 && (
+              <div className="mt-auto pt-4">
+                <DataNote>
+                  <b className="font-semibold text-ink-2">{noState} {noState === 1 ? 'lead has' : 'leads have'} no state</b> ({NO_STATE.toLowerCase()}) and
+                  {noState === 1 ? ' is' : ' are'} not in the bars above. Sign-ups from outside India and some enquiry forms do not capture one.
+                </DataNote>
               </div>
             )}
           </div>
-
-          {pieData.length > 0 && (
-            <ul className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-rule">
-              {pieData.map((item, idx) => (
-                <li key={item.name} className="flex items-center gap-2 text-xs min-w-0">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: STAGE_COLORS[item.name] || CHART_COLORS[idx] }} aria-hidden="true"></span>
-                  <span className="text-ink-2 truncate">{item.name}</span>
-                  <span className="text-muted font-semibold ml-auto tabular-nums">{item.value}</span>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
+      </section>
 
-        {/* Bar Chart: State Generation */}
-        <div className="card card-pad flex flex-col justify-between lg:col-span-2 min-w-0">
-          <div className="mb-4">
-            <h2 className="card-title">State Distribution</h2>
-            <p className="text-sm text-muted mt-1">Leads generated across Indian States (Top 8)</p>
-          </div>
-
-          <div className="h-72">
-            {barData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 30, top: 0, bottom: 0 }}>
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" width={110} tick={{ fill: '#475569', fontSize: 11, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                  <Tooltip cursor={{ fill: '#f8fafc' }} formatter={(value) => [`${value} Leads`, 'Volume']} />
-                  <Bar dataKey="count" fill="#4f46e5" radius={[0, 8, 8, 0]} barSize={16}>
-                    {barData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={index === 0 ? '#4f46e5' : '#818cf8'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-muted text-sm">No data available</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Section: Recent Leads */}
-      <div className="card overflow-hidden">
-        <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
+      {/* Recent activity */}
+      <section aria-labelledby="recent-h" className="card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-5 sm:p-6">
           <div>
-            <h2 className="card-title">Recently Assigned Leads</h2>
-            <p className="text-sm text-muted mt-1">Get in touch with your newest leads immediately</p>
+            <h2 id="recent-h" className="card-title">Recent activity</h2>
+            <p className="mt-1 text-sm text-muted">Your latest notes, calls, emails and status changes</p>
           </div>
-          <button
-            onClick={() => navigate('/sales/leads')}
-            className={buttonClass('outline', 'sm')}
-          >
-            Manage All <ArrowRight size={14} aria-hidden="true" />
-          </button>
+          <Link to="/sales/activity" className={buttonClass('outline', 'sm')}>View all <ArrowRight size={14} aria-hidden="true" /></Link>
         </div>
-
-        {recentLeads.length > 0 ? (
-          <div className="table-wrap border-t border-rule">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Lead / Organization</th>
-                  <th>State</th>
-                  <th>Source</th>
-                  <th>Assigned Date</th>
-                  <th>Status</th>
-                  <th><span className="sr-only">Actions</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentLeads.map((lead) => (
-                  <tr key={lead.id}>
-                    <td>
-                      <div className="font-semibold text-ink">{lead.name}</div>
-                      {lead.organization && (
-                        <div className="text-xs text-muted flex items-center gap-1 mt-0.5">
-                          <Building2 size={12} className="text-faint" aria-hidden="true" /> {lead.organization}
-                        </div>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap">
-                      {lead.state ? (
-                        <span className="inline-flex items-center gap-1 text-ink-2">
-                          <MapPin size={12} className="text-faint" aria-hidden="true" /> {lead.state}
-                        </span>
-                      ) : (
-                        <span className="text-muted text-xs">N/A</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap">
-                      <span className="badge badge-neutral">{lead.source}</span>
-                    </td>
-                    <td className="whitespace-nowrap text-muted">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Calendar size={14} className="text-faint" aria-hidden="true" />
-                        {new Date(lead.createdAt).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap">
-                      <LeadStatusBadge status={lead.status} />
-                    </td>
-                    <td className="text-right whitespace-nowrap">
-                      <button
-                        onClick={() => navigate(`/sales/leads/${lead.id}`)}
-                        className={buttonClass('ghost', 'sm', 'text-accent')}
-                        aria-label={`Details for ${lead.name}`}
-                      >
-                        Details <ArrowRight size={14} aria-hidden="true" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {extras === null ? (
+          <div className="space-y-3 border-t border-rule p-5" role="status" aria-label="Loading activity">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-10 rounded-lg" />)}
           </div>
+        ) : extras.activity === null ? (
+          <p className="border-t border-rule px-6 py-8 text-center text-sm text-muted">Recent activity could not be loaded.</p>
+        ) : recent.length === 0 ? (
+          <EmptyState icon={ClipboardList} title="No activity yet" description="Notes, calls and emails you log on a lead will appear here." className="border-t border-rule" />
         ) : (
-          <EmptyState icon={Users} title="No leads assigned to you yet" description="New leads will appear here as soon as they are assigned." className="border-t border-rule" />
+          <ul className="divide-y divide-rule border-t border-rule">
+            {recent.map(a => {
+              const { icon: Icon, tone } = interactionIcon(a.type);
+              return (
+                <li key={a.id}>
+                  <Link to={`/sales/leads/${a.leadId}`} className="flex items-start gap-3 px-5 py-3.5 hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none sm:px-6">
+                    <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tone}`} aria-hidden="true"><Icon size={15} /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="text-sm font-semibold text-ink">{a.lead?.name || 'Unknown lead'}</span>
+                        {a.lead?.organization && <span className="truncate text-xs text-muted">{a.lead.organization}</span>}
+                      </span>
+                      <span className="mt-0.5 block truncate text-sm text-ink-2">{a.notes}</span>
+                    </span>
+                    <time dateTime={a.createdAt} title={formatStamp(a.createdAt)} className="shrink-0 pt-0.5 text-xs text-muted">{timeAgo(a.createdAt)}</time>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }

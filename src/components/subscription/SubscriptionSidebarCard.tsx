@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { isSoloAccount } from '../../constants';
+import { isIndividualAccount } from '../../constants';
 import { formatRupees } from '../../lib/institutionPricing';
 import { SOLO_BULK_THRESHOLD, SOLO_RATE_BULK, SOLO_RATE_STANDARD } from '../../lib/soloPricing';
 import {
@@ -34,7 +34,7 @@ export function useSubscriptionCard(): { summary: SubscriptionSummary | null; to
   const { profile } = useAuth() as any;
   const pricing = usePricing();
   const role: string | undefined = profile?.role;
-  const solo = isSoloAccount(profile);
+  const solo = isIndividualAccount(profile);
   const institutionPlan: InstitutionPlan | null | undefined = role === 'Institution' ? pricing?.plan : undefined;
   const kind: SubscriptionKind | null = !role || !CARD_ROLES.includes(role) ? null
     : institutionPlan ? 'institution' : solo ? 'solo' : 'member';
@@ -88,7 +88,11 @@ export function useSubscriptionCard(): { summary: SubscriptionSummary | null; to
     return { summary, to: '/institution/subscriptions', failed: false };
   }
   if (kind === 'institution') return null;
-  const to = kind === 'solo' ? '/dashboard/subscribe' : role === 'Subscriber' ? '/dashboard/pro' : '/dashboard/subscriptions';
+  // An individual with nothing running goes straight to choosing departments; one who has
+  // something running goes to see it (where adding more is a button away).
+  const buying = kind === 'solo' && (loaded.failed || !loaded.summary || loaded.summary.state === 'FREE' || loaded.summary.state === 'EXPIRED');
+  const to = kind === 'solo' ? (buying ? '/dashboard/pro?choose=1' : '/dashboard/pro')
+    : role === 'Subscriber' ? '/dashboard/pro' : '/dashboard/subscriptions';
   return { summary: loaded.summary, to, failed: loaded.failed };
 }
 
@@ -129,7 +133,11 @@ export function cardContent(s: SubscriptionSummary): { eyebrow: string; headline
         : { eyebrow: 'Premium subscription', headline: s.wholeLibrary ? 'Whole library' : departments(s.departmentCount), lines: [line], button: 'View subscription' };
     }
     case 'EXPIRED':
-      return { eyebrow: 'Subscription expired', headline: 'Your premium department access has ended.', lines: [], button: 'View subscription options' };
+      return {
+        eyebrow: 'Subscription expired', headline: 'Your premium department access has ended.', lines: [],
+        // An individual can buy again from here; anyone else is shown the options.
+        button: s.kind === 'solo' ? 'Buy Premium' : 'View subscription options',
+      };
     case 'NO_SUBSCRIPTION':
       return {
         eyebrow: 'Institutional access',
@@ -141,12 +149,12 @@ export function cardContent(s: SubscriptionSummary): { eyebrow: string; headline
       return {
         eyebrow: 'Free subscription',
         headline: 'Free Preview active',
-        lines: ['Upgrade for uninterrupted access.'],
-        // Only a Solo Learner is shown the Solo rates; no other account is quoted them.
+        lines: s.kind === 'solo' ? [] : ['Upgrade for uninterrupted access.'],
+        // Only an individual account is shown the Solo rates; no other account is quoted them.
         prices: s.kind === 'solo'
-          ? [`${formatRupees(SOLO_RATE_STANDARD)} / department / year`, `${SOLO_BULK_THRESHOLD}+ departments ${formatRupees(SOLO_RATE_BULK)} each`]
+          ? [`Premium from ${formatRupees(SOLO_RATE_STANDARD)} / department / year`, `${SOLO_BULK_THRESHOLD}+ departments: ${formatRupees(SOLO_RATE_BULK)} each`]
           : undefined,
-        button: 'View Premium Plans',
+        button: s.kind === 'solo' ? 'Buy Premium' : 'View Premium Plans',
       };
   }
 }

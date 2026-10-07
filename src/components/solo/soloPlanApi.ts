@@ -92,7 +92,7 @@ export type SoloPaymentResult =
  */
 export async function payForSoloSubscription(
   departments: string[],
-  who: { name?: string; email?: string; description: string },
+  who: { name?: string; email?: string; contact?: string; description: string },
 ): Promise<SoloPaymentResult> {
   let order: any;
   try {
@@ -126,7 +126,7 @@ export async function payForSoloSubscription(
       order_id: order.id,
       name: 'STM Digital Library',
       description: who.description,
-      prefill: { name: who.name, email: who.email },
+      prefill: { name: who.name, email: who.email, contact: who.contact },
       theme: { color: '#0b6e72' },
       handler: async (resp: any) => {
         const v = await verify({

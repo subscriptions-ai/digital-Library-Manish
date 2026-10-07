@@ -383,6 +383,21 @@
   .mix-bar { transition: none; }
 }
 
+/* A tooltip for an icon-only control. It shows on hover and on keyboard focus,
+   which the native title attribute does not, and the control keeps its
+   aria-label for screen readers. */
+.tip { position: relative; }
+.tip::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+  white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 120ms ease; z-index: 30;
+  background: var(--ink); color: var(--surface);
+  font-size: var(--fs-meta); font-weight: 500; line-height: 1.2;
+  padding: 5px 8px; border-radius: var(--radius-sm);
+}
+.tip:hover::after, .tip:focus-visible::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .tip::after { transition: none; } }
+
 /* The publishers strip on the home page, which walks slowly to the left and
    stops when a reader points at it. The track holds the list twice, so the
    second copy is under the cursor by the time the first has left. */

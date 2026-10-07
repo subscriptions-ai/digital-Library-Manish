@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, Building2, CheckCircle2, AlertCircle, MessageSquare, MapPin } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Button, EmptyState, Field, Skeleton } from '../ui';
-
-const PIPELINE_STAGES = ['All', 'Positive', 'No Response', 'Subscriber', 'In Progress', 'Negative', 'Repeated'];
+import { LeadStatusBadge, NO_STATE, PIPELINE_STAGES, formatStamp, stageLabel } from './salesUi';
 
 export function SalesLeadDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [lead, setLead] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -36,6 +36,14 @@ export function SalesLeadDetails() {
       setLoading(false);
     }
   };
+
+  // "Add note" in the leads menu lands here, on the note form.
+  useEffect(() => {
+    if (loading || !lead || location.hash !== '#add-note') return;
+    const box = document.getElementById('add-note');
+    box?.scrollIntoView({ block: 'center' });
+    box?.querySelector('textarea')?.focus({ preventScroll: true });
+  }, [loading, lead, location.hash]);
 
   const handleStatusChange = async (newStatus: string) => {
     setUpdating(true);
@@ -97,7 +105,7 @@ export function SalesLeadDetails() {
             <ArrowLeft size={20} aria-hidden="true" />
           </button>
           <div className="min-w-0">
-            <h1 className="type-page-title text-ink break-words">{lead.name}</h1>
+            <h1 className="type-page-title flex flex-wrap items-center gap-x-3 gap-y-1 text-ink break-words">{lead.name} <LeadStatusBadge status={lead.status} /></h1>
             <p className="text-sm text-muted flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>Source: <span className="font-semibold text-ink-2">{lead.source}</span></span>
               {lead.state && (
@@ -139,7 +147,7 @@ export function SalesLeadDetails() {
             disabled={updating}
             className="input w-auto font-semibold"
           >
-            {PIPELINE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+            {PIPELINE_STAGES.map(s => <option key={s} value={s}>{stageLabel(s)}</option>)}
           </select>
           {lead.status === 'Subscriber' && (
             <button className="btn btn-primary">
@@ -176,15 +184,13 @@ export function SalesLeadDetails() {
                   <dd className="text-sm font-medium text-ink-2">{lead.organization || 'Not provided'}</dd>
                 </div>
               </div>
-              {lead.state && (
-                <div className="flex items-start gap-3">
-                  <MapPin className="text-faint mt-0.5 shrink-0" size={16} aria-hidden="true" />
-                  <div>
-                    <dt className="text-xs font-medium text-muted">State</dt>
-                    <dd className="text-sm font-medium text-ink-2">{lead.state}</dd>
-                  </div>
+              <div className="flex items-start gap-3">
+                <MapPin className="text-faint mt-0.5 shrink-0" size={16} aria-hidden="true" />
+                <div>
+                  <dt className="text-xs font-medium text-muted">State</dt>
+                  <dd className={`text-sm font-medium ${lead.state ? 'text-ink-2' : 'text-muted'}`}>{lead.state || NO_STATE}</dd>
                 </div>
-              )}
+              </div>
             </dl>
           </div>
 
@@ -219,7 +225,7 @@ export function SalesLeadDetails() {
                         <span className="font-semibold text-ink text-sm">{int.user?.displayName || 'System'}</span>
                         <span className="badge badge-neutral">{int.type}</span>
                       </div>
-                      <span className="text-xs text-muted">{new Date(int.createdAt).toLocaleString()}</span>
+                      <span className="text-xs text-muted">{formatStamp(int.createdAt)}</span>
                     </div>
                     <p className="text-sm text-ink-2 whitespace-pre-wrap leading-relaxed break-words">{int.notes}</p>
                   </div>
@@ -228,7 +234,7 @@ export function SalesLeadDetails() {
             )}
           </div>
 
-          <div className="p-4 border-t border-rule">
+          <div id="add-note" className="p-4 border-t border-rule">
             <form onSubmit={handleAddInteraction} className="space-y-3">
               <Field label="Type" className="sm:w-48">
                 <select
