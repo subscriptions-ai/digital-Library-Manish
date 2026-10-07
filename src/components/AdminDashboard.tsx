@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { getDashboardRoute } from '../lib/dashboardRoute';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ export function AdminDashboard() {
     if (profile) {
       if (profile.role !== 'Admin' && profile.role !== 'SuperAdmin') {
         toast.error('Unauthorized access');
-        navigate('/dashboard');
+        navigate(getDashboardRoute(profile), { replace: true });
         return;
       }
       setAdminProfile(profile);

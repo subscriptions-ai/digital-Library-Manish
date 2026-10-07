@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { FileText, LogOut, PenLine, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Spinner } from '../ui';
+import { getDashboardRoute } from '../../lib/dashboardRoute';
 
 /**
  * The writer's dashboard.
@@ -20,11 +21,11 @@ export function StudioLayout({ children }: { children: React.ReactNode }) {
     if (loading) return;
     if (!profile) { navigate('/login'); return; }
     if (profile.role !== 'ContentManager' && profile.role !== 'SuperAdmin') {
-      navigate(profile.role === 'Institution' ? '/institution' : '/dashboard');
+      navigate(getDashboardRoute(profile), { replace: true });
     }
   }, [profile, loading, navigate]);
 
-  if (loading || !profile) return <div className="flex min-h-screen items-center justify-center bg-ground"><Spinner /></div>;
+  if (loading || !profile || (profile.role !== 'ContentManager' && profile.role !== 'SuperAdmin')) return <div className="flex min-h-screen items-center justify-center bg-ground"><Spinner /></div>;
 
   const link = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${

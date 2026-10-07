@@ -4,6 +4,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Spinner } from '../ui';
+import { getDashboardRoute } from '../../lib/dashboardRoute';
 
 // The workspace's sections, in order. `exact` matches the path itself only;
 // otherwise the section owns everything beneath it.
@@ -56,16 +57,17 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
   }, [menuOpen]);
   useEffect(() => { if (!bellOpen) return; const c = () => setBellOpen(false); window.addEventListener('click', c); return () => window.removeEventListener('click', c); }, [bellOpen]);
 
+  const allowed = profile?.role === 'SalesExecutive' || profile?.role === 'SalesManager' || profile?.role === 'SuperAdmin';
   useEffect(() => {
     if (!loading) {
       if (!profile) {
         navigate('/login');
-      } else if (profile.role !== 'SalesExecutive' && profile.role !== 'SalesManager' && profile.role !== 'SuperAdmin') {
+      } else if (!allowed) {
         toast.error('Unauthorized access to Sales Portal');
-        navigate('/dashboard');
+        navigate(getDashboardRoute(profile), { replace: true });
       }
     }
-  }, [profile, loading, navigate]);
+  }, [profile, loading, navigate, allowed]);
 
   const handleSignOut = async () => {
     try {
@@ -76,7 +78,7 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (loading || !profile) return <div className="min-h-screen bg-ground flex items-center justify-center"><Spinner /></div>;
+  if (loading || !profile || !allowed) return <div className="min-h-screen bg-ground flex items-center justify-center"><Spinner /></div>;
 
   const isActive = (to: string, exact: boolean) => exact ? location.pathname === to : location.pathname.startsWith(to);
 

@@ -40,6 +40,28 @@ export function departmentRate(count: number): number {
   return DEPARTMENT_RATES.find((tier) => count >= tier.minDepartments)!.rate;
 }
 
+/**
+ * The slab a total of `count` departments falls in, as the quotation words it: "5+ departments",
+ * "3 departments", "1 department". The total is what decides the slab — an institution adding
+ * a fifth department to four it already holds is in the 5+ slab.
+ */
+export function slabLabel(count: number): string {
+  const tier = DEPARTMENT_RATES.find((t) => count >= t.minDepartments) ?? DEPARTMENT_RATES[DEPARTMENT_RATES.length - 1];
+  const top = DEPARTMENT_RATES[0].minDepartments;
+  return tier.minDepartments === top ? `${tier.minDepartments}+ departments`
+    : tier.minDepartments === 1 ? '1 department' : `${tier.minDepartments} departments`;
+}
+
+/** The whole rate card in one sentence, lowest slab first: "INR 9,990 for 1 department; ...". */
+export function departmentRateLadder(): string {
+  const tiers = [...DEPARTMENT_RATES].reverse();
+  const top = tiers[tiers.length - 1].minDepartments;
+  const money = (n: number) => 'INR ' + n.toLocaleString('en-IN');
+  return tiers.map((t) => t.minDepartments === 1 ? `${money(t.rate)} for 1 department`
+    : t.minDepartments === top ? `${money(t.rate)} each for ${t.minDepartments} or more`
+    : `${money(t.rate)} each for ${t.minDepartments}`).join('; ');
+}
+
 export type PriceBreakdown = {
   /** Units charged: departments, or extra seats. */
   quantity: number;

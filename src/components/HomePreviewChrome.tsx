@@ -9,6 +9,7 @@ import { DOMAINS } from '../constants';
 const DEPARTMENTS_AZ = [...DOMAINS].sort((a, b) => a.name.localeCompare(b.name));
 import { COMPANY_DETAILS } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import { getDashboardRoute } from '../lib/dashboardRoute';
 import { usePublisherSafeMode } from '../lib/publicSettings';
 import { HeaderSearch } from './GlobalSearch';
 
@@ -77,7 +78,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export function PreviewHeader() {
   const safeMode = usePublisherSafeMode();
-  const { user, logout, isAdmin, isInstitutionAdmin, isSubscriptionManager } = useAuth();
+  const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const totals = useDepartmentTotals();
@@ -120,7 +121,7 @@ export function PreviewHeader() {
   useDismiss(deptOpen, () => setDeptOpen(false), deptRef);
   useDismiss(profileOpen, () => setProfileOpen(false), profileRef);
 
-  const dashboardPath = isAdmin ? '/admin' : isInstitutionAdmin ? '/institution' : isSubscriptionManager ? '/manager' : '/dashboard';
+  const dashboardPath = getDashboardRoute(profile);
   const initials = (user?.displayName || user?.email || '?').trim().slice(0, 2).toUpperCase();
 
   const signOut = () => { logout(); navigate('/'); setProfileOpen(false); setMenuOpen(false); };

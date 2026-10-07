@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { Spinner } from '../ui';
+import { getDashboardRoute } from '../../lib/dashboardRoute';
 
 interface ManagerLayoutProps {
   children: React.ReactNode;
@@ -22,7 +23,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
     if (!loading && profile) {
       if (!isSubscriptionManager && profile.role !== 'SubscriptionManager') {
         toast.error('Unauthorized access');
-        navigate('/dashboard');
+        navigate(getDashboardRoute(profile), { replace: true });
       } else {
         fetch('/api/admin/subscription-requests?status=Pending', {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -45,7 +46,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
     }
   };
 
-  if (loading || !profile) {
+  if (loading || !profile || !isSubscriptionManager) {
     return (
       <div className="min-h-screen bg-ground flex items-center justify-center">
         <Spinner />

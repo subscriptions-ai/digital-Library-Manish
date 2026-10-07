@@ -8,8 +8,9 @@ import {
   departmentRate, formatRupees,
 } from '../../../lib/institutionPricing';
 import { COMPANY_DETAILS } from '../../../config';
-import { fetchQuote, payForPurchase, type InstitutionPlan, type Quote, type ServerPrice } from './planApi';
-import { downloadQuotation } from './quotationPdf';
+import { fetchQuote, payForPurchase, requestQuotation, type InstitutionPlan, type Quote, type ServerPrice } from './planApi';
+import { institutionPlanToRender } from '../../../lib/quotation/quotationModel';
+import { downloadQuotationPdf } from '../../../lib/quotation/quotationPdf';
 import { AnnualPricingBlock } from '../../pricing/AnnualPricingBlock';
 import { PRICE_LABELS, getInstitutionPricingDisplay } from '../../../lib/pricingDisplay';
 
@@ -120,15 +121,6 @@ function useServerQuote(key: string | null, body: () => Parameters<typeof fetchQ
   return quote && quote.key === key ? quote : null;
 }
 
-/** The department-rate slab a total of `n` departments falls in, worded as the terms word it. */
-function slabLabel(n: number): string {
-  const tier = DEPARTMENT_RATES.find((t) => n >= t.minDepartments);
-  const min = tier?.minDepartments ?? 1;
-  const top = DEPARTMENT_RATES[0].minDepartments;
-  return min === top ? `${min}+ departments` : min === 1 ? '1 department' : `${min} departments`;
-}
-const rsText = (n: number) => `Rs. ${Number(n).toLocaleString('en-IN')}`;
-
 function institutionName(profile: any): string | undefined {
   return profile?.institutionProfile?.name || profile?.organization || undefined;
 }
@@ -172,28 +164,20 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
   const server = useServerQuote(key, () => ({ kind: 'departments', departments: selected }));
   const price = server?.quote?.price ?? preview;
 
-  const download = () => {
-    if (!price) { toast.error('Choose at least one department.'); return; }
-    downloadQuotation({
-      institution: institutionName(profile),
-      contactName: profile?.displayName, contactEmail: profile?.email,
-      customerState: profile?.state || profile?.institutionProfile?.state,
-      title: 'Premium Institutional Subscription',
-      summary: [
-        ['Departments', String(count)],
-        ['Subscription period', `${TERM_MONTHS} months`],
-      ],
-      slabNote: `Applied pricing slab: ${slabLabel(totalAfter)} — ${rsText(price.rate)} per department/year.`,
-      lines: selected.map((d) => ({ description: `Department subscription: ${d} (${TERM_MONTHS} months)`, quantity: 1, rate: price.rate })),
-      departments: selected,
-      base: price.base, gst: price.gst, total: price.total,
-      notes: [
-        held.size
-          ? `Rate for ${totalAfter} departments in total, including the ${held.size} your institution already subscribes to.`
-          : `Department rates: ${departmentRateLine()}.`,
-      ],
-      fileName: 'STM_Digital_Library_Department_Quotation.pdf',
-    });
+  const [quoting, setQuoting] = useState(false);
+  // The quotation is the server's: it prices the purchase against what the institution already
+  // holds, stores it, and the PDF is drawn from that record — not from this screen's preview.
+  const download = async () => {
+    if (!count) { toast.error('Choose at least one department.'); return; }
+    setQuoting(true);
+    const r = await requestQuotation({ kind: 'departments', departments: selected });
+    if (!r.quotation) { setQuoting(false); toast.error(r.error || 'Could not prepare the quotation.'); return; }
+    try {
+      await downloadQuotationPdf(institutionPlanToRender(r.quotation), 'STM_Digital_Library_Department_Quotation.pdf');
+    } catch {
+      toast.error('Could not create the PDF.');
+    }
+    setQuoting(false);
   };
 
   const pay = async () => {
@@ -219,7 +203,9 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
       subtitle={`Choose the departments for full subscribed access. Your institution can add up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users at no extra charge.`}
       onClose={onClose}
       footer={<>
-        <button type="button" onClick={download} disabled={!count} className={btnGhost}><Download size={16} aria-hidden="true" /> Download Quotation</button>
+        <button type="button" onClick={download} disabled={!count || quoting} aria-busy={quoting || undefined} className={btnGhost}>
+          {quoting ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Download size={16} aria-hidden="true" />} Download Quotation
+        </button>
         <button type="button" onClick={pay} disabled={!count || paying || !!server?.error} aria-busy={paying || undefined} className={btnPrimary}>
           {paying && <Loader2 size={16} className="animate-spin" aria-hidden="true" />} Proceed to Payment
         </button>

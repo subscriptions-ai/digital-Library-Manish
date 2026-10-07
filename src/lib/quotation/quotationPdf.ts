@@ -3,9 +3,9 @@ import { TERM_GROUPS, dateDisplay, deptColumns, deptNo, moneyAuto, type QuoteRen
 import { phoneLine } from './quotationHtml';
 
 /**
- * The quotation as a PDF: page 1 is the quotation (parties, what is bought, tax, payment,
- * signature); the page after it carries the commercial terms in two columns, grouped.
- * A compact quotation (Solo) keeps its short terms on page 1 and has no terms page.
+ * The quotation as a PDF, always two pages: page 1 is the quotation (parties, what is bought,
+ * tax, payment, signature); page 2 carries the terms in two columns, grouped. Solo and
+ * institutional quotations share this layout; what differs is what they say.
  *
  * The layout flows from the top of the page — each block is measured, then drawn — so a
  * quotation with few departments is not left with a gap and one with many does not collide
@@ -76,8 +76,12 @@ type Word = { s: string; bold: boolean };
  * the first pass, which measures how much room is left, so a short quotation is spread over the
  * page instead of being left with an empty band at the bottom.
  */
-function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { doc: jsPDF; spare: number } {
+function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number, dense = false): { doc: jsPDF; spare: number; spilled: boolean } {
   let spare = 0;
+  // True when page 1's content did not fit and a third page had to be started.
+  let spilled = false;
+  /** A gap, tightened when page 1 is full. */
+  const gap = (n: number) => (dense ? Math.round(n * 0.62) : n);
   const g = stretch;
   const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const i = r.issuer;
@@ -177,6 +181,7 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
   let pagesAdded = 0;
   const continuation = (heading: string): number => {
     pagesAdded += 1;
+    if (heading === 'QUOTATION (CONTINUED)') spilled = true;
     doc.addPage(); band();
     image(assets?.logo, ML, 18, 40, 40);
     t(76, 36, reg, 12, true, NAVY);
@@ -186,6 +191,8 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
     ln(ML, 66, MR, 66, NAVY, 1);
     return 80;
   };
+
+  const termsHeading = (r.termsHeading ?? 'Commercial Terms & Conditions').toUpperCase();
 
   // ── Page 1 ──
   let y = letterhead() + 10 + g;
@@ -202,7 +209,7 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
   const measureKv = (b: { w: number; lw: number }, value: string) => wrap(value, b.w - pad * 2 - b.lw, 7.8).length * 9.6 + 3.5;
   const has = (s?: string) => !!s && s.trim() !== '' && s.trim().toUpperCase() !== 'N/A';
 
-  const custName = wrap(c.name?.trim() || 'Institution Name', boxes[0].w - pad * 2, 10, true).slice(0, 2);
+  const custName = wrap(c.name?.trim() || (r.customerLabel ? 'Customer' : 'Institution Name'), boxes[0].w - pad * 2, 10, true).slice(0, 2);
   const custRows: [string, string][] = [];
   if (has(c.contact)) custRows.push(['Contact', c.contact]);
   if (has(c.designation)) custRows.push(['Designation', c.designation]);
@@ -220,7 +227,7 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
   const h3 = 30 + metaRows.reduce((n, [, v]) => n + measureKv(boxes[2], v), 0);
   const boxH = Math.max(h1, h2, h3, 76);
   box(boxes[0].x, y, boxes[0].w, boxH, WHITE); box(boxes[1].x, y, boxes[1].w, boxH, PALE); box(boxes[2].x, y, boxes[2].w, boxH, WHITE);
-  caption(boxes[0].x + pad, y + 14, 'Institution / Customer');
+  caption(boxes[0].x + pad, y + 14, r.customerLabel ?? 'Institution / Customer');
   caption(boxes[1].x + pad, y + 14, 'Billing & Tax / Supply Details');
   caption(boxes[2].x + pad, y + 14, 'Quotation Details');
   custName.forEach((l, n) => t(boxes[0].x + pad, y + 29 + n * 12, l, 10, true, NAVY));
@@ -230,7 +237,7 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
   billRows.forEach(([k, v]) => { by = kv(boxes[1], by, k, v); });
   let my = y + 31;
   metaRows.forEach(([k, v]) => { my = kv(boxes[2], my, k, v); });
-  y += boxH + 14 + g;
+  y += boxH + gap(14) + g;
 
   // Title bar
   t(ML, y, r.title, 12.5, true, NAVY);
@@ -269,44 +276,76 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
     doc.rect(ML, y, CW, 26, 'S'); t(ML + CW / 2, y + 16, 'No subscription lines.', 8, false, SOFT, 'center'); y += 26;
   }
 
-  // The departments, beneath the line they belong to
+  // The departments, beneath the line they belong to. When the price depends on departments the
+  // customer already holds, they follow the new ones in the same box — shown, never charged.
+  type DeptSection = { caption: string; names: string[]; cols: 1 | 2 | 3 | 4; size: number; note?: string };
+  const sections: DeptSection[] = [];
   if (r.departments?.length) {
-    const nDept = r.departments.length;
-    const nCols = deptColumns(nDept);
-    const colGap = 22;
-    const colW = (CW - 20 - colGap * (nCols - 1)) / nCols;
-    const perCol = Math.ceil(nDept / nCols);
+    sections.push({
+      caption: `${r.departmentsLabel ?? 'Subscribed departments'} — ${r.departments.length}`,
+      names: r.departments, cols: dense && r.departments.length >= 9 ? 3 : deptColumns(r.departments.length), size: 8,
+    });
+  }
+  if (r.existingDepartments) {
+    const e = r.existingDepartments;
+    const n = e.names.length;
+    sections.push({
+      caption: `Existing active departments — ${e.count}`,
+      names: e.names, cols: dense && n >= 9 ? 4 : n >= 5 ? 3 : n >= 3 ? 2 : 1, size: 7.6,
+      note: n ? undefined : `${e.count} ${e.count === 1 ? 'department is' : 'departments are'} already active on this account. They count towards the pricing slab and are not charged again.`,
+    });
+  }
+  if (sections.length) {
     const numW = 17;
-    const cells = r.departments.map(d => wrap(d, colW - numW, 8));
-    // Read down each column, so a list runs in order the way a person reads it.
-    const colH = Array.from({ length: nCols }, (_, k) => k).map(cIdx => cells.slice(cIdx * perCol, (cIdx + 1) * perCol).reduce((a, l) => a + l.length * 9.6 + 3.4, 0));
-    const dh = 28 + Math.max(...colH);
-    if (y + 8 + dh > BOTTOM - 40) y = continuation('QUOTATION (CONTINUED)'); else y += 8;
+    const dLead = dense ? 8.8 : 9.6;
+    const colGap = 22;
+    const laid = sections.map((sec, idx) => {
+      const colW = (CW - 20 - colGap * (sec.cols - 1)) / sec.cols;
+      const perCol = Math.max(1, Math.ceil(sec.names.length / sec.cols));
+      const cells = sec.names.map(d => wrap(d, colW - numW, sec.size));
+      // Read down each column, so a list runs in order the way a person reads it.
+      const colH = Array.from({ length: sec.cols }, (_, k) => cells.slice(k * perCol, (k + 1) * perCol).reduce((acc, l) => acc + l.length * dLead + (dense ? 2.4 : 3.4), 0));
+      const noteLines = sec.note ? wrap(sec.note, CW - 20, 7.6) : [];
+      const h = (idx === 0 ? 28 : 24) + Math.max(0, ...colH) + noteLines.length * 9.6;
+      return { sec, colW, perCol, cells, noteLines, h };
+    });
+    const dh = laid.reduce((acc, l) => acc + l.h, 0) + (dense ? 0 : 2);
+    if (y + 8 + dh > BOTTOM - 40) y = continuation('QUOTATION (CONTINUED)'); else y += gap(8);
     box(ML, y, CW, dh, PALE);
-    caption(ML + 10, y + 14, `Subscribed departments \u2014 ${nDept}`);
-    Array.from({ length: nCols }, (_, k) => k).forEach(cIdx => {
-      let ry = y + 29;
-      const x = ML + 10 + cIdx * (colW + colGap);
-      cells.slice(cIdx * perCol, (cIdx + 1) * perCol).forEach((lines, k) => {
-        t(x, ry, deptNo(cIdx * perCol + k), 7.8, true, TEAL);
-        lines.forEach((s2, n) => t(x + numW, ry + n * 9.6, s2, 8, false, NAVY));
-        ry += lines.length * 9.6 + 3.4;
+    let top = y;
+    laid.forEach(({ sec, colW, perCol, cells, noteLines }, idx) => {
+      if (idx > 0) ln(ML + 10, top + 1, MR - 10, top + 1, RULE, 0.6);
+      caption(ML + 10, top + (idx === 0 ? 14 : 15), sec.caption);
+      Array.from({ length: sec.cols }, (_, k) => k).forEach(cIdx => {
+        let ry = top + (idx === 0 ? 29 : 28);
+        const x = ML + 10 + cIdx * (colW + colGap);
+        cells.slice(cIdx * perCol, (cIdx + 1) * perCol).forEach((lines, k) => {
+          t(x, ry, deptNo(cIdx * perCol + k), sec.size - 0.2, true, TEAL);
+          lines.forEach((s2, n) => t(x + numW, ry + n * dLead, s2, sec.size, false, NAVY));
+          ry += lines.length * dLead + (dense ? 2.4 : 3.4);
+        });
       });
+      noteLines.forEach((l, k) => t(ML + 10, top + 29 + k * 9.6, l, 7.6, false, GRAY));
+      top += laid[idx].h;
     });
     y += dh;
   }
-  y += 12 + g;
+  y += gap(12) + g;
 
   // Summary and totals, side by side
-  const sumW = 262, totX = ML + sumW + 12, totW = CW - sumW - 12;
+  const sumW = 300, totX = ML + sumW + 12, totW = CW - sumW - 12;
   const totals: [string, string, boolean][] = [['Gross Subscription Amount', inr(r.gross), false]];
   if (r.discount > 0) totals.push(['Special Discount / Adjustment', '- ' + inr(r.discount), false]);
   totals.push(['Taxable Subtotal', inr(r.subtotal), true]);
   if (r.tax === 'split') totals.push(['CGST @ 9%', inr(r.cgst, 2), false], ['SGST @ 9%', inr(r.sgst, 2), false]);
   else if (r.tax === 'igst') totals.push(['IGST @ 18%', inr(r.igst, 2), false]);
   else totals.push(['GST @ 18%', inr(r.singleGst ?? 0, 2), false]);
-  const summary = r.summary.map(s => ({ label: s.label, lines: wrap(s.value, sumW - 20 - 86, 8, true) }));
-  const sumH = summary.length ? 28 + summary.reduce((a, s) => a + s.lines.length * 10 + 5, 0) : 0;
+  // The label column is as wide as its longest label, so a long one ("New departments in this
+  // quotation") is never cut and the values start in one straight line.
+  const labW = Math.max(78, ...r.summary.map(x => tw(x.label, 7.4, false))) + 10;
+  const rowGap = dense ? 3 : 5;
+  const summary = r.summary.map(s => ({ label: s.label, lines: wrap(s.value, sumW - 20 - labW, 8, true) }));
+  const sumH = summary.length ? 28 + summary.reduce((a, s) => a + s.lines.length * 10 + rowGap, 0) : 0;
   const totH = 14 + totals.length * 15 + 10 + 34;
   const rowH = Math.max(sumH, totH);
   if (y + rowH > BOTTOM - 20) y = continuation('QUOTATION (CONTINUED)');
@@ -317,8 +356,8 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
     let sy = y + 31;
     summary.forEach(s => {
       t(ML + 10, sy, s.label, 7.4, false, SOFT);
-      s.lines.forEach((l, n) => t(ML + 96, sy + n * 10, l, 8, true, NAVY));
-      sy += s.lines.length * 10 + 5;
+      s.lines.forEach((l, n) => t(ML + 10 + labW, sy + n * 10, l, 8, true, NAVY));
+      sy += s.lines.length * 10 + rowGap;
     });
   }
   const tx0 = summary.length ? totX : ML + CW - totW;
@@ -334,13 +373,14 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
   doc.setFillColor(...TINT); doc.setDrawColor(...TEAL); doc.setLineWidth(0.8);
   doc.roundedRect(tx0 + 8, gtY, totW - 16, gtH, 3, 3, 'FD');
   t(tx0 + 20, gtY + 21, 'Grand Total', 10.5, true, NAVY);
-  t(tx0 + totW - 20, gtY + 22, inr(r.total, 2), 15, true, TEAL, 'right');
-  y += rowH + 13 + g;
+  // A large total shrinks to fit rather than running into its label.
+  const gtText = inr(r.total, 2);
+  const gtSize = Math.min(15, Math.max(10, 15 * (totW - 40 - tw('Grand Total', 10.5, true) - 8) / Math.max(1, tw(gtText, 15, true))));
+  t(tx0 + totW - 20, gtY + 22, gtText, gtSize, true, TEAL, 'right');
+  y += rowH + gap(13) + g;
 
   // Payment options, with the signatory in the same band
-  const bankW = r.compact ? 296 : 262;
-  const upiW = r.compact ? CW - bankW - 12 : 108;
-  const sigW = r.compact ? 0 : CW - bankW - upiW - 20;
+  const bankW = 262, upiW = 108, sigW = CW - bankW - upiW - 20;
   const bank: [string, string][] = [
     ['In favour of', reg],
     ['Bank', `${i.bank.bankName}, ${i.bank.branch}`],
@@ -349,16 +389,12 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
     ['Cheque / DD', `Send to ${i.salesOffice}`],
   ];
   const bankLines = bank.map(([, v]) => wrap(v, bankW - 24 - 70, 8.2));
-  const qh = r.compact ? 90 : 84, qw = qh * (462 / 604);
-  const payH = Math.max(126, 34 + bankLines.reduce((a2, l) => a2 + l.length * 10 + 7, 0) + 4, 27 + qh + 10);
+  const qh = 84, qw = qh * (462 / 604);
+  const payH = Math.max(dense ? 112 : 126, 34 + bankLines.reduce((a2, l) => a2 + l.length * 10 + (dense ? 5 : 7), 0) + 4, 27 + qh + 10);
   if (y + 14 + payH > BOTTOM) y = continuation('QUOTATION (CONTINUED)');
   t(ML, y + 4, 'PAYMENT OPTIONS', 8.4, true, NAVY);
-  if (r.compact) {
-    ln(ML + 92, y + 1.5, MR, y + 1.5, RULE, 0.8);
-  } else {
-    ln(ML + 92, y + 1.5, MR - 214, y + 1.5, RULE, 0.8);
-    t(MR, y + 4, 'Commercial Terms & Conditions: see the next page', 7, true, SOFT, 'right');
-  }
+  ln(ML + 92, y + 1.5, MR - 214, y + 1.5, RULE, 0.8);
+  t(MR, y + 4, `${r.termsPointer ?? 'Commercial Terms & Conditions'}: see the next page`, 7, true, SOFT, 'right');
   y += 14;
   const upiX = ML + bankW + 10;
   box(ML, y, bankW, payH, PALE);
@@ -368,58 +404,32 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
   bank.forEach(([k], n) => {
     t(ML + 12, py, k, 7.4, true, GRAY);
     bankLines[n].forEach((l, m) => t(ML + 82, py + m * 10, l, 8.2, false, NAVY));
-    py += Math.max(1, bankLines[n].length) * 10 + 7;
+    py += Math.max(1, bankLines[n].length) * 10 + (dense ? 5 : 7);
   });
   caption(upiX + 12, y + 16, 'UPI payment');
   image(assets?.qr, upiX + (upiW - qw) / 2, y + 27, qw, qh);
-  if (!r.compact) {
-    // The signatory sits with the payment details, not under a gap.
-    const sx = upiX + upiW + 10;
-    const sBottom = y + payH;
-    t(sx + sigW / 2, sBottom - 62, `For ${reg}`, 6.6, false, GRAY, 'center');
-    image(assets?.signature, sx + (sigW - 100) / 2, sBottom - 58, 100, 36);
-    ln(sx, sBottom - 20, sx + sigW, sBottom - 20, GRAY, 0.6);
-    t(sx + sigW / 2, sBottom - 9, 'Authorized Signatory', 7.2, true, NAVY, 'center');
-  }
+  // The signatory sits with the payment details, not under a gap.
+  const sx = upiX + upiW + 10;
+  const sBottom = y + payH;
+  t(sx + sigW / 2, sBottom - 62, `For ${reg}`, 6.6, false, GRAY, 'center');
+  image(assets?.signature, sx + (sigW - 100) / 2, sBottom - 58, 100, 36);
+  ln(sx, sBottom - 20, sx + sigW, sBottom - 20, GRAY, 0.6);
+  t(sx + sigW / 2, sBottom - 9, 'Authorized Signatory', 7.2, true, NAVY, 'center');
   y += payH + 10;
-  if (!r.compact && pagesAdded === 0) spare = BOTTOM - 6 - y;
+  if (pagesAdded === 0) spare = BOTTOM - 6 - y;
 
-  if (r.compact) {
-    // Short terms, in two columns, on the same page.
-    const colW = (CW - 18) / 2;
-    const items = r.terms.map(term => runs(term.lead, term.text, colW - 22, 7.4));
-    const heights = items.map(l => l.length * 9 + 4);
-    const total = heights.reduce((a, b) => a + b, 0);
-    let split = items.length, acc = 0;
-    for (let k = 0; k < items.length; k++) { acc += heights[k]; if (acc >= total / 2) { split = k + 1; break; } }
-    const hLeft = heights.slice(0, split).reduce((a, b) => a + b, 0);
-    const hRight = heights.slice(split).reduce((a, b) => a + b, 0);
-    const th = 28 + Math.max(hLeft, hRight);
-    if (y + th > BOTTOM) y = continuation('QUOTATION (CONTINUED)');
-    box(ML, y, CW, th, null);
-    caption(ML + 12, y + 15, 'Included & terms');
-    ([[0, split, ML + 12], [split, items.length, ML + 12 + colW + 18]] as [number, number, number][]).forEach(([from, to, x]) => {
-      let cy2 = y + 31;
-      for (let k = from; k < to; k++) {
-        dot(x, cy2);
-        drawRuns(x + 9, cy2, items[k], 7.4, 9, GRAY);
-        cy2 += heights[k];
-      }
-    });
-    if (pagesAdded === 0) spare = BOTTOM - 6 - (y + th);
-  } else {
-    // The pointer to the terms, and the signatory beneath the payment options.
+  {
     // ── Terms: two columns, grouped, numbered as approved ──
     // When the payment block had to move to a second page, the terms follow it there rather
     // than leaving that page mostly empty.
     let ty: number;
     if (pagesAdded > 0) {
       ty = y + 6;
-      t(ML, ty, 'COMMERCIAL TERMS & CONDITIONS', 10, true, NAVY);
+      t(ML, ty, termsHeading, 10, true, NAVY);
       ln(ML, ty + 5, MR, ty + 5, NAVY, 1);
       ty += 14;
     } else {
-      ty = continuation('COMMERCIAL TERMS & CONDITIONS');
+      ty = continuation(termsHeading);
     }
     const colW = (CW - 20) / 2;
     const SIZE = 7.8, LEAD = 9.7, NUM = 16;
@@ -453,7 +463,7 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
       const h = atomH(a);
       if (cy3 + h > ty + limit && cy3 > ty) {
         if (col === 0) { col = 1; cy3 = ty; limit = avail; }
-        else { ty = continuation('COMMERCIAL TERMS & CONDITIONS (CONTINUED)'); avail = BOTTOM - ty; col = 0; cy3 = ty; limit = half(); bottom = ty; }
+        else { ty = continuation(`${termsHeading} (CONTINUED)`); avail = BOTTOM - ty; col = 0; cy3 = ty; limit = half(); bottom = ty; }
       }
       for (const b of a) {
         if (b.head) {
@@ -484,11 +494,15 @@ function draw(r: QuoteRender, assets: QuoteAssets | null, stretch: number): { do
     t(MR, H - 31, `Page ${p} of ${total}`, 6.6, true, GRAY, 'right');
     t(ML, H - 21, `Sales & Marketing / Cheque & DD Address: ${i.salesOffice} (Office State Code ${i.salesOfficeStateCode})   |   ${phoneLine(i)}   |   ${i.email}`, 6.4, false, SOFT);
   }
-  return { doc, spare };
+  return { doc, spare, spilled };
 }
 
 export function buildQuotationPdf(r: QuoteRender, assets: QuoteAssets | null): jsPDF {
   const first = draw(r, assets, 0);
+  // Page 1 is meant to hold everything but the terms. When a long department list or a full
+  // summary would push the payment block onto a third page, the blocks are drawn again closer
+  // together — two pages are the contract, and spacing is what gives.
+  if (first.spilled) return draw(r, assets, 0, true).doc;
   // Five gaps share whatever room page 1 has left, within reason.
   if (first.spare > 30) return draw(r, assets, Math.min(22, first.spare / 5)).doc;
   return first.doc;

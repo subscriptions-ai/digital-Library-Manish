@@ -7,6 +7,7 @@ import { DOMAINS } from "../constants";
 // The departments menu lists them A to Z, so a visitor can find theirs at a glance.
 const DEPARTMENTS_AZ = [...DOMAINS].sort((a, b) => a.name.localeCompare(b.name));
 import { useAuth } from "../contexts/AuthContext";
+import { getDashboardRoute } from "../lib/dashboardRoute";
 import { usePublisherSafeMode } from "../lib/publicSettings";
 
 export function Navbar() {
@@ -15,18 +16,13 @@ export function Navbar() {
   const [isDepartmentsOpen, setIsDepartmentsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [domainCounts, setDomainCounts] = useState<Record<string, number> | null>(null);
-  const { user, logout, isAdmin, isInstitutionAdmin, isSubscriptionManager } = useAuth();
+  const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Determine dashboard path based on user role
-  const getDashboardPath = () => {
-    if (isAdmin) return '/admin';
-    if (isInstitutionAdmin) return '/institution';
-    if (isSubscriptionManager) return '/manager';
-    return '/dashboard';
-  };
+  // Where this account's own dashboard is: decided by role, in one place.
+  const getDashboardPath = () => getDashboardRoute(profile);
 
   useEffect(() => {
     fetch('/api/public/domain-counts')

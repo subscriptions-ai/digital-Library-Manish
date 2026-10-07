@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { getDashboardRoute } from '../../lib/dashboardRoute';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -47,9 +48,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     if (!loading && profile) {
       if (profile.role !== 'SuperAdmin') {
         toast.error('Unauthorized access');
-        if (profile.role === 'Institution') navigate('/institution');
-        else if (profile.role === 'SubscriptionManager') navigate('/manager');
-        else navigate('/dashboard');
+        navigate(getDashboardRoute(profile), { replace: true });
       } else {
         // fetch pending subscription requests count for badge
         fetch('/api/admin/subscription-requests?status=Pending', {

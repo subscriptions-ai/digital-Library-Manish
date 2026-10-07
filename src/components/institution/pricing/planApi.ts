@@ -5,6 +5,8 @@
  * activates is read back from the order the server wrote, never from this browser.
  */
 
+import type { InstitutionPlanSnapshot } from '../../../lib/quotation/quotationModel';
+
 export type InstitutionPlan = {
   unlimitedSeats: boolean;
   hasSubscription: boolean;
@@ -21,7 +23,30 @@ export type PurchaseBody =
   | { kind: 'departments'; departments: string[] }
   | { kind: 'seats'; totalUsers: number };
 
-export type Quote = { kind: 'departments' | 'seats'; departments?: string[]; totalUsers?: number; price: ServerPrice };
+export type Quote = {
+  kind: 'departments' | 'seats'; departments?: string[]; totalUsers?: number; price: ServerPrice;
+  /** What the rate was decided from: the departments already held, and the total after this purchase. */
+  existingDepartments?: string[]; totalAfter?: number;
+};
+
+/**
+ * Asks the server for the quotation: it prices the purchase from the institution's own plan,
+ * stores the quotation, and returns the snapshot the PDF is drawn from.
+ */
+export async function requestQuotation(body: PurchaseBody): Promise<{ quotation?: InstitutionPlanSnapshot; error?: string }> {
+  try {
+    const res = await fetch('/api/institution/quotation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: data?.error || 'Could not prepare the quotation.' };
+    return { quotation: data.quotation };
+  } catch {
+    return { error: 'Could not reach the server.' };
+  }
+}
 
 /** Fired after a purchase, so the rail, the clock and every open screen read the plan again. */
 export const PLAN_CHANGED = 'institution-plan-changed';

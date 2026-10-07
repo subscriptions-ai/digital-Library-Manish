@@ -6,6 +6,7 @@
  * are separate from the institution's and refuse anyone who did not register as a Solo Learner.
  */
 import type { SoloPrice } from '../../lib/soloPricing';
+import type { SoloPlanSnapshot } from '../../lib/quotation/quotationModel';
 
 export type SoloPlan = {
   name?: string;
@@ -48,6 +49,22 @@ export async function fetchSoloQuote(departments: string[]): Promise<{ quote?: S
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { error: data?.error || 'Could not price this.' };
     return { quote: data };
+  } catch {
+    return { error: 'Could not reach the server.' };
+  }
+}
+
+/** The server's quotation for these departments: priced there, stored, and returned as the PDF's source. */
+export async function requestSoloQuotation(departments: string[]): Promise<{ quotation?: SoloPlanSnapshot; error?: string }> {
+  try {
+    const res = await fetch('/api/me/subscribe/quotation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ departments }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: data?.error || 'Could not prepare the quotation.' };
+    return { quotation: data.quotation };
   } catch {
     return { error: 'Could not reach the server.' };
   }

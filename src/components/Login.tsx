@@ -4,6 +4,7 @@ import { Mail, Lock, ArrowRight, Eye, EyeOff, AlertTriangle, Building2 } from "l
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 import { Button, Dialog, friendlyError } from "./ui";
+import { getDashboardRoute } from "../lib/dashboardRoute";
 
 export function Login() {
   const navigate = useNavigate();
@@ -67,25 +68,7 @@ export function Login() {
   // Effect to navigate after login
   React.useEffect(() => {
     if (profile) {
-      const role = profile.role;
-      if (role === 'SuperAdmin' || role === 'Admin') {
-        navigate('/admin');
-      } else if (role === 'SubscriptionManager') {
-        navigate('/manager');
-      } else if (role === 'Institution') {
-        navigate('/institution');
-      } else if (role === 'SalesExecutive' || role === 'SalesManager') {
-        navigate('/sales');
-      } else if (role === 'Publisher') {
-        navigate('/publisher');
-      } else if (role === 'ContentManager') {
-        // The editor writes the blog and does nothing else here; the admin
-        // dashboard would only bounce them.
-        navigate('/studio');
-      } else {
-        // Student, Subscriber, Normal User → shared dashboard
-        navigate('/dashboard');
-      }
+      navigate(getDashboardRoute(profile));
     }
   }, [profile, navigate]);
 
