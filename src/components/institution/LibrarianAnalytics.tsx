@@ -151,7 +151,7 @@ function Trend({ points }: { points: { week: string; reads: number }[] }) {
       </svg>
 
       {!empty && hover !== null && (
-        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 rounded-lg border border-rule bg-surface px-3 py-1.5 shadow-sm">
+        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 rounded-lg border border-rule bg-tooltip px-3 py-1.5 shadow-sm">
           <p className="tnum text-xs text-ink">
             {fmt(points[hover].week)} · {n(points[hover].reads)} reads
           </p>

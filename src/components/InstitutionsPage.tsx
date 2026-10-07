@@ -29,14 +29,16 @@ const rank = (k: string) => { const i = KIND_ORDER.indexOf(k); return i < 0 ? 99
 export function InstitutionsPage() {
   const [data, setData] = useState<Payload | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
+  const [settled, setSettled] = useState(false);
   const [q, setQ] = useState('');
 
   useEffect(() => {
     window.scrollTo(0, 0);
     fetch('/api/library/institutions')
       .then(r => (r.ok ? r.json() : null))
-      .then(d => d?.institutions && setData(d))
-      .catch(() => {});
+      .then(d => Array.isArray(d?.institutions) && setData(d))
+      .catch(() => {})
+      .finally(() => setSettled(true));
   }, []);
 
   // Universities first, and selected when the page opens.
@@ -79,7 +81,7 @@ export function InstitutionsPage() {
           </h1>
           <p className="on-dark-2 mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
             Universities, colleges and institutes put their faculty, researchers and students on the
-            library — the whole department on one account, however many of them there are.
+            library through institutional access.
           </p>
         </div>
       </section>
@@ -103,7 +105,8 @@ export function InstitutionsPage() {
           </div>
         </div>
 
-        {!data && (
+        {!data && settled && <p className="mt-6 text-muted">Institution information is temporarily unavailable.</p>}
+        {!data && !settled && (
           <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading institutions">
             {Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
           </div>
@@ -121,7 +124,7 @@ export function InstitutionsPage() {
         {groups.map(([k, list]) => (
           <div key={k} className="mt-10">
             <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">
-              {plural(k, 2)} <span className="text-ink tnum">{n(list.length)}</span>
+              {plural(k, 2)}
             </h2>
             <div className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
               {list.map(i => (

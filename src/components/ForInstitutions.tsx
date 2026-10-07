@@ -22,18 +22,18 @@ const features = [
   },
   {
     icon: <ShieldCheck size={24} />,
-    title: 'Secure & Compliant Access',
-    description: 'Ensure institutional data privacy with robust role-based access control (RBAC), IP-restricted login, and SSO integrations.'
+    title: 'Managed Access',
+    description: 'Role-based and subscription-based controls help institutions manage access to their selected resources.'
   },
   {
     icon: <Layers size={24} />,
     title: 'Custom Curated Libraries',
-    description: 'Create and assign customized reading lists or curriculum-aligned libraries to specific departments and classes.'
+    description: 'Organize access around the departments and content categories included in your subscription.'
   },
   {
     icon: <Zap size={24} />,
-    title: 'Lightning Fast Deployment',
-    description: 'Get your digital library up and running within 24 hours. No complex IT infrastructure or maintenance required on your end.'
+    title: 'Institutional Setup',
+    description: 'Contact us to discuss your departments, account setup, and access requirements.'
   }
 ];
 
@@ -147,13 +147,13 @@ export function ForInstitutions() {
       <section className="bg-navy py-16 sm:py-24">
         <div className="container-public flex flex-col items-center gap-12 lg:flex-row lg:gap-16">
           <div className="lg:w-1/2">
-            <h2 className="on-dark mb-6 text-3xl font-bold leading-tight md:text-4xl">Empower your campus with unlimited learning</h2>
+            <h2 className="on-dark mb-6 text-3xl font-bold leading-tight md:text-4xl">Support academic discovery across your campus</h2>
             <p className="on-dark-2 mb-8 text-base leading-relaxed sm:text-lg">
               We partner with top global publishers to bring high-impact research to your institution's fingertips. Enhance academic performance and research output exponentially.
             </p>
             <ul className="space-y-4">
               {[
-                'Unlimited simultaneous user access',
+                'Institutional access under your subscription terms',
                 'IP-based authentication available',
                 'MARC records provided',
                 '24/7 dedicated technical support'

@@ -120,7 +120,7 @@ export function SalesPerformance() {
                     <span className="text-ink-2">{s.label}</span>
                     <span><b className="font-semibold tabular-nums text-ink">{s.n}</b> <span className="text-xs tabular-nums text-muted">· {pct(s.n, total)}%</span></span>
                   </div>
-                  <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+                  <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-track" aria-hidden="true">
                     <div className="h-full rounded-full" style={{ width: `${(s.n / widest) * 100}%`, background: STAGE_COLOR[s.key] || 'var(--faint)' }} />
                   </div>
                 </li>
@@ -157,7 +157,7 @@ export function SalesPerformance() {
                         <td className="text-right tabular-nums">{s.total}</td>
                         <td>
                           <span className="flex items-center gap-2">
-                            <span className="h-2 w-16 shrink-0 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+                            <span className="h-2 w-16 shrink-0 overflow-hidden rounded-full bg-track" aria-hidden="true">
                               <span className="block h-full rounded-full bg-accent" style={{ width: `${s.rate}%` }} />
                             </span>
                             <span className="text-xs font-semibold tabular-nums text-ink">{s.rate}%</span>

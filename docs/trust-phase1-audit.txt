@@ -1,0 +1,37 @@
+PHASE 1 — PRE-IMPLEMENTATION AUDIT (2026-10-07)
+Scope: /, /about, /for-institutions, /for-students, /for-researchers,
+/departments, /faq, /blog, /contact, /signup, /login, /digital-library,
+/content-sources, /privacy-policy, /terms-and-conditions, /legal-disclaimer,
+/content-removal, /subscriptions, /institutional-access, /institutions,
+/domain/:domainId, /preview/:id, /article/:id, /book/:id, /library/*,
+/search, /journal/:journalId, /journals and legacy home routes.
+
+Existing user changes: server.ts, HomePreview.tsx, StructuredLibrary.tsx.
+Preserve these and the existing homepage percentage/image improvements.
+Identity: central src/config.ts already supplies documents and legal pages.
+legalName/positioning use abbreviated operator; registeredName has requested name.
+Conflicting office labels: registeredAddress is Delhi; registeredOffice is Noida.
+Public office block will use explicit registeredAddress and sales address; historical
+issuer stamps and payment/tax fields are outside scope. PAN/IEC are unconfirmed;
+exclude them from new public blocks. Keep existing info@celnet.in contact address.
+No public Consortium company name found; CELNET contact domain is not proof of
+obsolete operator identity. Do not replace a working email without evidence.
+Developer text: Footer.tsx and HomePreviewChrome.tsx render shubham a developer.
+Claims C: DigitalLibrary's military-grade/airtight/zero-latency/100% validation,
+semantic AI speed and most advanced claims; InstitutionalAccess's 1,200+
+universities; DomainLandingPage's 10k researchers/100% peer review/instant updates,
+AI search, early access, and unqualified unlimited access; About universal source
+verification/legal compliance assurances. Replace with factual scope-limited copy.
+Claims B: search/filter, roles/subscription access, metadata validation, dashboard,
+saved content and institutional analytics have implementation evidence; retain.
+Claims A: institution percentages from backend, validated by existing readCommunity;
+retain without counts. Do not treat implementation as proof of security certification.
+Routes: subscriptions, departments, for-researchers missing; modern equivalents
+are for-institutions, digital-library#departments, for-students. Add redirects.
+Preview: unknown and API failure conflated; large blank cover, no missing noindex.
+SEO: static sitemap misses key public pages, includes signup. Private route robots
+exclusions lack document noindex. Preserve valid public content indexing.
+Homepage: image fallbacks already compact and percentage reach exists. Add trust
+cards and shared policy strip. About already has requested structure/Our Approach.
+Blog: production API returns published posts with dates/authors (read-only check);
+retain navigation, do not fabricate content. List fetch failures look like empty blog.

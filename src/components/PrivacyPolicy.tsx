@@ -70,7 +70,7 @@ export const PrivacyPolicy: React.FC = () => {
           <section className="space-y-4">
             <h2 className="flex items-center gap-2">
               <Shield size={20} aria-hidden="true" className="shrink-0 text-accent" />
-              5. User Rights (GDPR Compliance)
+              5. User Rights
             </h2>
             <p>Users have the right to:</p>
             <ul>

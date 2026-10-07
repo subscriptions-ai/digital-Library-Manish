@@ -20,7 +20,7 @@ export const TermsAndConditions: React.FC = () => {
               <FileText size={20} aria-hidden="true" className="shrink-0 text-accent" />
               1. Introduction
             </h2>
-            <p>This platform (“Platform”) is operated by <strong>{COMPANY_DETAILS.legalName}</strong> By accessing or using our services, you agree to comply with these Terms.</p>
+            <p>This platform (“Platform”) is operated by <strong>{COMPANY_DETAILS.legalName}</strong>. By accessing or using our services, you agree to comply with these Terms.</p>
           </section>
 
           <section className="space-y-4">
@@ -117,7 +117,7 @@ export const TermsAndConditions: React.FC = () => {
               <MapPin size={20} aria-hidden="true" className="shrink-0 text-accent" />
               10. Governing Law
             </h2>
-            <p>These Terms shall be governed by and construed in accordance with the laws of India. The Platform is owned and operated by <strong>{COMPANY_DETAILS.legalName}</strong>, having its registered office in New Delhi.</p>
+            <p>These Terms shall be governed by and construed in accordance with the laws of India. The Platform is owned and operated by <strong>{COMPANY_DETAILS.legalName}</strong>, having its registered office at {COMPANY_DETAILS.registeredAddress}.</p>
             <p>Any disputes, claims, or legal proceedings arising out of or in connection with the use of the Platform shall be subject to the exclusive jurisdiction of the competent courts located in <strong>Delhi, India</strong>. Users expressly agree that any such dispute shall be resolved exclusively before the competent courts in Delhi and waive any objection to such jurisdiction.</p>
           </section>
         </article>

@@ -290,8 +290,9 @@ export function ContactUs() {
                       <Mail size={20} className="text-amber" />
                     </div>
                     <div className="min-w-0">
-                      <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">Email Us</div>
+                      <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">General Support</div>
                       <a href={`mailto:${COMPANY_DETAILS.email}`} className="on-dark break-all text-base font-medium hover:underline">{COMPANY_DETAILS.email}</a>
+                      <p className="on-dark-2 mt-2 text-sm">For institutional / subscription enquiries and privacy / data protection requests, use this same official email and include the topic in your subject line.</p>
                       <div className="on-dark-3 mt-1 text-sm">Response within 24 hours</div>
                     </div>
                   </div>
@@ -301,7 +302,7 @@ export function ContactUs() {
                     </div>
                     <div className="min-w-0">
                       <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">Call Us</div>
-                      <div className="on-dark text-base font-medium">{COMPANY_DETAILS.tel[0]}</div>
+                      <a href={`tel:${COMPANY_DETAILS.tel[0].replace(/[^\d+]/g, "")}`} className="on-dark text-base font-medium hover:underline">{COMPANY_DETAILS.tel[0]}</a>
                       <div className="on-dark-3 mt-1 text-sm">Mon-Fri, 9am - 6pm IST</div>
                     </div>
                   </div>
@@ -310,7 +311,7 @@ export function ContactUs() {
                       <MapPin size={20} className="text-amber" />
                     </div>
                     <div className="min-w-0">
-                      <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">Visit Us</div>
+                      <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">Sales / Marketing Office</div>
                       <div className="on-dark-2 text-sm leading-relaxed">{COMPANY_DETAILS.address}</div>
                     </div>
                   </div>

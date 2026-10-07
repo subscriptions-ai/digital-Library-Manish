@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
@@ -89,7 +90,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   if (loading || !profile) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-ground flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
       </div>
     );
@@ -99,7 +100,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const isSubsActive = location.pathname.startsWith('/admin/subscription');
 
   return (
-    <div className="app-type min-h-screen bg-slate-50 flex">
+    <div className="app-type min-h-screen bg-slate-50 dark:bg-ground flex">
       {/* Sidebar */}
       <aside className={`sticky top-0 h-screen self-start bg-slate-900 text-white flex flex-col transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
         {/* Logo + Toggle */}
@@ -516,6 +517,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </h1>
           <div className="flex items-center gap-3">
             <NotificationBell />
+            <ThemeToggle className="btn btn-ghost btn-icon btn-sm" />
             <button
               onClick={handleSignOut}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"

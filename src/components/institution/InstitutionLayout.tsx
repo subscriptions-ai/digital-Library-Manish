@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, BookOpen, ChevronLeft, CreditCard, LayoutDashboard, LogOut, Menu, MessageSquareHeart, Moon, Search, Sun, UserCircle, Users, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { FeedbackWidget } from '../dashboard/FeedbackWidget';
@@ -22,7 +22,6 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
   const location = useLocation();
   const { profile, logout, loading, isInstitutionAdmin } = useAuth();
   const { allowance, msLeft, msUntil, refresh: refreshAllowance } = useAllowance();
-  const { dark, toggleDark } = useTheme();
   const [q, setQ] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   // The phone drawer is its own state: collapsing the desktop rail to icons
@@ -195,7 +194,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             className="btn btn-ghost btn-sm btn-icon -ml-2 shrink-0 md:hidden">
             <Menu size={20} aria-hidden="true" />
           </button>
-          <h1 className="min-w-0 flex-1 truncate text-[17px] font-bold text-ink md:flex-none md:shrink-0">
+          <h1 className="min-w-0 flex-1 truncate text-[17px] font-bold text-ink md:flex-initial">
             {location.pathname === '/institution' ? dashboardTitle(profile as any)
             : location.pathname.startsWith('/institution/students') ? 'User Directory'
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
@@ -215,7 +214,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           <form
             onSubmit={(e) => { e.preventDefault(); if (q.trim()) navigate(`/institution/explore?q=${encodeURIComponent(q.trim())}`); }}
             role="search"
-            className="hidden h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-rule bg-surface-2 px-3 transition-colors focus-within:border-accent md:flex lg:max-w-md"
+            className="hidden h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-rule bg-surface-2 px-3 transition-colors focus-within:border-accent lg:flex lg:max-w-md"
           >
             <Search size={16} className="shrink-0 text-faint" aria-hidden="true" />
             <input
@@ -230,7 +229,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ReadingClock allowance={allowance} msLeft={msLeft} msUntil={msUntil} />
-            <div className="hidden items-center gap-2.5 border-l border-rule pl-3 sm:flex">
+            <div className="hidden items-center gap-2.5 border-l border-rule pl-3 lg:flex">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-bold text-accent" aria-hidden="true">
                 {(profile.displayName || profile.organization || 'IN').substring(0, 2).toUpperCase()}
               </div>
@@ -239,15 +238,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
                 <p className="max-w-[160px] truncate text-xs text-muted">{profile.email}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={toggleDark}
-              title={dark ? 'Light theme' : 'Dark theme'}
-              aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-              className="btn btn-outline btn-sm btn-icon"
-            >
-              {dark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
-            </button>
+            <ThemeToggle className="btn btn-outline btn-sm btn-icon" />
             <button
               type="button"
               onClick={handleSignOut}

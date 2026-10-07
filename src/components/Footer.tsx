@@ -112,9 +112,6 @@ export function Footer() {
             <p className="text-xs text-slate-500 font-medium tracking-wide">
               © {new Date().getFullYear()} {COMPANY_DETAILS.name}. All rights reserved.
             </p>
-            <p className="text-[10px] text-slate-800/40 hover:text-slate-600 transition-colors select-none cursor-default">
-              shubham a developer
-            </p>
           </div>
           <div className="flex items-center gap-6">
             <Link to="/content-sources" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">Content Sources</Link>

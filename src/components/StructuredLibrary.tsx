@@ -12,7 +12,7 @@ import { useAllowance, inCooldown, clockTime } from './membership/ReadingClock';
 
 type Mode = 'new' | 'archived';
 type Kind = 'articles' | 'books';
-type Sort = 'newest' | 'oldest' | 'title';
+type Sort = 'newest' | 'added' | 'oldest' | 'title';
 
 const PAGE_SIZE = 12;
 
@@ -489,6 +489,7 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
                 title={mode === 'archived' ? 'Archived items carry no reliable publication date' : undefined}
                 className="input h-8 w-auto py-0 pl-2.5 text-xs font-semibold">
                 {mode !== 'archived' && <option value="newest">Newest first</option>}
+                {mode !== 'archived' && <option value="added">Recently added</option>}
                 {mode !== 'archived' && <option value="oldest">Oldest first</option>}
                 <option value="title">Title A–Z</option>
               </select>

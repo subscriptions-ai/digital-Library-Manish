@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { LayoutDashboard, FileText, CreditCard, LogOut, ChevronLeft, Menu, Bell, UserPlus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -153,6 +154,8 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
             : location.pathname.startsWith('/manager/subscriptions') ? 'Global Subscriptions'
             : 'Dashboard'}
           </h1>
+          <div className="flex shrink-0 items-center gap-1">
+          <ThemeToggle className="btn btn-ghost btn-icon btn-sm" />
           <button
             onClick={handleSignOut}
             className="btn btn-ghost btn-sm shrink-0"
@@ -161,6 +164,7 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
             <LogOut size={16} aria-hidden="true" />
             <span className="hidden sm:inline">Sign Out</span>
           </button>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}

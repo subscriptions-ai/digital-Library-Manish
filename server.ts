@@ -1,4 +1,6 @@
 import { safePercentage } from './src/lib/percent';
+import { installPublicTrustRoutes } from "./src/server/publicTrust";
+import { PUBLIC_PAGES } from "./src/lib/publicSeo";
 import express from "express";
 import crypto from "crypto";
 
@@ -71,6 +73,7 @@ const currentDir = process.cwd();
 
 async function startServer() {
   const app = express();
+  installPublicTrustRoutes(app);
   // Behind Coolify/Traefik (and Cloudflare) the app receives X-Forwarded-For.
   // Trust the reverse proxy so req.ip is the real client and express-rate-limit
   // stops throwing ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
@@ -8964,6 +8967,9 @@ async function startServer() {
   // Sorting a result set is the server's job. Ordering the twenty rows already
   // sent meant page two started the ordering again.
   const orderFor = (sort: any): any[] => {
+    // 'newest' is the newest PUBLICATION year. 'added' is when it reached the shelf,
+    // which is what "just added" has to mean.
+    if (sort === 'added') return [{ createdAt: 'desc' }];
     if (sort === 'oldest') return [{ year: 'asc' }, { createdAt: 'asc' }];
     if (sort === 'title') return [{ title: 'asc' }];
     return [{ year: 'desc' }, { createdAt: 'desc' }];
@@ -15108,8 +15114,8 @@ async function startServer() {
   app.get("/api/public/content/:id", async (req: any, res) => {
     try {
       const { id } = req.params;
-      const content = await prisma.content.findUnique({
-        where: { id },
+      const content = await prisma.content.findFirst({
+        where: { id, status: "Published" },
         select: {
           id: true,
           title: true,
@@ -15126,7 +15132,7 @@ async function startServer() {
         ...content,
         author: content.authors,
         coverImage: content.thumbnailUrl,
-        publishedYear: new Date(content.publishedAt).getFullYear()
+        publishedYear: content.publishedAt && Number.isFinite(new Date(content.publishedAt).getTime()) ? new Date(content.publishedAt).getFullYear() : undefined
       });
     } catch (e) {
       console.error(e);
@@ -15195,7 +15201,7 @@ async function startServer() {
     // "/subscriptions" was removed from the site when public pricing came down.
     // Leaving it here advertised a URL that renders a not-found screen, which is
     // the soft-404 the external audit flagged (COM-02 / SEO-01).
-    const staticRoutes = ["/", "/journals", "/contact", "/about", "/signup", "/blog"];
+    const staticRoutes = Object.keys(PUBLIC_PAGES);
     for (const route of staticRoutes) {
       const loc = route === "/" ? baseUrl : `${baseUrl}${route}`;
       xml += `  <url>\n    <loc>${loc}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;

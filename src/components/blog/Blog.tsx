@@ -35,19 +35,22 @@ export function BlogList() {
   const [q, setQ] = useState(sp.get('q') || '');
   const [data, setData] = useState<{ posts: Card[]; total: number; categories: { name: string; posts: number }[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const page = Math.max(1, parseInt(sp.get('page') || '1') || 1);
 
   useEffect(() => { const t = setTimeout(() => setQ(search.trim()), 350); return () => clearTimeout(t); }, [search]);
 
   useEffect(() => {
     setLoading(true);
+    setFailed(false);
+    setData(null);
     const p = new URLSearchParams({ page: String(page), limit: '9' });
     if (category) p.set('category', category);
     if (q) p.set('q', q);
     fetch(`/api/blog/posts?${p}`)
       .then(r => (r.ok ? r.json() : Promise.reject()))
-      .then(setData)
-      .catch(() => {})
+      .then(d => { if (!Array.isArray(d?.posts)) throw new Error("Invalid posts"); setData(d); })
+      .catch(() => setFailed(true))
       .finally(() => setLoading(false));
   }, [page, category, q]);
 
@@ -115,7 +118,8 @@ export function BlogList() {
           </div>
         )}
 
-        {!loading && !posts.length && (
+        {!loading && failed && <div className="card"><EmptyState icon={Newspaper} title="Posts are temporarily unavailable" description="Please try again later." /></div>}
+        {!loading && !failed && !posts.length && (
           <div className="card">
             {q || category ? (
               <EmptyState
@@ -137,7 +141,7 @@ export function BlogList() {
               <EmptyState
                 icon={Newspaper}
                 title="Nothing here yet."
-                description="The first post is being written."
+                description="Published posts will appear here when available."
                 action={
                   <Link to="/digital-library" className={buttonClass('brand')}>
                     Browse the library instead
@@ -207,20 +211,23 @@ export function BlogPost() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setData(null);
+    setMissing(false);
     fetch(`/api/blog/posts/${slug}`)
       .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then(setData)
+      .then(d => { if (!d?.post?.title) throw new Error("Invalid post"); setData(d); })
       .catch(() => setMissing(true));
   }, [slug]);
 
   if (missing) {
     return (
       <div className="container-public max-w-xl py-16 sm:py-24">
+        <Helmet><meta name="robots" content="noindex, follow" /></Helmet>
         <div className="card">
           <EmptyState
             icon={FileQuestion}
-            title={<span role="heading" aria-level={1}>That post is not here</span>}
-            description="It may have been taken down, or the link may be wrong."
+            title={<span role="heading" aria-level={1}>This post is unavailable</span>}
+            description="Please try again later or browse the published posts."
             action={<Link to="/blog" className={buttonClass('brand')}>All posts</Link>}
           />
         </div>

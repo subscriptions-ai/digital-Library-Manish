@@ -69,7 +69,7 @@ export function DashboardSummaryCards({ stats }: DashboardSummaryCardsProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: item.delay, duration: 0.4, ease: "easeOut" }}
             className={cn(
-              "relative overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white shadow-lg",
+              "relative overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white shadow-lg dark:saturate-[.7] dark:brightness-[.88] dark:shadow-none dark:ring-1 dark:ring-white/10",
               item.colorClass
             )}
           >

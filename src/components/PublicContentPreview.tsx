@@ -9,17 +9,27 @@ export function PublicContentPreview() {
   const [content, setContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [failed, setFailed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+
   useEffect(() => {
-    fetch(`/api/public/content/${id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setContent(data);
-        setLoading(false);
+    const controller = new AbortController();
+    setLoading(true);
+    setContent(null);
+    setFailed(false);
+    setImageFailed(false);
+    fetch(`/api/public/content/${encodeURIComponent(id || '')}`, { signal: controller.signal })
+      .then(async res => {
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error('Unavailable');
+        const data = await res.json();
+        if (!data?.id || typeof data.title !== 'string' || !data.title.trim()) throw new Error('Invalid record');
+        return data;
       })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
+      .then(data => { if (!controller.signal.aborted) setContent(data); })
+      .catch(() => { if (!controller.signal.aborted) setFailed(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
   }, [id]);
 
   if (loading) return (
@@ -40,11 +50,12 @@ export function PublicContentPreview() {
   );
   if (!content || content.error) return (
     <div className="bg-ground px-4 py-8 sm:py-12">
+      <Helmet><title>{failed ? "Preview unavailable" : "Content not found"} | STM Digital Library</title><meta name="robots" content="noindex, follow" /></Helmet>
       <div className="card mx-auto max-w-xl">
         <EmptyState
           icon={SearchX}
-          title="Content not found."
-          description="This item may have been moved or removed from the library."
+          title={failed ? "Preview temporarily unavailable" : "Content not found"}
+          description={failed ? "Please try again later or search the library." : "This item may have been moved or removed from the library."}
           action={<Link to="/search" className={buttonClass('outline')}>Search the library</Link>}
         />
       </div>
@@ -79,11 +90,12 @@ export function PublicContentPreview() {
         <div className="p-5 sm:p-8 md:p-10">
           <div className="flex flex-col gap-6 md:flex-row md:gap-8">
             <div className="mx-auto w-full max-w-[240px] shrink-0 md:mx-0 md:w-1/3 md:max-w-none">
-              {content.coverImage ? (
-                <img src={content.coverImage} alt={content.title} className="h-auto w-full rounded-xl border border-rule" />
+              {content.coverImage && !imageFailed ? (
+                <img src={content.coverImage} alt={`Cover of ${content.title}`} onError={() => setImageFailed(true)} className="h-auto w-full rounded-xl border border-rule" />
               ) : (
-                <div className="flex aspect-[3/4] w-full items-center justify-center rounded-xl border border-rule bg-surface-2" aria-hidden="true">
-                  <Book className="h-16 w-16 text-faint" />
+                <div className="flex w-full items-center gap-3 rounded-xl border border-rule bg-surface-2 p-4">
+                  <Book size={24} aria-hidden="true" className="shrink-0 text-accent" />
+                  <div className="min-w-0"><p className="text-xs font-semibold uppercase text-ink">{content.contentType || "Academic resource"}</p>{content.domain && <p className="mt-1 break-words text-sm text-muted">{content.domain}</p>}</div>
                 </div>
               )}
             </div>

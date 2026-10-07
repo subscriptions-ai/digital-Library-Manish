@@ -12,8 +12,8 @@ import { getDashboardRoute } from '../lib/dashboardRoute';
 const features = [
   {
     icon: <Search size={24} />,
-    title: 'Smart AI Search',
-    description: 'Find exactly what you need with our AI-powered semantic search that understands context, not just keywords.'
+    title: 'Academic Search',
+    description: 'Search academic records by title, author, subject, and available metadata.'
   },
   {
     icon: <BookOpen size={24} />,
@@ -23,12 +23,12 @@ const features = [
   {
     icon: <Clock size={24} />,
     title: 'Continue Reading',
-    description: 'Never lose your place. Our system automatically remembers the exact page or timestamp where you left off.'
+    description: 'Return to saved reading progress in supported library readers.'
   },
   {
     icon: <FileText size={24} />,
     title: 'Citation & Notes',
-    description: 'Export citations in multiple formats (APA, MLA, Chicago) and keep digital notes attached directly to the content.'
+    description: 'Use available citation information and reader notes to support your research workflow.'
   },
   {
     icon: <Smartphone size={24} />,

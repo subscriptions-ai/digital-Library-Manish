@@ -1,0 +1,275 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dark theme for the legacy colour classes.
+
+   Older screens — chiefly the admin, manager and viewer areas — were written with
+   Tailwind's literal palette: bg-white, text-slate-700, border-slate-200, bg-blue-600,
+   bg-emerald-50. Those do not know about the dark theme, so those screens stayed
+   light, or went half dark. Rewriting ~6,000 occurrences across 60 files by hand
+   would be the fastest way to break something, so the translation lives here, once.
+
+   Every rule maps one literal class to the semantic token the design system already
+   uses for that role (slate-500 is "muted", slate-200 is "rule", red-50 is
+   "alarm-soft"), so a legacy screen and a tokenised screen come out the same colour.
+
+   Rules that protect authors:
+     - An element that sets any `dark:` class itself is left alone.
+     - A subtree inside `.keep-light` is left alone — for things that are paper by
+       nature, such as a quotation or receipt preview.
+   Rules are unlayered on purpose, so they beat the utilities they translate.
+
+   This file is a bridge, not a destination: as a screen is migrated to tokens its
+   classes simply stop appearing here. Generated from a mapping table; edit that,
+   not the output, if it is ever regenerated.
+   ──────────────────────────────────────────────────────────────────────────── */
+.dark .bg-slate-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--surface-2)}
+.dark .hover\:bg-slate-50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--surface-2)}
+.dark .bg-slate-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--surface-3)}
+.dark .hover\:bg-slate-100:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--surface-3)}
+.dark .bg-slate-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--rule)}
+.dark .hover\:bg-slate-200:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--rule)}
+.dark .bg-slate-300:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--rule-2)}
+.dark .bg-slate-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--muted)}
+.dark .bg-slate-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--rule-2)}
+.dark .hover\:bg-slate-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--rule-2)}
+.dark .bg-slate-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--surface-2)}
+.dark .hover\:bg-slate-800:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--surface-2)}
+.dark .bg-slate-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--sidebar-bg)}
+.dark .hover\:bg-slate-900:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--sidebar-bg)}
+.dark .bg-slate-50\/50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--surface-2) 55%,transparent)}
+.dark .hover\:bg-slate-50\/50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--surface-2) 55%,transparent)}
+.dark .text-slate-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink)}
+.dark .text-slate-300:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink-2)}
+.dark .hover\:text-slate-300:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink-2)}
+.dark .text-slate-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--muted)}
+.dark .text-slate-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--muted)}
+.dark .hover\:text-slate-500:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--muted)}
+.dark .text-slate-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink-2)}
+.dark .hover\:text-slate-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink-2)}
+.dark .text-slate-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink)}
+.dark .hover\:text-slate-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink)}
+.dark .text-slate-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink)}
+.dark .hover\:text-slate-800:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink)}
+.dark .text-slate-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink)}
+.dark .hover\:text-slate-900:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--ink)}
+.dark .border-slate-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--border-subtle)}
+.dark .border-slate-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--border-subtle)}
+.dark .border-slate-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--rule)}
+.dark .border-slate-300:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--rule-2)}
+.dark .hover\:border-slate-300:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--rule-2)}
+.dark .hover\:border-slate-400:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--muted)}
+.dark .focus\:border-slate-400:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--muted)}
+.dark .border-slate-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--rule-2)}
+.dark .border-slate-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--rule)}
+.dark .divide-slate-50 > :not(:last-child):not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--border-subtle)}
+.dark .divide-slate-100 > :not(:last-child):not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--border-subtle)}
+.dark .divide-slate-200 > :not(:last-child):not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--rule)}
+.dark .placeholder-slate-400::placeholder:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--faint)}
+.dark .placeholder\:text-slate-400::placeholder:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--faint)}
+.dark .bg-white:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--surface)}
+.dark .focus\:bg-white:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--surface)}
+.dark .bg-white\/80:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--surface) 80%,transparent)}
+.dark .bg-white\/90:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--surface) 90%,transparent)}
+.dark .border-white:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--rule)}
+.dark .bg-blue-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+.dark .hover\:bg-blue-50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+.dark .bg-blue-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--accent) 16%,var(--surface))}
+.dark .hover\:bg-blue-100:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--accent) 16%,var(--surface))}
+.dark .bg-blue-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--accent) 22%,var(--surface))}
+.dark .bg-blue-50\/50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.dark .bg-blue-100\/50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.dark .text-blue-300:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .text-blue-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .hover\:text-blue-400:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .text-blue-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .text-blue-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .hover\:text-blue-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .text-blue-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .hover\:text-blue-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .text-blue-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .text-blue-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--accent)}
+.dark .border-blue-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--accent) 18%,transparent)}
+.dark .border-blue-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.dark .hover\:border-blue-200:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.dark .border-blue-300:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.dark .hover\:border-blue-300:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.dark .hover\:border-blue-400:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--accent)}
+.dark .focus\:border-blue-400:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--accent)}
+.dark .border-blue-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--accent)}
+.dark .focus\:border-blue-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--accent)}
+.dark .border-blue-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--accent)}
+.dark .hover\:border-blue-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--accent)}
+.dark .focus\:ring-blue-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){--tw-ring-color:var(--accent)}
+.dark .focus\:ring-blue-400:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){--tw-ring-color:var(--accent)}
+.dark .bg-blue-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--accent-solid)}
+.dark .bg-blue-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--accent-solid)}
+.dark .hover\:bg-blue-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--accent-solid)}
+.dark .hover\:bg-blue-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--accent-solid-hover)}
+.dark .bg-sky-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--info) 10%,var(--surface))}
+.dark .text-sky-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--info)}
+.dark .text-sky-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--info)}
+.dark .text-sky-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--info)}
+.dark .border-sky-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--info) 18%,transparent)}
+.dark .border-sky-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--info) 30%,transparent)}
+.dark .bg-indigo-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 10%,var(--surface))}
+.dark .hover\:bg-indigo-50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 10%,var(--surface))}
+.dark .bg-indigo-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 16%,var(--surface))}
+.dark .hover\:bg-indigo-100:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 16%,var(--surface))}
+.dark .bg-indigo-50\/50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 8%,var(--surface))}
+.dark .text-indigo-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-indigo-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-indigo-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .hover\:text-indigo-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-indigo-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .hover\:text-indigo-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-indigo-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-indigo-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .border-indigo-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--t1-ink) 18%,transparent)}
+.dark .border-indigo-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--t1-ink) 30%,transparent)}
+.dark .hover\:border-indigo-200:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--t1-ink) 30%,transparent)}
+.dark .hover\:border-indigo-300:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--t1-ink) 40%,transparent)}
+.dark .focus\:border-indigo-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--t1-ink)}
+.dark .border-indigo-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--t1-ink)}
+.dark .focus\:ring-indigo-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){--tw-ring-color:var(--t1-ink)}
+.dark .bg-violet-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 10%,var(--surface))}
+.dark .bg-violet-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 16%,var(--surface))}
+.dark .hover\:bg-violet-100:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 16%,var(--surface))}
+.dark .bg-violet-50\/50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 8%,var(--surface))}
+.dark .text-violet-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-violet-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-violet-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-violet-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .hover\:text-violet-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-violet-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .border-violet-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--t1-ink) 18%,transparent)}
+.dark .border-violet-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--t1-ink) 30%,transparent)}
+.dark .focus\:border-violet-400:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--t1-ink)}
+.dark .border-violet-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--t1-ink)}
+.dark .bg-purple-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 10%,var(--surface))}
+.dark .hover\:bg-purple-50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 10%,var(--surface))}
+.dark .bg-purple-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--t1-ink) 16%,var(--surface))}
+.dark .text-purple-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-purple-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .hover\:text-purple-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-purple-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-purple-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .text-purple-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--t1-ink)}
+.dark .border-purple-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--t1-ink) 18%,transparent)}
+.dark .border-purple-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--t1-ink) 30%,transparent)}
+.dark .focus\:border-purple-400:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--t1-ink)}
+.dark .bg-emerald-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--success) 10%,var(--surface))}
+.dark .hover\:bg-emerald-50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--success) 10%,var(--surface))}
+.dark .bg-emerald-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--success) 16%,var(--surface))}
+.dark .hover\:bg-emerald-100:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--success) 16%,var(--surface))}
+.dark .bg-emerald-50\/50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--success) 8%,var(--surface))}
+.dark .text-emerald-300:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .hover\:text-emerald-300:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .text-emerald-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .text-emerald-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .text-emerald-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .hover\:text-emerald-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .text-emerald-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .hover\:text-emerald-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .text-emerald-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .text-emerald-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .border-emerald-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--success) 18%,transparent)}
+.dark .border-emerald-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--success) 30%,transparent)}
+.dark .border-emerald-300:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--success) 40%,transparent)}
+.dark .border-emerald-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--success)}
+.dark .focus\:border-emerald-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--success)}
+.dark .border-emerald-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--success)}
+.dark .focus\:ring-emerald-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){--tw-ring-color:var(--success)}
+.dark .bg-emerald-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:#277f57}
+.dark .bg-emerald-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:#277f57}
+.dark .bg-emerald-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:#2f9366}
+.dark .hover\:bg-emerald-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:#2f9366}
+.dark .bg-green-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--success) 10%,var(--surface))}
+.dark .bg-green-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--success) 16%,var(--surface))}
+.dark .text-green-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .text-green-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .text-green-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .hover\:text-green-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .text-green-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .hover\:text-green-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--success)}
+.dark .border-green-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--success) 18%,transparent)}
+.dark .border-green-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--success) 30%,transparent)}
+.dark .hover\:border-green-300:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--success) 40%,transparent)}
+.dark .bg-green-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:#277f57}
+.dark .bg-red-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm) 10%,var(--surface))}
+.dark .hover\:bg-red-50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm) 10%,var(--surface))}
+.dark .bg-red-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm) 16%,var(--surface))}
+.dark .hover\:bg-red-100:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm) 16%,var(--surface))}
+.dark .bg-red-50\/50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm) 8%,var(--surface))}
+.dark .text-red-300:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .text-red-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .hover\:text-red-400:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .text-red-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .hover\:text-red-500:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .text-red-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .hover\:text-red-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .text-red-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .hover\:text-red-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .text-red-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .text-red-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .border-red-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--alarm) 18%,transparent)}
+.dark .border-red-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--alarm) 30%,transparent)}
+.dark .hover\:border-red-200:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--alarm) 30%,transparent)}
+.dark .hover\:border-red-300:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--alarm) 40%,transparent)}
+.dark .hover\:border-red-400:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--alarm)}
+.dark .focus\:border-red-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--alarm)}
+.dark .focus\:ring-red-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){--tw-ring-color:var(--alarm)}
+.dark .bg-red-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--alarm-solid)}
+.dark .bg-red-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--alarm-solid)}
+.dark .hover\:bg-red-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm-solid) 86%,#000)}
+.dark .bg-rose-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm) 10%,var(--surface))}
+.dark .hover\:bg-rose-50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm) 10%,var(--surface))}
+.dark .bg-rose-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm) 16%,var(--surface))}
+.dark .bg-rose-50\/50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm) 8%,var(--surface))}
+.dark .text-rose-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .text-rose-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .hover\:text-rose-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .text-rose-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--alarm)}
+.dark .border-rose-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--alarm) 18%,transparent)}
+.dark .border-rose-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--alarm) 30%,transparent)}
+.dark .bg-rose-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:var(--alarm-solid)}
+.dark .hover\:bg-rose-700:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--alarm-solid) 86%,#000)}
+.dark .bg-amber-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--caution) 10%,var(--surface))}
+.dark .hover\:bg-amber-50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--caution) 10%,var(--surface))}
+.dark .bg-amber-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--caution) 16%,var(--surface))}
+.dark .hover\:bg-amber-100:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--caution) 16%,var(--surface))}
+.dark .text-amber-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .text-amber-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .text-amber-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .hover\:text-amber-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .text-amber-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .text-amber-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .text-amber-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .border-amber-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--caution) 18%,transparent)}
+.dark .border-amber-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--caution) 30%,transparent)}
+.dark .border-amber-300:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--caution) 40%,transparent)}
+.dark .border-amber-400:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--caution)}
+.dark .focus\:border-amber-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:var(--caution)}
+.dark .focus\:ring-amber-500:focus:not([class*="dark:"]):not(.keep-light):not(.keep-light *){--tw-ring-color:var(--caution)}
+.dark .bg-yellow-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--caution) 16%,var(--surface))}
+.dark .text-yellow-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .border-yellow-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--caution) 30%,transparent)}
+.dark .bg-orange-50:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--caution) 10%,var(--surface))}
+.dark .hover\:bg-orange-50:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--caution) 10%,var(--surface))}
+.dark .bg-orange-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){background-color:color-mix(in srgb,var(--caution) 16%,var(--surface))}
+.dark .text-orange-500:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .text-orange-600:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .hover\:text-orange-600:hover:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .text-orange-700:not([class*="dark:"]):not(.keep-light):not(.keep-light *){color:var(--caution)}
+.dark .border-orange-100:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--caution) 18%,transparent)}
+.dark .border-orange-200:not([class*="dark:"]):not(.keep-light):not(.keep-light *){border-color:color-mix(in srgb,var(--caution) 30%,transparent)}
+
+/* Solid buttons written as bg-slate-900/800 + white text keep their weight on a dark card:
+   one step up from the card instead of sinking into it, with an edge. */
+.dark :is(button,a).bg-slate-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *),
+.dark :is(button,a).bg-slate-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *) {
+  background-color: var(--surface-3); border: 1px solid var(--rule-2); color: var(--ink);
+}
+.dark :is(button,a).bg-slate-900:not([class*="dark:"]):not(.keep-light):not(.keep-light *):hover,
+.dark :is(button,a).bg-slate-800:not([class*="dark:"]):not(.keep-light):not(.keep-light *):hover { background-color: var(--surface-hover); }
+
+/* Anything meant to look like paper in either theme. */
+.keep-light { color-scheme: light; }

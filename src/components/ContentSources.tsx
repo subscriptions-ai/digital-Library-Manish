@@ -72,7 +72,7 @@ export const ContentSources: React.FC = () => {
               <li><strong>Discovery Tools:</strong> Advanced search, subject categorization, filters, and recommendation features.</li>
               <li><strong>Integrated Access:</strong> Bringing together proprietary and legally sourced open-access content in one place.</li>
             </ul>
-            <p>What we provide is the platform service, not the individual third-party content. {COMPANY_DETAILS.legalName}, along with its various divisions and sister concern companies, provides the platform services, and not the individual third-party content.</p>
+            <p>{COMPANY_DETAILS.legalName} provides the platform service. Rights in third-party content remain with the respective rights holders.</p>
           </section>
 
           <section className="space-y-4">

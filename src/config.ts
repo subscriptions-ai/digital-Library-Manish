@@ -16,10 +16,12 @@ export const COMPANY_DETAILS = {
   website: "https://journalslibrary.com/",
 
   // ── The operating entity ────────────────────────────────────────────────
-  legalName: "IT Break COM Pvt. Ltd.",
+  legalName: "IT BREAK COM PRIVATE LIMITED",
   shortName: "IT Break",
   /** Shown beneath the product name on documents, emails and the footer. */
-  positioning: "A product of IT Break COM Pvt. Ltd.",
+  positioning: "Operated by IT BREAK COM PRIVATE LIMITED",
+  /** The same entity in reading case, for running text where capitals would shout. Not a different name. */
+  operatorDisplayName: "IT Break COM Private Limited",
 
   gstin: "07AAACI8666D1ZI",
   pan: "AAACI8666D",   // derived from the GSTIN — confirm against the PAN card
@@ -43,13 +45,27 @@ export const COMPANY_DETAILS = {
   salesOfficeStateCode: "09",
 
   address: "A-118, 1st Floor, Sector 63, Noida, Uttar Pradesh, India - 201301",
+  /** What `address` is. It is the operations office, never the registered office. */
+  salesOfficeLabel: "Operations / Sales & Marketing Office",
   /** Shorter form used inside document footers. */
-  registeredOffice: "A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India",
+  registeredOffice: "LGF, 40, National Park, Lajpat Nagar IV, New Delhi, Delhi 110024",
 
   tel: ["0120-4781200", "0120-4781206"],
   mobile: "+91-9810078958",
   whatsapp: "+91-9810078958",
+  // TODO: OFFICIAL_CONTACT_EMAIL_CONFIRMATION — info@celnet.in is the old Consortium
+  // domain. Keep it only where it is operationally needed (the footer contact column,
+  // the contact page, emails) and do not add it to new trust or company blocks until
+  // the official replacement is confirmed. Do not guess one.
   email: "info@celnet.in",
+
+  /** Public profiles. An icon renders only when its URL is set here. */
+  social: {
+    facebook: "https://www.facebook.com/STMDigitalLibrary", // page exists ("STM Digital Library | Noida")
+    // TODO: confirm — /in/ is a personal-profile path; a company page would be /company/<name>.
+    // LinkedIn blocks automated checks, so this could not be verified from here.
+    linkedin: "https://linkedin.com/in/stmdigitallibrary",
+  },
 
   bank: {
     accountNumber: "50200039946701",

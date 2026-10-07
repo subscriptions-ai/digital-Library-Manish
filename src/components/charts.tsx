@@ -55,7 +55,7 @@ export function Weeks({ data }: { data: number[] }) {
                 style={{ height: `${Math.max(3, (v / max) * 100)}%` }}
               />
               {over === i && (
-                <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-rule bg-surface px-2 py-1 text-[11px] text-ink shadow-lg">
+                <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-rule bg-tooltip px-2 py-1 text-[11px] text-ink shadow-lg">
                   <b className="tnum font-mono">{n(v)}</b> {v === 1 ? 'read' : 'reads'}
                   <span className="text-faint"> · {i === weeks.length - 1 ? 'this week' : `${weeks.length - 1 - i} weeks ago`}</span>
                 </div>
@@ -101,7 +101,7 @@ export function Bars({ rows, unit }: { rows: { name: string; value: number }[]; 
               {n(r.value)} <span className="text-faint">{unit}</span>
             </span>
           </div>
-          <div className="mt-1.5 h-[7px] w-full overflow-hidden rounded-full bg-surface-2">
+          <div className="mt-1.5 h-[7px] w-full overflow-hidden rounded-full bg-track">
             <div
               className={`h-full rounded-full transition-colors ${over === r.name ? 'bg-accent' : 'bg-accent/55'}`}
               style={{ width: `${Math.max(2, (r.value / max) * 100)}%` }}
@@ -203,7 +203,7 @@ export function Collection({ rows }: { rows: DeptRow[] }) {
               </div>
 
               {over?.dept === r.name && (
-                <div className="pointer-events-none absolute -top-1.5 left-0 z-10 -translate-y-full whitespace-nowrap rounded-lg border border-rule bg-surface px-2.5 py-1.5 text-[11px] text-ink shadow-lg">
+                <div className="pointer-events-none absolute -top-1.5 left-0 z-10 -translate-y-full whitespace-nowrap rounded-lg border border-rule bg-tooltip px-2.5 py-1.5 text-[11px] text-ink shadow-lg">
                   <b className="tnum font-mono">{n(r[over.shelf])}</b>{' '}
                   {SHELVES.find(x => x.key === over.shelf)!.label.toLowerCase()}
                   <span className="text-faint">
@@ -269,7 +269,7 @@ export function Donut({ slices, centerLabel, unit = 'items', size = 184 }: {
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" role="img"
           aria-label={slices.map(s => `${s.label} ${n(s.value)}`).join(', ')}>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={stroke} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--track)" strokeWidth={stroke} />
           {slices.map(s => {
             if (!s.value) return null;
             const len = (s.value / total) * c;
@@ -334,7 +334,7 @@ export function Columns({ data, unit }: { data: { label: string; value: number }
             <div className={`w-full rounded-t-[4px] transition-colors ${over === i ? 'bg-accent' : 'bg-accent/55'}`}
               style={{ height: `${Math.max(2, (d.value / max) * 100)}%` }} />
             {over === i && (
-              <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-rule bg-surface px-2 py-1 text-[11px] text-ink shadow-lg">
+              <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-rule bg-tooltip px-2 py-1 text-[11px] text-ink shadow-lg">
                 <b className="tnum font-mono">{n(d.value)}</b> {unit}
                 <span className="text-faint"> · {d.label}</span>
               </div>

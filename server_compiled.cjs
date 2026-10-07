@@ -21842,6 +21842,59 @@ var init_src = __esm({
   }
 });
 
+// src/lib/percent.ts
+function safePercentage(value, total, whole = true) {
+  if (typeof value !== "number" || typeof total !== "number") return null;
+  if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0 || value < 0) return null;
+  const pct = value / total * 100;
+  return whole ? Math.round(pct) : pct;
+}
+
+// src/lib/publicSeo.ts
+var PUBLIC_REDIRECTS = {
+  "/subscriptions": "/for-institutions",
+  "/for-researchers": "/for-students",
+  "/departments": "/digital-library#departments",
+  "/home-preview": "/",
+  "/home-classic": "/",
+  "/journals": "/digital-library"
+};
+var PUBLIC_PAGES = {
+  "/": ["Academic Discovery", "Discover academic resources by department, subject, and source on STM Digital Library."],
+  "/about": ["About Us", "Learn about STM Digital Library, its operator, mission, and approach to academic discovery."],
+  "/digital-library": ["Digital Library", "Explore academic journals, articles, books, and other resources by department."],
+  "/for-institutions": ["For Institutions", "Explore institutional subscriptions, library management, and academic access."],
+  "/for-students": ["For Students & Researchers", "Explore academic resources and individual access options for students and researchers."],
+  "/institutions": ["Institutional Community", "Explore institutions represented in the STM Digital Library community."],
+  "/institutional-access": ["Institutional Access", "Find out how your institution can access STM Digital Library."],
+  "/contact": ["Contact Us", "Contact STM Digital Library for support, institutional enquiries, and privacy requests."],
+  "/faq": ["Frequently Asked Questions", "Find answers about library access, accounts, and subscriptions."],
+  "/blog": ["Blog", "Published updates and articles from STM Digital Library."],
+  "/content-sources": ["Content Sources & Licensing", "Learn about content sources, access information, and licensing on STM Digital Library."],
+  "/privacy-policy": ["Privacy Policy", "Read how STM Digital Library handles personal information and privacy requests."],
+  "/terms-and-conditions": ["Terms & Conditions", "Read the terms that apply to use of STM Digital Library."],
+  "/legal-disclaimer": ["Legal Disclaimer", "Read the limitations and third-party content disclaimer for STM Digital Library."],
+  "/content-removal": ["Content Removal", "Report rights or content concerns through the STM Digital Library review process."]
+};
+function isPrivatePage(path3) {
+  return /^\/(admin|sales|institution|dashboard|manager|publisher|studio|validator|login|signup|unsubscribe|payment|payments)(\/|$)/.test(path3);
+}
+
+// src/server/publicTrust.ts
+function installPublicTrustRoutes(app) {
+  app.use((req, res, next) => {
+    if (isPrivatePage(req.path)) res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    const path3 = req.path.replace(/\/$/, "") || "/";
+    const target = PUBLIC_REDIRECTS[path3];
+    if ((req.method === "GET" || req.method === "HEAD") && target) {
+      const [destination, hash] = target.split("#");
+      const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+      return res.redirect(301, `${destination}${query}${hash ? `#${hash}` : ""}`);
+    }
+    next();
+  });
+}
+
 // server.ts
 var import_express = __toESM(require("express"), 1);
 var import_crypto2 = __toESM(require("crypto"), 1);
@@ -23230,10 +23283,10 @@ var COMPANY_DETAILS = {
   name: "STM Digital Library",
   website: "https://journalslibrary.com/",
   // ── The operating entity ────────────────────────────────────────────────
-  legalName: "IT Break COM Pvt. Ltd.",
+  legalName: "IT BREAK COM PRIVATE LIMITED",
   shortName: "IT Break",
   /** Shown beneath the product name on documents, emails and the footer. */
-  positioning: "A product of IT Break COM Pvt. Ltd.",
+  positioning: "Operated by IT BREAK COM PRIVATE LIMITED",
   gstin: "07AAACI8666D1ZI",
   pan: "AAACI8666D",
   // derived from the GSTIN — confirm against the PAN card
@@ -23247,6 +23300,13 @@ var COMPANY_DETAILS = {
    * reads this value. Changing it changes the tax split on every new document.
    */
   state: "Delhi",
+  /** Upper-case form of the registered name, as quotations print it in the letterhead and terms. */
+  registeredName: "IT BREAK COM PRIVATE LIMITED",
+  /** The registered office, shown on the quotation letterhead. */
+  registeredAddress: "LGF, 40, National Park, Lajpat Nagar IV, New Delhi, Delhi 110024",
+  /** The sales office, which is also where cheques and demand drafts are sent. */
+  salesOffice: "A-118, 1st Floor, Sector 63, Noida, U.P., India",
+  salesOfficeStateCode: "09",
   address: "A-118, 1st Floor, Sector 63, Noida, Uttar Pradesh, India - 201301",
   /** Shorter form used inside document footers. */
   registeredOffice: "A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India",
@@ -23272,6 +23332,10 @@ var BANK_ROWS = [
 function currentIssuer() {
   return {
     legalName: COMPANY_DETAILS.legalName,
+    registeredName: COMPANY_DETAILS.registeredName,
+    registeredAddress: COMPANY_DETAILS.registeredAddress,
+    salesOffice: COMPANY_DETAILS.salesOffice,
+    salesOfficeStateCode: COMPANY_DETAILS.salesOfficeStateCode,
     positioning: COMPANY_DETAILS.positioning,
     gstin: COMPANY_DETAILS.gstin,
     pan: COMPANY_DETAILS.pan,
@@ -23282,10 +23346,368 @@ function currentIssuer() {
     registeredOffice: COMPANY_DETAILS.registeredOffice,
     email: COMPANY_DETAILS.email,
     tel: [...COMPANY_DETAILS.tel],
+    mobile: COMPANY_DETAILS.mobile,
     bank: { ...COMPANY_DETAILS.bank }
   };
 }
 var STATUTORY_LINE = `GSTIN: ${COMPANY_DETAILS.gstin} \xA0|\xA0 PAN: ${COMPANY_DETAILS.pan} \xA0|\xA0 CIN: ${COMPANY_DETAILS.cin}`;
+
+// src/lib/institutionPricing.ts
+var GST_RATE = 0.18;
+var MAX_INSTITUTION_USERS = 1e3;
+var TERM_MONTHS = 12;
+var DEPARTMENT_RATES = [
+  { minDepartments: 5, rate: 7990 },
+  { minDepartments: 4, rate: 8490 },
+  { minDepartments: 3, rate: 8990 },
+  { minDepartments: 2, rate: 9490 },
+  { minDepartments: 1, rate: 9990 }
+];
+var STARTING_DEPARTMENT_RATE = DEPARTMENT_RATES[0].rate;
+function departmentRate(count) {
+  if (count < 1) return 0;
+  return DEPARTMENT_RATES.find((tier) => count >= tier.minDepartments).rate;
+}
+function slabLabel(count) {
+  const tier = DEPARTMENT_RATES.find((t2) => count >= t2.minDepartments) ?? DEPARTMENT_RATES[DEPARTMENT_RATES.length - 1];
+  const top = DEPARTMENT_RATES[0].minDepartments;
+  return tier.minDepartments === top ? `${tier.minDepartments}+ departments` : tier.minDepartments === 1 ? "1 department" : `${tier.minDepartments} departments`;
+}
+var round2 = (value) => Math.round(value * 100) / 100;
+function withGst(quantity, rate) {
+  const base = quantity * rate;
+  const gst = round2(base * GST_RATE);
+  return { quantity, rate, base, gst, total: round2(base + gst) };
+}
+function priceDepartments(count) {
+  return withGst(Math.max(0, Math.floor(count)), departmentRate(count));
+}
+function termEnd(from = /* @__PURE__ */ new Date()) {
+  const end = new Date(from);
+  end.setMonth(end.getMonth() + TERM_MONTHS);
+  return end;
+}
+
+// src/lib/gstUtils.ts
+var GST_RATE2 = 0.18;
+var COMPANY_STATE = COMPANY_DETAILS.state;
+
+// src/lib/soloPricing.ts
+var SOLO_RATE_STANDARD = 4990;
+var SOLO_RATE_BULK = 3990;
+var SOLO_BULK_THRESHOLD = 5;
+var SOLO_TERM_MONTHS = 12;
+var round22 = (value) => Math.round(value * 100) / 100;
+function soloRateFor(count) {
+  const n2 = Math.floor(count);
+  if (n2 < 1) return 0;
+  return n2 >= SOLO_BULK_THRESHOLD ? SOLO_RATE_BULK : SOLO_RATE_STANDARD;
+}
+function soloGstSplit(customerState) {
+  const state = (customerState || "").trim().toLowerCase();
+  if (!state) return "unknown";
+  return state === COMPANY_STATE.toLowerCase() ? "cgst-sgst" : "igst";
+}
+function calculateSoloSubscriptionPrice(count, opts = {}) {
+  const n2 = Math.max(0, Math.floor(count || 0));
+  const rate = soloRateFor(n2);
+  const subtotal = n2 * rate;
+  const gst = round22(subtotal * GST_RATE2);
+  const gstSplit = soloGstSplit(opts.state);
+  const cgst = gstSplit === "cgst-sgst" ? round22(gst / 2) : 0;
+  const sgst = gstSplit === "cgst-sgst" ? round22(gst - cgst) : 0;
+  const igst = gstSplit === "igst" ? gst : 0;
+  return {
+    count: n2,
+    rate,
+    subtotal,
+    gst,
+    cgst,
+    sgst,
+    igst,
+    gstSplit,
+    total: round22(subtotal + gst),
+    bulkApplied: n2 >= SOLO_BULK_THRESHOLD,
+    toUnlockBulk: n2 === SOLO_BULK_THRESHOLD - 1 ? 1 : 0
+  };
+}
+
+// src/lib/quotation/quotationModel.ts
+var QUOTE_KIND = "institutional-v2";
+var QUOTE_DEPARTMENTS = [
+  "Agriculture",
+  "Applied Mechanics",
+  "Applied Sciences",
+  "Architecture",
+  "Ayurveda",
+  "Bio Technology",
+  "Chemical Engineering",
+  "Chemistry",
+  "Civil/Construction Engineering",
+  "Computer/IT",
+  "Education & Social Sciences",
+  "Electrical Engineering",
+  "Electronics & Telecommunication Engineering",
+  "Energy",
+  "Law",
+  "Life Sciences",
+  "Management",
+  "Material Science",
+  "Mechanical Engineering",
+  "Medical Sciences",
+  "Multidisciplinary",
+  "Nano Technology",
+  "Nursing",
+  "Pharmacy"
+];
+var QUOTE_STATES = [
+  ["Andhra Pradesh", "28"],
+  ["Arunachal Pradesh", "12"],
+  ["Assam", "18"],
+  ["Bihar", "10"],
+  ["Chhattisgarh", "22"],
+  ["Goa", "30"],
+  ["Gujarat", "24"],
+  ["Haryana", "06"],
+  ["Himachal Pradesh", "02"],
+  ["Jharkhand", "20"],
+  ["Karnataka", "29"],
+  ["Kerala", "32"],
+  ["Madhya Pradesh", "23"],
+  ["Maharashtra", "27"],
+  ["Manipur", "14"],
+  ["Meghalaya", "17"],
+  ["Mizoram", "15"],
+  ["Nagaland", "13"],
+  ["Odisha", "21"],
+  ["Punjab", "03"],
+  ["Rajasthan", "08"],
+  ["Sikkim", "11"],
+  ["Tamil Nadu", "33"],
+  ["Telangana", "36"],
+  ["Tripura", "16"],
+  ["Uttar Pradesh", "09"],
+  ["Uttarakhand", "05"],
+  ["West Bengal", "19"],
+  ["Andaman and Nicobar Islands", "35", "UT"],
+  ["Chandigarh", "04", "UT"],
+  ["Dadra and Nagar Haveli and Daman and Diu", "26", "UT"],
+  ["Delhi", "07", "NCT"],
+  ["Jammu and Kashmir", "01", "UT"],
+  ["Ladakh", "38", "UT"],
+  ["Lakshadweep", "31", "UT"],
+  ["Puducherry", "34", "UT"]
+].map(([name, code, suffix]) => ({ name, code, label: suffix ? `${name} (${suffix})` : name }));
+var stateCodeOf = (state) => {
+  const wanted = (state || "").replace(/\s*\((UT|NCT)\)\s*$/i, "").trim().toLowerCase();
+  return QUOTE_STATES.find((s2) => s2.name.toLowerCase() === wanted)?.code || "";
+};
+var HOME_STATE_CODE = stateCodeOf(COMPANY_DETAILS.state) || "07";
+var FREE_USERS = 5;
+function standardUserRate(totalUsers) {
+  if (totalUsers <= 100) return 2490;
+  if (totalUsers <= 250) return 1990;
+  if (totalUsers <= 500) return 1490;
+  if (totalUsers <= 999) return 1190;
+  return 990;
+}
+var round23 = (n2) => Math.round(n2 * 100) / 100;
+var num = (v) => {
+  const n2 = Number(v);
+  return Number.isFinite(n2) ? n2 : 0;
+};
+function computeQuotePricing(doc) {
+  const count = doc.departments.length;
+  const users = Math.max(1, Math.floor(num(doc.totalUsers)) || 1);
+  const included = doc.includeFive ? Math.min(users, FREE_USERS) : 0;
+  const extra = doc.includeFive ? Math.max(0, users - FREE_USERS) : users;
+  const standardDeptRate = departmentRate(count);
+  const deptRate = doc.deptMode === "custom" ? Math.max(0, num(doc.customDeptRate)) : standardDeptRate;
+  const stdUserRate = standardUserRate(users);
+  const userRate = doc.userMode === "custom" ? Math.max(0, num(doc.customUserRate)) : stdUserRate;
+  const deptBase = count * deptRate;
+  const userBase = extra * userRate;
+  const gross = deptBase + userBase;
+  const discount = Math.max(0, num(doc.discount));
+  const subtotal = Math.max(0, gross - discount);
+  const stateCode = stateCodeOf(doc.state);
+  let cgst = 0, sgst = 0, igst = 0;
+  if (subtotal && stateCode) {
+    if (stateCode === HOME_STATE_CODE) {
+      cgst = Math.round(subtotal * 9) / 100;
+      sgst = Math.round(subtotal * 9) / 100;
+    } else igst = Math.round(subtotal * 18) / 100;
+  }
+  const tax = cgst + sgst + igst;
+  return {
+    count,
+    users,
+    included,
+    extra,
+    deptRate,
+    standardDeptRate,
+    userRate,
+    standardUserRate: stdUserRate,
+    deptBase,
+    userBase,
+    gross,
+    discount,
+    subtotal,
+    cgst,
+    sgst,
+    igst,
+    tax,
+    total: subtotal + tax,
+    stateCode
+  };
+}
+function financialYear(d = /* @__PURE__ */ new Date()) {
+  const y = d.getFullYear();
+  const start = d.getMonth() + 1 >= 4 ? y : y - 1;
+  return `${String(start).slice(-2)}-${String(start + 1).slice(-2)}`;
+}
+var quoteNoPrefix = (d = /* @__PURE__ */ new Date()) => `ITB/SDL/${financialYear(d)}/`;
+function nextQuoteNo(existing, d = /* @__PURE__ */ new Date()) {
+  const prefix = quoteNoPrefix(d);
+  const last = existing.filter((n2) => n2.startsWith(prefix)).map((n2) => parseInt(n2.slice(prefix.length), 10)).filter(Number.isFinite).reduce((a, b) => Math.max(a, b), 0);
+  return `${prefix}${String(last + 1).padStart(3, "0")}`;
+}
+var isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+var parseIso = (s2) => {
+  const m2 = /^(\d{4})-(\d{2})-(\d{2})/.exec(s2 || "");
+  return m2 ? new Date(Number(m2[1]), Number(m2[2]) - 1, Number(m2[3])) : null;
+};
+function addDaysIso(iso, days) {
+  const d = parseIso(iso);
+  if (!d) return "";
+  d.setDate(d.getDate() + Math.floor(num(days)));
+  return isoDate(d);
+}
+function docToRow(doc) {
+  const p2 = computeQuotePricing(doc);
+  const validity = Math.max(1, Math.floor(num(doc.validityDays)) || 15);
+  const expires = parseIso(addDaysIso(doc.quoteDate, validity)) || new Date(Date.now() + validity * 864e5);
+  expires.setHours(23, 59, 59, 0);
+  const pricing = {
+    kind: QUOTE_KIND,
+    doc: { ...doc, validityDays: validity },
+    total: p2.total
+  };
+  return {
+    p: p2,
+    expiresAt: expires,
+    data: {
+      userEmail: doc.email.trim(),
+      userName: doc.contactName.trim() || doc.instName.trim(),
+      organization: doc.instName.trim(),
+      state: doc.state || null,
+      designation: doc.designation.trim() || null,
+      mobile: doc.phone.trim() || null,
+      address: doc.address.trim() || null,
+      gstNumber: doc.customerGstin.trim() || null,
+      planType: "Yearly",
+      allowedDomain: doc.departments.join(", ") || null,
+      notes: doc.specialNote.trim() || null,
+      subtotal: p2.subtotal,
+      gstAmount: p2.tax,
+      total: p2.total,
+      discountAmount: p2.discount,
+      items: [
+        ...p2.count ? [{ domainName: doc.departments.join(", "), planName: "Premium Department Subscription", duration: "Yearly", quantity: p2.count, price: p2.deptRate }] : [],
+        ...p2.extra ? [{ domainName: "Full-Access User Licences", planName: "Full-Access User Licences", duration: "Yearly", quantity: p2.extra, price: p2.userRate }] : []
+      ],
+      pricingBreakdown: pricing,
+      selectedModules: []
+    }
+  };
+}
+var INSTITUTION_PLAN_KIND = "institution-plan-v1";
+var SOLO_PLAN_KIND = "solo-plan-v1";
+var PLAN_VALIDITY_DAYS = 30;
+var unique = (names) => [...new Set(names.map((n2) => String(n2).trim()).filter(Boolean))];
+function buildInstitutionPlanSnapshot(o) {
+  const existing = unique(o.existingNames);
+  const held = new Set(existing);
+  const fresh = unique(o.newNames).filter((n2) => !held.has(n2));
+  const total = existing.length + fresh.length;
+  const rate = departmentRate(total);
+  const base = fresh.length * rate;
+  const gst = round23(base * GST_RATE);
+  const now = o.now ?? /* @__PURE__ */ new Date();
+  return {
+    kind: INSTITUTION_PLAN_KIND,
+    quoteNo: o.quoteNo,
+    date: isoDate(now),
+    validityDays: PLAN_VALIDITY_DAYS,
+    customer: o.customer,
+    existingDepartmentCount: existing.length,
+    newDepartmentCount: fresh.length,
+    totalDepartmentCount: total,
+    appliedPricingSlab: slabLabel(total),
+    ratePerNewDepartment: rate,
+    standardRate: departmentRate(1),
+    newDepartmentNames: fresh,
+    existingDepartmentNames: existing,
+    termMonths: TERM_MONTHS,
+    maxUsers: MAX_INSTITUTION_USERS,
+    subtotal: base,
+    gst,
+    grandTotal: round23(base + gst)
+  };
+}
+function buildSoloPlanSnapshot(o) {
+  const names = unique(o.names);
+  const price = calculateSoloSubscriptionPrice(names.length, { state: o.customer.state });
+  return {
+    kind: SOLO_PLAN_KIND,
+    quoteNo: o.quoteNo,
+    date: isoDate(o.now ?? /* @__PURE__ */ new Date()),
+    validityDays: PLAN_VALIDITY_DAYS,
+    customer: o.customer,
+    departmentCount: names.length,
+    pricingSlab: price.bulkApplied ? `${SOLO_BULK_THRESHOLD}+ departments` : `1-${SOLO_BULK_THRESHOLD - 1} departments`,
+    ratePerDepartment: price.rate,
+    departmentNames: names,
+    termMonths: SOLO_TERM_MONTHS,
+    subtotal: price.subtotal,
+    gst: price.gst,
+    grandTotal: price.total
+  };
+}
+function planSnapshotToRow(s2) {
+  const institution = s2.kind === INSTITUTION_PLAN_KIND;
+  const names = institution ? s2.newDepartmentNames : s2.departmentNames;
+  const rate = institution ? s2.ratePerNewDepartment : s2.ratePerDepartment;
+  const expires = parseIso(addDaysIso(s2.date, s2.validityDays)) || new Date(Date.now() + s2.validityDays * 864e5);
+  expires.setHours(23, 59, 59, 0);
+  return {
+    expiresAt: expires,
+    data: {
+      id: s2.quoteNo,
+      userEmail: (s2.customer.email || "").trim(),
+      userName: (s2.customer.contact || s2.customer.name || "").trim(),
+      organization: institution ? s2.customer.name : null,
+      state: s2.customer.state || null,
+      mobile: s2.customer.phone || null,
+      planType: "Yearly",
+      allowedDomain: names.join(", ") || null,
+      subtotal: s2.subtotal,
+      gstAmount: s2.gst,
+      total: s2.grandTotal,
+      discountAmount: 0,
+      deliveryMethod: "Download",
+      items: [{
+        domainName: names.join(", "),
+        planName: institution ? "Premium Department Subscription" : "Department Subscription (Solo Learner)",
+        duration: "Yearly",
+        quantity: names.length,
+        price: rate
+      }],
+      pricingBreakdown: s2,
+      selectedModules: []
+    }
+  };
+}
 
 // src/constants.ts
 var DEFAULT_CONTENT_TYPES = [
@@ -23689,12 +24111,39 @@ var INSTITUTION_MEMBER_ROLES = [
 ];
 var PRO_ONLY_MEMBER_ROLES = ["Student"];
 var REGISTRANT_TYPES = [
-  { id: "Institute", label: "Institute", hint: "College, university or school" },
-  { id: "Corporate", label: "Corporate / Industry", hint: "Company or R&D organisation" },
-  { id: "Solo", label: "Solo Learner", hint: "Registering on your own" }
+  // The id is what is stored and what the server checks; only the label is what a person reads.
+  // Institution and Institute have never been two things, so the stored word stays as it was.
+  { id: "Institute", label: "Institution", hint: "College, university or school", asksRole: true },
+  { id: "Corporate", label: "Corporate / Industry", hint: "Company or R&D organisation", asksRole: true },
+  { id: "Solo", label: "Solo Learner", hint: "Registering on your own", asksRole: true }
+];
+var SOLO_OWN_ROLES = [
+  "Undergraduate Student",
+  "Master's Student",
+  "PhD Scholar",
+  "Postdoctoral Researcher",
+  "Researcher / Scientist",
+  "Faculty / Academic Professional",
+  "Working Professional",
+  "Industry Professional",
+  "Entrepreneur / Founder",
+  "Consultant",
+  "Freelancer",
+  "Independent Researcher",
+  "Research Scientist",
+  "Research Associate",
+  "Principal Investigator (PI)",
+  "Research / Academic Coordinator"
 ];
 var DESIGNATIONS_BY_TYPE = {
   Institute: [
+    // Students and researchers sign up under their institution too — they are most of the people in it.
+    "Undergraduate Student",
+    "Master's Student",
+    "PhD Scholar",
+    "Postdoctoral Researcher",
+    "Researcher / Scientist",
+    "Faculty / Academic Professional",
     "Librarian",
     "Principal",
     "Vice Principal",
@@ -23726,27 +24175,15 @@ var DESIGNATIONS_BY_TYPE = {
     "Training & Development Manager",
     "Procurement / Purchase Manager"
   ],
-  Solo: [
-    "Undergraduate Student",
-    "Master's Student",
-    "PhD Scholar",
-    "Postdoctoral Researcher",
-    "Researcher / Scientist",
-    "Faculty / Academic Professional",
-    "Working Professional",
-    "Industry Professional",
-    "Entrepreneur / Founder",
-    "Consultant",
-    "Freelancer",
-    "Independent Researcher",
-    "Research Scientist",
-    "Research Associate",
-    "Principal Investigator (PI)",
-    "Research / Academic Coordinator"
-  ]
+  // A Solo Learner may choose any role there is.
+  Solo: []
 };
+var allRolesOnce = () => [.../* @__PURE__ */ new Set([...DESIGNATIONS_BY_TYPE.Institute || [], ...DESIGNATIONS_BY_TYPE.Corporate || [], ...SOLO_OWN_ROLES])];
+DESIGNATIONS_BY_TYPE.Solo = allRolesOnce();
 var DESIGNATION_GROUPS = {
   Institute: [
+    { label: "Studying", roles: ["Undergraduate Student", "Master's Student", "PhD Scholar", "Postdoctoral Researcher"] },
+    { label: "Research & academia", roles: ["Researcher / Scientist", "Faculty / Academic Professional"] },
     { label: "Library", roles: ["Librarian"] },
     { label: "Leadership", roles: ["Principal", "Vice Principal", "Dean", "Director", "Head of Department (HOD)"] },
     { label: "Faculty", roles: ["Professor", "Associate Professor", "Assistant Professor", "Faculty Member"] }
@@ -23756,13 +24193,30 @@ var DESIGNATION_GROUPS = {
     { label: "Research & development", roles: ["R&D Head", "R&D Manager", "Research Scientist", "Research Associate"] },
     { label: "Management", roles: ["Senior Manager", "Manager", "HR Manager", "Accounts Manager", "Product Manager", "Engineering Manager", "Technical Lead / Manager", "Training & Development Manager", "Procurement / Purchase Manager"] }
   ],
-  Solo: [
-    { label: "Studying", roles: ["Undergraduate Student", "Master's Student", "PhD Scholar", "Postdoctoral Researcher"] },
-    { label: "Research & academia", roles: ["Researcher / Scientist", "Faculty / Academic Professional", "Independent Researcher", "Research Scientist", "Research Associate", "Principal Investigator (PI)", "Research / Academic Coordinator"] },
-    { label: "Working", roles: ["Working Professional", "Industry Professional", "Entrepreneur / Founder", "Consultant", "Freelancer"] }
-  ]
+  // A Solo Learner is one person with no organisation behind them, so every role is on offer:
+  // their own, then the library, leadership, faculty and corporate roles of the other two.
+  Solo: []
 };
-var ALL_DESIGNATIONS = Object.values(DESIGNATIONS_BY_TYPE).flat();
+DESIGNATION_GROUPS.Solo = (() => {
+  const seen = /* @__PURE__ */ new Set();
+  const merged = [];
+  const add = (label, roles) => {
+    const fresh = roles.filter((r2) => !seen.has(r2));
+    fresh.forEach((r2) => seen.add(r2));
+    if (!fresh.length) return;
+    const existing = merged.find((g) => g.label === label);
+    if (existing) existing.roles.push(...fresh);
+    else merged.push({ label, roles: fresh });
+  };
+  add("Studying", ["Undergraduate Student", "Master's Student", "PhD Scholar", "Postdoctoral Researcher"]);
+  add("Research & academia", ["Researcher / Scientist", "Faculty / Academic Professional", "Independent Researcher", "Research Scientist", "Research Associate", "Principal Investigator (PI)", "Research / Academic Coordinator"]);
+  add("Working", ["Working Professional", "Industry Professional", "Entrepreneur / Founder", "Consultant", "Freelancer"]);
+  for (const type of ["Institute", "Corporate"]) {
+    for (const g of DESIGNATION_GROUPS[type]) add(g.label, g.roles);
+  }
+  return merged;
+})();
+var ALL_DESIGNATIONS = [...new Set(Object.values(DESIGNATIONS_BY_TYPE).flat())];
 var INSTITUTION_DASHBOARD_GROUPS = {
   Institute: ["Library", "Leadership"],
   Corporate: ["Leadership"]
@@ -24371,8 +24825,8 @@ function parseLcc(code) {
   const m2 = /^([A-Z]+)\s*([0-9.]+)?/.exec(code.trim().toUpperCase());
   return m2 ? { cls: m2[1], num: m2[2] ? parseFloat(m2[2]) : null } : null;
 }
-var within = (num, lo, hi) => num !== null && num >= lo && num <= hi;
-function departmentFromLcc(cls, num) {
+var within = (num2, lo, hi) => num2 !== null && num2 >= lo && num2 <= hi;
+function departmentFromLcc(cls, num2) {
   const c1 = cls[0];
   switch (c1) {
     case "A":
@@ -24391,10 +24845,10 @@ function departmentFromLcc(cls, num) {
     case "H":
       if (cls === "HA") return "Science";
       if (["HB", "HC", "HG", "HJ", "HE"].includes(cls)) return "Commerce";
-      if (cls === "HD") return within(num, 28, 70.99) ? "Management" : "Commerce";
+      if (cls === "HD") return within(num2, 28, 70.99) ? "Management" : "Commerce";
       if (cls === "HF") {
-        if (within(num, 5601, 5689)) return "Commerce";
-        if (within(num, 5001, 6182)) return "Management";
+        if (within(num2, 5601, 5689)) return "Commerce";
+        if (within(num2, 5001, 6182)) return "Management";
         return "Commerce";
       }
       return "Education and Social Sciences";
@@ -24412,7 +24866,7 @@ function departmentFromLcc(cls, num) {
     case "P":
       return "Arts";
     case "Q":
-      if (cls === "QA") return within(num, 75, 76.99) ? "Computer / IT" : "Science";
+      if (cls === "QA") return within(num2, 75, 76.99) ? "Computer / IT" : "Science";
       if (cls === "QD") return "Chemistry";
       if (["QH", "QK", "QL", "QM", "QP", "QR"].includes(cls)) return "Life Sciences";
       return "Science";
@@ -24421,7 +24875,7 @@ function departmentFromLcc(cls, num) {
       if (cls === "RK") return "Dental";
       if (cls === "RT") return "Nursing";
       if (cls === "RS") return "Pharmacy";
-      if (cls === "RM") return within(num, 695, 893) ? "Physiotherapy" : "Pharmacy";
+      if (cls === "RM") return within(num2, 695, 893) ? "Physiotherapy" : "Pharmacy";
       if (cls === "RZ" || cls === "RV") return "Ayurveda";
       return "Medical Sciences";
     case "S":
@@ -24429,23 +24883,23 @@ function departmentFromLcc(cls, num) {
     case "T":
       if (cls === "T") return "Applied Sciences";
       if (cls === "TA") {
-        if (within(num, 349, 359)) return "Applied Mechanics";
-        if (within(num, 401, 492)) return "Material Science";
+        if (within(num2, 349, 359)) return "Applied Mechanics";
+        if (within(num2, 401, 492)) return "Material Science";
         return "Civil / Construction Engineering";
       }
       if (["TC", "TD", "TE", "TF", "TG", "TH"].includes(cls)) return "Civil / Construction Engineering";
-      if (cls === "TJ") return within(num, 807, 830) || within(num, 163, 163.99) ? "Energy" : "Mechanical Engineering";
+      if (cls === "TJ") return within(num2, 807, 830) || within(num2, 163, 163.99) ? "Energy" : "Mechanical Engineering";
       if (cls === "TK") {
-        if (within(num, 7885, 7895)) return "Computer / IT";
-        if (within(num, 5101, 6720) || within(num, 7800, 8360)) return "Electronics & Telecommunication Engineering";
-        if (within(num, 1001, 1841) || within(num, 9001, 9401)) return "Energy";
+        if (within(num2, 7885, 7895)) return "Computer / IT";
+        if (within(num2, 5101, 6720) || within(num2, 7800, 8360)) return "Electronics & Telecommunication Engineering";
+        if (within(num2, 1001, 1841) || within(num2, 9001, 9401)) return "Energy";
         return "Electrical Engineering";
       }
       if (cls === "TL" || cls === "TS") return "Mechanical Engineering";
       if (cls === "TN") return "Material Science";
       if (cls === "TP") {
-        if (within(num, 248, 248.99)) return "Bio Technology";
-        if (within(num, 315, 360)) return "Energy";
+        if (within(num2, 248, 248.99)) return "Bio Technology";
+        if (within(num2, 315, 360)) return "Energy";
         return "Chemical Engineering";
       }
       if (cls === "TR" || cls === "TT") return "Arts";
@@ -24605,37 +25059,6 @@ var eRows = (pairs) => `<table width="100%" cellpadding="0" cellspacing="0" styl
   ([k, v], i2) => `<tr><td style="padding:11px 16px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.4px;width:38%;${i2 ? "border-top:1px solid #f1f5f9;" : ""}">${esc(k)}</td><td style="padding:11px 16px;font-size:14px;color:#0f172a;${i2 ? "border-top:1px solid #f1f5f9;" : ""}">${v}</td></tr>`
 ).join("") + `</table>`;
 var eQuote = (author, text) => `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"><tr><td style="padding:16px 18px;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#1e3a6e;">${esc(author)}</p><div style="font-size:14px;line-height:1.65;color:#334155;">${escLines(text)}</div></td></tr></table>`;
-
-// src/lib/institutionPricing.ts
-var GST_RATE = 0.18;
-var MAX_INSTITUTION_USERS = 1e3;
-var TERM_MONTHS = 12;
-var DEPARTMENT_RATES = [
-  { minDepartments: 5, rate: 7990 },
-  { minDepartments: 4, rate: 8490 },
-  { minDepartments: 3, rate: 8990 },
-  { minDepartments: 2, rate: 9490 },
-  { minDepartments: 1, rate: 9990 }
-];
-var STARTING_DEPARTMENT_RATE = DEPARTMENT_RATES[0].rate;
-function departmentRate(count) {
-  if (count < 1) return 0;
-  return DEPARTMENT_RATES.find((tier) => count >= tier.minDepartments).rate;
-}
-var round2 = (value) => Math.round(value * 100) / 100;
-function withGst(quantity, rate) {
-  const base = quantity * rate;
-  const gst = round2(base * GST_RATE);
-  return { quantity, rate, base, gst, total: round2(base + gst) };
-}
-function priceDepartments(count) {
-  return withGst(Math.max(0, Math.floor(count)), departmentRate(count));
-}
-function termEnd(from = /* @__PURE__ */ new Date()) {
-  const end = new Date(from);
-  end.setMonth(end.getMonth() + TERM_MONTHS);
-  return end;
-}
 
 // src/lib/marketingEmails.ts
 var n = (x2) => typeof x2 === "number" ? x2.toLocaleString("en-IN") : "";
@@ -24974,50 +25397,6 @@ async function applyWrites(tx, userId, writes) {
   }
 }
 
-// src/lib/gstUtils.ts
-var GST_RATE2 = 0.18;
-var COMPANY_STATE = COMPANY_DETAILS.state;
-
-// src/lib/soloPricing.ts
-var SOLO_RATE_STANDARD = 4990;
-var SOLO_RATE_BULK = 3990;
-var SOLO_BULK_THRESHOLD = 5;
-var SOLO_TERM_MONTHS = 12;
-var round22 = (value) => Math.round(value * 100) / 100;
-function soloRateFor(count) {
-  const n2 = Math.floor(count);
-  if (n2 < 1) return 0;
-  return n2 >= SOLO_BULK_THRESHOLD ? SOLO_RATE_BULK : SOLO_RATE_STANDARD;
-}
-function soloGstSplit(customerState) {
-  const state = (customerState || "").trim().toLowerCase();
-  if (!state) return "unknown";
-  return state === COMPANY_STATE.toLowerCase() ? "cgst-sgst" : "igst";
-}
-function calculateSoloSubscriptionPrice(count, opts = {}) {
-  const n2 = Math.max(0, Math.floor(count || 0));
-  const rate = soloRateFor(n2);
-  const subtotal = n2 * rate;
-  const gst = round22(subtotal * GST_RATE2);
-  const gstSplit = soloGstSplit(opts.state);
-  const cgst = gstSplit === "cgst-sgst" ? round22(gst / 2) : 0;
-  const sgst = gstSplit === "cgst-sgst" ? round22(gst - cgst) : 0;
-  const igst = gstSplit === "igst" ? gst : 0;
-  return {
-    count: n2,
-    rate,
-    subtotal,
-    gst,
-    cgst,
-    sgst,
-    igst,
-    gstSplit,
-    total: round22(subtotal + gst),
-    bulkApplied: n2 >= SOLO_BULK_THRESHOLD,
-    toUnlockBulk: n2 === SOLO_BULK_THRESHOLD - 1 ? 1 : 0
-  };
-}
-
 // src/lib/subjects.ts
 var PLACEHOLDERS = /* @__PURE__ */ new Set(["general", "n/a", "na", "none", "null", "undefined", "unknown", "other", "-", "--", "misc", "miscellaneous"]);
 var norm = (s2) => s2.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -25106,6 +25485,7 @@ import_dotenv.default.config();
 var currentDir = process.cwd();
 async function startServer() {
   const app = (0, import_express.default)();
+  installPublicTrustRoutes(app);
   app.set("trust proxy", 1);
   const PORT = Number(process.env.PORT) || 3e3;
   app.use((0, import_helmet.default)({
@@ -25776,9 +26156,11 @@ async function startServer() {
           registrantType: type,
           state: state ? String(state).slice(0, 80) : null,
           country: country ? String(country).slice(0, 80) : null,
-          // The same number when they said it was the same, so nothing
-          // downstream has to know the rule to reach them.
-          whatsapp: whatsapp || contact ? String(whatsapp || contact).slice(0, 40) : null,
+          // Only what they opted in to. The form sends the contact number
+          // itself when they tick "use this number for WhatsApp", so nothing
+          // downstream has to know the rule — and a member who did not tick it
+          // is not given a WhatsApp number by falling back to the phone one.
+          whatsapp: whatsapp ? String(whatsapp).slice(0, 40) : null,
           role: accountRole,
           institutionId: newInstitutionId,
           status: "Active",
@@ -26029,9 +26411,9 @@ async function startServer() {
   const soloAccount = async (req) => {
     const me = await prisma3.user.findUnique({
       where: { id: req.user.uid },
-      select: { id: true, displayName: true, email: true, state: true, role: true, registrantType: true, institutionId: true }
+      select: { id: true, displayName: true, email: true, contact: true, state: true, role: true, registrantType: true, institutionId: true }
     });
-    if (!me || me.registrantType !== "Solo" || me.role !== "Subscriber" || me.institutionId) return null;
+    if (!me || me.role !== "Subscriber" || me.institutionId) return null;
     return me;
   };
   const soloHoldings = async (userId) => {
@@ -26041,7 +26423,12 @@ async function startServer() {
     });
     const wholeLibrary = subs.some((s2) => !Array.isArray(s2.domains) || s2.domains.length === 0);
     const departments = subs.flatMap((s2) => (Array.isArray(s2.domains) ? s2.domains : []).filter((name) => soloDepartmentNames.has(name)).map((name) => ({ name, endDate: s2.endDate })));
-    return { wholeLibrary, departments };
+    const lapsed = subs.length ? null : await prisma3.subscription.findFirst({
+      where: { userId, institutionId: null, endDate: { lte: now } },
+      orderBy: { endDate: "desc" },
+      select: { endDate: true }
+    });
+    return { wholeLibrary, departments, lapsedOn: lapsed?.endDate ?? null };
   };
   const priceSoloPurchase = async (me, body) => {
     const wanted = Array.isArray(body?.departments) ? body.departments.map(String) : [];
@@ -26057,7 +26444,7 @@ async function startServer() {
   app.get("/api/me/subscribe/plan", authenticateJWT, async (req, res) => {
     try {
       const me = await soloAccount(req);
-      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      if (!me) return res.status(403).json({ error: "Premium departments are bought from an individual account." });
       const held = await soloHoldings(me.id);
       res.json({
         name: me.displayName,
@@ -26065,6 +26452,7 @@ async function startServer() {
         state: me.state,
         wholeLibrary: held.wholeLibrary,
         departments: held.departments,
+        lapsedOn: held.lapsedOn,
         allDepartments: DOMAINS.map((d) => d.name),
         pricing: {
           standardRate: SOLO_RATE_STANDARD,
@@ -26082,7 +26470,7 @@ async function startServer() {
   app.post("/api/me/subscribe/quote", authenticateJWT, async (req, res) => {
     try {
       const me = await soloAccount(req);
-      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      if (!me) return res.status(403).json({ error: "Premium departments are bought from an individual account." });
       const quote = await priceSoloPurchase(me, req.body);
       if (quote.error) return res.status(400).json(quote);
       res.json(quote);
@@ -26090,10 +26478,28 @@ async function startServer() {
       res.status(500).json({ error: "Failed to price this" });
     }
   });
+  app.post("/api/me/subscribe/quotation", authenticateJWT, async (req, res) => {
+    try {
+      const me = await soloAccount(req);
+      if (!me) return res.status(403).json({ error: "Premium departments are bought from an individual account." });
+      const quote = await priceSoloPurchase(me, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      const customer = { name: me.displayName || "Solo Learner", email: me.email, phone: me.contact || void 0, state: me.state };
+      const snapshot = await savePlanQuotation(
+        (quoteNo) => buildSoloPlanSnapshot({ quoteNo, customer, names: quote.departments }),
+        "STMQ-S",
+        req
+      );
+      res.json({ quotation: snapshot });
+    } catch (err) {
+      console.error("POST /api/me/subscribe/quotation:", err?.message);
+      res.status(500).json({ error: "Failed to prepare the quotation" });
+    }
+  });
   app.post("/api/me/subscribe/checkout", authenticateJWT, async (req, res) => {
     try {
       const me = await soloAccount(req);
-      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      if (!me) return res.status(403).json({ error: "Premium departments are bought from an individual account." });
       const quote = await priceSoloPurchase(me, req.body);
       if (quote.error) return res.status(400).json(quote);
       const amountPaise = Math.round(quote.price.total * 100);
@@ -30702,17 +31108,14 @@ async function startServer() {
       res.status(500).json({ error: "Failed to submit request" });
     }
   });
+  const nextQuotationNumber = async () => {
+    const prefix = quoteNoPrefix();
+    const rows = await prisma3.quotation.findMany({ where: { id: { startsWith: prefix } }, select: { id: true } });
+    return nextQuoteNo(rows.map((r2) => r2.id));
+  };
   app.get("/api/quotation/next-number", authenticateJWT, requireSalesRole, async (_req, res) => {
     try {
-      const now = /* @__PURE__ */ new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const prefix = `QTN-${year}-${month}-`;
-      const count = await prisma3.quotation.count({
-        where: { id: { startsWith: prefix } }
-      });
-      const seq = String(count + 1).padStart(2, "0");
-      res.json({ quotationNumber: `${prefix}${seq}` });
+      res.json({ quotationNumber: await nextQuotationNumber() });
     } catch (error) {
       console.error("Next quotation number error:", error);
       res.status(500).json({ error: "Failed to generate quotation number" });
@@ -32833,6 +33236,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     }
   });
   const orderFor = (sort) => {
+    if (sort === "added") return [{ createdAt: "desc" }];
     if (sort === "oldest") return [{ year: "asc" }, { createdAt: "asc" }];
     if (sort === "title") return [{ title: "asc" }];
     return [{ year: "desc" }, { createdAt: "desc" }];
@@ -33872,6 +34276,89 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     } catch (e2) {
       console.error("institutions error", e2?.message);
       res.status(500).json({ error: "Failed to read the institutions" });
+    }
+  });
+  const INSTITUTION_TYPE_RULES = [
+    ["universities", /\buniversit|vishwavidyalaya|vidyapith|deemed\b/],
+    ["colleges", /\bcollege|mahavidyalaya\b/],
+    ["institutes", /\binstitut|\biit\b|\bnit\b|\biiit\b|\biim\b|academy|polytechnic|\bres(earch)?\b|laborator/],
+    ["schools", /\bschool|vidyalaya|vidya mandir\b/],
+    ["organisations", /\borgani[sz]ation|\b(pvt|private|ltd|limited|llp|inc|corp|corporation|company|foundation|trust|society|association|council|ministry|bank|technologies|solutions|enterprises|industries)\b/]
+  ];
+  const institutionType = (name) => {
+    const n2 = String(name || "").toLowerCase();
+    for (const [key, re] of INSTITUTION_TYPE_RULES) if (re.test(n2)) return key;
+    return "other";
+  };
+  const isIndia = (c) => ["india", "bharat", "republic of india", "in", "ind"].includes(c.trim().toLowerCase());
+  let institutionStatsCache = null;
+  app.get("/api/public/institution-stats", async (_req, res) => {
+    try {
+      if (institutionStatsCache && Date.now() - institutionStatsCache.at < 15 * 6e4) {
+        res.set("Cache-Control", "public, max-age=300");
+        return res.json(institutionStatsCache.value);
+      }
+      const rows = await prisma3.$queryRawUnsafe(`
+          select i."name" as name, count(u."id")::int as members,
+                 coalesce(
+                   max(case when u."role" = 'Institution' then nullif(trim(u."country"), '') end),
+                   mode() within group (order by nullif(trim(u."country"), ''))
+                     filter (where nullif(trim(u."country"), '') is not null)
+                 ) as country
+          from "Institution" i
+          left join "User" u on u."institutionId" = i."id"
+          where i."status" = 'Active'
+          group by i."id", i."name"`);
+      const pretend = /\b(demo|test|testing|sample|dummy|example)\b/i;
+      const seen = /* @__PURE__ */ new Map();
+      for (const r2 of rows) {
+        const key = String(r2.name || "").trim().toLowerCase().replace(/\s+/g, " ");
+        if (!key || pretend.test(key)) continue;
+        const held = seen.get(key);
+        if (held) {
+          held.members += r2.members;
+          held.country = held.country || r2.country;
+          continue;
+        }
+        seen.set(key, { name: String(r2.name).trim(), members: r2.members, country: r2.country });
+      }
+      const list = [...seen.values()].filter((i2) => i2.members > 0);
+      const byType = { universities: 0, colleges: 0, institutes: 0, schools: 0, organisations: 0, other: 0 };
+      let india = 0, outsideIndia = 0;
+      for (const i2 of list) {
+        byType[institutionType(i2.name)]++;
+        if (i2.country) isIndia(i2.country) ? india++ : outsideIndia++;
+      }
+      const total = list.length;
+      const known = india + outsideIndia;
+      console.info(`[institution-stats] total=${total} other=${byType.other} noCountry=${total - known}`);
+      const sharesOf = (counts) => {
+        const sum = counts.reduce((x2, y) => x2 + y, 0);
+        if (!sum) return counts.map(() => ({ pct: 0, some: false }));
+        const raw = counts.map((c) => safePercentage(c, sum, false) ?? 0);
+        const pct = raw.map(Math.floor);
+        let left = 100 - pct.reduce((x2, y) => x2 + y, 0);
+        raw.map((r2, i2) => [r2 - pct[i2], i2]).sort((x2, y) => y[0] - x2[0]).forEach(([, i2]) => {
+          if (left > 0) {
+            pct[i2]++;
+            left--;
+          }
+        });
+        return counts.map((c, i2) => ({ pct: pct[i2], some: c > 0 }));
+      };
+      const keys = Object.keys(byType);
+      const typeShares = sharesOf(keys.map((k) => byType[k]));
+      const geoShares = sharesOf([india, outsideIndia]);
+      const value = total > 0 ? {
+        byType: Object.fromEntries(keys.map((k, i2) => [k, typeShares[i2]])),
+        geography: known > 0 ? { india: geoShares[0], outsideIndia: geoShares[1] } : null
+      } : {};
+      institutionStatsCache = { at: Date.now(), value };
+      res.set("Cache-Control", "public, max-age=300");
+      res.json(value);
+    } catch (e2) {
+      console.error("institution-stats error", e2?.message);
+      res.status(500).json({ error: "Failed to read the institution figures" });
     }
   });
   app.get("/api/library/stats", async (_req, res) => {
@@ -35235,11 +35722,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed to update takedown request" });
     }
   });
-  app.get("/api/quotation/customer/:email", async (req, res) => {
+  app.get("/api/quotation/customer/:email", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const email = req.params.email;
       const q = await prisma3.quotation.findFirst({
-        where: { userEmail: email },
+        where: { userEmail: { equals: email, mode: "insensitive" } },
         orderBy: { createdAt: "desc" }
       });
       if (q) {
@@ -35251,69 +35738,128 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.status(500).json({ error: "Failed" });
     }
   });
+  app.get("/api/quotation/record", authenticateJWT, requireSalesRole, async (req, res) => {
+    try {
+      const id = String(req.query.id || "");
+      if (!id) return res.status(400).json({ error: "Quotation number required" });
+      const q = await prisma3.quotation.findUnique({ where: { id } });
+      if (!q) return res.status(404).json({ error: "Quotation not found" });
+      const staff = req.user?.role === "SuperAdmin" || req.user?.role === "SubscriptionManager";
+      if (!staff && q.createdBy !== req.user?.email) return res.status(403).json({ error: "This quotation was raised by someone else" });
+      res.json(q);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load quotation" });
+    }
+  });
+  const parseQuoteDoc = (raw) => {
+    const str = (v, max = 500) => String(v ?? "").trim().slice(0, max);
+    if (!raw || typeof raw !== "object") return { error: "Quotation details are missing." };
+    const quoteNo = str(raw.quoteNo, 60);
+    if (!/^[A-Za-z0-9][A-Za-z0-9/_.\- ]*$/.test(quoteNo)) return { error: "Enter a valid quotation number." };
+    const instName = str(raw.instName, 200);
+    if (!instName) return { error: "Enter the institution name." };
+    const email = str(raw.email, 200);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid client email." };
+    const departments = Array.isArray(raw.departments) ? [...new Set(raw.departments.map((d) => str(d, 100)).filter(Boolean))] : [];
+    if (!departments.length) return { error: "Select at least one department." };
+    if (departments.some((d) => !QUOTE_DEPARTMENTS.includes(d))) return { error: "One of the departments is not recognised." };
+    const state = str(raw.state, 100);
+    if (!stateCodeOf(state)) return { error: "Select the State / UT so GST is calculated correctly." };
+    const quoteDate = str(raw.quoteDate, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(quoteDate)) return { error: "Enter a valid quotation date." };
+    const nonNeg = (v) => {
+      const n2 = Number(v);
+      return Number.isFinite(n2) && n2 >= 0 ? n2 : NaN;
+    };
+    const totalUsers = Math.floor(Number(raw.totalUsers));
+    if (!Number.isFinite(totalUsers) || totalUsers < 1 || totalUsers > 1e5) return { error: "Enter the total number of users (at least 1)." };
+    const deptMode = raw.deptMode === "custom" ? "custom" : "fixed";
+    const userMode = raw.userMode === "custom" ? "custom" : "fixed";
+    const customDeptRate = raw.customDeptRate === null || raw.customDeptRate === "" || raw.customDeptRate === void 0 ? null : nonNeg(raw.customDeptRate);
+    const customUserRate = raw.customUserRate === null || raw.customUserRate === "" || raw.customUserRate === void 0 ? null : nonNeg(raw.customUserRate);
+    if (deptMode === "custom" && (customDeptRate === null || Number.isNaN(customDeptRate))) return { error: "Enter the custom department rate." };
+    const includeFive = raw.includeFive !== false;
+    const chargeable = includeFive ? Math.max(0, totalUsers - 5) : totalUsers;
+    if (userMode === "custom" && chargeable > 0 && (customUserRate === null || Number.isNaN(customUserRate))) return { error: "Enter the custom user rate." };
+    const discount = nonNeg(raw.discount ?? 0);
+    if (Number.isNaN(discount)) return { error: "The discount must be zero or more." };
+    const validityDays = Math.floor(Number(raw.validityDays));
+    if (!Number.isFinite(validityDays) || validityDays < 1 || validityDays > 365) return { error: "Validity must be between 1 and 365 days." };
+    return {
+      doc: {
+        quoteNo,
+        quoteDate,
+        validityDays,
+        status: str(raw.status, 20),
+        instName,
+        contactName: str(raw.contactName, 120),
+        designation: str(raw.designation, 120),
+        email,
+        phone: str(raw.phone, 40),
+        address: str(raw.address, 600),
+        state,
+        customerGstin: str(raw.customerGstin, 40),
+        departments,
+        totalUsers,
+        includeFive,
+        deptMode,
+        customDeptRate: Number.isNaN(customDeptRate) ? null : customDeptRate,
+        userMode,
+        customUserRate: Number.isNaN(customUserRate) ? null : customUserRate,
+        discount,
+        specialNote: str(raw.specialNote, 1e3)
+      }
+    };
+  };
+  const QUOTE_SETTABLE_STATUS = ["Pending", "Sent", "Downloaded", "Approved", "Expired", "Cancelled"];
+  const saveQuotationDoc = async (req, rawDoc, opts) => {
+    const parsed = parseQuoteDoc(rawDoc);
+    if ("error" in parsed) return { status: 400, error: parsed.error };
+    const doc = parsed.doc;
+    const status = QUOTE_SETTABLE_STATUS.includes(opts.status || doc.status) ? opts.status || doc.status : "Pending";
+    const staff = req.user?.role === "SuperAdmin" || req.user?.role === "SubscriptionManager";
+    const email = req.user?.email || "System";
+    const customer = await prisma3.user.findFirst({
+      where: { email: { equals: doc.email, mode: "insensitive" } },
+      select: { id: true }
+    });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const existing = await prisma3.quotation.findUnique({ where: { id: doc.quoteNo } });
+      if (opts.editing) {
+        if (!existing) return { status: 404, error: "That quotation no longer exists." };
+        if (!staff && existing.createdBy !== email) return { status: 403, error: "This quotation was raised by someone else." };
+        if (existing.status === "Paid") return { status: 409, error: "A paid quotation can no longer be edited." };
+      } else if (existing) {
+        doc.quoteNo = await nextQuotationNumber();
+        continue;
+      }
+      const { data, expiresAt } = docToRow({ ...doc, status });
+      const common = {
+        ...data,
+        status,
+        expiresAt,
+        userId: customer?.id || null,
+        deliveryMethod: opts.delivery || existing?.deliveryMethod || "Download"
+      };
+      try {
+        const row = opts.editing ? await prisma3.quotation.update({ where: { id: doc.quoteNo }, data: common }) : await prisma3.quotation.create({ data: { ...common, id: doc.quoteNo, issuer: currentIssuer(), createdBy: email } });
+        return { status: 200, row };
+      } catch (e2) {
+        if (e2?.code === "P2002" && !opts.editing) {
+          doc.quoteNo = await nextQuotationNumber();
+          continue;
+        }
+        throw e2;
+      }
+    }
+    return { status: 409, error: "Could not reserve a quotation number. Please try again." };
+  };
   app.post("/api/quotation/save", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
-      const { userEmail, userName, quotationData, userId, organization, state, duration } = req.body;
-      let creatorEmail = "User / System";
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        try {
-          const token = authHeader.split(" ")[1];
-          const JWT_SECRET2 = process.env.JWT_SECRET || "fallback_secret";
-          const decoded = import_jsonwebtoken.default.verify(token, JWT_SECRET2);
-          if (decoded && decoded.email) creatorEmail = decoded.email;
-        } catch (e2) {
-        }
-      }
-      const quotationNumber = quotationData.quotationNumber;
-      await prisma3.quotation.upsert({
-        where: { id: quotationNumber },
-        update: {
-          status: "Downloaded",
-          deliveryMethod: "Download",
-          planType: duration,
-          createdBy: creatorEmail,
-          mobile: quotationData.mobile || null,
-          designation: quotationData.designation || null,
-          address: quotationData.address || null,
-          pincode: quotationData.pincode || null,
-          city: quotationData.city || null,
-          country: quotationData.country || null,
-          gstNumber: quotationData.gstNumber || null,
-          userCategory: quotationData.userCategory || null,
-          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null
-        },
-        create: {
-          issuer: currentIssuer(),
-          id: quotationNumber,
-          userEmail,
-          userName,
-          organization: organization || null,
-          state: state || null,
-          items: quotationData.items || [],
-          subtotal: parseFloat(quotationData.subtotal) || 0,
-          gstAmount: parseFloat(quotationData.gstAmount) || 0,
-          total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, "")) || 0,
-          status: "Downloaded",
-          deliveryMethod: "Download",
-          planType: duration,
-          userId: userId || null,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3),
-          createdBy: creatorEmail,
-          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null,
-          mobile: quotationData.mobile || null,
-          designation: quotationData.designation || null,
-          address: quotationData.address || null,
-          pincode: quotationData.pincode || null,
-          city: quotationData.city || null,
-          country: quotationData.country || null,
-          gstNumber: quotationData.gstNumber || null,
-          userCategory: quotationData.userCategory || null
-        }
-      });
-      res.json({ success: true });
+      const { doc, editing, status, delivery } = req.body || {};
+      const out = await saveQuotationDoc(req, doc, { editing: !!editing, status, delivery });
+      if (out.error) return res.status(out.status).json({ error: out.error });
+      res.json({ success: true, quotation: out.row });
     } catch (error) {
       console.error("Save Quotation Error:", error);
       res.status(500).json({ error: "Failed to save quotation" });
@@ -35321,17 +35867,24 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/quotation/send", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
-      const { userEmail, userName, quotationData, pdfBase64, userId, organization, state, duration, quotationDate } = req.body;
+      const { doc: rawDoc, editing, pdfBase64 } = req.body || {};
+      const out = await saveQuotationDoc(req, rawDoc, { editing: !!editing, delivery: "Email" });
+      if (out.error) return res.status(out.status).json({ error: out.error });
+      const row = out.row;
+      const saved = row.pricingBreakdown?.doc;
+      const esc2 = (v) => String(v ?? "").replace(/[&<>"']/g, (m2) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m2]);
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      const quotationNumber = quotationData.quotationNumber;
-      const totalAmount = typeof quotationData.totalAmount === "number" ? quotationData.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 }) : quotationData.totalAmount || "0";
+      const quotationNumber = row.id;
+      const userName = saved.contactName || saved.instName;
+      const discountAmount = Number(row.discountAmount) || 0;
+      const validityDays = saved.validityDays;
+      const totalAmount = Number(row.total).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+      const subscriptionDuration = "Annual";
       const logoPath = import_path2.default.join(process.cwd(), "public", "assets", "stm-logo.png");
       const logoExists = import_fs2.default.existsSync(logoPath);
-      const items = quotationData.items || [];
-      const departmentNames2 = items.map((it) => it.domainName).filter(Boolean);
-      const departmentsHtml = departmentNames2.length ? departmentNames2.map((d) => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">\u2705 &nbsp;${d}</li>`).join("") : '<li style="color:#94a3b8;font-size:14px;">\u2014</li>';
-      const issuedDate = quotationDate || (/* @__PURE__ */ new Date()).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-      const subscriptionDuration = duration || items[0]?.duration || "\u2014";
+      const departmentsHtml = saved.departments.length ? saved.departments.map((d) => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">\u2705 &nbsp;${esc2(d)}</li>`).join("") : '<li style="color:#94a3b8;font-size:14px;">\u2014</li>';
+      const [yy, mm, dd] = saved.quoteDate.split("-").map(Number);
+      const issuedDate = new Date(yy, mm - 1, dd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
       const htmlBody = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35360,7 +35913,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 GREETING \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
         <tr>
           <td style="padding:36px 48px 0;">
-            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${userName},</p>
+            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${esc2(userName)},</p>
             <p style="font-size:14px;color:#475569;line-height:1.75;margin:0 0 20px;">
               Greetings from <strong>STM Digital Library</strong>!<br/>
               Thank you for your interest in our digital library subscription services.<br/>
@@ -35382,7 +35935,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);width:55%;">Quotation Number</td>
-                      <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${quotationNumber}</td>
+                      <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${esc2(quotationNumber)}</td>
                     </tr>
                     <tr>
                       <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Quotation Date</td>
@@ -35390,7 +35943,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                     </tr>
                     <tr>
                       <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Validity</td>
-                      <td style="color:#86efac;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">30 Days from Issue</td>
+                      <td style="color:#86efac;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${validityDays} Days from Issue</td>
                     </tr>
                     <tr>
                       <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Duration</td>
@@ -35403,11 +35956,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                   <ul style="margin:0 0 14px;padding-left:4px;list-style:none;">
                     ${departmentsHtml}
                   </ul>
-                  ${quotationData.discountAmount ? `
+                  ${discountAmount ? `
                   <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;">
                     <tr>
-                      <td style="color:#86efac;font-size:13px;font-weight:600;padding-bottom:6px;">Discount (${quotationData.couponCode})</td>
-                      <td style="text-align:right;color:#86efac;font-size:13px;font-weight:700;padding-bottom:6px;">-\u20B9${quotationData.discountAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                      <td style="color:#86efac;font-size:13px;font-weight:600;padding-bottom:6px;">Special Discount / Adjustment</td>
+                      <td style="text-align:right;color:#86efac;font-size:13px;font-weight:700;padding-bottom:6px;">-\u20B9${discountAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
                     </tr>
                   </table>
                   ` : ""}
@@ -35415,7 +35968,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                   <!-- Grand Total -->
                   <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.25);padding-top:14px;margin-top:4px;">
                     <tr>
-                      <td style="color:#bfdbfe;font-size:13px;font-weight:600;padding-top:14px;">Total Amount (Including 18% GST)</td>
+                      <td style="color:#bfdbfe;font-size:13px;font-weight:600;padding-top:14px;">Total Amount (Including GST)</td>
                       <td style="text-align:right;padding-top:14px;">
                         <span style="color:#ffffff;font-size:22px;font-weight:900;">\u20B9${totalAmount}</span>
                       </td>
@@ -35557,13 +36110,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   </table>
 </body>
 </html>`;
-      const inlineAttachments = [
-        {
-          filename: `Quotation_${quotationNumber}.pdf`,
-          content: pdfBase64,
-          encoding: "base64"
-        }
-      ];
+      const inlineAttachments = [];
+      if (pdfBase64) inlineAttachments.push({ filename: `Quotation_${quotationNumber.replace(/[\\/]+/g, "-")}.pdf`, content: pdfBase64, encoding: "base64" });
       if (logoExists) {
         inlineAttachments.push({
           filename: "stm-logo.png",
@@ -35572,101 +36120,19 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           // Referenced as cid:stm-logo in the HTML
         });
       }
-      const mailOptions = {
+      await sendMail({
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: [userEmail, process.env.ADMIN_EMAIL || COMPANY_DETAILS.email],
+        to: [row.userEmail, process.env.ADMIN_EMAIL || COMPANY_DETAILS.email],
         subject: `Quotation ${quotationNumber} \u2014 STM Digital Library`,
         html: htmlBody,
         attachments: inlineAttachments
-      };
-      await sendMail(mailOptions);
-      res.json({ status: "success", message: "Quotation sent successfully" });
-      let creatorEmail = req.body.createdBy || "System / Guest";
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        const token = authHeader.split(" ")[1];
-        try {
-          const jwt2 = require("jsonwebtoken");
-          const JWT_SECRET2 = process.env.JWT_SECRET || "fallback_secret";
-          const decoded = jwt2.verify(token, JWT_SECRET2);
-          if (decoded && decoded.email) creatorEmail = decoded.email;
-        } catch (e2) {
-        }
-      }
-      const PUBLIC_BASE = MAIL_BASE;
-      const htmlForDb = htmlBody.replace(
-        /src="cid:stm-logo"/g,
-        `src="${PUBLIC_BASE}/assets/stm-logo.png"`
-      );
-      prisma3.quotation.upsert({
-        where: { id: quotationNumber },
-        update: {
-          status: "Sent",
-          deliveryMethod: "Email",
-          sentEmailHtml: htmlForDb,
-          planType: subscriptionDuration,
-          createdBy: creatorEmail,
-          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null,
-          mobile: quotationData.mobile || null,
-          designation: quotationData.designation || null,
-          address: quotationData.address || null,
-          pincode: quotationData.pincode || null,
-          city: quotationData.city || null,
-          country: quotationData.country || null,
-          gstNumber: quotationData.gstNumber || null,
-          userCategory: quotationData.userCategory || null
-        },
-        create: {
-          issuer: currentIssuer(),
-          id: quotationNumber,
-          userEmail,
-          userName,
-          organization: organization || null,
-          state: state || null,
-          items: quotationData.items || [],
-          subtotal: parseFloat(quotationData.subtotal) || 0,
-          gstAmount: parseFloat(quotationData.gstAmount) || 0,
-          total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, "")) || 0,
-          status: "Sent",
-          deliveryMethod: "Email",
-          planType: subscriptionDuration,
-          userId: userId || null,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3),
-          sentEmailHtml: htmlForDb,
-          createdBy: creatorEmail,
-          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null,
-          mobile: quotationData.mobile || null,
-          designation: quotationData.designation || null,
-          address: quotationData.address || null,
-          pincode: quotationData.pincode || null,
-          city: quotationData.city || null,
-          country: quotationData.country || null,
-          gstNumber: quotationData.gstNumber || null,
-          userCategory: quotationData.userCategory || null
-        }
-      }).then(async (qtn) => {
-        if (quotationData.couponCode && quotationData.discountAmount > 0) {
-          const coupon = await prisma3.coupon.findUnique({ where: { code: quotationData.couponCode } });
-          if (coupon) {
-            await prisma3.couponUsage.create({
-              data: {
-                couponId: coupon.id,
-                userId: userId || null,
-                orderId: quotationNumber,
-                discount: parseFloat(quotationData.discountAmount)
-              }
-            });
-            await prisma3.coupon.update({
-              where: { id: coupon.id },
-              data: { usedCount: { increment: 1 } }
-            });
-          }
-        }
-      }).catch((dbErr) => {
-        console.warn("Quotation DB save failed (non-blocking):", dbErr?.message);
       });
+      const htmlForDb = htmlBody.replace(/src="cid:stm-logo"/g, `src="${MAIL_BASE}/assets/stm-logo.png"`);
+      const updated = await prisma3.quotation.update({
+        where: { id: quotationNumber },
+        data: { status: row.status === "Approved" ? "Approved" : "Sent", deliveryMethod: "Email", sentEmailHtml: htmlForDb }
+      });
+      res.json({ status: "success", message: "Quotation sent successfully", quotation: updated });
     } catch (error) {
       console.error("Quotation Email Error:", error);
       res.status(500).json({ error: "Failed to send quotation email" });
@@ -35996,6 +36462,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       return {
         kind: "departments",
         departments: fresh,
+        // What the rate was decided from. The rate is for the total after this purchase; only
+        // `departments` — the new ones — are charged it.
+        existingDepartments: [...held],
+        totalAfter: total,
         price: { quantity: fresh.length, rate: price.rate, base, gst, total: Math.round((base + gst) * 100) / 100 }
       };
     }
@@ -36033,6 +36503,66 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       res.json(quote);
     } catch (err) {
       res.status(500).json({ error: "Failed to price this" });
+    }
+  });
+  const planQuoteNo = (prefix, now = /* @__PURE__ */ new Date()) => {
+    const two = (n2) => String(n2).padStart(2, "0");
+    const stamp = `${String(now.getFullYear()).slice(-2)}${two(now.getMonth() + 1)}${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}`;
+    return `${prefix}-${stamp}-${Math.floor(1e3 + Math.random() * 9e3)}`;
+  };
+  const savePlanQuotation = async (make, prefix, req) => {
+    let lastErr;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const snapshot = make(planQuoteNo(prefix));
+      const { data, expiresAt } = planSnapshotToRow(snapshot);
+      try {
+        await prisma3.quotation.create({
+          data: {
+            ...data,
+            expiresAt,
+            issuer: currentIssuer(),
+            status: "Downloaded",
+            userId: req.user.uid,
+            createdBy: req.user.email || data.userEmail
+          }
+        });
+        return snapshot;
+      } catch (e2) {
+        lastErr = e2;
+        if (e2?.code !== "P2002") throw e2;
+      }
+    }
+    throw lastErr;
+  };
+  app.post("/api/institution/quotation", authenticateJWT, async (req, res) => {
+    try {
+      const institutionId = await librarianInstitutionId(req);
+      if (!institutionId) return res.status(403).json({ error: "Only an institution's librarian can request its quotation." });
+      const quote = await priceInstitutionPurchase(institutionId, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      if (quote.kind !== "departments") return res.status(400).json({ error: "Quotations are written for department purchases." });
+      const me = await prisma3.user.findUnique({
+        where: { id: req.user.uid },
+        select: { displayName: true, email: true, organization: true, contact: true, state: true, institutionProfile: true, institution: { select: { name: true } } }
+      });
+      if (!me) return res.status(404).json({ error: "Account not found." });
+      const profile = me.institutionProfile || {};
+      const customer = {
+        name: String(profile.name || me.organization || me.institution?.name || "").trim() || "Your institution",
+        contact: me.displayName || "",
+        email: me.email,
+        phone: me.contact || void 0,
+        state: me.state || profile.state || null
+      };
+      const snapshot = await savePlanQuotation(
+        (quoteNo) => buildInstitutionPlanSnapshot({ quoteNo, customer, existingNames: quote.existingDepartments, newNames: quote.departments }),
+        "STMQ",
+        req
+      );
+      res.json({ quotation: snapshot });
+    } catch (err) {
+      console.error("POST /api/institution/quotation:", err?.message);
+      res.status(500).json({ error: "Failed to prepare the quotation" });
     }
   });
   app.post("/api/institution/checkout", authenticateJWT, async (req, res) => {
@@ -37828,8 +38358,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/public/content/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const content = await prisma3.content.findUnique({
-        where: { id },
+      const content = await prisma3.content.findFirst({
+        where: { id, status: "Published" },
         select: {
           id: true,
           title: true,
@@ -37846,7 +38376,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ...content,
         author: content.authors,
         coverImage: content.thumbnailUrl,
-        publishedYear: new Date(content.publishedAt).getFullYear()
+        publishedYear: content.publishedAt && Number.isFinite(new Date(content.publishedAt).getTime()) ? new Date(content.publishedAt).getFullYear() : void 0
       });
     } catch (e2) {
       console.error(e2);
@@ -37909,7 +38439,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
 `;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 `;
-    const staticRoutes = ["/", "/journals", "/contact", "/about", "/signup", "/blog"];
+    const staticRoutes = Object.keys(PUBLIC_PAGES);
     for (const route of staticRoutes) {
       const loc = route === "/" ? baseUrl : `${baseUrl}${route}`;
       xml += `  <url>

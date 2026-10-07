@@ -337,7 +337,7 @@ export function InstitutionContentLibrary() {
                   aria-label={`${item.locked ? 'Locked: ' : ''}${item.title}${item.author ? `, ${item.author}` : ''}`}
                   className="card card-interactive group relative flex flex-col overflow-hidden text-left"
                 >
-                  <div className={`relative w-full ${isVideo ? 'aspect-video' : 'aspect-[3/4]'} ${item.coverImage ? 'bg-ink' : 'bg-accent'} overflow-hidden`}>
+                  <div className={`relative w-full ${isVideo ? 'aspect-video' : 'aspect-[3/4]'} ${item.coverImage ? 'bg-ink dark:bg-viewer-doc' : 'bg-accent dark:bg-accent-solid'} overflow-hidden`}>
                     {item.coverImage ? (
                       <img src={item.coverImage} alt="" className="h-full w-full object-cover opacity-90" loading="lazy" />
                     ) : (

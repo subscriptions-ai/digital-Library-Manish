@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { BookOpen, Home, Library } from "lucide-react";
@@ -6,6 +7,7 @@ import { buttonClass } from "./ui";
 export function NotFound() {
   return (
     <div className="relative flex min-h-[80vh] items-center justify-center overflow-hidden bg-navy px-4 py-16 sm:py-20">
+      <Helmet><title>Page not found | STM Digital Library</title><meta name="robots" content="noindex, follow" /></Helmet>
       <div className="relative z-10 w-full max-w-2xl text-center">
         <motion.div 
           className="relative mb-8 inline-flex items-center justify-center"

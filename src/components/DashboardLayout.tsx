@@ -20,7 +20,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
+import { ThemeToggle } from './ui/ThemeToggle';
 import { ReadingClock, useAllowance } from './membership/ReadingClock';
 import { SubscriptionSidebarCard } from './subscription/SubscriptionSidebarCard';
 import { dashboardTitle, affiliation } from '../lib/identity';
@@ -54,7 +54,6 @@ const sidebarItems: SidebarItem[] = [
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { dark, toggleDark } = useTheme();
   const { profile, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -263,15 +262,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-rule bg-surface-2 font-medium text-muted sm:flex" aria-hidden="true">
               {profile?.displayName?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase()}
             </div>
-            <button
-              type="button"
-              onClick={toggleDark}
-              title={dark ? 'Light theme' : 'Dark theme'}
-              aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-              className="btn btn-ghost btn-icon btn-sm"
-            >
-              {dark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
-            </button>
+            <ThemeToggle />
             <div className="mx-1 hidden h-7 w-px bg-rule sm:block" aria-hidden="true"></div>
             <button
               type="button"

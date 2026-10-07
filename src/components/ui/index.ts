@@ -9,4 +9,5 @@ export { PageHeader } from './PageHeader';
 export { EmptyState, ErrorState, Skeleton, SkeletonRows, Spinner } from './States';
 export { Field } from './Field';
 export { Dialog, ConfirmDialog } from './Dialog';
+export { ThemeToggle } from './ThemeToggle';
 export { friendlyError } from '../../lib/friendlyError';

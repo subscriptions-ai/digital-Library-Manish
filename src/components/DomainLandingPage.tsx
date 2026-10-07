@@ -70,22 +70,22 @@ const CT_META: Record<string, { icon: any; desc: string }> = {
 
 // ─── Stat items for importance section ───────────────────────────────────────
 const STAT_ITEMS = [
-  { icon: Users,  stat: "10k+",  label: "ACTIVE RESEARCHERS" },
-  { icon: Shield, stat: "100%",  label: "VERIFIED PEER-REVIEW" },
-  { icon: Globe,  stat: "Global",label: "RESEARCH NETWORK" },
+  { icon: Users,  stat: "Academic",  label: "DISCOVERY" },
+  { icon: Shield, stat: "Source",  label: "INFORMATION" },
+  { icon: Globe,  stat: "Online",label: "LIBRARY ACCESS" },
 ];
 
 const WHY_FEATURES = [
-  { icon: Zap,      title: "Real-time Updates",  desc: "Get instant access to newly published research, journals, and conference papers as they are released." },
-  { icon: BookOpen, title: "Unlimited Reading",      desc: "Read textbooks, theses, and reports online anytime, anywhere across multiple devices." },
-  { icon: Search,   title: "Advanced Search",    desc: "Powerful AI-driven search to find specific topics, authors, or citations within thousands of documents." },
+  { icon: Zap,      title: "Newly Added Resources",  desc: "Explore research, journals, and conference papers as they are added to the catalogue." },
+  { icon: BookOpen, title: "Online Reading",      desc: "Read textbooks, theses, and reports online anytime, anywhere across multiple devices." },
+  { icon: Search,   title: "Advanced Search",    desc: "Search and filter academic records by topic, author, and available metadata." },
 ];
 
 const ACCESS_BENEFITS = [
-  "Unlimited online reading of all content types",
+  "Online reading according to your access permissions",
   "Personalized research dashboard",
   "Citation management tools",
-  "Early access to upcoming publications",
+  "Browse recently added publications",
   "Institutional usage analytics",
   "Multi-device synchronization",
 ];
@@ -109,7 +109,9 @@ export function DomainLandingPage() {
     try {
       const params = new URLSearchParams({ domain: domain.name });
       const res = await fetch(`/api/domain-data?${params.toString()}`);
+      if (!res.ok) throw new Error("Unavailable");
       const data = await res.json();
+      if (!Array.isArray(data?.content_summary) || typeof data.total !== "number" || !Number.isFinite(data.total) || data.total < 0) throw new Error("Invalid catalogue data");
       setDomainData(data);
     } catch {
       setApiError(true);
@@ -147,6 +149,7 @@ export function DomainLandingPage() {
   if (!domain) {
     return (
       <div className="container-public flex min-h-[60vh] items-center justify-center py-16">
+        <Helmet><meta name="robots" content="noindex, follow" /></Helmet>
         <EmptyState
           icon={BookOpen}
           title={<span role="heading" aria-level={1}>Domain Not Found</span>}
@@ -249,7 +252,7 @@ export function DomainLandingPage() {
                 </div>
                 <div className="min-w-0">
                   <div className="on-dark text-sm font-bold">Curated Repository</div>
-                  <div className="on-dark-2 text-xs">Verified Academic Content</div>
+                  <div className="on-dark-2 text-xs">Academic Source Information</div>
                 </div>
               </div>
             </motion.div>
@@ -288,8 +291,8 @@ export function DomainLandingPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
                   <Users size={20} />
                 </div>
-                <div className="mt-3 text-2xl font-bold text-ink">10k+</div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Active Researchers</div>
+                <div className="mt-3 text-2xl font-bold text-ink">Academic</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Discovery</div>
               </div>
 
               {/* Verified Peer-Review */}
@@ -297,8 +300,8 @@ export function DomainLandingPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
                   <Shield size={20} />
                 </div>
-                <div className="mt-3 text-2xl font-bold text-ink">100%</div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Verified Peer-Review</div>
+                <div className="mt-3 text-2xl font-bold text-ink">Source</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Information</div>
               </div>
 
               {/* Global Research Network */}
@@ -306,8 +309,8 @@ export function DomainLandingPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
                   <Globe size={20} />
                 </div>
-                <div className="mt-3 text-2xl font-bold text-ink">Global</div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Research Network</div>
+                <div className="mt-3 text-2xl font-bold text-ink">Online</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Library Access</div>
               </div>
 
               {/* E-Books count - dynamic */}
@@ -372,7 +375,7 @@ export function DomainLandingPage() {
                 <Skeleton className="mx-auto h-12 w-48 rounded-lg" />
               ) : (
                 <p className="text-5xl font-bold tracking-tight text-ink tnum">
-                  {Number(domainData?.total ?? 0).toLocaleString('en-IN')}
+                  {domainData?.total.toLocaleString('en-IN')}
                 </p>
               )}
               <p className="mt-2 text-sm font-semibold text-muted">

@@ -1,3 +1,4 @@
+import { CompanyTrustBlock } from "./TrustFoundation";
 import { Link } from "react-router-dom";
 import {
   ShieldCheck, Globe, Zap, Microscope, Library, FileText, Database, Layers, BadgeCheck, Search, Handshake,
@@ -16,13 +17,13 @@ const SECTION = "scroll-mt-24 py-8 lg:py-10";
 
 const MISSION = [
   { icon: Layers, title: "Structured Discovery", text: "Structured knowledge systems that organize content by subject, format, and relevance" },
-  { icon: BadgeCheck, title: "Verified Sources", text: "Verified content sources to help ensure authenticity, transparency, and trust" },
+  { icon: BadgeCheck, title: "Content Sources", text: "Source information that helps readers understand content provenance" },
   { icon: Search, title: "Advanced Search", text: "Advanced search and analytics tools that improve discovery, usability, and research efficiency" },
   { icon: Library, title: "Integrated Academic Access", text: "Curated access to both proprietary and open-access resources in one integrated platform" },
 ];
 
 const VALUES = [
-  { icon: ShieldCheck, title: "Authenticity", desc: "Verified content sources ensuring transparency and trust in every document." },
+  { icon: ShieldCheck, title: "Authenticity", desc: "Source and rights information to help readers assess academic material." },
   { icon: Zap, title: "Efficiency", desc: "Advanced search and discovery tools designed for modern research workflows." },
   { icon: Globe, title: "Accessibility", desc: "Single integrated platform for both proprietary and open-access resources." },
 ];
@@ -51,7 +52,7 @@ export function AboutUs() {
                   We are an academic knowledge platform dedicated to making high-quality research, learning, and reference material easier to discover, access, and use.
                 </p>
                 <p>
-                  Our platform brings together legally sourced open-access materials from trusted academic repositories and publishers, organised so that a researcher can find what they need without hunting across a dozen sites.
+                  Our platform brings together open-access materials from academic repositories and publishers, organised so that a researcher can find what they need without hunting across a dozen sites.
                 </p>
                 <p>
                   Our goal is to support students, researchers, librarians, faculty members, and institutions by offering a single, organized environment where academic content can be searched, filtered, and explored efficiently. Instead of spending time across multiple disconnected sources, users can rely on our platform to find relevant material in a structured and user-friendly way.
@@ -76,7 +77,7 @@ export function AboutUs() {
                   <Microscope className="on-dark-2" size={22} />
                 </div>
 
-                <div className="relative z-10 flex items-center gap-3 rounded-xl bg-white px-5 py-3.5 sm:px-7 sm:py-4">
+                <div className="keep-light relative z-10 flex items-center gap-3 rounded-xl bg-white px-5 py-3.5 sm:px-7 sm:py-4">
                   <img src="/logo.png" alt="" className="h-11 w-11 object-contain" />
                   <div className="flex flex-col text-left">
                     <span className="text-xl font-bold tracking-tight text-navy">STM</span>
@@ -128,7 +129,7 @@ export function AboutUs() {
             <div className="min-w-0 max-w-4xl">
               <Label id="about-approach">Our Approach</Label>
               <p className="mt-2 text-base leading-relaxed text-ink-2 sm:text-lg">
-                We work closely with institutions, researchers, educators, and knowledge professionals to deliver reliable academic resources that support teaching, learning, and research. Our focus is on creating a trustworthy and scalable academic ecosystem that combines content quality, legal compliance, and ease of access.
+                We organize academic resources to support teaching, learning, and research. Our approach combines structured discovery, source information where available, access controls, and a documented process for reporting content concerns.
               </p>
             </div>
           </div>
@@ -155,6 +156,8 @@ export function AboutUs() {
           </ul>
         </div>
       </section>
+
+      <CompanyTrustBlock />
 
       {/* Next steps */}
       <section className={`${SECTION} pb-10 lg:pb-12`} aria-labelledby="about-explore">

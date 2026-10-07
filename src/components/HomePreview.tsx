@@ -1,11 +1,12 @@
+import { TrustFoundation } from './TrustFoundation';
 import { validPercent } from '../lib/percent';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   ArrowRight, Award, BookMarked, BookOpen, Building2, ChevronDown, ChevronLeft, ChevronRight,
-  FileText, GraduationCap, Landmark, Layers, Library, Microscope, Minus, Network, Pause, Play,
-  Presentation, RefreshCw, School, Search, ShieldCheck, Users, UserSquare2,
+  ClipboardList, FileText, GraduationCap, Landmark, Layers, Library, Microscope, Minus, Network, Newspaper, Pause, Play,
+  Presentation, RefreshCw, School, Search, ShieldCheck, Users, UserSquare2, Video,
 } from 'lucide-react';
 import { type DeptRow } from './charts';
 import { SearchBox } from './GlobalSearch';
@@ -36,7 +37,11 @@ type Insights = {
   years: { year: number; n: number }[];
 };
 type Subject = { name: string; slug: string; journals: number; articles: number };
-type NewArticle = { id: string; title: string; journalName: string | null; domain: string | null; createdAt: string };
+type NewArticle = {
+  id: string; title: string; journalName: string | null; domain: string | null; createdAt: string;
+  contentType?: string | null; authors?: string | null; publisherName?: string | null; year?: number | null;
+  metadata?: { thumbnailUrl?: string | null } | null;
+};
 type NewBook = {
   id: string; title: string; authors: string | null; publisherName: string | null;
   domain: string | null; coverUrl: string | null; year: number | null; createdAt: string;
@@ -54,11 +59,11 @@ type Department = {
   publishers: { name: string; journals: number }[];
 };
 
-const n = (x?: number) => (typeof x === 'number' ? x.toLocaleString('en-IN') : '—');
+const n = (x?: number) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x.toLocaleString('en-IN') : '—');
 /** "University" → "Universities", "School" → "Schools". */
 const plural = (word: string, count: number) =>
   count === 1 ? word : /y$/.test(word) ? `${word.slice(0, -1)}ies` : `${word}s`;
-const named = (t?: string) => Boolean(t && t.trim() && t.trim().toLowerCase() !== 'untitled');
+const named = (t?: string) => Boolean(typeof t === 'string' && t.trim() && !['untitled', 'undefined', 'null', 'n/a'].includes(t.trim().toLowerCase()));
 
 /**
  * Where a title on this page leads: its own record, which anybody can open.
@@ -69,7 +74,7 @@ const named = (t?: string) => Boolean(t && t.trim() && t.trim().toLowerCase() !=
 const record = (kind: 'article' | 'book', id: string) => `/${kind}/${id}`;
 
 const added = (iso?: string) => {
-  if (!iso) return null;
+  if (!iso || !Number.isFinite(new Date(iso).getTime())) return null;
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
   if (days <= 0) return 'Added today';
   if (days === 1) return 'Added yesterday';
@@ -81,6 +86,7 @@ function useLibrary() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [articles, setArticles] = useState<NewArticle[]>([]);
   const [books, setBooks] = useState<NewBook[]>([]);
+  const [newSettled, setNewSettled] = useState(false);
   const [insights, setInsights] = useState<Insights | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [institutions, setInstitutions] = useState<Institutions | null>(null);
@@ -90,17 +96,21 @@ function useLibrary() {
 
   useEffect(() => {
     const get = (u: string) => fetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null);
-    get('/api/library/stats').then(d => { if (d) setStats(d); setStatsSettled(true); });
-    get('/api/library/articles?limit=12&sort=newest').then(d => d?.data && setArticles(d.data.filter((a: NewArticle) => named(a.title))));
-    get('/api/library/books?limit=36&sort=newest').then(d => d?.data && setBooks(d.data));
+    get('/api/library/stats').then(d => { if (d && ['total', 'articles', 'books', 'authors'].every(k => typeof d[k] === 'number' && Number.isFinite(d[k]) && d[k] >= 0) && Array.isArray(d.departmentTotals) && d.departmentTotals.every((row: any) => typeof row.name === 'string' && typeof row.total === 'number' && Number.isFinite(row.total) && row.total >= 0)) setStats(d); setStatsSettled(true); });
+    // `added`, not `newest`: "newest" is the publication year, and a book with no year
+    // sorts to the top of it. "Just added" has to mean when it reached the shelf.
+    Promise.all([
+      get('/api/library/articles?limit=12&sort=added').then(d => Array.isArray(d?.data) && setArticles(d.data.filter((a: NewArticle) => a && named(a.title)))),
+      get('/api/library/books?limit=6&sort=added').then(d => Array.isArray(d?.data) && setBooks(d.data.filter((b: NewBook) => b && named(b.title)))),
+    ]).then(() => setNewSettled(true));
     get('/api/library/insights').then(d => d?.composition && setInsights(d));
     get('/api/library/subjects').then(d => Array.isArray(d) && setSubjects(d));
-    get('/api/library/institutions').then(d => d?.total !== undefined && setInstitutions(d));
+    get('/api/library/institutions').then(d => Array.isArray(d?.institutions) && Array.isArray(d?.designations) && setInstitutions(d));
     // `v=2`: the answer's shape changed from tallies to shares, and browsers may still hold the old one.
     get('/api/public/institution-stats?v=2').then(d => setCommunity(readCommunity(d)));
   }, []);
 
-  return { stats, statsSettled, articles, books, insights, subjects, institutions, community };
+  return { stats, statsSettled, newSettled, articles, books, insights, subjects, institutions, community };
 }
 
 // ── The furniture the reference is built from ───────────────────────────────
@@ -125,7 +135,7 @@ function Heading({ children, className = '' }: { children: React.ReactNode; clas
 
 /** A figure still loading shows a quiet bar, never a made-up number. */
 function Figure({ value, settled, className = '' }: { value?: number; settled?: boolean; className?: string }) {
-  if (typeof value !== 'number') {
+  if ((typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
     if (settled) return <span className={className} aria-label="Not available">—</span>;
     return <span aria-hidden="true" className={`inline-block h-[0.75em] w-20 animate-pulse rounded bg-[color:var(--np-soft)] align-middle ${className}`} />;
   }
@@ -235,7 +245,7 @@ function buildSlides(stats: Stats | null, insights: Insights | null, inst: Insti
       lead: 'Librarians, professors and researchers, in the same',
       highlight: 'library.',
       body: someRoles.length
-        ? `${someRoles.join(', ')} and others read here — the whole department on one account, however many of them there are.`
+        ? `${someRoles.join(', ')} and others read here — with access managed through institutional subscriptions.`
         : 'Librarians, professors, research scholars and students read here — the whole department on one account.',
       chips: someRoles.length ? someRoles : ['Librarians', 'Professors', 'Researchers'],
     },
@@ -536,7 +546,7 @@ function BarRow({ label, share, color, ready, size = 'sm' }: {
     <div className="grid grid-cols-[6.25rem_minmax(0,1fr)_auto] items-center gap-x-3 text-[13px] sm:grid-cols-[7.5rem_minmax(0,1fr)_auto]">
       <span className="truncate" style={{ color: 'var(--np-ink)' }}>{label}</span>
       <span className={`block overflow-hidden rounded-full ${size === 'lg' ? 'h-3' : 'h-2'}`}
-        style={{ background: 'var(--np-soft)' }} aria-hidden="true">
+        style={{ background: 'var(--np-track)' }} aria-hidden="true">
         <span className="mix-bar block h-full rounded-full"
           style={{ width: ready ? `${Math.max(share.pct, share.some ? 2 : 0)}%` : '0%', background: color }} />
       </span>
@@ -580,7 +590,7 @@ function GeoPanel({ geography }: { geography: Community['geography'] }) {
                 <span className="np-strong text-[14px]" style={{ color: 'var(--np-ink)' }}>{r.label}</span>
                 <span className="np-display tnum text-[24px] leading-none" style={{ color: 'var(--np-ink)' }}>{pctText(r.share)}</span>
               </div>
-              <div className="mt-2 h-3 overflow-hidden rounded-full" style={{ background: 'var(--np-soft)' }} aria-hidden="true">
+              <div className="mt-2 h-3 overflow-hidden rounded-full" style={{ background: 'var(--np-track)' }} aria-hidden="true">
                 <div className="mix-bar h-full rounded-full" style={{ width: ready ? `${Math.max(r.share.pct, r.share.some ? 2 : 0)}%` : '0%', background: r.color }} />
               </div>
             </div>
@@ -672,7 +682,7 @@ function AcademicCommunity({ community }: { community: Community | null | undefi
         ))}
       </ul>
 
-      <Link to="/for-institutions" className={`${btnPrimary} mt-8 w-full sm:w-auto`} style={{ background: 'var(--np-navy)' }}>
+      <Link to="/for-institutions" className={`${btnPrimary} mt-8 w-full sm:w-auto`} style={{ background: 'var(--np-action)' }}>
         Explore institutional access <ArrowRight size={15} aria-hidden="true" />
       </Link>
     </section>
@@ -775,7 +785,7 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
                   ))}
               </ul>
               {current && (
-                <Link to={`/domain/${slug(current)}`} className={`${btnPrimary} mt-6`} style={{ background: 'var(--np-navy)' }}>
+                <Link to={`/domain/${slug(current)}`} className={`${btnPrimary} mt-6`} style={{ background: 'var(--np-action)' }}>
                   Explore {current} <ArrowRight size={15} />
                 </Link>
               )}
@@ -824,85 +834,181 @@ function Principles() {
 
 // ── 7. What is new ──────────────────────────────────────────────────────────
 
-function Cover({ book, tone, className = '' }: { book: NewBook; tone: number; className?: string }) {
-  if (book.coverUrl) {
-    return (
-      <span className={`block ${className}`} style={{ background: `var(--t${tone}-bg)` }}>
-        <img src={`/api/library/cover/${book.id}`} alt="" loading="lazy" decoding="async"
-          className="h-full w-full object-cover"
-          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-      </span>
-    );
-  }
+/** A field the catalogue left blank, or filled with a placeholder, is not shown. */
+const clean = (v?: string | number | null) => {
+  if (v === null || v === undefined) return undefined;
+  const s = String(v).trim();
+  return !s || /^(n\/?a|null|undefined|none|unknown|-+|—)$/i.test(s) ? undefined : s;
+};
+const cleanYear = (y?: number | null) => (typeof y === 'number' && y > 1000 && y <= new Date().getFullYear() + 1 ? y : undefined);
+
+/** What a record is, read from its own content type — never guessed from the title. */
+const ARTICLE_TYPES: Record<string, { label: string; icon: typeof FileText }> = {
+  periodicals: { label: 'Article', icon: FileText },
+  magazines: { label: 'Magazine', icon: Newspaper },
+  newsletters: { label: 'Newsletter', icon: Newspaper },
+  'case reports': { label: 'Case report', icon: ClipboardList },
+  theses: { label: 'Thesis', icon: GraduationCap },
+  'conference proceedings': { label: 'Proceedings', icon: Presentation },
+  'educational videos': { label: 'Educational video', icon: Video },
+};
+
+type NewItem = {
+  key: string; kind: 'article' | 'book'; id: string; title: string;
+  typeLabel: string; icon: typeof FileText;
+  domain?: string; added?: string | null; authors?: string; source?: string; year?: number;
+  /** A real image the record carries, or nothing. Never a stand-in. */
+  image?: string; createdAt: string;
+};
+
+const fromBook = (b: NewBook): NewItem => ({
+  key: `book-${b.id}`, kind: 'book', id: b.id, title: b.title.trim(),
+  typeLabel: 'Book', icon: BookOpen,
+  domain: clean(b.domain), added: added(b.createdAt), authors: clean(b.authors), source: clean(b.publisherName),
+  year: cleanYear(b.year), createdAt: b.createdAt,
+  // Covers come through our own cache: the source is slow and not ours to hammer.
+  image: clean(b.coverUrl) ? `/api/library/cover/${b.id}` : undefined,
+});
+
+const fromArticle = (a: NewArticle): NewItem => {
+  const t = ARTICLE_TYPES[(a.contentType || '').trim().toLowerCase()] || ARTICLE_TYPES.periodicals;
+  const thumb = clean(a.metadata?.thumbnailUrl);
+  return {
+    key: `article-${a.id}`, kind: 'article', id: a.id, title: a.title.trim(),
+    typeLabel: t.label, icon: t.icon,
+    domain: clean(a.domain), added: added(a.createdAt), authors: clean(a.authors),
+    source: clean(a.journalName) || clean(a.publisherName),
+    year: cleanYear(a.year), createdAt: a.createdAt,
+    image: thumb && /^https?:\/\//i.test(thumb) ? thumb : undefined,
+  };
+};
+
+/**
+ * The type, the department and the date, in one row.
+ *
+ * It is the only thing that says what a record is, so it is the same whether
+ * the card has a picture or not.
+ */
+function CardHead({ item }: { item: NewItem }) {
   return (
-    <div className={`flex flex-col justify-between p-4 ${className}`} style={{ background: `var(--t${tone}-bg)`, color: `var(--t${tone}-ink)` }}>
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-80">{book.domain || 'Book'}</span>
-      <span className="np-strong line-clamp-4 text-[15px] leading-tight">{book.title}</span>
+    <div className="flex items-center gap-3">
+      <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
+        style={{ background: 'var(--np-action)' }}>
+        <item.icon size={17} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="np-strong block text-[11px] uppercase tracking-[0.14em]" style={{ color: 'var(--np-brand-ink)' }}>{item.typeLabel}</span>
+        {item.domain && <span className="block truncate text-[12.5px]" style={{ color: 'var(--np-body)' }}>{item.domain}</span>}
+      </span>
+      {item.added && <span className="shrink-0 self-start text-[11px]" style={{ color: 'var(--np-body)' }}>{item.added}</span>}
     </div>
   );
 }
 
-function WhatIsNew({ books, articles }: { books: NewBook[]; articles: NewArticle[] }) {
-  const withCovers = books.filter(b => b.coverUrl);
-  const featured = (withCovers.length >= 3 ? withCovers : books).slice(0, 3);
+/**
+ * One newly added record.
+ *
+ * With a real image the picture leads. Without one — or when the image will
+ * not load — the card is simply text, headed by what the record is. It never
+ * reserves a frame for a picture that is not there.
+ */
+function NewCard({ item }: { item: NewItem }) {
+  const [shown, setShown] = useState<'loading' | 'ok' | 'failed'>(item.image ? 'loading' : 'failed');
+  const img = useRef<HTMLImageElement>(null);
+  const settle = () => {
+    const el = img.current;
+    // A 1px pixel or an empty file "loads" too; that is not a picture.
+    setShown(el && el.naturalWidth >= 40 && el.naturalHeight >= 40 ? 'ok' : 'failed');
+  };
+  useEffect(() => {
+    if (img.current?.complete) settle();
+    // A source that hangs rather than fails would leave the skeleton up for good.
+    const giveUp = setTimeout(() => setShown(s => (s === 'loading' ? 'failed' : s)), 10_000);
+    return () => clearTimeout(giveUp);
+  }, []);
+
+  const withImage = shown !== 'failed' && item.image;
+  const meta = [item.source, item.year].filter(Boolean).join(' · ');
+
+  return (
+    <Link to={record(item.kind, item.id)}
+      className="group flex h-full flex-col overflow-hidden rounded-xl border bg-surface transition duration-150 hover:-translate-y-px hover:shadow-[var(--shadow-pop)] hover:[border-color:var(--np-action)]"
+      style={{ borderColor: 'var(--np-line)' }}>
+      {withImage && (
+        <div className={`relative h-44 w-full overflow-hidden ${shown === 'loading' ? 'skeleton' : ''}`}
+          style={shown === 'ok' ? { background: 'var(--np-soft)' } : undefined}>
+          <img ref={img} src={item.image} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
+            onLoad={settle} onError={() => setShown('failed')}
+            className={`h-full w-full object-contain transition-opacity duration-200 ${shown === 'ok' ? 'opacity-100' : 'opacity-0'}`} />
+        </div>
+      )}
+      <div className="flex flex-1 flex-col p-5">
+        <div className={withImage ? '' : '-mx-5 -mt-5 mb-4 border-b px-5 py-3.5'}
+          style={withImage ? undefined : { borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+          <CardHead item={item} />
+        </div>
+        <h3 className={`np-strong line-clamp-3 text-[17px] leading-snug group-hover:underline decoration-1 underline-offset-2 ${withImage ? 'mt-4' : ''}`}
+          style={{ color: 'var(--np-ink)' }}>{item.title}</h3>
+        {(item.authors || meta) && (
+          <div className="mt-2.5 space-y-0.5 text-[13px] leading-snug" style={{ color: 'var(--np-body)' }}>
+            {item.authors && <p className="line-clamp-2">{item.authors}</p>}
+            {meta && <p className="line-clamp-1 text-[12.5px] opacity-80">{meta}</p>}
+          </div>
+        )}
+        <span className="np-strong mt-auto inline-flex items-center gap-1.5 pt-4 text-[12.5px]" style={{ color: 'var(--np-ink)' }}>
+          View details <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function NewCardSkeleton() {
+  return (
+    <div aria-hidden className="rounded-xl border bg-surface p-5" style={{ borderColor: 'var(--np-line)' }}>
+      <div className="flex items-center gap-3">
+        <div className="skeleton h-9 w-9 rounded-lg" />
+        <div className="flex-1 space-y-2"><div className="skeleton h-3 w-16" /><div className="skeleton h-3 w-28" /></div>
+      </div>
+      <div className="mt-5 space-y-2"><div className="skeleton h-4 w-full" /><div className="skeleton h-4 w-11/12" /><div className="skeleton h-4 w-2/3" /></div>
+      <div className="skeleton mt-5 h-3 w-1/2" />
+      <div className="skeleton mt-2 h-3 w-1/3" />
+    </div>
+  );
+}
+
+function WhatIsNew({ books, articles, settled }: { books: NewBook[]; articles: NewArticle[]; settled: boolean }) {
+  // The newest of each kind, so one big ingest of either cannot crowd the other out;
+  // the kind that arrived last leads.
+  const groups = [
+    articles.filter(a => named(a.title)).slice(0, 3).map(fromArticle),
+    books.filter(b => named(b.title)).slice(0, 3).map(fromBook),
+  ].filter(g => g.length).sort((a, b) => +new Date(b[0].createdAt) - +new Date(a[0].createdAt));
+  const items = groups.flat();
+
+  // Nothing came back: say nothing, rather than a heading over an empty shelf.
+  if (settled && !items.length) return null;
+
   return (
     <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
       <div className="container-public">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div className="max-w-2xl">
             <Eyebrow>Just added</Eyebrow>
-            <Heading>The shelves move every day.</Heading>
+            <Heading>Newly Added to STM Digital Library</Heading>
+            <p className="mt-3 text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
+              Recently added academic resources across subjects and formats.
+            </p>
           </div>
-          <Link to="/digital-library" className="np-strong inline-flex items-center gap-1.5 text-[13.5px]" style={{ color: 'var(--np-ink)' }}>
+          <Link to="/digital-library?sort=added" className="np-strong inline-flex items-center gap-1.5 pb-1 text-[13.5px]" style={{ color: 'var(--np-ink)' }}>
             See everything <ArrowRight size={14} />
           </Link>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          {(featured.length ? featured : Array.from({ length: 3 }) as any[]).map((b: NewBook | undefined, k) => (
-            b ? (
-              <Link key={b.id} to={record('book', b.id)}
-                className="group flex flex-col overflow-hidden rounded-xl border bg-surface transition-shadow hover:shadow-[var(--shadow-pop)]"
-                style={{ borderColor: 'var(--np-line)' }}>
-                <Cover book={b} tone={(k % 6) + 1} className="h-48 w-full" />
-                <div className="flex flex-1 flex-col p-5">
-                  <span className="w-fit rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                    style={{ background: `var(--t${(k % 6) + 1}-bg)`, color: `var(--t${(k % 6) + 1}-ink)` }}>
-                    {added(b.createdAt) || 'Book'}{b.domain ? ` · ${b.domain}` : ''}
-                  </span>
-                  <h3 className="np-strong mt-3 line-clamp-2 text-[17px] leading-tight" style={{ color: 'var(--np-ink)' }}>{b.title}</h3>
-                  <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
-                    {[b.authors, b.publisherName].filter(Boolean).join(' · ') || 'Book'}
-                  </p>
-                  <span className="np-strong mt-4 inline-flex items-center gap-1.5 text-[12.5px]" style={{ color: 'var(--np-ink)' }}>
-                    View details <ArrowRight size={13} />
-                  </span>
-                </div>
-              </Link>
-            ) : <div key={k} className="h-80 animate-pulse rounded-xl" style={{ background: 'var(--np-line)' }} />
-          ))}
-        </div>
-
-        <div className="mt-6 overflow-hidden rounded-xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
-          <p className="border-b px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em]"
-            style={{ borderColor: 'var(--np-line)', color: 'var(--np-body)' }}>Newest articles</p>
-          <ul>
-            {(articles.length ? articles.slice(0, 5) : Array.from({ length: 5 }) as any[]).map((a: NewArticle | undefined, k) => (
-              <li key={a?.id || k} className="border-b px-5 py-3.5 last:border-b-0" style={{ borderColor: 'var(--np-line)' }}>
-                {a ? (
-                  <Link to={record('article', a.id)} className="flex items-baseline justify-between gap-4">
-                    <span className="min-w-0">
-                      <span className="block truncate text-[14px]" style={{ color: 'var(--np-ink)' }}>{a.title}</span>
-                      <span className="block truncate text-[11.5px]" style={{ color: 'var(--np-body)' }}>
-                        {[a.journalName, a.domain].filter(Boolean).join(' · ')}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-[11px]" style={{ color: 'var(--np-body)' }}>{added(a.createdAt)}</span>
-                  </Link>
-                ) : <div className="h-9 animate-pulse rounded" style={{ background: 'var(--np-line)' }} />}
-              </li>
-            ))}
-          </ul>
+        <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {items.length
+            ? items.map(item => <NewCard key={item.key} item={item} />)
+            : Array.from({ length: 6 }).map((_, k) => <NewCardSkeleton key={k} />)}
         </div>
       </div>
     </section>
@@ -1139,11 +1245,11 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
 // ── The page ────────────────────────────────────────────────────────────────
 
 export function HomePreview() {
-  const { stats, statsSettled, articles, books, insights, subjects, institutions, community } = useLibrary();
+  const { stats, statsSettled, newSettled, articles, books, insights, subjects, institutions, community } = useLibrary();
   const depts = stats?.departmentTotals || [];
 
   return (
-    <div className="np bg-surface" style={{ color: 'var(--np-body)' }}>
+    <div className="np bg-public" style={{ color: 'var(--np-body)' }}>
       <Helmet>
         <title>STM Digital Library — research your institution can open</title>
       </Helmet>
@@ -1154,7 +1260,8 @@ export function HomePreview() {
       <AcademicCommunity community={community} />
       <DepartmentExplorer depts={depts} />
       <Principles />
-      <WhatIsNew books={books} articles={articles} />
+      <TrustFoundation />
+      <WhatIsNew books={books} articles={articles} settled={newSettled} />
       <Walkthrough stats={stats} depts={depts} subjects={subjects} articles={articles} />
       <Audiences stats={stats} />
       <Questions />
