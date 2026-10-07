@@ -10,11 +10,13 @@ import { Spinner } from '../ui';
 const NAV = [
   { to: '/sales', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/sales/leads', label: 'My Leads', icon: Users, exact: false },
-  { to: '/sales/pro-applications', label: 'Pro Applications', icon: Sparkles, exact: false },
+  { to: '/sales/pro-applications', label: 'Subscription Enquiries', icon: Sparkles, exact: false },
   { to: '/sales/activity', label: 'Activity Log', icon: ClipboardList, exact: true },
   { to: '/sales/quotations', label: 'My Quotations', icon: FileText, exact: false },
   { to: '/sales/performance', label: 'Performance', icon: BarChart3, exact: true },
 ] as const;
+
+const ROLE_LABEL: Record<string, string> = { SalesExecutive: 'Sales Executive', SalesManager: 'Sales Manager', SuperAdmin: 'Administrator' };
 
 export function SalesLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -46,6 +48,12 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (location.pathname.startsWith('/sales/leads')) setTimeout(loadNotif, 1500); /* eslint-disable-next-line */ }, [location.pathname]);
   // The phone menu closes once a section is chosen.
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('keydown', k);
+    return () => document.removeEventListener('keydown', k);
+  }, [menuOpen]);
   useEffect(() => { if (!bellOpen) return; const c = () => setBellOpen(false); window.addEventListener('click', c); return () => window.removeEventListener('click', c); }, [bellOpen]);
 
   useEffect(() => {
@@ -77,19 +85,19 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
       {NAV.map(({ to, label, icon: Icon, exact }) => {
         const active = isActive(to, exact);
         return (
-          <button
+          <Link
             key={to}
-            onClick={() => navigate(to)}
+            to={to}
             aria-current={active ? 'page' : undefined}
-            className={`w-full flex items-center gap-3 px-3 h-11 rounded-lg text-sm font-semibold transition-colors duration-150 ${
+            className={`flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
               active ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
             }`}
           >
-            <Icon size={18} aria-hidden="true" /> {label}
+            <Icon size={18} className="shrink-0" aria-hidden="true" /> <span className="truncate">{label}</span>
             {to === '/sales/leads' && notif.total > 0 && (
               <span className="ml-auto badge badge-caution">{notif.total > 9 ? '9+' : notif.total}<span className="sr-only"> new</span></span>
             )}
-          </button>
+          </Link>
         );
       })}
 
@@ -106,7 +114,7 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-type min-h-screen bg-ground flex flex-col">
       <header className="bg-surface border-b border-rule sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center gap-2 h-16">
             <div className="flex items-center gap-2 min-w-0">
               <button
@@ -159,30 +167,35 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
               </div>
-              <span className="text-sm font-medium text-ink-2 hidden sm:block max-w-[200px] truncate">
-                {profile.displayName || profile.email}
-              </span>
+              <div className="hidden sm:block max-w-[200px] text-right leading-tight">
+                <p className="truncate text-sm font-semibold text-ink">{profile.displayName || profile.email}</p>
+                <p className="truncate text-xs text-muted">{ROLE_LABEL[profile.role] || profile.role}</p>
+              </div>
               <button onClick={handleSignOut} className="btn btn-ghost btn-icon" title="Sign Out" aria-label="Sign Out">
                 <LogOut size={18} aria-hidden="true" />
               </button>
             </div>
           </div>
         </div>
-        {menuOpen && (
-          <div id="sales-mobile-nav" className="md:hidden border-t border-rule bg-surface px-4 py-3 shadow-[var(--shadow-pop)]">
-            {nav}
-          </div>
-        )}
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-4 sm:py-6 flex-1 flex flex-col md:flex-row gap-6">
+      {menuOpen && (
+        <>
+          <div className="md:hidden fixed inset-0 top-16 z-40 bg-ink/40" onClick={() => setMenuOpen(false)} aria-hidden="true" />
+          <div id="sales-mobile-nav" className="md:hidden fixed left-0 top-16 bottom-0 z-50 w-72 max-w-[85vw] overflow-y-auto border-r border-rule bg-surface p-3 shadow-[var(--shadow-pop)]">
+            {nav}
+          </div>
+        </>
+      )}
+
+      <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 w-full py-5 sm:py-8 flex-1 flex flex-col md:flex-row gap-6 lg:gap-8">
         {/* Pinned beside the content on a desktop, clear of the sticky header
             rather than under it; on a phone the header's menu holds it. */}
-        <aside className="hidden md:block md:sticky md:top-20 md:w-60 md:shrink-0 md:self-start">
+        <aside className="hidden md:block md:sticky md:top-24 md:w-56 md:shrink-0 md:self-start">
           {nav}
         </aside>
 
-        <main className="flex-1 min-w-0 card p-4 sm:p-6 min-h-[500px]">
+        <main className="flex-1 min-w-0 min-h-[500px]">
           {children}
         </main>
       </div>

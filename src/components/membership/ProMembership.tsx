@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
-  Sparkles, Check, Clock, Infinity as InfinityIcon, Send, Receipt, History, Minus, Users,
+  Sparkles, Check, Clock, Infinity as InfinityIcon, Send, Receipt, History, Minus, Users, LifeBuoy,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { isIndividualAccount } from '../../constants';
+import { fetchSoloPlan, type SoloPlan } from '../solo/soloPlanApi';
+import { SoloPurchaseDialog } from '../solo/SoloPurchase';
+import { getSoloPricingDisplay } from '../../lib/pricingDisplay';
 import { useAllowance, countdown, clockTime } from './ReadingClock';
 import { MAX_INSTITUTION_USERS } from '../../lib/institutionPricing';
 import { Badge, Button, Field, PageHeader, Skeleton, StatusBadge, buttonClass, friendlyError } from '../ui';
@@ -34,9 +38,13 @@ const daysLeft = (end: string) =>
  * PlanComparison because a component declared in another's body is a new
  * component on every render, and React remounts it each time.
  */
-function PlanCard({ title, tag, active, tone, items }: {
+function PlanCard({ title, tag, active, tone, items, price, action }: {
   title: string; tag: string; active: boolean; tone: 'free' | 'pro';
   items: { text: string; yes: boolean }[];
+  /** What it costs, shown before anything is chosen. */
+  price?: React.ReactNode;
+  /** The button that starts buying it. */
+  action?: React.ReactNode;
 }) {
   return (
     <div className={`rounded-xl border p-5 ${active ? 'border-accent bg-accent-soft' : 'border-rule bg-surface'}`}>
@@ -48,6 +56,8 @@ function PlanCard({ title, tag, active, tone, items }: {
         {active && <Badge tone="accent">You are here</Badge>}
       </div>
       <p className="mt-1 text-sm text-muted">{tag}</p>
+      {price}
+      {action}
       <ul className="mt-4 space-y-2.5">
         {items.map(i => (
           <li key={i.text} className="flex gap-2.5 text-sm leading-snug">
@@ -62,16 +72,33 @@ function PlanCard({ title, tag, active, tone, items }: {
   );
 }
 
+/** The Solo rates, from the one file that holds them — quoted only to an account that can buy at them. */
+function PremiumPrice() {
+  const pricing = getSoloPricingDisplay();
+  return (
+    <div className="mt-3">
+      <p className="text-[28px] font-bold leading-none text-ink tnum">{pricing.tiers[0].price}</p>
+      <p className="mt-1 text-sm text-muted">per department / year</p>
+      <div className="mt-3 rounded-lg border border-accent/30 bg-surface px-3 py-2.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">{pricing.tiers[1].label}</p>
+        <p className="tnum text-sm font-semibold text-ink">{pricing.tiers[1].price} per department / year</p>
+      </div>
+    </div>
+  );
+}
+
 /**
- * Free beside Pro.
+ * Free beside Premium.
  *
  * A member on the free plan can read the whole library — the clock is the only
  * limit there is, and on the institution side, who may be added. So the two
  * columns say exactly that and nothing more: no invented feature, nothing about
  * price, and the line a reader actually meets mid-article stated first.
  */
-function PlanComparison({ pro, institution, sessionsPerDay }: {
+function PlanComparison({ pro, institution, sessionsPerDay, canBuy, onChoose }: {
   pro: boolean; institution: boolean; sessionsPerDay: number;
+  /** An individual account can buy Premium here, so the card shows its price and the button. */
+  canBuy: boolean; onChoose: () => void;
 }) {
   const hours = Math.round((sessionsPerDay * 30) / 60);
   type Row = { free: string; proText: string; freeHas: boolean };
@@ -98,10 +125,16 @@ function PlanComparison({ pro, institution, sessionsPerDay }: {
         <PlanCard title="Free Subscription" tag="What you have now" active={!pro} tone="free"
           items={rows.map(r => ({ text: r.free, yes: r.freeHas }))} />
         <PlanCard title="Premium Subscription" tag="What changes" active={pro} tone="pro"
-          items={rows.map(r => ({ text: r.proText, yes: true }))} />
+          items={rows.map(r => ({ text: r.proText, yes: true }))}
+          price={canBuy ? <PremiumPrice /> : undefined}
+          action={canBuy ? (
+            <button type="button" onClick={onChoose} className="btn btn-primary mt-4 w-full">
+              {pro ? 'Add Departments' : 'Choose Departments & Buy'}
+            </button>
+          ) : undefined} />
       </div>
       <p className="mt-3 text-xs leading-relaxed text-muted">
-        Pro takes nothing away and adds no extra shelf: the library is the same on both.
+        Premium takes nothing away and adds no extra shelf: the library is the same on both.
         What it removes is the clock{institution ? ', for you and for everyone you add' : ''}.
       </p>
     </section>
@@ -119,6 +152,13 @@ export function ProMembership() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [form, setForm] = useState({ organization: '', contact: '', designation: '', purpose: '' });
+  // An individual account buys Premium departments here, online. Anyone else (a member an
+  // institution added) asks the team, as before.
+  const individual = isIndividualAccount(profile as any);
+  const [soloPlan, setSoloPlan] = useState<SoloPlan | null>(null);
+  const [buying, setBuying] = useState(false);
+  const [helping, setHelping] = useState(false);
+  const [search, setSearch] = useSearchParams();
 
   const auth = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
@@ -139,6 +179,20 @@ export function ProMembership() {
 
   useEffect(() => { load(); }, []);
 
+  const loadSoloPlan = () => fetchSoloPlan().then(setSoloPlan);
+  useEffect(() => { if (individual) loadSoloPlan(); }, [individual, profile?.uid]);
+
+  // The sidebar's button arrives as ?choose=1 and goes straight to choosing departments.
+  useEffect(() => {
+    if (search.get('choose') !== '1' || !soloPlan || soloPlan.wholeLibrary) return;
+    setBuying(true);
+    const next = new URLSearchParams(search); next.delete('choose');
+    setSearch(next, { replace: true });
+  }, [search, soloPlan]);
+
+  const refreshAfterPurchase = () => { load(); loadSoloPlan(); };
+  const canBuy = individual && !!soloPlan && !soloPlan.wholeLibrary;
+
   const apply = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
@@ -149,11 +203,11 @@ export function ProMembership() {
         body: JSON.stringify(form),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Could not send your application');
-      toast.success('Application sent — we will be in touch');
+      if (!r.ok) throw new Error(d.error || 'Could not send your request');
+      toast.success('Request sent — we will be in touch');
       load();
     } catch (err: any) {
-      toast.error(friendlyError(err, 'Could not send your application'));
+      toast.error(friendlyError(err, 'Could not send your request'));
     } finally {
       setSending(false);
     }
@@ -288,38 +342,52 @@ export function ProMembership() {
       </section>
 
       {/* ── 3. what the two plans actually differ on ──────────────────────── */}
-      <PlanComparison pro={pro} institution={inInstitution} sessionsPerDay={allowance?.sessionsPerDay ?? 4} />
+      <PlanComparison pro={pro} institution={inInstitution} sessionsPerDay={allowance?.sessionsPerDay ?? 4}
+        canBuy={canBuy} onChoose={() => setBuying(true)} />
 
       {/* ── 4. asking for more ────────────────────────────────────────────── */}
       {!pro && !loading && (
         waiting ? (
           <section className="rounded-xl border border-accent bg-accent-soft p-5" role="status">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold text-ink">Your application is with us</p>
+              <p className="text-sm font-semibold text-ink">Your request is with us</p>
               <StatusBadge status="pending" />
             </div>
             <p className="mt-1 text-sm text-ink-2">
-              Sent {date(waiting.createdAt)}. Someone will call you to agree the terms, and your reading
+              Sent {date(waiting.createdAt)}. Someone will call you, and your reading
               limit lifts as soon as it is approved.
             </p>
           </section>
         ) : (
+          individual && !helping ? (
+            <section className="card card-pad flex flex-wrap items-center justify-between gap-3" aria-labelledby="membership-help">
+              <div className="flex items-start gap-3">
+                <LifeBuoy className="mt-0.5 shrink-0 text-muted" size={20} aria-hidden="true" />
+                <div>
+                  <h2 id="membership-help" className="text-sm font-semibold text-ink">Need help choosing a subscription?</h2>
+                  <p className="mt-0.5 text-sm text-muted">Optional — you can subscribe above without speaking to anyone.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setHelping(true)} className="btn btn-outline">Talk to Our Team</button>
+            </section>
+          ) : (
           <form onSubmit={apply} className="card card-pad">
             <div className="flex items-start gap-3">
               <Sparkles className="mt-0.5 shrink-0 text-accent" size={20} aria-hidden="true" />
               <div>
-                <h2 className="type-card-title text-ink">Apply for Pro</h2>
+                <h2 className="type-card-title text-ink">{individual ? 'Talk to Our Team' : 'Request a Premium Subscription'}</h2>
                 <p className="mt-1 text-sm text-muted">
-                  Pro removes the sessions entirely — read for as long as you like, whenever you like.
-                  Tell us a little and we will call to agree the terms.
+                  {individual
+                    ? 'Tell us a little and someone will call you to help you choose.'
+                    : 'Premium removes the sessions entirely — read for as long as you like, whenever you like. Tell us a little and we will call to agree the terms.'}
                 </p>
               </div>
             </div>
 
             {rejected && (
               <p className="mt-4 rounded-lg border border-caution bg-caution-soft px-3 py-2 text-sm text-ink-2">
-                A previous application was not taken forward
-                {rejected.rejectionNote ? `: ${rejected.rejectionNote}` : '.'} You are welcome to apply again.
+                A previous request was not taken forward
+                {rejected.rejectionNote ? `: ${rejected.rejectionNote}` : '.'} You are welcome to ask again.
               </p>
             )}
 
@@ -351,12 +419,13 @@ export function ProMembership() {
             </Field>
 
             <Button type="submit" loading={sending} className="mt-5 w-full sm:w-auto">
-              {!sending && <Send size={16} aria-hidden="true" />} {sending ? 'Sending…' : 'Send application'}
+              {!sending && <Send size={16} aria-hidden="true" />} {sending ? 'Sending…' : 'Send request'}
             </Button>
             <p className="mt-2 text-xs text-muted">
-              Nothing is charged here. We will agree everything with you on the call first.
+              Nothing is charged here.
             </p>
           </form>
+          )
         )
       )}
 
@@ -377,7 +446,7 @@ export function ProMembership() {
             ))}
             {applications.map((a: any) => (
               <li key={a.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm">
-                <span className="text-ink-2">Applied for {a.planType === 'Pro' ? 'Pro' : a.planType}</span>
+                <span className="text-ink-2">Requested {a.planType === 'Pro' ? 'Premium Subscription' : a.planType}</span>
                 <span className="font-mono text-xs text-muted">{date(a.createdAt)} · {a.status}</span>
               </li>
             ))}
@@ -409,6 +478,10 @@ export function ProMembership() {
         )
       )}
       </>
+      )}
+
+      {canBuy && soloPlan && (
+        <SoloPurchaseDialog open={buying} onClose={() => setBuying(false)} plan={soloPlan} onPaid={refreshAfterPurchase} />
       )}
     </div>
   );

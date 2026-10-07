@@ -1,31 +1,33 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { format, formatDistanceToNowStrict, isPast } from 'date-fns';
+import { isPast, differenceInCalendarDays } from 'date-fns';
 import {
-  FileText, Search, RefreshCw, Inbox, Plus, Mail, Building2,
-  Clock, AlertTriangle, CheckCircle2, Download, Pencil, Printer,
+  FileText, RefreshCw, Inbox, Plus, Mail, Building2, Search,
+  Clock, CheckCircle2, Download, Pencil, Printer, Eye,
 } from 'lucide-react';
 import { docOfRow, rowToRender, statusLabel } from '../../lib/quotation/quotationModel';
 import { downloadQuotationPdf } from '../../lib/quotation/quotationPdf';
 import { printQuotation } from '../../lib/quotation/quotationPrint';
-import { Button, Dialog, EmptyState, ErrorState, MetricCard, SkeletonRows, StatusBadge } from '../ui';
+import { Badge, Button, Dialog, EmptyState, ErrorState, PageHeader, SkeletonRows, StatusBadge, type BadgeTone } from '../ui';
+import { ActionMenu, ActiveFilter, FilterBar, FilterChips, SearchField, StatCard, formatDay, formatStamp, inr, pct } from './salesUi';
 
-const ALL_STATUSES = ['All', 'Pending', 'Sent', 'Downloaded', 'Approved', 'Expired', 'Paid', 'Cancelled'];
+// "Open" is not a stored status: it is everything not yet paid or cancelled.
+const FILTERS = ['All', 'Open', 'Pending', 'Sent', 'Downloaded', 'Approved', 'Expired', 'Paid', 'Cancelled'];
+const isOpen = (q: any) => !['Paid', 'Cancelled'].includes(q.status);
 
-const inr = (n: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
-
-/** Absolute date plus a relative hint — "12 Aug 2026, 10:49 (7 days ago)". */
-function Stamp({ value, prefix }: { value?: string | null; prefix?: string }) {
-  if (!value) return <span className="text-muted">—</span>;
-  const d = new Date(value);
-  return (
-    <span title={d.toISOString()}>
-      {prefix}{format(d, 'd MMM yyyy, HH:mm')}
-      <span className="text-muted"> ({formatDistanceToNowStrict(d)} ago)</span>
-    </span>
-  );
+/**
+ * Where a quotation stands on time, which is a different question from where it
+ * stands in the workflow: a quotation can be "Sent" and past its date at once.
+ * Paid and cancelled ones are finished, so their date no longer matters.
+ */
+type Validity = { label: string; tone: BadgeTone } | null;
+function validityOf(q: any): Validity {
+  if (!q.expiresAt || !isOpen(q)) return null;
+  const d = new Date(q.expiresAt);
+  if (isPast(d)) return { label: 'Expired', tone: 'caution' };
+  if (differenceInCalendarDays(d, new Date()) <= 7) return { label: 'Expires soon', tone: 'caution' };
+  return { label: 'Valid', tone: 'success' };
 }
 
 /** The section heading inside the detail drawer. */
@@ -40,11 +42,14 @@ function DrawerSection({ title, icon, children }: { title: string; icon?: React.
 
 export function MyQuotations() {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const [rows, setRows] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, paid: 0, pending: 0, value: 0 });
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [status, setStatus] = useState('All');
+  // The dashboard arrives with "open" or "expired" already chosen.
+  const [status, setStatus] = useState(params.get('scope') === 'open' ? 'Open' : params.get('status') || 'All');
+  const [onlyExpired, setOnlyExpired] = useState(params.get('validity') === 'expired');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<any | null>(null);
 
@@ -52,19 +57,17 @@ export function MyQuotations() {
     setLoading(true);
     setLoadFailed(false);
     try {
-      const params = new URLSearchParams();
-      if (status !== 'All') params.set('status', status);
-      if (search.trim()) params.set('search', search.trim());
-      const res = await fetch(`/api/my/quotations?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
+      const q = new URLSearchParams();
+      if (status !== 'All' && status !== 'Open') q.set('status', status);
+      if (search.trim()) q.set('search', search.trim());
+      const res = await fetch(`/api/my/quotations?${q}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       if (!res.ok) throw new Error();
       const data = await res.json();
       setRows(data.quotations || []);
       setStats(data.stats || { total: 0, paid: 0, pending: 0, value: 0 });
     } catch {
       setLoadFailed(true);
-      toast.error('Could not load your quotations');
+      toast.error('Could not load your quotations', { id: 'sales-quotes' });
     } finally {
       setLoading(false);
     }
@@ -76,138 +79,135 @@ export function MyQuotations() {
   }, [load, search]);
 
   const closeDrawer = useCallback(() => setSelected(null), []);
+  const clearExpired = () => { setOnlyExpired(false); const n = new URLSearchParams(params); n.delete('validity'); setParams(n, { replace: true }); };
+
+  const shown = useMemo(() => rows.filter(q =>
+    (status !== 'Open' || isOpen(q)) && (!onlyExpired || validityOf(q)?.label === 'Expired')), [rows, status, onlyExpired]);
+
+  const filtering = status !== 'All' || onlyExpired || !!search.trim();
+  const resetFilters = () => { setStatus('All'); setOnlyExpired(false); setSearch(''); setParams({}, { replace: true }); };
+  const failed = loadFailed;
+  const first = loading && !rows.length;
+
+  const pdf = (q: any) => downloadQuotationPdf(rowToRender(q)).catch(() => toast.error('Could not create the PDF.'));
+  const rowMenu = (q: any) => (
+    <ActionMenu label={`Actions for quotation ${q.id}`} items={[
+      { label: 'View', icon: Eye, onSelect: () => setSelected(q) },
+      { label: 'Download PDF', icon: Download, onSelect: () => pdf(q) },
+      { label: 'Print', icon: Printer, onSelect: () => printQuotation(rowToRender(q)) },
+      { label: 'Edit', icon: Pencil, to: `/sales/quotations/create?edit=${encodeURIComponent(q.id)}`, hidden: q.status === 'Paid' || !docOfRow(q) },
+    ]} />
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="type-page-title flex items-center gap-2 text-ink">
-            <FileText className="text-accent shrink-0" size={22} aria-hidden="true" />
-            My Quotations
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            Every quotation raised from your account, newest first.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <div>
+      <PageHeader
+        title="My Quotations"
+        description="Every quotation raised from your account, newest first."
+        actions={<>
           <Button variant="outline" onClick={load} disabled={loading}>
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
-            Refresh
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} aria-hidden="true" /> Refresh
           </Button>
-          <Button onClick={() => navigate('/sales/quotations/create')}>
-            <Plus size={16} aria-hidden="true" />
-            New Quotation
-          </Button>
-        </div>
-      </div>
+          <Button onClick={() => navigate('/sales/quotations/create')}><Plus size={16} aria-hidden="true" /> New Quotation</Button>
+        </>}
+      />
 
-      {/* Totals — a failed load shows a dash, not a row of zeros. */}
-      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Raised', value: String(stats.total) },
-          { label: 'Paid', value: String(stats.paid) },
-          { label: 'Open', value: String(stats.pending) },
-          { label: 'Value won', value: inr(stats.value) },
-        ].map(s => (
-          <MetricCard key={s.label} label={s.label} value={loadFailed ? null : s.value} loading={loading && !rows.length} />
-        ))}
-      </div>
+      <div className="space-y-5">
+        {/* Totals — a failed load shows a dash, not a row of zeros. The first three are also shortcuts. */}
+        <section aria-label="Quotation totals" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Raised" value={failed ? null : stats.total} loading={first} icon={FileText} context="All quotations you have raised"
+            onSelect={() => setStatus('All')} selected={status === 'All' && !onlyExpired} />
+          <StatCard label="Paid" value={failed ? null : stats.paid} loading={first} icon={CheckCircle2} context={`${pct(stats.paid, stats.total)}% of those raised`}
+            onSelect={() => setStatus('Paid')} selected={status === 'Paid'} />
+          <StatCard label="Open" value={failed ? null : stats.pending} loading={first} icon={Clock} context="Not yet paid or cancelled"
+            onSelect={() => setStatus('Open')} selected={status === 'Open'} />
+          <StatCard label="Value won" value={failed ? null : inr(stats.value)} loading={first} context={`From ${stats.paid} paid ${stats.paid === 1 ? 'quotation' : 'quotations'}`} />
+        </section>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3">
-        <div className="field">
-          <label htmlFor="quotation-search" className="field-label">Search</label>
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden="true" />
-            <input
-              id="quotation-search"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Number, customer or organisation"
-              className="input pl-9"
+        <FilterBar>
+          <SearchField id="quotation-search" value={search} onChange={setSearch} placeholder="Number, customer or organisation" />
+        </FilterBar>
+        <FilterChips label="Filter by workflow status" value={status} onChange={setStatus}
+          options={FILTERS.map(f => ({ key: f, label: f === 'All' || f === 'Open' ? f : statusLabel(f) }))} />
+        {onlyExpired && <ActiveFilter onClear={clearExpired}>Showing open quotations that are past their valid-until date.</ActiveFilter>}
+
+        <div className="card overflow-hidden">
+          {loading ? (
+            <div className="p-6"><SkeletonRows rows={5} /></div>
+          ) : loadFailed ? (
+            <ErrorState title="Your quotations could not be loaded" onRetry={load} />
+          ) : shown.length === 0 ? (
+            <EmptyState
+              icon={filtering ? Search : Inbox}
+              title={filtering ? 'No quotations found' : 'You have not raised any quotations yet'}
+              description={filtering ? 'Nothing matches these filters.' : 'Create one and it will be listed here.'}
+              action={filtering
+                ? <Button variant="outline" onClick={resetFilters}>Clear filters</Button>
+                : <Button onClick={() => navigate('/sales/quotations/create')}>Create your first quotation</Button>}
             />
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
-          {ALL_STATUSES.map(s => (
-            <button
-              key={s}
-              onClick={() => setStatus(s)}
-              aria-pressed={status === s}
-              className={`h-8 rounded-full border px-3 text-xs font-semibold transition-colors duration-150 ${
-                status === s
-                  ? 'border-accent bg-accent text-accent-on'
-                  : 'border-rule bg-surface text-ink-2 hover:bg-surface-2'
-              }`}
-            >
-              {s === 'All' ? s : statusLabel(s)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="card overflow-hidden">
-        {loading ? (
-          <div className="p-6"><SkeletonRows rows={5} /></div>
-        ) : loadFailed ? (
-          <ErrorState title="Your quotations could not be loaded" onRetry={load} />
-        ) : rows.length === 0 ? (
-          <EmptyState
-            icon={Inbox}
-            title={search || status !== 'All' ? 'Nothing matches that filter' : 'You have not raised any quotations yet'}
-            action={!search && status === 'All' ? (
-              <Button onClick={() => navigate('/sales/quotations/create')}>
-                Create your first quotation
-              </Button>
-            ) : undefined}
-          />
-        ) : (
-          <div className="table-wrap">
-            <table className="data-table min-w-[50rem]">
-              <thead>
-                <tr>
-                  {['Quotation', 'Customer', 'Plan', 'Amount', 'Created', 'Valid until', 'Status'].map(h => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(q => {
-                  const expired = q.expiresAt && isPast(new Date(q.expiresAt)) && q.status !== 'Paid';
-                  return (
-                    <tr
-                      key={q.id}
-                      onClick={() => setSelected(q)}
-                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(q); } }}
-                      tabIndex={0}
-                      aria-label={`Open quotation ${q.id}`}
-                      className="cursor-pointer"
-                    >
-                      <td>
-                        <span className="font-mono text-xs font-semibold text-ink">{q.id}</span>
-                      </td>
-                      <td>
-                        <p className="font-semibold text-ink">{q.userName}</p>
-                        <p className="text-xs text-muted">{q.organization || q.userEmail}</p>
-                      </td>
-                      <td>{q.planType || '—'}</td>
-                      <td className="font-semibold tabular-nums text-ink">{inr(q.total)}</td>
-                      <td className="text-xs text-muted"><Stamp value={q.createdAt} /></td>
-                      <td className="text-xs">
-                        {expired
-                          ? <span className="badge badge-caution"><AlertTriangle size={12} aria-hidden="true" /> Expired</span>
-                          : <span className="text-muted">{q.expiresAt ? format(new Date(q.expiresAt), 'd MMM yyyy') : '—'}</span>}
-                      </td>
-                      <td><StatusBadge status={q.status} label={statusLabel(q.status)} /></td>
+          ) : (
+            <>
+              <div className="table-wrap relative hidden md:block">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Quotation</th><th>Customer</th><th className="hidden xl:table-cell">Plan</th><th className="text-right">Amount</th>
+                      <th className="hidden lg:table-cell">Created</th><th>Valid until</th><th>Workflow status</th><th className="w-12"><span className="sr-only">Actions</span></th>
                     </tr>
+                  </thead>
+                  <tbody>
+                    {shown.map(q => {
+                      const v = validityOf(q);
+                      return (
+                        <tr key={q.id} onClick={() => setSelected(q)} tabIndex={0} aria-label={`Open quotation ${q.id}`} className="cursor-pointer"
+                          onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSelected(q); } }}>
+                          <td><span className="font-mono text-xs font-semibold text-ink">{q.id}</span></td>
+                          <td className="max-w-[240px]">
+                            <p className="truncate font-semibold text-ink">{q.userName}</p>
+                            <p className="truncate text-xs text-muted">{q.organization || q.userEmail}</p>
+                          </td>
+                          <td className="hidden xl:table-cell">{q.planType || '—'}</td>
+                          <td className="whitespace-nowrap text-right font-semibold tabular-nums text-ink">{inr(q.total)}</td>
+                          <td className="hidden whitespace-nowrap text-xs text-muted lg:table-cell">{formatDay(q.createdAt)}</td>
+                          <td className="whitespace-nowrap">
+                            <p className="text-xs text-ink-2">{formatDay(q.expiresAt)}</p>
+                            {v && <Badge tone={v.tone} className="mt-1">{v.label}</Badge>}
+                          </td>
+                          <td className="whitespace-nowrap"><StatusBadge status={q.status} label={statusLabel(q.status)} /></td>
+                          <td className="text-right">{rowMenu(q)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <ul className="divide-y divide-rule md:hidden">
+                {shown.map(q => {
+                  const v = validityOf(q);
+                  return (
+                    <li key={q.id} className="space-y-2.5 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <button type="button" onClick={() => setSelected(q)} className="min-w-0 text-left">
+                          <span className="block font-mono text-xs font-semibold text-ink">{q.id}</span>
+                          <span className="mt-1 block truncate font-semibold text-ink">{q.userName}</span>
+                          <span className="block truncate text-xs text-muted">{q.organization || q.userEmail}</span>
+                        </button>
+                        {rowMenu(q)}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold tabular-nums text-ink">{inr(q.total)}</span>
+                        <StatusBadge status={q.status} label={statusLabel(q.status)} />
+                        {v && <Badge tone={v.tone}>{v.label}</Badge>}
+                      </div>
+                      <p className="text-xs text-muted">Created {formatDay(q.createdAt)} · Valid until {formatDay(q.expiresAt)}</p>
+                    </li>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </ul>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Detail drawer */}
@@ -226,7 +226,7 @@ export function MyQuotations() {
         {selected && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => downloadQuotationPdf(rowToRender(selected)).catch(() => toast.error('Could not create the PDF.'))}>
+              <Button size="sm" onClick={() => pdf(selected)}>
                 <Download size={14} aria-hidden="true" /> Download PDF
               </Button>
               <Button size="sm" variant="outline" onClick={() => printQuotation(rowToRender(selected))}>
@@ -257,15 +257,13 @@ export function MyQuotations() {
               <dl className="flex flex-col gap-3 text-sm">
                 <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
                   <dt className="text-muted">Created</dt>
-                  <dd className="text-right text-ink"><Stamp value={selected.createdAt} /></dd>
+                  <dd className="text-right text-ink">{formatStamp(selected.createdAt)}</dd>
                 </div>
                 <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
                   <dt className="text-muted">Valid until</dt>
                   <dd className="text-right text-ink">
-                    {selected.expiresAt ? format(new Date(selected.expiresAt), 'd MMM yyyy, HH:mm') : '—'}
-                    {selected.expiresAt && isPast(new Date(selected.expiresAt)) && selected.status !== 'Paid' && (
-                      <span className="badge badge-caution ml-2">Expired</span>
-                    )}
+                    {formatStamp(selected.expiresAt)}
+                    {validityOf(selected) && <Badge tone={validityOf(selected)!.tone} className="ml-2">{validityOf(selected)!.label}</Badge>}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">

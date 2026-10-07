@@ -1344,8 +1344,8 @@ async function startServer() {
    *
    * This is its own flow, priced by its own file (soloPricing.ts). It shares nothing with the
    * institution checkout below, which is reachable only by a librarian and priced from the
-   * institution's rate card. A Solo account is one that registered as Solo — a Professor
-   * registered under an institute is also a "Subscriber" but is not eligible here.
+   * institution's rate card. Any individual account may buy here — a Subscriber that belongs to
+   * no institution, whatever it ticked at sign-up. A member an institution added is not one.
    *
    * As with the institution checkout, the browser's price is only a preview: every quote and
    * every order is priced again here from the departments asked for, and what a verified
@@ -1353,13 +1353,13 @@ async function startServer() {
    */
   const soloDepartmentNames = new Set<string>(DOMAINS.map((d: any) => d.name));
 
-  /** The signed-in Solo Learner, or null for anyone else. */
+  /** The signed-in individual account, or null for anyone else. */
   const soloAccount = async (req: any) => {
     const me = await prisma.user.findUnique({
       where: { id: req.user.uid },
       select: { id: true, displayName: true, email: true, state: true, role: true, registrantType: true, institutionId: true },
     });
-    if (!me || me.registrantType !== 'Solo' || me.role !== 'Subscriber' || me.institutionId) return null;
+    if (!me || me.role !== 'Subscriber' || me.institutionId) return null;
     return me;
   };
 
@@ -1402,7 +1402,7 @@ async function startServer() {
   app.get("/api/me/subscribe/plan", authenticateJWT, async (req: any, res) => {
     try {
       const me = await soloAccount(req);
-      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      if (!me) return res.status(403).json({ error: "Premium departments are bought from an individual account." });
       const held = await soloHoldings(me.id);
       res.json({
         name: me.displayName,
@@ -1426,7 +1426,7 @@ async function startServer() {
   app.post("/api/me/subscribe/quote", authenticateJWT, async (req: any, res) => {
     try {
       const me = await soloAccount(req);
-      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      if (!me) return res.status(403).json({ error: "Premium departments are bought from an individual account." });
       const quote: any = await priceSoloPurchase(me, req.body);
       if (quote.error) return res.status(400).json(quote);
       res.json(quote);
@@ -1438,7 +1438,7 @@ async function startServer() {
   app.post("/api/me/subscribe/checkout", authenticateJWT, async (req: any, res) => {
     try {
       const me = await soloAccount(req);
-      if (!me) return res.status(403).json({ error: "This is for Solo Learner accounts." });
+      if (!me) return res.status(403).json({ error: "Premium departments are bought from an individual account." });
       const quote: any = await priceSoloPurchase(me, req.body);
       if (quote.error) return res.status(400).json(quote);
 
