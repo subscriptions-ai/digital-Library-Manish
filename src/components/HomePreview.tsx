@@ -1,3 +1,4 @@
+import { validPercent } from '../lib/percent';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -95,7 +96,8 @@ function useLibrary() {
     get('/api/library/insights').then(d => d?.composition && setInsights(d));
     get('/api/library/subjects').then(d => Array.isArray(d) && setSubjects(d));
     get('/api/library/institutions').then(d => d?.total !== undefined && setInstitutions(d));
-    get('/api/public/institution-stats').then(d => setCommunity(d?.byType && d?.geography ? d : null));
+    // `v=2`: the answer's shape changed from tallies to shares, and browsers may still hold the old one.
+    get('/api/public/institution-stats?v=2').then(d => setCommunity(readCommunity(d)));
   }, []);
 
   return { stats, statsSettled, articles, books, insights, subjects, institutions, community };
@@ -454,11 +456,40 @@ function Impact({ stats, settled, depts, inst }: { stats: Stats | null; settled:
  * how many, of what kind, and from where, and nothing that identifies one.
  */
 type TypeKey = 'universities' | 'colleges' | 'institutes' | 'schools' | 'organisations' | 'other';
+/**
+ * A share of the whole, in whole percent. The server sends shares and nothing else — no
+ * institution count reaches this page — and `some` marks a real but tiny share that rounds to 0.
+ */
+type Share = { pct: number; some: boolean };
 type Community = {
-  total: number;
-  byType: Record<TypeKey, number>;
-  geography: { india: number; outsideIndia: number; unknown: number };
+  byType: Record<TypeKey, Share>;
+  /** Null when too few institutions have a country on file to say anything. */
+  geography: { india: Share; outsideIndia: Share } | null;
 };
+
+const TYPE_KEYS: TypeKey[] = ['universities', 'colleges', 'institutes', 'schools', 'organisations', 'other'];
+
+const readShare = (v: any): Share | null => {
+  const pct = validPercent(v?.pct);
+  return pct === null ? null : { pct, some: v?.some === true };
+};
+
+/**
+ * The server's answer, accepted only if every share in it is a real percentage. Anything else —
+ * an error body, a half-written answer, or an older answer still in the browser's cache that
+ * carries tallies instead of shares — is "not available", never "undefined%".
+ */
+function readCommunity(d: any): Community | null {
+  const byType: Partial<Record<TypeKey, Share>> = {};
+  for (const k of TYPE_KEYS) {
+    const share = readShare(d?.byType?.[k]);
+    if (!share) return null;
+    byType[k] = share;
+  }
+  const india = readShare(d?.geography?.india);
+  const outsideIndia = readShare(d?.geography?.outsideIndia);
+  return { byType: byType as Record<TypeKey, Share>, geography: india && outsideIndia ? { india, outsideIndia } : null };
+}
 
 /** Fixed order and fixed set: a category with none is still a category, shown as 0. */
 const TYPE_CARDS: { key: Exclude<TypeKey, 'other'>; label: string; icon: typeof Landmark }[] = [
@@ -479,19 +510,8 @@ const AUDIENCES: { label: string; icon: typeof Users }[] = [
   { label: 'PhD Scholars', icon: Award },
 ];
 
-/** Whole-number shares that add up to 100, so the rows never read 99 or 101. */
-function shares(counts: number[]): number[] {
-  const sum = counts.reduce((a, b) => a + b, 0);
-  if (!sum) return counts.map(() => 0);
-  const raw = counts.map(c => (c / sum) * 100);
-  const out = raw.map(Math.floor);
-  let left = 100 - out.reduce((a, b) => a + b, 0);
-  raw.map((r, i) => [r - out[i], i] as const).sort((a, b) => b[0] - a[0])
-    .forEach(([, i]) => { if (left > 0) { out[i]++; left--; } });
-  return out;
-}
 /** A real but tiny share is "<1%", not a 0% that reads as none. */
-const pctText = (pct: number, count: number) => (count > 0 && pct === 0 ? '<1%' : `${pct}%`);
+const pctText = ({ pct, some }: Share) => (some && pct === 0 ? '<1%' : `${pct}%`);
 
 /** Draws itself in once, after the first paint. */
 function useSettled() {
@@ -505,9 +525,12 @@ function useSettled() {
 
 const panel = 'rounded-xl border bg-surface p-5';
 
-/** One labelled bar. The figure is always text, so the bar is never the only signal. */
-function BarRow({ label, pct, count, color, ready, size = 'sm' }: {
-  label: string; pct: number; count: number; color: string; ready: boolean; size?: 'sm' | 'lg';
+/**
+ * One labelled bar. The figure is always text, so the bar is never the only signal. A tiny
+ * share still gets a visible sliver and reads "<1%".
+ */
+function BarRow({ label, share, color, ready, size = 'sm' }: {
+  label: string; share: Share; color: string; ready: boolean; size?: 'sm' | 'lg';
 }) {
   return (
     <div className="grid grid-cols-[6.25rem_minmax(0,1fr)_auto] items-center gap-x-3 text-[13px] sm:grid-cols-[7.5rem_minmax(0,1fr)_auto]">
@@ -515,11 +538,10 @@ function BarRow({ label, pct, count, color, ready, size = 'sm' }: {
       <span className={`block overflow-hidden rounded-full ${size === 'lg' ? 'h-3' : 'h-2'}`}
         style={{ background: 'var(--np-soft)' }} aria-hidden="true">
         <span className="mix-bar block h-full rounded-full"
-          style={{ width: ready ? `${Math.max(pct, count ? 2 : 0)}%` : '0%', background: color }} />
+          style={{ width: ready ? `${Math.max(share.pct, share.some ? 2 : 0)}%` : '0%', background: color }} />
       </span>
-      <span className="np-strong tnum min-w-[4.25rem] text-right" style={{ color: 'var(--np-ink)' }}>
-        {pctText(pct, count)}
-        <span className="np-strong font-normal" style={{ color: 'var(--np-body)' }}> · {n(count)}</span>
+      <span className="np-strong tnum min-w-[3rem] text-right" style={{ color: 'var(--np-ink)' }}>
+        {pctText(share)}
       </span>
     </div>
   );
@@ -528,15 +550,14 @@ function BarRow({ label, pct, count, color, ready, size = 'sm' }: {
 function TypePanel({ community }: { community: Community }) {
   const ready = useSettled();
   const rows = [
-    ...TYPE_CARDS.map(c => ({ label: c.label, count: community.byType[c.key], color: 'var(--accent)' })),
-    { label: 'Other', count: community.byType.other, color: 'color-mix(in srgb, var(--np-body) 55%, transparent)' },
+    ...TYPE_CARDS.map(c => ({ label: c.label, share: community.byType[c.key], color: 'var(--accent)' })),
+    { label: 'Other', share: community.byType.other, color: 'color-mix(in srgb, var(--np-body) 55%, transparent)' },
   ];
-  const pct = shares(rows.map(r => r.count));
   return (
     <div className={panel} style={{ borderColor: 'var(--np-line)' }}>
       <h4 className="np-strong text-[14px]" style={{ color: 'var(--np-ink)' }}>Institution type</h4>
       <div className="mt-4 space-y-3.5">
-        {rows.map((r, i) => <BarRow key={r.label} {...r} pct={pct[i]} ready={ready} />)}
+        {rows.map(r => <BarRow key={r.label} {...r} ready={ready} />)}
       </div>
     </div>
   );
@@ -544,41 +565,29 @@ function TypePanel({ community }: { community: Community }) {
 
 function GeoPanel({ geography }: { geography: Community['geography'] }) {
   const ready = useSettled();
-  const known = geography.india + geography.outsideIndia;
-  const [inPct, outPct] = shares([geography.india, geography.outsideIndia]);
-  const rows = [
-    { label: 'India', pct: inPct, count: geography.india, color: 'var(--accent)' },
-    { label: 'Outside India', pct: outPct, count: geography.outsideIndia, color: 'color-mix(in srgb, var(--accent) 50%, var(--np-line))' },
-  ];
+  const rows = geography ? [
+    { label: 'India', share: geography.india, color: 'var(--accent)' },
+    { label: 'Outside India', share: geography.outsideIndia, color: 'color-mix(in srgb, var(--accent) 50%, var(--np-line))' },
+  ] : [];
   return (
     <div className={`${panel} flex flex-col`} style={{ borderColor: 'var(--np-line)' }}>
       <h4 className="np-strong text-[14px]" style={{ color: 'var(--np-ink)' }}>Geographic reach</h4>
-      {known > 0 ? (
+      {geography ? (
         <div className="mt-4 space-y-6">
           {rows.map(r => (
             <div key={r.label}>
               <div className="flex items-baseline justify-between gap-3">
                 <span className="np-strong text-[14px]" style={{ color: 'var(--np-ink)' }}>{r.label}</span>
-                <span className="np-display tnum text-[24px] leading-none" style={{ color: 'var(--np-ink)' }}>{pctText(r.pct, r.count)}</span>
+                <span className="np-display tnum text-[24px] leading-none" style={{ color: 'var(--np-ink)' }}>{pctText(r.share)}</span>
               </div>
               <div className="mt-2 h-3 overflow-hidden rounded-full" style={{ background: 'var(--np-soft)' }} aria-hidden="true">
-                <div className="mix-bar h-full rounded-full" style={{ width: ready ? `${Math.max(r.pct, r.count ? 2 : 0)}%` : '0%', background: r.color }} />
+                <div className="mix-bar h-full rounded-full" style={{ width: ready ? `${Math.max(r.share.pct, r.share.some ? 2 : 0)}%` : '0%', background: r.color }} />
               </div>
-              <p className="mt-1.5 text-[12.5px]" style={{ color: 'var(--np-body)' }}>
-                {n(r.count)} {r.count === 1 ? 'institution' : 'institutions'}
-              </p>
             </div>
           ))}
         </div>
       ) : (
         <p className="mt-4 text-[13px]" style={{ color: 'var(--np-body)' }}>Country data is not yet available.</p>
-      )}
-      {known > 0 && (
-        <p className="mt-auto pt-4 text-[12px]" style={{ color: 'var(--np-body)' }}>
-          {geography.unknown > 0
-            ? `Based on the ${n(known)} ${known === 1 ? 'institution' : 'institutions'} with available country data.`
-            : 'Based on institutions with available country data.'}
-        </p>
       )}
     </div>
   );
@@ -602,8 +611,8 @@ function CommunitySkeleton() {
 /** `undefined` while loading, `null` once the figures could not be read. */
 function AcademicCommunity({ community }: { community: Community | null | undefined }) {
   const cards = community ? [
-    ...TYPE_CARDS.map(c => ({ key: c.key as string, label: c.label, icon: c.icon, value: community.byType[c.key], total: false })),
-    { key: 'total', label: 'Total institutions', icon: Network, value: community.total, total: true },
+    ...TYPE_CARDS.map(c => ({ key: c.key as string, label: c.label, icon: c.icon, share: community.byType[c.key] })),
+    { key: 'other', label: 'Other', icon: Network, share: community.byType.other },
   ] : [];
 
   return (
@@ -631,10 +640,10 @@ function AcademicCommunity({ community }: { community: Community | null | undefi
               <div key={c.key} className="rounded-xl border bg-surface p-4 transition-colors hover:border-[color:var(--accent)]"
                 style={{ borderColor: 'var(--np-line)' }}>
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg"
-                  style={c.total ? { background: 'var(--np-navy)', color: '#fff' } : { background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+                  style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
                   <c.icon size={18} aria-hidden="true" />
                 </span>
-                <p className="np-display tnum mt-3 text-[28px] leading-none" style={{ color: 'var(--np-ink)' }}>{n(c.value)}</p>
+                <p className="np-display tnum mt-3 text-[28px] leading-none" style={{ color: 'var(--np-ink)' }}>{pctText(c.share)}</p>
                 <p className="mt-1.5 text-[13px] leading-snug" style={{ color: 'var(--np-body)' }}>{c.label}</p>
               </div>
             ))}
