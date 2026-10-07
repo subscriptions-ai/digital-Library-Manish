@@ -15,24 +15,14 @@ const FEEDBACK_PREFIXES = ['/dashboard', '/institution'];
 const startsWithSegment = (path: string, prefix: string) =>
   path === prefix || path.startsWith(`${prefix}/`);
 
-const DEFAULT_MESSAGE =
-  'Hello, I would like to know more about STM Digital Library and its access/subscription options.\n\nPlease assist me.';
+/**
+ * What the chat opens with, on every page. Visitors who write from here are mostly institutions
+ * asking about access, so one message covers them; it names no page or address.
+ */
+const MESSAGE =
+  'Hello,\nI’m interested in STM Digital Library for my institution. Please share details about institutional access, academic content, subscription options, librarian dashboard, usage analytics, and demo/quotation process.';
 
-function messageFor(pathname: string): string {
-  if (/subscription|pricing|membership|\/pro$/.test(pathname)) {
-    return 'Hello, I am interested in STM Digital Library subscription/access options. Please assist me.';
-  }
-  if (/\/(viewer|article|book|preview|journal)\b/.test(pathname)) {
-    return 'Hello, I need assistance accessing research content on STM Digital Library.';
-  }
-  if (/\/(explore|library|digital-library|journals|search)\b/.test(pathname)) {
-    return 'Hello, I am exploring the STM Digital Library Content Library and need assistance.';
-  }
-  if (/institution/.test(pathname)) {
-    return 'Hello, I would like information about institutional access to STM Digital Library.';
-  }
-  return DEFAULT_MESSAGE;
-}
+const HREF = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(MESSAGE)}`;
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -43,20 +33,11 @@ function WhatsAppIcon({ className }: { className?: string }) {
 }
 
 export function WhatsAppFloatingButton() {
-  const { pathname, search } = useLocation();
+  const { pathname } = useLocation();
 
   if (HIDDEN_PREFIXES.some(p => startsWithSegment(pathname, p))) return null;
 
   const aboveFeedback = FEEDBACK_PREFIXES.some(p => startsWithSegment(pathname, p));
-
-  // Built at render so the link is a real href (works with middle-click and
-  // copy-link). `search` is in the render path so the URL stays current when
-  // only the query string changes; the title is read from the document, which
-  // the pages set through Helmet.
-  const pageTitle = (typeof document !== 'undefined' && document.title) || pathname;
-  const pageUrl = typeof window !== 'undefined' ? `${window.location.origin}${pathname}${search}` : pathname;
-  const text = `${messageFor(pathname)}\n\nPage: ${pageTitle}\nURL: ${pageUrl}`;
-  const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 
   // The stack: Feedback (48px) takes the corner where it is shown and WhatsApp
   // sits one gap above it; both rise together over a sheet at the bottom.
@@ -66,13 +47,7 @@ export function WhatsAppFloatingButton() {
 
   return (
     <a
-      href={href}
-      onClick={e => {
-        // The title can change after render (route change, async Helmet), so
-        // rebuild the link at click time to be sure it matches what is on screen.
-        const fresh = `${messageFor(window.location.pathname)}\n\nPage: ${document.title || window.location.pathname}\nURL: ${window.location.href}`;
-        e.currentTarget.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(fresh)}`;
-      }}
+      href={HREF}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with STM Digital Library on WhatsApp"
