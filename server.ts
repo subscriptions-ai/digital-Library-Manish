@@ -1,3 +1,4 @@
+import { safePercentage } from './src/lib/percent';
 import express from "express";
 import crypto from "crypto";
 
@@ -10254,12 +10255,29 @@ async function startServer() {
       }
       const total = list.length;
       const known = india + outsideIndia;
-      const geography = { india, outsideIndia, unknown: total - known };
 
       // The data-quality report that stays inside the server.
       console.info(`[institution-stats] total=${total} other=${byType.other} noCountry=${total - known}`);
 
-      const value = { total, byType, geography };
+      // The page shows shares, never tallies, so the tallies stay here. Whole-number shares that
+      // add up to 100 (largest remainder); `some` tells a real but tiny share ("<1%") from none.
+      const sharesOf = (counts: number[]) => {
+        const sum = counts.reduce((x, y) => x + y, 0);
+        if (!sum) return counts.map(() => ({ pct: 0, some: false }));
+        const raw = counts.map(c => safePercentage(c, sum, false) ?? 0);
+        const pct = raw.map(Math.floor);
+        let left = 100 - pct.reduce((x, y) => x + y, 0);
+        raw.map((r, i) => [r - pct[i], i] as const).sort((x, y) => y[0] - x[0])
+          .forEach(([, i]) => { if (left > 0) { pct[i]++; left--; } });
+        return counts.map((c, i) => ({ pct: pct[i], some: c > 0 }));
+      };
+      const keys = Object.keys(byType);
+      const typeShares = sharesOf(keys.map(k => byType[k]));
+      const geoShares = sharesOf([india, outsideIndia]);
+      const value = total > 0 ? {
+        byType: Object.fromEntries(keys.map((k, i) => [k, typeShares[i]])),
+        geography: known > 0 ? { india: geoShares[0], outsideIndia: geoShares[1] } : null,
+      } : {};
       institutionStatsCache = { at: Date.now(), value };
       res.set('Cache-Control', 'public, max-age=300');
       res.json(value);
