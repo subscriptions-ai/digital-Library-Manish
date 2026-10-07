@@ -14,6 +14,8 @@ export type SoloPlan = {
   /** Staff have granted whole-library access: there is nothing left to buy. */
   wholeLibrary: boolean;
   departments: { name: string; endDate: string }[];
+  /** When the last subscription ran out, if none is running and one has. */
+  lapsedOn?: string | null;
   allDepartments: string[];
 };
 

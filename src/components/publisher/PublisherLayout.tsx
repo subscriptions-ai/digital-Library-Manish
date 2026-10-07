@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { LogOut, Building2 } from 'lucide-react';
@@ -26,13 +26,14 @@ export function PublisherLayout({ children }: { children: React.ReactNode }) {
     <div className="app-type min-h-screen bg-ground">
       <header className="sticky top-0 z-40 bg-surface border-b border-rule">
         <div className="max-w-6xl mx-auto h-16 px-4 sm:px-6 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+          <Link to="/" title="Go to home page" aria-label="Go to the STM Digital Library home page"
+            className="flex items-center gap-3 min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
             <div className="h-9 w-9 shrink-0 flex items-center justify-center bg-accent-soft text-accent rounded-lg" aria-hidden="true"><Building2 size={18} /></div>
             <div className="min-w-0">
               <p className="font-bold text-ink leading-tight truncate">Publisher Portal</p>
               <p className="text-xs text-muted truncate">STM Digital Library</p>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-3 shrink-0">
             <span className="text-sm text-ink-2 hidden sm:block max-w-[220px] truncate">{profile?.displayName || profile?.email}</span>
             <button onClick={signOut} className="btn btn-outline btn-sm" aria-label="Sign Out">

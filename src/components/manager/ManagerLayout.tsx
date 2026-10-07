@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, FileText, CreditCard, LogOut, ChevronLeft, Menu, Bell, UserPlus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { Spinner } from '../ui';
 
@@ -59,12 +59,13 @@ export function ManagerLayout({ children }: ManagerLayoutProps) {
       <aside className={`sticky top-0 h-screen self-start bg-emerald-950 text-white flex flex-col transition-[width] duration-200 shrink-0 ${isSidebarOpen ? 'w-64' : 'w-16 sm:w-20'}`}>
         <div className={`flex items-center gap-2 px-3 py-4 sm:px-4 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
-            <div className="flex items-center gap-2 font-bold tracking-tight min-w-0">
+            <Link to="/" title="Go to home page" aria-label="Go to the STM Digital Library home page"
+              className="flex items-center gap-2 font-bold tracking-tight min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
               <div className="h-8 w-8 bg-emerald-600 rounded-lg flex items-center justify-center shrink-0" aria-hidden="true">
                 <Bell size={18} />
               </div>
               <span className="text-base truncate">SALES PORTAL</span>
-            </div>
+            </Link>
           )}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}

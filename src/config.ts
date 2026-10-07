@@ -34,6 +34,14 @@ export const COMPANY_DETAILS = {
    */
   state: "Delhi",
 
+  /** Upper-case form of the registered name, as quotations print it in the letterhead and terms. */
+  registeredName: "IT BREAK COM PRIVATE LIMITED",
+  /** The registered office, shown on the quotation letterhead. */
+  registeredAddress: "LGF, 40, National Park, Lajpat Nagar IV, New Delhi, Delhi 110024",
+  /** The sales office, which is also where cheques and demand drafts are sent. */
+  salesOffice: "A-118, 1st Floor, Sector 63, Noida, U.P., India",
+  salesOfficeStateCode: "09",
+
   address: "A-118, 1st Floor, Sector 63, Noida, Uttar Pradesh, India - 201301",
   /** Shorter form used inside document footers. */
   registeredOffice: "A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India",
@@ -75,6 +83,10 @@ export const BANK_ROWS: [string, string][] = [
 export function currentIssuer() {
   return {
     legalName: COMPANY_DETAILS.legalName,
+    registeredName: COMPANY_DETAILS.registeredName,
+    registeredAddress: COMPANY_DETAILS.registeredAddress,
+    salesOffice: COMPANY_DETAILS.salesOffice,
+    salesOfficeStateCode: COMPANY_DETAILS.salesOfficeStateCode,
     positioning: COMPANY_DETAILS.positioning,
     gstin: COMPANY_DETAILS.gstin,
     pan: COMPANY_DETAILS.pan,
@@ -85,6 +97,7 @@ export function currentIssuer() {
     registeredOffice: COMPANY_DETAILS.registeredOffice,
     email: COMPANY_DETAILS.email,
     tel: [...COMPANY_DETAILS.tel],
+    mobile: COMPANY_DETAILS.mobile,
     bank: { ...COMPANY_DETAILS.bank },
   };
 }

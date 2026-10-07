@@ -4,11 +4,14 @@ import { toast } from 'react-hot-toast';
 import { format, formatDistanceToNowStrict, isPast } from 'date-fns';
 import {
   FileText, Search, RefreshCw, Inbox, Plus, Mail, Building2,
-  Clock, AlertTriangle, CheckCircle2,
+  Clock, AlertTriangle, CheckCircle2, Download, Pencil, Printer,
 } from 'lucide-react';
+import { docOfRow, rowToRender, statusLabel } from '../../lib/quotation/quotationModel';
+import { downloadQuotationPdf } from '../../lib/quotation/quotationPdf';
+import { printQuotation } from '../../lib/quotation/quotationPrint';
 import { Button, Dialog, EmptyState, ErrorState, MetricCard, SkeletonRows, StatusBadge } from '../ui';
 
-const ALL_STATUSES = ['All', 'Pending', 'Sent', 'Downloaded', 'Approved', 'Paid', 'Cancelled'];
+const ALL_STATUSES = ['All', 'Pending', 'Sent', 'Downloaded', 'Approved', 'Expired', 'Paid', 'Cancelled'];
 
 const inr = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
@@ -138,7 +141,7 @@ export function MyQuotations() {
                   : 'border-rule bg-surface text-ink-2 hover:bg-surface-2'
               }`}
             >
-              {s}
+              {s === 'All' ? s : statusLabel(s)}
             </button>
           ))}
         </div>
@@ -197,7 +200,7 @@ export function MyQuotations() {
                           ? <span className="badge badge-caution"><AlertTriangle size={12} aria-hidden="true" /> Expired</span>
                           : <span className="text-muted">{q.expiresAt ? format(new Date(q.expiresAt), 'd MMM yyyy') : '—'}</span>}
                       </td>
-                      <td><StatusBadge status={q.status} /></td>
+                      <td><StatusBadge status={q.status} label={statusLabel(q.status)} /></td>
                     </tr>
                   );
                 })}
@@ -215,13 +218,27 @@ export function MyQuotations() {
         title={selected ? (
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-sm">{selected.id}</span>
-            <StatusBadge status={selected.status} />
+            <StatusBadge status={selected.status} label={statusLabel(selected.status)} />
           </span>
         ) : ''}
         description={selected ? <span className="text-xl font-bold tabular-nums text-ink">{inr(selected.total)}</span> : undefined}
       >
         {selected && (
           <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => downloadQuotationPdf(rowToRender(selected)).catch(() => toast.error('Could not create the PDF.'))}>
+                <Download size={14} aria-hidden="true" /> Download PDF
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => printQuotation(rowToRender(selected))}>
+                <Printer size={14} aria-hidden="true" /> Print
+              </Button>
+              {selected.status !== 'Paid' && docOfRow(selected) && (
+                <Button size="sm" variant="outline" onClick={() => navigate(`/sales/quotations/create?edit=${encodeURIComponent(selected.id)}`)}>
+                  <Pencil size={14} aria-hidden="true" /> Edit
+                </Button>
+              )}
+            </div>
+
             <DrawerSection title="Customer">
               <dl className="grid gap-3 text-sm sm:grid-cols-2">
                 <div><dt className="text-xs text-muted">Name</dt><dd className="font-medium text-ink">{selected.userName}</dd></div>

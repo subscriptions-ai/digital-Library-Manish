@@ -8,6 +8,8 @@ import {
 } from '../../lib/institutionPricing';
 import { SESSION_MS, SESSIONS_PER_DAY, HOLD_MS } from '../../lib/freeAllowance';
 import { usePricing } from './pricing/PricingContext';
+import { AnnualPricingBlock } from '../pricing/AnnualPricingBlock';
+import { getInstitutionPricingDisplay } from '../../lib/pricingDisplay';
 import { FROM_PRICE, seatsLabel, uniqueDepartments } from './pricing/PlanWidgets';
 import { Badge, EmptyState, Skeleton, StatusBadge, buttonClass } from '../ui';
 
@@ -207,6 +209,17 @@ export function InstitutionSubscriptions() {
             )}
           </div>
         </div>
+
+        {/* The price list sits with the section it prices; the rate that applies is marked once
+            departments are held. */}
+        <AnnualPricingBlock
+          className="mt-4"
+          pricing={getInstitutionPricingDisplay()}
+          count={departments.length}
+          applied={departments.length
+            ? `Your ${departments.length} department${departments.length === 1 ? '' : 's'} ${departments.length === 1 ? 'is' : 'are'} priced in the tier marked below; departments you add are priced for your new total.`
+            : 'Departments are priced by how many your institution holds in total.'}
+        />
 
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={subscribe} className={btnPrimary}>

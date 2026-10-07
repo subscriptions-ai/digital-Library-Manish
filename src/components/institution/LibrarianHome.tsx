@@ -345,7 +345,7 @@ export function LibrarianHome() {
             context={!plan ? undefined
               : plan.unlimitedSeats || plan.seats.capacity == null ? 'No cap on users on the current plan'
               : !plan.hasSubscription || !plan.seats.capacity ? 'Subscribe to a department to add users'
-              : `${n(plan.seats.available ?? 0)} places left`}
+              : `${n(plan.seats.available ?? 0)} places left · includes your librarian account`}
             to="/institution/students" />
         </div>
       </section>

@@ -92,12 +92,12 @@ function PlanComparison({ pro, institution, sessionsPerDay }: {
     <section>
       <div className="mb-3 flex items-center gap-2">
         <Users size={16} className="text-muted" aria-hidden="true" />
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Free beside Pro</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Compare subscriptions</h2>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <PlanCard title="Free membership" tag="What you have now" active={!pro} tone="free"
+        <PlanCard title="Free Subscription" tag="What you have now" active={!pro} tone="free"
           items={rows.map(r => ({ text: r.free, yes: r.freeHas }))} />
-        <PlanCard title="Pro membership" tag="What changes" active={pro} tone="pro"
+        <PlanCard title="Premium Subscription" tag="What changes" active={pro} tone="pro"
           items={rows.map(r => ({ text: r.proText, yes: true }))} />
       </div>
       <p className="mt-3 text-xs leading-relaxed text-muted">
@@ -188,8 +188,8 @@ export function ProMembership() {
       <>
       <PageHeader
         className="mb-0"
-        eyebrow="Membership"
-        title={pro ? 'You read without a limit' : 'Your free membership'}
+        eyebrow="Subscription"
+        title={pro ? 'You read without a limit' : 'Your Free Subscription'}
       />
 
       {/* ── 1. what you can read now ──────────────────────────────────────── */}
@@ -198,7 +198,7 @@ export function ProMembership() {
           <div className="flex items-start gap-3">
             <InfinityIcon className="mt-0.5 shrink-0 text-accent" size={20} aria-hidden="true" />
             <div>
-              <p className="text-sm font-semibold text-ink">Pro membership is active</p>
+              <p className="text-sm font-semibold text-ink">Premium Subscription is active</p>
               <p className="mt-1 text-sm text-muted">
                 The whole library, for as long as you like. No sessions, no waiting.
               </p>
@@ -209,7 +209,7 @@ export function ProMembership() {
             <StatusBadge status="free-preview" className="mb-3" />
             {lapsed && (
               <p className="mb-4 rounded-lg border border-caution bg-caution-soft px-3 py-2 text-sm text-ink-2">
-                Your {lapsed.planName || 'Pro membership'} ended on <b>{date(lapsed.endDate)}</b>, so you are back
+                Your {lapsed.planName || 'Premium Subscription'} ended on <b>{date(lapsed.endDate)}</b>, so you are back
                 on the free allowance. Nothing has been taken away — the whole library is still yours to read,
                 half an hour at a time.
               </p>
@@ -260,7 +260,7 @@ export function ProMembership() {
               {/* A Pro membership covers no particular department, so the plan's
                   own name is what it is called. Heading it with the department
                   left the first Pro member looking at a card with no title. */}
-              <h3 className="type-card-title text-ink">{current.domainName || current.planName || 'Membership'}</h3>
+              <h3 className="type-card-title text-ink">{current.domainName || current.planName || 'Subscription'}</h3>
               <p className="font-mono text-xs text-muted">{daysLeft(current.endDate)} days left</p>
             </div>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-rule">
@@ -282,7 +282,7 @@ export function ProMembership() {
           </>
         ) : (
           <p className="mt-2 text-sm text-muted">
-            A free membership does not expire. Your four sessions come back every day at midnight.
+            A Free Subscription does not expire. Your four sessions come back every day at midnight.
           </p>
         )}
       </section>
@@ -369,7 +369,7 @@ export function ProMembership() {
           <ul className="mt-3 divide-y divide-rule">
             {previous.map((s: any) => (
               <li key={s.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm">
-                <span className="text-ink">{s.domainName || s.planName || 'Membership'}</span>
+                <span className="text-ink">{s.domainName || s.planName || 'Subscription'}</span>
                 <span className="font-mono text-xs text-muted">
                   {date(s.startDate)} — {date(s.endDate)} · {s.status}
                 </span>

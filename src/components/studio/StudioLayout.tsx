@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { FileText, LogOut, PenLine, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Spinner } from '../ui';
@@ -36,13 +36,14 @@ export function StudioLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-type flex min-h-screen bg-ground text-ink">
       <aside className="hidden w-60 shrink-0 flex-col border-r border-rule bg-surface p-3 md:flex">
-        <div className="flex items-center gap-2.5 px-2 py-3">
+        <Link to="/" title="Go to home page" aria-label="Go to the STM Digital Library home page"
+          className="flex items-center gap-2.5 px-2 py-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
           <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
           <span className="leading-tight">
             <span className="block font-serif text-[15px] font-medium text-ink">Studio</span>
             <span className="block font-mono text-[11px] uppercase tracking-[0.14em] text-faint">The blog</span>
           </span>
-        </div>
+        </Link>
 
         <nav aria-label="Studio" className="mt-4 space-y-1">
           <NavLink to="/studio" end className={link}><FileText size={16} aria-hidden="true" /> Posts</NavLink>
