@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell, FileText, Sparkles, Menu, X, ArrowRight } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Spinner } from '../ui';
@@ -118,10 +118,11 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
               >
                 {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
               </button>
-              <div className="flex items-center gap-2 font-bold text-base sm:text-lg tracking-tight text-ink min-w-0">
+              <Link to="/" title="Go to home page" aria-label="Go to the STM Digital Library home page"
+                className="flex items-center gap-2 font-bold text-base sm:text-lg tracking-tight text-ink min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                 <Target size={20} className="text-accent shrink-0" aria-hidden="true" />
                 <span className="truncate">Sales Workspace</span>
-              </div>
+              </Link>
             </div>
             <div className="flex items-center gap-1 sm:gap-3 shrink-0">
               <div className="sm:relative" onClick={e => e.stopPropagation()}>

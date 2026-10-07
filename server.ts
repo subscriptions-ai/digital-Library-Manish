@@ -22,6 +22,7 @@ import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
+import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, type QuoteDoc } from "./src/lib/quotation/quotationModel.js";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
@@ -956,9 +957,11 @@ async function startServer() {
           registrantType: type,
           state: state ? String(state).slice(0, 80) : null,
           country: country ? String(country).slice(0, 80) : null,
-          // The same number when they said it was the same, so nothing
-          // downstream has to know the rule to reach them.
-          whatsapp: (whatsapp || contact) ? String(whatsapp || contact).slice(0, 40) : null,
+          // Only what they opted in to. The form sends the contact number
+          // itself when they tick "use this number for WhatsApp", so nothing
+          // downstream has to know the rule — and a member who did not tick it
+          // is not given a WhatsApp number by falling back to the phone one.
+          whatsapp: whatsapp ? String(whatsapp).slice(0, 40) : null,
           role: accountRole,
           institutionId: newInstitutionId,
           status: "Active",
@@ -1373,7 +1376,14 @@ async function startServer() {
       (Array.isArray(s.domains) ? s.domains : [])
         .filter((name: string) => soloDepartmentNames.has(name))
         .map((name: string) => ({ name, endDate: s.endDate })));
-    return { wholeLibrary, departments };
+    // When the last one ran out, so the sidebar can say "expired" rather than "free" to someone
+    // whose access has ended. Nothing is priced from this.
+    const lapsed = subs.length ? null : await prisma.subscription.findFirst({
+      where: { userId, institutionId: null, endDate: { lte: now } },
+      orderBy: { endDate: 'desc' },
+      select: { endDate: true },
+    });
+    return { wholeLibrary, departments, lapsedOn: lapsed?.endDate ?? null };
   };
 
   /** Prices the departments asked for. Those already held are not sold again. */
@@ -1400,6 +1410,7 @@ async function startServer() {
         state: me.state,
         wholeLibrary: held.wholeLibrary,
         departments: held.departments,
+        lapsedOn: held.lapsedOn,
         allDepartments: DOMAINS.map((d: any) => d.name),
         pricing: {
           standardRate: SOLO_RATE_STANDARD, bulkRate: SOLO_RATE_BULK,
@@ -6796,19 +6807,17 @@ async function startServer() {
   });
 
   // ========================
-  // Generate next sequential quotation number
+  // The next quotation number, in the form ITB/SDL/<financial year>/<sequence>.
+  // Numbers are the quotation's id, so the next one is one past the highest issued this year.
+  const nextQuotationNumber = async (): Promise<string> => {
+    const prefix = quoteNoPrefix();
+    const rows = await (prisma as any).quotation.findMany({ where: { id: { startsWith: prefix } }, select: { id: true } });
+    return nextQuoteNo(rows.map((r: any) => r.id));
+  };
+
   app.get("/api/quotation/next-number", authenticateJWT, requireSalesRole, async (_req: any, res: any) => {
     try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const prefix = `QTN-${year}-${month}-`;
-      // Count existing quotations with this month prefix
-      const count = await (prisma as any).quotation.count({
-        where: { id: { startsWith: prefix } }
-      });
-      const seq = String(count + 1).padStart(2, '0');
-      res.json({ quotationNumber: `${prefix}${seq}` });
+      res.json({ quotationNumber: await nextQuotationNumber() });
     } catch (error) {
       console.error("Next quotation number error:", error);
       res.status(500).json({ error: "Failed to generate quotation number" });
@@ -10158,15 +10167,6 @@ async function startServer() {
     }
   });
 
-  app.get("/api/library/stats", async (_req: any, res: any) => {
-    try {
-      // These are the figures the homepage and every department heading share,
-      // so they come from the articles rather than from a counter that two
-      // separate jobs are responsible for keeping current.
-      // Counted where everything else counts it, so the home page and this
-      // page cannot quote different figures for the same shelf.
-      const [counts, byDomain, authors, departmentTotals] = await Promise.all([
-        collectionCounts(),
   /**
    * The homepage's "Academic Community" figures: counts only, never a name.
    *
@@ -10249,6 +10249,15 @@ async function startServer() {
     }
   });
 
+  app.get("/api/library/stats", async (_req: any, res: any) => {
+    try {
+      // These are the figures the homepage and every department heading share,
+      // so they come from the articles rather than from a counter that two
+      // separate jobs are responsible for keeping current.
+      // Counted where everything else counts it, so the home page and this
+      // page cannot quote different figures for the same shelf.
+      const [counts, byDomain, authors, departmentTotals] = await Promise.all([
+        collectionCounts(),
         (prisma as any).$queryRawUnsafe(`
           select a."domain" as domain,
                  count(distinct a."journalId")::int as journals,
@@ -11853,12 +11862,12 @@ async function startServer() {
     }
   });
 
-  // Get recent quotation for autofill
-  app.get("/api/quotation/customer/:email", async (req, res) => {
+  // Look up the customer's latest quotation, so a repeat quotation can be pre-filled.
+  app.get("/api/quotation/customer/:email", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const email = req.params.email;
       const q = await (prisma as any).quotation.findFirst({
-        where: { userEmail: email },
+        where: { userEmail: { equals: email, mode: 'insensitive' } },
         orderBy: { createdAt: 'desc' }
       });
       if (q) {
@@ -11871,102 +11880,161 @@ async function startServer() {
     }
   });
 
-  // Save Quotation (Download action)
+  // One quotation, to open it in the builder. Admins and managers can open any; a
+  // salesperson only the ones they raised.
+  app.get("/api/quotation/record", authenticateJWT, requireSalesRole, async (req: any, res) => {
+    try {
+      const id = String(req.query.id || '');
+      if (!id) return res.status(400).json({ error: "Quotation number required" });
+      const q = await (prisma as any).quotation.findUnique({ where: { id } });
+      if (!q) return res.status(404).json({ error: "Quotation not found" });
+      const staff = req.user?.role === 'SuperAdmin' || req.user?.role === 'SubscriptionManager';
+      if (!staff && q.createdBy !== req.user?.email) return res.status(403).json({ error: "This quotation was raised by someone else" });
+      res.json(q);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load quotation" });
+    }
+  });
+
+  /**
+   * Check and normalise the quotation the builder sends. Everything priced is
+   * recomputed from these inputs by `docToRow`, so a total posted by the browser
+   * is never believed.
+   */
+  const parseQuoteDoc = (raw: any): { doc: QuoteDoc } | { error: string } => {
+    const str = (v: any, max = 500) => String(v ?? '').trim().slice(0, max);
+    if (!raw || typeof raw !== 'object') return { error: 'Quotation details are missing.' };
+    const quoteNo = str(raw.quoteNo, 60);
+    if (!/^[A-Za-z0-9][A-Za-z0-9/_.\- ]*$/.test(quoteNo)) return { error: 'Enter a valid quotation number.' };
+    const instName = str(raw.instName, 200);
+    if (!instName) return { error: 'Enter the institution name.' };
+    const email = str(raw.email, 200);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid client email.' };
+    // Each department once, in the order chosen, so the count and the printed list always agree.
+    const departments: string[] = Array.isArray(raw.departments) ? [...new Set<string>(raw.departments.map((d: any) => str(d, 100)).filter(Boolean))] : [];
+    if (!departments.length) return { error: 'Select at least one department.' };
+    if (departments.some(d => !QUOTE_DEPARTMENTS.includes(d))) return { error: 'One of the departments is not recognised.' };
+    const state = str(raw.state, 100);
+    if (!stateCodeOf(state)) return { error: 'Select the State / UT so GST is calculated correctly.' };
+    const quoteDate = str(raw.quoteDate, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(quoteDate)) return { error: 'Enter a valid quotation date.' };
+    const nonNeg = (v: any) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : NaN; };
+    const totalUsers = Math.floor(Number(raw.totalUsers));
+    if (!Number.isFinite(totalUsers) || totalUsers < 1 || totalUsers > 100000) return { error: 'Enter the total number of users (at least 1).' };
+    const deptMode = raw.deptMode === 'custom' ? 'custom' : 'fixed';
+    const userMode = raw.userMode === 'custom' ? 'custom' : 'fixed';
+    const customDeptRate = raw.customDeptRate === null || raw.customDeptRate === '' || raw.customDeptRate === undefined ? null : nonNeg(raw.customDeptRate);
+    const customUserRate = raw.customUserRate === null || raw.customUserRate === '' || raw.customUserRate === undefined ? null : nonNeg(raw.customUserRate);
+    if (deptMode === 'custom' && (customDeptRate === null || Number.isNaN(customDeptRate))) return { error: 'Enter the custom department rate.' };
+    const includeFive = raw.includeFive !== false;
+    const chargeable = includeFive ? Math.max(0, totalUsers - 5) : totalUsers;
+    if (userMode === 'custom' && chargeable > 0 && (customUserRate === null || Number.isNaN(customUserRate))) return { error: 'Enter the custom user rate.' };
+    const discount = nonNeg(raw.discount ?? 0);
+    if (Number.isNaN(discount)) return { error: 'The discount must be zero or more.' };
+    const validityDays = Math.floor(Number(raw.validityDays));
+    if (!Number.isFinite(validityDays) || validityDays < 1 || validityDays > 365) return { error: 'Validity must be between 1 and 365 days.' };
+    return {
+      doc: {
+        quoteNo, quoteDate, validityDays, status: str(raw.status, 20),
+        instName, contactName: str(raw.contactName, 120), designation: str(raw.designation, 120),
+        email, phone: str(raw.phone, 40), address: str(raw.address, 600),
+        state, customerGstin: str(raw.customerGstin, 40),
+        departments, totalUsers, includeFive,
+        deptMode, customDeptRate: Number.isNaN(customDeptRate as number) ? null : customDeptRate,
+        userMode, customUserRate: Number.isNaN(customUserRate as number) ? null : customUserRate,
+        discount, specialNote: str(raw.specialNote, 1000),
+      },
+    };
+  };
+
+  const QUOTE_SETTABLE_STATUS = ['Pending', 'Sent', 'Downloaded', 'Approved', 'Expired', 'Cancelled'];
+
+  /**
+   * Create a quotation, or update one being edited. A new quotation whose number was
+   * taken in the meantime is given the next free one rather than refused.
+   */
+  const saveQuotationDoc = async (req: any, rawDoc: any, opts: { editing: boolean; status?: string; delivery?: string }) => {
+    const parsed = parseQuoteDoc(rawDoc);
+    if ('error' in parsed) return { status: 400, error: parsed.error };
+    const doc = parsed.doc;
+    const status = QUOTE_SETTABLE_STATUS.includes(opts.status || doc.status) ? (opts.status || doc.status) : 'Pending';
+    const staff = req.user?.role === 'SuperAdmin' || req.user?.role === 'SubscriptionManager';
+    const email = req.user?.email || 'System';
+
+    const customer = await (prisma as any).user.findFirst({
+      where: { email: { equals: doc.email, mode: 'insensitive' } }, select: { id: true },
+    });
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const existing = await (prisma as any).quotation.findUnique({ where: { id: doc.quoteNo } });
+      if (opts.editing) {
+        if (!existing) return { status: 404, error: 'That quotation no longer exists.' };
+        if (!staff && existing.createdBy !== email) return { status: 403, error: 'This quotation was raised by someone else.' };
+        if (existing.status === 'Paid') return { status: 409, error: 'A paid quotation can no longer be edited.' };
+      } else if (existing) {
+        doc.quoteNo = await nextQuotationNumber();
+        continue;
+      }
+      const { data, expiresAt } = docToRow({ ...doc, status });
+      const common = {
+        ...data, status, expiresAt,
+        userId: customer?.id || null,
+        deliveryMethod: opts.delivery || existing?.deliveryMethod || 'Download',
+      };
+      try {
+        const row = opts.editing
+          ? await (prisma as any).quotation.update({ where: { id: doc.quoteNo }, data: common })
+          : await (prisma as any).quotation.create({ data: { ...common, id: doc.quoteNo, issuer: currentIssuer(), createdBy: email } });
+        return { status: 200, row };
+      } catch (e: any) {
+        // Someone took the number between the check and the write: try again with the next one.
+        if (e?.code === 'P2002' && !opts.editing) { doc.quoteNo = await nextQuotationNumber(); continue; }
+        throw e;
+      }
+    }
+    return { status: 409, error: 'Could not reserve a quotation number. Please try again.' };
+  };
+
+  // Save a quotation (create, or update the one being edited).
   app.post("/api/quotation/save", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
-      const { userEmail, userName, quotationData, userId, organization, state, duration } = req.body;
-      
-      let creatorEmail = "User / System";
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        try {
-          const token = authHeader.split(" ")[1];
-          const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
-          const decoded = jwt.verify(token, JWT_SECRET) as any;
-          if (decoded && decoded.email) creatorEmail = decoded.email;
-        } catch(e) {}
-      }
-
-      const quotationNumber = quotationData.quotationNumber;
-      
-      await (prisma as any).quotation.upsert({
-        where: { id: quotationNumber },
-        update: { 
-          status: "Downloaded",
-          deliveryMethod: "Download",
-          planType: duration,
-          createdBy: creatorEmail,
-          mobile: quotationData.mobile || null,
-          designation: quotationData.designation || null,
-          address: quotationData.address || null,
-          pincode: quotationData.pincode || null,
-          city: quotationData.city || null,
-          country: quotationData.country || null,
-          gstNumber: quotationData.gstNumber || null,
-          userCategory: quotationData.userCategory || null,
-          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null
-        },
-        create: {
-          issuer: currentIssuer(),
-          id: quotationNumber,
-          userEmail,
-          userName,
-          organization: organization || null,
-          state: state || null,
-          items: quotationData.items || [],
-          subtotal: parseFloat(quotationData.subtotal) || 0,
-          gstAmount: parseFloat(quotationData.gstAmount) || 0,
-          total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, '')) || 0,
-          status: "Downloaded",
-          deliveryMethod: "Download",
-          planType: duration,
-          userId: userId || null,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          createdBy: creatorEmail,
-          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null,
-          mobile: quotationData.mobile || null,
-          designation: quotationData.designation || null,
-          address: quotationData.address || null,
-          pincode: quotationData.pincode || null,
-          city: quotationData.city || null,
-          country: quotationData.country || null,
-          gstNumber: quotationData.gstNumber || null,
-          userCategory: quotationData.userCategory || null
-        }
-      });
-      res.json({ success: true });
+      const { doc, editing, status, delivery } = req.body || {};
+      const out: any = await saveQuotationDoc(req, doc, { editing: !!editing, status, delivery });
+      if (out.error) return res.status(out.status).json({ error: out.error });
+      res.json({ success: true, quotation: out.row });
     } catch (error) {
       console.error("Save Quotation Error:", error);
       res.status(500).json({ error: "Failed to save quotation" });
     }
   });
 
-  // Send Quotation Email
+  // Save a quotation and email it, with its PDF, to the client.
   app.post("/api/quotation/send", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
-      const { userEmail, userName, quotationData, pdfBase64, userId, organization, state, duration, quotationDate } = req.body;
-      
+      const { doc: rawDoc, editing, pdfBase64 } = req.body || {};
+      const out: any = await saveQuotationDoc(req, rawDoc, { editing: !!editing, delivery: 'Email' });
+      if (out.error) return res.status(out.status).json({ error: out.error });
+      const row = out.row;
+      const saved = row.pricingBreakdown?.doc as QuoteDoc;
+
+      const esc = (v: any) => String(v ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as any)[m]);
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      const quotationNumber = quotationData.quotationNumber;
-      const totalAmount = typeof quotationData.totalAmount === 'number'
-        ? quotationData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
-        : (quotationData.totalAmount || '0');
+      const quotationNumber: string = row.id;
+      const userName: string = saved.contactName || saved.instName;
+      const discountAmount: number = Number(row.discountAmount) || 0;
+      const validityDays: number = saved.validityDays;
+      const totalAmount = Number(row.total).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+      const subscriptionDuration = 'Annual';
 
       // Read logo for CID inline attachment
       const logoPath = path.join(process.cwd(), 'public', 'assets', 'stm-logo.png');
       const logoExists = fs.existsSync(logoPath);
 
-      // Build departments list from items
-      const items: any[] = quotationData.items || [];
-      const departmentNames: string[] = items.map((it: any) => it.domainName).filter(Boolean);
-      const departmentsHtml = departmentNames.length
-        ? departmentNames.map(d => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">✅ &nbsp;${d}</li>`).join('')
+      const departmentsHtml = saved.departments.length
+        ? saved.departments.map(d => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">✅ &nbsp;${esc(d)}</li>`).join('')
         : '<li style="color:#94a3b8;font-size:14px;">—</li>';
-
-      const issuedDate = quotationDate || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-      const subscriptionDuration = duration || (items[0]?.duration) || '—';
+      const [yy, mm, dd] = saved.quoteDate.split('-').map(Number);
+      const issuedDate = new Date(yy, mm - 1, dd).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
       const htmlBody = `<!DOCTYPE html>
 <html lang="en">
@@ -11999,7 +12067,7 @@ async function startServer() {
         <!-- ═══════════ GREETING ═══════════ -->
         <tr>
           <td style="padding:36px 48px 0;">
-            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${userName},</p>
+            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${esc(userName)},</p>
             <p style="font-size:14px;color:#475569;line-height:1.75;margin:0 0 20px;">
               Greetings from <strong>STM Digital Library</strong>!<br/>
               Thank you for your interest in our digital library subscription services.<br/>
@@ -12021,7 +12089,7 @@ async function startServer() {
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);width:55%;">Quotation Number</td>
-                      <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${quotationNumber}</td>
+                      <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${esc(quotationNumber)}</td>
                     </tr>
                     <tr>
                       <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Quotation Date</td>
@@ -12029,7 +12097,7 @@ async function startServer() {
                     </tr>
                     <tr>
                       <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Validity</td>
-                      <td style="color:#86efac;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">30 Days from Issue</td>
+                      <td style="color:#86efac;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${validityDays} Days from Issue</td>
                     </tr>
                     <tr>
                       <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Duration</td>
@@ -12042,11 +12110,11 @@ async function startServer() {
                   <ul style="margin:0 0 14px;padding-left:4px;list-style:none;">
                     ${departmentsHtml}
                   </ul>
-                  ${quotationData.discountAmount ? `
+                  ${discountAmount ? `
                   <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;">
                     <tr>
-                      <td style="color:#86efac;font-size:13px;font-weight:600;padding-bottom:6px;">Discount (${quotationData.couponCode})</td>
-                      <td style="text-align:right;color:#86efac;font-size:13px;font-weight:700;padding-bottom:6px;">-₹${quotationData.discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td style="color:#86efac;font-size:13px;font-weight:600;padding-bottom:6px;">Special Discount / Adjustment</td>
+                      <td style="text-align:right;color:#86efac;font-size:13px;font-weight:700;padding-bottom:6px;">-₹${discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     </tr>
                   </table>
                   ` : ''}
@@ -12054,7 +12122,7 @@ async function startServer() {
                   <!-- Grand Total -->
                   <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.25);padding-top:14px;margin-top:4px;">
                     <tr>
-                      <td style="color:#bfdbfe;font-size:13px;font-weight:600;padding-top:14px;">Total Amount (Including 18% GST)</td>
+                      <td style="color:#bfdbfe;font-size:13px;font-weight:600;padding-top:14px;">Total Amount (Including GST)</td>
                       <td style="text-align:right;padding-top:14px;">
                         <span style="color:#ffffff;font-size:22px;font-weight:900;">₹${totalAmount}</span>
                       </td>
@@ -12197,13 +12265,8 @@ async function startServer() {
 </body>
 </html>`;
 
-      const inlineAttachments: any[] = [
-        {
-          filename: `Quotation_${quotationNumber}.pdf`,
-          content: pdfBase64,
-          encoding: 'base64'
-        }
-      ];
+      const inlineAttachments: any[] = [];
+      if (pdfBase64) inlineAttachments.push({ filename: `Quotation_${quotationNumber.replace(/[\\/]+/g, '-')}.pdf`, content: pdfBase64, encoding: 'base64' });
       if (logoExists) {
         inlineAttachments.push({
           filename: 'stm-logo.png',
@@ -12212,110 +12275,22 @@ async function startServer() {
         });
       }
 
-      const mailOptions = {
+      await sendMail({
         from: `"STM Digital Library" <${emailFrom}>`,
-        to: [userEmail, process.env.ADMIN_EMAIL || COMPANY_DETAILS.email],
+        to: [row.userEmail, process.env.ADMIN_EMAIL || COMPANY_DETAILS.email],
         subject: `Quotation ${quotationNumber} — STM Digital Library`,
         html: htmlBody,
         attachments: inlineAttachments
-      };
-      await sendMail(mailOptions);
-
-      // Respond immediately after email is sent — DB save is non-blocking
-      res.json({ status: "success", message: "Quotation sent successfully" });
-
-      // Parse optional token to find creator
-      let creatorEmail = req.body.createdBy || 'System / Guest';
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        const token = authHeader.split(" ")[1];
-        try {
-          const jwt = require("jsonwebtoken");
-          const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
-          const decoded = jwt.verify(token, JWT_SECRET);
-          if (decoded && decoded.email) creatorEmail = decoded.email;
-        } catch(e) {}
-      }
-
-      // Save to PostgreSQL (fire-and-forget, never blocks the response)
-      // Replace cid:stm-logo with a public URL so it renders in browser previews
-      // Stored on the quotation and rendered in a browser and in mail, so it
-      // needs an address other people can reach — not this machine's.
-      const PUBLIC_BASE = MAIL_BASE;
-      const htmlForDb = htmlBody.replace(
-        /src="cid:stm-logo"/g,
-        `src="${PUBLIC_BASE}/assets/stm-logo.png"`
-      );
-      prisma.quotation.upsert({
-        where: { id: quotationNumber },
-        update: { 
-          status: "Sent",
-          deliveryMethod: "Email",
-          sentEmailHtml: htmlForDb,
-          planType: subscriptionDuration,
-          createdBy: creatorEmail,
-          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null,
-          mobile: quotationData.mobile || null,
-          designation: quotationData.designation || null,
-          address: quotationData.address || null,
-          pincode: quotationData.pincode || null,
-          city: quotationData.city || null,
-          country: quotationData.country || null,
-          gstNumber: quotationData.gstNumber || null,
-          userCategory: quotationData.userCategory || null
-        },
-        create: {
-          issuer: currentIssuer(),
-          id: quotationNumber,
-          userEmail,
-          userName,
-          organization: organization || null,
-          state: state || null,
-          items: quotationData.items || [],
-          subtotal: parseFloat(quotationData.subtotal) || 0,
-          gstAmount: parseFloat(quotationData.gstAmount) || 0,
-          total: parseFloat(quotationData.totalAmount?.toString().replace(/,/g, '')) || 0,
-          status: "Sent",
-          deliveryMethod: "Email",
-          planType: subscriptionDuration,
-          userId: userId || null,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          sentEmailHtml: htmlForDb,
-          createdBy: creatorEmail,
-          discountAmount: quotationData.discountAmount ? parseFloat(quotationData.discountAmount) : 0,
-          couponCode: quotationData.couponCode || null,
-          mobile: quotationData.mobile || null,
-          designation: quotationData.designation || null,
-          address: quotationData.address || null,
-          pincode: quotationData.pincode || null,
-          city: quotationData.city || null,
-          country: quotationData.country || null,
-          gstNumber: quotationData.gstNumber || null,
-          userCategory: quotationData.userCategory || null
-        }
-      }).then(async (qtn) => {
-        if (quotationData.couponCode && quotationData.discountAmount > 0) {
-          const coupon = await prisma.coupon.findUnique({ where: { code: quotationData.couponCode } });
-          if (coupon) {
-            await prisma.couponUsage.create({
-              data: {
-                couponId: coupon.id,
-                userId: userId || null,
-                orderId: quotationNumber,
-                discount: parseFloat(quotationData.discountAmount)
-              }
-            });
-            await prisma.coupon.update({
-              where: { id: coupon.id },
-              data: { usedCount: { increment: 1 } }
-            });
-          }
-        }
-      }).catch((dbErr: any) => {
-        console.warn("Quotation DB save failed (non-blocking):", dbErr?.message);
       });
 
+      // Stored on the quotation and shown in a browser, so the logo needs an address
+      // other people can reach — not this machine's.
+      const htmlForDb = htmlBody.replace(/src="cid:stm-logo"/g, `src="${MAIL_BASE}/assets/stm-logo.png"`);
+      const updated = await (prisma as any).quotation.update({
+        where: { id: quotationNumber },
+        data: { status: row.status === 'Approved' ? 'Approved' : 'Sent', deliveryMethod: 'Email', sentEmailHtml: htmlForDb },
+      });
+      res.json({ status: "success", message: "Quotation sent successfully", quotation: updated });
     } catch (error) {
       console.error("Quotation Email Error:", error);
       res.status(500).json({ error: "Failed to send quotation email" });

@@ -499,15 +499,44 @@ export const INSTITUTION_MEMBER_ROLES = [
 export const PRO_ONLY_MEMBER_ROLES: readonly string[] = ['Student'];
 
 export const REGISTRANT_TYPES = [
-  { id: 'Institute', label: 'Institute', hint: 'College, university or school' },
-  { id: 'Corporate', label: 'Corporate / Industry', hint: 'Company or R&D organisation' },
-  { id: 'Solo', label: 'Solo Learner', hint: 'Registering on your own' },
+  // The id is what is stored and what the server checks; only the label is what a person reads.
+  // Institution and Institute have never been two things, so the stored word stays as it was.
+  { id: 'Institute', label: 'Institution', hint: 'College, university or school', asksRole: true },
+  { id: 'Corporate', label: 'Corporate / Industry', hint: 'Company or R&D organisation', asksRole: true },
+  { id: 'Solo', label: 'Solo Learner', hint: 'Registering on your own', asksRole: true },
 ] as const;
 
 export type RegistrantType = typeof REGISTRANT_TYPES[number]['id'];
 
+/** The roles that belong to a Solo Learner on their own; they may also choose any other. */
+const SOLO_OWN_ROLES: string[] = [
+  'Undergraduate Student',
+  "Master's Student",
+  'PhD Scholar',
+  'Postdoctoral Researcher',
+  'Researcher / Scientist',
+  'Faculty / Academic Professional',
+  'Working Professional',
+  'Industry Professional',
+  'Entrepreneur / Founder',
+  'Consultant',
+  'Freelancer',
+  'Independent Researcher',
+  'Research Scientist',
+  'Research Associate',
+  'Principal Investigator (PI)',
+  'Research / Academic Coordinator',
+];
+
 export const DESIGNATIONS_BY_TYPE: Record<string, string[]> = {
   Institute: [
+    // Students and researchers sign up under their institution too — they are most of the people in it.
+    'Undergraduate Student',
+    "Master's Student",
+    'PhD Scholar',
+    'Postdoctoral Researcher',
+    'Researcher / Scientist',
+    'Faculty / Academic Professional',
     'Librarian',
     'Principal',
     'Vice Principal',
@@ -539,25 +568,13 @@ export const DESIGNATIONS_BY_TYPE: Record<string, string[]> = {
     'Training & Development Manager',
     'Procurement / Purchase Manager',
   ],
-  Solo: [
-    'Undergraduate Student',
-    "Master's Student",
-    'PhD Scholar',
-    'Postdoctoral Researcher',
-    'Researcher / Scientist',
-    'Faculty / Academic Professional',
-    'Working Professional',
-    'Industry Professional',
-    'Entrepreneur / Founder',
-    'Consultant',
-    'Freelancer',
-    'Independent Researcher',
-    'Research Scientist',
-    'Research Associate',
-    'Principal Investigator (PI)',
-    'Research / Academic Coordinator',
-  ],
+  // A Solo Learner may choose any role there is.
+  Solo: [],
 };
+
+/** Every role, once each, in the order the lists above give them. */
+const allRolesOnce = (): string[] => [...new Set([...(DESIGNATIONS_BY_TYPE.Institute || []), ...(DESIGNATIONS_BY_TYPE.Corporate || []), ...SOLO_OWN_ROLES])];
+DESIGNATIONS_BY_TYPE.Solo = allRolesOnce();
 
 /**
  * The same roles, gathered into the handful of kinds a person recognises.
@@ -570,6 +587,8 @@ export const DESIGNATIONS_BY_TYPE: Record<string, string[]> = {
  */
 export const DESIGNATION_GROUPS: Record<string, { label: string; roles: string[] }[]> = {
   Institute: [
+    { label: 'Studying', roles: ['Undergraduate Student', "Master's Student", 'PhD Scholar', 'Postdoctoral Researcher'] },
+    { label: 'Research & academia', roles: ['Researcher / Scientist', 'Faculty / Academic Professional'] },
     { label: 'Library', roles: ['Librarian'] },
     { label: 'Leadership', roles: ['Principal', 'Vice Principal', 'Dean', 'Director', 'Head of Department (HOD)'] },
     { label: 'Faculty', roles: ['Professor', 'Associate Professor', 'Assistant Professor', 'Faculty Member'] },
@@ -579,16 +598,44 @@ export const DESIGNATION_GROUPS: Record<string, { label: string; roles: string[]
     { label: 'Research & development', roles: ['R&D Head', 'R&D Manager', 'Research Scientist', 'Research Associate'] },
     { label: 'Management', roles: ['Senior Manager', 'Manager', 'HR Manager', 'Accounts Manager', 'Product Manager', 'Engineering Manager', 'Technical Lead / Manager', 'Training & Development Manager', 'Procurement / Purchase Manager'] },
   ],
-  Solo: [
-    { label: 'Studying', roles: ['Undergraduate Student', "Master's Student", 'PhD Scholar', 'Postdoctoral Researcher'] },
-    { label: 'Research & academia', roles: ['Researcher / Scientist', 'Faculty / Academic Professional', 'Independent Researcher', 'Research Scientist', 'Research Associate', 'Principal Investigator (PI)', 'Research / Academic Coordinator'] },
-    { label: 'Working', roles: ['Working Professional', 'Industry Professional', 'Entrepreneur / Founder', 'Consultant', 'Freelancer'] },
-  ],
+  // A Solo Learner is one person with no organisation behind them, so every role is on offer:
+  // their own, then the library, leadership, faculty and corporate roles of the other two.
+  Solo: [],
+};
+
+DESIGNATION_GROUPS.Solo = (() => {
+  const seen = new Set<string>();
+  const merged: { label: string; roles: string[] }[] = [];
+  const add = (label: string, roles: string[]) => {
+    const fresh = roles.filter(r => !seen.has(r));
+    fresh.forEach(r => seen.add(r));
+    if (!fresh.length) return;
+    const existing = merged.find(g => g.label === label);
+    if (existing) existing.roles.push(...fresh); else merged.push({ label, roles: fresh });
+  };
+  add('Studying', ['Undergraduate Student', "Master's Student", 'PhD Scholar', 'Postdoctoral Researcher']);
+  add('Research & academia', ['Researcher / Scientist', 'Faculty / Academic Professional', 'Independent Researcher', 'Research Scientist', 'Research Associate', 'Principal Investigator (PI)', 'Research / Academic Coordinator']);
+  add('Working', ['Working Professional', 'Industry Professional', 'Entrepreneur / Founder', 'Consultant', 'Freelancer']);
+  for (const type of ['Institute', 'Corporate'] as const) {
+    for (const g of DESIGNATION_GROUPS[type]) add(g.label, g.roles);
+  }
+  return merged;
+})();
+
+/**
+ * The handful of roles most people at each kind of place hold, offered first so that most
+ * members never open the full list. Every entry is a role in DESIGNATIONS_BY_TYPE for that type
+ * — the server only keeps a designation it recognises.
+ */
+export const POPULAR_DESIGNATIONS: Record<string, string[]> = {
+  Institute: ['Librarian', 'Faculty / Academic Professional', 'Professor', 'Researcher / Scientist', 'Undergraduate Student', 'PhD Scholar', 'Dean', 'Head of Department (HOD)'],
+  Corporate: ['R&D Manager', 'Research Scientist', 'Research Associate', 'Department Head', 'Manager', 'Technical Lead / Manager', 'Product Manager', 'CEO / Managing Director'],
+  Solo: ['Undergraduate Student', "Master's Student", 'PhD Scholar', 'Researcher / Scientist', 'Independent Researcher', 'Faculty / Academic Professional', 'Working Professional', 'Librarian'],
 };
 
 /** Every designation there is, for checking one that arrives from a form. */
 export const ALL_DESIGNATIONS: string[] =
-  Object.values(DESIGNATIONS_BY_TYPE).flat();
+  [...new Set(Object.values(DESIGNATIONS_BY_TYPE).flat())];
 
 /**
  * The designations that come with the institution dashboard rather than the
@@ -636,3 +683,24 @@ export const COUNTRIES = [
   'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe',
   'Other',
 ];
+
+/**
+ * Dialling codes for the countries the form offers, so a number is stored with the code it was
+ * given under rather than as ten digits that could belong to anyone. 'Other' has none: that
+ * member types the code themselves.
+ */
+export const COUNTRY_DIAL_CODES: Record<string, string> = {
+  'India': '+91', 'Afghanistan': '+93', 'Australia': '+61', 'Bangladesh': '+880', 'Bhutan': '+975',
+  'Brazil': '+55', 'Canada': '+1', 'China': '+86', 'Egypt': '+20', 'Ethiopia': '+251',
+  'France': '+33', 'Germany': '+49', 'Ghana': '+233', 'Indonesia': '+62', 'Iran': '+98',
+  'Iraq': '+964', 'Ireland': '+353', 'Israel': '+972', 'Italy': '+39', 'Japan': '+81',
+  'Jordan': '+962', 'Kenya': '+254', 'Kuwait': '+965', 'Malaysia': '+60', 'Maldives': '+960',
+  'Mauritius': '+230', 'Mexico': '+52', 'Morocco': '+212', 'Myanmar': '+95', 'Nepal': '+977',
+  'Netherlands': '+31', 'New Zealand': '+64', 'Nigeria': '+234', 'Oman': '+968', 'Pakistan': '+92',
+  'Philippines': '+63', 'Poland': '+48', 'Portugal': '+351', 'Qatar': '+974', 'Russia': '+7',
+  'Saudi Arabia': '+966', 'Singapore': '+65', 'South Africa': '+27', 'South Korea': '+82',
+  'Spain': '+34', 'Sri Lanka': '+94', 'Sweden': '+46', 'Switzerland': '+41', 'Tanzania': '+255',
+  'Thailand': '+66', 'Turkey': '+90', 'Uganda': '+256', 'Ukraine': '+380',
+  'United Arab Emirates': '+971', 'United Kingdom': '+44', 'United States': '+1', 'Vietnam': '+84',
+  'Yemen': '+967', 'Zambia': '+260', 'Zimbabwe': '+263',
+};

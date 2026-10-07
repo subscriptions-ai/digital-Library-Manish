@@ -76,7 +76,7 @@ export function WhatsAppFloatingButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with STM Digital Library on WhatsApp"
-      className={`group fixed right-[var(--fab-right)] ${position} mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))] z-40 flex h-12 w-12 items-center justify-center gap-2 rounded-full bg-[#25D366] text-white shadow-[var(--shadow-pop)] transition-[margin,background-color] duration-200 hover:bg-[#1ebe5b] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 sm:h-14 sm:w-14`}
+      className={`${pathname === '/signup' ? 'fab-avoid-form ' : ''}group fixed right-[var(--fab-right)] ${position} mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))] z-40 flex h-12 w-12 items-center justify-center gap-2 rounded-full bg-[#25D366] text-white shadow-[var(--shadow-pop)] transition-[margin,background-color] duration-200 hover:bg-[#1ebe5b] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 sm:h-14 sm:w-14`}
     >
       <WhatsAppIcon className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" />
       <span

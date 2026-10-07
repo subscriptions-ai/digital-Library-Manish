@@ -22,7 +22,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ReadingClock, useAllowance } from './membership/ReadingClock';
-import { SoloPlanMiniCard } from './solo/SoloPlanMiniCard';
+import { SubscriptionSidebarCard } from './subscription/SubscriptionSidebarCard';
 import { dashboardTitle, affiliation } from '../lib/identity';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FeedbackWidget } from './dashboard/FeedbackWidget';
@@ -199,7 +199,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <p className="truncate text-sm font-medium text-ink-2">{profile.organization}</p>
           </div>
         )}
-        {isSidebarOpen && <SoloPlanMiniCard />}
+        <SubscriptionSidebarCard collapsed={!isSidebarOpen} />
         <div className="border-t border-rule p-3">
           <button
             type="button"

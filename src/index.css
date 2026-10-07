@@ -661,3 +661,6 @@ body {
    bottom of the screen (the install card, the cookie notice). */
 :root { --fab-bottom: 24px; --fab-right: 24px; --fab-gap: 12px; }
 @media (max-width: 639px) { :root { --fab-bottom: 16px; --fab-right: 16px; } }
+/* On the signup form the chat button steps aside while a field is being filled in, so it never
+   sits over the number being typed, the WhatsApp tick or Create Account. */
+body:has(#signup-form :is(input, select, textarea, button):focus) .fab-avoid-form { opacity: 0; pointer-events: none; }

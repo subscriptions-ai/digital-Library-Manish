@@ -9,7 +9,7 @@ import { dashboardTitle, affiliation } from '../../lib/identity';
 import { ReadingClock, useAllowance } from '../membership/ReadingClock';
 import { Sparkles } from 'lucide-react';
 import { PricingProvider, usePricing } from './pricing/PricingContext';
-import { PlanMiniCard } from './pricing/PlanWidgets';
+import { SubscriptionSidebarCard } from '../subscription/SubscriptionSidebarCard';
 import { PLAN_CHANGED } from './pricing/planApi';
 
 interface InstitutionLayoutProps {
@@ -102,7 +102,8 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             half out of sight. The nav still scrolls, but only on a shorter screen. */}
         <div className={`flex items-center gap-2 px-5 py-4 ${!collapsed ? 'justify-between' : 'justify-center'}`}>
           {!collapsed && (
-            <div className="flex min-w-0 items-center gap-2.5 font-extrabold tracking-tight text-ink">
+            <Link to="/" title="Go to home page" aria-label="Go to the STM Digital Library home page"
+              className="flex min-w-0 items-center gap-2.5 font-extrabold tracking-tight text-ink rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
               {profile.institutionProfile?.logoUrl ? (
                 <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 bg-surface shadow-sm border border-accent/30">
                   <img src={profile.institutionProfile.logoUrl} alt="" className="w-full h-full object-cover" />
@@ -113,7 +114,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
                 </div>
               )}
               <span className="text-sm truncate">{profile.organization || 'INSTITUTION'}</span>
-            </div>
+            </Link>
           )}
           {/* On a phone this closes the drawer; from tablet width up it folds the rail to icons. */}
           <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close menu"
@@ -174,10 +175,8 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           />
         </nav>
 
-        {/* The plan, where the prototype puts it: the free preview with the way to
-            Premium, or what is running and the seats it has. An account that is
-            not the librarian has no plan to show, and keeps the Pro card. */}
-        {!collapsed && <RailPlan timed={!!allowance?.timed} onPro={() => navigate('/institution/membership')} />}
+        {/* The subscription, directly above Sign Out: what is running, or the way to it. */}
+        <SubscriptionSidebarCard collapsed={collapsed} />
 
         {/* Who is signed in is named in the top bar, on every page. Saying it
             a second time at the foot of the rail cost the height that pushed
@@ -292,21 +291,6 @@ function PlanNavItem({ timed, collapsed, pathname, navigate }: {
     <NavButton icon={<Sparkles size={18} />} label="Membership"
       active={pathname === '/institution/membership'} collapsed={collapsed}
       onClick={() => navigate('/institution/membership')} />
-  );
-}
-
-function RailPlan({ timed, onPro }: { timed: boolean; onPro: () => void }) {
-  const pricing = usePricing();
-  if (pricing?.plan) return <PlanMiniCard />;
-  if (pricing?.loading || !timed) return null;
-  return (
-    <div className="mx-3 mb-2 rounded-xl bg-accent px-4 py-3 text-accent-on">
-      <p className="text-[11px] font-semibold uppercase tracking-wider opacity-80">Free membership</p>
-      <p className="mt-1 text-[13px] font-semibold leading-snug">Read without a limit</p>
-      <button type="button" onClick={onPro} className="mt-2.5 h-8 w-full rounded-lg bg-white/15 text-[12px] font-semibold transition-colors hover:bg-white/25">
-        Explore Subscription Options
-      </button>
-    </div>
   );
 }
 

@@ -33,8 +33,8 @@ import { ContentSources } from "./components/ContentSources";
 import { ContentRemoval } from "./components/ContentRemoval";
 // Lazy-loaded so the plan/price data it imports lands in its own chunk and is
 // never downloaded by public visitors — only by admins/managers who open it.
-const QuotationWizard = lazy(() =>
-  import("./components/QuotationWizard").then(m => ({ default: m.QuotationWizard }))
+const QuotationBuilder = lazy(() =>
+  import("./components/quotation/QuotationBuilder").then(m => ({ default: m.QuotationBuilder }))
 );
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { AdminDashboardHome } from "./components/admin/AdminDashboardHome";
@@ -231,7 +231,7 @@ export default function App() {
                 <Route path="/admin/analytics" element={<AdminLayout><DetailedAnalyticsPage /></AdminLayout>} />
                 <Route path="/admin/pricing" element={<AdminLayout><ContentPricingModule /></AdminLayout>} />
                 <Route path="/admin/quotations" element={<AdminLayout><QuotationManager /></AdminLayout>} />
-                <Route path="/admin/quotations/create" element={<AdminLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></AdminLayout>} />
+                <Route path="/admin/quotations/create" element={<AdminLayout><Suspense fallback={null}><QuotationBuilder /></Suspense></AdminLayout>} />
                 <Route path="/admin/receipts" element={<AdminLayout><ReceiptManager /></AdminLayout>} />
                 <Route path="/admin/publishers" element={<AdminLayout><PublisherManager /></AdminLayout>} />
                 <Route path="/admin/journals" element={<AdminLayout><AdminJournalDirectory /></AdminLayout>} />
@@ -334,7 +334,7 @@ export default function App() {
                 <Route path="/manager/requests" element={<ManagerLayout><SubscriptionRequestsPage /></ManagerLayout>} />
                 <Route path="/manager/subscriptions" element={<ManagerLayout><SubscriptionListPage /></ManagerLayout>} />
                 <Route path="/manager/quotations" element={<ManagerLayout><QuotationManager /></ManagerLayout>} />
-                <Route path="/manager/quotations/create" element={<ManagerLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></ManagerLayout>} />
+                <Route path="/manager/quotations/create" element={<ManagerLayout><Suspense fallback={null}><QuotationBuilder /></Suspense></ManagerLayout>} />
                 <Route path="/manager/users/create" element={<ManagerLayout><UserCreationPanel /></ManagerLayout>} />
 
                 {/* Admin User Management */}
@@ -353,7 +353,7 @@ export default function App() {
                 <Route path="/sales/performance" element={<SalesLayout><SalesPerformance /></SalesLayout>} />
                 <Route path="/sales/leads/:id" element={<SalesLayout><SalesLeadDetails /></SalesLayout>} />
                 <Route path="/sales/quotations" element={<SalesLayout><MyQuotations /></SalesLayout>} />
-                <Route path="/sales/quotations/create" element={<SalesLayout><Suspense fallback={null}><QuotationWizard isAdminMode={true} /></Suspense></SalesLayout>} />
+                <Route path="/sales/quotations/create" element={<SalesLayout><Suspense fallback={null}><QuotationBuilder /></Suspense></SalesLayout>} />
 
                 {/* Every public route shares the home page's chrome and typography. */}
                 <Route path="*" element={

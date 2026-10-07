@@ -10,6 +10,8 @@ import {
 import { COMPANY_DETAILS } from '../../../config';
 import { fetchQuote, payForPurchase, type InstitutionPlan, type Quote, type ServerPrice } from './planApi';
 import { downloadQuotation } from './quotationPdf';
+import { AnnualPricingBlock } from '../../pricing/AnnualPricingBlock';
+import { PRICE_LABELS, getInstitutionPricingDisplay } from '../../../lib/pricingDisplay';
 
 const gstPct = Math.round(GST_RATE * 100);
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -75,9 +77,10 @@ function PriceBox({ eyebrow, price, equation, metrics, pending }: {
           {pending ? <span className="inline-flex items-center gap-1"><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Confirming</span> : 'Confirmed price'}
         </p>
       </div>
-      <p className="tnum mt-2 text-[28px] font-bold leading-none">{formatRupees(price.total, 2)}</p>
+      <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider on-dark-2">{PRICE_LABELS.grandTotal}</p>
+      <p className="tnum mt-0.5 text-[28px] font-bold leading-none">{formatRupees(price.total, 2)}</p>
       <p className="mt-2 text-xs on-dark-2">{equation}</p>
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {metrics.map(([k, v]) => (
           <div key={k} className="rounded-lg border on-dark-edge on-dark-fill px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider on-dark-2">{k}</p>
@@ -155,6 +158,7 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
   const visible = plan.allDepartments.filter((d) => d.toLowerCase().includes(q.trim().toLowerCase()));
   const count = selected.length;
   const totalAfter = held.size + count;
+  const institutionPricing = useMemo(() => getInstitutionPricingDisplay(), []);
 
   // The live preview: the rate is the one for the institution's total after this purchase.
   const preview: ServerPrice | null = count ? (() => {
@@ -181,6 +185,7 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
       ],
       slabNote: `Applied pricing slab: ${slabLabel(totalAfter)} — ${rsText(price.rate)} per department/year.`,
       lines: selected.map((d) => ({ description: `Department subscription: ${d} (${TERM_MONTHS} months)`, quantity: 1, rate: price.rate })),
+      departments: selected,
       base: price.base, gst: price.gst, total: price.total,
       notes: [
         held.size
@@ -257,16 +262,28 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
         </div>
       </div>
 
+      {/* The price list, always: how much it costs does not wait for a selection. The tier that
+          applies is marked, counted on the institution's total after this purchase. */}
+      <AnnualPricingBlock
+        className="mt-4"
+        pricing={institutionPricing}
+        count={count ? totalAfter : 0}
+        applied={count
+          ? `${count} department${count === 1 ? '' : 's'} selected${held.size ? ` — rate for ${totalAfter} in total, including the ${held.size} you already hold` : ''}.`
+          : 'No new departments selected.'}
+      />
+
       {price && (
         <PriceBox
-          eyebrow="Annual department subscription"
+          eyebrow={PRICE_LABELS.product}
           pending={!server}
           price={price}
           equation={`${price.quantity} × ${formatRupees(price.rate)} = ${formatRupees(price.base)} + GST${held.size ? ` (rate for ${totalAfter} departments in total)` : ''}`}
           metrics={[
             ['Departments', String(price.quantity)],
-            ['Base before GST', formatRupees(price.base)],
-            [`GST @ ${gstPct}%`, formatRupees(price.gst, 2)],
+            [PRICE_LABELS.perDepartment, formatRupees(price.rate)],
+            [PRICE_LABELS.subtotal, formatRupees(price.base)],
+            [PRICE_LABELS.gst(gstPct), formatRupees(price.gst, 2)],
           ]}
         />
       )}

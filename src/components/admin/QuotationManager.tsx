@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink, Mail, FileText, Plus, Download, Receipt } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, Eye, X, ExternalLink, Mail, FileText, Plus, Download, Receipt, Pencil, Printer } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { generateReceiptPDF } from '../../lib/receiptPdf';
 import { issuerOf, bankRowsOf, statutoryLineOf } from '../../config';
+import { docOfRow, rowToRender, statusLabel } from '../../lib/quotation/quotationModel';
+import { downloadQuotationPdf } from '../../lib/quotation/quotationPdf';
+import { printQuotation } from '../../lib/quotation/quotationPrint';
+import { QuotationFrame } from '../quotation/QuotationFrame';
 
 const STATUS_COLORS: Record<string, string> = {
   Pending:   'bg-amber-100 text-amber-700 border-amber-200',
+  Expired:   'bg-orange-100 text-orange-700 border-orange-200',
   Sent:      'bg-amber-100 text-amber-700 border-amber-200',
   Downloaded:'bg-purple-100 text-purple-700 border-purple-200',
   Approved:  'bg-blue-100 text-blue-700 border-blue-200',
@@ -17,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const STATUS_ICONS: Record<string, any> = {
   Pending:   <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />,
+  Expired:   <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />,
   Sent:      <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />,
   Downloaded:<div className="w-1.5 h-1.5 rounded-full bg-purple-500" />,
   Approved:  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />,
@@ -52,6 +58,16 @@ export function QuotationManager() {
   const [creatingReceipt, setCreatingReceipt] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [rightTab, setRightTab] = useState<'quotation' | 'email'>('quotation');
+
+  // Quotations are edited in the builder, on the create route of whichever area this is.
+  const basePath = location.pathname.replace(/\/$/, '');
+  const canEdit = (q: any) => q.status !== 'Paid' && !!docOfRow(q);
+  const editQuotation = (q: any) => navigate(`${basePath}/create?edit=${encodeURIComponent(q.id)}`);
+  const downloadPdf = async (q: any) => {
+    try { await downloadQuotationPdf(rowToRender(q)); }
+    catch { toast.error('Could not create the PDF.'); }
+  };
 
 
   const fetchData = async () => {
@@ -78,7 +94,7 @@ export function QuotationManager() {
       if (q) { openPaymentModal(q); return; }
     }
     try {
-      const res = await fetch(`/api/admin/quotations/${id}`, {
+      const res = await fetch(`/api/admin/quotations/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ status })
@@ -95,7 +111,7 @@ export function QuotationManager() {
     if (!selected) return;
     setConverting(true);
     try {
-      const res = await fetch(`/api/admin/quotations/${selected.id}/convert`, {
+      const res = await fetch(`/api/admin/quotations/${encodeURIComponent(selected.id)}/convert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify(convertForm)
@@ -118,7 +134,7 @@ export function QuotationManager() {
     if (!payModal) return;
     setCreatingReceipt(true);
     try {
-      const res = await fetch(`/api/admin/quotations/${payModal.id}/receipt`, {
+      const res = await fetch(`/api/admin/quotations/${encodeURIComponent(payModal.id)}/receipt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify(payForm),
@@ -266,10 +282,10 @@ export function QuotationManager() {
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Filter tabs */}
         <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm overflow-x-auto">
-          {(['', 'Pending', 'Downloaded', 'Approved', 'Paid', 'Cancelled'] as const).map(f => (
+          {(['', 'Pending', 'Sent', 'Downloaded', 'Approved', 'Expired', 'Paid', 'Cancelled'] as const).map(f => (
             <button key={f} onClick={() => setStatusFilter(f)}
               className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${statusFilter === f ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'}`}>
-              {f || 'All'}
+              {f ? statusLabel(f) : 'All'}
             </button>
           ))}
         </div>
@@ -355,7 +371,7 @@ export function QuotationManager() {
                 <td className="px-5 py-4">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide shadow-sm ${STATUS_COLORS[g.latestStatus] || ''}`}>
                     {STATUS_ICONS[g.latestStatus]}
-                    {g.latestStatus}
+                    {statusLabel(g.latestStatus)}
                   </span>
                   <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Latest Status</div>
                 </td>
@@ -424,7 +440,7 @@ export function QuotationManager() {
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide shadow-sm ${STATUS_COLORS[q.status] || ''}`}>
                         {STATUS_ICONS[q.status]}
-                        {q.status}
+                        {statusLabel(q.status)}
                       </span>
                       <div className="mt-1.5 text-[10px] font-medium text-slate-400 flex items-center gap-1">
                         {q.deliveryMethod === 'Download' ? <><Download size={10} /> Downloaded</> : <><Mail size={10} /> Emailed</>}
@@ -439,8 +455,8 @@ export function QuotationManager() {
                         <select value={q.status} onChange={(e) => updateStatus(q.id, e.target.value)}
                           title="Change status anytime"
                           className={`text-[11px] font-bold border rounded-lg px-2 py-1.5 bg-white outline-none focus:border-blue-500 cursor-pointer ${STATUS_COLORS[q.status] || 'text-slate-700 border-slate-200'}`}>
-                          {['Pending', 'Sent', 'Downloaded', 'Approved', 'Paid', 'Cancelled'].map(s => (
-                            <option key={s} value={s} className="text-slate-700 bg-white font-medium">{s}</option>
+                          {['Pending', 'Sent', 'Downloaded', 'Approved', 'Expired', 'Paid', 'Cancelled'].map(s => (
+                            <option key={s} value={s} className="text-slate-700 bg-white font-medium">{statusLabel(s)}</option>
                           ))}
                         </select>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -448,6 +464,16 @@ export function QuotationManager() {
                             className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Details">
                             <Eye size={16} />
                           </button>
+                          <button onClick={() => downloadPdf(q)}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Download PDF">
+                            <Download size={16} />
+                          </button>
+                          {canEdit(q) && (
+                            <button onClick={() => editQuotation(q)}
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit quotation">
+                              <Pencil size={16} />
+                            </button>
+                          )}
                           {q.status === 'Approved' && (
                             <button onClick={() => { setSelected(q); setConvertForm({ startDate: '', endDate: '' }); }}
                               className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Convert to Subscription">
@@ -596,12 +622,12 @@ export function QuotationManager() {
                   <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Change Status (anytime)</p>
                     <div className="flex flex-wrap gap-2">
-                      {(['Pending', 'Approved', 'Paid', 'Cancelled'] as const).map(st => (
+                      {(['Pending', 'Sent', 'Approved', 'Expired', 'Paid', 'Cancelled'] as const).map(st => (
                         <button key={st} onClick={() => updateStatus(selected.id, st)} disabled={selected.status === st}
                           className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${selected.status === st
                             ? 'bg-slate-900 text-white border-slate-900 cursor-default'
                             : 'text-slate-600 border-slate-200 hover:bg-slate-50 active:scale-95'}`}>
-                          {selected.status === st ? `✓ ${st}` : st}
+                          {selected.status === st ? `✓ ${statusLabel(st)}` : statusLabel(st)}
                         </button>
                       ))}
                     </div>
@@ -618,8 +644,36 @@ export function QuotationManager() {
 
               </div>
 
-              {/* Right Column: Email Preview */}
+              {/* Right Column: the quotation, or the email that carried it */}
               <div className="lg:col-span-3 flex flex-col bg-slate-100 h-full min-h-0">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-5 py-2.5 shrink-0">
+                  <div className="flex gap-1">
+                    {([['quotation', 'Quotation'], ['email', 'Email sent']] as const).map(([k, label]) => (
+                      <button key={k} onClick={() => setRightTab(k)}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${rightTab === k ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    {canEdit(selected) && (
+                      <button onClick={() => editQuotation(selected)} className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1.5">
+                        <Pencil size={13} /> Edit
+                      </button>
+                    )}
+                    <button onClick={() => printQuotation(rowToRender(selected))} className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1.5">
+                      <Printer size={13} /> Print
+                    </button>
+                    <button onClick={() => downloadPdf(selected)} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 text-white hover:bg-slate-800 flex items-center gap-1.5">
+                      <Download size={13} /> Download PDF
+                    </button>
+                  </div>
+                </div>
+                {rightTab === 'quotation' ? (
+                  <div className="flex-1 overflow-y-auto p-4 md:p-6">
+                    <QuotationFrame render={rowToRender(selected)} />
+                  </div>
+                ) : (<>
                 <div className="bg-slate-800 p-3 px-5 text-white flex justify-between items-center shrink-0">
                   <div className="flex items-center gap-2">
                     {selected.deliveryMethod === 'Download' ? <Download size={16} className="text-slate-300" /> : <Mail size={16} className="text-slate-300" />}
@@ -774,6 +828,7 @@ export function QuotationManager() {
                     )}
                   </div>
                 </div>
+                </>)}
               </div>
 
             </div>

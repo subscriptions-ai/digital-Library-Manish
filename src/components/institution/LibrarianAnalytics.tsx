@@ -331,7 +331,7 @@ export function LibrarianAnalytics({
             <h2 className="text-xl font-semibold text-ink">See what your people actually read</h2>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
               Which subjects, which journals, who has never signed in, and how that changes
-              month to month. It is all here — Pro membership opens it.
+              month to month. It is all here — a Premium subscription opens it.
             </p>
             <Link to="/institution/membership" className={buttonClass('primary', 'md', 'mt-5')}>
               <Sparkles size={16} aria-hidden="true" /> Explore Subscription Options

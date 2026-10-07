@@ -132,7 +132,7 @@ export function MySubscriptions() {
                     {/* A plan that covers no particular department — a Pro
                         membership, say — has no domain name, and heading the
                         card with one left it titleless. */}
-                    <h2 className="type-card-title break-words text-ink">{sub.domainName || sub.planName || 'Membership'}</h2>
+                    <h2 className="type-card-title break-words text-ink">{sub.domainName || sub.planName || 'Subscription'}</h2>
                     {sub.allowedContentTypes && (
                       <p className="mt-1 max-w-lg text-sm text-muted">
                         Includes: {(sub.allowedContentTypes).join(', ')}

@@ -12,6 +12,8 @@ import {
 import { fetchSoloPlan, fetchSoloQuote, payForSoloSubscription, SOLO_PLAN_CHANGED, type SoloPlan } from './soloPlanApi';
 import { downloadSoloQuotation } from './soloQuotationPdf';
 import { Dialog, PageHeader, Skeleton } from '../ui';
+import { AnnualPricingBlock } from '../pricing/AnnualPricingBlock';
+import { PRICE_LABELS, getSoloPricingDisplay } from '../../lib/pricingDisplay';
 
 /**
  * Choose Your Subscription — what a Solo Learner sees right after registering, and whenever they
@@ -129,9 +131,11 @@ export function SoloSubscribe() {
     );
   }
 
-  const gstLabel = !price ? 'GST'
-    : price.gstSplit === 'cgst-sgst' ? 'GST (CGST + SGST, 18%)'
-    : price.gstSplit === 'igst' ? 'GST (IGST, 18%)' : 'GST (18%)';
+  const soloPricing = getSoloPricingDisplay();
+  const gstBase = PRICE_LABELS.gst(soloPricing.gstPercent);
+  const gstLabel = !price ? gstBase
+    : price.gstSplit === 'cgst-sgst' ? `${gstBase} (CGST + SGST)`
+    : price.gstSplit === 'igst' ? `${gstBase} (IGST)` : gstBase;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -163,11 +167,11 @@ export function SoloSubscribe() {
             <Sparkles size={16} className="text-accent" aria-hidden="true" />
             <h2 className="text-base font-semibold text-ink">Premium Subscription</h2>
           </div>
-          <p className="mt-3 text-[28px] font-bold leading-none text-ink tnum">{formatRupees(SOLO_RATE_STANDARD)}</p>
+          <p className="mt-3 text-[28px] font-bold leading-none text-ink tnum">{soloPricing.tiers[0].price}</p>
           <p className="mt-1 text-sm text-muted">per department / year</p>
           <div className="mt-3 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">{SOLO_BULK_THRESHOLD}+ Departments</p>
-            <p className="tnum text-sm font-semibold text-ink">{formatRupees(SOLO_RATE_BULK)} per department / year</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">{soloPricing.tiers[1].label}</p>
+            <p className="tnum text-sm font-semibold text-ink">{soloPricing.tiers[1].price} per department / year</p>
           </div>
           <ul className="mt-4 flex-1 space-y-2.5 text-sm text-ink-2">
             <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> No reading clock on your departments</li>
@@ -237,6 +241,14 @@ export function SoloSubscribe() {
           </div>
         </div>
 
+        {/* The price list, always: how much it costs does not wait for a selection. */}
+        <AnnualPricingBlock
+          className="mt-4"
+          pricing={soloPricing}
+          count={count}
+          applied={count ? `${count} department${count === 1 ? '' : 's'} selected.` : 'No new departments selected.'}
+        />
+
         {preview && preview.toUnlockBulk > 0 && (
           <p role="status" className="mt-3 rounded-lg border border-caution/40 bg-caution-soft px-4 py-2.5 text-[13px] font-semibold text-ink-2">
             {SOLO_FOUR_DEPT_MESSAGE}
@@ -246,11 +258,11 @@ export function SoloSubscribe() {
         {price && (
           <div className="mt-4 rounded-xl bg-navy p-4 on-dark sm:p-5" aria-live="polite">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider on-dark-2">Annual Premium Subscription</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider on-dark-2">{PRICE_LABELS.product}</p>
               {price.bulkApplied ? (
                 <span className="inline-flex flex-col items-end text-right">
                   <span className="rounded-full bg-amber-400 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-navy">Best Value</span>
-                  <span className="mt-1 text-[11px] font-semibold on-dark-2">{SOLO_BULK_THRESHOLD}+ Department Rate Applied</span>
+                  <span className="mt-1 text-[11px] font-semibold on-dark-2">{PRICE_LABELS.bulkRate(SOLO_BULK_THRESHOLD)} Applied</span>
                 </span>
               ) : (
                 <p className="text-[11px] font-semibold uppercase tracking-wider on-dark-2">
@@ -260,11 +272,11 @@ export function SoloSubscribe() {
             </div>
             <dl className="mt-3 space-y-1.5 text-sm">
               <div className="flex justify-between gap-4"><dt className="on-dark-2">Selected Departments</dt><dd className="tnum font-semibold">{price.count}</dd></div>
-              <div className="flex justify-between gap-4"><dt className="on-dark-2">Rate per Department</dt><dd className="tnum font-semibold">{formatRupees(price.rate)}</dd></div>
-              <div className="flex justify-between gap-4"><dt className="on-dark-2">Subtotal</dt><dd className="tnum font-semibold">{formatRupees(price.subtotal)}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="on-dark-2">{PRICE_LABELS.perDepartment}</dt><dd className="tnum font-semibold">{formatRupees(price.rate)}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="on-dark-2">{PRICE_LABELS.subtotal}</dt><dd className="tnum font-semibold">{formatRupees(price.subtotal)}</dd></div>
               <div className="flex justify-between gap-4"><dt className="on-dark-2">{gstLabel}</dt><dd className="tnum font-semibold">{formatRupees(price.gst, 2)}</dd></div>
               <div className="mt-2 flex items-baseline justify-between gap-4 border-t on-dark-edge pt-3">
-                <dt className="font-semibold">Grand Total</dt>
+                <dt className="font-semibold">{PRICE_LABELS.grandTotal}</dt>
                 <dd className="tnum text-[28px] font-bold leading-none">{formatRupees(price.total, 2)}</dd>
               </div>
             </dl>
