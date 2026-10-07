@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { isIndividualAccount } from '../constants';
 import { formatRupees } from '../lib/institutionPricing';
 import { SOLO_RATE_STANDARD, SOLO_RATE_BULK, SOLO_BULK_THRESHOLD } from '../lib/soloPricing';
+import { getDashboardRoute } from '../lib/dashboardRoute';
 
 const features = [
   {
@@ -163,7 +164,7 @@ export function ForStudents() {
                 <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> The whole library, every department</li>
                 <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> Half an hour at a time</li>
               </ul>
-              <Button variant="outline" size="lg" className="mt-6 w-full" onClick={() => navigate(profile ? '/dashboard' : '/signup')}>
+              <Button variant="outline" size="lg" className="mt-6 w-full" onClick={() => navigate(profile ? getDashboardRoute(profile) : '/signup')}>
                 {profile ? 'Go to Dashboard' : 'Register Free'}
               </Button>
             </div>
@@ -182,7 +183,7 @@ export function ForStudents() {
                 <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> Read your departments without the clock</li>
                 <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> Twelve months from the day you subscribe</li>
               </ul>
-              <Button variant="highlight" size="lg" className="mt-6 w-full" onClick={() => navigate(solo ? '/dashboard/subscribe' : profile ? '/dashboard' : '/signup')}>
+              <Button variant="highlight" size="lg" className="mt-6 w-full" onClick={() => navigate(solo ? '/dashboard/subscribe' : profile ? getDashboardRoute(profile) : '/signup')}>
                 Choose Departments
               </Button>
               <p className="mt-3 text-xs text-muted">Plus GST. For individual learners; colleges and companies subscribe from their own dashboard.</p>

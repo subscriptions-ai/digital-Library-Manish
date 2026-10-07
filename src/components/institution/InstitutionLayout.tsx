@@ -11,6 +11,7 @@ import { Sparkles } from 'lucide-react';
 import { PricingProvider, usePricing } from './pricing/PricingContext';
 import { SubscriptionSidebarCard } from '../subscription/SubscriptionSidebarCard';
 import { PLAN_CHANGED } from './pricing/planApi';
+import { getDashboardRoute } from '../../lib/dashboardRoute';
 
 interface InstitutionLayoutProps {
   children: React.ReactNode;
@@ -42,7 +43,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
     if (!loading && profile) {
       if (profile.role !== 'Institution' && !isInstitutionAdmin) {
         toast.error('Unauthorized access');
-        navigate('/dashboard');
+        navigate(getDashboardRoute(profile), { replace: true });
       }
     } else if (!loading && !profile) {
       navigate('/login');
@@ -65,7 +66,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
     }
   };
 
-  if (loading || !profile) {
+  if (loading || !profile || (profile.role !== 'Institution' && !isInstitutionAdmin)) {
     return (
       <div className="min-h-screen bg-surface-2 flex items-center justify-center">
         <div role="status" aria-label="Loading" className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent" />

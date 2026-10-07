@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { LogOut, Building2 } from 'lucide-react';
+import { Spinner } from '../ui';
+import { getDashboardRoute } from '../../lib/dashboardRoute';
 
 export function PublisherLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -13,10 +15,14 @@ export function PublisherLayout({ children }: { children: React.ReactNode }) {
       if (!profile) navigate('/login');
       else if (profile.role !== 'Publisher' && profile.role !== 'SuperAdmin') {
         toast.error('Unauthorized — Publisher access only');
-        navigate('/dashboard');
+        navigate(getDashboardRoute(profile), { replace: true });
       }
     }
   }, [profile, loading, navigate]);
+
+  if (loading || !profile || (profile.role !== 'Publisher' && profile.role !== 'SuperAdmin')) {
+    return <div className="flex min-h-screen items-center justify-center bg-ground"><Spinner /></div>;
+  }
 
   const signOut = async () => {
     try { await logout(); navigate('/login'); } catch { toast.error('Failed to sign out'); }

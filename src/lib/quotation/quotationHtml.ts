@@ -5,8 +5,9 @@ import { TERM_GROUPS, dateDisplay, deptColumns, deptNo, moneyAuto, type QuoteRen
  * saved quotation, and printed. It is a complete HTML document, so it can sit in
  * an iframe — its styles cannot leak into the app, and printing the frame prints
  * only the quotation. It follows the PDF block for block: letterhead, parties,
- * the subscription line with its departments, summary beside totals, payment
- * options with the signatory, then the terms in two grouped columns.
+ * the subscription line with its departments (new ones, then any the customer already
+ * holds), summary beside totals, payment options with the signatory, then the terms in
+ * two grouped columns. Solo and institutional quotations share it.
  */
 
 /** The sheet is laid out at this width (A4 at 96 dpi) and scaled to fit wherever it is shown. */
@@ -73,17 +74,22 @@ body{background:#eef2f3;font-family:Inter,Arial,Helvetica,sans-serif;color:var(-
 .empty{text-align:center;color:#879299}
 .depts{margin-top:8px;border:1px solid var(--rule);border-radius:7px;background:var(--pale);padding:10px 12px}
 .depts .cap{margin-bottom:7px}
-.depts ul{list-style:none;margin:0;padding:0;column-count:1;column-gap:26px}
-.depts.two ul{column-count:2}
+.depts ul{list-style:none;margin:0;padding:0;column-gap:26px}
+.depts-in ul{column-count:1}
+.depts-in.two ul{column-count:2}
+.depts-in.three ul{column-count:3}
+.depts .sep{height:1px;background:var(--rule);margin:10px 0 9px}
+.depts-in.existing li{font-size:9.8px}
+.depts p{margin:0;font-size:10px;color:var(--gray);line-height:1.5}
 .depts li{display:grid;grid-template-columns:22px 1fr;gap:4px;font-size:10.5px;line-height:1.4;color:var(--navy);margin:0 0 4px;break-inside:avoid}
 .depts li i{font-style:normal;font-weight:800;color:var(--teal);font-variant-numeric:tabular-nums}
 
 /* Summary beside totals */
-.qTotals{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.qTotals{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin-top:12px}
 .qCard{border:1px solid var(--rule);border-radius:9px;padding:13px 15px;background:#fff}
 .qCard.alt{background:var(--pale)}
 .qCard .cap{margin-bottom:9px}
-.sumRow{display:grid;grid-template-columns:96px 1fr;gap:8px;font-size:10.5px;line-height:1.45;margin:5px 0}
+.sumRow{display:grid;grid-template-columns:150px 1fr;gap:8px;font-size:10.5px;line-height:1.45;margin:5px 0}
 .sumRow span{color:var(--soft)}
 .sumRow b{color:var(--navy);font-weight:800}
 .totRow{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--gray);margin:6px 0}
@@ -99,7 +105,6 @@ body{background:#eef2f3;font-family:Inter,Arial,Helvetica,sans-serif;color:var(-
 .payHead i{flex:1;height:1px;background:var(--rule)}
 .payHead span{font-size:9.5px;font-weight:800;color:var(--soft)}
 .payGrid{display:grid;grid-template-columns:1.9fr .85fr 1.05fr;gap:10px;margin-top:9px;align-items:stretch}
-.payGrid.compact{grid-template-columns:1.9fr 1fr}
 .payBox{border:1px solid var(--rule);border-radius:9px;padding:12px 14px;background:#fff}
 .payBox.alt{background:var(--pale)}
 .payBox .cap{margin-bottom:8px}
@@ -123,12 +128,6 @@ body{background:#eef2f3;font-family:Inter,Arial,Helvetica,sans-serif;color:var(-
 .tgroup li i{font-style:normal;font-weight:800;color:var(--teal)}
 .tgroup li strong{color:var(--navy)}
 .specialNote{margin-top:12px;padding:9px 12px;background:var(--pale);border:1px solid var(--rule);border-radius:7px;font-size:10px;color:var(--navy);font-weight:700;line-height:1.5}
-.compactTerms{margin-top:12px;border:1px solid var(--rule);border-radius:9px;padding:12px 14px}
-.compactTerms .cap{margin-bottom:8px}
-.compactTerms ul{list-style:none;margin:0;padding:0;column-count:2;column-gap:22px}
-.compactTerms li{position:relative;padding-left:11px;font-size:10px;line-height:1.5;color:var(--gray);margin:0 0 6px;break-inside:avoid}
-.compactTerms li::before{content:"";position:absolute;left:1px;top:6px;width:5px;height:5px;border-radius:50%;background:var(--teal)}
-.compactTerms li strong{color:var(--navy)}
 
 /* Footer */
 .qFooter{margin-top:16px;padding-top:9px;border-top:1px solid var(--rule);font-size:8.5px;line-height:1.6;color:var(--soft)}
@@ -170,6 +169,24 @@ function termsHtml(r: QuoteRender): string {
   return groups.join('');
 }
 
+/** The department box: the new (or subscribed) departments, then any the customer already holds. */
+function deptsHtml(r: QuoteRender): string {
+  const list = (names: string[], cols: number, existing = false) =>
+    `<div class="depts-in${cols === 3 ? ' three' : cols === 2 ? ' two' : ''}${existing ? ' existing' : ''}"><ul>${names.map((d, n) => `<li><i>${deptNo(n)}</i><span>${esc(d)}</span></li>`).join('')}</ul></div>`;
+  const parts: string[] = [];
+  if (r.departments?.length) {
+    parts.push(`<div class="cap">${esc(r.departmentsLabel ?? 'Subscribed departments')} &mdash; ${r.departments.length}</div>${list(r.departments, deptColumns(r.departments.length))}`);
+  }
+  if (r.existingDepartments) {
+    const e = r.existingDepartments;
+    const n = e.names.length;
+    parts.push(`<div class="cap">Existing active departments &mdash; ${e.count}</div>${n
+      ? list(e.names, n >= 5 ? 3 : n >= 3 ? 2 : 1, true)
+      : `<p>${e.count} ${e.count === 1 ? 'department is' : 'departments are'} already active on this account. They count towards the pricing slab and are not charged again.</p>`}`);
+  }
+  return parts.length ? `<div class="depts">${parts.join('<div class="sep"></div>')}</div>` : '';
+}
+
 /** The quotation sheet alone, without the document wrapper. */
 export function renderQuotationSheet(r: QuoteRender): string {
   const c = r.customer;
@@ -182,9 +199,8 @@ export function renderQuotationSheet(r: QuoteRender): string {
       : `<div class="totRow"><span>GST @ 18%</span><b>${money2(r.singleGst ?? 0)}</b></div>`;
   const phone = esc(phoneLine(i));
 
-  const terms = r.compact
-    ? `<div class="compactTerms"><div class="cap">Included &amp; terms</div><ul>${r.terms.map(t => `<li>${t.lead ? `<strong>${esc(t.lead)}</strong> ` : ''}${inline(t.text)}</li>`).join('')}</ul></div>`
-    : `<div class="terms"><h3>Commercial Terms &amp; Conditions</h3><div class="termCols">${termsHtml(r)}</div>${r.specialNote ? `<div class="specialNote">Special Note: ${esc(r.specialNote)}</div>` : ''}</div>`;
+  const termsTitle = esc(r.termsHeading ?? 'Commercial Terms & Conditions');
+  const terms = `<div class="terms"><h3>${termsTitle}</h3><div class="termCols">${termsHtml(r)}</div>${r.specialNote ? `<div class="specialNote">Special Note: ${esc(r.specialNote)}</div>` : ''}</div>`;
 
   return `<div class="quote"><div class="qBand"></div><div class="qInner">
 <div class="qHeader"><div class="quoteBrand"><img class="qLogo" src="${QUOTE_ASSETS.logo}" alt="STM Digital Library"><div>
@@ -192,7 +208,7 @@ export function renderQuotationSheet(r: QuoteRender): string {
 <div class="legal">Registered Office: ${esc(i.registeredAddress)}<br>GSTIN: <strong>${esc(i.gstin)}</strong> &nbsp;|&nbsp; PAN: <strong>${esc(i.pan)}</strong> &nbsp;|&nbsp; CIN: <strong>${esc(i.cin)}</strong><br>Sales &amp; Marketing Office: ${esc(i.salesOffice)} &nbsp;|&nbsp; State Code: <strong>${esc(i.salesOfficeStateCode)}</strong><br>Contact: ${phone} &nbsp;|&nbsp; ${esc(i.email)}</div></div></div>
 <div class="qMeta"><div class="title">QUOTATION</div><div class="kind">${esc(r.title)}</div></div></div>
 <div class="qInfoGrid">
-<div class="qInfoBox"><div class="cap">Institution / Customer</div><div class="main">${esc(c.name?.trim() || 'Institution Name')}</div>
+<div class="qInfoBox"><div class="cap">${esc(r.customerLabel ?? 'Institution / Customer')}</div><div class="main">${esc(c.name?.trim() || (r.customerLabel ? 'Customer' : 'Institution Name'))}</div>
 ${line('Contact', c.contact)}${line('Designation', c.designation)}${line('Email', c.email)}${line('Phone', c.phone)}</div>
 <div class="qInfoBox alt"><div class="cap">Billing &amp; Tax / Supply Details</div>
 ${line('Address', c.address)}${line('State', c.state?.trim() || 'To be confirmed')}${line('State Code', c.stateCode || '-')}${line('GST No.', c.gstin)}</div>
@@ -202,7 +218,7 @@ ${line('No.', r.quoteNo || '-')}${line('Date', dateDisplay(r.date))}${line('Vali
 <div class="qTitle"><h2>${esc(r.title)}</h2><span>${esc(r.subtitle)}</span></div>
 <table><thead><tr><th style="width:48px;text-align:center">S. No.</th><th>Description / Particulars</th><th style="width:70px;text-align:center">Qty</th><th style="width:100px;text-align:right">Rate</th><th style="width:110px;text-align:right">Amount</th></tr></thead>
 <tbody>${r.lines.length ? r.lines.map((l, n) => row(l, n + 1)).join('') : '<tr><td colspan="5" class="empty">Select at least one department to build the quotation.</td></tr>'}</tbody></table>
-${r.departments?.length ? `<div class="depts${deptColumns(r.departments.length) === 2 ? ' two' : ''}"><div class="cap">Subscribed departments &mdash; ${r.departments.length}</div><ul>${r.departments.map((d, n) => `<li><i>${deptNo(n)}</i><span>${esc(d)}</span></li>`).join('')}</ul></div>` : ''}
+${deptsHtml(r)}
 <div class="qTotals">
 ${r.summary.length ? `<div class="qCard alt"><div class="cap">Subscription summary</div>${r.summary.map(s => `<div class="sumRow"><span>${esc(s.label)}</span><b>${esc(s.value)}</b></div>`).join('')}</div>` : '<div></div>'}
 <div class="qCard"><div class="totRow"><span>Gross Subscription Amount</span><b>${moneyAuto(r.gross)}</b></div>
@@ -210,13 +226,13 @@ ${r.discount > 0 ? `<div class="totRow"><span>Special Discount / Adjustment</spa
 <div class="totRow strong"><span>Taxable Subtotal</span><b>${moneyAuto(r.subtotal)}</b></div>${taxRows}
 <div class="grand"><span>Grand Total</span><b>${money2(r.total)}</b></div></div>
 </div>
-<div class="payHead"><h3>Payment options</h3><i></i>${r.compact ? '' : '<span>Commercial Terms &amp; Conditions: see below</span>'}</div>
-<div class="payGrid${r.compact ? ' compact' : ''}">
+<div class="payHead"><h3>Payment options</h3><i></i><span>${esc(r.termsPointer ?? 'Commercial Terms & Conditions')}: see below</span></div>
+<div class="payGrid">
 <div class="payBox alt"><div class="cap">Bank transfer / cheque / DD</div><div class="bankGrid">
 <b>In favour of</b><span>${regName}</span><b>Bank</b><span>${esc(i.bank.bankName)}, ${esc(i.bank.branch)}</span>
 <b>Account No.</b><span>${esc(i.bank.accountNumber)}</span><b>IFSC</b><span>${esc(i.bank.ifscCode)}</span><b>Cheque / DD</b><span>Send to ${esc(i.salesOffice)}</span></div></div>
 <div class="payBox upiBox"><div class="cap">UPI payment</div><img class="qrImage" src="${QUOTE_ASSETS.qr}" alt="UPI payment QR code"></div>
-${r.compact ? '' : `<div class="signBox"><div>For ${regName}</div><img class="signImg" src="${QUOTE_ASSETS.signature}" alt="Authorized Signature"><div class="signLine">Authorized Signatory</div></div>`}
+<div class="signBox"><div>For ${regName}</div><img class="signImg" src="${QUOTE_ASSETS.signature}" alt="Authorized Signature"><div class="signLine">Authorized Signatory</div></div>
 </div>
 ${terms}
 <div class="qFooter"><strong>${regName}</strong> &nbsp;|&nbsp; GSTIN: ${esc(i.gstin)} &nbsp;|&nbsp; PAN: ${esc(i.pan)} &nbsp;|&nbsp; CIN: ${esc(i.cin)}<br>Sales &amp; Marketing / Cheque &amp; DD Address: ${esc(i.salesOffice)} (Office State Code ${esc(i.salesOfficeStateCode)}) &nbsp;|&nbsp; ${phone} &nbsp;|&nbsp; ${esc(i.email)}</div>

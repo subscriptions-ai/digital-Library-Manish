@@ -1,5 +1,11 @@
 import { COMPANY_DETAILS, issuerOf, type Issuer } from '../../config';
-import { departmentRate } from '../institutionPricing';
+import {
+  DEPARTMENT_RATES, GST_RATE as PLAN_GST_RATE, MAX_INSTITUTION_USERS, TERM_MONTHS,
+  departmentRate, departmentRateLadder, priceDepartments, slabLabel,
+} from '../institutionPricing';
+import {
+  SOLO_BULK_THRESHOLD, SOLO_RATE_BULK, SOLO_RATE_STANDARD, SOLO_TERM_MONTHS, calculateSoloSubscriptionPrice,
+} from '../soloPricing';
 
 /**
  * The quotation: one model, read by the builder, the on-screen sheet, the PDF,
@@ -134,6 +140,8 @@ export type QuotePricing = {
   stateCode: string;
 };
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 const num = (v: unknown): number => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -261,9 +269,48 @@ export type QuoteRender = {
   summary: { label: string; value: string }[];
   /** The department names, shown beneath the single subscription line. */
   departments?: string[];
-  /** A simpler one-page quotation: terms are short bullets on page 1, with no separate terms page. */
-  compact?: boolean;
+  /** What the department list is called: "Subscribed departments" unless the quotation says otherwise. */
+  departmentsLabel?: string;
+  /**
+   * Departments the customer already holds, when the price depends on them. Counted for the
+   * pricing slab and shown for transparency; never charged. `names` is empty when they are unknown.
+   */
+  existingDepartments?: { count: number; names: string[] };
+  /** The customer box's caption: "Institution / Customer" unless this is an individual. */
+  customerLabel?: string;
+  /** The heading of the terms page, and the short pointer to it on page 1. */
+  termsHeading?: string;
+  termsPointer?: string;
 };
+
+/**
+ * The approved clauses, worded once. The institutional quotation and the Solo quotation both
+ * read them from here, so a change to approved wording is made in one place — and a clause the
+ * Solo quotation shares with the institutional one is the same clause, not a lookalike.
+ */
+function approvedClauses(subject: 'institution' | 'subscriber') {
+  const co = COMPANY_DETAILS.registeredName;
+  const who = subject === 'subscriber' ? 'the subscriber' : 'the subscribing institution';
+  const Who = subject === 'subscriber' ? 'The subscriber' : 'The institution';
+  const q = (lead: string, text: string): QuoteTerm => ({ lead, text });
+  return {
+    advance: q('Advance Payment:', '100% payment is payable in advance. Access will be activated only after realization/confirmation of payment and receipt of any information reasonably required for account setup, tax, billing or access configuration.'),
+    nonRefundable: q('Non-refundable after Activation:', `Once subscription access has been activated, the subscription fee is non-cancellable, non-refundable and non-transferable, except in the case of duplicate payment, billing error, or where a refund is required by applicable law or expressly approved in writing by ${co}.`),
+    permittedUse: q('Permitted Use:', `Access is limited to ${who}, selected department scope and authorized users. Login credentials, IP-based access or user rights may not be shared, resold, sublicensed or provided to any third party outside ${who} without prior written approval.`),
+    prohibited: q('Prohibited Activity:', 'Systematic or bulk downloading, scraping, automated extraction, redistribution, republication, resale, credential sharing, circumvention of technical controls, or any unlawful use is prohibited. The subscriber is responsible for the acts of its authorized users.'),
+    suspension: q('Suspension / Termination for Misuse:', `${co} may suspend, restrict or terminate access, without refund, where there is material breach, misuse, credential sharing, abnormal or automated activity, security risk, infringement, fraud, or a legal/compliance requirement. Access may be restored after satisfactory cure and verification, at the company's discretion.`),
+    contentChanges: q('Content & Platform Changes:', 'Titles, databases, third-party/open-access resources, features, interfaces and technical methods of access may be added, removed, replaced or modified due to publisher/licensing rights, technical, legal, security or operational reasons. Such changes do not by themselves create a right to refund or extension.'),
+    availability: q('Availability / Maintenance:', 'The service is provided on a commercially reasonable-efforts basis. Temporary interruption caused by maintenance, upgrades, internet/network failure, third-party services, cyber/security events or force majeure will not ordinarily create a refund, credit or extension entitlement unless specifically agreed in writing.'),
+    analytics: q('Analytics & User Administration:', `Platform access and usage data may be processed for authentication, security, user administration, service delivery, analytics, support, billing and service improvement in accordance with applicable law and the platform privacy policy. ${Who} is responsible for ensuring that user information supplied by it is lawful and accurate.`),
+    regulatory: q('No Regulatory / Accreditation Guarantee:', 'Subscription to STM Digital Library is an academic information-resource service and does not constitute or guarantee accreditation, approval, recognition, ranking or compliance certification by UGC, AICTE, NAAC, NBA, NIRF or any other regulator/accreditation body.'),
+    taxes: q('Taxes:', 'GST and other applicable taxes/duties are additional unless specifically included in the quotation. Any statutory withholding/TDS must be supported by a valid certificate/document as required by law.'),
+    renewal: q('Renewal:', 'Renewal is subject to a fresh confirmation/quotation, then-current pricing and terms, and advance payment. No renewal or continuation is implied merely because access existed in the preceding year.'),
+    liability: q('Limitation of Liability:', `To the maximum extent permitted by applicable law, ${co} will not be liable for indirect, incidental, special or consequential loss, loss of profits, loss of data or loss arising from unauthorized use. Aggregate liability relating to the affected subscription will not exceed the subscription fees actually received for that affected subscription term, except where such limitation is prohibited by law.`),
+    indemnity: q('Subscriber Responsibility / Indemnity:', `The subscriber remains responsible for compliance by its users and shall indemnify ${co} against third-party claims, losses or reasonable costs arising from unlawful use, infringement, unauthorized redistribution, credential sharing or breach attributable to the subscriber or its users, subject to applicable law.`),
+    written: q('Written Terms Prevail:', 'Any discount, waiver, additional commitment, special access right or variation is valid only when recorded in the quotation, invoice, purchase order accepted by the company, or another written approval issued by an authorized representative. Oral statements do not amend these terms.'),
+    governing: q('Governing Law & Jurisdiction:', 'These terms and the subscription are governed by the laws of India. Subject to applicable law, courts at New Delhi/Delhi shall have exclusive jurisdiction over disputes arising from or relating to the quotation, payment, subscription, access or services.'),
+  };
+}
 
 /**
  * The standard terms, in the order the quotation prints them. `entitlement` is
@@ -280,9 +327,7 @@ export function standardTerms(o: {
   /** Shown just before the closing validity line. */
   extra?: QuoteTerm[];
 }): QuoteTerm[] {
-  const co = COMPANY_DETAILS.registeredName;
-  const who = o.subject === 'subscriber' ? 'the subscriber' : 'the subscribing institution';
-  const Who = o.subject === 'subscriber' ? 'The subscriber' : 'The institution';
+  const C = approvedClauses(o.subject === 'subscriber' ? 'subscriber' : 'institution');
   const [G1, G2, G3, G4] = TERM_GROUPS;
   const groupOf: Record<string, string> = {
     'Subscription Period:': G1, 'Advance Payment:': G1, 'Non-refundable after Activation:': G1,
@@ -295,23 +340,13 @@ export function standardTerms(o: {
       lead: 'Subscription Period:',
       text: o.period ?? 'The subscription is for the relevant calendar year, from 1 January to 31 December. Where activation takes place after 1 January, access will ordinarily expire on 31 December of the same subscription year unless a different term is expressly approved in writing. No pro-rata extension is implied.',
     },
-    { lead: 'Advance Payment:', text: '100% payment is payable in advance. Access will be activated only after realization/confirmation of payment and receipt of any information reasonably required for account setup, tax, billing or access configuration.' },
-    { lead: 'Non-refundable after Activation:', text: `Once subscription access has been activated, the subscription fee is non-cancellable, non-refundable and non-transferable, except in the case of duplicate payment, billing error, or where a refund is required by applicable law or expressly approved in writing by ${co}.` },
+    C.advance,
+    C.nonRefundable,
     ...o.entitlement.map(t => ({ ...t, group: G1 })),
     ...(o.pricing || []).map(t => ({ ...t, group: G1 })),
-    { lead: 'Permitted Use:', text: `Access is limited to ${who}, selected department scope and authorized users. Login credentials, IP-based access or user rights may not be shared, resold, sublicensed or provided to any third party outside ${who} without prior written approval.` },
-    { lead: 'Prohibited Activity:', text: 'Systematic or bulk downloading, scraping, automated extraction, redistribution, republication, resale, credential sharing, circumvention of technical controls, or any unlawful use is prohibited. The subscriber is responsible for the acts of its authorized users.' },
-    { lead: 'Suspension / Termination for Misuse:', text: `${co} may suspend, restrict or terminate access, without refund, where there is material breach, misuse, credential sharing, abnormal or automated activity, security risk, infringement, fraud, or a legal/compliance requirement. Access may be restored after satisfactory cure and verification, at the company's discretion.` },
-    { lead: 'Content & Platform Changes:', text: 'Titles, databases, third-party/open-access resources, features, interfaces and technical methods of access may be added, removed, replaced or modified due to publisher/licensing rights, technical, legal, security or operational reasons. Such changes do not by themselves create a right to refund or extension.' },
-    { lead: 'Availability / Maintenance:', text: 'The service is provided on a commercially reasonable-efforts basis. Temporary interruption caused by maintenance, upgrades, internet/network failure, third-party services, cyber/security events or force majeure will not ordinarily create a refund, credit or extension entitlement unless specifically agreed in writing.' },
-    { lead: 'Analytics & User Administration:', text: `Platform access and usage data may be processed for authentication, security, user administration, service delivery, analytics, support, billing and service improvement in accordance with applicable law and the platform privacy policy. ${Who} is responsible for ensuring that user information supplied by it is lawful and accurate.` },
-    { lead: 'No Regulatory / Accreditation Guarantee:', text: 'Subscription to STM Digital Library is an academic information-resource service and does not constitute or guarantee accreditation, approval, recognition, ranking or compliance certification by UGC, AICTE, NAAC, NBA, NIRF or any other regulator/accreditation body.' },
-    { lead: 'Taxes:', text: 'GST and other applicable taxes/duties are additional unless specifically included in the quotation. Any statutory withholding/TDS must be supported by a valid certificate/document as required by law.' },
-    { lead: 'Renewal:', text: 'Renewal is subject to a fresh confirmation/quotation, then-current pricing and terms, and advance payment. No renewal or continuation is implied merely because access existed in the preceding year.' },
-    { lead: 'Limitation of Liability:', text: `To the maximum extent permitted by applicable law, ${co} will not be liable for indirect, incidental, special or consequential loss, loss of profits, loss of data or loss arising from unauthorized use. Aggregate liability relating to the affected subscription will not exceed the subscription fees actually received for that affected subscription term, except where such limitation is prohibited by law.` },
-    { lead: 'Subscriber Responsibility / Indemnity:', text: `The subscriber remains responsible for compliance by its users and shall indemnify ${co} against third-party claims, losses or reasonable costs arising from unlawful use, infringement, unauthorized redistribution, credential sharing or breach attributable to the subscriber or its users, subject to applicable law.` },
-    { lead: 'Written Terms Prevail:', text: 'Any discount, waiver, additional commitment, special access right or variation is valid only when recorded in the quotation, invoice, purchase order accepted by the company, or another written approval issued by an authorized representative. Oral statements do not amend these terms.' },
-    { lead: 'Governing Law & Jurisdiction:', text: 'These terms and the subscription are governed by the laws of India. Subject to applicable law, courts at New Delhi/Delhi shall have exclusive jurisdiction over disputes arising from or relating to the quotation, payment, subscription, access or services.' },
+    C.permittedUse, C.prohibited, C.suspension,
+    C.contentChanges, C.availability, C.analytics, C.regulatory,
+    C.taxes, C.renewal, C.liability, C.indemnity, C.written, C.governing,
     ...(o.extra || []),
     { text: `This quotation is valid for ${o.validityDays} days from the quotation date.` },
   ];
@@ -414,6 +449,10 @@ export function docOfRow(row: any): QuoteDoc | null {
  */
 export function rowToRender(row: any): QuoteRender {
   const issuer = issuerOf(row);
+  // Self-service quotations carry the snapshot the server priced; draw from that, not from the rate card.
+  const kind = row?.pricingBreakdown?.kind;
+  if (kind === INSTITUTION_PLAN_KIND) return institutionPlanToRender(row.pricingBreakdown, issuer);
+  if (kind === SOLO_PLAN_KIND) return soloPlanToRender(row.pricingBreakdown, issuer);
   const doc = docOfRow(row);
   if (doc) return docToRender(doc, issuer);
 
@@ -506,95 +545,370 @@ export function docToRow(doc: QuoteDoc) {
   };
 }
 
-// ── Reference quotations (the downloads on the pricing screens) ───────────
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+// ── Self-service quotations (the downloads on the pricing screens) ─────────
 
 /**
- * A quotation a customer takes from a pricing screen. It is a reference, not a
- * saved record: it carries a number that ties it to the moment it was made, and
- * the price is confirmed again at payment.
+ * A quotation a customer takes from a pricing screen is a stored record, priced by the server.
+ * It carries a snapshot of exactly what was priced — the departments, the slab, the rate and
+ * the amounts — so a quotation raised today reads the same next year, whatever the rate card
+ * says by then. The PDF, the admin preview and the print view all draw from that snapshot.
+ *
+ * Institution and Solo are different products with different rules, so they have different
+ * snapshots. They share the sheet, not the pricing.
  */
-export function referenceQuote(o: {
-  prefix: string;
-  title: string;
-  subtitle: string;
-  subject: 'institution' | 'subscriber';
-  customer: { name: string; contact?: string; email?: string; state?: string | null; gstin?: string | null };
-  /** The departments bought. They share one rate, so they are one subscription line. */
-  departments: string[];
-  deptRate: number;
-  lineTitle: string;
-  lineSub?: string;
-  /** What the summary says: the kind of subscription, how long it runs, and who may use it. */
-  subscriptionType: string;
-  duration: string;
-  users: string;
-  /** Pre-tax total and the GST on it, as the screen showed them. */
-  base: number;
+export const INSTITUTION_PLAN_KIND = 'institution-plan-v1';
+export const SOLO_PLAN_KIND = 'solo-plan-v1';
+const PLAN_VALIDITY_DAYS = 30;
+
+export type PlanCustomer = {
+  name: string; contact?: string; email?: string; phone?: string; state?: string | null; gstin?: string | null;
+};
+
+export type InstitutionPlanSnapshot = {
+  kind: typeof INSTITUTION_PLAN_KIND;
+  quoteNo: string;
+  /** yyyy-mm-dd */
+  date: string;
+  validityDays: number;
+  customer: PlanCustomer;
+  /** Departments the institution holds under running subscriptions. Counted for the slab, never charged. */
+  existingDepartmentCount: number;
+  newDepartmentCount: number;
+  /** Existing plus new: the number that decides the slab. */
+  totalDepartmentCount: number;
+  appliedPricingSlab: string;
+  /** The rate each NEW department is charged, from the slab of the total. */
+  ratePerNewDepartment: number;
+  /** The one-department rate, the reference for the slab benefit. */
+  standardRate: number;
+  newDepartmentNames: string[];
+  /** Empty when the names are unknown; the count still stands. */
+  existingDepartmentNames: string[];
+  termMonths: number;
+  maxUsers: number;
+  subtotal: number;
   gst: number;
-  total: number;
-  period: string;
-  entitlement: QuoteTerm[];
-  pricing?: QuoteTerm[];
-  /** Extra terms shown just before the validity line. */
-  extra?: QuoteTerm[];
-  validityDays?: number;
-  /** One page, with short terms on it, instead of the full terms page. */
-  compact?: boolean;
-  now?: Date;
-}): QuoteRender {
+  grandTotal: number;
+};
+
+export type SoloPlanSnapshot = {
+  kind: typeof SOLO_PLAN_KIND;
+  quoteNo: string;
+  date: string;
+  validityDays: number;
+  customer: PlanCustomer;
+  departmentCount: number;
+  pricingSlab: string;
+  ratePerDepartment: number;
+  departmentNames: string[];
+  termMonths: number;
+  subtotal: number;
+  gst: number;
+  grandTotal: number;
+};
+
+export type PlanSnapshot = InstitutionPlanSnapshot | SoloPlanSnapshot;
+
+const unique = (names: string[]): string[] => [...new Set(names.map(n => String(n).trim()).filter(Boolean))];
+
+/**
+ * Prices an institution's addition. The slab is decided by the total after the purchase —
+ * what it already holds plus what it adds — and only the added departments are charged at
+ * that rate. This is the one place that arithmetic lives; the server calls it, and so do the
+ * tests that pin the rate card.
+ */
+export function buildInstitutionPlanSnapshot(o: {
+  quoteNo: string; now?: Date; customer: PlanCustomer; existingNames: string[]; newNames: string[];
+}): InstitutionPlanSnapshot {
+  const existing = unique(o.existingNames);
+  const held = new Set(existing);
+  const fresh = unique(o.newNames).filter(n => !held.has(n));
+  const total = existing.length + fresh.length;
+  const rate = departmentRate(total);
+  const base = fresh.length * rate;
+  const gst = round2(base * PLAN_GST_RATE);
   const now = o.now ?? new Date();
-  const validity = o.validityDays ?? 30;
-  const stamp = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
-  const quoteNo = `${o.prefix}-${stamp}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const state = (o.customer.state || '').trim();
-  const code = stateCodeOf(state);
-  const inState = !!state && (code ? code === HOME_STATE_CODE : state.toLowerCase() === COMPANY_DETAILS.state.toLowerCase());
-  const half = round2(o.gst / 2);
-  const date = isoDate(now);
-  const validTill = addDaysIso(date, validity);
-  const count = o.departments.length;
-  const gstTerm: QuoteTerm = {
-    lead: 'GST:',
-    text: state
-      ? `GST is charged as ${inState ? 'CGST and SGST' : 'IGST'}, as the place of supply is ${state}.`
-      : `GST is charged as CGST and SGST within ${COMPANY_DETAILS.state} and as IGST elsewhere, once the place of supply is confirmed.`,
-  };
-  const confirm: QuoteTerm = { lead: 'Price Confirmation:', text: 'The price is held until the validity date; the amount shown at payment is the amount charged.' };
-  const extra = [...(o.extra || []), confirm, gstTerm];
   return {
-    quoteNo,
-    date,
-    validTill,
-    title: o.title,
-    subtitle: o.subtitle,
-    customer: {
-      name: o.customer.name, contact: o.customer.contact || '', designation: '', email: o.customer.email || '', phone: '',
-      address: '', state, stateCode: code, gstin: (o.customer.gstin || '').trim(),
+    kind: INSTITUTION_PLAN_KIND,
+    quoteNo: o.quoteNo,
+    date: isoDate(now),
+    validityDays: PLAN_VALIDITY_DAYS,
+    customer: o.customer,
+    existingDepartmentCount: existing.length,
+    newDepartmentCount: fresh.length,
+    totalDepartmentCount: total,
+    appliedPricingSlab: slabLabel(total),
+    ratePerNewDepartment: rate,
+    standardRate: departmentRate(1),
+    newDepartmentNames: fresh,
+    existingDepartmentNames: existing,
+    termMonths: TERM_MONTHS,
+    maxUsers: MAX_INSTITUTION_USERS,
+    subtotal: base,
+    gst,
+    grandTotal: round2(base + gst),
+  };
+}
+
+/** A Solo Learner's quotation. Solo pricing is its own: the slab is the purchase itself, not what is already held. */
+export function buildSoloPlanSnapshot(o: {
+  quoteNo: string; now?: Date; customer: PlanCustomer; names: string[];
+}): SoloPlanSnapshot {
+  const names = unique(o.names);
+  const price = calculateSoloSubscriptionPrice(names.length, { state: o.customer.state });
+  return {
+    kind: SOLO_PLAN_KIND,
+    quoteNo: o.quoteNo,
+    date: isoDate(o.now ?? new Date()),
+    validityDays: PLAN_VALIDITY_DAYS,
+    customer: o.customer,
+    departmentCount: names.length,
+    pricingSlab: price.bulkApplied ? `${SOLO_BULK_THRESHOLD}+ departments` : `1-${SOLO_BULK_THRESHOLD - 1} departments`,
+    ratePerDepartment: price.rate,
+    departmentNames: names,
+    termMonths: SOLO_TERM_MONTHS,
+    subtotal: price.subtotal,
+    gst: price.gst,
+    grandTotal: price.total,
+  };
+}
+
+/** The columns a stored self-service quotation carries, from its snapshot. Used by the server. */
+export function planSnapshotToRow(s: PlanSnapshot) {
+  const institution = s.kind === INSTITUTION_PLAN_KIND;
+  const names = institution ? s.newDepartmentNames : s.departmentNames;
+  const rate = institution ? s.ratePerNewDepartment : s.ratePerDepartment;
+  const expires = parseIso(addDaysIso(s.date, s.validityDays)) || new Date(Date.now() + s.validityDays * 86_400_000);
+  expires.setHours(23, 59, 59, 0);
+  return {
+    expiresAt: expires,
+    data: {
+      id: s.quoteNo,
+      userEmail: (s.customer.email || '').trim(),
+      userName: (s.customer.contact || s.customer.name || '').trim(),
+      organization: institution ? s.customer.name : null,
+      state: s.customer.state || null,
+      mobile: s.customer.phone || null,
+      planType: 'Yearly',
+      allowedDomain: names.join(', ') || null,
+      subtotal: s.subtotal,
+      gstAmount: s.gst,
+      total: s.grandTotal,
+      discountAmount: 0,
+      deliveryMethod: 'Download',
+      items: [{
+        domainName: names.join(', '),
+        planName: institution ? 'Premium Department Subscription' : 'Department Subscription (Solo Learner)',
+        duration: 'Yearly', quantity: names.length, price: rate,
+      }],
+      pricingBreakdown: s as any,
+      selectedModules: [],
     },
-    lines: [{ title: o.lineTitle, sub: o.lineSub, qty: String(count), rate: o.deptRate, amount: count * o.deptRate }],
-    gross: o.base, discount: 0, subtotal: o.base,
-    cgst: inState ? half : 0, sgst: inState ? round2(o.gst - half) : 0, igst: state && !inState ? o.gst : 0,
-    total: o.total,
-    tax: !state ? 'single' : inState ? 'split' : 'igst',
-    singleGst: o.gst,
-    // The compact (Solo) quotation lists its few terms as they are; the full set is the institutional one.
-    terms: o.compact
-      ? [...o.entitlement, ...(o.pricing || []), ...extra, { text: `This quotation is valid for ${validity} days from the quotation date.` }]
-      : standardTerms({ validityDays: validity, subject: o.subject, period: o.period, entitlement: o.entitlement, pricing: o.pricing, extra }),
+  };
+}
+
+/** CGST + SGST within the company's state, IGST outside it, one GST line when the state is not known. */
+function planTax(state: string | null | undefined, gst: number) {
+  const st = (state || '').trim();
+  const code = stateCodeOf(st);
+  const inState = !!st && (code ? code === HOME_STATE_CODE : st.toLowerCase() === COMPANY_DETAILS.state.toLowerCase());
+  const half = round2(gst / 2);
+  return {
+    state: st, stateCode: code,
+    cgst: inState ? half : 0, sgst: inState ? round2(gst - half) : 0, igst: st && !inState ? gst : 0,
+    tax: (!st ? 'single' : inState ? 'split' : 'igst') as 'split' | 'igst' | 'single',
+  };
+}
+
+/** The GST and price-confirmation terms every self-service quotation closes with. */
+function planClosingTerms(state: string, validityDays: number): QuoteTerm[] {
+  const inState = planTax(state, 1).tax === 'split';
+  return [
+    { lead: 'Price Confirmation:', text: 'The price is held until the validity date; the amount shown at payment is the amount charged.' },
+    {
+      lead: 'GST:',
+      text: state
+        ? `GST is charged as ${inState ? 'CGST and SGST' : 'IGST'}, as the place of supply is ${state}.`
+        : `GST is charged as CGST and SGST within ${COMPANY_DETAILS.state} and as IGST elsewhere, once the place of supply is confirmed.`,
+    },
+    { text: `This quotation is valid for ${validityDays} days from the quotation date.` },
+  ];
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+export function institutionPlanToRender(s: InstitutionPlanSnapshot, issuer: Issuer = issuerOf(null)): QuoteRender {
+  const tax = planTax(s.customer.state, s.gst);
+  const existing = s.existingDepartmentCount;
+  const fresh = s.newDepartmentCount;
+  const validTill = addDaysIso(s.date, s.validityDays);
+  const rate = moneyAuto(s.ratePerNewDepartment);
+  const benefitEach = Math.max(0, s.standardRate - s.ratePerNewDepartment);
+  const users = `Up to ${s.maxUsers.toLocaleString('en-IN')} users, no extra charge`;
+  const slab = s.appliedPricingSlab.replace(/^./, c => c.toUpperCase());
+
+  const summary: QuoteRender['summary'] = existing > 0 ? [
+    { label: 'Subscription', value: 'Premium Institutional' },
+    { label: 'Existing active departments', value: String(existing) },
+    { label: 'New departments in this quotation', value: String(fresh) },
+    { label: 'Total departments after purchase', value: String(s.totalDepartmentCount) },
+    { label: 'Applied pricing slab', value: slab },
+    { label: 'Applied rate', value: `${rate} / department / year` },
+    { label: 'Amount charged for', value: `${plural(fresh, 'new department')} only` },
+    ...(benefitEach > 0 ? [{ label: 'Pricing slab benefit', value: `${moneyAuto(benefitEach * fresh)} (${moneyAuto(benefitEach)} x ${plural(fresh, 'new department')})` }] : []),
+    { label: 'Duration', value: `${s.termMonths} months from activation (new departments)` },
+    { label: 'User entitlement', value: users },
+    { label: 'Valid until', value: dateDisplay(validTill) },
+  ] : [
+    { label: 'Subscription', value: 'Premium Institutional' },
+    { label: 'Departments', value: String(fresh) },
+    { label: 'Access scope', value: 'Subscribed departments listed above' },
+    { label: 'Applied pricing slab', value: slab },
+    { label: 'Department rate', value: `${rate} / department / year` },
+    { label: 'Duration', value: `${s.termMonths} months from activation` },
+    { label: 'User entitlement', value: users },
+    { label: 'Valid until', value: dateDisplay(validTill) },
+  ];
+
+  const pricing: QuoteTerm[] = existing > 0 ? [
+    {
+      lead: 'Pricing Slab:',
+      text: `The applicable department rate is determined using the total number of active departments after the proposed addition. Existing active departments: ${existing}. New departments: ${fresh}. Total after purchase: ${s.totalDepartmentCount}. Applied slab: ${s.appliedPricingSlab} at INR ${s.ratePerNewDepartment.toLocaleString('en-IN')} per department/year.`,
+    },
+    {
+      lead: 'Amount Charged:',
+      text: `The quoted amount applies only to the ${plural(fresh, 'newly added department')}. Existing active departments are not charged again under this quotation.`,
+    },
+    { lead: 'Department Rates:', text: `${departmentRateLadder()}, per year.` },
+  ] : [
+    { lead: 'Pricing Slab:', text: `Applied pricing slab: ${s.appliedPricingSlab} — INR ${s.ratePerNewDepartment.toLocaleString('en-IN')} per department/year.` },
+    { lead: 'Department Rates:', text: `${departmentRateLadder()}, per year.` },
+  ];
+
+  return {
+    quoteNo: s.quoteNo,
+    date: s.date,
+    validTill,
+    title: 'Premium Institutional Subscription',
+    subtitle: `${s.termMonths}-month subscription pricing in INR`,
+    customer: {
+      name: s.customer.name, contact: s.customer.contact || '', designation: '', email: s.customer.email || '',
+      phone: s.customer.phone || '', address: '', state: tax.state, stateCode: tax.stateCode, gstin: (s.customer.gstin || '').trim(),
+    },
+    lines: [{
+      title: 'Premium Department Subscription',
+      sub: existing > 0
+        ? "Additional department access under the institution's applicable subscription pricing slab."
+        : `Full access to each subscribed department for ${s.termMonths} months from the date of activation.`,
+      qty: String(fresh), rate: s.ratePerNewDepartment, amount: s.subtotal,
+    }],
+    gross: s.subtotal, discount: 0, subtotal: s.subtotal,
+    cgst: tax.cgst, sgst: tax.sgst, igst: tax.igst, total: s.grandTotal,
+    tax: tax.tax, singleGst: s.gst,
+    terms: standardTerms({
+      validityDays: s.validityDays,
+      subject: 'institution',
+      // Every purchase is a new subscription that starts on its own day; it does not move the
+      // end date of what the institution already holds, and the quotation says so.
+      period: existing > 0
+        ? `The ${s.termMonths}-month subscription term applies to the departments added under this quotation, from their date of activation. Existing active departments keep their current expiry dates; this quotation does not renew or extend them.`
+        : `The subscription runs for ${s.termMonths} months from the date of activation.`,
+      entitlement: [{
+        lead: 'User Entitlement:',
+        text: `Up to ${s.maxUsers.toLocaleString('en-IN')} users on the institution's account, at no extra charge. For more, please contact ${COMPANY_DETAILS.email}.`,
+      }],
+      pricing,
+      extra: planClosingTerms(tax.state, s.validityDays).slice(0, 2),
+    }),
     specialNote: '',
-    issuer: issuerOf(null),
+    issuer,
+    summary,
+    departments: s.newDepartmentNames,
+    departmentsLabel: 'New departments in this quotation',
+    existingDepartments: existing > 0 ? { count: existing, names: s.existingDepartmentNames } : undefined,
+    termsHeading: 'Institutional Commercial Terms & Conditions',
+    termsPointer: 'Commercial Terms & Conditions',
+  };
+}
+
+export function soloPlanToRender(s: SoloPlanSnapshot, issuer: Issuer = issuerOf(null)): QuoteRender {
+  const tax = planTax(s.customer.state, s.gst);
+  const validTill = addDaysIso(s.date, s.validityDays);
+  const bulk = s.departmentCount >= SOLO_BULK_THRESHOLD;
+  const C = approvedClauses('subscriber');
+  const [G1, G2, G3, G4] = TERM_GROUPS;
+  const inr = (n: number) => `INR ${n.toLocaleString('en-IN')}`;
+  const closing = planClosingTerms(tax.state, s.validityDays);
+
+  // The approved clauses, in the order the Solo quotation prints them, under the same four
+  // headings as the institutional one. Clauses that only make sense for an institution
+  // (accreditation, indemnity) are not carried over.
+  const terms: QuoteTerm[] = [
+    { lead: 'Subscription Period:', text: `The subscription runs for ${s.termMonths} months from the date of activation.`, group: G1 },
+    { ...C.advance, group: G1 },
+    { ...C.nonRefundable, group: G1 },
+    { lead: 'User Entitlement:', text: 'Your own account (1 user). The subscription gives full access to each subscribed department for the period above.', group: G1 },
+    {
+      lead: 'Pricing Slab:',
+      text: `${inr(SOLO_RATE_STANDARD)} per department per year for 1-${SOLO_BULK_THRESHOLD - 1} departments; ${inr(SOLO_RATE_BULK)} per department per year for ${SOLO_BULK_THRESHOLD} or more departments, applicable to every selected department in that purchase. Applied here: ${bulk ? `${SOLO_BULK_THRESHOLD}+ department rate` : 'standard rate'}.`,
+      group: G1,
+    },
+    { lead: 'Payment:', text: `Pay online from your Subscription page, or by bank transfer or UPI using the details on the previous page, then write to ${COMPANY_DETAILS.email} with the quotation number and the transfer reference.`, group: G1 },
+    { ...closing[0], group: G1 },
+
+    { ...C.permittedUse, group: G2 },
+    { lead: 'Account & Credential Sharing:', text: "The Solo subscription is for the subscribing user's own account and must not be shared with another user.", group: G2 },
+    { ...C.prohibited, group: G2 },
+    { ...C.suspension, group: G2 },
+
+    { ...C.contentChanges, group: G3 },
+    { ...C.availability, group: G3 },
+    { ...C.analytics, lead: 'Data, Analytics & Privacy:', text: C.analytics.text.replace('user administration, ', '').replace('user information supplied by it', 'information supplied by it'), group: G3 },
+
+    { ...C.taxes, group: G4 },
+    { ...closing[1], group: G4 },
+    { ...C.renewal, group: G4 },
+    { ...C.liability, group: G4 },
+    { ...C.written, group: G4 },
+    { ...C.governing, group: G4 },
+    { lead: 'Quotation Validity:', text: `This quotation is valid for ${s.validityDays} days from the quotation date.`, group: G4 },
+  ];
+
+  return {
+    quoteNo: s.quoteNo,
+    date: s.date,
+    validTill,
+    title: 'Premium Subscription (Solo Learner)',
+    subtitle: `${s.termMonths}-month subscription pricing in INR`,
+    customer: {
+      name: s.customer.name, contact: '', designation: '', email: s.customer.email || '',
+      phone: s.customer.phone || '', address: '', state: tax.state, stateCode: tax.stateCode, gstin: '',
+    },
+    lines: [{
+      title: 'Premium Department Subscription — Solo Learner',
+      sub: `Full access to each subscribed department for ${s.termMonths} months from the date of activation.`,
+      qty: String(s.departmentCount), rate: s.ratePerDepartment, amount: s.subtotal,
+    }],
+    gross: s.subtotal, discount: 0, subtotal: s.subtotal,
+    cgst: tax.cgst, sgst: tax.sgst, igst: tax.igst, total: s.grandTotal,
+    tax: tax.tax, singleGst: s.gst,
+    terms,
+    specialNote: '',
+    issuer,
     summary: [
-      { label: 'Subscription', value: o.subscriptionType },
-      { label: 'Departments', value: String(count) },
+      { label: 'Subscription', value: 'Premium Solo Learner' },
+      { label: 'Departments', value: String(s.departmentCount) },
       { label: 'Access scope', value: 'Subscribed departments listed above' },
-      { label: 'Department rate', value: `${moneyAuto(o.deptRate)} / dept / year` },
-      { label: 'Duration', value: o.duration },
-      { label: 'User entitlement', value: o.users },
+      { label: 'Pricing slab', value: s.pricingSlab.replace(/^./, c => c.toUpperCase()).replace('departments', 'Departments') },
+      { label: 'Department rate', value: `${moneyAuto(s.ratePerDepartment)} / department / year` },
+      { label: 'Duration', value: `${s.termMonths} months from activation` },
+      { label: 'User entitlement', value: 'Your own account (1 user)' },
       { label: 'Valid until', value: dateDisplay(validTill) },
     ],
-    departments: o.departments,
-    compact: o.compact,
+    departments: s.departmentNames,
+    departmentsLabel: 'Subscribed departments',
+    customerLabel: 'Customer details',
+    termsHeading: 'Terms & Conditions',
+    termsPointer: 'Terms & Conditions',
   };
 }

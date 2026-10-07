@@ -26,6 +26,8 @@ import { SubscriptionSidebarCard } from './subscription/SubscriptionSidebarCard'
 import { dashboardTitle, affiliation } from '../lib/identity';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FeedbackWidget } from './dashboard/FeedbackWidget';
+import { getDashboardRoute } from '../lib/dashboardRoute';
+import { Spinner } from './ui';
 
 interface SidebarItem {
   label: string;
@@ -76,17 +78,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [isSidebarOpen]);
 
+  // An account whose own dashboard is somewhere else (Sales, Admin, an institution…) is sent
+  // there. Nothing of this layout renders meanwhile, so the wrong dashboard never flashes.
+  const ownRoute = profile ? getDashboardRoute(profile) : null;
+  const elsewhere = !!ownRoute && ownRoute !== '/dashboard';
   useEffect(() => {
-    if (!loading && profile) {
-      if (profile.role !== 'Student' && profile.role !== 'Subscriber') {
-        if (profile.role === 'SuperAdmin') navigate('/admin');
-        else if (profile.role === 'Institution') navigate('/institution');
-        else if (profile.role === 'SubscriptionManager') navigate('/manager');
-      }
-    } else if (!loading && !profile) {
-      navigate('/login');
-    }
-  }, [profile, loading, navigate]);
+    if (loading) return;
+    if (!profile) navigate('/login', { replace: true });
+    else if (elsewhere) navigate(ownRoute!, { replace: true });
+  }, [profile, loading, navigate, elsewhere, ownRoute]);
 
   // The clock in the header. Browsing is free — the catalogue stays open while a
   // member waits, and the limit lands where the reading does.
@@ -120,6 +120,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       && !(isIndividual && item.path === '/dashboard/subscriptions')
       && !(isIndividual && item.path === '/dashboard/invoices' && !hasPayments)
   );
+
+  if (loading || !profile || elsewhere) {
+    return <div className="flex min-h-screen items-center justify-center bg-ground"><Spinner /></div>;
+  }
 
   return (
     <div className="app-type flex min-h-screen bg-ground">

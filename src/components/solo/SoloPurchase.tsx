@@ -8,8 +8,9 @@ import { formatRupees } from '../../lib/institutionPricing';
 import {
   SOLO_BULK_THRESHOLD, SOLO_FOUR_DEPT_MESSAGE, calculateSoloSubscriptionPrice, type SoloPrice,
 } from '../../lib/soloPricing';
-import { fetchSoloQuote, payForSoloSubscription, SOLO_PLAN_CHANGED, type SoloPlan } from './soloPlanApi';
-import { downloadSoloQuotation } from './soloQuotationPdf';
+import { fetchSoloQuote, payForSoloSubscription, requestSoloQuotation, SOLO_PLAN_CHANGED, type SoloPlan } from './soloPlanApi';
+import { soloPlanToRender } from '../../lib/quotation/quotationModel';
+import { downloadQuotationPdf } from '../../lib/quotation/quotationPdf';
 import { Dialog } from '../ui';
 import { AnnualPricingBlock } from '../pricing/AnnualPricingBlock';
 import { PRICE_LABELS, getSoloPricingDisplay } from '../../lib/pricingDisplay';
@@ -89,9 +90,19 @@ export function SoloPurchaseDialog({ open, onClose, plan, onPaid }: {
   const toggle = (name: string) =>
     setSelected((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
 
-  const download = () => {
-    if (!price) { toast.error('Choose at least one department.'); return; }
-    downloadSoloQuotation({ name: profile?.displayName, email: profile?.email, state, departments: selected, price });
+  const [quoting, setQuoting] = useState(false);
+  // The quotation is the server's: priced there, stored, and the PDF is drawn from that record.
+  const download = async () => {
+    if (!count) { toast.error('Choose at least one department.'); return; }
+    setQuoting(true);
+    const r = await requestSoloQuotation(selected);
+    if (!r.quotation) { setQuoting(false); toast.error(r.error || 'Could not prepare the quotation.'); return; }
+    try {
+      await downloadQuotationPdf(soloPlanToRender(r.quotation), 'STM_Digital_Library_Solo_Subscription_Quotation.pdf');
+    } catch {
+      toast.error('Could not create the PDF.');
+    }
+    setQuoting(false);
   };
 
   const pay = async () => {
@@ -154,7 +165,9 @@ export function SoloPurchaseDialog({ open, onClose, plan, onPaid }: {
       description="Choose the departments you want full, unlimited access to for twelve months."
       footer={<>
         <button type="button" onClick={onClose} className="btn btn-ghost">{failed ? 'Back to Subscription' : 'Cancel'}</button>
-        <button type="button" onClick={download} disabled={!count} className="btn btn-outline"><Download size={16} aria-hidden="true" /> Download Quotation</button>
+        <button type="button" onClick={download} disabled={!count || quoting} aria-busy={quoting || undefined} className="btn btn-outline">
+          {quoting ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Download size={16} aria-hidden="true" />} Download Quotation
+        </button>
         <button type="button" onClick={pay} disabled={!count || paying || !!server?.error} aria-busy={paying || undefined} className="btn btn-primary">
           {paying ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : failed ? <RotateCw size={16} aria-hidden="true" /> : null}
           {failed ? 'Retry Payment' : 'Proceed to Payment'}

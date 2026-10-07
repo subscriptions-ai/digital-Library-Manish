@@ -22,7 +22,7 @@ import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
-import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, type QuoteDoc } from "./src/lib/quotation/quotationModel.js";
+import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, buildInstitutionPlanSnapshot, buildSoloPlanSnapshot, planSnapshotToRow, type QuoteDoc, type PlanSnapshot } from "./src/lib/quotation/quotationModel.js";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
@@ -1357,7 +1357,7 @@ async function startServer() {
   const soloAccount = async (req: any) => {
     const me = await prisma.user.findUnique({
       where: { id: req.user.uid },
-      select: { id: true, displayName: true, email: true, state: true, role: true, registrantType: true, institutionId: true },
+      select: { id: true, displayName: true, email: true, contact: true, state: true, role: true, registrantType: true, institutionId: true },
     });
     if (!me || me.role !== 'Subscriber' || me.institutionId) return null;
     return me;
@@ -1432,6 +1432,26 @@ async function startServer() {
       res.json(quote);
     } catch {
       res.status(500).json({ error: "Failed to price this" });
+    }
+  });
+
+  // POST /api/me/subscribe/quotation — a Solo Learner's quotation, priced here and stored.
+  app.post("/api/me/subscribe/quotation", authenticateJWT, async (req: any, res) => {
+    try {
+      const me = await soloAccount(req);
+      if (!me) return res.status(403).json({ error: "Premium departments are bought from an individual account." });
+      const quote: any = await priceSoloPurchase(me, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      // `planQuoteNo` and `savePlanQuotation` are defined with the institution routes below; both
+      // are only used once a request arrives, by which time they exist.
+      const customer = { name: me.displayName || 'Solo Learner', email: me.email, phone: me.contact || undefined, state: me.state };
+      const snapshot = await savePlanQuotation(
+        (quoteNo) => buildSoloPlanSnapshot({ quoteNo, customer, names: quote.departments }),
+        'STMQ-S', req);
+      res.json({ quotation: snapshot });
+    } catch (err: any) {
+      console.error('POST /api/me/subscribe/quotation:', err?.message);
+      res.status(500).json({ error: "Failed to prepare the quotation" });
     }
   });
 
@@ -12738,6 +12758,10 @@ async function startServer() {
       return {
         kind: 'departments' as const,
         departments: fresh,
+        // What the rate was decided from. The rate is for the total after this purchase; only
+        // `departments` — the new ones — are charged it.
+        existingDepartments: [...held],
+        totalAfter: total,
         price: { quantity: fresh.length, rate: price.rate, base, gst, total: Math.round((base + gst) * 100) / 100 },
       };
     }
@@ -12783,6 +12807,72 @@ async function startServer() {
       res.json(quote);
     } catch (err: any) {
       res.status(500).json({ error: "Failed to price this" });
+    }
+  });
+
+  /**
+   * A self-service quotation number: STMQ for an institution, STMQ-S for a Solo Learner, then the
+   * date and time and four digits. Issued here, never by the browser, and checked for a clash
+   * when the row is written.
+   */
+  const planQuoteNo = (prefix: string, now = new Date()) => {
+    const two = (n: number) => String(n).padStart(2, '0');
+    const stamp = `${String(now.getFullYear()).slice(-2)}${two(now.getMonth() + 1)}${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}`;
+    return `${prefix}-${stamp}-${Math.floor(1000 + Math.random() * 9000)}`;
+  };
+
+  /** Stores a self-service quotation and its priced snapshot, and returns the snapshot as stored. */
+  const savePlanQuotation = async (make: (quoteNo: string) => PlanSnapshot, prefix: string, req: any): Promise<PlanSnapshot> => {
+    let lastErr: any;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const snapshot = make(planQuoteNo(prefix));
+      const { data, expiresAt } = planSnapshotToRow(snapshot);
+      try {
+        await (prisma as any).quotation.create({
+          data: {
+            ...data, expiresAt, issuer: currentIssuer(),
+            status: 'Downloaded',
+            userId: req.user.uid, createdBy: req.user.email || data.userEmail,
+          },
+        });
+        return snapshot;
+      } catch (e: any) {
+        lastErr = e;
+        if (e?.code !== 'P2002') throw e;   // only a number clash is worth another try
+      }
+    }
+    throw lastErr;
+  };
+
+  // POST /api/institution/quotation — the quotation for a purchase, priced here and stored.
+  app.post("/api/institution/quotation", authenticateJWT, async (req: any, res) => {
+    try {
+      const institutionId = await librarianInstitutionId(req);
+      if (!institutionId) return res.status(403).json({ error: "Only an institution's librarian can request its quotation." });
+      const quote: any = await priceInstitutionPurchase(institutionId, req.body);
+      if (quote.error) return res.status(400).json(quote);
+      if (quote.kind !== 'departments') return res.status(400).json({ error: 'Quotations are written for department purchases.' });
+
+      const me = await prisma.user.findUnique({
+        where: { id: req.user.uid },
+        select: { displayName: true, email: true, organization: true, contact: true, state: true, institutionProfile: true, institution: { select: { name: true } } },
+      });
+      if (!me) return res.status(404).json({ error: "Account not found." });
+      const profile: any = me.institutionProfile || {};
+      const customer = {
+        name: String(profile.name || me.organization || me.institution?.name || '').trim() || 'Your institution',
+        contact: me.displayName || '',
+        email: me.email,
+        phone: me.contact || undefined,
+        state: me.state || profile.state || null,
+      };
+      const snapshot = await savePlanQuotation(
+        (quoteNo) => buildInstitutionPlanSnapshot({ quoteNo, customer, existingNames: quote.existingDepartments, newNames: quote.departments }),
+        'STMQ', req);
+      res.json({ quotation: snapshot });
+    } catch (err: any) {
+      console.error('POST /api/institution/quotation:', err?.message);
+      res.status(500).json({ error: "Failed to prepare the quotation" });
     }
   });
 
