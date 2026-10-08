@@ -12720,30 +12720,30 @@ var require_parser = __commonJS({
         let token, type;
         let length = tokens.length;
         let value = "";
-        let clean = true;
+        let clean2 = true;
         let next, prev;
         for (let i2 = 0; i2 < length; i2 += 1) {
           token = tokens[i2];
           type = token[0];
           if (type === "space" && i2 === length - 1 && !customProperty) {
-            clean = false;
+            clean2 = false;
           } else if (type === "comment") {
             prev = tokens[i2 - 1] ? tokens[i2 - 1][0] : "empty";
             next = tokens[i2 + 1] ? tokens[i2 + 1][0] : "empty";
             if (!SAFE_COMMENT_NEIGHBOR[prev] && !SAFE_COMMENT_NEIGHBOR[next]) {
               if (value.slice(-1) === ",") {
-                clean = false;
+                clean2 = false;
               } else {
                 value += token[1];
               }
             } else {
-              clean = false;
+              clean2 = false;
             }
           } else {
             value += token[1];
           }
         }
-        if (!clean) {
+        if (!clean2) {
           let raw = tokens.reduce((all, i2) => all + i2[1], "");
           node.raws[prop] = { raw, value };
         }
@@ -14288,7 +14288,7 @@ var require_launder = __commonJS({
         const components = time.match(/^(\d+)([:|.](\d+))?([:|.](\d+))?\s*(am|pm|AM|PM|a|p|A|M)?$/);
         if (components) {
           let hours = parseInt(components[1], 10);
-          const minutes = components[3] !== void 0 ? parseInt(components[3], 10) : 0;
+          const minutes2 = components[3] !== void 0 ? parseInt(components[3], 10) : 0;
           const seconds = components[5] !== void 0 ? parseInt(components[5], 10) : 0;
           let ampm = components[6] ? components[6].toLowerCase() : components[6];
           ampm = ampm && ampm.charAt(0);
@@ -14301,7 +14301,7 @@ var require_launder = __commonJS({
           if (hours === 24 || hours === "24") {
             hours = 0;
           }
-          return self2.padInteger(hours, 2) + ":" + self2.padInteger(minutes, 2) + ":" + self2.padInteger(seconds, 2);
+          return self2.padInteger(hours, 2) + ":" + self2.padInteger(minutes2, 2) + ":" + self2.padInteger(seconds, 2);
         } else {
           if (def !== void 0) {
             return def;
@@ -22643,13 +22643,13 @@ var parseOptions = (passedOptions) => {
       const property = config.requestPropertyName;
       const { limit } = request[property];
       const seconds = config.windowMs / 1e3;
-      const minutes = config.windowMs / (1e3 * 60);
+      const minutes2 = config.windowMs / (1e3 * 60);
       const hours = config.windowMs / (1e3 * 60 * 60);
-      const days = config.windowMs / (1e3 * 60 * 60 * 24);
+      const days2 = config.windowMs / (1e3 * 60 * 60 * 24);
       if (seconds < 60) duration = `${seconds}sec`;
-      else if (minutes < 60) duration = `${minutes}min`;
+      else if (minutes2 < 60) duration = `${minutes2}min`;
       else if (hours < 24) duration = `${hours}hr${hours > 1 ? "s" : ""}`;
-      else duration = `${days}day${days > 1 ? "s" : ""}`;
+      else duration = `${days2}day${days2 > 1 ? "s" : ""}`;
       return `${limit}-in-${duration}`;
     },
     requestPropertyName: "rateLimit",
@@ -23287,6 +23287,8 @@ var COMPANY_DETAILS = {
   shortName: "IT Break",
   /** Shown beneath the product name on documents, emails and the footer. */
   positioning: "Operated by IT BREAK COM PRIVATE LIMITED",
+  /** The same entity in reading case, for running text where capitals would shout. Not a different name. */
+  operatorDisplayName: "IT Break COM Private Limited",
   gstin: "07AAACI8666D1ZI",
   pan: "AAACI8666D",
   // derived from the GSTIN — confirm against the PAN card
@@ -23308,12 +23310,33 @@ var COMPANY_DETAILS = {
   salesOffice: "A-118, 1st Floor, Sector 63, Noida, U.P., India",
   salesOfficeStateCode: "09",
   address: "A-118, 1st Floor, Sector 63, Noida, Uttar Pradesh, India - 201301",
+  /** What `address` is. It is the operations office, never the registered office. */
+  salesOfficeLabel: "Operations / Sales & Marketing Office",
   /** Shorter form used inside document footers. */
-  registeredOffice: "A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India",
+  registeredOffice: "LGF, 40, National Park, Lajpat Nagar IV, New Delhi, Delhi 110024",
   tel: ["0120-4781200", "0120-4781206"],
   mobile: "+91-9810078958",
   whatsapp: "+91-9810078958",
+  // TODO: OFFICIAL_CONTACT_EMAIL_CONFIRMATION — info@celnet.in is the old Consortium
+  // domain. Keep it only where it is operationally needed (the footer contact column,
+  // the contact page, emails) and do not add it to new trust or company blocks until
+  // the official replacement is confirmed. Do not guess one.
   email: "info@celnet.in",
+  /** Public profiles. An icon renders only when its URL is set here. */
+  social: {
+    facebook: "https://www.facebook.com/STMDigitalLibrary",
+    // page exists ("STM Digital Library | Noida")
+    // TODO: confirm — /in/ is a personal-profile path; a company page would be /company/<name>.
+    // LinkedIn blocks automated checks, so this could not be verified from here.
+    linkedin: "https://linkedin.com/in/stmdigitallibrary",
+    /**
+     * Official STM Digital Library WhatsApp Channel.
+     * This is a broadcast/updates channel — distinct from the enquiry/support
+     * WhatsApp number above. Do NOT attach auto-fill messages to this URL.
+     * Replace the placeholder below with the verified channel URL once confirmed.
+     */
+    whatsappChannel: "https://www.whatsapp.com/channel/0029Vaxy4ls4o7qG1sSal91N"
+  },
   bank: {
     accountNumber: "50200039946701",
     accountName: "IT Break COM Private Limited",
@@ -23577,10 +23600,10 @@ var parseIso = (s2) => {
   const m2 = /^(\d{4})-(\d{2})-(\d{2})/.exec(s2 || "");
   return m2 ? new Date(Number(m2[1]), Number(m2[2]) - 1, Number(m2[3])) : null;
 };
-function addDaysIso(iso, days) {
+function addDaysIso(iso, days2) {
   const d = parseIso(iso);
   if (!d) return "";
-  d.setDate(d.getDate() + Math.floor(num(days)));
+  d.setDate(d.getDate() + Math.floor(num(days2)));
   return isoDate(d);
 }
 function docToRow(doc) {
@@ -24227,13 +24250,303 @@ function opensInstitutionDashboard(type, designation) {
   return (DESIGNATION_GROUPS[type] || []).filter((g) => wanted.includes(g.label)).some((g) => g.roles.includes(designation));
 }
 
-// src/lib/ingestionWorker.ts
+// src/lib/ingestion/db.ts
 var import_client2 = require("@prisma/client");
-var prisma2 = new import_client2.PrismaClient();
-var p = prisma2;
-var ingestionDb = p;
-var CONTACT = process.env.OPENALEX_CONTACT || "info@celnet.in";
-var UA = { "User-Agent": `STM Digital Library (mailto:${CONTACT})` };
+var ingestionDb = new import_client2.PrismaClient();
+
+// src/lib/ingestion/policy.ts
+var INGESTION_POLICY = {
+  /** How many articles one request asks a source for. */
+  articles: {
+    /**
+     * The least one request asks for, even when a journal needs only a few more to reach its
+     * limit. Asking for exactly the shortfall (1 or 2 records) meant a journal whose newest
+     * records were already held cost one whole visit per record it had to walk past.
+     */
+    pageMin: 50,
+    pageMax: 200
+  },
+  /** How long a journal is left alone after a visit that did not give anything. */
+  cooldown: {
+    /** Minutes after the 1st, 2nd, 3rd... visit in a row that added nothing; the last value repeats, doubling. */
+    noChangeSteps: [10, 60, 360, 720, 1440],
+    noChangeMaxMinutes: 14 * 24 * 60,
+    /** A journal that has been read to its end is looked at again after this many days, never sooner. */
+    exhaustedDays: 7,
+    /** Retry delay after a failed request, doubling each time. */
+    failureBaseMinutes: 5,
+    failureMaxMinutes: 6 * 60
+  },
+  /** A claim older than this is treated as abandoned by a crashed worker and may be taken over. */
+  claim: { staleAfterMinutes: 15 },
+  /** One source failing repeatedly is left alone for a while; the rest of the engine carries on. */
+  breaker: { failuresToOpen: 5, pauseMinutes: [10, 30, 60] },
+  /** When the engine's status stops saying "running normally". */
+  health: {
+    /** Enabled, but no pass has finished without error for this long. */
+    delayedAfterMinutes: 20,
+    needsAttentionAfterFailures: 5,
+    /** The timer's own rhythm; the next pass is expected about this long after the last. */
+    tickSeconds: 60
+  },
+  /** A journal checked this many times in a window with nothing added is worth a warning. */
+  alert: { repeatedNoChangeVisits: 3, windowHours: 24 },
+  /** How long a dry run stays valid for the write that follows it, and how large it may be. */
+  preview: { ttlMinutes: 60, maxItems: 2e3 },
+  /** Server-side limits for what an administrator may set. The screen mirrors these; the server decides. */
+  settings: {
+    yearsBack: { min: 1, max: 50 },
+    batchSize: { min: 1, max: 200 },
+    articlesPerJournal: { min: 0, max: 1e4 },
+    discoverEvery: { min: 1, max: 50 }
+  }
+};
+var schedulerV2 = () => process.env.INGESTION_SCHEDULER_V2 !== "0";
+function noChangeCooldownMinutes(consecutive) {
+  const steps = INGESTION_POLICY.cooldown.noChangeSteps;
+  const n2 = Math.max(1, consecutive);
+  if (n2 <= steps.length) return steps[n2 - 1];
+  const doublings = n2 - steps.length;
+  return Math.min(INGESTION_POLICY.cooldown.noChangeMaxMinutes, steps[steps.length - 1] * 2 ** doublings);
+}
+function failureBackoffMinutes(consecutive) {
+  const c = INGESTION_POLICY.cooldown;
+  return Math.min(c.failureMaxMinutes, c.failureBaseMinutes * 2 ** Math.max(0, consecutive - 1));
+}
+var minutes = (n2) => n2 * 6e4;
+var days = (n2) => n2 * 864e5;
+
+// src/lib/ingestion/audit.ts
+var SECRET = /pass(word)?|token|secret|authorization|api[_-]?key|credential|cookie/i;
+function clean(v, depth = 0) {
+  if (v == null || depth > 4) return v ?? null;
+  if (Array.isArray(v)) return v.slice(0, 50).map((x2) => clean(x2, depth + 1));
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === "object") {
+    const o = {};
+    for (const [k, x2] of Object.entries(v)) {
+      if (!SECRET.test(k)) o[k] = clean(x2, depth + 1);
+    }
+    return o;
+  }
+  if (typeof v === "string") return v.slice(0, 500);
+  return v;
+}
+async function audit(admin, action, meta = {}) {
+  try {
+    await ingestionDb.ingestionAudit.create({
+      data: { adminId: admin?.uid || admin?.id || null, adminEmail: admin?.email || null, action, meta: clean(meta) }
+    });
+  } catch (e2) {
+    console.error("[ingestion-audit] could not write", action, e2?.message);
+  }
+}
+
+// src/lib/ingestion/sourceHealth.ts
+var realFetch = (url, init) => fetch(url, init);
+var httpFetch = realFetch;
+var sleeper = (ms) => new Promise((r2) => setTimeout(r2, ms));
+function sourceFor(url) {
+  try {
+    const h2 = new URL(url).hostname;
+    if (h2.endsWith("openalex.org")) return "OpenAlex";
+    if (h2.endsWith("doaj.org")) return "DOAJ";
+    if (h2.endsWith("doabooks.org")) return "DOAB";
+    if (h2.endsWith("oapen.org")) return "OAPEN";
+    return h2;
+  } catch {
+    return "unknown";
+  }
+}
+async function sourceStatus(source) {
+  const row = await ingestionDb.ingestionSourceHealth.findUnique({ where: { source } }).catch(() => null);
+  const until = row?.pausedUntil ?? null;
+  return { paused: !!until && until.getTime() > Date.now(), until, failures: row?.consecutiveFailures ?? 0 };
+}
+async function recordSourceOk(source) {
+  await ingestionDb.ingestionSourceHealth.upsert({
+    where: { source },
+    create: { source, lastOkAt: /* @__PURE__ */ new Date() },
+    update: { consecutiveFailures: 0, pausedUntil: null, lastOkAt: /* @__PURE__ */ new Date() }
+  }).catch(() => {
+  });
+}
+async function recordSourceFailure(source, error) {
+  const cfg = INGESTION_POLICY.breaker;
+  const row = await ingestionDb.ingestionSourceHealth.upsert({
+    where: { source },
+    create: { source, consecutiveFailures: 1, lastFailureAt: /* @__PURE__ */ new Date(), lastError: error.slice(0, 500) },
+    update: { consecutiveFailures: { increment: 1 }, lastFailureAt: /* @__PURE__ */ new Date(), lastError: error.slice(0, 500) }
+  }).catch(() => null);
+  const n2 = row?.consecutiveFailures ?? 0;
+  if (n2 > 0 && n2 % cfg.failuresToOpen === 0) {
+    const level = Math.min(cfg.pauseMinutes.length - 1, n2 / cfg.failuresToOpen - 1);
+    const until = new Date(Date.now() + minutes(cfg.pauseMinutes[level]));
+    await ingestionDb.ingestionSourceHealth.update({ where: { source }, data: { pausedUntil: until } }).catch(() => {
+    });
+    await audit(null, "SOURCE_PAUSED", { source, consecutiveFailures: n2, pausedUntil: until, lastError: error.slice(0, 200) });
+    return { opened: true, until };
+  }
+  return { opened: false, until: null };
+}
+async function fetchSourceJson(url, opts = {}) {
+  const source = opts.source || sourceFor(url);
+  const st = await sourceStatus(source);
+  if (st.paused) return { ok: false, status: null, json: null, paused: true, transient: true, error: `${source} is paused after repeated failures; it will be tried again automatically` };
+  const attempts = Math.max(1, opts.attempts ?? 3);
+  let last = { ok: false, status: null, json: null, transient: true, error: "no attempt made" };
+  for (let i2 = 1; i2 <= attempts; i2++) {
+    try {
+      const r2 = await httpFetch(url, { headers: opts.headers, signal: AbortSignal.timeout(opts.timeoutMs ?? 12e4) });
+      if (r2.ok) {
+        const json = await r2.json();
+        await recordSourceOk(source);
+        return { ok: true, status: r2.status, json };
+      }
+      const transient = r2.status === 429 || r2.status >= 500;
+      last = { ok: false, status: r2.status, json: null, transient, error: `${source} answered HTTP ${r2.status}` };
+      if (!transient) return last;
+      const ra = Number(r2.headers?.get?.("retry-after"));
+      if (i2 < attempts) await sleeper(Number.isFinite(ra) && ra > 0 ? Math.min(3e4, ra * 1e3) : 1e3 * 3 ** (i2 - 1));
+    } catch (e2) {
+      last = { ok: false, status: null, json: null, transient: true, error: String(e2?.message || e2) };
+      if (e2?.name === "TimeoutError" || e2?.name === "AbortError") break;
+      if (i2 < attempts) await sleeper(1e3 * 3 ** (i2 - 1));
+    }
+  }
+  await recordSourceFailure(source, last.error || "failed");
+  return last;
+}
+
+// src/lib/ingestion/claims.ts
+var import_node_os = __toESM(require("node:os"), 1);
+var import_node_crypto2 = require("node:crypto");
+var WORKER_ID = `${import_node_os.default.hostname()}:${process.pid}:${(0, import_node_crypto2.randomBytes)(3).toString("hex")}`;
+var staleCutoff = () => new Date(Date.now() - minutes(INGESTION_POLICY.claim.staleAfterMinutes));
+var claimable = (cutoff) => ({ OR: [{ claimedAt: null }, { claimedAt: { lt: cutoff } }] });
+async function claimOne(model, where, orderBy, label) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const cutoff = staleCutoff();
+    const candidate = await ingestionDb[model].findFirst({ where: { AND: [where, claimable(cutoff)] }, orderBy });
+    if (!candidate) return null;
+    const won = await ingestionDb[model].updateMany({
+      where: { id: candidate.id, ...claimable(cutoff) },
+      data: { claimedAt: /* @__PURE__ */ new Date(), claimedBy: WORKER_ID }
+    });
+    if (won.count === 1) {
+      const recovered = candidate.claimedAt != null;
+      if (recovered) {
+        await audit(null, "STALE_CLAIM_RECOVERED", {
+          model,
+          id: candidate.id,
+          name: label(candidate),
+          previousWorker: candidate.claimedBy,
+          claimedAt: candidate.claimedAt,
+          takenBy: WORKER_ID
+        });
+      }
+      return { row: candidate, recovered, previousWorker: candidate.claimedBy ?? null };
+    }
+  }
+  return null;
+}
+var claimJournal = (where, orderBy) => claimOne("journal", where, orderBy, (r2) => r2.title);
+var claimSweepRow = (where, orderBy) => claimOne("departmentSweep", where, orderBy, (r2) => `${r2.department} / ${r2.source} / ${r2.term}`);
+async function releaseClaim(model, id) {
+  await ingestionDb[model].updateMany({ where: { id, claimedBy: WORKER_ID }, data: { claimedAt: null, claimedBy: null } }).catch(() => {
+  });
+}
+
+// src/lib/ingestion/dedup.ts
+function normaliseDoi(raw) {
+  const t2 = String(raw || "").trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").trim().toLowerCase();
+  return t2 || null;
+}
+var squash = (s2) => s2.toLowerCase().replace(/\W+/g, " ").trim().slice(0, 180);
+function canonicalFingerprint(w) {
+  const doi = normaliseDoi(w.doi);
+  return doi ? `doi:${doi}` : `t:${squash(String(w.title || ""))}|${w.year ?? ""}`;
+}
+function legacyFingerprint(w) {
+  if (normaliseDoi(w.doi)) return null;
+  return `ta:${String(w.title || "").toLowerCase().trim().slice(0, 180)}|${String(w.authors || "").toLowerCase().trim().slice(0, 80)}`;
+}
+var CHUNK = 200;
+var chunks = (a) => {
+  const o = [];
+  for (let i2 = 0; i2 < a.length; i2 += CHUNK) o.push(a.slice(i2, i2 + CHUNK));
+  return o;
+};
+async function findHeldArticles(works) {
+  const found = /* @__PURE__ */ new Map();
+  if (!works.length) return found;
+  const byFp = /* @__PURE__ */ new Map();
+  const byLegacy = /* @__PURE__ */ new Map();
+  const bySrc = /* @__PURE__ */ new Map();
+  works.forEach((w, i2) => {
+    const push = (m2, k) => {
+      const l = m2.get(k);
+      l ? l.push(i2) : m2.set(k, [i2]);
+    };
+    push(byFp, canonicalFingerprint(w));
+    const lg = legacyFingerprint(w);
+    if (lg) push(byLegacy, lg);
+    if (w.sourceRecordId) push(bySrc, `${w.source}\0${w.sourceRecordId}`);
+  });
+  const mark = (idxs, h2) => idxs?.forEach((i2) => {
+    if (!found.has(i2)) found.set(i2, h2);
+  });
+  for (const part of chunks([...byFp.keys(), ...byLegacy.keys()])) {
+    const rows = await ingestionDb.article.findMany({
+      where: { fingerprint: { in: part } },
+      select: { id: true, fingerprint: true, journalId: true }
+    });
+    for (const r2 of rows) {
+      mark(byFp.get(r2.fingerprint), { articleId: r2.id, via: "fingerprint", journalId: r2.journalId });
+      mark(byLegacy.get(r2.fingerprint), { articleId: r2.id, via: "legacyFingerprint", journalId: r2.journalId });
+    }
+  }
+  if (bySrc.size) {
+    const bySource = /* @__PURE__ */ new Map();
+    for (const k of bySrc.keys()) {
+      const [s2, id] = k.split("\0");
+      (bySource.get(s2) || bySource.set(s2, []).get(s2)).push(id);
+    }
+    for (const [source, ids] of bySource) for (const part of chunks(ids)) {
+      const rows = await ingestionDb.article.findMany({
+        where: { source, sourceRecordId: { in: part } },
+        select: { id: true, sourceRecordId: true, journalId: true }
+      });
+      for (const r2 of rows) mark(bySrc.get(`${source}\0${r2.sourceRecordId}`), { articleId: r2.id, via: "sourceRecordId", journalId: r2.journalId });
+    }
+  }
+  return found;
+}
+async function findPossibleDuplicates(journalId, works) {
+  const out = /* @__PURE__ */ new Map();
+  if (!journalId) return out;
+  const idx = works.map((w, i2) => ({ w, i: i2 })).filter(({ w }) => !normaliseDoi(w.doi) && w.title && w.year);
+  if (!idx.length) return out;
+  const titles = [...new Set(idx.map(({ w }) => String(w.title).trim()))];
+  for (const part of chunks(titles)) {
+    const rows = await ingestionDb.article.findMany({
+      where: { journalId, OR: part.map((t2) => ({ title: { equals: t2, mode: "insensitive" } })) },
+      select: { id: true, title: true, year: true }
+    });
+    for (const { w, i: i2 } of idx) {
+      const hit = rows.find((r2) => r2.year === w.year && String(r2.title).trim().toLowerCase() === String(w.title).trim().toLowerCase());
+      if (hit) out.set(i2, hit.id);
+    }
+  }
+  return out;
+}
+async function findJournalByAnyIssn(issns, client = ingestionDb) {
+  const list = [...new Set(issns.filter(Boolean))];
+  if (!list.length) return null;
+  return client.journal.findFirst({ where: { OR: [{ issn: { in: list } }, { eissn: { in: list } }] } });
+}
+
+// src/lib/ingestion/eligibility.ts
 var COMMERCIAL_OK = /^(cc[\s-]?by([\s-]?(sa|nd))?|cc0|public[\s-]?domain)$/i;
 function licenceAllowsCommercialUse(raw, ncFlag) {
   if (ncFlag === true) return false;
@@ -24242,6 +24555,42 @@ function licenceAllowsCommercialUse(raw, ncFlag) {
   if (/nc/i.test(t2.replace(/[^a-z]/gi, ""))) return false;
   return COMMERCIAL_OK.test(t2.replace(/\s+/g, " "));
 }
+var DOI_SHAPE = /^10\.\d{4,9}\/\S+$/i;
+function judgeArticle(w, ctx = {}) {
+  if (ctx.held) return { outcome: "HELD", reasons: [`already in the catalogue (matched by ${ctx.held.via})`] };
+  const title = String(w.title || "").trim();
+  if (!title || /^untitled$/i.test(title)) return { outcome: "REJECTED", reasons: ["no usable title"] };
+  const doi = normaliseDoi(w.doi);
+  if (doi && !DOI_SHAPE.test(doi)) return { outcome: "NEEDS_REVIEW", status: "Draft", access: "LinkOnly", reasons: ["malformed DOI"] };
+  const thisYear = (/* @__PURE__ */ new Date()).getFullYear();
+  if (w.year != null && (w.year > thisYear + 1 || w.year < 1500)) {
+    return { outcome: "NEEDS_REVIEW", status: "Draft", access: "LinkOnly", reasons: [`implausible publication year ${w.year}`] };
+  }
+  if (ctx.possibleDuplicateOf) {
+    return { outcome: "NEEDS_REVIEW", status: "Draft", access: "LinkOnly", reasons: [`possible duplicate of ${ctx.possibleDuplicateOf}`] };
+  }
+  const reasons = [];
+  let verdict;
+  if (w.licence && String(w.licence).trim()) {
+    verdict = licenceAllowsCommercialUse(w.licence) ? "allows-commercial" : "non-commercial";
+    if (verdict === "non-commercial") reasons.push(`licence "${w.licence}" does not allow hosting`);
+  } else if (ctx.journal && ctx.journal.rightsBasis === "DOAJ declaration" && ctx.journal.licenceIsNC === false) {
+    verdict = "allows-commercial";
+  } else {
+    verdict = "not-verifiable";
+    reasons.push("licence not verifiable \u2014 catalogued with a link, no file served");
+  }
+  const fileOpensHere = ctx.fileOpensHere !== false;
+  const viewable = verdict === "allows-commercial" && !!w.pdfUrl && fileOpensHere;
+  if (verdict === "allows-commercial" && !w.pdfUrl) reasons.push("no file offered");
+  if (verdict === "allows-commercial" && w.pdfUrl && !fileOpensHere) reasons.push("file does not open from this server");
+  return { outcome: "ADD", status: "Published", access: viewable ? "ViewableHere" : "LinkOnly", licenceVerdict: verdict, reasons };
+}
+
+// src/lib/ingestionWorker.ts
+var p = ingestionDb;
+var CONTACT = process.env.OPENALEX_CONTACT || "info@celnet.in";
+var UA = { "User-Agent": `STM Digital Library (mailto:${CONTACT})` };
 var DEPARTMENT_TERMS = {
   "Computer / IT": ["computer science", "information technology", "informatics"],
   "Civil / Construction Engineering": ["civil engineering", "construction"],
@@ -24291,13 +24640,8 @@ function normaliseIssn(raw) {
 }
 var sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
 async function getJson(url, timeoutMs = 12e4) {
-  try {
-    const r2 = await fetch(url, { headers: UA, signal: AbortSignal.timeout(timeoutMs) });
-    if (!r2.ok) return null;
-    return await r2.json();
-  } catch {
-    return null;
-  }
+  const r2 = await fetchSourceJson(url, { headers: UA, timeoutMs, attempts: schedulerV2() ? 3 : 1 });
+  return r2.ok ? r2.json : null;
 }
 async function getState() {
   return p.ingestionState.upsert({
@@ -24321,13 +24665,11 @@ async function claimSweep(source, departments) {
   }
   const reopenAfter = new Date(Date.now() - 30 * 864e5);
   const where = { source, department: { in: departments } };
-  return await p.departmentSweep.findFirst({
-    where: { ...where, exhaustedAt: null },
-    orderBy: [{ lastSweptAt: { sort: "asc", nulls: "first" } }]
-  }) ?? await p.departmentSweep.findFirst({
-    where: { ...where, exhaustedAt: { lt: reopenAfter } },
-    orderBy: [{ lastSweptAt: { sort: "asc", nulls: "first" } }]
-  });
+  const order = [{ lastSweptAt: { sort: "asc", nulls: "first" } }];
+  if (schedulerV2()) {
+    return (await claimSweepRow({ ...where, exhaustedAt: null }, order))?.row ?? (await claimSweepRow({ ...where, exhaustedAt: { lt: reopenAfter } }, order))?.row ?? null;
+  }
+  return await p.departmentSweep.findFirst({ where: { ...where, exhaustedAt: null }, orderBy: order }) ?? await p.departmentSweep.findFirst({ where: { ...where, exhaustedAt: { lt: reopenAfter } }, orderBy: order });
 }
 async function closeSweep(sweep, r2, nextPosition, full) {
   await p.departmentSweep.update({
@@ -24338,13 +24680,32 @@ async function closeSweep(sweep, r2, nextPosition, full) {
       lastSweptAt: /* @__PURE__ */ new Date(),
       seen: { increment: r2.seen },
       accepted: { increment: r2.accepted },
-      refused: { increment: r2.rejected }
+      refused: { increment: r2.rejected },
+      claimedAt: null,
+      claimedBy: null
     }
   });
 }
 var DOAJ_PAGE = 100;
 var ARTICLE_JOURNALS_PER_PASS = 10;
 var ARTICLE_PASS_BUDGET_MS = 4e4;
+function refreshPatch(existing, incoming) {
+  const patch = {};
+  for (const k of ["eissn", "publisherName", "country", "homepage", "domain"]) {
+    if (!existing[k] && incoming[k]) patch[k] = incoming[k];
+  }
+  const noSubjects = !Array.isArray(existing.subjects) || existing.subjects.length === 0;
+  if (noSubjects && Array.isArray(incoming.subjects) && incoming.subjects.length) patch.subjects = incoming.subjects;
+  if (existing.rightsBasis === "DOAJ declaration") {
+    const changed = ["licence", "licenceIsNC", "status"].filter((k) => incoming[k] !== void 0 && incoming[k] !== existing[k]);
+    if (changed.length) {
+      for (const k of changed) patch[k] = incoming[k];
+      patch.rightsVerifiedAt = incoming.rightsVerifiedAt;
+      patch.rightsVerifiedBy = incoming.rightsVerifiedBy;
+    }
+  }
+  return patch;
+}
 async function discoverJournalsPage(sweep) {
   const page = sweep.position + 1;
   const d = await getJson(
@@ -24352,6 +24713,10 @@ async function discoverJournalsPage(sweep) {
   );
   const records = d?.results || [];
   const r2 = { seen: 0, accepted: 0, rejected: 0 };
+  if (d === null && schedulerV2()) {
+    await releaseClaim("departmentSweep", sweep.id);
+    return { ...r2, more: false, total: null, failed: true };
+  }
   if (!records.length) {
     await closeSweep(sweep, r2, sweep.position, false);
     return { ...r2, more: false, total: d?.total ?? null };
@@ -24384,8 +24749,15 @@ async function discoverJournalsPage(sweep) {
     const existing = issn ? await p.journal.findFirst({ where: { issn } }) : await p.journal.findFirst({ where: { title } });
     if (existing) {
       if (existing.rightsBasis === "our own") continue;
-      const { domain, ...rest } = data;
-      await p.journal.update({ where: { id: existing.id }, data: existing.domain ? rest : data });
+      if (schedulerV2()) {
+        if (issn) {
+          const patch = refreshPatch(existing, data);
+          if (Object.keys(patch).length) await p.journal.update({ where: { id: existing.id }, data: patch });
+        }
+      } else {
+        const { domain, ...rest } = data;
+        await p.journal.update({ where: { id: existing.id }, data: existing.domain ? rest : data });
+      }
     } else {
       await p.journal.create({ data });
     }
@@ -24509,6 +24881,7 @@ async function discoverBooksPage(sweep) {
           originalUrl: oapenPdf || (doi ? `https://doi.org/${doi}` : handle ? `https://directory.doabooks.org/handle/${handle}` : null),
           rightsHolder: f3.one("publisher.name") || null,
           source: "DOAB",
+          sourceRecordId: handle || rec.uuid || null,
           ownershipSource: "Ingested",
           lastIngestedAt: /* @__PURE__ */ new Date(),
           fingerprint
@@ -24527,105 +24900,201 @@ async function discoverBooksPage(sweep) {
   await closeSweep(sweep, r2, offset, full);
   return { ...r2, added, skippedHeld, skippedFailed, more: full, error: firstFailure };
 }
-async function nextJournalForArticles(departments, cap = 0) {
+async function pickJournal(departments, cap, v2) {
   const inScope = {
     ...departments?.length ? { domain: { in: departments } } : {},
     ...cap > 0 ? { articleCount: { lt: cap } } : {}
   };
   const staleAfter = new Date(Date.now() - 7 * 864e5);
-  return await p.journal.findFirst({
-    where: { status: "Accepted", issn: { not: null }, rightsBasis: "DOAJ declaration", exhaustedAt: null, ...inScope },
-    orderBy: [{ lastIngestedAt: { sort: "asc", nulls: "first" } }]
-  }) ?? await p.journal.findFirst({
-    where: {
-      status: "Accepted",
-      issn: { not: null },
-      rightsBasis: "DOAJ declaration",
-      exhaustedAt: { lt: staleAfter },
-      ...inScope
-    },
-    orderBy: [{ lastIngestedAt: { sort: "asc", nulls: "first" } }]
-  });
+  const base = { status: "Accepted", issn: { not: null }, rightsBasis: "DOAJ declaration", ...inScope };
+  const due = { OR: [{ nextEligibleAt: null }, { nextEligibleAt: { lte: /* @__PURE__ */ new Date() } }] };
+  const order = [{ lastIngestedAt: { sort: "asc", nulls: "first" } }];
+  const tier1 = { ...base, exhaustedAt: null };
+  const tier2 = { ...base, exhaustedAt: { lt: staleAfter } };
+  if (v2) {
+    const first = await claimJournal({ AND: [tier1, due] }, order);
+    if (first) return { journal: first.row, recovered: first.recovered };
+    const second = await claimJournal({ AND: [tier2, due] }, order);
+    return second ? { journal: second.row, recovered: second.recovered } : null;
+  }
+  const j = await p.journal.findFirst({ where: tier1, orderBy: order }) ?? await p.journal.findFirst({ where: tier2, orderBy: order });
+  return j ? { journal: j, recovered: false } : null;
+}
+async function noJournalNote(departments, cap) {
+  const inScope = {
+    ...departments?.length ? { domain: { in: departments } } : {},
+    ...cap > 0 ? { articleCount: { lt: cap } } : {}
+  };
+  if (schedulerV2()) {
+    const cooling = await p.journal.aggregate({
+      where: { status: "Accepted", issn: { not: null }, rightsBasis: "DOAJ declaration", ...inScope, nextEligibleAt: { gt: /* @__PURE__ */ new Date() } },
+      _count: { _all: true },
+      _min: { nextEligibleAt: true }
+    });
+    if (cooling._count._all > 0) {
+      const at = cooling._min.nextEligibleAt;
+      return `${cooling._count._all.toLocaleString()} journal${cooling._count._all === 1 ? "" : "s"} ${departments?.length ? `in ${departments.join(", ")} ` : ""}checked recently and resting; the next is due ${at.toISOString()}`;
+    }
+  }
+  return departments?.length ? `no journal to fetch from in ${departments.join(", ")} yet` : "every journal is up to date";
+}
+function openAlexWork(w) {
+  const doi = normaliseDoi(w.doi);
+  return {
+    source: "OpenAlex",
+    sourceRecordId: w.id || null,
+    doi,
+    title: w.title || w.display_name || "",
+    authors: (w.authorships || []).map((a) => a.author?.display_name).filter(Boolean).join(", "),
+    year: w.publication_year || null,
+    pdfUrl: w.best_oa_location?.pdf_url || w.open_access?.oa_url || null,
+    licence: w.best_oa_location?.license || null,
+    raw: w
+  };
 }
 async function fetchArticlesForOneJournal(state, departments) {
+  const v2 = schedulerV2();
   const cap = Math.max(0, state.articlesPerJournal ?? 0);
-  const journal = await nextJournalForArticles(departments, cap);
-  if (!journal) {
+  const picked = await pickJournal(departments, cap, v2);
+  if (!picked) {
+    return { journal: null, added: 0, skipped: 0, note: await noJournalNote(departments, cap) };
+  }
+  try {
+    return await visitJournal(picked.journal, state, cap, v2, picked.recovered);
+  } finally {
+    if (v2) await releaseClaim("journal", picked.journal.id);
+  }
+}
+async function visitJournal(journal, state, cap, v2, recovered) {
+  const policy = INGESTION_POLICY;
+  const now = () => /* @__PURE__ */ new Date();
+  const fromYear = (/* @__PURE__ */ new Date()).getFullYear() - (state.yearsBack - 1);
+  const have = journal.articleCount || 0;
+  const remaining = cap > 0 ? Math.max(0, cap - have) : Number.POSITIVE_INFINITY;
+  const perPage = cap > 0 ? v2 ? Math.min(policy.articles.pageMax, Math.max(remaining, policy.articles.pageMin)) : Math.min(200, Math.max(1, cap - have)) : Math.min(state.batchSize, 200);
+  const cursor = journal.fetchCursor || "*";
+  const url = `https://api.openalex.org/works?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)},from_publication_date:${fromYear}-01-01,open_access.is_oa:true&per-page=${perPage}&sort=publication_date:desc&cursor=${encodeURIComponent(cursor)}`;
+  const res = await fetchSourceJson(url, { headers: UA, attempts: v2 ? 3 : 1 });
+  if (!res.ok) {
+    if (!v2) {
+      await p.journal.update({ where: { id: journal.id }, data: { lastIngestedAt: now(), fetchCursor: null } });
+      return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: "the source did not answer" };
+    }
+    if (res.paused) {
+      return { journal: null, department: journal.domain, added: 0, skipped: 0, note: `OpenAlex is temporarily paused after repeated failures \u2014 ${res.error}` };
+    }
+    const badCursor = res.status === 400 && !!journal.fetchCursor;
+    const failures = badCursor ? journal.failureCount || 0 : (journal.failureCount || 0) + 1;
+    await p.journal.update({
+      where: { id: journal.id },
+      data: {
+        fetchCursor: badCursor ? null : journal.fetchCursor,
+        failureCount: failures,
+        lastIngestionStatus: "failed",
+        nextEligibleAt: badCursor ? null : new Date(Date.now() + minutes(failureBackoffMinutes(failures))),
+        claimedAt: null,
+        claimedBy: null
+      }
+    });
     return {
-      journal: null,
+      journal: journal.title,
+      department: journal.domain,
+      journalId: journal.id,
       added: 0,
       skipped: 0,
-      note: departments?.length ? `no journal to fetch from in ${departments.join(", ")} yet` : "every journal is up to date"
+      error: badCursor ? "the source rejected the saved cursor; starting this journal over" : res.error || "the source did not answer",
+      note: badCursor ? void 0 : `will retry after ${failureBackoffMinutes(failures)} min`
     };
   }
-  const fromYear = (/* @__PURE__ */ new Date()).getFullYear() - (state.yearsBack - 1);
-  const cursor = journal.fetchCursor || "*";
-  const url = `https://api.openalex.org/works?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)},from_publication_date:${fromYear}-01-01,open_access.is_oa:true&per-page=${cap > 0 ? Math.min(200, Math.max(1, cap - (journal.articleCount || 0))) : Math.min(state.batchSize, 200)}&sort=publication_date:desc&cursor=${encodeURIComponent(cursor)}`;
-  const d = await getJson(url);
-  if (!d) {
-    await p.journal.update({
-      where: { id: journal.id },
-      data: { lastIngestedAt: /* @__PURE__ */ new Date(), fetchCursor: null }
-    });
-    return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: "the source did not answer" };
-  }
+  const d = res.json;
   const next = d.meta?.next_cursor ?? null;
-  if (!d.results?.length) {
+  const results = d.results || [];
+  if (!results.length) {
     await p.journal.update({
       where: { id: journal.id },
-      data: { lastIngestedAt: /* @__PURE__ */ new Date(), fetchCursor: null, exhaustedAt: /* @__PURE__ */ new Date() }
+      data: {
+        lastIngestedAt: now(),
+        fetchCursor: null,
+        exhaustedAt: now(),
+        // Start again from the top next week so newly published work is picked up — a time, never a verdict.
+        nextEligibleAt: new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
+        noChangeCount: (journal.noChangeCount || 0) + 1,
+        failureCount: 0,
+        lastIngestionStatus: "exhausted",
+        claimedAt: null,
+        claimedBy: null
+      }
     });
-    return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: "nothing new in this journal" };
+    return { journal: journal.title, department: journal.domain, journalId: journal.id, added: 0, skipped: 0, note: "nothing new in this journal" };
   }
-  let added = 0, skippedHeld = 0, skippedFailed = 0;
+  const works = results.map(openAlexWork);
+  const held = await findHeldArticles(works);
+  const possibleDupes = await findPossibleDuplicates(journal.id, works);
+  let added = 0, skippedHeld = 0, skippedFailed = 0, skippedRejected = 0, needsReview = 0;
   let firstFailure = null;
-  for (const w of d.results) {
-    const doi = (w.doi || "").replace(/^https?:\/\/(dx\.)?doi\.org\//i, "") || null;
-    const pdf = w.best_oa_location?.pdf_url || w.open_access?.oa_url || null;
-    const lic = w.best_oa_location?.license || null;
-    const ok = lic ? licenceAllowsCommercialUse(lic) : !journal.licenceIsNC;
-    const fingerprint = doi ? `doi:${doi.toLowerCase()}` : `t:${String(w.title || "").toLowerCase().replace(/\W+/g, " ").trim().slice(0, 180)}|${w.publication_year}`;
-    if (await p.article.findFirst({ where: { fingerprint }, select: { id: true } })) {
+  const seenThisPage = /* @__PURE__ */ new Set();
+  for (let i2 = 0; i2 < works.length; i2++) {
+    if (v2 && added + needsReview >= remaining) break;
+    const w = works[i2];
+    const fingerprint = canonicalFingerprint(w);
+    const heldHere = held.get(i2) ?? (seenThisPage.has(fingerprint) ? { articleId: "(this page)", via: "fingerprint", journalId: journal.id } : null);
+    const decision = judgeArticle(w, { journal, held: heldHere, possibleDuplicateOf: possibleDupes.get(i2) ?? null });
+    if (decision.outcome === "HELD") {
       skippedHeld++;
       continue;
     }
-    await p.article.create({
-      data: {
-        title: w.title || w.display_name || "Untitled",
-        authors: (w.authorships || []).map((a) => a.author?.display_name).filter(Boolean).join(", "),
-        abstract: null,
-        // see the abstract decision — not stored for ingested work
-        doi,
-        pdfUrl: pdf,
-        journalId: journal.id,
-        journalName: journal.title,
-        journalIssn: journal.issn,
-        publisherName: journal.publisherName,
-        volume: w.biblio?.volume || null,
-        issue: w.biblio?.issue || null,
-        year: w.publication_year || null,
-        originalDate: w.publication_date ? new Date(w.publication_date) : null,
-        originalUrl: w.primary_location?.landing_page_url || (doi ? `https://doi.org/${doi}` : null),
-        domain: journal.domain,
-        subject: (w.concepts || [])[0]?.display_name || null,
-        licence: lic,
-        licenceIsNC: !ok,
-        rightsHolder: journal.publisherName,
-        accessStatus: ok && pdf ? "ViewableHere" : "LinkOnly",
-        parentKind: "Journal",
-        parentId: journal.id,
-        contentType: "Periodicals",
-        status: "Published",
-        source: "OpenAlex",
-        ownershipSource: "Ingested",
-        fingerprint
+    if (decision.outcome === "REJECTED") {
+      skippedRejected++;
+      continue;
+    }
+    const raw = w.raw;
+    try {
+      await p.article.create({
+        data: {
+          title: w.title || raw.display_name || "Untitled",
+          authors: w.authors,
+          abstract: null,
+          // see the abstract decision — not stored for ingested work
+          doi: w.doi,
+          pdfUrl: w.pdfUrl,
+          journalId: journal.id,
+          journalName: journal.title,
+          journalIssn: journal.issn,
+          publisherName: journal.publisherName,
+          volume: raw.biblio?.volume || null,
+          issue: raw.biblio?.issue || null,
+          year: w.year,
+          originalDate: raw.publication_date ? new Date(raw.publication_date) : null,
+          originalUrl: raw.primary_location?.landing_page_url || (w.doi ? `https://doi.org/${w.doi}` : null),
+          domain: journal.domain,
+          subject: (raw.concepts || [])[0]?.display_name || null,
+          licence: w.licence,
+          licenceIsNC: decision.licenceVerdict !== "allows-commercial",
+          rightsHolder: journal.publisherName,
+          accessStatus: decision.access,
+          parentKind: "Journal",
+          parentId: journal.id,
+          contentType: "Periodicals",
+          // Published, or Draft where a person has to look first (it then appears under Drafts in the admin).
+          status: decision.status,
+          source: "OpenAlex",
+          ownershipSource: "Ingested",
+          fingerprint,
+          // Where it came from, so the same record arriving again is recognised by the source's own id.
+          sourceRecordId: w.sourceRecordId
+        }
+      });
+      seenThisPage.add(fingerprint);
+      decision.outcome === "NEEDS_REVIEW" ? needsReview++ : added++;
+    } catch (e2) {
+      if (e2?.code === "P2002") {
+        skippedHeld++;
+        seenThisPage.add(fingerprint);
+      } else {
+        skippedFailed++;
+        if (!firstFailure) firstFailure = String(e2?.message || e2).slice(0, 300);
       }
-    }).then(() => {
-      added++;
-    }).catch((e2) => {
-      skippedFailed++;
-      if (!firstFailure) firstFailure = String(e2?.message || e2).slice(0, 300);
-    });
+    }
   }
   const agg = await p.$queryRawUnsafe(
     `select count(*)::int a, count(distinct volume)::int v, count(distinct issue)::int i,
@@ -24634,19 +25103,57 @@ async function fetchArticlesForOneJournal(state, departments) {
   );
   const s2 = agg[0];
   const full = cap > 0 && s2.a >= cap;
-  await p.journal.update({
-    where: { id: journal.id },
-    data: {
-      articleCount: s2.a,
-      volumeCount: s2.v,
-      issueCount: s2.i,
-      firstYear: s2.f,
-      lastYear: s2.l,
-      lastIngestedAt: /* @__PURE__ */ new Date(),
-      fetchCursor: full ? null : next,
-      exhaustedAt: next && !full ? null : /* @__PURE__ */ new Date()
-    }
-  });
+  const gained = added + needsReview > 0;
+  const noChange = (journal.noChangeCount || 0) + 1;
+  const data = {
+    articleCount: s2.a,
+    volumeCount: s2.v,
+    issueCount: s2.i,
+    firstYear: s2.f,
+    lastYear: s2.l,
+    lastIngestedAt: now(),
+    failureCount: 0,
+    claimedAt: null,
+    claimedBy: null
+  };
+  if (full) {
+    Object.assign(data, { fetchCursor: null, exhaustedAt: now(), nextEligibleAt: null, noChangeCount: 0, lastIngestionStatus: "full" });
+  } else if (gained) {
+    Object.assign(data, {
+      fetchCursor: next,
+      exhaustedAt: next ? null : now(),
+      nextEligibleAt: next ? null : new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
+      noChangeCount: 0,
+      lastIngestionStatus: "added"
+    });
+  } else if (!next) {
+    Object.assign(data, {
+      fetchCursor: null,
+      exhaustedAt: now(),
+      nextEligibleAt: new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
+      noChangeCount: noChange,
+      lastIngestionStatus: "exhausted"
+    });
+  } else {
+    Object.assign(data, {
+      fetchCursor: next,
+      exhaustedAt: null,
+      noChangeCount: noChange,
+      lastIngestionStatus: "nochange",
+      nextEligibleAt: new Date(Date.now() + minutes(noChangeCooldownMinutes(noChange)))
+    });
+  }
+  if (!v2) {
+    delete data.nextEligibleAt;
+    delete data.noChangeCount;
+    delete data.lastIngestionStatus;
+    delete data.failureCount;
+    delete data.claimedAt;
+    delete data.claimedBy;
+    data.fetchCursor = full ? null : next;
+    data.exhaustedAt = next && !full ? null : /* @__PURE__ */ new Date();
+  }
+  await p.journal.update({ where: { id: journal.id }, data });
   return {
     journal: journal.title,
     department: journal.domain,
@@ -24654,11 +25161,17 @@ async function fetchArticlesForOneJournal(state, departments) {
     added,
     skippedHeld,
     skippedFailed,
+    skippedRejected,
+    needsReview,
     skipped: skippedHeld + skippedFailed,
     // kept so existing callers still read
     more: Boolean(next) && !full,
     error: firstFailure,
-    note: full ? `holds ${s2.a} articles, the limit set` : next ? void 0 : "reached the end of this journal"
+    note: [
+      recovered ? "took over an abandoned claim" : null,
+      full ? `holds ${s2.a} articles, the limit set` : next ? void 0 : "reached the end of this journal",
+      !full && !gained && next ? `nothing new on this page; resting ${noChangeCooldownMinutes(noChange)} min` : null
+    ].filter(Boolean).join(" \xB7 ") || void 0
   };
 }
 async function runIngestionPass(departments, opts = {}) {
@@ -24686,7 +25199,22 @@ async function runIngestionPass(departments, opts = {}) {
         const sweep = await claimSweep(source, wanted);
         if (!sweep) continue;
         if (source === "DOAJ") {
-          const r4 = await discoverJournalsPage(sweep);
+          const r4 = await discoverJournalsPage(sweep).catch(async (e2) => {
+            await releaseClaim("departmentSweep", sweep.id);
+            throw e2;
+          });
+          if (r4.failed) {
+            await p.ingestionState.update({ where: { id: "singleton" }, data: { phase: "Journals", currentDepartment: sweep.department, lastRunAt: /* @__PURE__ */ new Date() } });
+            await record({
+              phase: "Journals",
+              source: "DOAJ",
+              department: sweep.department,
+              more: true,
+              note: `"${sweep.term}": DOAJ did not answer \u2014 the sweep was left where it was and will be tried again`,
+              error: "DOAJ did not answer"
+            });
+            return { phase: "Journals", source, department: sweep.department, term: sweep.term, ...r4 };
+          }
           await p.ingestionState.update({
             where: { id: "singleton" },
             data: {
@@ -24694,6 +25222,8 @@ async function runIngestionPass(departments, opts = {}) {
               currentDepartment: sweep.department,
               lastRunAt: /* @__PURE__ */ new Date(),
               lastError: null,
+              lastSuccessAt: /* @__PURE__ */ new Date(),
+              consecutiveFailures: 0,
               journalsSeen: { increment: r4.seen },
               journalsAccepted: { increment: r4.accepted },
               journalsRejected: { increment: r4.rejected }
@@ -24711,7 +25241,10 @@ async function runIngestionPass(departments, opts = {}) {
           });
           return { phase: "Journals", source, department: sweep.department, term: sweep.term, ...r4 };
         }
-        const r3 = await discoverBooksPage(sweep);
+        const r3 = await discoverBooksPage(sweep).catch(async (e2) => {
+          await releaseClaim("departmentSweep", sweep.id);
+          throw e2;
+        });
         await p.ingestionState.update({
           where: { id: "singleton" },
           data: {
@@ -24719,6 +25252,8 @@ async function runIngestionPass(departments, opts = {}) {
             currentDepartment: sweep.department,
             lastRunAt: /* @__PURE__ */ new Date(),
             lastError: null,
+            lastSuccessAt: /* @__PURE__ */ new Date(),
+            consecutiveFailures: 0,
             booksAdded: { increment: r3.added },
             booksSkipped: { increment: r3.skippedHeld + r3.skippedFailed }
           }
@@ -24759,7 +25294,7 @@ async function runIngestionPass(departments, opts = {}) {
         if (!more.journal) break;
         await p.ingestionState.update({
           where: { id: "singleton" },
-          data: { articlesAdded: { increment: more.added }, articlesSkipped: { increment: more.skipped } }
+          data: { articlesAdded: { increment: more.added }, articlesSkipped: { increment: more.skipped }, lastSuccessAt: /* @__PURE__ */ new Date(), consecutiveFailures: 0 }
         });
         await record({
           phase: "Articles",
@@ -24769,6 +25304,8 @@ async function runIngestionPass(departments, opts = {}) {
           added: more.added,
           skippedHeld: more.skippedHeld ?? 0,
           skippedFailed: more.skippedFailed ?? 0,
+          skippedRejected: more.skippedRejected ?? 0,
+          needsReview: more.needsReview ?? 0,
           more: Boolean(more.more),
           note: more.note ?? null,
           error: more.error ?? null
@@ -24790,6 +25327,8 @@ async function runIngestionPass(departments, opts = {}) {
         currentDepartment: r2.department ?? null,
         lastRunAt: /* @__PURE__ */ new Date(),
         lastError: null,
+        lastSuccessAt: /* @__PURE__ */ new Date(),
+        consecutiveFailures: 0,
         articlesAdded: { increment: r2.added },
         articlesSkipped: { increment: r2.skipped }
       }
@@ -24802,6 +25341,8 @@ async function runIngestionPass(departments, opts = {}) {
       added: r2.added,
       skippedHeld: r2.skippedHeld ?? 0,
       skippedFailed: r2.skippedFailed ?? 0,
+      skippedRejected: r2.skippedRejected ?? 0,
+      needsReview: r2.needsReview ?? 0,
       more: Boolean(r2.more),
       note: r2.note ?? null,
       error: r2.error ?? null
@@ -24810,7 +25351,7 @@ async function runIngestionPass(departments, opts = {}) {
   } catch (e2) {
     await p.ingestionState.update({
       where: { id: "singleton" },
-      data: { lastError: String(e2?.message || e2).slice(0, 1e3), lastRunAt: /* @__PURE__ */ new Date() }
+      data: { lastError: String(e2?.message || e2).slice(0, 1e3), lastRunAt: /* @__PURE__ */ new Date(), consecutiveFailures: { increment: 1 } }
     }).catch(() => {
     });
     await record({ phase: "Error", error: String(e2?.message || e2).slice(0, 1e3) });
@@ -24967,53 +25508,529 @@ function doajRowToJournal(row) {
     status: ok ? "Accepted" : "MetadataOnly"
   };
 }
-async function importDoajCatalogue(opts = {}) {
-  const text = opts.csvText ?? await (async () => {
+async function readCsv(csvText) {
+  const text = csvText ?? await (async () => {
     const r2 = await fetch(DOAJ_CSV_URL, { headers: { "User-Agent": "STM Digital Library (mailto:info@celnet.in)" } });
     if (!r2.ok) throw new Error(`DOAJ answered HTTP ${r2.status} for the journal list`);
     return r2.text();
   })();
-  const rows = import_papaparse.default.parse(text, { header: true, skipEmptyLines: true }).data;
-  const held = /* @__PURE__ */ new Set();
-  const heldTitles = /* @__PURE__ */ new Set();
+  return import_papaparse.default.parse(text, { header: true, skipEmptyLines: true }).data;
+}
+async function readHeld() {
+  const issns = /* @__PURE__ */ new Set();
+  const titles = /* @__PURE__ */ new Map();
   for (const j of await ingestionDb.journal.findMany({ select: { issn: true, eissn: true, title: true } })) {
-    if (j.issn) held.add(j.issn);
-    if (j.eissn) held.add(j.eissn);
-    heldTitles.add(j.title.trim().toLowerCase());
+    if (j.issn) issns.add(j.issn);
+    if (j.eissn) issns.add(j.eissn);
+    titles.set(j.title.trim().toLowerCase(), j.issn || "");
   }
-  const result = {
-    inFile: rows.length,
-    alreadyHeld: 0,
-    added: 0,
-    accepted: 0,
-    metadataOnly: 0,
-    noDepartment: 0,
-    byDepartment: {},
-    dryRun: !!opts.dryRun
+  return { issns, titles };
+}
+async function checkDoajCatalogue(opts = {}) {
+  const rows = await readCsv(opts.csvText);
+  const { issns: held, titles: heldTitles } = await readHeld();
+  const out = {
+    summary: { inFile: rows.length, alreadyHeld: 0, new: 0, fullTextEligible: 0, metadataOnly: 0, rejected: 0, needsReview: 0, noDepartment: 0, byDepartment: {} },
+    newIssns: [],
+    reviewSample: []
   };
-  const fresh = [];
+  const s2 = out.summary;
   for (const row of rows) {
     const j = doajRowToJournal(row);
-    if (!j) continue;
-    if (held.has(j.issn) || j.eissn && held.has(j.eissn) || heldTitles.has(j.title.toLowerCase())) {
-      result.alreadyHeld++;
+    if (!j) {
+      s2.rejected++;
+      continue;
+    }
+    if (held.has(j.issn) || j.eissn && held.has(j.eissn)) {
+      s2.alreadyHeld++;
+      continue;
+    }
+    const sameTitle = heldTitles.get(j.title.toLowerCase());
+    if (sameTitle !== void 0) {
+      s2.needsReview++;
+      if (out.reviewSample.length < 20) out.reviewSample.push({ title: j.title, issn: j.issn });
       continue;
     }
     held.add(j.issn);
     if (j.eissn) held.add(j.eissn);
-    fresh.push(j);
-    j.status === "Accepted" ? result.accepted++ : result.metadataOnly++;
-    if (!j.domain) result.noDepartment++;
+    heldTitles.set(j.title.toLowerCase(), j.issn);
+    out.newIssns.push(j.issn);
+    s2.new++;
+    j.status === "Accepted" ? s2.fullTextEligible++ : s2.metadataOnly++;
+    if (!j.domain) s2.noDepartment++;
     const k = j.domain || "(none)";
-    result.byDepartment[k] = (result.byDepartment[k] || 0) + 1;
+    s2.byDepartment[k] = (s2.byDepartment[k] || 0) + 1;
   }
-  if (!opts.dryRun) {
-    for (let i2 = 0; i2 < fresh.length; i2 += 500) {
-      const r2 = await ingestionDb.journal.createMany({ data: fresh.slice(i2, i2 + 500), skipDuplicates: true });
-      result.added += r2.count;
+  return out;
+}
+async function importCheckedJournals(allowedIssns, opts = {}) {
+  const allowed = new Set(allowedIssns);
+  const rows = await readCsv(opts.csvText);
+  const { issns: held } = await readHeld();
+  const fresh = [];
+  let alreadyHeldNow = 0, accepted = 0, metadataOnly = 0;
+  const seen = /* @__PURE__ */ new Set();
+  for (const row of rows) {
+    const j = doajRowToJournal(row);
+    if (!j || !allowed.has(j.issn)) continue;
+    if (seen.has(j.issn)) continue;
+    seen.add(j.issn);
+    if (held.has(j.issn) || j.eissn && held.has(j.eissn)) {
+      alreadyHeldNow++;
+      continue;
+    }
+    fresh.push(j);
+    j.status === "Accepted" ? accepted++ : metadataOnly++;
+  }
+  let added = 0;
+  for (let i2 = 0; i2 < fresh.length; i2 += 500) {
+    const r2 = await ingestionDb.journal.createMany({ data: fresh.slice(i2, i2 + 500), skipDuplicates: true });
+    added += r2.count;
+  }
+  return { added, alreadyHeldNow, accepted, metadataOnly, requested: allowed.size };
+}
+
+// src/lib/ingestion/settings.ts
+var TUNING = ["yearsBack", "batchSize", "articlesPerJournal", "discoverEvery"];
+var FOCUS = ["auto", "journals", "books", "articles"];
+var same = (a, b) => a.length === b.length && [...a].sort().join("\0") === [...b].sort().join("\0");
+function validateSettings(body, current, allDepartments) {
+  const errors = [];
+  const data = {};
+  const changes = {};
+  const b = body && typeof body === "object" ? body : {};
+  const limits = INGESTION_POLICY.settings;
+  const note = (k, to) => {
+    if (current[k] !== to) {
+      data[k] = to;
+      changes[k] = { from: current[k], to };
+    }
+  };
+  if ("enabled" in b) {
+    if (typeof b.enabled !== "boolean") errors.push("enabled must be true or false.");
+    else note("enabled", b.enabled);
+  }
+  if ("focus" in b) {
+    if (!FOCUS.includes(b.focus)) errors.push(`focus must be one of: ${FOCUS.join(", ")}.`);
+    else note("focus", b.focus);
+  }
+  const labels = {
+    yearsBack: "Years to collect",
+    batchSize: "Articles per pass",
+    articlesPerJournal: "Articles per journal",
+    discoverEvery: "Look for more every"
+  };
+  const touchingTuning = [];
+  for (const k of TUNING) {
+    if (!(k in b)) continue;
+    const v = b[k];
+    const { min, max } = limits[k];
+    if (typeof v !== "number" || !Number.isInteger(v)) {
+      errors.push(`${labels[k]} must be a whole number.`);
+      continue;
+    }
+    if (v < min || v > max) {
+      errors.push(`${labels[k]} must be between ${min} and ${max}.`);
+      continue;
+    }
+    if (v !== current[k]) touchingTuning.push(k);
+    note(k, v);
+  }
+  let scope;
+  if ("departments" in b) {
+    if (!Array.isArray(b.departments) || b.departments.some((d) => typeof d !== "string")) errors.push("departments must be a list of department names.");
+    else {
+      const unknown = b.departments.filter((d) => !allDepartments.includes(d));
+      if (unknown.length) errors.push(`Unknown department: ${unknown.slice(0, 3).join(", ")}.`);
+      else {
+        const to = [...new Set(b.departments)];
+        const from = Array.isArray(current.departments) ? current.departments : [];
+        if (!same(from, to)) {
+          data.departments = to;
+          changes.departments = { from, to };
+          scope = { from, to };
+        }
+      }
     }
   }
-  return result;
+  if (errors.length) return { ok: false, status: 400, errors };
+  const stayingOn = current.enabled && !(data.enabled === false);
+  if (stayingOn && touchingTuning.length) {
+    return { ok: false, status: 409, errors: ["Pause the engine to edit ingestion settings."] };
+  }
+  if (stayingOn && scope && b.confirmScopeChange !== true) {
+    return { ok: false, status: 409, errors: ["Changing the active scope while the engine is running needs confirmation."], needsConfirmation: "SCOPE_CHANGE" };
+  }
+  return { ok: true, data, changes, scope, enabledChange: "enabled" in changes };
+}
+
+// src/lib/ingestion/status.ts
+var SOURCE_FOR_PHASE = { Articles: "OpenAlex", Journals: "DOAJ", Books: "DOAB" };
+async function engineStatus(state, timer) {
+  const now = Date.now();
+  const policy = INGESTION_POLICY.health;
+  const [sources, staleClaims, cooling, claimed] = await Promise.all([
+    ingestionDb.ingestionSourceHealth.findMany(),
+    ingestionDb.journal.count({ where: { claimedAt: { lt: new Date(now - minutes(INGESTION_POLICY.claim.staleAfterMinutes)) } } }),
+    ingestionDb.journal.aggregate({ where: { nextEligibleAt: { gt: new Date(now) } }, _count: { _all: true }, _min: { nextEligibleAt: true } }),
+    ingestionDb.journal.findMany({ where: { claimedAt: { gt: new Date(now - minutes(INGESTION_POLICY.claim.staleAfterMinutes)) } }, select: { title: true, claimedAt: true }, take: 3 })
+  ]);
+  const pausedSources = sources.filter((s2) => s2.pausedUntil && s2.pausedUntil.getTime() > now);
+  const reasons = [];
+  let health;
+  if (!state.enabled) {
+    health = "paused";
+  } else if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures || pausedSources.length) {
+    health = "attention";
+    if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures) reasons.push(`${state.consecutiveFailures} passes in a row failed`);
+    for (const s2 of pausedSources) reasons.push(`${s2.source} is paused after repeated failures and will be tried again by itself`);
+  } else if (staleClaims > 0) {
+    health = "attention";
+    reasons.push(`${staleClaims} journal claim${staleClaims === 1 ? "" : "s"} abandoned by a worker that stopped`);
+  } else if (state.lastSuccessAt && now - new Date(state.lastSuccessAt).getTime() > minutes(policy.delayedAfterMinutes)) {
+    health = "delayed";
+    reasons.push(`no pass has finished without error for ${Math.round((now - new Date(state.lastSuccessAt).getTime()) / 6e4)} minutes`);
+  } else {
+    health = "running";
+    if (!state.lastSuccessAt) reasons.push("waiting for the first pass");
+  }
+  const label = { running: "Running normally", paused: "Paused", delayed: "Delayed", attention: "Needs attention" }[health];
+  const coolingCount = cooling._count._all;
+  return {
+    health,
+    label,
+    reasons,
+    mode: state.focus || "auto",
+    currentSource: SOURCE_FOR_PHASE[state.phase] || null,
+    currentlyProcessing: claimed[0]?.title || (state.currentJournal || null),
+    lastPassAt: state.lastRunAt ?? null,
+    // The timer's real rhythm. Known only while the engine is on and the server has ticked since it started.
+    nextPassAt: state.enabled && timer.nextTickAt ? new Date(timer.nextTickAt).toISOString() : null,
+    passRunning: timer.busy,
+    coolingDown: { journals: coolingCount, nextDueAt: coolingCount ? cooling._min.nextEligibleAt.toISOString() : null },
+    sources: sources.map((s2) => ({
+      source: s2.source,
+      healthy: !(s2.pausedUntil && s2.pausedUntil.getTime() > now) && (s2.consecutiveFailures || 0) === 0,
+      status: s2.pausedUntil && s2.pausedUntil.getTime() > now ? "delayed" : (s2.consecutiveFailures || 0) > 0 ? "failing" : "ok",
+      pausedUntil: s2.pausedUntil ?? null,
+      lastError: s2.lastError ?? null,
+      lastOkAt: s2.lastOkAt ?? null
+    }))
+  };
+}
+async function last24Hours() {
+  const since = new Date(Date.now() - 24 * 36e5);
+  const a = await ingestionDb.ingestionRun.aggregate({
+    where: { at: { gte: since } },
+    _sum: { added: true, skippedHeld: true, skippedFailed: true, needsReview: true, skippedRejected: true },
+    _count: { _all: true }
+  });
+  const errors = await ingestionDb.ingestionRun.count({ where: { at: { gte: since }, error: { not: null } } });
+  return {
+    passes: a._count._all,
+    added: a._sum.added || 0,
+    held: a._sum.skippedHeld || 0,
+    failed: a._sum.skippedFailed || 0,
+    errors,
+    rejected: a._sum.skippedRejected || 0,
+    needsReview: a._sum.needsReview || 0
+  };
+}
+async function repeatedNoChangeAlerts() {
+  const hours = INGESTION_POLICY.alert.windowHours;
+  const min = INGESTION_POLICY.alert.repeatedNoChangeVisits;
+  const rows = await ingestionDb.$queryRawUnsafe(
+    `select r."journalId" id, max(r."journalTitle") title, count(*)::int visits, sum(r."skippedHeld")::int held
+       from "IngestionRun" r
+      where r.phase = 'Articles' and r."journalId" is not null and r."at" > now() - ($1 || ' hours')::interval
+      group by r."journalId"
+     having sum(r.added) = 0 and count(*) >= $2
+      order by count(*) desc limit 10`,
+    String(hours),
+    min
+  );
+  if (!rows.length) return [];
+  const js = await ingestionDb.journal.findMany({ where: { id: { in: rows.map((r2) => r2.id) } }, select: { id: true, nextEligibleAt: true, noChangeCount: true } });
+  const by = new Map(js.map((j) => [j.id, j]));
+  return rows.map((r2) => {
+    const j = by.get(r2.id);
+    const cooling = !!j?.nextEligibleAt && j.nextEligibleAt.getTime() > Date.now();
+    return {
+      journalId: r2.id,
+      title: r2.title,
+      visits: r2.visits,
+      held: r2.held,
+      cooldownApplied: cooling,
+      message: cooling ? `Repeated no-change checks detected for ${r2.title}. The engine has applied a cooldown.` : `Repeated no-change checks detected for ${r2.title} (${r2.visits} in ${hours} h). A cooldown applies from its next visit.`
+    };
+  });
+}
+async function metrics(state, period) {
+  if (period === "lifetime") {
+    return {
+      period,
+      journalsSeen: state.journalsSeen,
+      accepted: state.journalsAccepted,
+      refused: state.journalsRejected,
+      articlesAdded: state.articlesAdded,
+      booksAdded: state.booksAdded,
+      alreadyHeld: (state.articlesSkipped || 0) + (state.booksSkipped || 0)
+    };
+  }
+  const since = new Date(Date.now() - (period === "24h" ? 24 : 24 * 7) * 36e5);
+  const rows = await ingestionDb.$queryRawUnsafe(
+    `select coalesce(sum("journalsSeen"),0)::int js, coalesce(sum("journalsAccepted"),0)::int ja, coalesce(sum("journalsRefused"),0)::int jr,
+            coalesce(sum(added) filter (where phase='Articles'),0)::int aa, coalesce(sum(added) filter (where phase='Books'),0)::int ba,
+            coalesce(sum("skippedHeld") + sum("skippedFailed"),0)::int held
+       from "IngestionRun" where "at" >= $1`,
+    since
+  );
+  const r2 = rows[0];
+  return { period, journalsSeen: r2.js, accepted: r2.ja, refused: r2.jr, articlesAdded: r2.aa, booksAdded: r2.ba, alreadyHeld: r2.held };
+}
+async function runHistory(q) {
+  const take = Math.min(Math.max(Number(q.limit) || 50, 1), 200);
+  const where = {};
+  const and = [];
+  const phases = { articles: "Articles", books: "Books", journals: "Journals" };
+  if (q.phase && phases[q.phase.toLowerCase()]) and.push({ phase: phases[q.phase.toLowerCase()] });
+  switch ((q.result || "all").toLowerCase()) {
+    case "added":
+      and.push({ OR: [{ added: { gt: 0 } }, { journalsAccepted: { gt: 0 } }] });
+      break;
+    case "held":
+      and.push({ skippedHeld: { gt: 0 } });
+      break;
+    case "failed":
+      and.push({ OR: [{ skippedFailed: { gt: 0 } }, { error: { not: null } }, { phase: "Error" }] });
+      break;
+    // Skipped: the pass wrote nothing and nothing failed — a rule refused records, they await review, or there was nothing to do.
+    case "skipped":
+      and.push(
+        { added: 0, skippedHeld: 0, skippedFailed: 0, journalsAccepted: 0, error: null },
+        { OR: [{ skippedRejected: { gt: 0 } }, { needsReview: { gt: 0 } }, { phase: "Idle" }, { note: { not: null } }] }
+      );
+      break;
+  }
+  if (q.before) {
+    const d = new Date(q.before);
+    if (!isNaN(d.getTime())) and.push({ at: { lt: d } });
+  }
+  if (and.length) where.AND = and;
+  const rows = await ingestionDb.ingestionRun.findMany({ where, orderBy: [{ at: "desc" }, { id: "desc" }], take: take + 1 });
+  const more = rows.length > take;
+  const runs = more ? rows.slice(0, take) : rows;
+  return { runs, hasMore: more, nextBefore: more ? runs[runs.length - 1].at.toISOString() : null };
+}
+
+// src/lib/ingestion/importService.ts
+var toWork = (c) => ({
+  source: c.source,
+  sourceRecordId: c.sourceRecordId ?? null,
+  doi: c.doi ?? null,
+  title: c.title,
+  authors: c.authors ?? null,
+  year: c.year ?? null
+});
+async function classifyCandidates(cands) {
+  const works = cands.map(toWork);
+  const held = await findHeldArticles(works);
+  const journalByIssn = /* @__PURE__ */ new Map();
+  for (const c of cands) {
+    const n2 = normaliseIssn(c.issn);
+    if (n2 && !journalByIssn.has(n2)) journalByIssn.set(n2, await findJournalByAnyIssn([n2]));
+  }
+  const dupes = /* @__PURE__ */ new Map();
+  const perJournal = /* @__PURE__ */ new Map();
+  cands.forEach((c, i2) => {
+    const j = journalByIssn.get(normaliseIssn(c.issn) || "");
+    if (j && !normaliseDoi(c.doi)) (perJournal.get(j.id) || perJournal.set(j.id, []).get(j.id)).push(i2);
+  });
+  for (const [jid, idx] of perJournal) {
+    const found = await findPossibleDuplicates(jid, idx.map((i2) => works[i2]));
+    for (const [k, articleId] of found) dupes.set(idx[k], articleId);
+  }
+  const seen = /* @__PURE__ */ new Set();
+  return cands.map((c, i2) => {
+    const key = canonicalFingerprint(toWork(c));
+    const j = journalByIssn.get(normaliseIssn(c.issn) || "") || null;
+    const duplicateInBatch = seen.has(key);
+    const d = judgeArticle(
+      { title: c.title, doi: c.doi, pdfUrl: c.pdfUrl, licence: c.licence, year: c.year },
+      {
+        journal: j ? { licenceIsNC: j.licenceIsNC, rightsBasis: j.rightsBasis } : null,
+        held: held.get(i2) ?? (duplicateInBatch ? { articleId: "(this import)", via: "fingerprint", journalId: null } : null),
+        possibleDuplicateOf: dupes.get(i2) ?? null,
+        fileOpensHere: c.fileOpensHere
+      }
+    );
+    if (d.outcome === "ADD") seen.add(key);
+    return { ...c, key, outcome: d.outcome, access: d.access, status: d.status, licenceVerdict: d.licenceVerdict, reasons: d.reasons };
+  });
+}
+function summarise(items, errors = 0) {
+  const add = items.filter((i2) => i2.outcome === "ADD");
+  return {
+    found: items.length,
+    eligible: add.length,
+    viewable: add.filter((i2) => i2.access === "ViewableHere").length,
+    metadataOnly: add.filter((i2) => i2.access !== "ViewableHere").length,
+    alreadyHeld: items.filter((i2) => i2.outcome === "HELD").length,
+    needsReview: items.filter((i2) => i2.outcome === "NEEDS_REVIEW").length,
+    rejected: items.filter((i2) => i2.outcome === "REJECTED").length,
+    errors
+  };
+}
+async function createPreview(kind, admin, params, summary, items) {
+  const row = await ingestionDb.ingestionPreview.create({
+    data: {
+      kind,
+      createdBy: admin?.email || admin?.uid || null,
+      expiresAt: new Date(Date.now() + minutes(INGESTION_POLICY.preview.ttlMinutes)),
+      params,
+      summary,
+      items
+    }
+  });
+  await audit(admin, "DRY_RUN_CREATED", { previewId: row.id, kind, params, summary });
+  return row;
+}
+var PreviewError = class extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+};
+async function loadPreview(id, kind) {
+  if (!id || typeof id !== "string") throw new PreviewError(400, "A preview is required. Run a dry run first.");
+  const row = await ingestionDb.ingestionPreview.findUnique({ where: { id } });
+  if (!row || row.kind !== kind) throw new PreviewError(404, "That preview does not exist. Run a dry run first.");
+  if (row.expiresAt.getTime() < Date.now()) throw new PreviewError(410, "That preview has expired. Run the dry run again so what you confirm is what is in the catalogue now.");
+  return row;
+}
+async function upsertPublisher(tx, name, source) {
+  if (!name) return null;
+  const existing = await tx.publisher.findFirst({ where: { name } });
+  if (existing) return existing;
+  try {
+    return await tx.publisher.create({ data: { name, tieUpStatus: "Discovered", source } });
+  } catch {
+    return tx.publisher.findFirst({ where: { name } });
+  }
+}
+async function commitOneOff(previewId, admin, opts = {}) {
+  const row = await loadPreview(previewId, "ONE_OFF");
+  const claimed = await ingestionDb.ingestionPreview.updateMany({
+    where: { id: previewId, consumedAt: null },
+    data: { consumedAt: /* @__PURE__ */ new Date(), consumedBy: admin?.email || admin?.uid || null }
+  });
+  if (claimed.count === 0 && !opts.retryFailed) throw new PreviewError(409, "This preview has already been ingested. Run a new dry run to import again.");
+  const items = Array.isArray(row.items) ? row.items : [];
+  const todo = items.map((it, idx) => ({ it, idx })).filter(({ it }) => it.outcome === "ADD" && (opts.retryFailed ? it.result === "failed" : !it.result));
+  const sum = { attempted: 0, added: 0, held: 0, rejected: 0, failed: 0, skippedNeedsReview: items.filter((i2) => i2.outcome === "NEEDS_REVIEW").length };
+  await audit(admin, "ONE_OFF_IMPORT_STARTED", {
+    previewId,
+    retry: !!opts.retryFailed,
+    eligible: todo.length,
+    source: row.params?.source,
+    departments: row.params?.departments
+  });
+  const BATCH = 25;
+  for (let b = 0; b < todo.length; b += BATCH) {
+    const batch = todo.slice(b, b + BATCH);
+    const fresh = await classifyCandidates(batch.map(({ it }) => it));
+    for (let k = 0; k < batch.length; k++) {
+      const { it, idx } = batch[k];
+      const f3 = fresh[k];
+      sum.attempted++;
+      if (f3.outcome !== "ADD") {
+        const held = f3.outcome === "HELD";
+        items[idx].result = held ? "held" : f3.outcome === "REJECTED" ? "rejected" : "review";
+        items[idx].resultDetail = f3.reasons.join("; ");
+        held ? sum.held++ : f3.outcome === "REJECTED" ? sum.rejected++ : sum.skippedNeedsReview++;
+        continue;
+      }
+      try {
+        await ingestionDb.$transaction(async (tx) => {
+          const issn = normaliseIssn(f3.issn);
+          const publisher = await upsertPublisher(tx, f3.publisherName, f3.source);
+          let journal = issn ? await findJournalByAnyIssn([issn], tx) : null;
+          if (!journal && issn) {
+            try {
+              journal = await tx.journal.create({ data: {
+                title: f3.journalName || "Unknown Journal",
+                issn,
+                publisherId: publisher?.id || null,
+                publisherName: f3.publisherName || null,
+                domain: f3.department,
+                subject: f3.subject || null,
+                openAccess: !!f3.openAccess,
+                startYear: f3.year || null
+              } });
+            } catch {
+              journal = await findJournalByAnyIssn([issn], tx);
+            }
+          }
+          const doi = normaliseDoi(f3.doi);
+          await tx.article.create({ data: {
+            title: f3.title,
+            authors: f3.authors || null,
+            doi,
+            pdfUrl: f3.pdfUrl || null,
+            journalId: journal?.id || null,
+            journalName: f3.journalName || null,
+            journalIssn: issn || f3.issn || null,
+            publisherId: publisher?.id || null,
+            publisherName: f3.publisherName || null,
+            volume: f3.volume ? String(f3.volume) : null,
+            issue: f3.issue ? String(f3.issue) : null,
+            year: f3.year || null,
+            domain: f3.department,
+            subject: f3.subject || null,
+            accessType: "OpenAccess",
+            accessStatus: f3.access,
+            licence: f3.licence || null,
+            licenceIsNC: f3.licenceVerdict !== "allows-commercial",
+            originalUrl: doi ? `https://doi.org/${doi}` : null,
+            status: f3.status || "Published",
+            source: f3.source,
+            sourceRecordId: f3.sourceRecordId || null,
+            fingerprint: f3.key,
+            createdBy: admin?.email || "Ingestion"
+          } });
+        });
+        items[idx].result = "added";
+        sum.added++;
+      } catch (e2) {
+        if (e2?.code === "P2002") {
+          items[idx].result = "held";
+          items[idx].resultDetail = "already added by another writer";
+          sum.held++;
+        } else {
+          items[idx].result = "failed";
+          items[idx].resultDetail = String(e2?.message || e2).slice(0, 200);
+          sum.failed++;
+          if (!sum.firstError) sum.firstError = items[idx].resultDetail;
+        }
+      }
+    }
+    opts.onProgress?.({ ...sum, total: todo.length });
+  }
+  await ingestionDb.ingestionPreview.update({
+    where: { id: previewId },
+    data: { items, summary: { ...row.summary, write: { ...sum, finishedAt: (/* @__PURE__ */ new Date()).toISOString() } } }
+  });
+  return sum;
+}
+function previewToCsv(items) {
+  const headers = ["outcome", "reason", "access", "title", "authors", "journalName", "issn", "publisherName", "volume", "issue", "year", "doi", "pdfUrl", "licence", "department", "source", "sourceRecordId", "result"];
+  const esc2 = (v) => {
+    let t2 = String(v ?? "").replace(/"/g, '""');
+    if (/^[=+\-@]/.test(t2)) t2 = "'" + t2;
+    return `"${t2}"`;
+  };
+  const row = (it) => headers.map((h2) => esc2(h2 === "reason" ? (it.reasons || []).join("; ") : h2 === "outcome" ? it.outcome : it[h2])).join(",");
+  return [headers.join(","), ...items.map(row)].join("\n");
 }
 
 // server.ts
@@ -25465,7 +26482,7 @@ if (!import_crypto2.default.hash) {
     return import_crypto2.default.createHash(algo).update(data).digest(encoding);
   };
 }
-var prisma3 = new import_client3.PrismaClient();
+var prisma2 = new import_client3.PrismaClient();
 var APP_DIR = typeof __dirname !== "undefined" ? __dirname : import_path2.default.dirname((0, import_url.fileURLToPath)(import_meta.url));
 var SETTINGS_FILE = import_path2.default.join(APP_DIR, "settings.json");
 function getSystemSettings() {
@@ -25539,8 +26556,8 @@ async function startServer() {
   const describeDevice = (ua) => {
     if (!ua) return null;
     const browser = /Edg\//.test(ua) ? "Edge" : /OPR\/|Opera/.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
-    const os = /Android/.test(ua) ? "Android" : /iPhone|iPad|iOS/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "unknown system";
-    return `${browser} on ${os}`;
+    const os2 = /Android/.test(ua) ? "Android" : /iPhone|iPad|iOS/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "unknown system";
+    return `${browser} on ${os2}`;
   };
   const lastTouched = /* @__PURE__ */ new Map();
   const startSession = async (userObj, req, opts = {}) => {
@@ -25548,7 +26565,7 @@ async function startServer() {
     const now = /* @__PURE__ */ new Date();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1e3);
     const ua = String(req.headers?.["user-agent"] || "").slice(0, 400);
-    const created = await prisma3.$transaction(async (tx) => {
+    const created = await prisma2.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"user-session:" + userObj.id}))`;
       const live = await tx.userSession.findFirst({
         where: { userId: userObj.id, revokedAt: null, expiresAt: { gt: now } },
@@ -25592,7 +26609,7 @@ async function startServer() {
   const sessionIsLive = async (claims) => {
     if (claims?.uid === "__validator__") return true;
     if (!claims?.sid || !claims?.uid) return false;
-    const row = await prisma3.userSession.findUnique({
+    const row = await prisma2.userSession.findUnique({
       where: { sessionId: String(claims.sid) },
       select: { userId: true, revokedAt: true, expiresAt: true }
     });
@@ -25602,7 +26619,7 @@ async function startServer() {
     if (now - last > SESSION_TOUCH_MS) {
       if (lastTouched.size > 2e4) lastTouched.clear();
       lastTouched.set(claims.sid, now);
-      prisma3.userSession.updateMany({ where: { sessionId: claims.sid }, data: { lastSeenAt: new Date(now) } }).catch(() => {
+      prisma2.userSession.updateMany({ where: { sessionId: claims.sid }, data: { lastSeenAt: new Date(now) } }).catch(() => {
       });
     }
     return true;
@@ -25738,7 +26755,7 @@ async function startServer() {
         info = await dynTrans.sendMail(opts);
       }
       if (logAsSent) {
-        await prisma3.emailLog.create({
+        await prisma2.emailLog.create({
           data: {
             to: typeof opts.to === "string" ? opts.to : JSON.stringify(opts.to),
             subject: opts.subject,
@@ -25751,7 +26768,7 @@ async function startServer() {
     } catch (error) {
       console.error("\u274C Email Sending Failed:", error);
       if (logAsSent) {
-        await prisma3.emailLog.create({
+        await prisma2.emailLog.create({
           data: {
             to: typeof mailOptions.to === "string" ? mailOptions.to : JSON.stringify(mailOptions.to),
             subject: mailOptions.subject || "No Subject",
@@ -25775,17 +26792,17 @@ async function startServer() {
     const inDomains = domains?.length ? { domain: { in: domains } } : {};
     const live = { status: { not: "Draft" } };
     const [journalRows, newArticles, legacyPeriodicals, newBooks, legacyBooks, legacyOther] = await Promise.all([
-      prisma3.$queryRawUnsafe(
+      prisma2.$queryRawUnsafe(
         domains?.length ? `select count(distinct a."journalId")::int as n from "Article" a
              where a.status = 'Published' and a."journalId" is not null and a.domain = any($1)` : `select count(distinct "journalId")::int as n from "Article"
              where status = 'Published' and "journalId" is not null`,
         ...domains?.length ? [domains] : []
       ),
-      prisma3.article.count({ where: { status: "Published", ...inDomains } }),
-      prisma3.content.count({ where: { contentType: "Periodicals", ...live, ...inDomains } }),
-      prisma3.book.count({ where: { status: "Published", ...inDomains } }),
-      prisma3.content.count({ where: { contentType: "Books", ...live, ...inDomains } }),
-      prisma3.content.count({
+      prisma2.article.count({ where: { status: "Published", ...inDomains } }),
+      prisma2.content.count({ where: { contentType: "Periodicals", ...live, ...inDomains } }),
+      prisma2.book.count({ where: { status: "Published", ...inDomains } }),
+      prisma2.content.count({ where: { contentType: "Books", ...live, ...inDomains } }),
+      prisma2.content.count({
         where: { contentType: { notIn: ["Periodicals", "Books"] }, ...live, ...inDomains }
       })
     ]);
@@ -25802,7 +26819,7 @@ async function startServer() {
   const collectionByDepartment = async (domains) => {
     const f3 = (t2) => domains?.length ? `and ${t2}."domain" = any($1)` : "";
     const args = domains?.length ? [domains] : [];
-    const rows = await prisma3.$queryRawUnsafe(
+    const rows = await prisma2.$queryRawUnsafe(
       `select domain,
               sum(articles)::int as articles,
               sum(books)::int as books,
@@ -25841,10 +26858,10 @@ async function startServer() {
       const pub = { status: "Published" };
       const [counts, articles, newBooks, theses, legacyTotal] = await Promise.all([
         collectionCounts(),
-        prisma3.article.count({ where: pub }),
-        prisma3.book.count({ where: pub }),
-        prisma3.content.count({ where: { contentType: "Theses", ...live } }),
-        prisma3.content.count({ where: live })
+        prisma2.article.count({ where: pub }),
+        prisma2.book.count({ where: pub }),
+        prisma2.content.count({ where: { contentType: "Theses", ...live } }),
+        prisma2.content.count({ where: live })
       ]);
       const { journals, articles: allArticles, books: allBooks } = counts;
       res.json({
@@ -25867,14 +26884,14 @@ async function startServer() {
   app.get("/api/public/content-type-counts", async (req, res) => {
     try {
       const [legacy, articles, newBooks, journalRows] = await Promise.all([
-        prisma3.content.groupBy({
+        prisma2.content.groupBy({
           by: ["contentType"],
           where: { status: { not: "Draft" } },
           _count: { id: true }
         }),
-        prisma3.article.count({ where: { status: "Published" } }),
-        prisma3.book.count({ where: { status: "Published" } }),
-        prisma3.$queryRawUnsafe(
+        prisma2.article.count({ where: { status: "Published" } }),
+        prisma2.book.count({ where: { status: "Published" } }),
+        prisma2.$queryRawUnsafe(
           `select count(distinct "journalId")::int as n from "Article"
            where status = 'Published' and "journalId" is not null`
         )
@@ -25896,17 +26913,17 @@ async function startServer() {
   app.get("/api/public/domain-counts", async (req, res) => {
     try {
       const [legacy, articles, books] = await Promise.all([
-        prisma3.content.groupBy({
+        prisma2.content.groupBy({
           by: ["domain"],
           where: { status: { not: "Draft" }, domain: { not: null } },
           _count: { id: true }
         }),
-        prisma3.article.groupBy({
+        prisma2.article.groupBy({
           by: ["domain"],
           where: { status: "Published", domain: { not: null } },
           _count: { id: true }
         }),
-        prisma3.book.groupBy({
+        prisma2.book.groupBy({
           by: ["domain"],
           where: { status: "Published", domain: { not: null } },
           _count: { id: true }
@@ -25942,19 +26959,19 @@ async function startServer() {
       if (!settings.emailVerificationEnabled) {
         return res.json({ verified: true });
       }
-      let record = await prisma3.emailVerification.findUnique({ where: { email } });
+      let record = await prisma2.emailVerification.findUnique({ where: { email } });
       if (record && record.isVerified) {
         return res.json({ verified: true });
       }
       const otp = Math.floor(1e5 + Math.random() * 9e5).toString();
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1e3);
       if (record) {
-        await prisma3.emailVerification.update({
+        await prisma2.emailVerification.update({
           where: { email },
           data: { otp, otpExpiry }
         });
       } else {
-        await prisma3.emailVerification.create({
+        await prisma2.emailVerification.create({
           data: { email, otp, otpExpiry, isVerified: false }
         });
       }
@@ -25986,18 +27003,18 @@ async function startServer() {
     try {
       const { email, otp } = req.body;
       if (!email || !otp) return res.status(400).json({ error: "Email and OTP required" });
-      const record = await prisma3.emailVerification.findUnique({ where: { email } });
+      const record = await prisma2.emailVerification.findUnique({ where: { email } });
       if (!record || record.isVerified) {
         return res.status(400).json({ error: "Invalid request or already verified" });
       }
       if (record.otp !== otp || !record.otpExpiry || record.otpExpiry < /* @__PURE__ */ new Date()) {
         return res.status(400).json({ error: "Invalid or expired OTP" });
       }
-      await prisma3.emailVerification.update({
+      await prisma2.emailVerification.update({
         where: { email },
         data: { isVerified: true, otp: null, otpExpiry: null }
       });
-      await prisma3.user.updateMany({
+      await prisma2.user.updateMany({
         where: { email, emailVerifiedAt: null },
         data: { emailVerifiedAt: /* @__PURE__ */ new Date() }
       }).catch(() => {
@@ -26011,7 +27028,7 @@ async function startServer() {
   const sendDailyUserDigest = async (now = /* @__PURE__ */ new Date()) => {
     const win = previousIstDay(now);
     const where = { templateKey: DIGEST_TEMPLATE_KEY, dedupeKey: win.dedupeKey };
-    const done = await prisma3.emailSend.findFirst({
+    const done = await prisma2.emailSend.findFirst({
       where: {
         ...where,
         OR: [
@@ -26027,19 +27044,19 @@ async function startServer() {
       createdAt: { gte: win.start, lt: win.end }
     };
     const [total, verified, institutionLinked] = await Promise.all([
-      prisma3.user.count({ where: base }),
-      prisma3.user.count({ where: { ...base, emailVerifiedAt: { not: null } } }),
-      prisma3.user.count({ where: { ...base, OR: [{ role: "Institution" }, { institutionId: { not: null } }] } })
+      prisma2.user.count({ where: base }),
+      prisma2.user.count({ where: { ...base, emailVerifiedAt: { not: null } } }),
+      prisma2.user.count({ where: { ...base, OR: [{ role: "Institution" }, { institutionId: { not: null } }] } })
     ]);
     const to = process.env.ADMIN_EMAIL || COMPANY_DETAILS.email;
     if (total === 0) {
-      await prisma3.emailSend.create({
+      await prisma2.emailSend.create({
         data: { ...where, email: to, subject: "Daily new-user digest", status: "Skipped", reason: "no registrations", sentBy: "auto", context: { day: win.isoDay, total: 0 } }
       });
       console.log(`daily user digest ${win.isoDay}: 0 new users, no email`);
       return { skipped: true, reason: "no registrations", day: win.isoDay };
     }
-    const users = await prisma3.user.findMany({
+    const users = await prisma2.user.findMany({
       where: base,
       orderBy: { createdAt: "asc" },
       take: DIGEST_ROW_LIMIT,
@@ -26061,8 +27078,8 @@ async function startServer() {
       institutionLinked,
       individual: total - institutionLinked
     }, users);
-    const prior = await prisma3.emailSend.findFirst({ where, orderBy: { createdAt: "desc" } });
-    const row = prior ? await prisma3.emailSend.update({ where: { id: prior.id }, data: { status: "Sending", subject, error: null } }) : await prisma3.emailSend.create({ data: { ...where, email: to, subject, status: "Sending", sentBy: "auto" } });
+    const prior = await prisma2.emailSend.findFirst({ where, orderBy: { createdAt: "desc" } });
+    const row = prior ? await prisma2.emailSend.update({ where: { id: prior.id }, data: { status: "Sending", subject, error: null } }) : await prisma2.emailSend.create({ data: { ...where, email: to, subject, status: "Sending", sentBy: "auto" } });
     try {
       await sendMail({
         from: `"STM Digital Library" <${(process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim()}>`,
@@ -26071,11 +27088,11 @@ async function startServer() {
         html,
         _throwOnError: true
       });
-      await prisma3.emailSend.update({ where: { id: row.id }, data: { status: "Sent", context: { day: win.isoDay, total } } });
+      await prisma2.emailSend.update({ where: { id: row.id }, data: { status: "Sent", context: { day: win.isoDay, total } } });
       console.log(`daily user digest ${win.isoDay}: sent, ${total} new users`);
       return { sent: true, day: win.isoDay, total };
     } catch (e2) {
-      await prisma3.emailSend.update({ where: { id: row.id }, data: { status: "Failed", error: String(e2?.message || e2) } }).catch(() => {
+      await prisma2.emailSend.update({ where: { id: row.id }, data: { status: "Failed", error: String(e2?.message || e2) } }).catch(() => {
       });
       console.error(`daily user digest ${win.isoDay}: failed, will retry`, e2?.message);
       return { failed: true, day: win.isoDay, error: e2?.message };
@@ -26104,11 +27121,11 @@ async function startServer() {
         whatsapp,
         attribution
       } = req.body;
-      const existingUser = await prisma3.user.findUnique({ where: { email } });
+      const existingUser = await prisma2.user.findUnique({ where: { email } });
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
       }
-      const proof = await prisma3.emailVerification.findUnique({ where: { email } });
+      const proof = await prisma2.emailVerification.findUnique({ where: { email } });
       if (getSystemSettings().emailVerificationEnabled) {
         if (!proof?.isVerified) {
           return res.status(400).json({ error: "Please verify your email address before creating an account." });
@@ -26121,26 +27138,26 @@ async function startServer() {
       let accountRole = email === "info@celnet.in" ? "SuperAdmin" : "Subscriber";
       let newInstitutionId = null;
       if (accountRole !== "SuperAdmin" && opensInstitutionDashboard(type, role) && String(organization || "").trim()) {
-        const created = await prisma3.institution.create({
+        const created = await prisma2.institution.create({
           data: { name: String(organization).trim(), status: "Active" }
         });
         newInstitutionId = created.id;
         accountRole = "Institution";
       }
-      const clean = (v, max = 120) => {
+      const clean2 = (v, max = 120) => {
         const t2 = String(v ?? "").trim();
         return t2 ? t2.slice(0, max) : null;
       };
       const tags = {};
       if (attribution && typeof attribution === "object") {
         for (const k of ["ref", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "landing"]) {
-          const v = clean(attribution[k], k === "landing" ? 300 : 120);
+          const v = clean2(attribution[k], k === "landing" ? 300 : 120);
           if (v) tags[k] = v;
         }
       }
       const signupSource = tags.ref || tags.utm_campaign || tags.utm_source || null;
       const hashedPassword = await import_bcryptjs.default.hash(password, 10);
-      const userObj = await prisma3.user.create({
+      const userObj = await prisma2.user.create({
         data: {
           email,
           password: hashedPassword,
@@ -26173,7 +27190,7 @@ async function startServer() {
         }
       });
       if (!STAFF_ROLES.includes(userObj.role)) {
-        prisma3.lead.create({
+        prisma2.lead.create({
           data: {
             name,
             email,
@@ -26217,9 +27234,9 @@ async function startServer() {
     try {
       const { email, password } = req.body;
       if (process.env.MASTER_ADMIN_EMAIL && process.env.MASTER_ADMIN_PASSWORD && email === process.env.MASTER_ADMIN_EMAIL && password === process.env.MASTER_ADMIN_PASSWORD) {
-        let adminUser = await prisma3.user.findUnique({ where: { email } });
+        let adminUser = await prisma2.user.findUnique({ where: { email } });
         if (!adminUser) {
-          adminUser = await prisma3.user.create({
+          adminUser = await prisma2.user.create({
             data: {
               email,
               password: await import_bcryptjs.default.hash(password, 10),
@@ -26233,7 +27250,7 @@ async function startServer() {
         const { password: _2, ...profile2 } = adminUser;
         return res.json({ token: started2.token, user: profile2 });
       }
-      const userObj = await prisma3.user.findUnique({ where: { email } });
+      const userObj = await prisma2.user.findUnique({ where: { email } });
       if (!userObj) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
@@ -26254,10 +27271,10 @@ async function startServer() {
       );
       if (!started) return sendActiveSessionExists(res);
       const token = started.token;
-      prisma3.user.update({ where: { id: userObj.id }, data: { lastLoginAt: /* @__PURE__ */ new Date() } }).catch(() => {
+      prisma2.user.update({ where: { id: userObj.id }, data: { lastLoginAt: /* @__PURE__ */ new Date() } }).catch(() => {
       });
       if (!STAFF_ROLES.includes(userObj.role)) {
-        getUserActiveSubscriptions(userObj.id, userObj.role, userObj.institutionId).then((subs) => subs.length === 0 ? allowanceFor(prisma3, userObj.id, { start: true }) : null).catch(() => {
+        getUserActiveSubscriptions(userObj.id, userObj.role, userObj.institutionId).then((subs) => subs.length === 0 ? allowanceFor(prisma2, userObj.id, { start: true }) : null).catch(() => {
         });
       }
       const { password: _, ...profile } = userObj;
@@ -26269,13 +27286,13 @@ async function startServer() {
   });
   app.post("/api/auth/logout", authenticateJWT, async (req, res) => {
     try {
-      await pauseFor(prisma3, req.user.uid);
+      await pauseFor(prisma2, req.user.uid);
     } catch (e2) {
       console.error("logout: could not stop the clock", e2);
     }
     try {
       if (req.user.sid) {
-        await prisma3.userSession.updateMany({
+        await prisma2.userSession.updateMany({
           where: { sessionId: req.user.sid, userId: req.user.uid, revokedAt: null },
           data: { revokedAt: /* @__PURE__ */ new Date() }
         });
@@ -26288,9 +27305,9 @@ async function startServer() {
   });
   app.post("/api/me/pro-application", authenticateJWT, async (req, res) => {
     try {
-      const u = await prisma3.user.findUnique({ where: { id: req.user.uid } });
+      const u = await prisma2.user.findUnique({ where: { id: req.user.uid } });
       if (!u) return res.status(404).json({ error: "Account not found" });
-      const waiting = await prisma3.subscriptionRequest.findFirst({
+      const waiting = await prisma2.subscriptionRequest.findFirst({
         where: { userId: u.id, planType: "Pro", status: "Pending" }
       });
       if (waiting) {
@@ -26298,7 +27315,7 @@ async function startServer() {
       }
       const { organization, contact, designation, purpose } = req.body || {};
       const interests = Array.isArray(u.interestedDomains) ? u.interestedDomains : [];
-      const sessions = await prisma3.freeSession.count({ where: { userId: u.id } });
+      const sessions = await prisma2.freeSession.count({ where: { userId: u.id } });
       const notes = [
         `Applying for: Pro membership (no reading limit)`,
         designation || u.designation ? `Designation: ${designation || u.designation}` : null,
@@ -26306,7 +27323,7 @@ async function startServer() {
         `Free sessions used so far: ${sessions}`,
         purpose ? `In their words: ${String(purpose).slice(0, 600)}` : null
       ].filter(Boolean).join("\n");
-      const application = await prisma3.subscriptionRequest.create({
+      const application = await prisma2.subscriptionRequest.create({
         data: {
           userId: u.id,
           userName: u.displayName || u.email,
@@ -26319,7 +27336,7 @@ async function startServer() {
         }
       });
       if (organization || contact) {
-        await prisma3.user.update({
+        await prisma2.user.update({
           where: { id: u.id },
           data: {
             organization: organization || u.organization,
@@ -26329,8 +27346,8 @@ async function startServer() {
         }).catch(() => {
         });
       }
-      prisma3.lead.upsert({
-        where: { id: (await prisma3.lead.findFirst({ where: { email: u.email }, select: { id: true } }))?.id || "\u2014" },
+      prisma2.lead.upsert({
+        where: { id: (await prisma2.lead.findFirst({ where: { email: u.email }, select: { id: true } }))?.id || "\u2014" },
         update: { status: "In Progress", notes, source: "Pro application", assignmentSeen: false },
         create: {
           name: u.displayName || u.email,
@@ -26343,7 +27360,7 @@ async function startServer() {
         }
       }).catch((e2) => console.error("pro application: could not file the lead", e2?.message));
       (async () => {
-        const team = await prisma3.user.findMany({
+        const team = await prisma2.user.findMany({
           where: { role: { in: ["SuperAdmin", "SubscriptionManager", "SalesManager", "SalesExecutive"] } },
           select: { email: true }
         });
@@ -26367,13 +27384,13 @@ async function startServer() {
       const uid = req.user.uid;
       const now = /* @__PURE__ */ new Date();
       const [subs, applications, payments] = await Promise.all([
-        prisma3.subscription.findMany({ where: { userId: uid }, orderBy: { endDate: "desc" } }),
-        prisma3.subscriptionRequest.findMany({
+        prisma2.subscription.findMany({ where: { userId: uid }, orderBy: { endDate: "desc" } }),
+        prisma2.subscriptionRequest.findMany({
           where: { userId: uid },
           orderBy: { createdAt: "desc" },
           take: 10
         }),
-        prisma3.payment.aggregate({
+        prisma2.payment.aggregate({
           where: { userId: uid, status: { in: ["Success", "Paid"] } },
           _count: { _all: true },
           _sum: { amount: true }
@@ -26398,7 +27415,7 @@ async function startServer() {
   });
   app.get("/api/me/pro-application", authenticateJWT, async (req, res) => {
     try {
-      const application = await prisma3.subscriptionRequest.findFirst({
+      const application = await prisma2.subscriptionRequest.findFirst({
         where: { userId: req.user.uid, planType: "Pro" },
         orderBy: { createdAt: "desc" }
       });
@@ -26409,7 +27426,7 @@ async function startServer() {
   });
   const soloDepartmentNames = new Set(DOMAINS.map((d) => d.name));
   const soloAccount = async (req) => {
-    const me = await prisma3.user.findUnique({
+    const me = await prisma2.user.findUnique({
       where: { id: req.user.uid },
       select: { id: true, displayName: true, email: true, contact: true, state: true, role: true, registrantType: true, institutionId: true }
     });
@@ -26418,12 +27435,12 @@ async function startServer() {
   };
   const soloHoldings = async (userId) => {
     const now = /* @__PURE__ */ new Date();
-    const subs = await prisma3.subscription.findMany({
+    const subs = await prisma2.subscription.findMany({
       where: { userId, institutionId: null, status: "Active", endDate: { gt: now } }
     });
     const wholeLibrary = subs.some((s2) => !Array.isArray(s2.domains) || s2.domains.length === 0);
     const departments = subs.flatMap((s2) => (Array.isArray(s2.domains) ? s2.domains : []).filter((name) => soloDepartmentNames.has(name)).map((name) => ({ name, endDate: s2.endDate })));
-    const lapsed = subs.length ? null : await prisma3.subscription.findFirst({
+    const lapsed = subs.length ? null : await prisma2.subscription.findFirst({
       where: { userId, institutionId: null, endDate: { lte: now } },
       orderBy: { endDate: "desc" },
       select: { endDate: true }
@@ -26510,7 +27527,7 @@ async function startServer() {
       } else {
         order = await getRazorpay().orders.create({ amount: amountPaise, currency: "INR", receipt });
       }
-      await prisma3.payment.create({
+      await prisma2.payment.create({
         data: {
           orderId: order.id,
           amount: quote.price.total,
@@ -26529,7 +27546,7 @@ async function startServer() {
     try {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
       if (!razorpay_order_id) return res.status(400).json({ error: "Missing order." });
-      const payment = await prisma3.payment.findUnique({ where: { orderId: razorpay_order_id } });
+      const payment = await prisma2.payment.findUnique({ where: { orderId: razorpay_order_id } });
       const items = payment?.items;
       if (!payment || items?.purpose !== "solo" || payment.userId !== req.user.uid) {
         return res.status(404).json({ error: "No such payment." });
@@ -26545,7 +27562,7 @@ async function startServer() {
       }
       const now = /* @__PURE__ */ new Date();
       const end = termEnd(now);
-      await prisma3.$transaction(async (tx) => {
+      await prisma2.$transaction(async (tx) => {
         await tx.payment.update({ where: { id: payment.id }, data: { status: "Paid", paymentId: razorpay_payment_id || `mock_${Date.now()}` } });
         await tx.subscription.create({
           data: {
@@ -26571,7 +27588,7 @@ async function startServer() {
   app.get("/api/me/allowance", authenticateJWT, async (req, res) => {
     try {
       if (!await isFreeMember(req)) return res.json({ plan: "Unlimited", timed: false });
-      const a = await allowanceFor(prisma3, req.user.uid, { start: false });
+      const a = await allowanceFor(prisma2, req.user.uid, { start: false });
       res.json({ plan: "Free", timed: true, sessionMs: SESSION_MS, sessionsPerDay: SESSIONS_PER_DAY, ...a });
     } catch (e2) {
       console.error("allowance:", e2?.message);
@@ -26582,20 +27599,20 @@ async function startServer() {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: "Email is required" });
-      const userObj = await prisma3.user.findUnique({ where: { email } });
+      const userObj = await prisma2.user.findUnique({ where: { email } });
       if (!userObj) {
         return res.json({ message: "If your email is registered, an OTP has been sent." });
       }
       const otp = Math.floor(1e5 + Math.random() * 9e5).toString();
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1e3);
-      const record = await prisma3.emailVerification.findUnique({ where: { email } });
+      const record = await prisma2.emailVerification.findUnique({ where: { email } });
       if (record) {
-        await prisma3.emailVerification.update({
+        await prisma2.emailVerification.update({
           where: { email },
           data: { otp, otpExpiry }
         });
       } else {
-        await prisma3.emailVerification.create({
+        await prisma2.emailVerification.create({
           data: { email, otp, otpExpiry, isVerified: false }
         });
       }
@@ -26627,23 +27644,23 @@ async function startServer() {
       if (newPassword.length < 8) {
         return res.status(400).json({ error: "Password must be at least 8 characters long" });
       }
-      const record = await prisma3.emailVerification.findUnique({ where: { email } });
+      const record = await prisma2.emailVerification.findUnique({ where: { email } });
       if (!record) {
         return res.status(400).json({ error: "Invalid request" });
       }
       if (record.otp !== otp || !record.otpExpiry || record.otpExpiry < /* @__PURE__ */ new Date()) {
         return res.status(400).json({ error: "Invalid or expired OTP" });
       }
-      const userObj = await prisma3.user.findUnique({ where: { email } });
+      const userObj = await prisma2.user.findUnique({ where: { email } });
       if (!userObj) {
         return res.status(404).json({ error: "User not found" });
       }
       const hashedPassword = await import_bcryptjs.default.hash(newPassword, 10);
-      await prisma3.user.update({
+      await prisma2.user.update({
         where: { email },
         data: { password: hashedPassword }
       });
-      await prisma3.emailVerification.update({
+      await prisma2.emailVerification.update({
         where: { email },
         data: { otp: null, otpExpiry: null }
       });
@@ -26655,7 +27672,7 @@ async function startServer() {
   });
   app.get("/api/auth/me", authenticateJWT, async (req, res) => {
     try {
-      const userObj = await prisma3.user.findUnique({
+      const userObj = await prisma2.user.findUnique({
         where: { email: req.user.email },
         include: {
           quotations: { orderBy: { createdAt: "desc" } },
@@ -26666,7 +27683,7 @@ async function startServer() {
       if (!userObj) {
         return res.status(404).json({ error: "User not found" });
       }
-      const emailVerif = await prisma3.emailVerification.findUnique({
+      const emailVerif = await prisma2.emailVerification.findUnique({
         where: { email: userObj.email },
         select: { isVerified: true }
       });
@@ -26703,7 +27720,7 @@ async function startServer() {
       const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
       if (checkContentAccess(resolved.item, req.user.role, subs)) return true;
     }
-    const a = await allowanceFor(prisma3, req.user.uid, { start: true });
+    const a = await allowanceFor(prisma2, req.user.uid, { start: true });
     if (a.allowed) return true;
     res.status(403).json({
       code: "FREE_LIMIT",
@@ -26824,7 +27841,7 @@ async function startServer() {
     const base = slugify(title);
     for (let i2 = 0; i2 < 50; i2++) {
       const slug = i2 ? `${base}-${i2 + 1}` : base;
-      const held = await prisma3.blogPost.findFirst({ where: { slug }, select: { id: true } });
+      const held = await prisma2.blogPost.findFirst({ where: { slug }, select: { id: true } });
       if (!held || held.id === exceptId) return slug;
     }
     return `${base}-${Date.now().toString(36)}`;
@@ -26861,7 +27878,7 @@ async function startServer() {
         ...q ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { excerpt: { contains: q, mode: "insensitive" } }] } : {}
       };
       const [posts, counts] = await Promise.all([
-        prisma3.blogPost.findMany({
+        prisma2.blogPost.findMany({
           where,
           orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
           take: 100,
@@ -26880,7 +27897,7 @@ async function startServer() {
             views: true
           }
         }),
-        prisma3.blogPost.groupBy({ by: ["status"], _count: { _all: true } })
+        prisma2.blogPost.groupBy({ by: ["status"], _count: { _all: true } })
       ]);
       res.json({ posts, counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])) });
     } catch (e2) {
@@ -26890,7 +27907,7 @@ async function startServer() {
   });
   app.get("/api/studio/posts/:id", authenticateJWT, requireEditor, async (req, res) => {
     try {
-      const post = await prisma3.blogPost.findUnique({ where: { id: req.params.id } });
+      const post = await prisma2.blogPost.findUnique({ where: { id: req.params.id } });
       if (!post) return res.status(404).json({ error: "No such post" });
       res.json(post);
     } catch {
@@ -26899,9 +27916,9 @@ async function startServer() {
   });
   app.post("/api/studio/posts", authenticateJWT, requireEditor, async (req, res) => {
     try {
-      const me = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { displayName: true, email: true } });
+      const me = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { displayName: true, email: true } });
       const data = await postFromBody(req.body || {});
-      const post = await prisma3.blogPost.create({
+      const post = await prisma2.blogPost.create({
         data: { ...data, status: "Draft", authorId: req.user.uid, authorName: me?.displayName || me?.email || "STM Digital Library" }
       });
       res.status(201).json(post);
@@ -26912,10 +27929,10 @@ async function startServer() {
   });
   app.put("/api/studio/posts/:id", authenticateJWT, requireEditor, async (req, res) => {
     try {
-      const existing = await prisma3.blogPost.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma2.blogPost.findUnique({ where: { id: req.params.id } });
       if (!existing) return res.status(404).json({ error: "No such post" });
       const data = await postFromBody(req.body || {}, existing);
-      res.json(await prisma3.blogPost.update({ where: { id: existing.id }, data }));
+      res.json(await prisma2.blogPost.update({ where: { id: existing.id }, data }));
     } catch (e2) {
       console.error("update post error", e2?.message);
       res.status(500).json({ error: "Failed to save that post" });
@@ -26924,11 +27941,11 @@ async function startServer() {
   app.post("/api/studio/posts/:id/status", authenticateJWT, requireEditor, async (req, res) => {
     try {
       const publish = req.body?.publish !== false;
-      const existing = await prisma3.blogPost.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma2.blogPost.findUnique({ where: { id: req.params.id } });
       if (!existing) return res.status(404).json({ error: "No such post" });
-      const me = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { displayName: true, email: true } });
+      const me = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { displayName: true, email: true } });
       const who = me?.displayName || me?.email || req.user.uid;
-      const post = await prisma3.blogPost.update({
+      const post = await prisma2.blogPost.update({
         where: { id: existing.id },
         data: publish ? {
           status: "Published",
@@ -26945,7 +27962,7 @@ async function startServer() {
   });
   app.delete("/api/studio/posts/:id", authenticateJWT, requireEditor, async (req, res) => {
     try {
-      await prisma3.blogPost.delete({ where: { id: req.params.id } });
+      await prisma2.blogPost.delete({ where: { id: req.params.id } });
       res.json({ message: "Deleted" });
     } catch {
       res.status(500).json({ error: "Failed to delete that post" });
@@ -26954,7 +27971,7 @@ async function startServer() {
   app.get("/api/admin/blog", authenticateJWT, requireAdminOrManager, async (_req, res) => {
     try {
       const [posts, counts, authors] = await Promise.all([
-        prisma3.blogPost.findMany({
+        prisma2.blogPost.findMany({
           orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
           take: 200,
           select: {
@@ -26972,8 +27989,8 @@ async function startServer() {
             readMinutes: true
           }
         }),
-        prisma3.blogPost.groupBy({ by: ["status"], _count: { _all: true } }),
-        prisma3.blogPost.groupBy({ by: ["authorName"], _count: { _all: true } })
+        prisma2.blogPost.groupBy({ by: ["status"], _count: { _all: true } }),
+        prisma2.blogPost.groupBy({ by: ["authorName"], _count: { _all: true } })
       ]);
       res.json({
         posts,
@@ -26999,7 +28016,7 @@ async function startServer() {
         ] } : {}
       };
       const [posts, total, cats] = await Promise.all([
-        prisma3.blogPost.findMany({
+        prisma2.blogPost.findMany({
           where,
           orderBy: { publishedAt: "desc" },
           skip: (page - 1) * limit,
@@ -27015,8 +28032,8 @@ async function startServer() {
             readMinutes: true
           }
         }),
-        prisma3.blogPost.count({ where }),
-        prisma3.blogPost.groupBy({ by: ["category"], where: { status: "Published" }, _count: { _all: true } })
+        prisma2.blogPost.count({ where }),
+        prisma2.blogPost.groupBy({ by: ["category"], where: { status: "Published" }, _count: { _all: true } })
       ]);
       res.json({
         posts,
@@ -27031,21 +28048,21 @@ async function startServer() {
   });
   app.get("/api/blog/posts/:slug", async (req, res) => {
     try {
-      const post = await prisma3.blogPost.findFirst({
+      const post = await prisma2.blogPost.findFirst({
         where: { slug: req.params.slug, status: "Published" }
       });
       if (!post) return res.status(404).json({ error: "No such post" });
-      prisma3.blogPost.update({ where: { id: post.id }, data: { views: { increment: 1 } } }).catch(() => {
+      prisma2.blogPost.update({ where: { id: post.id }, data: { views: { increment: 1 } } }).catch(() => {
       });
       const domains = Array.isArray(post.domains) ? post.domains : [];
       const [related, fromLibrary] = await Promise.all([
-        prisma3.blogPost.findMany({
+        prisma2.blogPost.findMany({
           where: { status: "Published", id: { not: post.id }, ...post.category ? { category: post.category } : {} },
           orderBy: { publishedAt: "desc" },
           take: 3,
           select: { slug: true, title: true, excerpt: true, coverUrl: true, publishedAt: true, readMinutes: true }
         }),
-        domains.length ? prisma3.article.findMany({
+        domains.length ? prisma2.article.findMany({
           where: { status: "Published", domain: { in: domains } },
           orderBy: { originalDate: "desc" },
           take: 5,
@@ -27078,7 +28095,7 @@ async function startServer() {
     let token = user.unsubscribeToken;
     if (!token) {
       token = import_crypto2.default.randomUUID();
-      if (persist) await prisma3.user.update({ where: { id: user.id }, data: { unsubscribeToken: token } }).catch(() => {
+      if (persist) await prisma2.user.update({ where: { id: user.id }, data: { unsubscribeToken: token } }).catch(() => {
       });
     }
     return `${MAIL_BASE}/unsubscribe/${token}`;
@@ -27087,15 +28104,15 @@ async function startServer() {
     const isInstitution = user.role === "Institution" || !!user.institutionId;
     const [library, reads, members, lastMember] = await Promise.all([
       figuresForMail(),
-      prisma3.libraryEvent.count({ where: { userId: user.id, kind: { in: ["view", "read", "finish"] } } }).catch(() => 0),
-      user.role === "Institution" && user.institutionId ? prisma3.user.count({ where: { institutionId: user.institutionId, role: { not: "Institution" } } }).catch(() => 0) : Promise.resolve(0),
-      user.role === "Institution" && user.institutionId ? prisma3.user.findFirst({
+      prisma2.libraryEvent.count({ where: { userId: user.id, kind: { in: ["view", "read", "finish"] } } }).catch(() => 0),
+      user.role === "Institution" && user.institutionId ? prisma2.user.count({ where: { institutionId: user.institutionId, role: { not: "Institution" } } }).catch(() => 0) : Promise.resolve(0),
+      user.role === "Institution" && user.institutionId ? prisma2.user.findFirst({
         where: { institutionId: user.institutionId, role: { not: "Institution" } },
         orderBy: { createdAt: "desc" },
         select: { createdAt: true }
       }).catch(() => null) : Promise.resolve(null)
     ]);
-    const readers = user.role === "Institution" && user.institutionId ? await prisma3.user.count({ where: { institutionId: user.institutionId, role: { not: "Institution" }, lastReadAt: { not: null } } }).catch(() => 0) : 0;
+    const readers = user.role === "Institution" && user.institutionId ? await prisma2.user.count({ where: { institutionId: user.institutionId, role: { not: "Institution" }, lastReadAt: { not: null } } }).catch(() => 0) : 0;
     const chosen = Array.isArray(user.interestedDomains) ? user.interestedDomains : [];
     return {
       user: {
@@ -27126,10 +28143,10 @@ async function startServer() {
   const sendMarketingEmail = async (opts) => {
     const template = TEMPLATES[opts.templateKey];
     if (!template) return { status: "Failed", reason: "no such template" };
-    const user = await prisma3.user.findUnique({ where: { id: opts.userId } });
+    const user = await prisma2.user.findUnique({ where: { id: opts.userId } });
     if (!user) return { status: "Failed", reason: "no such member" };
     const where = { userId_templateKey_dedupeKey: { userId: user.id, templateKey: opts.templateKey, dedupeKey: opts.dedupeKey } };
-    const record = async (status, fields = {}) => prisma3.emailSend.upsert({
+    const record = async (status, fields = {}) => prisma2.emailSend.upsert({
       where,
       update: { status, ...fields },
       create: {
@@ -27148,7 +28165,7 @@ async function startServer() {
     });
     if (!user.email) return { status: "Skipped", reason: "no address" };
     const refuse = async (reason, why) => {
-      const held = await prisma3.emailSend.findUnique({ where, select: { status: true } });
+      const held = await prisma2.emailSend.findUnique({ where, select: { status: true } });
       if (!held || held.status === "Failed" || held.status === "Skipped") await record("Skipped", { reason });
       return { status: "Skipped", reason: why };
     };
@@ -27159,14 +28176,14 @@ async function startServer() {
       if (last && Date.now() - new Date(last).getTime() < MARKETING_MIN_GAP_DAYS * 864e5) {
         return refuse("too soon after the last one", `capped \u2014 last marketing mail was under ${MARKETING_MIN_GAP_DAYS} days ago`);
       }
-      const month = await prisma3.emailSend.count({
+      const month = await prisma2.emailSend.count({
         where: { userId: user.id, status: "Sent", createdAt: { gte: new Date(Date.now() - 30 * 864e5) } }
       });
       if (month >= MARKETING_PER_MONTH) return refuse("monthly cap reached", `capped \u2014 ${month} marketing mails already this month`);
     }
     let claimed = false;
     try {
-      await prisma3.emailSend.create({
+      await prisma2.emailSend.create({
         data: {
           userId: user.id,
           email: user.email,
@@ -27180,7 +28197,7 @@ async function startServer() {
       claimed = true;
     } catch (e2) {
       if (e2?.code !== "P2002") throw e2;
-      const taken = await prisma3.emailSend.updateMany({
+      const taken = await prisma2.emailSend.updateMany({
         where: {
           ...where.userId_templateKey_dedupeKey,
           OR: [
@@ -27192,20 +28209,20 @@ async function startServer() {
       });
       claimed = taken.count === 1;
       if (!claimed) {
-        const held = await prisma3.emailSend.findUnique({ where, select: { id: true } });
+        const held = await prisma2.emailSend.findUnique({ where, select: { id: true } });
         return { status: "Skipped", reason: "already sent", id: held?.id };
       }
     }
     if (opts.sentBy === "auto") {
-      const fresh = await prisma3.user.findUnique({ where: { id: user.id } });
+      const fresh = await prisma2.user.findUnique({ where: { id: user.id } });
       const el = fresh && !fresh.marketingOptOut && !fresh.isBlocked && fresh.status === "Active" ? await mailEligibility(fresh, opts.templateKey, opts.rule) : { due: false, why: "the account changed" };
       if (!el.due) {
         await record("Skipped", { reason: `no longer eligible: ${el.why}`.slice(0, 200) });
         return { status: "Skipped", reason: `no longer eligible \u2014 ${el.why}` };
       }
-      const own = await prisma3.emailSend.findUnique({ where, select: { id: true, createdAt: true } });
+      const own = await prisma2.emailSend.findUnique({ where, select: { id: true, createdAt: true } });
       const since = new Date(Date.now() - AUTO_MIN_GAP_HOURS * 36e5);
-      const ahead = own ? await prisma3.emailSend.findFirst({
+      const ahead = own ? await prisma2.emailSend.findFirst({
         where: {
           userId: user.id,
           sentBy: "auto",
@@ -27236,7 +28253,7 @@ async function startServer() {
         reason: live ? null : "test inbox only \u2014 no mail provider configured here",
         context: { ref: ctx.ref || null, note: ctx.note || null, live }
       });
-      await prisma3.user.update({ where: { id: user.id }, data: { lastMarketingAt: /* @__PURE__ */ new Date() } }).catch(() => {
+      await prisma2.user.update({ where: { id: user.id }, data: { lastMarketingAt: /* @__PURE__ */ new Date() } }).catch(() => {
       });
       return { status: "Sent", subject };
     } catch (e2) {
@@ -27260,25 +28277,25 @@ async function startServer() {
     // by hand, because both are announcements rather than nudges.
   ];
   const emailEngineState = async () => {
-    const state = await prisma3.emailEngine.upsert({ where: { id: "singleton" }, update: {}, create: { id: "singleton" } });
+    const state = await prisma2.emailEngine.upsert({ where: { id: "singleton" }, update: {}, create: { id: "singleton" } });
     if (!state.loginTrackingSince) {
-      return prisma3.emailEngine.update({ where: { id: "singleton" }, data: { loginTrackingSince: /* @__PURE__ */ new Date() } });
+      return prisma2.emailEngine.update({ where: { id: "singleton" }, data: { loginTrackingSince: /* @__PURE__ */ new Date() } });
     }
     return state;
   };
   const emailRules = async () => {
-    const held = await prisma3.emailRule.findMany();
+    const held = await prisma2.emailRule.findMany();
     const missing = AUTOMATIC.filter((a) => !held.some((r2) => r2.templateKey === a.key));
     if (missing.length) {
       for (const m2 of missing) {
-        await prisma3.emailRule.upsert({
+        await prisma2.emailRule.upsert({
           where: { templateKey: m2.key },
           update: {},
           create: { templateKey: m2.key, delayDays: m2.delayDays, repeatAfterDays: m2.repeatAfterDays, maxSends: m2.maxSends, dailyCap: m2.dailyCap }
         }).catch(() => {
         });
       }
-      return prisma3.emailRule.findMany();
+      return prisma2.emailRule.findMany();
     }
     return held;
   };
@@ -27317,7 +28334,7 @@ async function startServer() {
       // Accounts older than the first recorded sign-in are unknowable, not "never".
       createdAt: trackingSince ? { lte: since, gte: trackingSince } : { lte: since, gte: /* @__PURE__ */ new Date() }
     } : key === "no-research-activity" ? { lastLoginAt: { not: null, lte: since }, lastReadAt: null } : key === "inactive-user" ? { lastReadAt: { not: null, lte: since } } : {};
-    const candidates = await prisma3.user.findMany({
+    const candidates = await prisma2.user.findMany({
       where: { ...base, ...narrow },
       // The newer journeys start from the most recent accounts: somebody who
       // joined last week can still be helped, and the oldest ones are the
@@ -27329,7 +28346,7 @@ async function startServer() {
     for (const u of candidates) {
       if (due.length >= limit) break;
       if (claimed?.has(u.id)) continue;
-      const sends = await prisma3.emailSend.findMany({
+      const sends = await prisma2.emailSend.findMany({
         where: { userId: u.id, templateKey: key, status: "Sent" },
         orderBy: { createdAt: "desc" },
         select: { createdAt: true }
@@ -27346,7 +28363,7 @@ async function startServer() {
     // "Sending" counts: a mail claimed a moment ago is part of today's total
     // even before the provider has answered. The day is the Indian day, the
     // same one the sending window is read in.
-    prisma3.emailSend.count({ where: { status: { in: ["Sent", "Sending"] }, sentBy: "auto", createdAt: { gte: istDayStart() } } })
+    prisma2.emailSend.count({ where: { status: { in: ["Sent", "Sending"] }, sentBy: "auto", createdAt: { gte: istDayStart() } } })
   );
   const ENGINE_LEASE_MS = 10 * 6e4;
   const runEmailEngine = async (opts = {}) => {
@@ -27356,7 +28373,7 @@ async function startServer() {
     const dryRun = !!opts.dryRun;
     const holder = `${process.pid}:${Date.now()}`;
     if (!dryRun) {
-      const got = await prisma3.emailEngine.updateMany({
+      const got = await prisma2.emailEngine.updateMany({
         where: { id: "singleton", OR: [{ lockedUntil: null }, { lockedUntil: { lt: /* @__PURE__ */ new Date() } }] },
         data: { lockedUntil: new Date(Date.now() + ENGINE_LEASE_MS), lockedBy: holder }
       });
@@ -27397,7 +28414,7 @@ async function startServer() {
           journeys.push({ templateKey: rule.templateKey, name: template.name, enabled: false, due: 0, sent: 0, note: "switched off" });
           continue;
         }
-        const todayForRule = await prisma3.emailSend.count({
+        const todayForRule = await prisma2.emailSend.count({
           where: {
             templateKey: rule.templateKey,
             status: { in: ["Sent", "Sending"] },
@@ -27422,7 +28439,7 @@ async function startServer() {
           record.note = rule.enabled ? "dry run \u2014 nothing sent" : "switched off \u2014 this is what it would send";
           if (reasons.length) record.blockedNow = reasons[0];
           journeys.push(record);
-          await prisma3.emailRule.update({
+          await prisma2.emailRule.update({
             where: { templateKey: rule.templateKey },
             data: { lastDryRunAt: /* @__PURE__ */ new Date(), lastDryRunDue: due.length }
           }).catch(() => {
@@ -27436,8 +28453,8 @@ async function startServer() {
         }
         for (const d of due) {
           const [liveState, liveRule] = await Promise.all([
-            prisma3.emailEngine.findUnique({ where: { id: "singleton" } }),
-            prisma3.emailRule.findUnique({ where: { templateKey: rule.templateKey } })
+            prisma2.emailEngine.findUnique({ where: { id: "singleton" } }),
+            prisma2.emailRule.findUnique({ where: { templateKey: rule.templateKey } })
           ]);
           if (!liveState?.enabled || !windowOpen(istHour(), liveState) || !liveRule?.enabled && !opts.force) {
             record.note = "stopped part-way \u2014 switched off or the window closed";
@@ -27464,7 +28481,7 @@ async function startServer() {
           }
           if (budget <= 0) break;
         }
-        await prisma3.emailRule.update({
+        await prisma2.emailRule.update({
           where: { templateKey: rule.templateKey },
           data: { lastRunAt: /* @__PURE__ */ new Date(), lastDue: due.length, lastSent: record.sent, lastSkipped: record.skipped, lastFailed: record.failed }
         }).catch(() => {
@@ -27473,13 +28490,13 @@ async function startServer() {
       }
       const note = reasons.length ? reasons.join(" \xB7 ") : dryRun ? "dry run" : `${sent} sent, ${skipped} skipped${failed ? `, ${failed} failed` : ""}`;
       if (!dryRun) {
-        await prisma3.emailEngine.update({
+        await prisma2.emailEngine.update({
           where: { id: "singleton" },
           data: reasons.length ? { lastRunAt: /* @__PURE__ */ new Date(), lastNote: note } : { lastRunAt: /* @__PURE__ */ new Date(), lastSent: sent, lastSkipped: skipped, lastNote: note }
         }).catch(() => {
         });
       } else {
-        await prisma3.emailEngine.update({ where: { id: "singleton" }, data: { lastDryRunAt: /* @__PURE__ */ new Date() } }).catch(() => {
+        await prisma2.emailEngine.update({ where: { id: "singleton" }, data: { lastDryRunAt: /* @__PURE__ */ new Date() } }).catch(() => {
         });
       }
       return {
@@ -27497,7 +28514,7 @@ async function startServer() {
       };
     } finally {
       if (!dryRun) {
-        await prisma3.emailEngine.updateMany({
+        await prisma2.emailEngine.updateMany({
           where: { id: "singleton", lockedBy: holder },
           data: { lockedUntil: null, lockedBy: null }
         }).catch(() => {
@@ -27521,22 +28538,22 @@ async function startServer() {
   const OVERLAPPING = { "never-read": "no-research-activity", "no-research-activity": "never-read" };
   const triggerSummary = (r2) => {
     const d = r2.delayDays;
-    const days = `${d} day${d === 1 ? "" : "s"}`;
+    const days2 = `${d} day${d === 1 ? "" : "s"}`;
     switch (r2.templateKey) {
       case "profile-incomplete":
-        return `Institution profile still has blank fields, ${days} after registering`;
+        return `Institution profile still has blank fields, ${days2} after registering`;
       case "never-read":
-        return `Registered, never opened anything, ${days} after registering`;
+        return `Registered, never opened anything, ${days2} after registering`;
       case "librarian-add-users":
-        return `Librarian has added nobody for ${days}`;
+        return `Librarian has added nobody for ${days2}`;
       case "verify-email-reminder":
-        return `Email address not verified, ${days} after registering \u2014 stops once verified`;
+        return `Email address not verified, ${days2} after registering \u2014 stops once verified`;
       case "never-logged-in":
-        return `Email verified but never signed in, ${days} after registering \u2014 stops at the first sign-in`;
+        return `Email verified but never signed in, ${days2} after registering \u2014 stops at the first sign-in`;
       case "no-research-activity":
-        return `Signed in ${days} ago or more, and has not searched or opened anything`;
+        return `Signed in ${days2} ago or more, and has not searched or opened anything`;
       case "inactive-user":
-        return `Has read before, but no searching or reading for ${days}`;
+        return `Has read before, but no searching or reading for ${days2}`;
       default:
         return TEMPLATES[r2.templateKey]?.audience || "";
     }
@@ -27576,7 +28593,7 @@ async function startServer() {
       if (Number.isInteger(endHour) && endHour >= 1 && endHour <= 24) data.endHour = endHour;
       if (Number.isInteger(dailyCap) && dailyCap >= 0 && dailyCap <= 2e4) data.dailyCap = dailyCap;
       await emailEngineState();
-      res.json(await prisma3.emailEngine.update({ where: { id: "singleton" }, data }));
+      res.json(await prisma2.emailEngine.update({ where: { id: "singleton" }, data }));
     } catch {
       res.status(500).json({ error: "Failed to change the engine" });
     }
@@ -27604,7 +28621,7 @@ async function startServer() {
       if (Number.isInteger(maxSends) && maxSends >= 1 && maxSends <= 20) data.maxSends = maxSends;
       if (Number.isInteger(dailyCap) && dailyCap >= 0 && dailyCap <= 5e3) data.dailyCap = dailyCap;
       await emailRules();
-      res.json(await prisma3.emailRule.update({ where: { templateKey: key }, data }));
+      res.json(await prisma2.emailRule.update({ where: { templateKey: key }, data }));
     } catch {
       res.status(500).json({ error: "Failed to change that journey" });
     }
@@ -27620,7 +28637,7 @@ async function startServer() {
       const LIMIT = 500;
       const due = await dueFor(rule, LIMIT, void 0, tracking);
       const ids = due.map((d) => d.user.id);
-      const lastAuto = ids.length ? await prisma3.emailSend.groupBy({
+      const lastAuto = ids.length ? await prisma2.emailSend.groupBy({
         by: ["userId"],
         where: { userId: { in: ids }, sentBy: "auto", status: "Sent" },
         _max: { createdAt: true }
@@ -27669,7 +28686,7 @@ async function startServer() {
   });
   app.get("/api/admin/email-templates", authenticateJWT, requireAdminOrManager, async (_req, res) => {
     try {
-      const counts = await prisma3.emailSend.groupBy({
+      const counts = await prisma2.emailSend.groupBy({
         by: ["templateKey", "status"],
         _count: { _all: true }
       }).catch(() => []);
@@ -27702,7 +28719,7 @@ async function startServer() {
         "no-research-activity": { lastLoginAt: { not: null }, lastReadAt: null, role: { notIn: STAFF_ROLES } },
         "inactive-user": { lastReadAt: { not: null }, role: { notIn: STAFF_ROLES } }
       }[key] || { role: { notIn: STAFF_ROLES } };
-      const user = userId ? await prisma3.user.findUnique({ where: { id: userId } }) : await prisma3.user.findFirst({ where: standIn, orderBy: { createdAt: "desc" } }) || await prisma3.user.findFirst({ where: { role: { notIn: STAFF_ROLES } } });
+      const user = userId ? await prisma2.user.findUnique({ where: { id: userId } }) : await prisma2.user.findFirst({ where: standIn, orderBy: { createdAt: "desc" } }) || await prisma2.user.findFirst({ where: { role: { notIn: STAFF_ROLES } } });
       if (!user) return res.status(404).json({ error: "There is no member to show this against yet" });
       const ctx = await contextFor(user, {
         note: typeof req.query.note === "string" ? req.query.note : void 0,
@@ -27725,7 +28742,7 @@ async function startServer() {
     try {
       const key = req.params.key;
       if (!TEMPLATES[key]) return res.status(404).json({ error: "No such template" });
-      const me = await prisma3.user.findUnique({ where: { id: req.user.uid } });
+      const me = await prisma2.user.findUnique({ where: { id: req.user.uid } });
       if (!me?.email) return res.status(400).json({ error: "Your account has no email address" });
       const ctx = await contextFor(me, { ref: `test-${key}` }, false);
       const { subject, html } = renderTemplate(key, ctx);
@@ -27766,7 +28783,7 @@ async function startServer() {
   const DEFAULT_DELAY = Object.fromEntries(AUTOMATIC.map((a) => [a.key, a.delayDays]));
   const VERIFY_REMINDER_MAX_AGE_DAYS = 90;
   const RESEARCH_KINDS = ["search", "view", "read"];
-  const hasResearchSince = async (userId, since) => !!await prisma3.libraryEvent.findFirst({
+  const hasResearchSince = async (userId, since) => !!await prisma2.libraryEvent.findFirst({
     where: { userId, kind: { in: RESEARCH_KINDS }, ...since ? { at: { gte: since } } : {} },
     select: { id: true }
   });
@@ -27778,8 +28795,8 @@ async function startServer() {
     return trackingCache.value;
   };
   const mailEligibility = async (user, key, rule) => {
-    const days = (d) => d ? Math.floor((Date.now() - new Date(d).getTime()) / 864e5) : null;
-    const age = days(user.createdAt) ?? 0;
+    const days2 = (d) => d ? Math.floor((Date.now() - new Date(d).getTime()) / 864e5) : null;
+    const age = days2(user.createdAt) ?? 0;
     const isInstitution = user.role === "Institution";
     const wait = rule?.delayDays ?? DEFAULT_DELAY[key] ?? 0;
     const waits = (n2, from) => `${from} ${n2} day${n2 === 1 ? "" : "s"} ago \u2014 the mail waits ${wait} day${wait === 1 ? "" : "s"}`;
@@ -27792,7 +28809,7 @@ async function startServer() {
         return missing.length ? { due: true, why: `${missing.length} field${missing.length === 1 ? "" : "s"} still blank` } : { due: false, why: "the profile is complete" };
       }
       case "never-read": {
-        if (user.lastReadAt) return { due: false, why: `has read something \u2014 last ${days(user.lastReadAt)} days ago` };
+        if (user.lastReadAt) return { due: false, why: `has read something \u2014 last ${days2(user.lastReadAt)} days ago` };
         if (age < wait) return { due: false, why: waits(age, "registered") };
         return { due: true, why: "registered and has never opened anything" };
       }
@@ -27804,26 +28821,26 @@ async function startServer() {
       case "librarian-add-users": {
         if (!isInstitution) return { due: false, why: "only librarians add members" };
         if (!user.institutionId) return { due: false, why: "this account has no institution attached yet" };
-        const last = await prisma3.user.findFirst({
+        const last = await prisma2.user.findFirst({
           where: { institutionId: user.institutionId, role: { not: "Institution" } },
           orderBy: { createdAt: "desc" },
           select: { createdAt: true }
         });
-        const since = days(last?.createdAt);
+        const since = days2(last?.createdAt);
         if (since !== null && since < wait) return { due: false, why: `added someone ${since} day${since === 1 ? "" : "s"} ago` };
         return { due: true, why: since === null ? "has never added anyone" : `nobody added in ${since} days` };
       }
       case "verify-email-reminder": {
         if (!getSystemSettings().emailVerificationEnabled) return { due: false, why: "email verification is switched off" };
         if (user.emailVerifiedAt) return { due: false, why: "the address is verified" };
-        const proof = await prisma3.emailVerification.findUnique({ where: { email: user.email }, select: { isVerified: true } }).catch(() => null);
+        const proof = await prisma2.emailVerification.findUnique({ where: { email: user.email }, select: { isVerified: true } }).catch(() => null);
         if (proof?.isVerified) return { due: false, why: "the address is verified" };
         if (age < wait) return { due: false, why: waits(age, "registered") };
         if (age > VERIFY_REMINDER_MAX_AGE_DAYS) return { due: false, why: `registered ${age} days ago \u2014 too long ago to remind` };
         return { due: true, why: `address still unverified after ${age} day${age === 1 ? "" : "s"}` };
       }
       case "never-logged-in": {
-        if (user.lastLoginAt) return { due: false, why: `has signed in \u2014 last ${days(user.lastLoginAt)} days ago` };
+        if (user.lastLoginAt) return { due: false, why: `has signed in \u2014 last ${days2(user.lastLoginAt)} days ago` };
         if (user.lastReadAt || await hasResearchSince(user.id)) return { due: false, why: "has used the library, so has signed in" };
         if (!user.emailVerifiedAt) return { due: false, why: "the address is not verified yet" };
         const since = await loginTrackingSince();
@@ -27835,10 +28852,10 @@ async function startServer() {
       }
       case "no-research-activity": {
         if (!user.lastLoginAt) return { due: false, why: "has not signed in" };
-        const sinceLogin = days(user.lastLoginAt) ?? 0;
+        const sinceLogin = days2(user.lastLoginAt) ?? 0;
         if (sinceLogin < wait) return { due: false, why: waits(sinceLogin, "signed in") };
         if (user.lastReadAt || await hasResearchSince(user.id)) return { due: false, why: "has searched or opened something" };
-        const nudged = await prisma3.emailSend.findFirst({
+        const nudged = await prisma2.emailSend.findFirst({
           where: { userId: user.id, templateKey: "never-read", status: "Sent" },
           select: { id: true }
         });
@@ -27847,7 +28864,7 @@ async function startServer() {
       }
       case "inactive-user": {
         if (!user.lastReadAt) return { due: false, why: 'has never read \u2014 that is the "never read" mail' };
-        const quiet = days(user.lastReadAt) ?? 0;
+        const quiet = days2(user.lastReadAt) ?? 0;
         if (quiet < wait) return { due: false, why: `read ${quiet} day${quiet === 1 ? "" : "s"} ago \u2014 the mail waits until ${wait} days of quiet` };
         const since = new Date(Date.now() - wait * 864e5);
         if (await hasResearchSince(user.id, since)) return { due: false, why: "has searched or opened something recently" };
@@ -27860,17 +28877,17 @@ async function startServer() {
   };
   app.get("/api/admin/members/:id/mail", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const user = await prisma3.user.findUnique({ where: { id: req.params.id } });
+      const user = await prisma2.user.findUnique({ where: { id: req.params.id } });
       if (!user) return res.status(404).json({ error: "No such member" });
       const [sends, logs, monthCount] = await Promise.all([
-        prisma3.emailSend.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 200 }),
-        prisma3.emailLog.findMany({
+        prisma2.emailSend.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 200 }),
+        prisma2.emailLog.findMany({
           where: { to: { contains: user.email, mode: "insensitive" } },
           orderBy: { createdAt: "desc" },
           take: 100,
           select: { id: true, subject: true, status: true, error: true, createdAt: true }
         }),
-        prisma3.emailSend.count({
+        prisma2.emailSend.count({
           where: { userId: user.id, status: "Sent", createdAt: { gte: new Date(Date.now() - 30 * 864e5) } }
         })
       ]);
@@ -27960,15 +28977,15 @@ async function startServer() {
       const page = Math.max(1, parseInt(str(req.query.page)) || 1);
       const limit = Math.min(200, Math.max(10, parseInt(str(req.query.limit)) || 50));
       const [rows, total, byStatus] = await Promise.all([
-        prisma3.emailSend.findMany({
+        prisma2.emailSend.findMany({
           where,
           orderBy: { createdAt: "desc" },
           skip: (page - 1) * limit,
           take: limit,
           include: { user: { select: { id: true, displayName: true, email: true, role: true, organization: true } } }
         }),
-        prisma3.emailSend.count({ where }),
-        prisma3.emailSend.groupBy({ by: ["status"], where, _count: { _all: true } })
+        prisma2.emailSend.count({ where }),
+        prisma2.emailSend.groupBy({ by: ["status"], where, _count: { _all: true } })
       ]);
       res.json({
         sends: rows,
@@ -27990,7 +29007,7 @@ async function startServer() {
       if (str(req.query.q)) where.email = { contains: str(req.query.q), mode: "insensitive" };
       const page = Math.max(1, parseInt(str(req.query.page)) || 1);
       const limit = Math.min(100, Math.max(5, parseInt(str(req.query.limit)) || 25));
-      const groups = await prisma3.emailSend.groupBy({
+      const groups = await prisma2.emailSend.groupBy({
         by: ["userId"],
         where,
         _count: { _all: true },
@@ -27999,18 +29016,18 @@ async function startServer() {
         skip: (page - 1) * limit,
         take: limit
       });
-      const allGroups = await prisma3.emailSend.groupBy({ by: ["userId"], where, _count: { _all: true } });
+      const allGroups = await prisma2.emailSend.groupBy({ by: ["userId"], where, _count: { _all: true } });
       const ids = groups.map((g) => g.userId);
       const [members, sends, totals] = await Promise.all([
-        ids.length ? prisma3.user.findMany({
+        ids.length ? prisma2.user.findMany({
           where: { id: { in: ids } },
           select: { id: true, displayName: true, email: true, role: true, organization: true, marketingOptOut: true, lastReadAt: true }
         }) : [],
-        ids.length ? prisma3.emailSend.findMany({
+        ids.length ? prisma2.emailSend.findMany({
           where: { ...where, userId: { in: ids } },
           orderBy: { createdAt: "desc" }
         }) : [],
-        prisma3.emailSend.groupBy({ by: ["status"], where, _count: { _all: true } })
+        prisma2.emailSend.groupBy({ by: ["status"], where, _count: { _all: true } })
       ]);
       const byId = new Map(members.map((m2) => [m2.id, m2]));
       const rows = groups.map((g) => {
@@ -28050,7 +29067,7 @@ async function startServer() {
   app.get("/api/public/unsubscribe/:token", async (req, res) => {
     try {
       const token = String(req.params.token || "");
-      const users = await prisma3.user.findMany({ where: { unsubscribeToken: token }, take: 2, select: { id: true, email: true, marketingOptOut: true } });
+      const users = await prisma2.user.findMany({ where: { unsubscribeToken: token }, take: 2, select: { id: true, email: true, marketingOptOut: true } });
       if (users.length !== 1) return res.status(404).json({ error: "This link is no longer valid" });
       const u = users[0];
       res.json({ email: u.email, alreadyOut: !!u.marketingOptOut });
@@ -28062,9 +29079,9 @@ async function startServer() {
     try {
       const token = String(req.params.token || "");
       const resubscribe = req.body?.resubscribe === true;
-      const users = await prisma3.user.findMany({ where: { unsubscribeToken: token }, take: 2, select: { id: true, email: true } });
+      const users = await prisma2.user.findMany({ where: { unsubscribeToken: token }, take: 2, select: { id: true, email: true } });
       if (users.length !== 1) return res.status(404).json({ error: "This link is no longer valid" });
-      await prisma3.user.update({ where: { id: users[0].id }, data: { marketingOptOut: !resubscribe } });
+      await prisma2.user.update({ where: { id: users[0].id }, data: { marketingOptOut: !resubscribe } });
       res.json({ email: users[0].email, optedOut: !resubscribe });
     } catch {
       res.status(500).json({ error: "Could not change that" });
@@ -28072,7 +29089,7 @@ async function startServer() {
   });
   app.get("/api/admin/email-logs", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const logs = await prisma3.emailLog.findMany({
+      const logs = await prisma2.emailLog.findMany({
         orderBy: { createdAt: "desc" },
         take: 100
         // Limit to last 100 logs
@@ -28085,7 +29102,7 @@ async function startServer() {
   app.post("/api/admin/email-logs/:id/resend", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const logId = req.params.id;
-      const log = await prisma3.emailLog.findUnique({ where: { id: logId } });
+      const log = await prisma2.emailLog.findUnique({ where: { id: logId } });
       if (!log) return res.status(404).json({ error: "Log not found" });
       if (!log.htmlContent) return res.status(400).json({ error: "Email content not available for resending (older log without HTML stored)." });
       await sendMail({
@@ -28095,7 +29112,7 @@ async function startServer() {
         _isTestEmail: true
         // Throw error explicitly instead of silent catch
       }, false);
-      await prisma3.emailLog.update({
+      await prisma2.emailLog.update({
         where: { id: logId },
         data: { status: "Sent", error: null, createdAt: /* @__PURE__ */ new Date() }
       });
@@ -28108,32 +29125,32 @@ async function startServer() {
     try {
       const CONTENT_TYPES = ["Books", "Periodicals", "Magazines", "Case Reports", "Theses", "Conference Proceedings", "Educational Videos", "Newsletters"];
       const [users, payments, subscriptions, quotations, contentCounts, pendingRequests, totalContent] = await Promise.all([
-        prisma3.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-        prisma3.payment.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { user: true } }),
-        prisma3.subscription.findMany({ orderBy: { createdAt: "desc" }, include: { user: true } }),
-        prisma3.quotation.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+        prisma2.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+        prisma2.payment.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { user: true } }),
+        prisma2.subscription.findMany({ orderBy: { createdAt: "desc" }, include: { user: true } }),
+        prisma2.quotation.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
         Promise.all(CONTENT_TYPES.map(async (ct) => ({
           name: ct,
-          value: await prisma3.content.count({ where: { contentType: ct } })
+          value: await prisma2.content.count({ where: { contentType: ct } })
         }))),
-        prisma3.subscriptionRequest.count({ where: { status: "Pending" } }),
-        prisma3.content.count()
+        prisma2.subscriptionRequest.count({ where: { status: "Pending" } }),
+        prisma2.content.count()
       ]);
-      const totalUsers = await prisma3.user.count();
-      const totalPublished = await prisma3.content.count({ where: { status: { in: ["Published", "published"] } } });
-      const totalDrafted = await prisma3.content.count({ where: { status: { notIn: ["Published", "published"] } } });
+      const totalUsers = await prisma2.user.count();
+      const totalPublished = await prisma2.content.count({ where: { status: { in: ["Published", "published"] } } });
+      const totalDrafted = await prisma2.content.count({ where: { status: { notIn: ["Published", "published"] } } });
       const now = /* @__PURE__ */ new Date();
       const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const currentMonthPayments = await prisma3.payment.aggregate({ _sum: { amount: true }, where: { status: "Success", createdAt: { gte: startOfCurrentMonth } } });
-      const prevMonthPayments = await prisma3.payment.aggregate({ _sum: { amount: true }, where: { status: "Success", createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } } });
+      const currentMonthPayments = await prisma2.payment.aggregate({ _sum: { amount: true }, where: { status: "Success", createdAt: { gte: startOfCurrentMonth } } });
+      const prevMonthPayments = await prisma2.payment.aggregate({ _sum: { amount: true }, where: { status: "Success", createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } } });
       const currentRev = currentMonthPayments._sum.amount || 0;
       const prevRev = prevMonthPayments._sum.amount || 0;
       const revenueGrowthPct = prevRev === 0 ? currentRev > 0 ? 100 : 0 : Number(((currentRev - prevRev) / prevRev * 100).toFixed(1));
-      const currentUsers = await prisma3.user.count({ where: { createdAt: { gte: startOfCurrentMonth } } });
-      const prevUsers = await prisma3.user.count({ where: { createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } } });
+      const currentUsers = await prisma2.user.count({ where: { createdAt: { gte: startOfCurrentMonth } } });
+      const prevUsers = await prisma2.user.count({ where: { createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } } });
       const userGrowthPct = prevUsers === 0 ? currentUsers > 0 ? 100 : 0 : Number(((currentUsers - prevUsers) / prevUsers * 100).toFixed(1));
-      const domainGroups = await prisma3.content.groupBy({
+      const domainGroups = await prisma2.content.groupBy({
         by: ["domain"],
         _count: { id: true },
         where: { domain: { not: null } }
@@ -28235,12 +29252,12 @@ async function startServer() {
   app.get("/api/admin/india-state-stats", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const [usersByState, quotationsByState, contactsByState, totalUsers, totalSubscriptions, totalRevenue] = await Promise.all([
-        prisma3.user.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
-        prisma3.quotation.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
-        prisma3.contactInquiry.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
-        prisma3.user.count({ where: { role: { not: "SuperAdmin" } } }),
-        prisma3.subscription.count({ where: { status: "Active" } }),
-        prisma3.payment.aggregate({ _sum: { amount: true }, where: { status: "Success" } })
+        prisma2.user.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma2.quotation.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma2.contactInquiry.groupBy({ by: ["state"], _count: { id: true }, where: { state: { not: null, notIn: ["", "null"] } } }),
+        prisma2.user.count({ where: { role: { not: "SuperAdmin" } } }),
+        prisma2.subscription.count({ where: { status: "Active" } }),
+        prisma2.payment.aggregate({ _sum: { amount: true }, where: { status: "Success" } })
       ]);
       const stateMap = {};
       const add = (state, field, count) => {
@@ -28274,8 +29291,8 @@ async function startServer() {
   app.get("/api/user/dashboard", authenticateJWT, async (req, res) => {
     try {
       const subscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const payments = await prisma3.payment.findMany({ where: { userId: req.user.uid, status: "Success" } });
-      const recentViews = await prisma3.studentActivity.findMany({
+      const payments = await prisma2.payment.findMany({ where: { userId: req.user.uid, status: "Success" } });
+      const recentViews = await prisma2.studentActivity.findMany({
         where: { userId: req.user.uid },
         orderBy: { accessedAt: "desc" },
         take: 6,
@@ -28296,10 +29313,10 @@ async function startServer() {
       if (req.user.institutionId) {
         OR_clauses.push({ institutionId: req.user.institutionId });
       } else {
-        const u = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        const u = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
         if (u?.institutionId) OR_clauses.push({ institutionId: u.institutionId });
       }
-      const allSubscriptions = await prisma3.subscription.findMany({
+      const allSubscriptions = await prisma2.subscription.findMany({
         where: { OR: OR_clauses },
         orderBy: { endDate: "desc" }
       });
@@ -28311,7 +29328,7 @@ async function startServer() {
         }).filter(Boolean)
       ));
       const free = req.user.role === "Subscriber" && activeSubs.length === 0;
-      const me = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { interestedDomains: true } });
+      const me = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { interestedDomains: true } });
       const known = new Set(DOMAINS.map((d) => d.name));
       const chosenDepartments = (Array.isArray(me?.interestedDomains) ? me.interestedDomains : []).map(String).filter((n2) => known.has(n2));
       const scope = seesWholeLibrary(req.user.role, activeSubs) ? void 0 : allowedDomains;
@@ -28322,12 +29339,12 @@ async function startServer() {
         // Distinct items, not events: opening the same book twice is one book
         // read. Both records are consulted because the event log is newer than
         // some members' reading.
-        prisma3.libraryEvent.groupBy({
+        prisma2.libraryEvent.groupBy({
           by: ["itemId"],
           where: { userId: req.user.uid, kind: "view", itemId: { not: null } }
         }),
-        prisma3.studentActivity.findMany({ where: { userId: req.user.uid }, select: { contentId: true } }),
-        prisma3.$queryRawUnsafe(
+        prisma2.studentActivity.findMany({ where: { userId: req.user.uid }, select: { contentId: true } }),
+        prisma2.$queryRawUnsafe(
           `select date_trunc('week', "at")::date as week, count(*)::int as reads
              from "LibraryEvent"
             where "userId" = $1 and kind = 'view' and "at" >= $2
@@ -28335,12 +29352,12 @@ async function startServer() {
           req.user.uid,
           since12w
         ),
-        prisma3.libraryEvent.groupBy({
+        prisma2.libraryEvent.groupBy({
           by: ["domain"],
           where: { userId: req.user.uid, kind: "view", domain: { not: null } },
           _count: { _all: true }
         }),
-        prisma3.$queryRawUnsafe(
+        prisma2.$queryRawUnsafe(
           `select coalesce(sum("durationMs"), 0)::bigint as ms
              from "LibraryEvent" where "userId" = $1 and "durationMs" is not null`,
           req.user.uid
@@ -28388,7 +29405,7 @@ async function startServer() {
         const d = Array.isArray(sb.domains) ? sb.domains : sb.domains ? JSON.parse(sb.domains) : [];
         return d;
       }).filter(Boolean)));
-      const me = await prisma3.user.findUnique({
+      const me = await prisma2.user.findUnique({
         where: { id: req.user.uid },
         select: { interestedDomains: true }
       });
@@ -28404,7 +29421,7 @@ async function startServer() {
       if (!departments.length) return res.json({ since: null, departments: [] });
       const perDept = Math.max(1, Math.min(6, Number(req.query.limit) || 4));
       const since = new Date(Date.now() - 30 * 864e5);
-      const read = await prisma3.libraryEvent.groupBy({
+      const read = await prisma2.libraryEvent.groupBy({
         by: ["itemId", "itemType", "domain"],
         where: { kind: "view", at: { gte: since }, domain: { in: departments }, itemId: { not: null } },
         _count: { _all: true }
@@ -28420,9 +29437,9 @@ async function startServer() {
       }
       const idsOf = (t2) => read.filter((r2) => r2.itemType === t2 && (picked.get(r2.domain) || []).includes(r2)).map((r2) => r2.itemId);
       const [arts, books, contents] = await Promise.all([
-        prisma3.article.findMany({ where: { id: { in: idsOf("article") } }, select: { id: true, title: true, domain: true, journalName: true } }),
-        prisma3.book.findMany({ where: { id: { in: idsOf("book") } }, select: { id: true, title: true, domain: true, publisherName: true } }),
-        prisma3.content.findMany({ where: { id: { in: idsOf("content") } }, select: { id: true, title: true, domain: true, contentType: true } })
+        prisma2.article.findMany({ where: { id: { in: idsOf("article") } }, select: { id: true, title: true, domain: true, journalName: true } }),
+        prisma2.book.findMany({ where: { id: { in: idsOf("book") } }, select: { id: true, title: true, domain: true, publisherName: true } }),
+        prisma2.content.findMany({ where: { id: { in: idsOf("content") } }, select: { id: true, title: true, domain: true, contentType: true } })
       ]);
       const meta = new Map([
         ...arts.map((a) => [a.id, { title: a.title, where: a.journalName }]),
@@ -28433,13 +29450,13 @@ async function startServer() {
       const fresh = /* @__PURE__ */ new Map();
       await Promise.all(empty.map(async (d) => {
         const [a, b] = await Promise.all([
-          prisma3.article.findMany({
+          prisma2.article.findMany({
             where: { status: "Published", domain: d },
             orderBy: { createdAt: "desc" },
             take: perDept,
             select: { id: true, title: true, domain: true, journalName: true, createdAt: true }
           }),
-          prisma3.book.findMany({
+          prisma2.book.findMany({
             where: { status: "Published", domain: d },
             orderBy: { createdAt: "desc" },
             take: perDept,
@@ -28476,7 +29493,7 @@ async function startServer() {
   });
   app.get("/api/user/history", authenticateJWT, async (req, res) => {
     try {
-      const recentViews = await prisma3.studentActivity.findMany({
+      const recentViews = await prisma2.studentActivity.findMany({
         where: { userId: req.user.uid },
         orderBy: { accessedAt: "desc" },
         take: 100,
@@ -28492,17 +29509,17 @@ async function startServer() {
     try {
       const { contentId, lastPage, timeSpent } = req.body;
       if (!contentId || !lastPage) return res.status(400).json({ error: "contentId and lastPage are required" });
-      const existing = await prisma3.studentActivity.findFirst({
+      const existing = await prisma2.studentActivity.findFirst({
         where: { userId: req.user.uid, contentId }
       });
       if (existing) {
-        await prisma3.studentActivity.update({
+        await prisma2.studentActivity.update({
           where: { id: existing.id },
           data: { lastPage: Number(lastPage), timeSpent: { increment: Number(timeSpent) || 0 } }
         });
         res.json({ success: true, lastPage: Number(lastPage) });
       } else {
-        await prisma3.studentActivity.create({
+        await prisma2.studentActivity.create({
           data: { userId: req.user.uid, contentId, lastPage: Number(lastPage), timeSpent: Number(timeSpent) || 0 }
         });
         res.json({ success: true, lastPage: Number(lastPage) });
@@ -28514,7 +29531,7 @@ async function startServer() {
   });
   app.get("/api/user/reading-progress/:contentId", authenticateJWT, async (req, res) => {
     try {
-      const activity = await prisma3.studentActivity.findFirst({
+      const activity = await prisma2.studentActivity.findFirst({
         where: { userId: req.user.uid, contentId: req.params.contentId }
       });
       res.json({ lastPage: activity?.lastPage || 1, accessedAt: activity?.accessedAt || null });
@@ -28523,23 +29540,23 @@ async function startServer() {
     }
   });
   const favouriteKindOf = async (id) => {
-    if (await prisma3.content.count({ where: { id } })) return "Content";
-    if (await prisma3.article.count({ where: { id } })) return "Article";
-    if (await prisma3.book.count({ where: { id } })) return "Book";
+    if (await prisma2.content.count({ where: { id } })) return "Content";
+    if (await prisma2.article.count({ where: { id } })) return "Article";
+    if (await prisma2.book.count({ where: { id } })) return "Book";
     return null;
   };
   app.get("/api/user/favorites", authenticateJWT, async (req, res) => {
     try {
-      const favorites = await prisma3.favorite.findMany({
+      const favorites = await prisma2.favorite.findMany({
         where: { userId: req.user.uid },
         orderBy: { createdAt: "desc" }
       });
       if (!favorites.length) return res.json([]);
       const idsOf = (t2) => favorites.filter((f3) => f3.itemType === t2).map((f3) => f3.contentId);
       const [contents, articles, books] = await Promise.all([
-        idsOf("Content").length ? prisma3.content.findMany({ where: { id: { in: idsOf("Content") } } }) : [],
-        idsOf("Article").length ? prisma3.article.findMany({ where: { id: { in: idsOf("Article") } } }) : [],
-        idsOf("Book").length ? prisma3.book.findMany({ where: { id: { in: idsOf("Book") } } }) : []
+        idsOf("Content").length ? prisma2.content.findMany({ where: { id: { in: idsOf("Content") } } }) : [],
+        idsOf("Article").length ? prisma2.article.findMany({ where: { id: { in: idsOf("Article") } } }) : [],
+        idsOf("Book").length ? prisma2.book.findMany({ where: { id: { in: idsOf("Book") } } }) : []
       ]);
       const byId = /* @__PURE__ */ new Map();
       for (const c of contents) byId.set(c.id, { ...c, itemType: "Content" });
@@ -28569,16 +29586,16 @@ async function startServer() {
     try {
       const { contentId } = req.body;
       if (!contentId) return res.status(400).json({ error: "contentId is required" });
-      const existing = await prisma3.favorite.findFirst({
+      const existing = await prisma2.favorite.findFirst({
         where: { userId: req.user.uid, contentId }
       });
       if (existing) {
-        await prisma3.favorite.delete({ where: { id: existing.id } });
+        await prisma2.favorite.delete({ where: { id: existing.id } });
         return res.json({ success: true, favorited: false });
       }
       const itemType = await favouriteKindOf(contentId);
       if (!itemType) return res.status(404).json({ error: "That item no longer exists" });
-      await prisma3.favorite.create({
+      await prisma2.favorite.create({
         data: { userId: req.user.uid, contentId, itemType }
       });
       return res.json({ success: true, favorited: true });
@@ -28589,7 +29606,7 @@ async function startServer() {
   });
   app.get("/api/user/favorites/check/:contentId", authenticateJWT, async (req, res) => {
     try {
-      const existing = await prisma3.favorite.findFirst({
+      const existing = await prisma2.favorite.findFirst({
         where: { userId: req.user.uid, contentId: req.params.contentId }
       });
       res.json({ favorited: !!existing });
@@ -28603,10 +29620,10 @@ async function startServer() {
       if (req.user.institutionId) {
         OR_clauses.push({ institutionId: req.user.institutionId });
       } else if (req.user.role === "Institution" || req.user.role === "Student" || req.user.role === "Subscriber") {
-        const u = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
+        const u = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true } });
         if (u?.institutionId) OR_clauses.push({ institutionId: u.institutionId });
       }
-      const subscriptions = await prisma3.subscription.findMany({
+      const subscriptions = await prisma2.subscription.findMany({
         where: { OR: OR_clauses },
         orderBy: { startDate: "desc" }
       });
@@ -28615,7 +29632,7 @@ async function startServer() {
       res.status(500).json({ error: "Failed to load subscriptions" });
     }
   });
-  const licensedSeats = async (institutionId, db = prisma3) => {
+  const licensedSeats = async (institutionId, db = prisma2) => {
     const now = /* @__PURE__ */ new Date();
     const [withLimit, activeSubs, assigned, totalMembers] = await Promise.all([
       db.subscription.findMany({
@@ -28650,7 +29667,7 @@ async function startServer() {
     };
   };
   const memberHasLicensedAccess = async (institutionId, uid) => {
-    const row = await prisma3.institutionMemberAccess.findFirst({
+    const row = await prisma2.institutionMemberAccess.findFirst({
       where: { userId: uid, institutionId, revokedAt: null, user: { institutionId, isBlocked: false } },
       select: { id: true }
     });
@@ -28661,13 +29678,13 @@ async function startServer() {
     const OR_clauses = [{ userId: uid }];
     let resolvedInstId = institutionId;
     if (!resolvedInstId) {
-      const u = await prisma3.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+      const u = await prisma2.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
       if (u?.institutionId) resolvedInstId = u.institutionId;
     }
     if (resolvedInstId) {
       OR_clauses.push({ institutionId: resolvedInstId });
     }
-    const subs = await prisma3.subscription.findMany({
+    const subs = await prisma2.subscription.findMany({
       where: {
         OR: OR_clauses,
         status: "Active",
@@ -28677,7 +29694,7 @@ async function startServer() {
     if (resolvedInstId && !STAFF_ROLES.includes(role)) {
       const inherited = subs.filter((x2) => x2.institutionId === resolvedInstId && x2.userId !== uid);
       if (inherited.length) {
-        const managed = await prisma3.subscription.findFirst({
+        const managed = await prisma2.subscription.findFirst({
           where: { institutionId: resolvedInstId, licensedUserLimit: { not: null } },
           select: { id: true }
         });
@@ -28715,17 +29732,17 @@ async function startServer() {
     try {
       const activeSubscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
       const [contentCounts, articleCounts, bookCounts] = await Promise.all([
-        prisma3.content.groupBy({
+        prisma2.content.groupBy({
           by: ["domain", "contentType"],
           _count: { id: true },
           where: { status: { in: ["Published", "published"] } }
         }),
-        prisma3.article.groupBy({
+        prisma2.article.groupBy({
           by: ["domain", "contentType"],
           _count: { id: true },
           where: { status: "Published" }
         }),
-        prisma3.book.groupBy({
+        prisma2.book.groupBy({
           by: ["domain"],
           _count: { id: true },
           where: { status: "Published" }
@@ -28820,23 +29837,23 @@ async function startServer() {
         const legacyWhere = { status: { not: "Draft" } };
         if (!isAdmin && subOr.length) legacyWhere.AND = [{ OR: subOr }];
         const [dg, cg] = await Promise.all([
-          prisma3.content.groupBy({ by: ["domain"], where: legacyWhere }),
-          prisma3.content.groupBy({ by: ["contentType"], where: legacyWhere })
+          prisma2.content.groupBy({ by: ["domain"], where: legacyWhere }),
+          prisma2.content.groupBy({ by: ["contentType"], where: legacyWhere })
         ]);
         legacyDepts = dg.map((x2) => x2.domain).filter(Boolean);
         legacyTypes = cg.map((x2) => x2.contentType).filter(Boolean);
       }
       const domFilter = isAdmin ? {} : { domain: { in: [...scopeDomains] } };
       const [aDepts, bDepts, aCount, bCount] = await Promise.all([
-        prisma3.article.groupBy({ by: ["domain"], where: { status: "Published", ...domFilter } }),
-        prisma3.book.groupBy({ by: ["domain"], where: { status: "Published", ...domFilter } }),
-        prisma3.article.count({ where: { status: "Published", ...domFilter } }),
-        prisma3.book.count({ where: { status: "Published", ...domFilter } })
+        prisma2.article.groupBy({ by: ["domain"], where: { status: "Published", ...domFilter } }),
+        prisma2.book.groupBy({ by: ["domain"], where: { status: "Published", ...domFilter } }),
+        prisma2.article.count({ where: { status: "Published", ...domFilter } }),
+        prisma2.book.count({ where: { status: "Published", ...domFilter } })
       ]);
       const newDepts = [...new Set([...aDepts.map((x2) => x2.domain), ...bDepts.map((x2) => x2.domain)].filter(Boolean))];
       const [adg, acg] = await Promise.all([
-        prisma3.content.groupBy({ by: ["domain"], where: { status: { not: "Draft" } } }),
-        prisma3.content.groupBy({ by: ["contentType"], where: { status: { not: "Draft" } } })
+        prisma2.content.groupBy({ by: ["domain"], where: { status: { not: "Draft" } } }),
+        prisma2.content.groupBy({ by: ["contentType"], where: { status: { not: "Draft" } } })
       ]);
       res.json({
         all: isAdmin,
@@ -28902,7 +29919,7 @@ async function startServer() {
           }
         }
       }
-      const contents = await prisma3.content.findMany({
+      const contents = await prisma2.content.findMany({
         where,
         select: { domain: true, subjectArea: true, tags: true, title: true }
       });
@@ -29034,8 +30051,8 @@ async function startServer() {
           }
         }
         const [contents2, total2] = await Promise.all([
-          prisma3.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
-          prisma3.content.count({ where })
+          prisma2.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
+          prisma2.content.count({ where })
         ]);
         if (search) {
           logEvent(req, {
@@ -29055,8 +30072,8 @@ async function startServer() {
         });
       }
       const [contents, total] = await Promise.all([
-        prisma3.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
-        prisma3.content.count({ where })
+        prisma2.content.findMany({ where, skip, take, orderBy: { title: "asc" } }),
+        prisma2.content.count({ where })
       ]);
       if (search) {
         logEvent(req, {
@@ -29108,7 +30125,7 @@ async function startServer() {
     const hit = instCache.get(uid);
     if (hit && hit.until > Date.now()) return hit.id;
     try {
-      const u = await prisma3.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+      const u = await prisma2.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
       const id = u?.institutionId ?? null;
       instCache.set(uid, { id, until: Date.now() + 10 * 6e4 });
       return id;
@@ -29122,7 +30139,7 @@ async function startServer() {
     if ((lastReadWrites.get(uid) || 0) > now - 5 * 6e4) return;
     lastReadWrites.set(uid, now);
     if (lastReadWrites.size > 5e4) lastReadWrites.clear();
-    prisma3.user.update({ where: { id: uid }, data: { lastReadAt: /* @__PURE__ */ new Date() } }).catch(() => {
+    prisma2.user.update({ where: { id: uid }, data: { lastReadAt: /* @__PURE__ */ new Date() } }).catch(() => {
     });
   };
   const logEvent = (req, e2) => {
@@ -29136,7 +30153,7 @@ async function startServer() {
           const bucket = Math.floor(Date.now() / e2.dedupeWindowMs);
           dedupeKey = [e2.kind, uid || "anon", e2.itemId || e2.query || "", bucket].join("|");
         }
-        await prisma3.libraryEvent.create({
+        await prisma2.libraryEvent.create({
           data: {
             kind: e2.kind,
             userId: uid,
@@ -29160,11 +30177,11 @@ async function startServer() {
     })();
   };
   const resolveViewable = async (id, isAdmin) => {
-    const c = await prisma3.content.findFirst({ where: isAdmin ? { id } : { id, status: { not: "Draft" } } });
+    const c = await prisma2.content.findFirst({ where: isAdmin ? { id } : { id, status: { not: "Draft" } } });
     if (c) return { kind: "content", item: c, fileUrl: c.fileUrl, title: c.title, contentType: c.contentType, accessType: c.accessType, status: c.status };
-    const a = await prisma3.article.findFirst({ where: isAdmin ? { id } : { id, status: "Published" } });
+    const a = await prisma2.article.findFirst({ where: isAdmin ? { id } : { id, status: "Published" } });
     if (a) return { kind: "article", item: a, fileUrl: a.pdfUrl, title: a.title, contentType: a.contentType || "Periodicals", accessType: a.accessType || "OpenAccess", status: a.status };
-    const b = await prisma3.book.findFirst({ where: isAdmin ? { id } : { id, status: "Published" } });
+    const b = await prisma2.book.findFirst({ where: isAdmin ? { id } : { id, status: "Published" } });
     if (b) return { kind: "book", item: b, fileUrl: b.pdfUrl, title: b.title, contentType: "Books", accessType: b.accessType || "OpenAccess", status: b.status };
     return null;
   };
@@ -29176,9 +30193,9 @@ async function startServer() {
       if (!resolved) return res.status(404).json({ error: "Content not found" });
       if (!await passesFreeClock(req, res, resolved)) return;
       if ((resolved.kind === "article" || resolved.kind === "book") && !isAdminRole) {
-        prisma3[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {
+        prisma2[resolved.kind].update({ where: { id: resolved.item.id }, data: { views: { increment: 1 } } }).catch(() => {
         });
-        prisma3.readEvent.create({ data: { itemType: resolved.kind, itemId: resolved.item.id, publisherId: resolved.item.publisherId || null, userId: req.user.uid } }).catch(() => {
+        prisma2.readEvent.create({ data: { itemType: resolved.kind, itemId: resolved.item.id, publisherId: resolved.item.publisherId || null, userId: req.user.uid } }).catch(() => {
         });
       }
       if (!isAdminRole) {
@@ -29195,9 +30212,9 @@ async function startServer() {
       }
       if (resolved.kind === "content" && (req.user.role === "Student" || req.user.role === "Subscriber")) {
         try {
-          const existing = await prisma3.studentActivity.findFirst({ where: { userId: req.user.uid, contentId: resolved.item.id } });
-          if (existing) await prisma3.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
-          else await prisma3.studentActivity.create({ data: { userId: req.user.uid, contentId: resolved.item.id, timeSpent: 0, lastPage: 1 } });
+          const existing = await prisma2.studentActivity.findFirst({ where: { userId: req.user.uid, contentId: resolved.item.id } });
+          if (existing) await prisma2.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
+          else await prisma2.studentActivity.create({ data: { userId: req.user.uid, contentId: resolved.item.id, timeSpent: 0, lastPage: 1 } });
         } catch (e2) {
           console.error("Activity log failed", e2);
         }
@@ -29248,7 +30265,7 @@ async function startServer() {
         } else {
           console.warn(`[proxy-pdf] Auto-flagging missing local file: ${content.fileUrl}`);
           if (resolved.kind === "content") {
-            await prisma3.content.update({
+            await prisma2.content.update({
               where: { id: contentId },
               data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: "Local file missing (404)" }
             });
@@ -29286,7 +30303,7 @@ async function startServer() {
       if (!upstreamRes.ok) {
         console.error(`[proxy-pdf] Upstream failed with ${upstreamRes.status} for ${content.fileUrl}`);
         if (upstreamRes.status === 403 || upstreamRes.status === 404 || upstreamRes.status >= 500) {
-          await prisma3.content.update({
+          await prisma2.content.update({
             where: { id: contentId },
             data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: `Upstream failed with ${upstreamRes.status}` }
           });
@@ -29326,7 +30343,7 @@ async function startServer() {
         if (!import_fs2.default.existsSync(filePath)) {
           console.warn(`[proxy-frame] Missing local file: ${content.fileUrl}`);
           if (resolved.kind === "content") {
-            await prisma3.content.update({
+            await prisma2.content.update({
               where: { id: contentId },
               data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: "Local file missing (404)" }
             });
@@ -29358,7 +30375,7 @@ async function startServer() {
       });
       if (!upstreamRes) return;
       if (!upstreamRes.ok && (upstreamRes.status === 403 || upstreamRes.status === 404 || upstreamRes.status >= 500)) {
-        await prisma3.content.update({
+        await prisma2.content.update({
           where: { id: contentId },
           data: { status: "Draft", validationStatus: "FLAGGED_CONTENT", isViewable: false, flaggedReason: `Upstream failed with ${upstreamRes.status}` }
         });
@@ -29386,7 +30403,7 @@ async function startServer() {
   });
   app.get("/api/user/quotations", authenticateJWT, async (req, res) => {
     try {
-      const quotations = await prisma3.quotation.findMany({
+      const quotations = await prisma2.quotation.findMany({
         where: { userEmail: req.user.email },
         orderBy: { createdAt: "desc" }
       });
@@ -29410,11 +30427,11 @@ async function startServer() {
           { organization: { contains: search, mode: "insensitive" } }
         ];
       }
-      const quotations = await prisma3.quotation.findMany({
+      const quotations = await prisma2.quotation.findMany({
         where,
         orderBy: { createdAt: "desc" }
       });
-      const all = await prisma3.quotation.findMany({
+      const all = await prisma2.quotation.findMany({
         where: { createdBy: email },
         select: { status: true, total: true }
       });
@@ -29432,7 +30449,7 @@ async function startServer() {
   });
   app.get("/api/user/invoices", authenticateJWT, async (req, res) => {
     try {
-      const payments = await prisma3.payment.findMany({
+      const payments = await prisma2.payment.findMany({
         where: { userId: req.user.uid },
         orderBy: { createdAt: "desc" }
       });
@@ -29452,7 +30469,7 @@ async function startServer() {
       if (clearFirstLogin || password) {
         dataToUpdate.isFirstLogin = false;
       }
-      const updatedUser = await prisma3.user.update({
+      const updatedUser = await prisma2.user.update({
         where: { id: req.user.uid },
         data: dataToUpdate
       });
@@ -29464,7 +30481,7 @@ async function startServer() {
   });
   app.delete("/api/user/account", authenticateJWT, async (req, res) => {
     try {
-      await prisma3.user.delete({
+      await prisma2.user.delete({
         where: { id: req.user.uid }
       });
       res.json({ message: "Account deleted successfully" });
@@ -29917,7 +30934,7 @@ async function startServer() {
         const date = (d) => d ? new Date(d).toISOString().slice(0, 10) : "";
         let cursor = null;
         for (; ; ) {
-          const batch = await prisma3.user.findMany({
+          const batch = await prisma2.user.findMany({
             where,
             select: { ...columns, institutionProfile: false },
             orderBy: { id: "asc" },
@@ -29954,7 +30971,7 @@ async function startServer() {
       const page = Math.max(parseInt(String(q.page)) || 1, 1);
       const sort = str(q.sort);
       const [users, total, byType, bySource, byState, verifiedCount, readCount] = await Promise.all([
-        prisma3.user.findMany({
+        prisma2.user.findMany({
           where,
           select: {
             ...columns,
@@ -29966,24 +30983,24 @@ async function startServer() {
           skip: (page - 1) * take,
           take
         }),
-        prisma3.user.count({ where }),
+        prisma2.user.count({ where }),
         // The counts beside the filters, counted under the filters already set
         // — so narrowing by state and then reading the type counts gives the
         // types in that state, which is the only reading that is any use.
-        prisma3.user.groupBy({ by: ["registrantType"], where, _count: { _all: true } }),
-        prisma3.user.groupBy({ by: ["signupSource"], where, _count: { _all: true } }),
-        prisma3.user.groupBy({ by: ["state"], where, _count: { _all: true } }),
-        prisma3.user.count({ where: { AND: [where, { emailVerifiedAt: { not: null } }] } }),
-        prisma3.user.count({ where: { AND: [where, { lastReadAt: { not: null } }] } })
+        prisma2.user.groupBy({ by: ["registrantType"], where, _count: { _all: true } }),
+        prisma2.user.groupBy({ by: ["signupSource"], where, _count: { _all: true } }),
+        prisma2.user.groupBy({ by: ["state"], where, _count: { _all: true } }),
+        prisma2.user.count({ where: { AND: [where, { emailVerifiedAt: { not: null } }] } }),
+        prisma2.user.count({ where: { AND: [where, { lastReadAt: { not: null } }] } })
       ]);
       const facet = (rows, key) => rows.map((r2) => ({ value: r2[key] || null, count: r2._count._all })).sort((a, b) => b.count - a.count);
       const codes = [...new Set(users.map((u) => u.signupSource).filter(Boolean))];
-      const named = codes.length ? await prisma3.campaign.findMany({
+      const named = codes.length ? await prisma2.campaign.findMany({
         where: { code: { in: codes } },
         select: { code: true, name: true, channel: true, ownerName: true }
       }) : [];
       const byCode = new Map(named.map((c) => [c.code, c]));
-      const liveRows = await prisma3.userSession.findMany({
+      const liveRows = await prisma2.userSession.findMany({
         where: { userId: { in: users.map((u) => u.id) }, revokedAt: null, expiresAt: { gt: /* @__PURE__ */ new Date() } },
         select: { userId: true, createdAt: true, lastSeenAt: true, expiresAt: true, deviceLabel: true }
       });
@@ -30045,13 +31062,13 @@ async function startServer() {
     const seat = await licensedSeats(institutionId);
     const where = { institutionId };
     if (q) where.OR = [{ displayName: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }];
-    const users = await prisma3.user.findMany({
+    const users = await prisma2.user.findMany({
       where,
       orderBy: [{ role: "asc" }, { displayName: "asc" }],
       take: 500,
       select: { id: true, displayName: true, email: true, role: true, designation: true, lastReadAt: true, isBlocked: true }
     });
-    const rows = await prisma3.institutionMemberAccess.findMany({ where: { institutionId, userId: { in: users.map((u) => u.id) } } });
+    const rows = await prisma2.institutionMemberAccess.findMany({ where: { institutionId, userId: { in: users.map((u) => u.id) } } });
     const byUser = new Map(rows.map((r2) => [r2.userId, r2]));
     return {
       summary: seat,
@@ -30069,7 +31086,7 @@ async function startServer() {
   const changeSeats = async (institutionId, userIds, mode, actor) => {
     const ids = [...new Set(userIds.filter((x2) => typeof x2 === "string"))].slice(0, 1e3);
     if (!ids.length) throw { status: 400, body: { error: "Choose at least one member." } };
-    const result = await prisma3.$transaction(async (tx) => {
+    const result = await prisma2.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"licensed-seats:" + institutionId}))`;
       const now = /* @__PURE__ */ new Date();
       if (mode === "revoke") {
@@ -30104,7 +31121,7 @@ async function startServer() {
       }
       return { changed: toAssign.length };
     });
-    await prisma3.usageLog.create({ data: {
+    await prisma2.usageLog.create({ data: {
       action: mode === "assign" ? "LICENSED_ACCESS_ASSIGNED" : "LICENSED_ACCESS_REMOVED",
       userId: actor.uid,
       details: `${institutionId}: ${result.changed} member(s) [${ids.slice(0, 20).join(", ")}] by ${actor.email}`
@@ -30151,7 +31168,7 @@ async function startServer() {
     if (!Number.isInteger(limit) || limit < 1) throw { status: 400, body: { error: "The limit must be a whole number, at least 1." } };
     if (limit > MAX_INSTITUTION_USERS) throw { status: 400, body: { error: `The limit cannot exceed ${MAX_INSTITUTION_USERS.toLocaleString("en-IN")}.` } };
     const note = String(req.body?.note || "").trim().slice(0, 500) || null;
-    const seeded = await prisma3.$transaction(async (tx) => {
+    const seeded = await prisma2.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"licensed-seats:" + institutionId}))`;
       const before = await licensedSeats(institutionId, tx);
       if (!before.subscriptionActive) throw { status: 409, body: { code: "NO_ACTIVE_SUBSCRIPTION", error: "The institution has no active subscription to set a limit on." } };
@@ -30212,7 +31229,7 @@ async function startServer() {
     return accessOverview(id);
   }));
   app.get("/api/me/institution-access", authenticateJWT, seatRoute(async (req) => {
-    const me = await prisma3.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true, institution: { select: { name: true } } } });
+    const me = await prisma2.user.findUnique({ where: { id: req.user.uid }, select: { institutionId: true, institution: { select: { name: true } } } });
     if (!me?.institutionId) return { linked: false };
     const seat = await licensedSeats(me.institutionId);
     if (!seat.managed) return { linked: true, managed: false, institutionName: me.institution?.name || "" };
@@ -30236,9 +31253,9 @@ async function startServer() {
         until = /* @__PURE__ */ new Date(`${String(req.body.until).slice(0, 10)}T23:59:59.999+05:30`);
         if (isNaN(until.getTime()) || until.getTime() <= Date.now()) return res.status(400).json({ error: "Choose an end date in the future." });
       }
-      const inst = await prisma3.institution.findUnique({ where: { id: req.params.id }, select: { name: true } });
+      const inst = await prisma2.institution.findUnique({ where: { id: req.params.id }, select: { name: true } });
       if (!inst) return res.status(404).json({ error: "Institution not found" });
-      await prisma3.institution.update({
+      await prisma2.institution.update({
         where: { id: req.params.id },
         data: {
           userAdditionRestricted: true,
@@ -30249,7 +31266,7 @@ async function startServer() {
           userAdditionRestrictionUntil: until
         }
       });
-      await prisma3.usageLog.create({ data: {
+      await prisma2.usageLog.create({ data: {
         action: "INSTITUTION_USER_ADDITION_RESTRICTED",
         userId: req.user.uid,
         details: `${inst.name} (${req.params.id}) restricted by ${req.user.email}; until ${until ? until.toISOString() : "removed manually"}; reason: ${reason}`
@@ -30263,9 +31280,9 @@ async function startServer() {
   });
   app.delete("/api/admin/institutions/:id/user-addition-restriction", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const inst = await prisma3.institution.findUnique({ where: { id: req.params.id }, select: { name: true } });
+      const inst = await prisma2.institution.findUnique({ where: { id: req.params.id }, select: { name: true } });
       if (!inst) return res.status(404).json({ error: "Institution not found" });
-      await prisma3.institution.update({
+      await prisma2.institution.update({
         where: { id: req.params.id },
         data: {
           userAdditionRestricted: false,
@@ -30276,7 +31293,7 @@ async function startServer() {
           userAdditionRestrictionUntil: null
         }
       });
-      await prisma3.usageLog.create({ data: {
+      await prisma2.usageLog.create({ data: {
         action: "INSTITUTION_USER_ADDITION_RESTORED",
         userId: req.user.uid,
         details: `${inst.name} (${req.params.id}) restored by ${req.user.email}`
@@ -30305,10 +31322,10 @@ async function startServer() {
         readByOrg,
         solo
       ] = await Promise.all([
-        prisma3.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null } }, _count: { _all: true } }),
-        prisma3.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
-        prisma3.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
-        prisma3.institution.findMany({ select: {
+        prisma2.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null } }, _count: { _all: true } }),
+        prisma2.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+        prisma2.user.groupBy({ by: ["institutionId"], where: { institutionId: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
+        prisma2.institution.findMany({ select: {
           id: true,
           name: true,
           status: true,
@@ -30321,14 +31338,14 @@ async function startServer() {
           userAdditionRestrictionNote: true
         } }),
         // The account the institution runs on — the librarian who adds the rest.
-        prisma3.user.findMany({
+        prisma2.user.findMany({
           where: { institutionId: { not: null }, role: "Institution" },
           select: { id: true, displayName: true, email: true, designation: true, institutionId: true, lastReadAt: true }
         }),
-        prisma3.user.groupBy({ by: ["organization"], where: { institutionId: null, organization: { not: null } }, _count: { _all: true } }),
-        prisma3.user.groupBy({ by: ["organization"], where: { institutionId: null, organization: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
-        prisma3.user.groupBy({ by: ["organization"], where: { institutionId: null, organization: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
-        prisma3.user.count({ where: { institutionId: null, OR: [{ organization: null }, { organization: "" }] } })
+        prisma2.user.groupBy({ by: ["organization"], where: { institutionId: null, organization: { not: null } }, _count: { _all: true } }),
+        prisma2.user.groupBy({ by: ["organization"], where: { institutionId: null, organization: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+        prisma2.user.groupBy({ by: ["organization"], where: { institutionId: null, organization: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
+        prisma2.user.count({ where: { institutionId: null, OR: [{ organization: null }, { organization: "" }] } })
       ]);
       const [N, V, R] = [counts(byId, "institutionId"), counts(verifiedById, "institutionId"), counts(readById, "institutionId")];
       const headsBy = /* @__PURE__ */ new Map();
@@ -30336,7 +31353,7 @@ async function startServer() {
         const k = h2.institutionId;
         (headsBy.get(k) || headsBy.set(k, []).get(k)).push(h2);
       }
-      const limitRows = await prisma3.subscription.findMany({
+      const limitRows = await prisma2.subscription.findMany({
         where: { institutionId: { not: null }, licensedUserLimit: { not: null } },
         select: { institutionId: true, licensedUserLimit: true, status: true, endDate: true },
         orderBy: { endDate: "desc" }
@@ -30351,14 +31368,14 @@ async function startServer() {
         }
       }
       for (const [id, v] of running) seatLimit.set(id, v);
-      const heldRows = await prisma3.institutionMemberAccess.findMany({
+      const heldRows = await prisma2.institutionMemberAccess.findMany({
         where: { revokedAt: null, user: { isBlocked: false } },
         select: { institutionId: true, user: { select: { institutionId: true } } }
       });
       const heldBy = /* @__PURE__ */ new Map();
       for (const h2 of heldRows) if (h2.user.institutionId === h2.institutionId) heldBy.set(h2.institutionId, (heldBy.get(h2.institutionId) || 0) + 1);
       const byIds = [...new Set(institutions.map((i2) => i2.userAdditionRestrictedBy).filter(Boolean))];
-      const adminNames = new Map((byIds.length ? await prisma3.user.findMany({ where: { id: { in: byIds } }, select: { id: true, displayName: true, email: true } }) : []).map((a) => [a.id, a.displayName || a.email]));
+      const adminNames = new Map((byIds.length ? await prisma2.user.findMany({ where: { id: { in: byIds } }, select: { id: true, displayName: true, email: true } }) : []).map((a) => [a.id, a.displayName || a.email]));
       const groups = institutions.map((i2) => ({
         kind: "institution",
         id: i2.id,
@@ -30431,7 +31448,7 @@ async function startServer() {
     const base = [CHANNEL_CODE[channel] || "web", slugPart(owner, 12), slugPart(name)].filter(Boolean).join("-") || "campaign";
     for (let i2 = 0; i2 < 40; i2++) {
       const code = i2 ? `${base}-${i2 + 1}` : base;
-      const taken = await prisma3.campaign.findFirst({ where: { code }, select: { id: true } });
+      const taken = await prisma2.campaign.findFirst({ where: { code }, select: { id: true } });
       if (!taken) return code;
     }
     return `${base}-${Date.now().toString(36)}`;
@@ -30440,11 +31457,11 @@ async function startServer() {
     const MEMBERS = { role: { notIn: STAFF_ROLES } };
     const since30 = new Date(Date.now() - 30 * 864e5);
     const [campaigns, all, verified, read, recent] = await Promise.all([
-      prisma3.campaign.findMany({ orderBy: { createdAt: "desc" } }),
-      prisma3.user.groupBy({ by: ["signupSource"], where: MEMBERS, _count: { _all: true } }),
-      prisma3.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
-      prisma3.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, lastReadAt: { not: null } }, _count: { _all: true } }),
-      prisma3.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, createdAt: { gte: since30 } }, _count: { _all: true } })
+      prisma2.campaign.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma2.user.groupBy({ by: ["signupSource"], where: MEMBERS, _count: { _all: true } }),
+      prisma2.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+      prisma2.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, lastReadAt: { not: null } }, _count: { _all: true } }),
+      prisma2.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, createdAt: { gte: since30 } }, _count: { _all: true } })
     ]);
     const tally = (rows2) => {
       const m2 = /* @__PURE__ */ new Map();
@@ -30504,7 +31521,7 @@ async function startServer() {
       if (!ownerName) return res.status(400).json({ error: "Say who is running it" });
       const landing = String(req.body?.landing || "/").trim() || "/";
       const code = await mintCampaignCode(channel, ownerName, name);
-      const campaign = await prisma3.campaign.create({
+      const campaign = await prisma2.campaign.create({
         data: {
           code,
           name,
@@ -30530,7 +31547,7 @@ async function startServer() {
       }
       if (typeof req.body?.active === "boolean") data.active = req.body.active;
       if (typeof req.body?.channel === "string" && CHANNELS.includes(req.body.channel)) data.channel = req.body.channel;
-      const campaign = await prisma3.campaign.update({ where: { id: req.params.id }, data });
+      const campaign = await prisma2.campaign.update({ where: { id: req.params.id }, data });
       res.json({ campaign });
     } catch (e2) {
       console.error("PATCH campaign error:", e2?.message);
@@ -30539,15 +31556,15 @@ async function startServer() {
   });
   app.delete("/api/admin/campaigns/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const campaign = await prisma3.campaign.findUnique({ where: { id: req.params.id } });
+      const campaign = await prisma2.campaign.findUnique({ where: { id: req.params.id } });
       if (!campaign) return res.status(404).json({ error: "No such campaign" });
-      const brought = await prisma3.user.count({ where: { signupSource: campaign.code } });
+      const brought = await prisma2.user.count({ where: { signupSource: campaign.code } });
       if (brought > 0) {
         return res.status(409).json({
           error: `${brought} ${brought === 1 ? "member" : "members"} came through this one. Switch it off instead of deleting it.`
         });
       }
-      await prisma3.campaign.delete({ where: { id: campaign.id } });
+      await prisma2.campaign.delete({ where: { id: campaign.id } });
       res.json({ ok: true });
     } catch (e2) {
       console.error("DELETE campaign error:", e2?.message);
@@ -30556,9 +31573,9 @@ async function startServer() {
   });
   app.get("/api/admin/campaigns/:id/members", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const campaign = await prisma3.campaign.findUnique({ where: { id: req.params.id } });
+      const campaign = await prisma2.campaign.findUnique({ where: { id: req.params.id } });
       if (!campaign) return res.status(404).json({ error: "No such campaign" });
-      const members = await prisma3.user.findMany({
+      const members = await prisma2.user.findMany({
         where: { signupSource: campaign.code, role: { notIn: STAFF_ROLES } },
         select: {
           id: true,
@@ -30583,7 +31600,7 @@ async function startServer() {
   });
   app.get("/api/admin/institutions", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const institutions = await prisma3.institution.findMany({
+      const institutions = await prisma2.institution.findMany({
         select: { id: true, name: true, status: true },
         orderBy: { name: "asc" }
       });
@@ -30601,13 +31618,13 @@ async function startServer() {
       if (role === "Institution" && !institutionName) {
         return res.status(400).json({ error: "Institution Name is required for Institution role" });
       }
-      const existing = await prisma3.user.findUnique({ where: { email } });
+      const existing = await prisma2.user.findUnique({ where: { email } });
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
       const plainPassword = customPassword || generatePassword();
       const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
       let newInstId = null;
       if (role === "Institution") {
-        const newInst = await prisma3.institution.create({
+        const newInst = await prisma2.institution.create({
           data: {
             name: institutionName,
             status: "Active"
@@ -30615,7 +31632,7 @@ async function startServer() {
         });
         newInstId = newInst.id;
       }
-      const newUser = await prisma3.user.create({
+      const newUser = await prisma2.user.create({
         data: {
           email,
           password: hashedPassword,
@@ -30629,7 +31646,7 @@ async function startServer() {
           demoExpiresAt: isDemoAccount ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3) : null
         }
       });
-      await prisma3.usageLog.create({
+      await prisma2.usageLog.create({
         data: {
           action: "USER_CREATED",
           details: `User ${email} created with role ${role} by ${req.user.email}`,
@@ -30657,16 +31674,16 @@ async function startServer() {
       if (role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
       }
-      const existing = await prisma3.user.findUnique({ where: { id } });
+      const existing = await prisma2.user.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: "User not found" });
       if (email && email !== existing.email) {
-        const taken = await prisma3.user.findUnique({ where: { email } });
+        const taken = await prisma2.user.findUnique({ where: { email } });
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
       let newInstitutionProfile = existing.institutionProfile || {};
       if (branch !== void 0) newInstitutionProfile.branch = branch;
       if (department !== void 0) newInstitutionProfile.department = department;
-      const updated = await prisma3.user.update({
+      const updated = await prisma2.user.update({
         where: { id },
         data: {
           ...displayName ? { displayName } : {},
@@ -30696,10 +31713,10 @@ async function startServer() {
       if (role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
       }
-      const prevUser = await prisma3.user.findUnique({ where: { id } });
+      const prevUser = await prisma2.user.findUnique({ where: { id } });
       if (!prevUser) return res.status(404).json({ error: "User not found" });
-      const updated = await prisma3.user.update({ where: { id }, data: { role } });
-      await prisma3.usageLog.create({
+      const updated = await prisma2.user.update({ where: { id }, data: { role } });
+      await prisma2.usageLog.create({
         data: {
           action: "ROLE_CHANGE",
           details: `Role changed from ${prevUser.role} \u2192 ${role} for user ${prevUser.email} by ${req.user.email}`,
@@ -30715,16 +31732,16 @@ async function startServer() {
   app.post("/api/admin/users/:id/reset-password", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const targetUser = await prisma3.user.findUnique({ where: { id } });
+      const targetUser = await prisma2.user.findUnique({ where: { id } });
       if (!targetUser) return res.status(404).json({ error: "User not found" });
       const newPlain = generatePassword();
       const hashed = await import_bcryptjs.default.hash(newPlain, 10);
-      await prisma3.user.update({
+      await prisma2.user.update({
         where: { id },
         data: { password: hashed, isFirstLogin: true }
       });
       await sendCredentialsEmail(targetUser.email, targetUser.displayName || "User", newPlain);
-      await prisma3.usageLog.create({
+      await prisma2.usageLog.create({
         data: {
           action: "PASSWORD_RESET",
           details: `Password reset for ${targetUser.email} by ${req.user.email}`,
@@ -30740,17 +31757,17 @@ async function startServer() {
     try {
       const { id } = req.params;
       if (id === req.user.uid) return res.status(400).json({ error: "Cannot delete your own account" });
-      await prisma3.$transaction([
-        prisma3.payment.deleteMany({ where: { userId: id } }),
-        prisma3.subscription.deleteMany({ where: { userId: id } }),
-        prisma3.subscriptionRequest.deleteMany({ where: { userId: id } }),
-        prisma3.quotation.deleteMany({ where: { userId: id } }),
-        prisma3.submission.deleteMany({ where: { userId: id } }),
-        prisma3.usageLog.deleteMany({ where: { userId: id } }),
-        prisma3.studentActivity.deleteMany({ where: { userId: id } }),
-        prisma3.couponUsage.deleteMany({ where: { userId: id } }),
-        prisma3.favorite.deleteMany({ where: { userId: id } }),
-        prisma3.user.delete({ where: { id } })
+      await prisma2.$transaction([
+        prisma2.payment.deleteMany({ where: { userId: id } }),
+        prisma2.subscription.deleteMany({ where: { userId: id } }),
+        prisma2.subscriptionRequest.deleteMany({ where: { userId: id } }),
+        prisma2.quotation.deleteMany({ where: { userId: id } }),
+        prisma2.submission.deleteMany({ where: { userId: id } }),
+        prisma2.usageLog.deleteMany({ where: { userId: id } }),
+        prisma2.studentActivity.deleteMany({ where: { userId: id } }),
+        prisma2.couponUsage.deleteMany({ where: { userId: id } }),
+        prisma2.favorite.deleteMany({ where: { userId: id } }),
+        prisma2.user.delete({ where: { id } })
       ]);
       res.json({ message: "User deleted" });
     } catch (err) {
@@ -30768,7 +31785,7 @@ async function startServer() {
     "Corporate Innovator"
   ];
   async function syncContentModuleCounts() {
-    const groups = await prisma3.content.groupBy({
+    const groups = await prisma2.content.groupBy({
       by: ["domain", "contentType"],
       where: { status: { in: ["Published", "published"] }, domain: { not: null } },
       _count: { id: true }
@@ -30776,7 +31793,7 @@ async function startServer() {
     for (const g of groups) {
       if (!g.domain) continue;
       for (const userType of USER_TYPES) {
-        await prisma3.contentModule.upsert({
+        await prisma2.contentModule.upsert({
           where: { domain_contentType_userType: { domain: g.domain, contentType: g.contentType, userType } },
           create: { domain: g.domain, contentType: g.contentType, userType, totalCount: g._count.id },
           update: { totalCount: g._count.id }
@@ -30790,7 +31807,7 @@ async function startServer() {
       const where = { isActive: true };
       if (domain) where.domain = domain;
       where.userType = userType ? userType : "General";
-      const modules = await prisma3.contentModule.findMany({
+      const modules = await prisma2.contentModule.findMany({
         where,
         orderBy: [{ domain: "asc" }, { contentType: "asc" }]
       });
@@ -30805,7 +31822,7 @@ async function startServer() {
       if (!Array.isArray(moduleIds) || moduleIds.length === 0) {
         return res.json({ subtotal: 0, gstAmount: 0, total: 0, breakdown: [], planType });
       }
-      const modules = await prisma3.contentModule.findMany({
+      const modules = await prisma2.contentModule.findMany({
         where: { id: { in: moduleIds }, isActive: true }
       });
       const breakdown = modules.map((m2) => {
@@ -30849,7 +31866,7 @@ async function startServer() {
       const { userType } = req.query;
       const where = {};
       if (userType && userType !== "all") where.userType = userType;
-      const modules = await prisma3.contentModule.findMany({
+      const modules = await prisma2.contentModule.findMany({
         where,
         orderBy: [{ domain: "asc" }, { userType: "asc" }, { contentType: "asc" }]
       });
@@ -30870,7 +31887,7 @@ async function startServer() {
       if (yearlyDiscountPct !== void 0) data.yearlyDiscountPct = parseFloat(yearlyDiscountPct);
       if (isActive !== void 0) data.isActive = isActive;
       if (userType !== void 0) data.userType = userType;
-      const updated = await prisma3.contentModule.update({ where: { id }, data });
+      const updated = await prisma2.contentModule.update({ where: { id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update module" });
@@ -30879,7 +31896,7 @@ async function startServer() {
   app.post("/api/admin/content-modules/sync", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       await syncContentModuleCounts();
-      const modules = await prisma3.contentModule.findMany({ orderBy: [{ domain: "asc" }, { contentType: "asc" }] });
+      const modules = await prisma2.contentModule.findMany({ orderBy: [{ domain: "asc" }, { contentType: "asc" }] });
       res.json({ synced: modules.length, modules });
     } catch (error) {
       res.status(500).json({ error: "Sync failed" });
@@ -30888,7 +31905,7 @@ async function startServer() {
   app.get("/api/videos/grouped", authenticateJWT, async (req, res) => {
     try {
       const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const videos = await prisma3.content.findMany({
+      const videos = await prisma2.content.findMany({
         where: {
           contentType: "Educational Videos",
           status: { in: ["Published", "published"] }
@@ -30910,7 +31927,7 @@ async function startServer() {
   app.get("/api/videos/:id/details", authenticateJWT, async (req, res) => {
     try {
       const videoId = req.params.id;
-      const content = await prisma3.content.findUnique({ where: { id: videoId } });
+      const content = await prisma2.content.findUnique({ where: { id: videoId } });
       if (!content || content.contentType !== "Educational Videos") {
         return res.status(404).json({ error: "Video not found" });
       }
@@ -30920,13 +31937,13 @@ async function startServer() {
       }
       if (["Student", "Subscriber"].includes(req.user.role)) {
         try {
-          const existing = await prisma3.studentActivity.findFirst({
+          const existing = await prisma2.studentActivity.findFirst({
             where: { userId: req.user.uid, contentId: content.id }
           });
           if (existing) {
-            await prisma3.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
+            await prisma2.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: /* @__PURE__ */ new Date() } });
           } else {
-            await prisma3.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
+            await prisma2.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
           }
         } catch (e2) {
           console.error("Activity log failed (video):", e2);
@@ -30934,7 +31951,7 @@ async function startServer() {
       }
       let related = [];
       if (content.domain) {
-        const allRelated = await prisma3.content.findMany({
+        const allRelated = await prisma2.content.findMany({
           where: {
             contentType: "Educational Videos",
             domain: content.domain,
@@ -30981,7 +31998,7 @@ async function startServer() {
       if (domain) where.domain = domain;
       if (contentType) where.contentType = contentType;
       const [data, total] = await Promise.all([
-        prisma3.content.findMany({
+        prisma2.content.findMany({
           where,
           skip,
           take: parseInt(limit),
@@ -31000,7 +32017,7 @@ async function startServer() {
             publishedAt: true
           }
         }),
-        prisma3.content.count({ where })
+        prisma2.content.count({ where })
       ]);
       res.json({ data, total, query: q, page: parseInt(page), limit: parseInt(limit) });
     } catch (err) {
@@ -31015,15 +32032,15 @@ async function startServer() {
       const [contentGroups, deptArticles, deptBooks, deptJournalRows] = await Promise.all([
         // The archived shelf counted as everywhere else: anything but Draft.
         // Published alone made this page's shelves smaller than the library's.
-        prisma3.content.groupBy({
+        prisma2.content.groupBy({
           by: ["contentType"],
           where: { domain, status: { not: "Draft" } },
           _count: { id: true },
           orderBy: { contentType: "asc" }
         }),
-        prisma3.article.count({ where: { domain, status: "Published" } }),
-        prisma3.book.count({ where: { domain, status: "Published" } }),
-        prisma3.$queryRawUnsafe(
+        prisma2.article.count({ where: { domain, status: "Published" } }),
+        prisma2.book.count({ where: { domain, status: "Published" } }),
+        prisma2.$queryRawUnsafe(
           `select count(distinct "journalId")::int as n from "Article"
            where status = 'Published' and "domain" = $1 and "journalId" is not null`,
           domain
@@ -31043,7 +32060,7 @@ async function startServer() {
       const moduleWhere = { domain, isActive: true };
       if (userType) moduleWhere.userType = userType;
       else moduleWhere.userType = "General";
-      const modules = await prisma3.contentModule.findMany({
+      const modules = await prisma2.contentModule.findMany({
         where: moduleWhere,
         orderBy: { contentType: "asc" }
       });
@@ -31072,7 +32089,7 @@ async function startServer() {
         return res.status(400).json({ error: "Name, email and domain are required" });
       }
       const planDesc = `Domain Access Request: ${domain} | Plan: ${planType || "Monthly"} | Modules: ${Array.isArray(selectedModules) ? selectedModules.join(", ") : "All"} | Est. Total: \u20B9${totalPrice || 0}${organization ? ` | Org: ${organization}` : ""}`;
-      const request = await prisma3.subscriptionRequest.create({
+      const request = await prisma2.subscriptionRequest.create({
         data: {
           userName,
           email,
@@ -31110,7 +32127,7 @@ async function startServer() {
   });
   const nextQuotationNumber = async () => {
     const prefix = quoteNoPrefix();
-    const rows = await prisma3.quotation.findMany({ where: { id: { startsWith: prefix } }, select: { id: true } });
+    const rows = await prisma2.quotation.findMany({ where: { id: { startsWith: prefix } }, select: { id: true } });
     return nextQuoteNo(rows.map((r2) => r2.id));
   };
   app.get("/api/quotation/next-number", authenticateJWT, requireSalesRole, async (_req, res) => {
@@ -31140,7 +32157,7 @@ async function startServer() {
       } = req.body;
       const expiresAt = /* @__PURE__ */ new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
-      const quotation = await prisma3.quotation.create({
+      const quotation = await prisma2.quotation.create({
         data: {
           issuer: currentIssuer(),
           userName,
@@ -31171,7 +32188,7 @@ async function startServer() {
       const { status } = req.query;
       const where = {};
       if (status) where.status = status;
-      const quotations = await prisma3.quotation.findMany({
+      const quotations = await prisma2.quotation.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { user: true }
@@ -31188,7 +32205,7 @@ async function startServer() {
       const data = {};
       if (status) data.status = status;
       if (notes !== void 0) data.notes = notes;
-      const updated = await prisma3.quotation.update({ where: { id }, data });
+      const updated = await prisma2.quotation.update({ where: { id }, data });
       if (status === "Paid") {
         await recordQuotationPayment(updated, { method: paymentMethod });
       }
@@ -31201,7 +32218,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
-      const quotation = await prisma3.quotation.findUnique({ where: { id } });
+      const quotation = await prisma2.quotation.findUnique({ where: { id } });
       if (!quotation) return res.status(404).json({ error: "Quotation not found" });
       if (!quotation.userId) return res.status(400).json({ error: "Quotation has no linked user; assign manually" });
       const breakdown = quotation.pricingBreakdown || {};
@@ -31213,7 +32230,7 @@ async function startServer() {
         d.setMonth(d.getMonth() + months);
         return d;
       })();
-      const sub = await prisma3.subscription.create({
+      const sub = await prisma2.subscription.create({
         data: {
           userId: quotation.userId,
           planName: `Custom Package (${quotation.planType})`,
@@ -31224,7 +32241,7 @@ async function startServer() {
           status: "Active"
         }
       });
-      await prisma3.quotation.update({ where: { id }, data: { status: "Paid" } });
+      await prisma2.quotation.update({ where: { id }, data: { status: "Paid" } });
       res.json({ subscription: sub, quotation: { ...quotation, status: "Paid" } });
     } catch (error) {
       console.error("Convert quotation error:", error);
@@ -31234,7 +32251,7 @@ async function startServer() {
   const generateReceiptNumber = async () => {
     const now = /* @__PURE__ */ new Date();
     const prefix = `RCP-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-`;
-    const count = await prisma3.receipt.count({ where: { receiptNumber: { startsWith: prefix } } });
+    const count = await prisma2.receipt.count({ where: { receiptNumber: { startsWith: prefix } } });
     return `${prefix}${String(count + 1).padStart(2, "0")}`;
   };
   const recordQuotationPayment = async (quotation, opts = {}) => {
@@ -31247,7 +32264,7 @@ async function startServer() {
         items: quotation.items || [],
         paymentId: opts.receiptNumber || null
       };
-      return await prisma3.payment.upsert({
+      return await prisma2.payment.upsert({
         where: { orderId: quotation.id },
         update: data,
         create: { orderId: quotation.id, ...data, createdAt: opts.paidAt || /* @__PURE__ */ new Date() }
@@ -31261,12 +32278,12 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { paymentMethod, paymentRef, paymentDate } = req.body || {};
-      const quotation = await prisma3.quotation.findUnique({ where: { id } });
+      const quotation = await prisma2.quotation.findUnique({ where: { id } });
       if (!quotation) return res.status(404).json({ error: "Quotation not found" });
-      const existing = await prisma3.receipt.findFirst({ where: { quotationId: id } });
+      const existing = await prisma2.receipt.findFirst({ where: { quotationId: id } });
       if (existing) return res.status(409).json({ error: "A receipt already exists for this quotation", receipt: existing });
       const receiptNumber = await generateReceiptNumber();
-      const receipt = await prisma3.receipt.create({
+      const receipt = await prisma2.receipt.create({
         data: {
           issuer: currentIssuer(),
           receiptNumber,
@@ -31295,7 +32312,7 @@ async function startServer() {
           createdBy: req.user?.email || req.user?.uid || "Admin"
         }
       });
-      await prisma3.quotation.update({ where: { id }, data: { status: "Paid" } });
+      await prisma2.quotation.update({ where: { id }, data: { status: "Paid" } });
       await recordQuotationPayment(quotation, {
         method: receipt.paymentMethod,
         receiptNumber: receipt.receiptNumber,
@@ -31319,7 +32336,7 @@ async function startServer() {
           { organization: { contains: search, mode: "insensitive" } }
         ];
       }
-      const receipts = await prisma3.receipt.findMany({ where, orderBy: { createdAt: "desc" } });
+      const receipts = await prisma2.receipt.findMany({ where, orderBy: { createdAt: "desc" } });
       res.json(receipts);
     } catch (error) {
       console.error("List receipts error:", error);
@@ -31328,7 +32345,7 @@ async function startServer() {
   });
   app.get("/api/admin/receipts/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const receipt = await prisma3.receipt.findUnique({ where: { id: req.params.id } });
+      const receipt = await prisma2.receipt.findUnique({ where: { id: req.params.id } });
       if (!receipt) return res.status(404).json({ error: "Receipt not found" });
       res.json(receipt);
     } catch (error) {
@@ -31341,7 +32358,7 @@ async function startServer() {
       const { id } = req.params;
       const { pdfBase64 } = req.body || {};
       if (!pdfBase64) return res.status(400).json({ error: "Missing receipt PDF" });
-      const receipt = await prisma3.receipt.findUnique({ where: { id } });
+      const receipt = await prisma2.receipt.findUnique({ where: { id } });
       if (!receipt) return res.status(404).json({ error: "Receipt not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || COMPANY_DETAILS.email).trim();
       const logoPath = import_path2.default.join(process.cwd(), "public", "assets", "stm-logo.png");
@@ -31397,7 +32414,7 @@ async function startServer() {
         html: htmlBody,
         attachments
       });
-      const updated = await prisma3.receipt.update({ where: { id }, data: { emailSentAt: /* @__PURE__ */ new Date() } });
+      const updated = await prisma2.receipt.update({ where: { id }, data: { emailSentAt: /* @__PURE__ */ new Date() } });
       res.json({ status: "success", receipt: updated });
     } catch (error) {
       console.error("Send receipt error:", error);
@@ -31459,13 +32476,13 @@ async function startServer() {
     const base = { publisherId };
     if (facing) base.ownershipSource = { not: "Ingested" };
     const [articles, books, articlesPublished, articlesPending, articlesRejected, artReads, bookReads] = await Promise.all([
-      prisma3.article.count({ where: { ...base } }),
-      prisma3.book.count({ where: { ...base } }),
-      prisma3.article.count({ where: { ...base, status: "Published" } }),
-      prisma3.article.count({ where: { ...base, status: "Draft" } }),
-      prisma3.article.count({ where: { ...base, status: "Rejected" } }),
-      prisma3.article.aggregate({ where: { ...base }, _sum: { views: true } }),
-      prisma3.book.aggregate({ where: { ...base }, _sum: { views: true } })
+      prisma2.article.count({ where: { ...base } }),
+      prisma2.book.count({ where: { ...base } }),
+      prisma2.article.count({ where: { ...base, status: "Published" } }),
+      prisma2.article.count({ where: { ...base, status: "Draft" } }),
+      prisma2.article.count({ where: { ...base, status: "Rejected" } }),
+      prisma2.article.aggregate({ where: { ...base }, _sum: { views: true } }),
+      prisma2.book.aggregate({ where: { ...base }, _sum: { views: true } })
     ]);
     const totalReads = (artReads._sum.views || 0) + (bookReads._sum.views || 0);
     return { articles, books, articlesPublished, articlesPending, articlesRejected, totalReads };
@@ -31475,8 +32492,8 @@ async function startServer() {
     const map = {};
     const at = (id) => map[id] ||= emptyPublisherCounts();
     const [artGroups, bookGroups] = await Promise.all([
-      prisma3.article.groupBy({ by: ["publisherId", "status"], _count: { _all: true }, _sum: { views: true } }),
-      prisma3.book.groupBy({ by: ["publisherId"], _count: { _all: true }, _sum: { views: true } })
+      prisma2.article.groupBy({ by: ["publisherId", "status"], _count: { _all: true }, _sum: { views: true } }),
+      prisma2.book.groupBy({ by: ["publisherId"], _count: { _all: true }, _sum: { views: true } })
     ]);
     for (const g of artGroups) {
       if (!g.publisherId) continue;
@@ -31499,9 +32516,9 @@ async function startServer() {
   const resolvePublisherForUser = async (req) => {
     const uid = req.user?.uid || req.user?.id;
     if (!uid) return null;
-    const direct = await prisma3.publisher.findFirst({ where: { userId: uid } });
+    const direct = await prisma2.publisher.findFirst({ where: { userId: uid } });
     if (direct) return direct;
-    const contact = await prisma3.publisherContact.findFirst({ where: { userId: uid }, include: { publisher: true } });
+    const contact = await prisma2.publisherContact.findFirst({ where: { userId: uid }, include: { publisher: true } });
     return contact?.publisher || null;
   };
   const requirePublisher = (req, res, next) => {
@@ -31554,7 +32571,7 @@ async function startServer() {
         res.write("\uFEFF" + ["Title", "ISSN", "eISSN", "Publisher", "Department", "Full text", "Licence", "Articles held", "First year", "Last year", "Homepage"].join(",") + "\n");
         let skip = 0;
         for (; ; ) {
-          const batch = await prisma3.journal.findMany({ where, select, orderBy, skip, take: 1e3 });
+          const batch = await prisma2.journal.findMany({ where, select, orderBy, skip, take: 1e3 });
           for (const j of batch) {
             res.write([
               j.title,
@@ -31576,13 +32593,13 @@ async function startServer() {
         return res.end();
       }
       const [journals, total, byDomain, byStatus, catalogue] = await Promise.all([
-        prisma3.journal.findMany({ where, select, orderBy, skip: (page - 1) * limit, take: limit }),
-        prisma3.journal.count({ where }),
-        prisma3.journal.groupBy({ by: ["domain"], where: { AND: [searchWhere, statusWhere, articlesWhere] }, _count: { _all: true } }),
-        prisma3.journal.groupBy({ by: ["status"], where: { AND: [searchWhere, domainWhere, articlesWhere] }, _count: { _all: true } }),
-        prisma3.journal.count()
+        prisma2.journal.findMany({ where, select, orderBy, skip: (page - 1) * limit, take: limit }),
+        prisma2.journal.count({ where }),
+        prisma2.journal.groupBy({ by: ["domain"], where: { AND: [searchWhere, statusWhere, articlesWhere] }, _count: { _all: true } }),
+        prisma2.journal.groupBy({ by: ["status"], where: { AND: [searchWhere, domainWhere, articlesWhere] }, _count: { _all: true } }),
+        prisma2.journal.count()
       ]);
-      const withArticles = await prisma3.journal.count({ where: { AND: [where, { articleCount: { gt: 0 } }] } });
+      const withArticles = await prisma2.journal.count({ where: { AND: [where, { articleCount: { gt: 0 } }] } });
       res.json({
         journals,
         total,
@@ -31608,7 +32625,7 @@ async function startServer() {
         { email: { contains: search, mode: "insensitive" } },
         { country: { contains: search, mode: "insensitive" } }
       ];
-      const publishers = await prisma3.publisher.findMany({ where, orderBy: { createdAt: "desc" } });
+      const publishers = await prisma2.publisher.findMany({ where, orderBy: { createdAt: "desc" } });
       const countsFor = await getPublisherCountsMap();
       res.json(publishers.map((p2) => ({ ...p2, counts: countsFor(p2.id) })));
     } catch (e2) {
@@ -31620,7 +32637,7 @@ async function startServer() {
     try {
       const { name, email, contactNumber, website, country, address, agreementNote, allowedContentTypes } = req.body;
       if (!name) return res.status(400).json({ error: "Publisher name is required" });
-      const publisher = await prisma3.publisher.create({
+      const publisher = await prisma2.publisher.create({
         data: {
           name,
           email: email || null,
@@ -31642,7 +32659,7 @@ async function startServer() {
   });
   app.get("/api/admin/publishers/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const publisher = await prisma3.publisher.findUnique({
+      const publisher = await prisma2.publisher.findUnique({
         where: { id: req.params.id },
         include: {
           locations: { orderBy: { isPrimary: "desc" } },
@@ -31667,7 +32684,7 @@ async function startServer() {
         if (v !== void 0) data[k] = v;
       }
       if (parentId !== void 0) data.parentId = parentId && parentId !== req.params.id ? parentId : null;
-      const publisher = await prisma3.publisher.update({ where: { id: req.params.id }, data });
+      const publisher = await prisma2.publisher.update({ where: { id: req.params.id }, data });
       res.json(publisher);
     } catch (e2) {
       res.status(500).json({ error: "Failed to update publisher" });
@@ -31677,22 +32694,22 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { email, contactNumber, website, country, address, agreementNote, allowedContentTypes } = req.body;
-      const publisher = await prisma3.publisher.findUnique({ where: { id } });
+      const publisher = await prisma2.publisher.findUnique({ where: { id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
       const loginEmail = (email || publisher.email || "").trim().toLowerCase();
       if (!loginEmail) return res.status(400).json({ error: "Email is required to create publisher login" });
-      let user = await prisma3.user.findUnique({ where: { email: loginEmail } });
+      let user = await prisma2.user.findUnique({ where: { email: loginEmail } });
       let generatedPassword = "";
       if (!user) {
         generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + "!";
         const hashed = await import_bcryptjs.default.hash(generatedPassword, 10);
-        user = await prisma3.user.create({
+        user = await prisma2.user.create({
           data: { email: loginEmail, password: hashed, displayName: publisher.name, role: "Publisher", status: "Active", isFirstLogin: true }
         });
       } else {
-        await prisma3.user.update({ where: { id: user.id }, data: { role: "Publisher" } });
+        await prisma2.user.update({ where: { id: user.id }, data: { role: "Publisher" } });
       }
-      const updated = await prisma3.publisher.update({
+      const updated = await prisma2.publisher.update({
         where: { id },
         data: {
           email: loginEmail,
@@ -31747,7 +32764,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.delete("/api/admin/publishers/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma3.publisher.delete({ where: { id: req.params.id } });
+      await prisma2.publisher.delete({ where: { id: req.params.id } });
       res.json({ message: "Publisher removed" });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete publisher (it may have linked content)" });
@@ -31755,9 +32772,9 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.post("/api/admin/publishers/:id/articles", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const publisher = await prisma3.publisher.findUnique({ where: { id: req.params.id } });
+      const publisher = await prisma2.publisher.findUnique({ where: { id: req.params.id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
-      const article = await prisma3.article.create({ data: mapArticleInput(req.body, publisher, req.body.status || "Published", req.user?.email || "Admin", "AdminEntered") });
+      const article = await prisma2.article.create({ data: mapArticleInput(req.body, publisher, req.body.status || "Published", req.user?.email || "Admin", "AdminEntered") });
       res.json(article);
     } catch (e2) {
       console.error(e2);
@@ -31766,9 +32783,9 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.post("/api/admin/publishers/:id/books", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const publisher = await prisma3.publisher.findUnique({ where: { id: req.params.id } });
+      const publisher = await prisma2.publisher.findUnique({ where: { id: req.params.id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
-      const book = await prisma3.book.create({ data: mapBookInput(req.body, publisher, req.body.status || "Published", req.user?.email || "Admin", "AdminEntered") });
+      const book = await prisma2.book.create({ data: mapBookInput(req.body, publisher, req.body.status || "Published", req.user?.email || "Admin", "AdminEntered") });
       res.json(book);
     } catch (e2) {
       res.status(500).json({ error: "Failed to create book" });
@@ -31777,8 +32794,8 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   app.get("/api/admin/review/pending", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const [articles, books] = await Promise.all([
-        prisma3.article.findMany({ where: { status: "Draft" }, orderBy: { createdAt: "desc" }, take: 200 }),
-        prisma3.book.findMany({ where: { status: "Draft" }, orderBy: { createdAt: "desc" }, take: 200 })
+        prisma2.article.findMany({ where: { status: "Draft" }, orderBy: { createdAt: "desc" }, take: 200 }),
+        prisma2.book.findMany({ where: { status: "Draft" }, orderBy: { createdAt: "desc" }, take: 200 })
       ]);
       res.json({ articles, books });
     } catch (e2) {
@@ -31790,10 +32807,10 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       const { id } = req.params;
       const { action, note } = req.body;
       if (action === "approve") {
-        const updated = await prisma3[model].update({ where: { id }, data: { status: "Published", rejectionNote: null } });
+        const updated = await prisma2[model].update({ where: { id }, data: { status: "Published", rejectionNote: null } });
         return res.json(updated);
       } else if (action === "reject") {
-        const updated = await prisma3[model].update({ where: { id }, data: { status: "Rejected", rejectionNote: note || "Rejected by reviewer" } });
+        const updated = await prisma2[model].update({ where: { id }, data: { status: "Rejected", rejectionNote: note || "Rejected by reviewer" } });
         return res.json(updated);
       }
       res.status(400).json({ error: "Invalid action (use approve|reject)" });
@@ -31818,8 +32835,8 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       if (!publisher) return res.json({ articles: [], books: [] });
       const own = { publisherId: publisher.id, ownershipSource: { not: "Ingested" } };
       const [articles, books] = await Promise.all([
-        prisma3.article.findMany({ where: own, orderBy: { createdAt: "desc" } }),
-        prisma3.book.findMany({ where: own, orderBy: { createdAt: "desc" }, include: { chapters: true } })
+        prisma2.article.findMany({ where: own, orderBy: { createdAt: "desc" } }),
+        prisma2.book.findMany({ where: own, orderBy: { createdAt: "desc" }, include: { chapters: true } })
       ]);
       res.json({ articles, books });
     } catch (e2) {
@@ -31830,7 +32847,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
-      const article = await prisma3.article.create({ data: mapArticleInput(req.body, publisher, "Draft", publisher.name) });
+      const article = await prisma2.article.create({ data: mapArticleInput(req.body, publisher, "Draft", publisher.name) });
       res.json(article);
     } catch (e2) {
       console.error(e2);
@@ -31841,7 +32858,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
-      const book = await prisma3.book.create({ data: mapBookInput(req.body, publisher, "Draft", publisher.name) });
+      const book = await prisma2.book.create({ data: mapBookInput(req.body, publisher, "Draft", publisher.name) });
       res.json(book);
     } catch (e2) {
       res.status(500).json({ error: "Failed to submit book" });
@@ -31850,12 +32867,12 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   app.put("/api/publisher/articles/:id", authenticateJWT, requirePublisher, async (req, res) => {
     try {
       const publisher = await resolvePublisherForUser(req);
-      const existing = await prisma3.article.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma2.article.findUnique({ where: { id: req.params.id } });
       if (!existing || existing.publisherId !== publisher?.id || existing.ownershipSource === "Ingested") return res.status(403).json({ error: "Not your article" });
       const data = mapArticleInput(req.body, publisher, "Draft", publisher.name);
       delete data.publisherId;
       delete data.publisherName;
-      const article = await prisma3.article.update({ where: { id: req.params.id }, data: { ...data, status: "Draft", rejectionNote: null } });
+      const article = await prisma2.article.update({ where: { id: req.params.id }, data: { ...data, status: "Draft", rejectionNote: null } });
       res.json(article);
     } catch (e2) {
       res.status(500).json({ error: "Failed to update article" });
@@ -31864,12 +32881,12 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   app.put("/api/publisher/books/:id", authenticateJWT, requirePublisher, async (req, res) => {
     try {
       const publisher = await resolvePublisherForUser(req);
-      const existing = await prisma3.book.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma2.book.findUnique({ where: { id: req.params.id } });
       if (!existing || existing.publisherId !== publisher?.id || existing.ownershipSource === "Ingested") return res.status(403).json({ error: "Not your book" });
       const data = mapBookInput(req.body, publisher, "Draft", publisher.name);
       delete data.publisherId;
       delete data.publisherName;
-      const book = await prisma3.book.update({ where: { id: req.params.id }, data: { ...data, status: "Draft", rejectionNote: null } });
+      const book = await prisma2.book.update({ where: { id: req.params.id }, data: { ...data, status: "Draft", rejectionNote: null } });
       res.json(book);
     } catch (e2) {
       res.status(500).json({ error: "Failed to update book" });
@@ -31981,7 +32998,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       const stored = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${ext}`;
       fsm.writeFileSync(import_path2.default.join(MEDIA_DIR, stored), buf);
       const dims = type.kind === "image" ? readImageSize(buf, ext) : {};
-      const asset = await prisma3.mediaAsset.create({
+      const asset = await prisma2.mediaAsset.create({
         data: {
           fileName: stored,
           originalName: original,
@@ -32023,9 +33040,9 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
         ];
       }
       const [items, total, grouped] = await Promise.all([
-        prisma3.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }),
-        prisma3.mediaAsset.count({ where }),
-        prisma3.mediaAsset.groupBy({ by: ["kind"], _count: { _all: true }, _sum: { size: true } })
+        prisma2.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }),
+        prisma2.mediaAsset.count({ where }),
+        prisma2.mediaAsset.groupBy({ by: ["kind"], _count: { _all: true }, _sum: { size: true } })
       ]);
       const counts = {};
       let totalSize = 0;
@@ -32054,7 +33071,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       if (altText !== void 0) data.altText = altText || null;
       if (caption !== void 0) data.caption = caption || null;
       if (folder !== void 0) data.folder = folder || null;
-      const asset = await prisma3.mediaAsset.update({ where: { id: req.params.id }, data });
+      const asset = await prisma2.mediaAsset.update({ where: { id: req.params.id }, data });
       res.json(withAbsolute(req, asset));
     } catch (e2) {
       console.error("media update:", e2);
@@ -32063,7 +33080,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.delete("/api/admin/media/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const asset = await prisma3.mediaAsset.findUnique({ where: { id: req.params.id } });
+      const asset = await prisma2.mediaAsset.findUnique({ where: { id: req.params.id } });
       if (!asset) return res.status(404).json({ error: "Not found" });
       try {
         const fsm = await import("node:fs");
@@ -32072,7 +33089,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       } catch (fileErr) {
         console.error("media delete (file):", fileErr);
       }
-      await prisma3.mediaAsset.delete({ where: { id: req.params.id } });
+      await prisma2.mediaAsset.delete({ where: { id: req.params.id } });
       res.json({ success: true });
     } catch (e2) {
       console.error("media delete:", e2);
@@ -32081,7 +33098,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.get("/api/admin/publisher-tree", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const all = await prisma3.publisher.findMany({ orderBy: { name: "asc" } });
+      const all = await prisma2.publisher.findMany({ orderBy: { name: "asc" } });
       const countsFor = await getPublisherCountsMap();
       const byId = {};
       all.forEach((p2) => {
@@ -32101,7 +33118,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   app.post("/api/admin/publishers/:id/locations", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { label, type, country, city, address, isPrimary } = req.body;
-      const loc = await prisma3.publisherLocation.create({ data: { publisherId: req.params.id, label: label || null, type: type || "Office", country: country || null, city: city || null, address: address || null, isPrimary: !!isPrimary } });
+      const loc = await prisma2.publisherLocation.create({ data: { publisherId: req.params.id, label: label || null, type: type || "Office", country: country || null, city: city || null, address: address || null, isPrimary: !!isPrimary } });
       res.json(loc);
     } catch (e2) {
       res.status(500).json({ error: "Failed to add location" });
@@ -32111,14 +33128,14 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const data = {};
       for (const k of ["label", "type", "country", "city", "address", "isPrimary"]) if (req.body[k] !== void 0) data[k] = req.body[k];
-      res.json(await prisma3.publisherLocation.update({ where: { id: req.params.id }, data }));
+      res.json(await prisma2.publisherLocation.update({ where: { id: req.params.id }, data }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to update location" });
     }
   });
   app.delete("/api/admin/locations/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma3.publisherLocation.delete({ where: { id: req.params.id } });
+      await prisma2.publisherLocation.delete({ where: { id: req.params.id } });
       res.json({ ok: true });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete location" });
@@ -32128,7 +33145,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const { name, email, title, phone, isPrimary } = req.body;
       if (!name) return res.status(400).json({ error: "Contact name is required" });
-      const c = await prisma3.publisherContact.create({ data: { publisherId: req.params.id, name, email: email || null, title: title || null, phone: phone || null, isPrimary: !!isPrimary } });
+      const c = await prisma2.publisherContact.create({ data: { publisherId: req.params.id, name, email: email || null, title: title || null, phone: phone || null, isPrimary: !!isPrimary } });
       res.json(c);
     } catch (e2) {
       res.status(500).json({ error: "Failed to add contact" });
@@ -32138,14 +33155,14 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const data = {};
       for (const k of ["name", "email", "title", "phone", "isPrimary"]) if (req.body[k] !== void 0) data[k] = req.body[k];
-      res.json(await prisma3.publisherContact.update({ where: { id: req.params.id }, data }));
+      res.json(await prisma2.publisherContact.update({ where: { id: req.params.id }, data }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to update contact" });
     }
   });
   app.delete("/api/admin/contacts/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma3.publisherContact.delete({ where: { id: req.params.id } });
+      await prisma2.publisherContact.delete({ where: { id: req.params.id } });
       res.json({ ok: true });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete contact" });
@@ -32153,19 +33170,19 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.post("/api/admin/contacts/:id/invite", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const contact = await prisma3.publisherContact.findUnique({ where: { id: req.params.id }, include: { publisher: true } });
+      const contact = await prisma2.publisherContact.findUnique({ where: { id: req.params.id }, include: { publisher: true } });
       if (!contact) return res.status(404).json({ error: "Contact not found" });
       const loginEmail = (contact.email || "").trim().toLowerCase();
       if (!loginEmail) return res.status(400).json({ error: "Contact needs an email to receive a login" });
-      let user = await prisma3.user.findUnique({ where: { email: loginEmail } });
+      let user = await prisma2.user.findUnique({ where: { email: loginEmail } });
       let tempPassword = "";
       if (!user) {
         tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + "!";
-        user = await prisma3.user.create({ data: { displayName: contact.name, email: loginEmail, password: await import_bcryptjs.default.hash(tempPassword, 10), role: "Publisher", status: "Active", isFirstLogin: true } });
+        user = await prisma2.user.create({ data: { displayName: contact.name, email: loginEmail, password: await import_bcryptjs.default.hash(tempPassword, 10), role: "Publisher", status: "Active", isFirstLogin: true } });
       } else if (user.role !== "Publisher") {
-        user = await prisma3.user.update({ where: { id: user.id }, data: { role: "Publisher" } });
+        user = await prisma2.user.update({ where: { id: user.id }, data: { role: "Publisher" } });
       }
-      await prisma3.publisherContact.update({ where: { id: contact.id }, data: { userId: user.id, scopeNodeId: contact.publisherId } });
+      await prisma2.publisherContact.update({ where: { id: contact.id }, data: { userId: user.id, scopeNodeId: contact.publisherId } });
       res.json({ ok: true, email: loginEmail, tempPassword: tempPassword || null, note: tempPassword ? "Share these credentials securely." : "Existing account upgraded to a publisher seat." });
     } catch (e2) {
       console.error("contact invite:", e2);
@@ -32177,16 +33194,16 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       const from = req.params.id;
       const to = req.body.targetId;
       if (!to || to === from) return res.status(400).json({ error: "Pick a different target publisher" });
-      const target = await prisma3.publisher.findUnique({ where: { id: to } });
+      const target = await prisma2.publisher.findUnique({ where: { id: to } });
       if (!target) return res.status(404).json({ error: "Target publisher not found" });
-      await prisma3.journal.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
-      await prisma3.article.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
-      await prisma3.book.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
-      await prisma3.publisherLocation.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
-      await prisma3.publisherContact.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
-      await prisma3.publisherAgreement.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
-      await prisma3.publisher.updateMany({ where: { parentId: from }, data: { parentId: to } });
-      await prisma3.publisher.delete({ where: { id: from } });
+      await prisma2.journal.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
+      await prisma2.article.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
+      await prisma2.book.updateMany({ where: { publisherId: from }, data: { publisherId: to, publisherName: target.name } });
+      await prisma2.publisherLocation.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
+      await prisma2.publisherContact.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
+      await prisma2.publisherAgreement.updateMany({ where: { publisherId: from }, data: { publisherId: to } });
+      await prisma2.publisher.updateMany({ where: { parentId: from }, data: { parentId: to } });
+      await prisma2.publisher.delete({ where: { id: from } });
       res.json({ ok: true, mergedInto: to });
     } catch (e2) {
       console.error("merge:", e2);
@@ -32206,7 +33223,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     try {
       const { title, documentUrl, body, version, note } = req.body;
       if (!title) return res.status(400).json({ error: "Agreement title is required" });
-      const ag = await prisma3.publisherAgreement.create({
+      const ag = await prisma2.publisherAgreement.create({
         data: { publisherId: req.params.id, title, documentUrl: documentUrl || null, body: body || null, version: version || "1.0", note: note || null, status: "Draft", createdBy: req.user?.email || "Admin", auditTrail: [{ event: "created", by: req.user?.email || "Admin", at: (/* @__PURE__ */ new Date()).toISOString() }] }
       });
       res.json(ag);
@@ -32217,12 +33234,12 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
   });
   app.post("/api/admin/agreements/:id/send", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const ag = await prisma3.publisherAgreement.findUnique({
+      const ag = await prisma2.publisherAgreement.findUnique({
         where: { id: req.params.id },
         include: { publisher: { include: { contacts: true } } }
       });
       if (!ag) return res.status(404).json({ error: "Agreement not found" });
-      const updated = await prisma3.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Sent", sentAt: /* @__PURE__ */ new Date(), auditTrail: pushAudit(ag, "sent", req.user?.email || "Admin", req) } });
+      const updated = await prisma2.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Sent", sentAt: /* @__PURE__ */ new Date(), auditTrail: pushAudit(ag, "sent", req.user?.email || "Admin", req) } });
       const to = publisherRecipients(ag.publisher);
       if (to.length) {
         const name = ag.publisher?.name || "there";
@@ -32258,7 +33275,7 @@ Signing is your choice. If anything does not suit you, decline it and tell us wh
   });
   app.delete("/api/admin/agreements/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma3.publisherAgreement.delete({ where: { id: req.params.id } });
+      await prisma2.publisherAgreement.delete({ where: { id: req.params.id } });
       res.json({ ok: true });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete agreement" });
@@ -32268,9 +33285,9 @@ Signing is your choice. If anything does not suit you, decline it and tell us wh
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.json([]);
-      const list = await prisma3.publisherAgreement.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "desc" } });
+      const list = await prisma2.publisherAgreement.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "desc" } });
       await Promise.all(list.filter((a) => a.status === "Sent").map(
-        (a) => prisma3.publisherAgreement.update({ where: { id: a.id }, data: { status: "Viewed", viewedAt: /* @__PURE__ */ new Date(), auditTrail: pushAudit(a, "viewed", publisher.name, req) } })
+        (a) => prisma2.publisherAgreement.update({ where: { id: a.id }, data: { status: "Viewed", viewedAt: /* @__PURE__ */ new Date(), auditTrail: pushAudit(a, "viewed", publisher.name, req) } })
       ));
       res.json(list);
     } catch (e2) {
@@ -32280,12 +33297,12 @@ Signing is your choice. If anything does not suit you, decline it and tell us wh
   app.post("/api/publisher/agreements/:id/sign", authenticateJWT, requirePublisher, async (req, res) => {
     try {
       const publisher = await resolvePublisherForUser(req);
-      const ag = await prisma3.publisherAgreement.findUnique({ where: { id: req.params.id } });
+      const ag = await prisma2.publisherAgreement.findUnique({ where: { id: req.params.id } });
       if (!ag || ag.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your agreement" });
       if (ag.status === "Accepted") return res.status(400).json({ error: "Already signed" });
       const { signatureType, signatureData, name, email } = req.body;
       if (!signatureData || !name) return res.status(400).json({ error: "A signature and signer name are required" });
-      const updated = await prisma3.publisherAgreement.update({
+      const updated = await prisma2.publisherAgreement.update({
         where: { id: ag.id },
         data: {
           status: "Accepted",
@@ -32332,9 +33349,9 @@ ${MAIL_BASE}/admin/publishers`
   app.post("/api/publisher/agreements/:id/decline", authenticateJWT, requirePublisher, async (req, res) => {
     try {
       const publisher = await resolvePublisherForUser(req);
-      const ag = await prisma3.publisherAgreement.findUnique({ where: { id: req.params.id } });
+      const ag = await prisma2.publisherAgreement.findUnique({ where: { id: req.params.id } });
       if (!ag || ag.publisherId !== publisher?.id) return res.status(403).json({ error: "Not your agreement" });
-      const updated = await prisma3.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Declined", decidedAt: /* @__PURE__ */ new Date(), declineReason: req.body.reason || null, auditTrail: pushAudit(ag, "declined", publisher.name, req) } });
+      const updated = await prisma2.publisherAgreement.update({ where: { id: ag.id }, data: { status: "Declined", decidedAt: /* @__PURE__ */ new Date(), declineReason: req.body.reason || null, auditTrail: pushAudit(ag, "declined", publisher.name, req) } });
       sendMail({
         to: ADMIN_INBOX,
         subject: `Agreement declined \u2014 ${publisher.name}`,
@@ -32365,7 +33382,7 @@ ${MAIL_BASE}/admin/publishers`
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
       const { kind = "article", fileName, items } = req.body;
       if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: "No rows to import" });
-      const batch = await prisma3.publisherUpload.create({ data: { publisherId: publisher.id, kind, fileName: fileName || null, rows: items.length, status: "Pending", createdBy: publisher.name } });
+      const batch = await prisma2.publisherUpload.create({ data: { publisherId: publisher.id, kind, fileName: fileName || null, rows: items.length, status: "Pending", createdBy: publisher.name } });
       let accepted = 0, rejected = 0;
       for (const row of items) {
         try {
@@ -32374,13 +33391,13 @@ ${MAIL_BASE}/admin/publishers`
             continue;
           }
           const data = kind === "book" ? mapBookInput({ ...row, uploadId: batch.id }, publisher, "Draft", publisher.name) : mapArticleInput({ ...row, uploadId: batch.id }, publisher, "Draft", publisher.name);
-          await prisma3[kind === "book" ? "book" : "article"].create({ data });
+          await prisma2[kind === "book" ? "book" : "article"].create({ data });
           accepted++;
         } catch {
           rejected++;
         }
       }
-      const done = await prisma3.publisherUpload.update({ where: { id: batch.id }, data: { accepted, rejected, status: "Processed" } });
+      const done = await prisma2.publisherUpload.update({ where: { id: batch.id }, data: { accepted, rejected, status: "Processed" } });
       res.json({ ...done, accepted, rejected });
     } catch (e2) {
       console.error("publisher upload:", e2);
@@ -32391,7 +33408,7 @@ ${MAIL_BASE}/admin/publishers`
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.json([]);
-      res.json(await prisma3.publisherUpload.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "desc" } }));
+      res.json(await prisma2.publisherUpload.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "desc" } }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to load uploads" });
     }
@@ -32401,7 +33418,7 @@ ${MAIL_BASE}/admin/publishers`
       const { model, ids, action, note } = req.body;
       if (!["article", "book"].includes(model) || !Array.isArray(ids) || !ids.length) return res.status(400).json({ error: "Provide model + ids" });
       const data = action === "approve" ? { status: "Published", rejectionNote: null } : { status: "Rejected", rejectionNote: note || "Rejected by reviewer" };
-      const r2 = await prisma3[model].updateMany({ where: { id: { in: ids } }, data });
+      const r2 = await prisma2[model].updateMany({ where: { id: { in: ids } }, data });
       res.json({ ok: true, count: r2.count });
     } catch (e2) {
       res.status(500).json({ error: "Bulk review failed" });
@@ -32409,7 +33426,7 @@ ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/agreement-templates", authenticateJWT, requireAdminOrManager, async (_req, res) => {
     try {
-      res.json(await prisma3.agreementTemplate.findMany({ orderBy: { createdAt: "desc" } }));
+      res.json(await prisma2.agreementTemplate.findMany({ orderBy: { createdAt: "desc" } }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to load templates" });
     }
@@ -32418,14 +33435,14 @@ ${MAIL_BASE}/admin/publishers`
     try {
       const { title, version, body } = req.body;
       if (!title) return res.status(400).json({ error: "Template title required" });
-      res.json(await prisma3.agreementTemplate.create({ data: { title, version: version || "1.0", body: body || null, createdBy: req.user?.email || "Admin" } }));
+      res.json(await prisma2.agreementTemplate.create({ data: { title, version: version || "1.0", body: body || null, createdBy: req.user?.email || "Admin" } }));
     } catch (e2) {
       res.status(500).json({ error: "Failed to save template" });
     }
   });
   app.delete("/api/admin/agreement-templates/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma3.agreementTemplate.delete({ where: { id: req.params.id } });
+      await prisma2.agreementTemplate.delete({ where: { id: req.params.id } });
       res.json({ ok: true });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete template" });
@@ -32433,8 +33450,8 @@ ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/publishers/:id/messages", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const msgs = await prisma3.publisherMessage.findMany({ where: { publisherId: req.params.id }, orderBy: { createdAt: "asc" } });
-      await prisma3.publisherMessage.updateMany({ where: { publisherId: req.params.id, sender: "publisher", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
+      const msgs = await prisma2.publisherMessage.findMany({ where: { publisherId: req.params.id }, orderBy: { createdAt: "asc" } });
+      await prisma2.publisherMessage.updateMany({ where: { publisherId: req.params.id, sender: "publisher", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
       res.json(msgs);
     } catch (e2) {
       res.status(500).json({ error: "Failed to load messages" });
@@ -32444,8 +33461,8 @@ ${MAIL_BASE}/admin/publishers`
     try {
       const { body, attachmentUrl } = req.body;
       if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
-      const msg = await prisma3.publisherMessage.create({ data: { publisherId: req.params.id, sender: "admin", senderName: req.user?.email || "STM Team", body: body || "", attachmentUrl: attachmentUrl || null } });
-      const publisher = await prisma3.publisher.findUnique({ where: { id: req.params.id }, include: { contacts: true } });
+      const msg = await prisma2.publisherMessage.create({ data: { publisherId: req.params.id, sender: "admin", senderName: req.user?.email || "STM Team", body: body || "", attachmentUrl: attachmentUrl || null } });
+      const publisher = await prisma2.publisher.findUnique({ where: { id: req.params.id }, include: { contacts: true } });
       const to = publisherRecipients(publisher);
       if (to.length) {
         sendMail({
@@ -32473,8 +33490,8 @@ Read and reply: ${MAIL_BASE}/publisher`
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.json([]);
-      const msgs = await prisma3.publisherMessage.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "asc" } });
-      await prisma3.publisherMessage.updateMany({ where: { publisherId: publisher.id, sender: "admin", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
+      const msgs = await prisma2.publisherMessage.findMany({ where: { publisherId: publisher.id }, orderBy: { createdAt: "asc" } });
+      await prisma2.publisherMessage.updateMany({ where: { publisherId: publisher.id, sender: "admin", readAt: null }, data: { readAt: /* @__PURE__ */ new Date() } });
       res.json(msgs);
     } catch (e2) {
       res.status(500).json({ error: "Failed to load messages" });
@@ -32486,7 +33503,7 @@ Read and reply: ${MAIL_BASE}/publisher`
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
       const { body, attachmentUrl } = req.body;
       if (!body?.trim() && !attachmentUrl) return res.status(400).json({ error: "Message is empty" });
-      const msg = await prisma3.publisherMessage.create({ data: { publisherId: publisher.id, sender: "publisher", senderName: publisher.name, body: body || "", attachmentUrl: attachmentUrl || null } });
+      const msg = await prisma2.publisherMessage.create({ data: { publisherId: publisher.id, sender: "publisher", senderName: publisher.name, body: body || "", attachmentUrl: attachmentUrl || null } });
       sendMail({
         to: ADMIN_INBOX,
         subject: `New message from ${publisher.name}`,
@@ -32510,20 +33527,20 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.json({ total: 0, unreadMessages: 0, pendingAgreements: 0 });
       const [unreadMessages, pendingAgreements] = await Promise.all([
-        prisma3.publisherMessage.count({ where: { publisherId: publisher.id, sender: "admin", readAt: null } }),
-        prisma3.publisherAgreement.count({ where: { publisherId: publisher.id, status: { in: ["Sent", "Viewed"] } } })
+        prisma2.publisherMessage.count({ where: { publisherId: publisher.id, sender: "admin", readAt: null } }),
+        prisma2.publisherAgreement.count({ where: { publisherId: publisher.id, status: { in: ["Sent", "Viewed"] } } })
       ]);
       res.json({ total: unreadMessages + pendingAgreements, unreadMessages, pendingAgreements });
     } catch (e2) {
       res.status(500).json({ error: "Failed to load notifications" });
     }
   });
-  const readAnalytics = async (publisherId, days = 30) => {
-    const since = new Date(Date.now() - days * 864e5);
-    const series = await prisma3.$queryRaw`SELECT to_char(date_trunc('day', "at"), 'YYYY-MM-DD') as day, count(*)::int as reads FROM "ReadEvent" WHERE "publisherId" = ${publisherId} AND "at" >= ${since} GROUP BY 1 ORDER BY 1`;
-    const topArticles = await prisma3.article.findMany({ where: { publisherId, ownershipSource: { not: "Ingested" }, views: { gt: 0 } }, orderBy: { views: "desc" }, take: 5, select: { id: true, title: true, views: true } });
+  const readAnalytics = async (publisherId, days2 = 30) => {
+    const since = new Date(Date.now() - days2 * 864e5);
+    const series = await prisma2.$queryRaw`SELECT to_char(date_trunc('day', "at"), 'YYYY-MM-DD') as day, count(*)::int as reads FROM "ReadEvent" WHERE "publisherId" = ${publisherId} AND "at" >= ${since} GROUP BY 1 ORDER BY 1`;
+    const topArticles = await prisma2.article.findMany({ where: { publisherId, ownershipSource: { not: "Ingested" }, views: { gt: 0 } }, orderBy: { views: "desc" }, take: 5, select: { id: true, title: true, views: true } });
     const totalReads = series.reduce((s2, r2) => s2 + Number(r2.reads), 0);
-    return { days, series, topArticles, totalReads };
+    return { days: days2, series, topArticles, totalReads };
   };
   app.get("/api/publisher/analytics", authenticateJWT, requirePublisher, async (req, res) => {
     try {
@@ -32544,7 +33561,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/notifications", authenticateJWT, requireAdminOrManager, async (_req, res) => {
     try {
-      const unread = await prisma3.publisherMessage.findMany({
+      const unread = await prisma2.publisherMessage.findMany({
         where: { sender: "publisher", readAt: null },
         orderBy: { createdAt: "desc" },
         take: 30,
@@ -32558,11 +33575,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const messages = Object.values(byPub);
       const [pa, pb] = await Promise.all([
-        prisma3.article.count({ where: { status: "Draft" } }),
-        prisma3.book.count({ where: { status: "Draft" } })
+        prisma2.article.count({ where: { status: "Draft" } }),
+        prisma2.book.count({ where: { status: "Draft" } })
       ]);
       const reviewCount = pa + pb;
-      const recent = await prisma3.publisherAgreement.findMany({
+      const recent = await prisma2.publisherAgreement.findMany({
         where: { status: { in: ["Accepted", "Declined"] }, decidedAt: { gte: new Date(Date.now() - 7 * 864e5) } },
         orderBy: { decidedAt: "desc" },
         take: 10,
@@ -32586,22 +33603,22 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   };
   const upsertPublisherByName = async (name, source) => {
     if (!name) return null;
-    const existing = await prisma3.publisher.findFirst({ where: { name } });
+    const existing = await prisma2.publisher.findFirst({ where: { name } });
     if (existing) return existing;
     try {
-      return await prisma3.publisher.create({ data: { name, tieUpStatus: "Discovered", source } });
+      return await prisma2.publisher.create({ data: { name, tieUpStatus: "Discovered", source } });
     } catch {
-      return prisma3.publisher.findFirst({ where: { name } });
+      return prisma2.publisher.findFirst({ where: { name } });
     }
   };
   const upsertJournalByIssn = async (issn, data) => {
     if (!issn) return null;
-    const existing = await prisma3.journal.findUnique({ where: { issn } });
+    const existing = await prisma2.journal.findUnique({ where: { issn } });
     if (existing) return existing;
     try {
-      return await prisma3.journal.create({ data: { ...data, issn } });
+      return await prisma2.journal.create({ data: { ...data, issn } });
     } catch {
-      return prisma3.journal.findUnique({ where: { issn } });
+      return prisma2.journal.findUnique({ where: { issn } });
     }
   };
   const TRUSTED_PDF_HOSTS = [
@@ -32656,7 +33673,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       year: w.publication_year || null,
       subject: (w.concepts || [])[0]?.display_name || null,
       openAccess: !!w.open_access?.is_oa,
-      source: "OpenAlex"
+      source: "OpenAlex",
+      sourceRecordId: w.id || null,
+      licence: w.best_oa_location?.license || null
     };
   };
   async function fetchOpenAlex(department, perDept, trustedOnly = false) {
@@ -32706,7 +33725,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         year: b.year ? parseInt(b.year) : null,
         subject: (b.subject || [])[0]?.term || null,
         openAccess: true,
-        source: "DOAJ"
+        source: "DOAJ",
+        sourceRecordId: rec.id || null,
+        licence: (b.journal?.license || [])[0]?.type || null
       };
     }).filter((x2) => x2.pdfUrl || x2.doi);
     return (trustedOnly ? mapped.filter((x2) => isTrustedPdfHost(x2.pdfUrl)) : mapped).slice(0, perDept);
@@ -32735,9 +33756,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         volume: null,
         issue: null,
         year: published ? parseInt(published.slice(0, 4)) : null,
+        // arXiv declares no open licence for a paper, so nothing here is verifiable and the file is not served.
         subject: null,
         openAccess: true,
-        source: "arXiv"
+        source: "arXiv",
+        sourceRecordId: arxivId ? `arxiv:${arxivId}` : null,
+        licence: null
       };
     }).filter((a) => a.pdfUrl);
   }
@@ -32791,7 +33815,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         year: ji.yearOfPublication ? parseInt(ji.yearOfPublication) : x2.pubYear ? parseInt(x2.pubYear) : null,
         subject: null,
         openAccess: true,
-        source: "EuropePMC"
+        source: "EuropePMC",
+        sourceRecordId: x2.pmcid || x2.pmid || x2.id || null,
+        licence: x2.license || null
       };
     }).filter((a) => a.title && a.pdfUrl);
   }
@@ -32806,154 +33832,64 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     }
     return { kept, skipped };
   }
-  app.post("/api/admin/ingest/preview", authenticateJWT, requireSuperAdmin, async (req, res) => {
-    try {
-      const { source = "openalex", departments = [], perDept = 10 } = req.body;
-      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department" });
-      const trustedOnly = req.body.trustedHostsOnly !== false && (source === "openalex" || source === "doaj");
-      const limit = Math.min(Math.max(parseInt(perDept) || 10, 1), 50);
-      const items = [];
-      for (const dept of departments) {
-        try {
-          const got = await fetchForDept(source, dept, limit, trustedOnly);
-          items.push(...got.map((x2) => ({ ...x2, department: dept })));
-        } catch (e2) {
-          console.error(`Preview fetch [${source}/${dept}]`, e2);
-        }
-      }
-      res.json({ source, trustedOnly, count: items.length, items });
-    } catch (e2) {
-      console.error("Ingest preview error:", e2);
-      res.status(500).json({ error: "Preview failed" });
-    }
-  });
-  const ingestJobs = /* @__PURE__ */ new Map();
-  async function processIngestJob(job, req) {
-    const { source, departments, limit, validate, trustedOnly } = job.params;
-    const publishersTouched = /* @__PURE__ */ new Set();
-    try {
-      for (const dept of departments) {
-        job.currentDept = dept;
-        let items = [];
-        try {
-          items = await fetchForDept(source, dept, limit, trustedOnly);
-        } catch (e2) {
-          console.error(`Ingest fetch [${source}/${dept}]`, e2);
-          continue;
-        }
-        job.fetched += items.length;
-        if (validate) {
-          const { kept, skipped } = await keepOpenable(items);
-          job.skippedUnopenable += skipped;
-          items = kept;
-        }
-        for (const it of items) {
-          try {
-            const fp = articleFingerprint(it.doi, it.title, it.authors);
-            const exists = await prisma3.article.findUnique({ where: { fingerprint: fp } });
-            if (exists) {
-              job.duplicates++;
-              continue;
-            }
-            const publisher = await upsertPublisherByName(it.publisherName, it.source);
-            if (publisher) publishersTouched.add(publisher.id);
-            const journal = await upsertJournalByIssn(it.issn, {
-              title: it.journalName || "Unknown Journal",
-              publisherId: publisher?.id || null,
-              publisherName: it.publisherName || null,
-              domain: dept,
-              subject: it.subject || null,
-              openAccess: !!it.openAccess,
-              startYear: it.year || null
-            });
-            await prisma3.article.create({
-              data: {
-                title: it.title,
-                authors: it.authors || null,
-                doi: it.doi || null,
-                pdfUrl: it.pdfUrl || null,
-                journalId: journal?.id || null,
-                journalName: it.journalName || null,
-                journalIssn: it.issn || null,
-                publisherId: publisher?.id || null,
-                publisherName: it.publisherName || null,
-                volume: it.volume ? String(it.volume) : null,
-                issue: it.issue ? String(it.issue) : null,
-                year: it.year || null,
-                domain: dept,
-                subject: it.subject || null,
-                accessType: "OpenAccess",
-                status: "Published",
-                source: it.source,
-                fingerprint: fp,
-                createdBy: req.user?.email || "Ingestion"
-              }
-            });
-            job.inserted++;
-          } catch (e2) {
-            job.failed++;
-          }
-        }
-      }
-      job.publishersDiscovered = publishersTouched.size;
-      job.status = "done";
-    } catch (e2) {
-      console.error("Ingest job error:", e2);
-      job.status = "error";
-      job.error = e2?.message || "Ingestion failed";
-    } finally {
-      job.currentDept = null;
-      job.finishedAt = Date.now();
-    }
-  }
   const ALL_DEPARTMENTS = DOMAINS.map((d) => d.name);
+  const adminOf = (req) => ({ uid: req.user?.uid, email: req.user?.email });
+  const MAX_CANDIDATES = INGESTION_POLICY.preview.maxItems;
+  const ingestTimer = { lastTickAt: null, nextTickAt: null, busy: false };
+  let manualPassRunning = false;
+  const ingestionEnvelope = async () => {
+    const state = await getState();
+    const [status, last24h, alerts] = await Promise.all([
+      engineStatus(state, ingestTimer),
+      last24Hours(),
+      repeatedNoChangeAlerts()
+    ]);
+    return { ...state, status, last24h, alerts, schedulerV2: schedulerV2(), limits: INGESTION_POLICY.settings };
+  };
   app.get("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (_req, res) => {
     try {
-      res.json(await getState());
+      res.json(await ingestionEnvelope());
     } catch {
       res.status(500).json({ error: "Failed to read ingestion state" });
     }
   });
   app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const { enabled, yearsBack, departments, batchSize, discoverEvery, focus, articlesPerJournal } = req.body || {};
-      const data = {};
-      if (typeof enabled === "boolean") data.enabled = enabled;
-      if (Number.isInteger(yearsBack) && yearsBack > 0 && yearsBack <= 50) data.yearsBack = yearsBack;
-      if (Array.isArray(departments)) data.departments = departments;
-      if (Number.isInteger(batchSize) && batchSize > 0 && batchSize <= 200) data.batchSize = batchSize;
-      if (Number.isInteger(discoverEvery) && discoverEvery > 0 && discoverEvery <= 50) data.discoverEvery = discoverEvery;
-      if (["auto", "journals", "books", "articles"].includes(focus)) data.focus = focus;
-      if (Number.isInteger(articlesPerJournal) && articlesPerJournal >= 0 && articlesPerJournal <= 1e4) data.articlesPerJournal = articlesPerJournal;
-      await getState();
-      res.json(await prisma3.ingestionState.update({ where: { id: "singleton" }, data }));
-    } catch {
+      const current = await getState();
+      const v = validateSettings(req.body, current, ALL_DEPARTMENTS);
+      if (!v.ok) return res.status(v.status).json({ error: v.errors[0], errors: v.errors, needsConfirmation: v.needsConfirmation });
+      if (Object.keys(v.data).length) await prisma2.ingestionState.update({ where: { id: "singleton" }, data: v.data });
+      const who = adminOf(req);
+      if (v.enabledChange) await audit(who, v.data.enabled ? "ENGINE_RESUMED" : "ENGINE_PAUSED", { engineWas: current.enabled });
+      if (v.scope) await audit(who, "INGESTION_SCOPE_CHANGED", { from: v.scope.from, to: v.scope.to, engineRunning: !!current.enabled });
+      const settingChanges = Object.fromEntries(Object.entries(v.changes).filter(([k]) => !["enabled", "departments"].includes(k)));
+      if (Object.keys(settingChanges).length) await audit(who, "INGESTION_SETTINGS_CHANGED", { changes: settingChanges });
+      res.json(await ingestionEnvelope());
+    } catch (e2) {
+      console.error("POST ingest/state error:", e2?.message);
       res.status(500).json({ error: "Failed to update ingestion state" });
     }
   });
   app.get("/api/admin/ingest/history", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const take = Math.min(parseInt(req.query.limit) || 40, 200);
-      const since = new Date(Date.now() - 7 * 864e5);
-      const [runs, totals, worst, sweeps, journalsHeld, booksHeld] = await Promise.all([
-        prisma3.ingestionRun.findMany({ orderBy: { at: "desc" }, take }),
-        prisma3.ingestionRun.aggregate({
-          where: { at: { gte: since } },
-          _sum: { added: true, skippedHeld: true, skippedFailed: true },
-          _count: { _all: true }
-        }),
-        // Passes that failed to write are the ones worth surfacing; they used to
-        // be indistinguishable from ordinary duplicates.
-        prisma3.ingestionRun.findMany({
-          where: { OR: [{ error: { not: null } }, { skippedFailed: { gt: 0 } }] },
-          orderBy: { at: "desc" },
-          take: 10
-        }),
-        // How far each department has been swept, per source. Totals said what
-        // had been collected but never how much was left — a department could
-        // sit on one page of a source holding a thousand more and nothing on
-        // the screen would say so.
-        prisma3.$queryRawUnsafe(`
+      res.json(await runHistory({ result: req.query.result, phase: req.query.phase, limit: Number(req.query.limit), before: req.query.before }));
+    } catch (e2) {
+      console.error("GET ingest/history error:", e2?.message);
+      res.status(500).json({ error: "Failed to load history" });
+    }
+  });
+  app.get("/api/admin/ingest/metrics", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const period = ["lifetime", "7d", "24h"].find((p2) => p2 === req.query.period) || "lifetime";
+      res.json(await metrics(await getState(), period));
+    } catch (e2) {
+      res.status(500).json({ error: "Failed to load metrics" });
+    }
+  });
+  app.get("/api/admin/ingest/coverage", authenticateJWT, requireSuperAdmin, async (_req, res) => {
+    try {
+      const [sweeps, journalsHeld, booksHeld] = await Promise.all([
+        prisma2.$queryRawUnsafe(`
           select department, source,
                  sum(seen)::int      as seen,
                  sum(accepted)::int  as accepted,
@@ -32962,178 +33898,263 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                  count(*) filter (where "exhaustedAt" is null)::int as "termsOpen",
                  max("lastSweptAt")  as "lastSweptAt"
           from "DepartmentSweep" group by 1, 2`),
-        prisma3.$queryRawUnsafe(
-          `select domain, count(*)::int n from "Journal" where domain is not null group by 1`
-        ),
-        prisma3.$queryRawUnsafe(
-          `select domain, count(*)::int n from "Book"
-           where status = 'Published' and domain is not null group by 1`
-        )
+        prisma2.$queryRawUnsafe(`select domain, count(*)::int n from "Journal" where domain is not null group by 1`),
+        prisma2.$queryRawUnsafe(`select domain, count(*)::int n from "Book" where status = 'Published' and domain is not null group by 1`)
       ]);
       const held = (rows) => new Map(rows.map((r2) => [r2.domain, r2.n]));
       const jHeld = held(journalsHeld);
       const bHeld = held(booksHeld);
       const byDept = /* @__PURE__ */ new Map();
       for (const row of sweeps) {
-        const d = byDept.get(row.department) || {
-          department: row.department,
-          journalsHeld: jHeld.get(row.department) || 0,
-          booksHeld: bHeld.get(row.department) || 0
-        };
-        d[row.source === "DOAJ" ? "doaj" : "doab"] = {
-          seen: row.seen,
-          accepted: row.accepted,
-          refused: row.refused,
-          terms: row.terms,
-          termsOpen: row.termsOpen,
-          lastSweptAt: row.lastSweptAt
-        };
+        const d = byDept.get(row.department) || { department: row.department, journalsHeld: jHeld.get(row.department) || 0, booksHeld: bHeld.get(row.department) || 0 };
+        d[row.source === "DOAJ" ? "doaj" : "doab"] = { seen: row.seen, accepted: row.accepted, refused: row.refused, terms: row.terms, termsOpen: row.termsOpen, lastSweptAt: row.lastSweptAt };
         byDept.set(row.department, d);
       }
       for (const dep of /* @__PURE__ */ new Set([...jHeld.keys(), ...bHeld.keys()])) {
-        if (!byDept.has(dep)) byDept.set(dep, {
-          department: dep,
-          journalsHeld: jHeld.get(dep) || 0,
-          booksHeld: bHeld.get(dep) || 0
-        });
+        if (!byDept.has(dep)) byDept.set(dep, { department: dep, journalsHeld: jHeld.get(dep) || 0, booksHeld: bHeld.get(dep) || 0 });
       }
-      res.json({
-        runs,
-        lastSevenDays: {
-          passes: totals._count._all,
-          added: totals._sum.added || 0,
-          alreadyHeld: totals._sum.skippedHeld || 0,
-          failedToWrite: totals._sum.skippedFailed || 0
-        },
-        problems: worst,
-        coverage: [...byDept.values()].sort((a, b) => a.department.localeCompare(b.department))
-      });
+      res.json({ coverage: [...byDept.values()].sort((a, b) => a.department.localeCompare(b.department)) });
     } catch (e2) {
-      console.error("GET ingest/history error:", e2?.message);
-      res.status(500).json({ error: "Failed to load history" });
+      console.error("GET ingest/coverage error:", e2?.message);
+      res.status(500).json({ error: "Failed to load coverage" });
     }
   });
-  let doajCatalogueJob = null;
-  app.post("/api/admin/ingest/doaj-catalogue", authenticateJWT, requireSuperAdmin, async (req, res) => {
-    if (doajCatalogueJob?.running) return res.status(409).json({ error: "An import is already running", job: doajCatalogueJob });
-    const dryRun = req.body?.dryRun === true;
-    const job = doajCatalogueJob = { running: true, startedAt: (/* @__PURE__ */ new Date()).toISOString(), dryRun };
-    res.status(202).json({ job });
-    const started = Date.now();
+  app.get("/api/admin/ingest/audit", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const r2 = await importDoajCatalogue({ dryRun });
-      Object.assign(job, { running: false, finishedAt: (/* @__PURE__ */ new Date()).toISOString(), result: r2 });
-      if (!dryRun) {
-        await prisma3.ingestionState.update({
-          where: { id: "singleton" },
-          data: {
-            journalsSeen: { increment: r2.inFile },
-            journalsAccepted: { increment: r2.accepted },
-            journalsRejected: { increment: r2.metadataOnly },
-            lastRunAt: /* @__PURE__ */ new Date()
-          }
-        }).catch(() => {
-        });
-        await prisma3.ingestionRun.create({ data: {
-          phase: "Journals",
-          source: "DOAJ catalogue",
-          journalsSeen: r2.inFile,
-          journalsAccepted: r2.accepted,
-          journalsRefused: r2.metadataOnly,
-          durationMs: Date.now() - started,
-          note: `full DOAJ list: ${r2.added} new journals added (${r2.accepted} full text, ${r2.metadataOnly} metadata only), ${r2.alreadyHeld} already held`
-        } }).catch(() => {
-        });
-      }
-    } catch (e2) {
-      Object.assign(job, { running: false, finishedAt: (/* @__PURE__ */ new Date()).toISOString(), error: String(e2?.message || e2) });
-      await prisma3.ingestionRun.create({ data: {
-        phase: "Error",
-        source: "DOAJ catalogue",
-        error: String(e2?.message || e2).slice(0, 1e3),
-        durationMs: Date.now() - started
-      } }).catch(() => {
-      });
+      const take = Math.min(parseInt(req.query.limit) || 20, 100);
+      res.json({ events: await prisma2.ingestionAudit.findMany({ orderBy: { at: "desc" }, take }) });
+    } catch {
+      res.status(500).json({ error: "Failed to load audit log" });
     }
   });
-  app.get("/api/admin/ingest/doaj-catalogue", authenticateJWT, requireSuperAdmin, (_req, res) => {
-    res.json({ job: doajCatalogueJob });
-  });
-  app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (_req, res) => {
+  app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    if (manualPassRunning || ingestTimer.busy) return res.status(409).json({ error: "A pass is already running. It will finish on its own.", busy: true });
+    manualPassRunning = true;
     try {
+      const state = await getState();
+      await audit(adminOf(req), "MANUAL_PASS_REQUESTED", { engineEnabled: !!state.enabled });
       res.json(await runIngestionPass(ALL_DEPARTMENTS, { force: true }));
     } catch (e2) {
       res.status(500).json({ error: String(e2?.message || e2) });
+    } finally {
+      manualPassRunning = false;
     }
   });
-  let ingestBusy = false;
+  const TICK_MS = INGESTION_POLICY.health.tickSeconds * 1e3;
+  ingestTimer.nextTickAt = Date.now() + TICK_MS;
   setInterval(async () => {
-    if (ingestBusy) return;
-    ingestBusy = true;
+    ingestTimer.lastTickAt = Date.now();
+    ingestTimer.nextTickAt = Date.now() + TICK_MS;
+    if (ingestTimer.busy || manualPassRunning) return;
+    ingestTimer.busy = true;
     try {
       await runIngestionPass(ALL_DEPARTMENTS);
     } catch (e2) {
       console.error("[ingest] pass failed:", e2);
     } finally {
-      ingestBusy = false;
+      ingestTimer.busy = false;
     }
-  }, 6e4);
-  app.post("/api/admin/ingest/run", authenticateJWT, requireSuperAdmin, async (req, res) => {
+  }, TICK_MS);
+  const ingestJobs = /* @__PURE__ */ new Map();
+  const jobId = (k) => `${k}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  const keepJob = (id) => setTimeout(() => ingestJobs.delete(id), 30 * 60 * 1e3);
+  const runningJob = (kind) => [...ingestJobs.values()].find((j) => j.kind === kind && j.status === "running");
+  app.get("/api/admin/ingest/jobs/active", authenticateJWT, requireSuperAdmin, (_req, res) => {
+    res.json({
+      jobs: [...ingestJobs.values()].filter((j) => j.status === "running").map((j) => ({ jobId: j.id, kind: j.kind, startedAt: j.startedAt, progress: j.progress })),
+      pass: { running: manualPassRunning || ingestTimer.busy },
+      doajCatalogue: doajCatalogueJob
+    });
+  });
+  app.post("/api/admin/ingest/dry-run", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const { source = "openalex", departments = [], perDept = 25 } = req.body;
-      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department" });
-      const limit = Math.min(Math.max(parseInt(perDept) || 25, 1), 300);
-      const validate = req.body.validatePdf !== false;
-      const trustedOnly = req.body.trustedHostsOnly !== false && (source === "openalex" || source === "doaj");
-      const jobId = `ing_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-      const job = {
-        id: jobId,
-        status: "running",
-        startedAt: Date.now(),
-        finishedAt: null,
-        currentDept: null,
-        params: { source, departments, limit, validate, trustedOnly },
-        source,
-        trustedOnly,
-        departments,
-        totalDepts: departments.length,
-        fetched: 0,
-        inserted: 0,
-        duplicates: 0,
-        failed: 0,
-        skippedUnopenable: 0,
-        publishersDiscovered: 0
-      };
-      ingestJobs.set(jobId, job);
-      processIngestJob(job, req).finally(() => {
-        setTimeout(() => ingestJobs.delete(jobId), 30 * 60 * 1e3);
-      });
-      res.json({ started: true, jobId, ...jobSummary(job) });
+      const { source = "openalex", departments = [], perDept = 25, accessPolicy = "verifiable" } = req.body || {};
+      if (!["openalex", "doaj", "europepmc", "arxiv"].includes(source)) return res.status(400).json({ error: "Unknown source." });
+      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department to continue." });
+      const unknown = departments.filter((d) => !ALL_DEPARTMENTS.includes(d));
+      if (unknown.length) return res.status(400).json({ error: `Unknown department: ${unknown[0]}` });
+      const per = Number(perDept);
+      if (!Number.isInteger(per) || per < 1 || per > 300) return res.status(400).json({ error: "Items per department must be a whole number from 1 to 300." });
+      if (per * departments.length > MAX_CANDIDATES) return res.status(400).json({ error: `That would fetch more than ${MAX_CANDIDATES.toLocaleString()} candidates. Reduce the departments or the items per department.` });
+      if (runningJob("dry-run")) return res.status(409).json({ error: "A dry run is already in progress." });
+      const verifiable = accessPolicy !== "any";
+      const job = { id: jobId("dry"), kind: "dry-run", status: "running", startedAt: Date.now(), progress: { department: null, done: 0, total: departments.length }, params: { source, departments, perDept: per, accessPolicy: verifiable ? "verifiable" : "any" } };
+      ingestJobs.set(job.id, job);
+      res.status(202).json({ jobId: job.id });
+      (async () => {
+        try {
+          const candidates = [];
+          let errors = 0;
+          for (const dept of departments) {
+            job.progress.department = dept;
+            try {
+              let got = await fetchForDept(source, dept, per, verifiable && (source === "openalex" || source === "doaj"));
+              if (verifiable) {
+                const opens = await Promise.all(got.map((g) => isFetchablePdf(g.pdfUrl)));
+                got = got.map((g, i2) => ({ ...g, fileOpensHere: opens[i2] }));
+              }
+              candidates.push(...got.map((g) => ({ ...g, department: dept })));
+            } catch (e2) {
+              errors++;
+              console.error(`Dry run fetch [${source}/${dept}]:`, e2?.message);
+            }
+            job.progress.done++;
+          }
+          const classified = await classifyCandidates(candidates);
+          for (const c of classified) {
+            if (verifiable && c.outcome === "ADD" && c.fileOpensHere === false) {
+              c.outcome = "REJECTED";
+              c.reasons = ["full text could not be verified as open"];
+              c.access = void 0;
+            }
+          }
+          const summary = { ...summarise(classified, errors), source, departments };
+          const row = await createPreview("ONE_OFF", adminOf(req), job.params, summary, classified);
+          Object.assign(job, { status: "done", previewId: row.id, summary, expiresAt: row.expiresAt, finishedAt: Date.now() });
+        } catch (e2) {
+          console.error("Dry run error:", e2);
+          Object.assign(job, { status: "error", error: String(e2?.message || "Dry run failed"), finishedAt: Date.now() });
+        } finally {
+          keepJob(job.id);
+        }
+      })();
     } catch (e2) {
-      console.error("Ingest run error:", e2);
-      res.status(500).json({ error: "Ingestion failed" });
+      console.error("POST ingest/dry-run error:", e2);
+      res.status(500).json({ error: "Dry run failed to start" });
     }
   });
-  const jobSummary = (job) => ({
-    jobId: job.id,
-    status: job.status,
-    source: job.source,
-    trustedOnly: job.trustedOnly,
-    departments: job.departments,
-    totalDepts: job.totalDepts,
-    currentDept: job.currentDept,
-    fetched: job.fetched,
-    inserted: job.inserted,
-    duplicates: job.duplicates,
-    failed: job.failed,
-    skippedUnopenable: job.skippedUnopenable,
-    publishersDiscovered: job.publishersDiscovered,
-    error: job.error || null
+  const jobView = (j) => ({
+    jobId: j.id,
+    kind: j.kind,
+    status: j.status,
+    progress: j.progress,
+    previewId: j.previewId || null,
+    summary: j.summary || null,
+    result: j.result || null,
+    error: j.error || null,
+    expiresAt: j.expiresAt || null,
+    startedAt: j.startedAt,
+    finishedAt: j.finishedAt || null
   });
   app.get("/api/admin/ingest/status/:jobId", authenticateJWT, requireSuperAdmin, async (req, res) => {
     const job = ingestJobs.get(req.params.jobId);
-    if (!job) return res.status(404).json({ error: "Job not found (may have finished & expired)" });
-    res.json(jobSummary(job));
+    if (!job) return res.status(404).json({ error: "Job not found (may have finished and expired)" });
+    res.json(jobView(job));
+  });
+  app.get("/api/admin/ingest/preview/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const row = await prisma2.ingestionPreview.findUnique({ where: { id: req.params.id } });
+      if (!row || row.kind !== "ONE_OFF") return res.status(404).json({ error: "Preview not found" });
+      const items = Array.isArray(row.items) ? row.items : [];
+      const offset = Math.max(0, parseInt(req.query.offset) || 0), limit = Math.min(parseInt(req.query.limit) || 100, 500);
+      const outcome = req.query.outcome;
+      const filtered = outcome ? items.filter((i2) => i2.outcome === outcome) : items;
+      res.json({ id: row.id, params: row.params, summary: row.summary, expiresAt: row.expiresAt, consumedAt: row.consumedAt, expired: row.expiresAt < /* @__PURE__ */ new Date(), total: filtered.length, items: filtered.slice(offset, offset + limit) });
+    } catch {
+      res.status(500).json({ error: "Failed to load preview" });
+    }
+  });
+  app.get("/api/admin/ingest/preview/:id/csv", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const row = await prisma2.ingestionPreview.findUnique({ where: { id: req.params.id } });
+      if (!row || row.kind !== "ONE_OFF") return res.status(404).json({ error: "Preview not found" });
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="ingest_preview_${String(row.params?.source || "source")}.csv"`);
+      res.send(previewToCsv(Array.isArray(row.items) ? row.items : []));
+    } catch {
+      res.status(500).json({ error: "Failed to export preview" });
+    }
+  });
+  app.post("/api/admin/ingest/run", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    try {
+      const { previewId, retryFailed } = req.body || {};
+      if (!previewId) return res.status(400).json({ error: "Run a dry run first, then ingest from its result." });
+      if (runningJob("write")) return res.status(409).json({ error: "An import is already running." });
+      const row = await loadPreview(String(previewId), "ONE_OFF");
+      if (row.consumedAt && retryFailed !== true) return res.status(409).json({ error: "This preview has already been ingested. Run a new dry run to import again." });
+      const job = { id: jobId("write"), kind: "write", status: "running", startedAt: Date.now(), previewId: row.id, progress: { done: 0, total: 0 } };
+      ingestJobs.set(job.id, job);
+      res.status(202).json({ jobId: job.id });
+      commitOneOff(row.id, adminOf(req), {
+        retryFailed: retryFailed === true,
+        onProgress: (p2) => {
+          job.progress = { done: p2.attempted, total: p2.total };
+        }
+      }).then((sum) => {
+        Object.assign(job, { status: "done", result: sum, finishedAt: Date.now() });
+      }).catch((e2) => {
+        console.error("One-off import error:", e2);
+        Object.assign(job, { status: "error", error: String(e2?.message || "Import failed"), finishedAt: Date.now() });
+      }).finally(() => keepJob(job.id));
+    } catch (e2) {
+      if (e2 instanceof PreviewError) return res.status(e2.status).json({ error: e2.message });
+      console.error("Ingest run error:", e2);
+      res.status(500).json({ error: "Ingestion failed to start" });
+    }
+  });
+  let doajCatalogueJob = null;
+  app.post("/api/admin/ingest/doaj-catalogue", authenticateJWT, requireSuperAdmin, async (req, res) => {
+    if (doajCatalogueJob?.running) return res.status(409).json({ error: "A DOAJ check or import is already running", job: doajCatalogueJob });
+    const body = req.body || {};
+    const who = adminOf(req);
+    try {
+      if (body.dryRun === true) {
+        const job2 = doajCatalogueJob = { running: true, kind: "check", startedAt: (/* @__PURE__ */ new Date()).toISOString(), dryRun: true };
+        res.status(202).json({ job: job2 });
+        (async () => {
+          try {
+            const check = await checkDoajCatalogue();
+            const row2 = await createPreview("DOAJ_CATALOGUE", who, { source: "DOAJ catalogue" }, check.summary, { newIssns: check.newIssns, reviewSample: check.reviewSample });
+            Object.assign(job2, { running: false, finishedAt: (/* @__PURE__ */ new Date()).toISOString(), previewId: row2.id, expiresAt: row2.expiresAt, result: { ...check.summary, reviewSample: check.reviewSample } });
+          } catch (e2) {
+            Object.assign(job2, { running: false, finishedAt: (/* @__PURE__ */ new Date()).toISOString(), error: String(e2?.message || e2) });
+          }
+        })();
+        return;
+      }
+      if (!body.previewId) return res.status(400).json({ error: "Check first: run the check, review what it found, then import." });
+      if (body.confirm !== true) return res.status(400).json({ error: "Confirmation is required to import." });
+      const row = await loadPreview(String(body.previewId), "DOAJ_CATALOGUE");
+      const claimed = await prisma2.ingestionPreview.updateMany({ where: { id: row.id, consumedAt: null }, data: { consumedAt: /* @__PURE__ */ new Date(), consumedBy: who.email || who.uid || null } });
+      if (claimed.count === 0) return res.status(409).json({ error: "This check has already been imported. Run a new check to import again." });
+      const newIssns = row.items?.newIssns || [];
+      await audit(who, "MASS_JOURNAL_IMPORT_STARTED", { previewId: row.id, newJournals: newIssns.length, summary: row.summary });
+      const job = doajCatalogueJob = { running: true, kind: "import", startedAt: (/* @__PURE__ */ new Date()).toISOString(), dryRun: false, previewId: row.id };
+      res.status(202).json({ job });
+      const started = Date.now();
+      (async () => {
+        try {
+          const r2 = await importCheckedJournals(newIssns);
+          Object.assign(job, { running: false, finishedAt: (/* @__PURE__ */ new Date()).toISOString(), result: { ...r2, requested: newIssns.length } });
+          await prisma2.ingestionState.update({
+            where: { id: "singleton" },
+            data: { journalsSeen: { increment: r2.added }, journalsAccepted: { increment: r2.accepted }, journalsRejected: { increment: r2.metadataOnly }, lastRunAt: /* @__PURE__ */ new Date() }
+          }).catch(() => {
+          });
+          await prisma2.ingestionRun.create({ data: {
+            phase: "Journals",
+            source: "DOAJ catalogue",
+            journalsSeen: r2.added,
+            journalsAccepted: r2.accepted,
+            journalsRefused: r2.metadataOnly,
+            durationMs: Date.now() - started,
+            note: `DOAJ catalogue import: ${r2.added} new journals added (${r2.accepted} full text, ${r2.metadataOnly} metadata only)${r2.alreadyHeldNow ? `, ${r2.alreadyHeldNow} already held by then` : ""}`
+          } }).catch(() => {
+          });
+        } catch (e2) {
+          Object.assign(job, { running: false, finishedAt: (/* @__PURE__ */ new Date()).toISOString(), error: String(e2?.message || e2) });
+          await prisma2.ingestionRun.create({ data: { phase: "Error", source: "DOAJ catalogue", error: String(e2?.message || e2).slice(0, 1e3), durationMs: Date.now() - started } }).catch(() => {
+          });
+        }
+      })();
+    } catch (e2) {
+      if (e2 instanceof PreviewError) return res.status(e2.status).json({ error: e2.message });
+      console.error("POST doaj-catalogue error:", e2);
+      res.status(500).json({ error: "Could not start" });
+    }
+  });
+  app.get("/api/admin/ingest/doaj-catalogue", authenticateJWT, requireSuperAdmin, (_req, res) => {
+    res.json({ job: doajCatalogueJob });
   });
   const libraryScopeDomains = async (req) => {
     const authHeader = req.headers.authorization;
@@ -33169,7 +34190,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { domain } = req.query;
       const where = { status: "Published" };
       applyDomainScope(where, domain, await libraryScopeDomains(req));
-      const groups = await prisma3.article.groupBy({ by: ["publisherName"], where, _count: { _all: true } });
+      const groups = await prisma2.article.groupBy({ by: ["publisherName"], where, _count: { _all: true } });
       const list = groups.filter((g) => g.publisherName).map((g) => ({ name: g.publisherName, count: g._count._all })).sort((a, b) => b.count - a.count);
       res.json(list);
     } catch (e2) {
@@ -33187,7 +34208,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       if (publisher) where.publisherName = publisher;
       if (search) where.title = { contains: search, mode: "insensitive" };
-      const groups = await prisma3.article.groupBy({
+      const groups = await prisma2.article.groupBy({
         by: ["journalId"],
         where: { status: "Published", journalId: { not: null } },
         _count: { _all: true }
@@ -33197,7 +34218,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       );
       if (!countBy.size) return res.json([]);
       where.id = { in: [...countBy.keys()] };
-      const journals = await prisma3.journal.findMany({ where, orderBy: { title: "asc" }, take: 500 });
+      const journals = await prisma2.journal.findMany({ where, orderBy: { title: "asc" }, take: 500 });
       res.json(journals.map((j) => ({
         id: j.id,
         title: j.title,
@@ -33219,13 +34240,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const jidList = journalIds ? String(journalIds).split(",").filter(Boolean) : [];
       if (jidList.length) base.journalId = { in: jidList };
       else if (journalId) base.journalId = journalId;
-      const years = await prisma3.article.findMany({ where: base, distinct: ["year"], select: { year: true }, orderBy: { year: "desc" } });
+      const years = await prisma2.article.findMany({ where: base, distinct: ["year"], select: { year: true }, orderBy: { year: "desc" } });
       const volWhere = { ...base };
       if (year) volWhere.year = parseInt(year);
-      const volumes = await prisma3.article.findMany({ where: volWhere, distinct: ["volume"], select: { volume: true } });
+      const volumes = await prisma2.article.findMany({ where: volWhere, distinct: ["volume"], select: { volume: true } });
       const issWhere = { ...volWhere };
       if (volume) issWhere.volume = String(volume);
-      const issues = await prisma3.article.findMany({ where: issWhere, distinct: ["issue"], select: { issue: true } });
+      const issues = await prisma2.article.findMany({ where: issWhere, distinct: ["issue"], select: { issue: true } });
       res.json({
         years: years.map((y) => y.year).filter((v) => v != null),
         volumes: volumes.map((v) => v.volume).filter(Boolean),
@@ -33259,14 +34280,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const take = Math.min(parseInt(limit) || 20, 100);
       const skip = ((parseInt(page) || 1) - 1) * take;
       const [data, total] = await Promise.all([
-        prisma3.article.findMany({
+        prisma2.article.findMany({
           where,
           orderBy: orderFor(sort),
           skip,
           take,
           include: { journal: { select: { title: true, issn: true, eissn: true, subject: true, publisherName: true } } }
         }),
-        prisma3.article.count({ where })
+        prisma2.article.count({ where })
       ]);
       if (search) {
         logEvent(req, {
@@ -33288,7 +34309,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const key = decodeURIComponent(req.params.issn);
       const norm2 = normaliseIssn(key);
-      const journal = await prisma3.journal.findFirst({
+      const journal = await prisma2.journal.findFirst({
         where: { OR: [
           { issn: key },
           { eissn: key },
@@ -33301,7 +34322,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (scope !== null && journal.domain && !scope.includes(journal.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
-      const held = await prisma3.$queryRawUnsafe(
+      const held = await prisma2.$queryRawUnsafe(
         `select count(*)::int as articles,
                 count(distinct nullif("volume",''))::int as volumes,
                 count(distinct nullif("volume",'') || '|' || coalesce(nullif("issue",''),''))::int as issues,
@@ -33309,13 +34330,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
          from "Article" where "journalId" = $1 and status = 'Published'`,
         journal.id
       );
-      const volumes = await prisma3.$queryRawUnsafe(`
+      const volumes = await prisma2.$queryRawUnsafe(`
         select volume, max(year)::int as year,
                count(distinct issue)::int as issues, count(*)::int as articles
         from "Article"
         where "journalId" = $1 and status = 'Published' and volume is not null
         group by volume order by max(year) desc nulls last, volume desc`, journal.id);
-      const recent = await prisma3.article.findMany({
+      const recent = await prisma2.article.findMany({
         // A few hundred rows came in with no title at all; they read as noise here.
         where: { journalId: journal.id, status: "Published", NOT: { title: "Untitled" } },
         select: { id: true, title: true, authors: true, year: true, volume: true, issue: true },
@@ -33343,7 +34364,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const key = decodeURIComponent(req.params.issn);
       const volume = decodeURIComponent(req.params.volume);
       const norm2 = normaliseIssn(key);
-      const journal = await prisma3.journal.findFirst({
+      const journal = await prisma2.journal.findFirst({
         where: { OR: [
           { issn: key },
           { eissn: key },
@@ -33357,7 +34378,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (scope !== null && journal.domain && !scope.includes(journal.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
-      const articles = await prisma3.article.findMany({
+      const articles = await prisma2.article.findMany({
         where: { journalId: journal.id, volume, status: "Published" },
         select: {
           id: true,
@@ -33392,9 +34413,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/library/author/:id", async (req, res) => {
     try {
-      const author = await prisma3.author.findUnique({ where: { id: req.params.id } });
+      const author = await prisma2.author.findUnique({ where: { id: req.params.id } });
       if (!author) return res.status(404).json({ error: "Author not found" });
-      const links = await prisma3.articleAuthor.findMany({
+      const links = await prisma2.articleAuthor.findMany({
         where: { authorId: author.id },
         select: { position: true, article: { select: {
           id: true,
@@ -33425,7 +34446,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/library/article/:id", async (req, res) => {
     try {
-      const article = await prisma3.article.findUnique({
+      const article = await prisma2.article.findUnique({
         where: { id: req.params.id },
         include: {
           journal: { select: {
@@ -33451,7 +34472,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (scope !== null && article.domain && !scope.includes(article.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
-      const siblings = article.journalId && article.volume ? await prisma3.article.findMany({
+      const siblings = article.journalId && article.volume ? await prisma2.article.findMany({
         where: {
           journalId: article.journalId,
           volume: article.volume,
@@ -33475,7 +34496,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/library/content/:id", authenticateJWT, async (req, res) => {
     try {
-      const c = await prisma3.content.findFirst({
+      const c = await prisma2.content.findFirst({
         where: { id: req.params.id, status: { not: "Draft" } },
         select: {
           id: true,
@@ -33494,7 +34515,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (scope !== null && c.domain && !scope.includes(c.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
-      const related = await prisma3.content.findMany({
+      const related = await prisma2.content.findMany({
         where: {
           id: { not: c.id },
           status: { not: "Draft" },
@@ -33515,7 +34536,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/library/department/:slug", async (req, res) => {
     try {
       const wanted = String(req.params.slug || "").toLowerCase();
-      const domains = await prisma3.journal.findMany({
+      const domains = await prisma2.journal.findMany({
         where: { domain: { not: null } },
         select: { domain: true },
         distinct: ["domain"]
@@ -33547,10 +34568,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ) s, unnest(string_to_array(s.names, ',')) x
         where s.names is not null and btrim(x) <> ''`;
       const [journals, articles, books, publishers, authorRows] = await Promise.all([
-        prisma3.$queryRawUnsafe(shelfSql("j.domain = $1"), domain),
-        prisma3.article.count({ where: { domain, status: "Published" } }),
-        prisma3.book.count({ where: { domain, status: "Published" } }),
-        prisma3.$queryRawUnsafe(
+        prisma2.$queryRawUnsafe(shelfSql("j.domain = $1"), domain),
+        prisma2.article.count({ where: { domain, status: "Published" } }),
+        prisma2.book.count({ where: { domain, status: "Published" } }),
+        prisma2.$queryRawUnsafe(
           `select j."publisherName" as name, count(distinct j.id)::int as journals
            from "Journal" j
            join "Article" a on a."journalId" = j.id and a.status = 'Published'
@@ -33558,7 +34579,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
            group by 1 order by 2 desc`,
           domain
         ),
-        prisma3.$queryRawUnsafe(authorsSql, domain)
+        prisma2.$queryRawUnsafe(authorsSql, domain)
       ]);
       const years = journals.flatMap((j) => [j.firstYear, j.lastYear]).filter(Boolean);
       res.json({
@@ -33580,7 +34601,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/library/publisher/:slug", async (req, res) => {
     try {
       const wanted = String(req.params.slug || "").toLowerCase();
-      const names = await prisma3.journal.findMany({
+      const names = await prisma2.journal.findMany({
         where: { publisherName: { not: null } },
         select: { publisherName: true },
         distinct: ["publisherName"]
@@ -33589,7 +34610,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (!match) return res.status(404).json({ error: "Publisher not found" });
       const publisherName = match.publisherName;
       const scope = await libraryScopeDomains(req);
-      const journals = await prisma3.$queryRawUnsafe(
+      const journals = await prisma2.$queryRawUnsafe(
         `select j.id, j.title, j.issn, j.domain, j.licence, j."licenceIsNC",
                 count(a.id)::int as "articleCount",
                 count(distinct nullif(a."volume",''))::int as "volumeCount",
@@ -33622,7 +34643,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/library/subjects", async (req, res) => {
     try {
       const scope = await libraryScopeDomains(req);
-      const journals = await prisma3.$queryRawUnsafe(
+      const journals = await prisma2.$queryRawUnsafe(
         `select j.subjects, count(a.id)::int as "articleCount"
          from "Journal" j
          join "Article" a on a."journalId" = j.id and a.status = 'Published'
@@ -33652,7 +34673,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const scope = await libraryScopeDomains(req);
       const where = {};
       if (scope !== null) where.domain = { in: scope };
-      const all = await prisma3.$queryRawUnsafe(
+      const all = await prisma2.$queryRawUnsafe(
         `select j.id, j.title, j.issn, j.domain, j."publisherName", j.subjects,
                 j.licence, j."licenceIsNC",
                 count(a.id)::int as "articleCount",
@@ -33692,16 +34713,16 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     }
   });
   const periodOf = (req) => {
-    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 730);
+    const days2 = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 730);
     const to = /* @__PURE__ */ new Date();
-    const from = new Date(to.getTime() - days * 864e5);
-    const prevFrom = new Date(from.getTime() - days * 864e5);
-    return { days, from, to, prevFrom };
+    const from = new Date(to.getTime() - days2 * 864e5);
+    const prevFrom = new Date(from.getTime() - days2 * 864e5);
+    return { days: days2, from, to, prevFrom };
   };
   const analyticsScope = async (req) => {
     const role = req.user?.role;
     if (role === "Institution") {
-      const me = await prisma3.user.findUnique({
+      const me = await prisma2.user.findUnique({
         where: { id: req.user.uid },
         select: { institutionId: true }
       });
@@ -33720,37 +34741,37 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const scope = await analyticsScope(req);
       if (scope.error) return res.status(403).json({ error: scope.error });
       const institutionId = scope.id;
-      const { days, from, to, prevFrom } = periodOf(req);
-      const inst = await prisma3.institution.findUnique({
+      const { days: days2, from, to, prevFrom } = periodOf(req);
+      const inst = await prisma2.institution.findUnique({
         where: { id: institutionId },
         select: { name: true }
       });
-      const students = await prisma3.user.findMany({
+      const students = await prisma2.user.findMany({
         where: { institutionId, role: "Student" },
         select: { id: true, displayName: true, email: true, designation: true, createdAt: true }
       });
       const nameOf = new Map(students.map((s2) => [s2.id, s2]));
       const inPeriod = { institutionId, at: { gte: from, lte: to } };
       const [reads, prevReads, readerRows, prevReaderRows, byDomain, byJournal, topItems, missed, timeline, lastSeen] = await Promise.all([
-        prisma3.libraryEvent.count({ where: { ...inPeriod, kind: "view" } }),
-        prisma3.libraryEvent.count({ where: { institutionId, kind: "view", at: { gte: prevFrom, lt: from } } }),
-        prisma3.libraryEvent.groupBy({ by: ["userId"], where: { ...inPeriod, kind: "view" }, _count: { _all: true } }),
-        prisma3.libraryEvent.groupBy({ by: ["userId"], where: { institutionId, kind: "view", at: { gte: prevFrom, lt: from } } }),
-        prisma3.libraryEvent.groupBy({
+        prisma2.libraryEvent.count({ where: { ...inPeriod, kind: "view" } }),
+        prisma2.libraryEvent.count({ where: { institutionId, kind: "view", at: { gte: prevFrom, lt: from } } }),
+        prisma2.libraryEvent.groupBy({ by: ["userId"], where: { ...inPeriod, kind: "view" }, _count: { _all: true } }),
+        prisma2.libraryEvent.groupBy({ by: ["userId"], where: { institutionId, kind: "view", at: { gte: prevFrom, lt: from } } }),
+        prisma2.libraryEvent.groupBy({
           by: ["domain"],
           where: { ...inPeriod, kind: "view", domain: { not: null } },
           _count: { _all: true },
           orderBy: { _count: { domain: "desc" } },
           take: 12
         }),
-        prisma3.libraryEvent.groupBy({
+        prisma2.libraryEvent.groupBy({
           by: ["journalIssn"],
           where: { ...inPeriod, kind: "view", journalIssn: { not: null } },
           _count: { _all: true },
           orderBy: { _count: { journalIssn: "desc" } },
           take: 10
         }),
-        prisma3.libraryEvent.groupBy({
+        prisma2.libraryEvent.groupBy({
           by: ["itemId", "itemType"],
           where: { ...inPeriod, kind: "view", itemId: { not: null } },
           _count: { _all: true },
@@ -33758,7 +34779,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           take: 10
         }),
         // The acquisition signal: what they asked for and we did not have.
-        prisma3.libraryEvent.groupBy({
+        prisma2.libraryEvent.groupBy({
           by: ["query"],
           where: { ...inPeriod, kind: "search", resultCount: 0, query: { not: null } },
           _count: { _all: true },
@@ -33767,8 +34788,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         }),
         // Weeks over a long span, days over a short one — a 30-day window
         // bucketed by week is four points, which is not a trend.
-        prisma3.$queryRawUnsafe(
-          `select date_trunc('${days <= 45 ? "day" : "week"}', "at")::date as week,
+        prisma2.$queryRawUnsafe(
+          `select date_trunc('${days2 <= 45 ? "day" : "week"}', "at")::date as week,
                     count(*) filter (where kind = 'view')::int as reads,
                     count(distinct "userId") filter (where kind = 'view')::int as readers
              from "LibraryEvent"
@@ -33778,7 +34799,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           from,
           to
         ),
-        prisma3.$queryRawUnsafe(
+        prisma2.$queryRawUnsafe(
           `select "userId", max("at") as last_at, count(*)::int as reads
              from "LibraryEvent"
              where "institutionId" = $1 and kind = 'view' and "userId" is not null
@@ -33789,9 +34810,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const artIds = topItems.filter((t2) => t2.itemType === "article").map((t2) => t2.itemId);
       const conIds = topItems.filter((t2) => t2.itemType === "content").map((t2) => t2.itemId);
       const [arts, cons, journals] = await Promise.all([
-        artIds.length ? prisma3.article.findMany({ where: { id: { in: artIds } }, select: { id: true, title: true, journalIssn: true } }) : [],
-        conIds.length ? prisma3.content.findMany({ where: { id: { in: conIds } }, select: { id: true, title: true } }) : [],
-        byJournal.length ? prisma3.journal.findMany({
+        artIds.length ? prisma2.article.findMany({ where: { id: { in: artIds } }, select: { id: true, title: true, journalIssn: true } }) : [],
+        conIds.length ? prisma2.content.findMany({ where: { id: { in: conIds } }, select: { id: true, title: true } }) : [],
+        byJournal.length ? prisma2.journal.findMany({
           where: { issn: { in: byJournal.map((j) => j.journalIssn) } },
           select: { issn: true, title: true }
         }) : []
@@ -33801,7 +34822,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ...cons.map((c) => [c.id, c.title])
       ]);
       const journalTitle = new Map(journals.map((j) => [j.issn, j.title]));
-      const legacySeen = await prisma3.studentActivity.groupBy({
+      const legacySeen = await prisma2.studentActivity.groupBy({
         by: ["userId"],
         where: { user: { institutionId } },
         _max: { accessedAt: true }
@@ -33824,7 +34845,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }).sort((a, b) => Number(!!a.everRead) - Number(!!b.everRead));
       res.json({
         institution: { id: institutionId, name: inst?.name || "" },
-        period: { days, from, to },
+        period: { days: days2, from, to },
         usage: {
           students: students.length,
           activeStudents: activeIds.size,
@@ -33850,7 +34871,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           }))
         },
         demand: missed.map((m2) => ({ query: m2.query, searches: m2._count._all })),
-        trendBucket: days <= 45 ? "day" : "week",
+        trendBucket: days2 <= 45 ? "day" : "week",
         trend: timeline.map((t2) => ({
           week: t2.week,
           reads: Number(t2.reads),
@@ -33872,15 +34893,15 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const scope = await analyticsScope(req);
       if (scope.error) return res.status(403).json({ error: scope.error });
       const institutionId = scope.id;
-      const inst = await prisma3.institution.findUnique({
+      const inst = await prisma2.institution.findUnique({
         where: { id: institutionId },
         select: { name: true }
       });
-      const students = await prisma3.user.findMany({
+      const students = await prisma2.user.findMany({
         where: { institutionId, role: "Student" },
         select: { id: true, displayName: true, email: true, createdAt: true }
       });
-      const subs = await prisma3.subscription.findMany({
+      const subs = await prisma2.subscription.findMany({
         where: { OR: [{ institutionId }, { user: { institutionId } }], status: "Active" },
         select: { domains: true, domainName: true, endDate: true, contentTypes: true }
       });
@@ -33904,13 +34925,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         collectionCounts(covered.length ? covered : void 0),
         // The same breakdown the reader's dashboard draws, from one definition.
         collectionByDepartment(covered.length ? covered : void 0),
-        prisma3.journal.findMany({
+        prisma2.journal.findMany({
           where: jWhere,
           orderBy: { createdAt: "desc" },
           take: 5,
           select: { id: true, title: true, issn: true, domain: true, articleCount: true }
         }),
-        prisma3.libraryEvent.findMany({
+        prisma2.libraryEvent.findMany({
           where: { institutionId, kind: "view" },
           orderBy: { at: "desc" },
           take: 6,
@@ -33919,7 +34940,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         // What they actually read, by subject, over the last month. The
         // collection says what is on the shelves; this says what comes off
         // them, and a librarian is paid to know the difference.
-        prisma3.$queryRawUnsafe(
+        prisma2.$queryRawUnsafe(
           `select e."domain" as domain, count(*)::int as reads
            from "LibraryEvent" e
            where e."institutionId" = $1 and e.kind = 'view'
@@ -33928,16 +34949,16 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           institutionId,
           since
         ),
-        prisma3.libraryEvent.count({
+        prisma2.libraryEvent.count({
           where: { institutionId, kind: "search", resultCount: 0, at: { gte: since } }
         }),
-        prisma3.libraryEvent.groupBy({
+        prisma2.libraryEvent.groupBy({
           by: ["userId"],
           where: { institutionId, kind: "view", at: { gte: since } }
         }),
         // Twelve weeks of reads, for the sparkline in the header. One series,
         // one measure — nothing here needs a palette.
-        prisma3.$queryRawUnsafe(
+        prisma2.$queryRawUnsafe(
           `select date_trunc('week', "at")::date as week, count(*)::int as reads
            from "LibraryEvent"
            where "institutionId" = $1 and kind = 'view' and "at" >= $2
@@ -33949,8 +34970,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const artIds = recent.filter((r2) => r2.itemType === "article").map((r2) => r2.itemId);
       const conIds = recent.filter((r2) => r2.itemType === "content").map((r2) => r2.itemId);
       const [ra, rc] = await Promise.all([
-        artIds.length ? prisma3.article.findMany({ where: { id: { in: artIds } }, select: { id: true, title: true } }) : [],
-        conIds.length ? prisma3.content.findMany({ where: { id: { in: conIds } }, select: { id: true, title: true } }) : []
+        artIds.length ? prisma2.article.findMany({ where: { id: { in: artIds } }, select: { id: true, title: true } }) : [],
+        conIds.length ? prisma2.content.findMany({ where: { id: { in: conIds } }, select: { id: true, title: true } }) : []
       ]);
       const titleOf = new Map([
         ...ra.map((a) => [a.id, a.title]),
@@ -33958,8 +34979,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       ]);
       const who = new Map(students.map((s2) => [s2.id, s2.displayName || s2.email]));
       const [evUsers, saUsers] = await Promise.all([
-        prisma3.libraryEvent.groupBy({ by: ["userId"], where: { institutionId, kind: "view" } }),
-        prisma3.studentActivity.findMany({
+        prisma2.libraryEvent.groupBy({ by: ["userId"], where: { institutionId, kind: "view" } }),
+        prisma2.studentActivity.findMany({
           where: { user: { institutionId } },
           select: { userId: true },
           distinct: ["userId"]
@@ -34019,22 +35040,22 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (insightsCache && Date.now() - insightsCache.at < 10 * 6e4) return res.json(insightsCache.body);
       const [counts, otherTypes, access, licences, years] = await Promise.all([
         collectionCounts(),
-        prisma3.$queryRawUnsafe(
+        prisma2.$queryRawUnsafe(
           `select "contentType" as type, count(*)::int as n from "Content"
            where status <> 'Draft' and "contentType" not in ('Periodicals', 'Books')
            group by 1 order by 2 desc`
         ),
-        prisma3.$queryRawUnsafe(
+        prisma2.$queryRawUnsafe(
           `select coalesce("accessStatus", 'MetadataOnly') as s, count(*)::int as n from (
              select "accessStatus" from "Article" where status = 'Published'
              union all select "accessStatus" from "Book" where status = 'Published'
            ) t group by 1`
         ),
-        prisma3.$queryRawUnsafe(
+        prisma2.$queryRawUnsafe(
           `select coalesce(licence, '') as l, count(*)::int as n from "Article"
            where status = 'Published' group by 1`
         ),
-        prisma3.$queryRawUnsafe(
+        prisma2.$queryRawUnsafe(
           `select year::int as year, count(*)::int as n from "Article"
            where status = 'Published' and year is not null
              and year between extract(year from now())::int - 14 and extract(year from now())::int
@@ -34103,7 +35124,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     const hit = await cachedCover(id);
     if (hit) return hit;
     if (fsm.existsSync(import_path2.default.join(COVER_DIR, `${id}.none`))) return null;
-    const book = await prisma3.book.findUnique({ where: { id }, select: { coverUrl: true } });
+    const book = await prisma2.book.findUnique({ where: { id }, select: { coverUrl: true } });
     const url = book?.coverUrl;
     if (!url || !/^https?:\/\//i.test(url)) return null;
     const refuse = (why) => {
@@ -34145,7 +35166,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   const warmCovers = async () => {
     try {
-      const books = await prisma3.book.findMany({
+      const books = await prisma2.book.findMany({
         where: { status: "Published", coverUrl: { not: null } },
         orderBy: { createdAt: "desc" },
         take: 24,
@@ -34172,7 +35193,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/library/book/:id", async (req, res) => {
     try {
-      const book = await prisma3.book.findFirst({
+      const book = await prisma2.book.findFirst({
         where: { id: String(req.params.id || ""), status: "Published" },
         select: {
           id: true,
@@ -34202,7 +35223,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         if (inner) d = inner[1].trim();
         book.description = d;
       }
-      const alongside = await prisma3.book.findMany({
+      const alongside = await prisma2.book.findMany({
         where: { status: "Published", id: { not: book.id }, ...book.domain ? { domain: book.domain } : {} },
         orderBy: { createdAt: "desc" },
         take: 4,
@@ -34217,7 +35238,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/library/institutions", async (_req, res) => {
     try {
       if (institutionCache && Date.now() - institutionCache.at < 10 * 6e4) return res.json(institutionCache.value);
-      const rows = await prisma3.institution.findMany({
+      const rows = await prisma2.institution.findMany({
         where: { status: "Active" },
         select: { id: true, name: true, createdAt: true, _count: { select: { users: true } } },
         orderBy: { createdAt: "asc" }
@@ -34240,7 +35261,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         });
       }
       const list = [...seen.values()].filter((i2) => i2.members > 0).sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
-      const orgs = await prisma3.user.groupBy({
+      const orgs = await prisma2.user.groupBy({
         by: ["organization"],
         where: { organization: { not: null }, role: { notIn: STAFF_ROLES } },
         _count: { _all: true }
@@ -34248,7 +35269,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const organisations = new Set(
         orgs.map((o) => String(o.organization || "").trim().toLowerCase()).filter((o) => o.length > 2)
       ).size;
-      const states = await prisma3.user.groupBy({
+      const states = await prisma2.user.groupBy({
         by: ["state"],
         where: { state: { not: null }, role: { notIn: STAFF_ROLES } },
         _count: { _all: true }
@@ -34256,7 +35277,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const byKind = {};
       for (const i2 of list) byKind[i2.kind] = (byKind[i2.kind] || 0) + 1;
       const known = new Set(ALL_DESIGNATIONS.map((d) => d.toLowerCase()));
-      const desigRows = await prisma3.user.groupBy({
+      const desigRows = await prisma2.user.groupBy({
         by: ["designation"],
         where: { designation: { not: null }, role: { notIn: STAFF_ROLES }, isBlocked: false },
         _count: { _all: true }
@@ -34298,7 +35319,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         res.set("Cache-Control", "public, max-age=300");
         return res.json(institutionStatsCache.value);
       }
-      const rows = await prisma3.$queryRawUnsafe(`
+      const rows = await prisma2.$queryRawUnsafe(`
           select i."name" as name, count(u."id")::int as members,
                  coalesce(
                    max(case when u."role" = 'Institution' then nullif(trim(u."country"), '') end),
@@ -34365,7 +35386,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const [counts, byDomain, authors, departmentTotals] = await Promise.all([
         collectionCounts(),
-        prisma3.$queryRawUnsafe(`
+        prisma2.$queryRawUnsafe(`
           select a."domain" as domain,
                  count(distinct a."journalId")::int as journals,
                  count(*)::int as articles,
@@ -34373,7 +35394,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           from "Article" a
           where a.status = 'Published' and a."domain" is not null
           group by 1 order by 2 desc`),
-        prisma3.author.count(),
+        prisma2.author.count(),
         // Every shelf by department — the same figures the department pages and
         // the librarian's chart quote, for anything that needs the whole picture.
         collectionByDepartment()
@@ -34394,8 +35415,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const take = Math.min(parseInt(limit) || 20, 100);
       const skip = ((parseInt(page) || 1) - 1) * take;
       const [data, total] = await Promise.all([
-        prisma3.book.findMany({ where, orderBy: orderFor(sort), skip, take, include: { chapters: true } }),
-        prisma3.book.count({ where })
+        prisma2.book.findMany({ where, orderBy: orderFor(sort), skip, take, include: { chapters: true } }),
+        prisma2.book.count({ where })
       ]);
       if (search) {
         logEvent(req, {
@@ -34475,7 +35496,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (domain) where.domain = domain;
       if (status) where.status = status;
       if (search) where.OR = [{ title: { contains: search, mode: "insensitive" } }, { authors: { contains: search, mode: "insensitive" } }];
-      const model = prisma3[kind];
+      const model = prisma2[kind];
       const [rows, total] = await Promise.all([
         model.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }),
         model.count({ where })
@@ -34489,7 +35510,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const kind = req.params.kind === "book" ? "book" : "article";
-      const row = await prisma3[kind].findUnique({ where: { id: req.params.id }, ...kind === "book" ? { include: { chapters: true } } : {} });
+      const row = await prisma2[kind].findUnique({ where: { id: req.params.id }, ...kind === "book" ? { include: { chapters: true } } : {} });
       if (!row) return res.status(404).json({ error: "Not found" });
       res.json(aliasItem(row));
     } catch (e2) {
@@ -34502,7 +35523,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const kind = kindFor(req.body.contentType);
       if (kind === "book") {
         const chapters = Array.isArray(req.body.chapters) ? req.body.chapters.filter((c) => c && c.title) : [];
-        const book = await prisma3.book.create({
+        const book = await prisma2.book.create({
           data: {
             ...buildAdminBook(req.body, by),
             chapters: chapters.length ? { create: chapters.map((c, i2) => ({ title: c.title, authors: c.authors || null, pdfUrl: c.pdfUrl || null, pages: c.pages || null, chapterNumber: c.chapterNumber ? parseInt(c.chapterNumber) : i2 + 1, status: req.body.status || "Published" })) } : void 0
@@ -34521,7 +35542,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         openAccess: data.accessType === "OpenAccess",
         startYear: data.year || null
       });
-      const article = await prisma3.article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
+      const article = await prisma2.article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
       res.json(article);
     } catch (e2) {
       console.error("admin library create:", e2);
@@ -34557,7 +35578,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         try {
           if (!b.title || !String(b.title).trim()) throw new Error("Title is required");
           if (kind === "book") {
-            await prisma3.book.create({ data: buildAdminBook(b, by) });
+            await prisma2.book.create({ data: buildAdminBook(b, by) });
           } else {
             const data = buildAdminArticle(b, by);
             const publisher = await getPub(data.publisherName);
@@ -34570,7 +35591,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
               openAccess: data.accessType === "OpenAccess",
               startYear: data.year || null
             });
-            await prisma3.article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
+            await prisma2.article.create({ data: { ...data, publisherId: publisher?.id || null, journalId: journal?.id || null } });
           }
           success++;
         } catch (e2) {
@@ -34589,7 +35610,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const kind = req.params.kind === "book" ? "book" : "article";
       const by = req.user?.email || "Admin";
       if (Object.keys(req.body).length === 1 && req.body.status) {
-        const updated2 = await prisma3[kind].update({ where: { id: req.params.id }, data: { status: req.body.status } });
+        const updated2 = await prisma2[kind].update({ where: { id: req.params.id }, data: { status: req.body.status } });
         return res.json(aliasItem(updated2));
       }
       const data = kind === "book" ? buildAdminBook(req.body, by) : buildAdminArticle(req.body, by);
@@ -34614,11 +35635,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         data.publisherId = publisher?.id || null;
         data.journalId = journal?.id || null;
       }
-      const updated = await prisma3[kind].update({ where: { id: req.params.id }, data });
+      const updated = await prisma2[kind].update({ where: { id: req.params.id }, data });
       if (kind === "book" && Array.isArray(req.body.chapters)) {
-        await prisma3.chapter.deleteMany({ where: { bookId: req.params.id } });
+        await prisma2.chapter.deleteMany({ where: { bookId: req.params.id } });
         const chs = req.body.chapters.filter((c) => c && c.title);
-        if (chs.length) await prisma3.chapter.createMany({ data: chs.map((c, i2) => ({ bookId: req.params.id, title: c.title, authors: c.authors || null, pdfUrl: c.pdfUrl || null, pages: c.pages || null, chapterNumber: c.chapterNumber ? parseInt(c.chapterNumber) : i2 + 1, status: req.body.status || "Published" })) });
+        if (chs.length) await prisma2.chapter.createMany({ data: chs.map((c, i2) => ({ bookId: req.params.id, title: c.title, authors: c.authors || null, pdfUrl: c.pdfUrl || null, pages: c.pages || null, chapterNumber: c.chapterNumber ? parseInt(c.chapterNumber) : i2 + 1, status: req.body.status || "Published" })) });
       }
       res.json(aliasItem(updated));
     } catch (e2) {
@@ -34629,7 +35650,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.delete("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const kind = req.params.kind === "book" ? "book" : "article";
-      await prisma3[kind].delete({ where: { id: req.params.id } });
+      await prisma2[kind].delete({ where: { id: req.params.id } });
       res.json({ message: "Deleted" });
     } catch (e2) {
       res.status(500).json({ error: "Failed to delete item" });
@@ -34640,7 +35661,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { action, kind: k, ids } = req.body;
       const kind = k === "book" ? "book" : "article";
       if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: "No items" });
-      const model = prisma3[kind];
+      const model = prisma2[kind];
       if (action === "Delete") {
         await model.deleteMany({ where: { id: { in: ids } } });
         return res.json({ message: `${ids.length} deleted` });
@@ -34668,8 +35689,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ];
       }
       const [contents, total] = await Promise.all([
-        prisma3.content.findMany({ where, skip, take: parseInt(limit), orderBy: { publishedAt: "desc" } }),
-        prisma3.content.count({ where })
+        prisma2.content.findMany({ where, skip, take: parseInt(limit), orderBy: { publishedAt: "desc" } }),
+        prisma2.content.count({ where })
       ]);
       res.json({ data: contents, total, page: parseInt(page), limit: parseInt(limit) });
     } catch (error) {
@@ -34680,7 +35701,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price, accessType, status, publishingMode } = req.body;
-      const newContent = await prisma3.content.create({
+      const newContent = await prisma2.content.create({
         data: { title, description, authors, domain, contentType, subjectArea: cleanSubjectArea(subjectArea, title) ?? void 0, fileUrl, thumbnailUrl, tags, price: parseFloat(price) || 0, accessType, status, publishingMode: publishingMode || "Direct" }
       });
       res.json(newContent);
@@ -34692,7 +35713,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/admin/content/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const content = await prisma3.content.findUnique({ where: { id } });
+      const content = await prisma2.content.findUnique({ where: { id } });
       if (!content) return res.status(404).json({ error: "Content not found" });
       res.json(content);
     } catch (error) {
@@ -34705,7 +35726,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { id } = req.params;
       const data = req.body;
       if (data.price !== void 0) data.price = parseFloat(data.price) || 0;
-      const updatedContent = await prisma3.content.update({ where: { id }, data });
+      const updatedContent = await prisma2.content.update({ where: { id }, data });
       res.json(updatedContent);
     } catch (error) {
       console.error("Admin Content PUT Error:", error);
@@ -34721,18 +35742,18 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (contentType) where.contentType = contentType;
       if (limit && parseInt(limit) > 0) {
         const take = parseInt(limit);
-        const drafts = await prisma3.content.findMany({
+        const drafts = await prisma2.content.findMany({
           where,
           select: { id: true },
           take
         });
         const ids = drafts.map((d) => d.id);
         if (ids.length > 0) {
-          const result = await prisma3.content.deleteMany({ where: { id: { in: ids } } });
+          const result = await prisma2.content.deleteMany({ where: { id: { in: ids } } });
           count = result.count;
         }
       } else {
-        const result = await prisma3.content.deleteMany({ where });
+        const result = await prisma2.content.deleteMany({ where });
         count = result.count;
       }
       res.json({ success: true, count, message: `Deleted ${count} drafted items.` });
@@ -34750,21 +35771,21 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (contentType) where.contentType = contentType;
       if (limit && parseInt(limit) > 0) {
         const take = parseInt(limit);
-        const drafts = await prisma3.content.findMany({
+        const drafts = await prisma2.content.findMany({
           where,
           select: { id: true },
           take
         });
         const ids = drafts.map((d) => d.id);
         if (ids.length > 0) {
-          const result = await prisma3.content.updateMany({
+          const result = await prisma2.content.updateMany({
             where: { id: { in: ids } },
             data: { status: "Published", validationStatus: null, flaggedReason: null }
           });
           count = result.count;
         }
       } else {
-        const result = await prisma3.content.updateMany({
+        const result = await prisma2.content.updateMany({
           where,
           data: { status: "Published", validationStatus: null, flaggedReason: null }
         });
@@ -34779,7 +35800,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.delete("/api/admin/content/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma3.content.delete({ where: { id } });
+      await prisma2.content.delete({ where: { id } });
       res.json({ success: true });
     } catch (error) {
       console.error("Admin Content DELETE Error:", error);
@@ -34807,13 +35828,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             continue;
           }
           const fingerprint = generateFingerprint2(item.title, item.authors);
-          const existing = await prisma3.content.findUnique({ where: { fingerprint } });
+          const existing = await prisma2.content.findUnique({ where: { fingerprint } });
           if (existing) {
             results.skipped++;
             results.errors.push({ row: i2 + 1, item, error: "Duplicate content (fingerprint match)" });
             continue;
           }
-          await prisma3.content.create({
+          await prisma2.content.create({
             data: {
               title: item.title,
               description: item.description,
@@ -34851,10 +35872,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         return res.status(400).json({ error: "Invalid payload. Expected action and contentIds array." });
       }
       if (action === "Delete") {
-        await prisma3.content.deleteMany({ where: { id: { in: contentIds } } });
+        await prisma2.content.deleteMany({ where: { id: { in: contentIds } } });
       } else if (action === "Publish" || action === "Draft") {
         const statusVal = action === "Publish" ? "Published" : "Draft";
-        await prisma3.content.updateMany({
+        await prisma2.content.updateMany({
           where: { id: { in: contentIds } },
           data: { status: statusVal }
         });
@@ -34869,12 +35890,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/admin/users/:id/revoke-session", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const target = await prisma3.user.findUnique({ where: { id: req.params.id }, select: { role: true } });
+      const target = await prisma2.user.findUnique({ where: { id: req.params.id }, select: { role: true } });
       if (!target) return res.status(404).json({ error: "User not found" });
       if (target.role === "SuperAdmin" && req.user.role !== "SuperAdmin") {
         return res.status(403).json({ error: "Only a Super Admin can end a Super Admin's session" });
       }
-      const r2 = await prisma3.userSession.updateMany({
+      const r2 = await prisma2.userSession.updateMany({
         where: { userId: req.params.id, revokedAt: null, expiresAt: { gt: /* @__PURE__ */ new Date() } },
         data: { revokedAt: /* @__PURE__ */ new Date() }
       });
@@ -34888,7 +35909,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { isBlocked } = req.body;
-      const user = await prisma3.user.update({
+      const user = await prisma2.user.update({
         where: { id },
         data: { isBlocked: !!isBlocked }
       });
@@ -34904,7 +35925,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       let finalContentTypes = [];
       let finalPlanName = "Custom Plan";
       if (bundleId) {
-        const bundle = await prisma3.bundle.findUnique({ where: { id: bundleId } });
+        const bundle = await prisma2.bundle.findUnique({ where: { id: bundleId } });
         if (!bundle) return res.status(404).json({ error: "Bundle not found" });
         finalDomains = Array.isArray(bundle.domains) ? bundle.domains : [];
         finalContentTypes = Array.isArray(bundle.contentTypes) ? bundle.contentTypes : [];
@@ -34927,18 +35948,18 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const targets = Array.isArray(userIds) ? userIds : [userIds].filter(Boolean);
       if (targets.length === 0) return res.status(400).json({ error: "No users selected" });
       for (const userId of targets) {
-        const user = await prisma3.user.findUnique({ where: { id: userId } });
+        const user = await prisma2.user.findUnique({ where: { id: userId } });
         const isInst = user?.role === "Institution";
         let assignedInstitutionId = null;
         if (isInst) {
           if (user.institutionId) {
             assignedInstitutionId = user.institutionId;
           } else {
-            const inst = await prisma3.institution.findFirst({ where: { subscriptionId: userId } });
+            const inst = await prisma2.institution.findFirst({ where: { subscriptionId: userId } });
             if (inst) assignedInstitutionId = inst.id;
           }
         }
-        const sub = await prisma3.subscription.create({
+        const sub = await prisma2.subscription.create({
           data: {
             userId: isInst ? null : userId,
             institutionId: assignedInstitutionId,
@@ -34962,7 +35983,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/bundles", authenticateJWT, async (req, res) => {
     try {
-      const bundles = await prisma3.bundle.findMany({
+      const bundles = await prisma2.bundle.findMany({
         where: { status: "Active" },
         orderBy: { name: "asc" }
       });
@@ -34977,7 +35998,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { status } = req.query;
       const where = {};
       if (status) where.status = status;
-      const requests = await prisma3.subscriptionRequest.findMany({
+      const requests = await prisma2.subscriptionRequest.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { user: true, subscription: true }
@@ -34990,7 +36011,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/admin/subscription-requests", async (req, res) => {
     try {
       const { userName, email, planType, durationMonths, planDescription, paymentRef, notes, userId } = req.body;
-      const request = await prisma3.subscriptionRequest.create({
+      const request = await prisma2.subscriptionRequest.create({
         data: { userName, email, planType, durationMonths: parseInt(durationMonths) || 1, planDescription, paymentRef, notes, userId }
       });
       res.json(request);
@@ -35002,7 +36023,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.body;
-      const requestObj = await prisma3.subscriptionRequest.findUnique({ where: { id } });
+      const requestObj = await prisma2.subscriptionRequest.findUnique({ where: { id } });
       if (!requestObj) return res.status(404).json({ error: "Request not found" });
       const start = startDate ? new Date(startDate) : /* @__PURE__ */ new Date();
       let end;
@@ -35012,7 +36033,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         end = new Date(start);
         end.setMonth(end.getMonth() + (requestObj.durationMonths || 1));
       }
-      const subscription = await prisma3.subscription.create({
+      const subscription = await prisma2.subscription.create({
         data: {
           userId: requestObj.userId,
           planName: requestObj.planDescription || requestObj.planType,
@@ -35024,7 +36045,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           requestId: id
         }
       });
-      await prisma3.subscriptionRequest.update({
+      await prisma2.subscriptionRequest.update({
         where: { id },
         data: { status: "Approved" }
       });
@@ -35038,7 +36059,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { rejectionNote } = req.body;
-      const updated = await prisma3.subscriptionRequest.update({
+      const updated = await prisma2.subscriptionRequest.update({
         where: { id },
         data: { status: "Rejected", rejectionNote }
       });
@@ -35049,7 +36070,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/payments", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const payments = await prisma3.payment.findMany({
+      const payments = await prisma2.payment.findMany({
         orderBy: { createdAt: "desc" },
         include: { user: true }
       });
@@ -35063,11 +36084,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { status } = req.query;
       const where = {};
       if (status) where.status = status;
-      await prisma3.subscription.updateMany({
+      await prisma2.subscription.updateMany({
         where: { endDate: { lt: /* @__PURE__ */ new Date() }, status: "Active" },
         data: { status: "Expired" }
       });
-      const subscriptions = await prisma3.subscription.findMany({
+      const subscriptions = await prisma2.subscription.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { user: true, request: true, institution: { include: { users: true } } }
@@ -35085,7 +36106,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (status) data.status = status;
       if (endDate) data.endDate = new Date(endDate);
       if (status === "Cancelled") data.cancelledAt = /* @__PURE__ */ new Date();
-      const updated = await prisma3.subscription.update({ where: { id }, data });
+      const updated = await prisma2.subscription.update({ where: { id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update subscription" });
@@ -35112,7 +36133,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         requestType
       } = formData;
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      await prisma3.demoRequest.create({
+      await prisma2.demoRequest.create({
         data: {
           fullName,
           institutionalEmail,
@@ -35126,7 +36147,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         }
       });
       try {
-        await prisma3.lead.create({
+        await prisma2.lead.create({
           data: {
             name: fullName,
             email: institutionalEmail,
@@ -35166,10 +36187,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/demo-requests", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const requests = await prisma3.demoRequest.findMany({
+      const requests = await prisma2.demoRequest.findMany({
         orderBy: { createdAt: "desc" }
       });
-      const verifications = await prisma3.emailVerification.findMany();
+      const verifications = await prisma2.emailVerification.findMany();
       const verifiedEmails = new Set(verifications.filter((v) => v.isVerified).map((v) => v.email));
       const enhancedRequests = requests.map((req2) => ({
         ...req2,
@@ -35185,7 +36206,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { status, adminNotes } = req.body;
-      const updated = await prisma3.demoRequest.update({
+      const updated = await prisma2.demoRequest.update({
         where: { id },
         data: { status, adminNotes }
       });
@@ -35199,10 +36220,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { durationDays } = req.body;
-      const days = Number(durationDays) || 14;
-      const demoReq = await prisma3.demoRequest.findUnique({ where: { id } });
+      const days2 = Number(durationDays) || 14;
+      const demoReq = await prisma2.demoRequest.findUnique({ where: { id } });
       if (!demoReq) return res.status(404).json({ error: "Demo request not found" });
-      const existingUser = await prisma3.user.findUnique({ where: { email: demoReq.institutionalEmail } });
+      const existingUser = await prisma2.user.findUnique({ where: { email: demoReq.institutionalEmail } });
       if (existingUser) return res.status(400).json({ error: "User with this email already exists. Cannot auto-provision." });
       const plainPassword = generatePassword();
       const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
@@ -35210,12 +36231,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const targetRole = isStudent ? "Subscriber" : "Institution";
       let newInstId = void 0;
       if (!isStudent) {
-        const newInst = await prisma3.institution.create({
+        const newInst = await prisma2.institution.create({
           data: { name: demoReq.institutionName, status: "Active" }
         });
         newInstId = newInst.id;
       }
-      const newUser = await prisma3.user.create({
+      const newUser = await prisma2.user.create({
         data: {
           email: demoReq.institutionalEmail,
           password: hashedPassword,
@@ -35226,10 +36247,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           organization: demoReq.institutionName,
           institutionId: newInstId,
           isDemoAccount: true,
-          demoExpiresAt: new Date(Date.now() + days * 24 * 60 * 60 * 1e3)
+          demoExpiresAt: new Date(Date.now() + days2 * 24 * 60 * 60 * 1e3)
         }
       });
-      await prisma3.subscription.create({
+      await prisma2.subscription.create({
         data: {
           domainName: demoReq.department,
           planName: `${demoReq.requestType || "Demo"} Trial`,
@@ -35237,7 +36258,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           status: "Active",
           userId: newUser.id,
           institutionId: newInstId,
-          endDate: new Date(Date.now() + days * 24 * 60 * 60 * 1e3)
+          endDate: new Date(Date.now() + days2 * 24 * 60 * 60 * 1e3)
         }
       });
       await sendCredentialsEmail(
@@ -35248,15 +36269,15 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           institution: demoReq.institutionName,
           department: demoReq.department,
           planName: "Demo Access Trial",
-          validity: `${days} Days`,
+          validity: `${days2} Days`,
           customMessage: `We are delighted to inform you that your <strong>Demo Request has been accepted</strong>. Your temporary trial access has been <span style="color:#16A34A;font-weight:700;">successfully provisioned</span> for your requested department.`
         }
       );
-      const updated = await prisma3.demoRequest.update({
+      const updated = await prisma2.demoRequest.update({
         where: { id },
         data: {
           status: "Completed",
-          adminNotes: (demoReq.adminNotes ? demoReq.adminNotes + "\n\n" : "") + `[AUTO] Provisioned ${days}-day demo access on ${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}`
+          adminNotes: (demoReq.adminNotes ? demoReq.adminNotes + "\n\n" : "") + `[AUTO] Provisioned ${days2}-day demo access on ${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}`
         }
       });
       res.json({ success: true, request: updated });
@@ -35268,13 +36289,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/admin/demo-requests/:id/resend-credentials", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const demoReq = await prisma3.demoRequest.findUnique({ where: { id } });
+      const demoReq = await prisma2.demoRequest.findUnique({ where: { id } });
       if (!demoReq) return res.status(404).json({ error: "Demo request not found" });
-      const userObj = await prisma3.user.findUnique({ where: { email: demoReq.institutionalEmail } });
+      const userObj = await prisma2.user.findUnique({ where: { email: demoReq.institutionalEmail } });
       if (!userObj) return res.status(404).json({ error: "No associated user account found for this email." });
       const plainPassword = generatePassword();
       const hashedPassword = await import_bcryptjs.default.hash(plainPassword, 10);
-      await prisma3.user.update({
+      await prisma2.user.update({
         where: { id: userObj.id },
         data: {
           password: hashedPassword,
@@ -35293,7 +36314,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           customMessage: `As requested, we have <strong>reset your Demo Access credentials</strong>. Your access has been refreshed and updated.`
         }
       );
-      const updated = await prisma3.demoRequest.update({
+      const updated = await prisma2.demoRequest.update({
         where: { id },
         data: {
           adminNotes: (demoReq.adminNotes ? demoReq.adminNotes + "\n\n" : "") + `[AUTO] Credentials reset and resent on ${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}`
@@ -35360,7 +36381,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         message
       } = formData;
       try {
-        await prisma3.contactInquiry.create({
+        await prisma2.contactInquiry.create({
           data: {
             fullName,
             email,
@@ -35374,7 +36395,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             status: "All"
           }
         });
-        await prisma3.lead.create({
+        await prisma2.lead.create({
           data: {
             name: fullName,
             email,
@@ -35428,7 +36449,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           { message: { contains: search, mode: "insensitive" } }
         ];
       }
-      const inquiries = await prisma3.contactInquiry.findMany({
+      const inquiries = await prisma2.contactInquiry.findMany({
         where,
         orderBy: { createdAt: "desc" }
       });
@@ -35440,10 +36461,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const inquiry = await prisma3.contactInquiry.findUnique({ where: { id: req.params.id } });
+      const inquiry = await prisma2.contactInquiry.findUnique({ where: { id: req.params.id } });
       if (!inquiry) return res.status(404).json({ error: "Not found" });
       if (inquiry.status === "New") {
-        await prisma3.contactInquiry.update({ where: { id: req.params.id }, data: { status: "Read" } });
+        await prisma2.contactInquiry.update({ where: { id: req.params.id }, data: { status: "Read" } });
         inquiry.status = "Read";
       }
       res.json(inquiry);
@@ -35457,7 +36478,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const data = {};
       if (status) data.status = status;
       if (adminNotes !== void 0) data.adminNotes = adminNotes;
-      const updated = await prisma3.contactInquiry.update({ where: { id: req.params.id }, data });
+      const updated = await prisma2.contactInquiry.update({ where: { id: req.params.id }, data });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update inquiry" });
@@ -35466,7 +36487,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/admin/contact-inquiries/:id/reply", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { replyText, subject } = req.body;
-      const inquiry = await prisma3.contactInquiry.findUnique({ where: { id: req.params.id } });
+      const inquiry = await prisma2.contactInquiry.findUnique({ where: { id: req.params.id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       await sendMail({
@@ -35492,7 +36513,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           </div>
         `
       });
-      const updated = await prisma3.contactInquiry.update({
+      const updated = await prisma2.contactInquiry.update({
         where: { id: req.params.id },
         data: { status: "Replied", replyText, repliedAt: /* @__PURE__ */ new Date() }
       });
@@ -35504,7 +36525,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.delete("/api/admin/contact-inquiries/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      await prisma3.contactInquiry.delete({ where: { id: req.params.id } });
+      await prisma2.contactInquiry.delete({ where: { id: req.params.id } });
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete inquiry" });
@@ -35517,7 +36538,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   async function nextTakedownReference() {
     const year = (/* @__PURE__ */ new Date()).getFullYear();
     const startOfYear = new Date(year, 0, 1);
-    const countThisYear = await prisma3.takedownRequest.count({
+    const countThisYear = await prisma2.takedownRequest.count({
       where: { createdAt: { gte: startOfYear } }
     });
     return `TDN-${year}-${String(countThisYear + 1).padStart(4, "0")}`;
@@ -35527,14 +36548,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const uuid = (url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || [])[0];
       if (!uuid) return out;
-      const content = await prisma3.content.findUnique({ where: { id: uuid }, select: { id: true } });
+      const content = await prisma2.content.findUnique({ where: { id: uuid }, select: { id: true } });
       if (content) return { matchedContentId: content.id, matchedKind: "content" };
-      const article = await prisma3.article.findUnique({
+      const article = await prisma2.article.findUnique({
         where: { id: uuid },
         select: { id: true, ownershipSource: true }
       });
       if (article) return { matchedContentId: article.id, matchedKind: "article", ownershipSource: article.ownershipSource };
-      const book = await prisma3.book.findUnique({
+      const book = await prisma2.book.findUnique({
         where: { id: uuid },
         select: { id: true, ownershipSource: true }
       });
@@ -35578,7 +36599,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const reference = await nextTakedownReference();
       const now = /* @__PURE__ */ new Date();
       const dueAt = new Date(now.getTime() + TAKEDOWN_SLA_DAYS * 24 * 60 * 60 * 1e3);
-      const created = await prisma3.takedownRequest.create({
+      const created = await prisma2.takedownRequest.create({
         data: {
           reference,
           requesterName: String(requesterName).trim(),
@@ -35672,9 +36693,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ];
       }
       const [requests, openCount, overdueCount] = await Promise.all([
-        prisma3.takedownRequest.findMany({ where, orderBy: { createdAt: "desc" } }),
-        prisma3.takedownRequest.count({ where: { status: { in: ["New", "UnderReview"] } } }),
-        prisma3.takedownRequest.count({
+        prisma2.takedownRequest.findMany({ where, orderBy: { createdAt: "desc" } }),
+        prisma2.takedownRequest.count({ where: { status: { in: ["New", "UnderReview"] } } }),
+        prisma2.takedownRequest.count({
           where: { status: { in: ["New", "UnderReview"] }, dueAt: { lt: /* @__PURE__ */ new Date() } }
         })
       ]);
@@ -35686,7 +36707,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/takedown-requests/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const request = await prisma3.takedownRequest.findUnique({ where: { id: req.params.id } });
+      const request = await prisma2.takedownRequest.findUnique({ where: { id: req.params.id } });
       if (!request) return res.status(404).json({ error: "Not found" });
       res.json(request);
     } catch (error) {
@@ -35696,7 +36717,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.put("/api/admin/takedown-requests/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { status, actionTaken, adminNotes } = req.body || {};
-      const existing = await prisma3.takedownRequest.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma2.takedownRequest.findUnique({ where: { id: req.params.id } });
       if (!existing) return res.status(404).json({ error: "Not found" });
       const data = {};
       const now = /* @__PURE__ */ new Date();
@@ -35715,7 +36736,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (adminNotes !== void 0) data.adminNotes = adminNotes;
       if (trail.length !== (existing.auditTrail?.length || 0)) data.auditTrail = trail;
       data.handledBy = who;
-      const updated = await prisma3.takedownRequest.update({ where: { id: req.params.id }, data });
+      const updated = await prisma2.takedownRequest.update({ where: { id: req.params.id }, data });
       res.json(updated);
     } catch (error) {
       console.error("PUT takedown-request error:", error);
@@ -35725,7 +36746,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/quotation/customer/:email", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const email = req.params.email;
-      const q = await prisma3.quotation.findFirst({
+      const q = await prisma2.quotation.findFirst({
         where: { userEmail: { equals: email, mode: "insensitive" } },
         orderBy: { createdAt: "desc" }
       });
@@ -35742,7 +36763,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const id = String(req.query.id || "");
       if (!id) return res.status(400).json({ error: "Quotation number required" });
-      const q = await prisma3.quotation.findUnique({ where: { id } });
+      const q = await prisma2.quotation.findUnique({ where: { id } });
       if (!q) return res.status(404).json({ error: "Quotation not found" });
       const staff = req.user?.role === "SuperAdmin" || req.user?.role === "SubscriptionManager";
       if (!staff && q.createdBy !== req.user?.email) return res.status(403).json({ error: "This quotation was raised by someone else" });
@@ -35819,12 +36840,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     const status = QUOTE_SETTABLE_STATUS.includes(opts.status || doc.status) ? opts.status || doc.status : "Pending";
     const staff = req.user?.role === "SuperAdmin" || req.user?.role === "SubscriptionManager";
     const email = req.user?.email || "System";
-    const customer = await prisma3.user.findFirst({
+    const customer = await prisma2.user.findFirst({
       where: { email: { equals: doc.email, mode: "insensitive" } },
       select: { id: true }
     });
     for (let attempt = 0; attempt < 3; attempt++) {
-      const existing = await prisma3.quotation.findUnique({ where: { id: doc.quoteNo } });
+      const existing = await prisma2.quotation.findUnique({ where: { id: doc.quoteNo } });
       if (opts.editing) {
         if (!existing) return { status: 404, error: "That quotation no longer exists." };
         if (!staff && existing.createdBy !== email) return { status: 403, error: "This quotation was raised by someone else." };
@@ -35842,7 +36863,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         deliveryMethod: opts.delivery || existing?.deliveryMethod || "Download"
       };
       try {
-        const row = opts.editing ? await prisma3.quotation.update({ where: { id: doc.quoteNo }, data: common }) : await prisma3.quotation.create({ data: { ...common, id: doc.quoteNo, issuer: currentIssuer(), createdBy: email } });
+        const row = opts.editing ? await prisma2.quotation.update({ where: { id: doc.quoteNo }, data: common }) : await prisma2.quotation.create({ data: { ...common, id: doc.quoteNo, issuer: currentIssuer(), createdBy: email } });
         return { status: 200, row };
       } catch (e2) {
         if (e2?.code === "P2002" && !opts.editing) {
@@ -36128,7 +37149,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         attachments: inlineAttachments
       });
       const htmlForDb = htmlBody.replace(/src="cid:stm-logo"/g, `src="${MAIL_BASE}/assets/stm-logo.png"`);
-      const updated = await prisma3.quotation.update({
+      const updated = await prisma2.quotation.update({
         where: { id: quotationNumber },
         data: { status: row.status === "Approved" ? "Approved" : "Sent", deliveryMethod: "Email", sentEmailHtml: htmlForDb }
       });
@@ -36167,21 +37188,21 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
         const userId = req.user.uid || req.user.id || req.user.userId;
-        const authUser = await prisma3.user.findUnique({ where: { id: userId } });
+        const authUser = await prisma2.user.findUnique({ where: { id: userId } });
         targetInstitutionId = authUser?.institutionId;
       }
       if (!targetInstitutionId) {
         return res.json({ studentCount: 0, activeGrants: 0, totalInteractions: 0, avgLearningTime: "0h 0m", recentActivity: [] });
       }
-      const studentCount = await prisma3.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
-      const recentActivity = await prisma3.studentActivity.findMany({
+      const studentCount = await prisma2.user.count({ where: { institutionId: targetInstitutionId, role: "Student" } });
+      const recentActivity = await prisma2.studentActivity.findMany({
         where: { user: { institutionId: targetInstitutionId } },
         include: { user: true, content: true },
         take: 5,
         orderBy: { accessedAt: "desc" }
       });
-      const interactions = await prisma3.studentActivity.count({ where: { user: { institutionId: targetInstitutionId } } });
-      const totalTimeObj = await prisma3.studentActivity.aggregate({
+      const interactions = await prisma2.studentActivity.count({ where: { user: { institutionId: targetInstitutionId } } });
+      const totalTimeObj = await prisma2.studentActivity.aggregate({
         _sum: { timeSpent: true },
         where: { user: { institutionId: targetInstitutionId } }
       });
@@ -36202,14 +37223,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
         const userId = req.user.uid || req.user.id || req.user.userId;
-        const authUser = await prisma3.user.findUnique({ where: { id: userId } });
+        const authUser = await prisma2.user.findUnique({ where: { id: userId } });
         targetInstitutionId = authUser?.institutionId;
       }
       if (!targetInstitutionId) {
         return res.json({ totalStudents: 0, starReader: null, readingTimeline: [], topContent: [], totalInteractions: 0 });
       }
-      const students = await prisma3.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
-      const activities = await prisma3.studentActivity.findMany({
+      const students = await prisma2.user.findMany({ where: { institutionId: targetInstitutionId, role: "Student" } });
+      const activities = await prisma2.studentActivity.findMany({
         where: { user: { institutionId: targetInstitutionId } },
         include: { user: true, content: true }
       });
@@ -36276,13 +37297,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const OR_clauses = [{ userId }];
       let instId = req.user.institutionId;
       if (!instId) {
-        const u = await prisma3.user.findUnique({ where: { id: userId }, select: { institutionId: true } });
+        const u = await prisma2.user.findUnique({ where: { id: userId }, select: { institutionId: true } });
         instId = u?.institutionId;
       }
       if (instId) {
         OR_clauses.push({ institutionId: instId });
       }
-      const subscriptions = await prisma3.subscription.findMany({
+      const subscriptions = await prisma2.subscription.findMany({
         where: { OR: OR_clauses },
         orderBy: { startDate: "desc" }
       });
@@ -36297,7 +37318,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         return res.status(403).json({ error: "Unauthorized" });
       }
       const userId = req.user.uid || req.user.id || req.user.userId;
-      const user = await prisma3.user.findUnique({ where: { id: userId } });
+      const user = await prisma2.user.findUnique({ where: { id: userId } });
       if (!user) return res.status(404).json({ error: "User not found" });
       const prof = user.institutionProfile || {};
       res.json({
@@ -36327,12 +37348,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const { contactName, city, contactPhone, address, website, logoUrl, coursesOffered, totalCourses, studentBodySize } = req.body;
       const userId = req.user.uid || req.user.id || req.user.userId;
-      const existing = await prisma3.user.findUnique({ where: { id: userId }, select: { institutionProfile: true } });
+      const existing = await prisma2.user.findUnique({ where: { id: userId }, select: { institutionProfile: true } });
       const current = existing?.institutionProfile && typeof existing.institutionProfile === "object" ? existing.institutionProfile : {};
       const incoming = { contactPhone, address, city, website, logoUrl, coursesOffered, totalCourses, studentBodySize };
       const merged = { ...current };
       for (const [k, v] of Object.entries(incoming)) if (v !== void 0) merged[k] = v;
-      await prisma3.user.update({
+      await prisma2.user.update({
         where: { id: userId },
         data: {
           ...contactName ? { displayName: contactName } : {},
@@ -36347,7 +37368,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   const activeAddRestriction = async (institutionId) => {
     if (!institutionId) return null;
-    const inst = await prisma3.institution.findUnique({
+    const inst = await prisma2.institution.findUnique({
       where: { id: institutionId },
       select: { userAdditionRestricted: true, userAdditionRestrictionUntil: true }
     });
@@ -36369,7 +37390,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   };
   const resolveTargetInstitution = async (req) => {
     if (req.user.role === "Institution") {
-      const me = await prisma3.user.findUnique({
+      const me = await prisma2.user.findUnique({
         where: { id: req.user.uid || req.user.id || req.user.userId },
         select: { organization: true, institutionId: true }
       });
@@ -36382,7 +37403,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     if (!explicit) {
       return { name: "", error: "institutionId is required when adding students as an administrator." };
     }
-    const inst = await prisma3.institution.findUnique({ where: { id: explicit }, select: { name: true } });
+    const inst = await prisma2.institution.findUnique({ where: { id: explicit }, select: { name: true } });
     if (!inst) return { name: "", error: "That institution does not exist." };
     return { id: explicit, name: inst.name || "" };
   };
@@ -36394,16 +37415,16 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   };
   const institutionSeats = async (institutionId) => {
     const now = /* @__PURE__ */ new Date();
-    const librarians = await prisma3.user.findMany({ where: { institutionId, role: "Institution" }, select: { id: true } });
-    const subs = await prisma3.subscription.findMany({
+    const librarians = await prisma2.user.findMany({ where: { institutionId, role: "Institution" }, select: { id: true } });
+    const subs = await prisma2.subscription.findMany({
       where: {
         status: "Active",
         endDate: { gt: now },
         OR: [{ institutionId }, ...librarians.length ? [{ userId: { in: librarians.map((l) => l.id) } }] : []]
       }
     });
-    const used = await prisma3.user.count({ where: { institutionId, isBlocked: false } });
-    const purchases = await prisma3.seatPurchase.findMany({
+    const used = await prisma2.user.count({ where: { institutionId, isBlocked: false } });
+    const purchases = await prisma2.seatPurchase.findMany({
       where: { institutionId, status: "Active", endDate: { gt: now } },
       orderBy: { endDate: "asc" }
     });
@@ -36434,7 +37455,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   const librarianInstitutionId = async (req) => {
     if (req.user.role !== "Institution") return null;
-    const me = await prisma3.user.findUnique({ where: { id: req.user.uid || req.user.id || req.user.userId }, select: { institutionId: true } });
+    const me = await prisma2.user.findUnique({ where: { id: req.user.uid || req.user.id || req.user.userId }, select: { institutionId: true } });
     return me?.institutionId ?? null;
   };
   const departmentNames = new Set(DOMAINS.map((d) => d.name));
@@ -36516,7 +37537,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const snapshot = make(planQuoteNo(prefix));
       const { data, expiresAt } = planSnapshotToRow(snapshot);
       try {
-        await prisma3.quotation.create({
+        await prisma2.quotation.create({
           data: {
             ...data,
             expiresAt,
@@ -36541,7 +37562,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const quote = await priceInstitutionPurchase(institutionId, req.body);
       if (quote.error) return res.status(400).json(quote);
       if (quote.kind !== "departments") return res.status(400).json({ error: "Quotations are written for department purchases." });
-      const me = await prisma3.user.findUnique({
+      const me = await prisma2.user.findUnique({
         where: { id: req.user.uid },
         select: { displayName: true, email: true, organization: true, contact: true, state: true, institutionProfile: true, institution: { select: { name: true } } }
       });
@@ -36579,7 +37600,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       } else {
         order = await getRazorpay().orders.create({ amount: amountPaise, currency: "INR", receipt });
       }
-      await prisma3.payment.create({
+      await prisma2.payment.create({
         data: {
           orderId: order.id,
           amount: quote.price.total,
@@ -36598,7 +37619,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
       if (!razorpay_order_id) return res.status(400).json({ error: "Missing order." });
-      const payment = await prisma3.payment.findUnique({ where: { orderId: razorpay_order_id } });
+      const payment = await prisma2.payment.findUnique({ where: { orderId: razorpay_order_id } });
       const items = payment?.items;
       if (!payment || items?.purpose !== "institution" || payment.userId !== req.user.uid) {
         return res.status(404).json({ error: "No such payment." });
@@ -36614,7 +37635,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const now = /* @__PURE__ */ new Date();
       const end = termEnd(now);
-      await prisma3.$transaction(async (tx) => {
+      await prisma2.$transaction(async (tx) => {
         await tx.payment.update({ where: { id: payment.id }, data: { status: "Paid", paymentId: razorpay_payment_id || `mock_${Date.now()}` } });
         if (items.kind === "departments") {
           const existingMembers = await tx.user.count({ where: { institutionId: items.institutionId, isBlocked: false } });
@@ -36661,13 +37682,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       let targetInstitutionId = req.query.institutionId;
       if (req.user.role === "Institution") {
         const userId = req.user.uid || req.user.id || req.user.userId;
-        const authUser = await prisma3.user.findUnique({ where: { id: userId } });
+        const authUser = await prisma2.user.findUnique({ where: { id: userId } });
         targetInstitutionId = authUser?.institutionId;
       }
       if (!targetInstitutionId) {
         return res.json([]);
       }
-      const students = await prisma3.user.findMany({
+      const students = await prisma2.user.findMany({
         where: { institutionId: targetInstitutionId, role: "Student" },
         include: { subscriptions: true, activities: { include: { content: true } } },
         orderBy: { createdAt: "desc" }
@@ -36686,7 +37707,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (!name || !email || !password) {
         return res.status(400).json({ error: "Name, email and password are required" });
       }
-      const existing = await prisma3.user.findUnique({ where: { email } });
+      const existing = await prisma2.user.findUnique({ where: { email } });
       if (existing) return res.status(409).json({ error: "A user with this email already exists" });
       const hashed = await import_bcryptjs.default.hash(password, 10);
       const target = await resolveTargetInstitution(req);
@@ -36709,7 +37730,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         const seats = await institutionSeats(targetInstitutionId);
         if (seats.available !== null && seats.available < 1) return res.status(403).json(seatsFullResponse(seats));
       }
-      const student = await prisma3.user.create({
+      const student = await prisma2.user.create({
         data: {
           email,
           password: hashed,
@@ -36761,7 +37782,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             errors.push({ email: u.email || "Unknown", error: "Missing required fields" });
             continue;
           }
-          const existing = await prisma3.user.findUnique({ where: { email: u.email } });
+          const existing = await prisma2.user.findUnique({ where: { email: u.email } });
           if (existing) {
             errorCount++;
             errors.push({ email: u.email, error: "Email already exists" });
@@ -36784,7 +37805,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             continue;
           }
           const hashed = await import_bcryptjs.default.hash(u.password, 10);
-          await prisma3.user.create({
+          await prisma2.user.create({
             data: {
               email: u.email,
               password: hashed,
@@ -36821,8 +37842,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { isBlocked } = req.body;
       if (req.user.role === "Institution") {
         const callerId = req.user.uid || req.user.id || req.user.userId;
-        const caller = await prisma3.user.findUnique({ where: { id: callerId } });
-        const target = await prisma3.user.findUnique({ where: { id } });
+        const caller = await prisma2.user.findUnique({ where: { id: callerId } });
+        const target = await prisma2.user.findUnique({ where: { id } });
         if (!target) return res.status(404).json({ error: "Student not found" });
         if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
@@ -36832,7 +37853,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           if (seats.available !== null && seats.available < 1) return res.status(403).json(seatsFullResponse(seats));
         }
       }
-      const student = await prisma3.user.update({
+      const student = await prisma2.user.update({
         where: { id },
         data: { isBlocked }
       });
@@ -36849,14 +37870,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { id } = req.params;
       const { displayName, email, contact, designation, branch, department, password } = req.body;
       if (email) {
-        const taken = await prisma3.user.findFirst({ where: { email, id: { not: id } } });
+        const taken = await prisma2.user.findFirst({ where: { email, id: { not: id } } });
         if (taken) return res.status(409).json({ error: "Email already in use" });
       }
-      const existing = await prisma3.user.findUnique({ where: { id } });
+      const existing = await prisma2.user.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: "User not found" });
       if (req.user.role === "Institution") {
         const callerId = req.user.uid || req.user.id || req.user.userId;
-        const caller = await prisma3.user.findUnique({ where: { id: callerId } });
+        const caller = await prisma2.user.findUnique({ where: { id: callerId } });
         if (!caller?.institutionId || existing.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
         }
@@ -36883,7 +37904,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (password && password.trim() !== "") {
         dataToUpdate.password = await import_bcryptjs.default.hash(password, 10);
       }
-      const updated = await prisma3.user.update({
+      const updated = await prisma2.user.update({
         where: { id },
         data: dataToUpdate
       });
@@ -36901,14 +37922,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { id } = req.params;
       if (req.user.role === "Institution") {
         const callerId = req.user.uid || req.user.id || req.user.userId;
-        const caller = await prisma3.user.findUnique({ where: { id: callerId } });
-        const target = await prisma3.user.findUnique({ where: { id } });
+        const caller = await prisma2.user.findUnique({ where: { id: callerId } });
+        const target = await prisma2.user.findUnique({ where: { id } });
         if (!target) return res.status(404).json({ error: "Student not found" });
         if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
           return res.status(403).json({ error: "Not your student" });
         }
       }
-      await prisma3.user.delete({ where: { id } });
+      await prisma2.user.delete({ where: { id } });
       res.json({ message: "Student removed" });
     } catch (err) {
       res.status(500).json({ error: "Failed to delete student" });
@@ -36968,7 +37989,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   const runValidationEngine = async (type) => {
     if (currentValidationProgress.isRunning) return;
     try {
-      const contents = await prisma3.content.findMany({
+      const contents = await prisma2.content.findMany({
         where: { status: { not: "Draft" } },
         // Skip already-drafted content — no point re-flagging it
         select: { id: true, title: true, description: true, authors: true, fileUrl: true, thumbnailUrl: true, domain: true, contentType: true }
@@ -36981,7 +38002,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         currentTask: "Initializing Engine...",
         startedAt: Date.now()
       };
-      const report = await prisma3.validationReport.create({
+      const report = await prisma2.validationReport.create({
         data: { type, status: "Reviewing", issues: [] }
       });
       const issues = [];
@@ -37031,7 +38052,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         currentValidationProgress.issuesFound = issues.length;
       }
       currentValidationProgress.currentTask = "Saving report...";
-      await prisma3.validationReport.update({
+      await prisma2.validationReport.update({
         where: { id: report.id },
         data: {
           status: "Draft",
@@ -37060,12 +38081,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { contentIds, reportId } = req.body;
       if (!contentIds || !Array.isArray(contentIds)) return res.status(400).json({ error: "Invalid contentIds array" });
-      await prisma3.content.updateMany({
+      await prisma2.content.updateMany({
         where: { id: { in: contentIds } },
         data: { status: "Draft" }
       });
       if (reportId) {
-        const report = await prisma3.validationReport.findUnique({ where: { id: reportId } });
+        const report = await prisma2.validationReport.findUnique({ where: { id: reportId } });
         if (report) {
           const existingDrafted = Array.isArray(report.draftedContentIds) ? report.draftedContentIds : [];
           const merged = Array.from(/* @__PURE__ */ new Set([...existingDrafted, ...contentIds]));
@@ -37078,7 +38099,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             count: contentIds.length,
             note: `${contentIds.length} item(s) moved to Draft status.`
           });
-          await prisma3.validationReport.update({
+          await prisma2.validationReport.update({
             where: { id: reportId },
             data: { draftedContentIds: merged, timeline: tl }
           });
@@ -37092,7 +38113,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/validator/reports", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const reports = await prisma3.validationReport.findMany({ orderBy: { startedAt: "desc" } });
+      const reports = await prisma2.validationReport.findMany({ orderBy: { startedAt: "desc" } });
       res.json(reports);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch validation reports" });
@@ -37111,7 +38132,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const report = await prisma3.validationReport.findUnique({ where: { id } });
+      const report = await prisma2.validationReport.findUnique({ where: { id } });
       if (!report) return res.status(404).json({ error: "Report not found" });
       const tl = Array.isArray(report.timeline) ? report.timeline : [];
       const actor = req.user?.email || req.user?.name || "Admin";
@@ -37121,7 +38142,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         at: (/* @__PURE__ */ new Date()).toISOString(),
         note: `Status changed to "${status}".`
       });
-      const updated = await prisma3.validationReport.update({
+      const updated = await prisma2.validationReport.update({
         where: { id },
         data: { status, timeline: tl }
       });
@@ -37133,7 +38154,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.delete("/api/admin/validator/reports/:id", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma3.validationReport.delete({ where: { id } });
+      await prisma2.validationReport.delete({ where: { id } });
       res.json({ message: "Report deleted successfully." });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete report" });
@@ -37205,14 +38226,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         return { isViewable: true, viewerStatus: "Rendered OK" };
       }
       let totalLength = 0;
-      const chunks = [];
+      const chunks2 = [];
       if (proxyRes.body) {
         const reader = proxyRes.body.getReader();
         try {
           while (totalLength < 8192) {
             const { done, value } = await reader.read();
             if (done || !value) break;
-            chunks.push(value);
+            chunks2.push(value);
             totalLength += value.length;
           }
         } finally {
@@ -37220,12 +38241,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         }
       } else {
         const rawBuf = await proxyRes.arrayBuffer();
-        chunks.push(new Uint8Array(rawBuf));
-        totalLength = chunks[0].length;
+        chunks2.push(new Uint8Array(rawBuf));
+        totalLength = chunks2[0].length;
       }
       const fullBytes = new Uint8Array(totalLength);
       let offset = 0;
-      for (const chunk of chunks) {
+      for (const chunk of chunks2) {
         fullBytes.set(chunk, offset);
         offset += chunk.length;
       }
@@ -37271,7 +38292,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   const runViewerValidationEngine = async (type) => {
     if (currentViewerValidationProgress.isRunning) return;
     try {
-      const contents = await prisma3.content.findMany({
+      const contents = await prisma2.content.findMany({
         where: { fileUrl: { not: null } },
         // scan all content that has a file URL
         select: { id: true, title: true, contentType: true, fileUrl: true, status: true }
@@ -37285,7 +38306,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         currentTask: "Initializing Viewer Engine...",
         startedAt: Date.now()
       };
-      const report = await prisma3.validationReport.create({
+      const report = await prisma2.validationReport.create({
         data: {
           type,
           validationType: "ViewerBased",
@@ -37314,7 +38335,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                 flaggedReason: result.flaggedReason ?? null,
                 lastValidatedAt: /* @__PURE__ */ new Date()
               };
-              await prisma3.content.update({ where: { id: c.id }, data: updateData });
+              await prisma2.content.update({ where: { id: c.id }, data: updateData });
               if (!result.isViewable) {
                 issues.push({
                   contentId: c.id,
@@ -37340,7 +38361,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
               });
               flaggedCount++;
               try {
-                await prisma3.content.update({
+                await prisma2.content.update({
                   where: { id: c.id },
                   data: {
                     validationStatus: "FLAGGED_CONTENT",
@@ -37362,7 +38383,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         await new Promise((r2) => setTimeout(r2, 50));
       }
       currentViewerValidationProgress.currentTask = "Saving report\u2026";
-      await prisma3.validationReport.update({
+      await prisma2.validationReport.update({
         where: { id: report.id },
         data: {
           status: "Draft",
@@ -37412,7 +38433,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ];
       }
       const [items, total] = await Promise.all([
-        prisma3.content.findMany({
+        prisma2.content.findMany({
           where,
           select: {
             id: true,
@@ -37431,12 +38452,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           skip,
           take: parseInt(limit)
         }),
-        prisma3.content.count({ where })
+        prisma2.content.count({ where })
       ]);
       const [notValidated, validViewable, flaggedContent] = await Promise.all([
-        prisma3.content.count({ where: { validationStatus: "Not Validated", status: { not: "Draft" } } }),
-        prisma3.content.count({ where: { validationStatus: "VALID_VIEWABLE" } }),
-        prisma3.content.count({ where: { validationStatus: "FLAGGED_CONTENT" } })
+        prisma2.content.count({ where: { validationStatus: "Not Validated", status: { not: "Draft" } } }),
+        prisma2.content.count({ where: { validationStatus: "VALID_VIEWABLE" } }),
+        prisma2.content.count({ where: { validationStatus: "FLAGGED_CONTENT" } })
       ]);
       res.json({ items, total, page: parseInt(page), limit: parseInt(limit), summary: { notValidated, validViewable, flaggedContent } });
     } catch (error) {
@@ -37446,7 +38467,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.patch("/api/admin/validator/content/:id/mark-valid", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma3.content.update({
+      await prisma2.content.update({
         where: { id },
         data: {
           validationStatus: "VALID_VIEWABLE",
@@ -37464,7 +38485,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.patch("/api/admin/validator/content/:id/move-draft", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      await prisma3.content.update({
+      await prisma2.content.update({
         where: { id },
         data: { status: "Draft" }
       });
@@ -37475,11 +38496,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/admin/validator/auto-cleanup", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const result = await prisma3.content.updateMany({
+      const result = await prisma2.content.updateMany({
         where: { validationStatus: "FLAGGED_CONTENT", status: { not: "Draft" } },
         data: { status: "Draft" }
       });
-      const latestReport = await prisma3.validationReport.findFirst({
+      const latestReport = await prisma2.validationReport.findFirst({
         where: { validationType: "ViewerBased" },
         orderBy: { startedAt: "desc" }
       });
@@ -37493,7 +38514,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           count: result.count,
           note: `Auto-cleanup: ${result.count} flagged item(s) moved to Draft.`
         });
-        await prisma3.validationReport.update({ where: { id: latestReport.id }, data: { timeline: tl } });
+        await prisma2.validationReport.update({ where: { id: latestReport.id }, data: { timeline: tl } });
       }
       res.json({ message: `Auto-cleanup complete. ${result.count} item(s) moved to Draft.`, count: result.count });
     } catch (error) {
@@ -37505,7 +38526,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const { contentIds, status, search } = req.body;
       let contents;
       if (Array.isArray(contentIds) && contentIds.length > 0) {
-        contents = await prisma3.content.findMany({
+        contents = await prisma2.content.findMany({
           where: { id: { in: contentIds } },
           select: { id: true, title: true, contentType: true, fileUrl: true }
         });
@@ -37518,7 +38539,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
             { contentType: { contains: search, mode: "insensitive" } }
           ];
         }
-        contents = await prisma3.content.findMany({
+        contents = await prisma2.content.findMany({
           where,
           select: { id: true, title: true, contentType: true, fileUrl: true }
         });
@@ -37553,7 +38574,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
                 batch.map(async (c) => {
                   try {
                     const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
-                    await prisma3.content.update({
+                    await prisma2.content.update({
                       where: { id: c.id },
                       data: {
                         validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
@@ -37588,7 +38609,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const results = [];
       for (const c of contents) {
         const result = await validateFileViewability(c.id, c.fileUrl || "", c.contentType);
-        await prisma3.content.update({
+        await prisma2.content.update({
           where: { id: c.id },
           data: {
             validationStatus: result.isViewable ? "VALID_VIEWABLE" : "FLAGGED_CONTENT",
@@ -37609,7 +38630,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/agency-inquiry", async (req, res) => {
     try {
       const { agencyName, contactPerson, email, phone, region, experience, message } = req.body;
-      const inquiry = await prisma3.agencyInquiry.create({
+      const inquiry = await prisma2.agencyInquiry.create({
         data: { agencyName, contactPerson, email, phone, region, experience, message }
       });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
@@ -37638,7 +38659,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/agency-inquiry", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
-      const inquiries = await prisma3.agencyInquiry.findMany({
+      const inquiries = await prisma2.agencyInquiry.findMany({
         orderBy: { createdAt: "desc" }
       });
       res.json(inquiries);
@@ -37649,7 +38670,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/agency-inquiry/accept", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id, discount, emailContent, validUntil, subject, html, attachment } = req.body;
-      const inquiry = await prisma3.agencyInquiry.findUnique({ where: { id } });
+      const inquiry = await prisma2.agencyInquiry.findUnique({ where: { id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const mailOptions = {
@@ -37668,7 +38689,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         ];
       }
       await sendMail(mailOptions);
-      const updated = await prisma3.agencyInquiry.update({
+      const updated = await prisma2.agencyInquiry.update({
         where: { id },
         data: {
           status: "Accepted",
@@ -37685,7 +38706,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/agency-inquiry/reject", authenticateJWT, requireSuperAdmin, async (req, res) => {
     try {
       const { id, subject, html } = req.body;
-      const inquiry = await prisma3.agencyInquiry.findUnique({ where: { id } });
+      const inquiry = await prisma2.agencyInquiry.findUnique({ where: { id } });
       if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       await sendMail({
@@ -37694,7 +38715,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         subject: subject || "Update on Your STM Digital Library Partnership Application",
         html: html || "<p>Thank you for your interest, but we cannot proceed with your application at this time.</p>"
       });
-      const updated = await prisma3.agencyInquiry.update({
+      const updated = await prisma2.agencyInquiry.update({
         where: { id },
         data: { status: "Rejected" }
       });
@@ -37706,7 +38727,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/coupons", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const coupons = await prisma3.coupon.findMany({ orderBy: { createdAt: "desc" } });
+      const coupons = await prisma2.coupon.findMany({ orderBy: { createdAt: "desc" } });
       res.json(coupons);
     } catch (e2) {
       console.error(e2);
@@ -37716,9 +38737,9 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/coupons", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { code, discountType, discountValue, maxUses, validFrom, validUntil, minimumOrderAmount } = req.body;
-      const existing = await prisma3.coupon.findUnique({ where: { code } });
+      const existing = await prisma2.coupon.findUnique({ where: { code } });
       if (existing) return res.status(400).json({ error: "Coupon code already exists" });
-      const coupon = await prisma3.coupon.create({
+      const coupon = await prisma2.coupon.create({
         data: {
           code,
           discountType,
@@ -37738,7 +38759,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.put("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
       const { isActive } = req.body;
-      const coupon = await prisma3.coupon.update({
+      const coupon = await prisma2.coupon.update({
         where: { id: req.params.id },
         data: { isActive }
       });
@@ -37750,7 +38771,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.delete("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      await prisma3.coupon.delete({ where: { id: req.params.id } });
+      await prisma2.coupon.delete({ where: { id: req.params.id } });
       res.json({ success: true });
     } catch (e2) {
       console.error(e2);
@@ -37760,7 +38781,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/coupons/validate", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const { code, orderAmount } = req.body;
-      const coupon = await prisma3.coupon.findUnique({ where: { code } });
+      const coupon = await prisma2.coupon.findUnique({ where: { code } });
       if (!coupon) return res.status(404).json({ error: "Invalid coupon code" });
       if (!coupon.isActive) return res.status(400).json({ error: "Coupon is not active" });
       if (coupon.validFrom && new Date(coupon.validFrom) > /* @__PURE__ */ new Date()) return res.status(400).json({ error: "Coupon not yet valid" });
@@ -37781,7 +38802,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/coupons/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const coupon = await prisma3.coupon.findUnique({
+      const coupon = await prisma2.coupon.findUnique({
         where: { id: req.params.id },
         include: {
           usages: {
@@ -37809,7 +38830,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (cfCountry) locationStr = cfCity ? `${cfCity}, ${cfCountry}` : cfCountry;
       const finalIpStr = locationStr ? `${ipAddress} (${locationStr})` : String(ipAddress);
       const userAgent = req.headers["user-agent"];
-      await prisma3.pageVisit.create({
+      await prisma2.pageVisit.create({
         data: {
           path: path3,
           userId,
@@ -37841,8 +38862,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         dateFilter = { createdAt: { gte: thirtyDaysAgo } };
       }
-      const totalVisits = await prisma3.pageVisit.count({ where: dateFilter });
-      const topPagesRaw = await prisma3.pageVisit.groupBy({
+      const totalVisits = await prisma2.pageVisit.count({ where: dateFilter });
+      const topPagesRaw = await prisma2.pageVisit.groupBy({
         by: ["path"],
         where: dateFilter,
         _count: { path: true },
@@ -37853,7 +38874,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         path: p2.path,
         count: p2._count.path
       }));
-      const allVisits = await prisma3.pageVisit.findMany({
+      const allVisits = await prisma2.pageVisit.findMany({
         where: dateFilter,
         select: { createdAt: true, sessionId: true }
       });
@@ -37891,7 +38912,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           lte: endOfDay
         };
       }
-      const visits = await prisma3.pageVisit.findMany({
+      const visits = await prisma2.pageVisit.findMany({
         orderBy: { createdAt: "asc" },
         where: dateFilter
       });
@@ -37917,7 +38938,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         s2.endTime = visit.createdAt;
         s2.paths.push({ path: visit.path, time: visit.createdAt });
       }
-      const users = await prisma3.user.findMany({
+      const users = await prisma2.user.findMany({
         where: { id: { in: Array.from(userIds) } },
         select: { id: true, displayName: true, email: true }
       });
@@ -37944,7 +38965,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/verifications", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const verifications = await prisma3.emailVerification.findMany({
+      const verifications = await prisma2.emailVerification.findMany({
         orderBy: { updatedAt: "desc" }
       });
       res.json(verifications);
@@ -37955,7 +38976,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/feedback", authenticateJWT, async (req, res) => {
     try {
       const { rating, comment, type } = req.body;
-      const feedback = await prisma3.feedback.create({
+      const feedback = await prisma2.feedback.create({
         data: {
           rating: Number(rating) || 5,
           comment,
@@ -37971,7 +38992,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/feedbacks", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const feedbacks = await prisma3.feedback.findMany({
+      const feedbacks = await prisma2.feedback.findMany({
         include: {
           user: {
             select: {
@@ -37997,7 +39018,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/feedbacks/:id", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const feedback = await prisma3.feedback.findUnique({
+      const feedback = await prisma2.feedback.findUnique({
         where: { id: req.params.id },
         include: {
           user: {
@@ -38035,7 +39056,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/user/feedbacks", authenticateJWT, async (req, res) => {
     try {
-      const feedbacks = await prisma3.feedback.findMany({
+      const feedbacks = await prisma2.feedback.findMany({
         where: { userId: req.user.uid },
         orderBy: { createdAt: "desc" }
       });
@@ -38065,17 +39086,17 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const { status: _s, ...whereWithoutStatus } = where;
       const [leads, total, byStatus, sources, states] = await Promise.all([
-        prisma3.lead.findMany({
+        prisma2.lead.findMany({
           where,
           orderBy: { createdAt: "desc" },
           include: { assignedTo: { select: { id: true, displayName: true, email: true } } },
           skip: (page - 1) * take,
           take
         }),
-        prisma3.lead.count({ where }),
-        prisma3.lead.groupBy({ by: ["status"], where: whereWithoutStatus, _count: { _all: true } }),
-        prisma3.lead.groupBy({ by: ["source"] }),
-        prisma3.lead.groupBy({ by: ["state"] })
+        prisma2.lead.count({ where }),
+        prisma2.lead.groupBy({ by: ["status"], where: whereWithoutStatus, _count: { _all: true } }),
+        prisma2.lead.groupBy({ by: ["source"] }),
+        prisma2.lead.groupBy({ by: ["state"] })
       ]);
       res.json({
         data: leads,
@@ -38098,11 +39119,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (!leadIds || !Array.isArray(leadIds) || !assignedToId) {
         return res.status(400).json({ error: "Invalid data provided" });
       }
-      await prisma3.lead.updateMany({
+      await prisma2.lead.updateMany({
         where: { id: { in: leadIds } },
         data: { assignedToId, assignedAt: /* @__PURE__ */ new Date(), assignmentSeen: false }
       });
-      await prisma3.leadInteraction.createMany({
+      await prisma2.leadInteraction.createMany({
         data: leadIds.map((leadId) => ({
           leadId,
           userId: req.user.uid,
@@ -38118,12 +39139,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/admin/leads/migrate", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const demos = await prisma3.demoRequest.findMany();
+      const demos = await prisma2.demoRequest.findMany();
       let demoCount = 0;
       for (const d of demos) {
-        const exists = await prisma3.lead.findFirst({ where: { email: d.institutionalEmail, source: "Demo Request" } });
+        const exists = await prisma2.lead.findFirst({ where: { email: d.institutionalEmail, source: "Demo Request" } });
         if (!exists) {
-          await prisma3.lead.create({
+          await prisma2.lead.create({
             data: {
               name: d.fullName,
               email: d.institutionalEmail,
@@ -38139,15 +39160,15 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           });
           demoCount++;
         } else if (!exists.state && d.state) {
-          await prisma3.lead.update({ where: { id: exists.id }, data: { state: d.state } });
+          await prisma2.lead.update({ where: { id: exists.id }, data: { state: d.state } });
         }
       }
-      const contacts = await prisma3.contactInquiry.findMany();
+      const contacts = await prisma2.contactInquiry.findMany();
       let contactCount = 0;
       for (const c of contacts) {
-        const exists = await prisma3.lead.findFirst({ where: { email: c.email, source: "Contact Inquiry" } });
+        const exists = await prisma2.lead.findFirst({ where: { email: c.email, source: "Contact Inquiry" } });
         if (!exists) {
-          await prisma3.lead.create({
+          await prisma2.lead.create({
             data: {
               name: c.fullName,
               email: c.email,
@@ -38163,13 +39184,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           });
           contactCount++;
         } else if (!exists.state && c.state) {
-          await prisma3.lead.update({ where: { id: exists.id }, data: { state: c.state } });
+          await prisma2.lead.update({ where: { id: exists.id }, data: { state: c.state } });
         }
       }
-      await prisma3.lead.updateMany({ where: { status: "New" }, data: { status: "All" } });
-      await prisma3.lead.updateMany({ where: { status: "Contacted" }, data: { status: "Positive" } });
-      await prisma3.lead.updateMany({ where: { status: "Converted" }, data: { status: "Subscriber" } });
-      await prisma3.lead.updateMany({ where: { status: "Lost" }, data: { status: "Negative" } });
+      await prisma2.lead.updateMany({ where: { status: "New" }, data: { status: "All" } });
+      await prisma2.lead.updateMany({ where: { status: "Contacted" }, data: { status: "Positive" } });
+      await prisma2.lead.updateMany({ where: { status: "Converted" }, data: { status: "Subscriber" } });
+      await prisma2.lead.updateMany({ where: { status: "Lost" }, data: { status: "Negative" } });
       res.json({ message: `Migration successful. Synced ${demoCount} Demos and ${contactCount} Contacts.` });
     } catch (error) {
       console.error("Migration error:", error);
@@ -38178,7 +39199,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/admin/sales-team", authenticateJWT, requireAdminOrManager, async (req, res) => {
     try {
-      const team = await prisma3.user.findMany({
+      const team = await prisma2.user.findMany({
         where: { role: { in: ["SalesExecutive", "SalesManager"] } },
         select: {
           id: true,
@@ -38192,10 +39213,10 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         }
       });
       const enhanced = await Promise.all(team.map(async (member) => {
-        const subscriberCount = await prisma3.lead.count({
+        const subscriberCount = await prisma2.lead.count({
           where: { assignedToId: member.id, status: "Subscriber" }
         });
-        const lastInteraction = await prisma3.leadInteraction.findFirst({
+        const lastInteraction = await prisma2.leadInteraction.findFirst({
           where: { userId: member.id },
           orderBy: { createdAt: "desc" },
           select: { createdAt: true }
@@ -38217,13 +39238,13 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const { id } = req.params;
       if (id === req.user.uid) return res.status(400).json({ error: "You cannot remove yourself" });
-      const member = await prisma3.user.findUnique({ where: { id }, select: { role: true } });
+      const member = await prisma2.user.findUnique({ where: { id }, select: { role: true } });
       if (!member || !["SalesExecutive", "SalesManager"].includes(member.role)) {
         return res.status(404).json({ error: "Sales team member not found" });
       }
-      const [released] = await prisma3.$transaction([
-        prisma3.lead.updateMany({ where: { assignedToId: id }, data: { assignedToId: null, assignedAt: null } }),
-        prisma3.user.update({ where: { id }, data: { role: "Subscriber", isBlocked: true } })
+      const [released] = await prisma2.$transaction([
+        prisma2.lead.updateMany({ where: { assignedToId: id }, data: { assignedToId: null, assignedAt: null } }),
+        prisma2.user.update({ where: { id }, data: { role: "Subscriber", isBlocked: true } })
       ]);
       res.json({ message: "Removed from sales team", unassignedLeads: released.count });
     } catch (error) {
@@ -38234,12 +39255,12 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/sales/pro-applications", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const status = String(req.query.status || "");
-      const rows = await prisma3.subscriptionRequest.findMany({
+      const rows = await prisma2.subscriptionRequest.findMany({
         where: { planType: "Pro", ...status ? { status } : {} },
         orderBy: { createdAt: "desc" },
         take: 200
       });
-      const users = await prisma3.user.findMany({
+      const users = await prisma2.user.findMany({
         where: { id: { in: rows.map((r2) => r2.userId).filter(Boolean) } },
         select: { id: true, displayName: true, email: true, organization: true, contact: true, interestedDomains: true, createdAt: true }
       });
@@ -38255,11 +39276,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/sales/my-leads", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
-      const leads = await prisma3.lead.findMany({
+      const leads = await prisma2.lead.findMany({
         where: { assignedToId: req.user.uid },
         orderBy: { updatedAt: "desc" }
       });
-      prisma3.lead.updateMany({ where: { assignedToId: req.user.uid, assignmentSeen: false }, data: { assignmentSeen: true } }).catch(() => {
+      prisma2.lead.updateMany({ where: { assignedToId: req.user.uid, assignmentSeen: false }, data: { assignmentSeen: true } }).catch(() => {
       });
       res.json(leads);
     } catch (error) {
@@ -38271,8 +39292,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const where = { assignedToId: req.user.uid, assignmentSeen: false };
       const [newLeads, list] = await Promise.all([
-        prisma3.lead.count({ where }),
-        prisma3.lead.findMany({ where, orderBy: { assignedAt: "desc" }, take: 10, select: { id: true, name: true, organization: true, source: true, assignedAt: true } })
+        prisma2.lead.count({ where }),
+        prisma2.lead.findMany({ where, orderBy: { assignedAt: "desc" }, take: 10, select: { id: true, name: true, organization: true, source: true, assignedAt: true } })
       ]);
       res.json({ total: newLeads, newLeads, list });
     } catch (error) {
@@ -38281,11 +39302,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/sales/my-activity", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
-      const myLeads = await prisma3.lead.findMany({
+      const myLeads = await prisma2.lead.findMany({
         where: { assignedToId: req.user.uid },
         select: { id: true }
       });
-      const interactions = await prisma3.leadInteraction.findMany({
+      const interactions = await prisma2.leadInteraction.findMany({
         where: { leadId: { in: myLeads.map((l) => l.id) } },
         orderBy: { createdAt: "desc" },
         include: {
@@ -38302,7 +39323,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.get("/api/sales/leads/:id", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
-      const lead = await prisma3.lead.findUnique({
+      const lead = await prisma2.lead.findUnique({
         where: { id: req.params.id },
         include: {
           interactions: {
@@ -38321,7 +39342,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.put("/api/sales/leads/:id/status", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const { status } = req.body;
-      const lead = await prisma3.lead.update({
+      const lead = await prisma2.lead.update({
         where: { id: req.params.id },
         data: { status }
       });
@@ -38334,7 +39355,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.post("/api/sales/leads/:id/interactions", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const { type, notes } = req.body;
-      const interaction = await prisma3.leadInteraction.create({
+      const interaction = await prisma2.leadInteraction.create({
         data: {
           leadId: req.params.id,
           userId: req.user.uid,
@@ -38345,7 +39366,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           user: { select: { displayName: true, email: true, role: true } }
         }
       });
-      await prisma3.lead.update({
+      await prisma2.lead.update({
         where: { id: req.params.id },
         data: { updatedAt: /* @__PURE__ */ new Date() }
       });
@@ -38358,7 +39379,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/public/content/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const content = await prisma3.content.findFirst({
+      const content = await prisma2.content.findFirst({
         where: { id, status: "Published" },
         select: {
           id: true,
@@ -38393,7 +39414,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         res.type("application/xml");
         return res.send(cachedSitemapIndex);
       }
-      const totalContent = await prisma3.content.count({ where: { status: "Published" } });
+      const totalContent = await prisma2.content.count({ where: { status: "Published" } });
       const limitPerPage = 4e4;
       const totalPages = Math.ceil(totalContent / limitPerPage);
       const baseUrl = "https://journalslibrary.com";
@@ -38457,7 +39478,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/sitemap-blog.xml", async (_req, res) => {
     try {
       const baseUrl = "https://journalslibrary.com";
-      const posts = await prisma3.blogPost.findMany({
+      const posts = await prisma2.blogPost.findMany({
         where: { status: "Published" },
         orderBy: { publishedAt: "desc" },
         take: 5e3,
@@ -38491,7 +39512,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/blog/rss.xml", async (_req, res) => {
     try {
       const baseUrl = "https://journalslibrary.com";
-      const posts = await prisma3.blogPost.findMany({
+      const posts = await prisma2.blogPost.findMany({
         where: { status: "Published" },
         orderBy: { publishedAt: "desc" },
         take: 50,
@@ -38533,7 +39554,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       }
       const limitPerPage = 4e4;
       const skip = (page - 1) * limitPerPage;
-      const allContent = await prisma3.content.findMany({
+      const allContent = await prisma2.content.findMany({
         where: { status: "Published" },
         select: { id: true, updatedAt: true },
         skip,

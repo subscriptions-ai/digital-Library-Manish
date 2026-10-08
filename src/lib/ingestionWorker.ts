@@ -13,26 +13,21 @@
  * There is no queue table. The journals are the queue: each pass takes whichever
  * accepted journal was refreshed longest ago.
  */
-import { PrismaClient } from '@prisma/client';
+import { ingestionDb } from './ingestion/db.js';
+import { fetchSourceJson } from './ingestion/sourceHealth.js';
+import { claimJournal, claimSweepRow, releaseClaim } from './ingestion/claims.js';
+import {
+  INGESTION_POLICY, schedulerV2, noChangeCooldownMinutes, failureBackoffMinutes, minutes, days,
+} from './ingestion/policy.js';
+import { judgeArticle, licenceAllowsCommercialUse } from './ingestion/eligibility.js';
+import { findHeldArticles, findPossibleDuplicates, canonicalFingerprint, normaliseDoi } from './ingestion/dedup.js';
 
-const prisma = new PrismaClient();
-const p = prisma as any;
-/** The worker's connection, shared with the catalogue import rather than opening a second pool. */
-export const ingestionDb = p;
+/** The worker's connection, shared with the catalogue import and the safety services. */
+const p = ingestionDb;
+export { ingestionDb, licenceAllowsCommercialUse };
 
 const CONTACT = process.env.OPENALEX_CONTACT || 'info@celnet.in';
 const UA = { 'User-Agent': `STM Digital Library (mailto:${CONTACT})` };
-
-/** Licences that permit commercial use. Everything else is catalogued, not served. */
-const COMMERCIAL_OK = /^(cc[\s-]?by([\s-]?(sa|nd))?|cc0|public[\s-]?domain)$/i;
-
-export function licenceAllowsCommercialUse(raw?: string | null, ncFlag?: boolean | null): boolean {
-  if (ncFlag === true) return false;
-  const t = String(raw || '').trim();
-  if (!t) return false;                     // undeclared is treated as not permitted
-  if (/nc/i.test(t.replace(/[^a-z]/gi, ''))) return false;
-  return COMMERCIAL_OK.test(t.replace(/\s+/g, ' '));
-}
 
 /**
  * What to ask DOAJ for, per department.
@@ -129,11 +124,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
  * treated as one that did not answer.
  */
 async function getJson(url: string, timeoutMs = 120_000): Promise<any | null> {
-  try {
-    const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(timeoutMs) });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
+  const r = await fetchSourceJson(url, { headers: UA, timeoutMs, attempts: schedulerV2() ? 3 : 1 });
+  return r.ok ? r.json : null;
 }
 
 export async function getState() {
@@ -175,15 +167,18 @@ async function claimSweep(source: string, departments: string[]) {
 
   const reopenAfter = new Date(Date.now() - 30 * 864e5);
   const where = { source, department: { in: departments } };
+  const order = [{ lastSweptAt: { sort: 'asc', nulls: 'first' } }];
+  // Claimed, not merely found: the timer and a manual pass could otherwise walk the same page twice.
+  if (schedulerV2()) {
+    return (
+      (await claimSweepRow({ ...where, exhaustedAt: null }, order))?.row
+      ?? (await claimSweepRow({ ...where, exhaustedAt: { lt: reopenAfter } }, order))?.row
+      ?? null
+    );
+  }
   return (
-    await p.departmentSweep.findFirst({
-      where: { ...where, exhaustedAt: null },
-      orderBy: [{ lastSweptAt: { sort: 'asc', nulls: 'first' } }],
-    })
-    ?? await p.departmentSweep.findFirst({
-      where: { ...where, exhaustedAt: { lt: reopenAfter } },
-      orderBy: [{ lastSweptAt: { sort: 'asc', nulls: 'first' } }],
-    })
+    await p.departmentSweep.findFirst({ where: { ...where, exhaustedAt: null }, orderBy: order })
+    ?? await p.departmentSweep.findFirst({ where: { ...where, exhaustedAt: { lt: reopenAfter } }, orderBy: order })
   );
 }
 
@@ -198,6 +193,8 @@ async function closeSweep(sweep: any, r: { seen: number; accepted: number; rejec
       seen: { increment: r.seen },
       accepted: { increment: r.accepted },
       refused: { increment: r.rejected },
+      claimedAt: null,
+      claimedBy: null,
     },
   });
 }
@@ -208,6 +205,32 @@ const DOAJ_PAGE = 100;
 const ARTICLE_JOURNALS_PER_PASS = 10;
 const ARTICLE_PASS_BUDGET_MS = 40_000;
 
+/**
+ * What a re-sweep may change on a journal already held.
+ *
+ * It used to overwrite title, publisher, licence and status on every pass — so an edit made in the
+ * admin, or a rights decision recorded some other way (a publisher agreement), was undone the next
+ * time the sweep came round. Now: empty fields are filled, nothing that has a value is replaced,
+ * and the licence and status are refreshed only when they were decided by DOAJ in the first place.
+ */
+function refreshPatch(existing: any, incoming: any) {
+  const patch: any = {};
+  for (const k of ['eissn', 'publisherName', 'country', 'homepage', 'domain']) {
+    if (!existing[k] && incoming[k]) patch[k] = incoming[k];
+  }
+  const noSubjects = !Array.isArray(existing.subjects) || existing.subjects.length === 0;
+  if (noSubjects && Array.isArray(incoming.subjects) && incoming.subjects.length) patch.subjects = incoming.subjects;
+  if (existing.rightsBasis === 'DOAJ declaration') {
+    const changed = ['licence', 'licenceIsNC', 'status'].filter(k => incoming[k] !== undefined && incoming[k] !== existing[k]);
+    if (changed.length) {
+      for (const k of changed) patch[k] = incoming[k];
+      patch.rightsVerifiedAt = incoming.rightsVerifiedAt;     // re-verified only when something moved
+      patch.rightsVerifiedBy = incoming.rightsVerifiedBy;
+    }
+  }
+  return patch;
+}
+
 /** One page of DOAJ journals for one department term; each title's licence decided here. */
 async function discoverJournalsPage(sweep: any) {
   const page = sweep.position + 1;          // DOAJ counts pages from one
@@ -217,6 +240,14 @@ async function discoverJournalsPage(sweep: any) {
 
   const records: any[] = d?.results || [];
   const r = { seen: 0, accepted: 0, rejected: 0 };
+
+  // No answer is not "no more results". Closing the sweep here marked it exhausted and reset its
+  // position to the start, so one DOAJ hiccup parked a department for a month. Leave it exactly where
+  // it was and say so.
+  if (d === null && schedulerV2()) {
+    await releaseClaim('departmentSweep', sweep.id);
+    return { ...r, more: false, total: null, failed: true as const };
+  }
   if (!records.length) {
     await closeSweep(sweep, r, sweep.position, false);
     return { ...r, more: false, total: d?.total ?? null };
@@ -258,10 +289,21 @@ async function discoverJournalsPage(sweep: any) {
     if (existing) {
       // Never downgrade a journal we own or have an agreement for.
       if (existing.rightsBasis === 'our own') continue;
-      // Nor move a journal another department already claimed; several terms
-      // return the same title and the last one to run would otherwise win.
-      const { domain, ...rest } = data;
-      await p.journal.update({ where: { id: existing.id }, data: existing.domain ? rest : data });
+      if (schedulerV2()) {
+        // A journal we hold is refreshed, not replaced. A title is not an identity — a journal with no ISSN
+        // matched on title alone could be a different journal that shares the name — so that match is
+        // never written to. An ISSN match may fill what is empty, and refresh the licence only where the
+        // licence came from DOAJ in the first place.
+        if (issn) {
+          const patch = refreshPatch(existing, data);
+          if (Object.keys(patch).length) await p.journal.update({ where: { id: existing.id }, data: patch });
+        }
+      } else {
+        // Nor move a journal another department already claimed; several terms
+        // return the same title and the last one to run would otherwise win.
+        const { domain, ...rest } = data;
+        await p.journal.update({ where: { id: existing.id }, data: existing.domain ? rest : data });
+      }
     } else {
       await p.journal.create({ data });
     }
@@ -464,6 +506,7 @@ async function discoverBooksPage(sweep: any) {
             : handle ? `https://directory.doabooks.org/handle/${handle}` : null),
           rightsHolder: f.one('publisher.name') || null,
           source: 'DOAB',
+          sourceRecordId: handle || rec.uuid || null,
           ownershipSource: 'Ingested',
           lastIngestedAt: new Date(),
           fingerprint,
@@ -502,133 +545,241 @@ async function discoverBooksPage(sweep: any) {
  * handful of journals that carry no department in the rotation.
  */
 export async function nextJournalForArticles(departments?: string[], cap = 0) {
+  return (await pickJournal(departments, cap, false))?.journal ?? null;
+}
+
+/**
+ * Choose the next journal — and, in v2, take it.
+ *
+ * Choosing and taking are one step. Finding a journal and claiming it separately left a gap in which
+ * the timer and a manual pass could pick the same one; claiming is a single compare-and-set, so only
+ * one of them gets it. A journal cooling down after a visit that gave nothing is not a candidate until
+ * its time comes; neither is one whose claim is fresh.
+ */
+async function pickJournal(departments: string[] | undefined, cap: number, v2: boolean): Promise<{ journal: any; recovered: boolean } | null> {
   // A journal that already holds its share is finished, not merely resting.
   const inScope = {
     ...(departments?.length ? { domain: { in: departments } } : {}),
     ...(cap > 0 ? { articleCount: { lt: cap } } : {}),
   };
   const staleAfter = new Date(Date.now() - 7 * 864e5);
-  return (
-    await p.journal.findFirst({
-      where: { status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration', exhaustedAt: null, ...inScope },
-      orderBy: [{ lastIngestedAt: { sort: 'asc', nulls: 'first' } }],
-    })
-    ?? await p.journal.findFirst({
-      where: {
-        status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration',
-        exhaustedAt: { lt: staleAfter }, ...inScope,
-      },
-      orderBy: [{ lastIngestedAt: { sort: 'asc', nulls: 'first' } }],
-    })
-  );
+  const base = { status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration', ...inScope };
+  const due = { OR: [{ nextEligibleAt: null }, { nextEligibleAt: { lte: new Date() } }] };
+  const order = [{ lastIngestedAt: { sort: 'asc', nulls: 'first' } }];
+
+  const tier1 = { ...base, exhaustedAt: null };
+  const tier2 = { ...base, exhaustedAt: { lt: staleAfter } };
+
+  if (v2) {
+    const first = await claimJournal({ AND: [tier1, due] }, order);
+    if (first) return { journal: first.row, recovered: first.recovered };
+    const second = await claimJournal({ AND: [tier2, due] }, order);
+    return second ? { journal: second.row, recovered: second.recovered } : null;
+  }
+  const j = (await p.journal.findFirst({ where: tier1, orderBy: order })) ?? (await p.journal.findFirst({ where: tier2, orderBy: order }));
+  return j ? { journal: j, recovered: false } : null;
+}
+
+/** What to say when there is nothing to fetch, including when the reason is that everything is resting. */
+async function noJournalNote(departments: string[] | undefined, cap: number): Promise<string> {
+  const inScope = {
+    ...(departments?.length ? { domain: { in: departments } } : {}),
+    ...(cap > 0 ? { articleCount: { lt: cap } } : {}),
+  };
+  if (schedulerV2()) {
+    const cooling = await p.journal.aggregate({
+      where: { status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration', ...inScope, nextEligibleAt: { gt: new Date() } },
+      _count: { _all: true }, _min: { nextEligibleAt: true },
+    });
+    if (cooling._count._all > 0) {
+      const at = cooling._min.nextEligibleAt as Date;
+      return `${cooling._count._all.toLocaleString()} journal${cooling._count._all === 1 ? '' : 's'} ${departments?.length ? `in ${departments.join(', ')} ` : ''}checked recently and resting; the next is due ${at.toISOString()}`;
+    }
+  }
+  // Said plainly, because "every journal is up to date" was also the answer
+  // when the chosen departments had no journal to fetch from at all — which
+  // reads as done when it means not started.
+  return departments?.length ? `no journal to fetch from in ${departments.join(', ')} yet` : 'every journal is up to date';
+}
+
+/** An OpenAlex work, reduced to what the rules and the writer need. */
+function openAlexWork(w: any) {
+  const doi = normaliseDoi(w.doi);
+  return {
+    source: 'OpenAlex',
+    sourceRecordId: (w.id as string) || null,
+    doi,
+    title: (w.title || w.display_name || '') as string,
+    authors: (w.authorships || []).map((a: any) => a.author?.display_name).filter(Boolean).join(', '),
+    year: (w.publication_year as number) || null,
+    pdfUrl: (w.best_oa_location?.pdf_url || w.open_access?.oa_url || null) as string | null,
+    licence: (w.best_oa_location?.license || null) as string | null,
+    raw: w,
+  };
 }
 
 /** Fetch one slice of articles for the journal refreshed longest ago. */
 async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
+  const v2 = schedulerV2();
   const cap = Math.max(0, state.articlesPerJournal ?? 0);
-  const journal = await nextJournalForArticles(departments, cap);
-  if (!journal) {
-    // Said plainly, because "every journal is up to date" was also the answer
-    // when the chosen departments had no journal to fetch from at all — which
-    // reads as done when it means not started.
-    return {
-      journal: null, added: 0, skipped: 0,
-      note: departments?.length
-        ? `no journal to fetch from in ${departments.join(', ')} yet`
-        : 'every journal is up to date',
-    };
+  const picked = await pickJournal(departments, cap, v2);
+  if (!picked) {
+    return { journal: null, added: 0, skipped: 0, note: await noJournalNote(departments, cap) } as any;
   }
+  try {
+    return await visitJournal(picked.journal, state, cap, v2, picked.recovered);
+  } finally {
+    // Whatever happened, the claim is given back. (A worker that dies never reaches here; that is what
+    // the stale-claim timeout is for.)
+    if (v2) await releaseClaim('journal', picked.journal.id);
+  }
+}
 
+async function visitJournal(journal: any, state: any, cap: number, v2: boolean, recovered: boolean) {
+  const policy = INGESTION_POLICY;
+  const now = () => new Date();
   const fromYear = new Date().getFullYear() - (state.yearsBack - 1);
+  const have = journal.articleCount || 0;
+  const remaining = cap > 0 ? Math.max(0, cap - have) : Number.POSITIVE_INFINITY;
 
-  // The cursor is the whole point. Without it this asked for the same first page
-  // every pass, so a journal stopped at one batch — fifty of the eight hundred
-  // and sixty-eight it holds — and nine of every ten requests re-fetched work we
-  // already had. '*' asks for the first page and for a cursor to continue from.
+  // How many records to ask for. This was `cap - held`, which for a journal holding 29 of 30 meant
+  // asking for ONE record — and when the newest records were the ones already held, a whole visit was
+  // spent on each. A journal fetched before the cursor existed has no cursor and restarts from its
+  // newest record, so it had to walk past everything it held, one or two records at a time. Ask for a
+  // sensible page; only as many new records as are needed are written.
+  const perPage = cap > 0
+    ? (v2 ? Math.min(policy.articles.pageMax, Math.max(remaining, policy.articles.pageMin)) : Math.min(200, Math.max(1, cap - have)))
+    : Math.min(state.batchSize, 200);
+
+  // The cursor is the whole point. Without it this asked for the same first page every pass.
   const cursor = journal.fetchCursor || '*';
   const url = `https://api.openalex.org/works`
     + `?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)}`
     + `,from_publication_date:${fromYear}-01-01,open_access.is_oa:true`
-    + `&per-page=${cap > 0 ? Math.min(200, Math.max(1, cap - (journal.articleCount || 0))) : Math.min(state.batchSize, 200)}`
+    + `&per-page=${perPage}`
     + `&sort=publication_date:desc`
     + `&cursor=${encodeURIComponent(cursor)}`;
 
-  const d = await getJson(url);
+  const res = await fetchSourceJson(url, { headers: UA, attempts: v2 ? 3 : 1 });
 
-  // A cursor can expire or be rejected. Rather than stalling on that journal for
-  // ever, drop back to the first page next time.
-  if (!d) {
+  // ── The source did not give us a page ────────────────────────────────────
+  if (!res.ok) {
+    if (!v2) {
+      // Previous behaviour: forget the cursor and try again from the top.
+      await p.journal.update({ where: { id: journal.id }, data: { lastIngestedAt: now(), fetchCursor: null } });
+      return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: 'the source did not answer' };
+    }
+    if (res.paused) {
+      // Not this journal's doing: leave it exactly as it was, and say the source is resting.
+      return { journal: null, department: journal.domain, added: 0, skipped: 0, note: `OpenAlex is temporarily paused after repeated failures — ${res.error}` } as any;
+    }
+    // A cursor the source refuses (HTTP 400) is the one failure that justifies starting over. Anything else
+    // — the source down, rate limiting, a timeout — keeps the cursor: dropping it here is how a journal that
+    // was part-way through came to be re-walked from its newest record.
+    const badCursor = res.status === 400 && !!journal.fetchCursor;
+    const failures = badCursor ? journal.failureCount || 0 : (journal.failureCount || 0) + 1;
     await p.journal.update({
       where: { id: journal.id },
-      data: { lastIngestedAt: new Date(), fetchCursor: null },
-    });
-    return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: 'the source did not answer' };
-  }
-
-  const next = d.meta?.next_cursor ?? null;
-  if (!d.results?.length) {
-    // Nothing left in the window. Start again from the top next week so newly
-    // published work is picked up.
-    await p.journal.update({
-      where: { id: journal.id },
-      data: { lastIngestedAt: new Date(), fetchCursor: null, exhaustedAt: new Date() },
-    });
-    return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: 'nothing new in this journal' };
-  }
-
-  // Two unrelated things used to share one counter. Already held is the engine
-  // working; failed to write is not, and the reason was thrown away entirely.
-  let added = 0, skippedHeld = 0, skippedFailed = 0;
-  let firstFailure: string | null = null;
-  for (const w of d.results) {
-    const doi = (w.doi || '').replace(/^https?:\/\/(dx\.)?doi\.org\//i, '') || null;
-    const pdf = w.best_oa_location?.pdf_url || w.open_access?.oa_url || null;
-    const lic = w.best_oa_location?.license || null;
-
-    // The journal already passed the gate; an article may still carry a stricter
-    // licence of its own, so it is checked again rather than assumed.
-    const ok = lic ? licenceAllowsCommercialUse(lic) : !journal.licenceIsNC;
-
-    const fingerprint = doi
-      ? `doi:${doi.toLowerCase()}`
-      : `t:${String(w.title || '').toLowerCase().replace(/\W+/g, ' ').trim().slice(0, 180)}|${w.publication_year}`;
-
-    if (await p.article.findFirst({ where: { fingerprint }, select: { id: true } })) { skippedHeld++; continue; }
-
-    await p.article.create({
       data: {
-        title: w.title || w.display_name || 'Untitled',
-        authors: (w.authorships || []).map((a: any) => a.author?.display_name).filter(Boolean).join(', '),
-        abstract: null,                              // see the abstract decision — not stored for ingested work
-        doi,
-        pdfUrl: pdf,
-        journalId: journal.id,
-        journalName: journal.title,
-        journalIssn: journal.issn,
-        publisherName: journal.publisherName,
-        volume: w.biblio?.volume || null,
-        issue: w.biblio?.issue || null,
-        year: w.publication_year || null,
-        originalDate: w.publication_date ? new Date(w.publication_date) : null,
-        originalUrl: w.primary_location?.landing_page_url || (doi ? `https://doi.org/${doi}` : null),
-        domain: journal.domain,
-        subject: (w.concepts || [])[0]?.display_name || null,
-        licence: lic,
-        licenceIsNC: !ok,
-        rightsHolder: journal.publisherName,
-        accessStatus: ok && pdf ? 'ViewableHere' : 'LinkOnly',
-        parentKind: 'Journal',
-        parentId: journal.id,
-        contentType: 'Periodicals',
-        status: 'Published',
-        source: 'OpenAlex',
-        ownershipSource: 'Ingested',
-        fingerprint,
+        fetchCursor: badCursor ? null : journal.fetchCursor,
+        failureCount: failures,
+        lastIngestionStatus: 'failed',
+        nextEligibleAt: badCursor ? null : new Date(Date.now() + minutes(failureBackoffMinutes(failures))),
+        claimedAt: null, claimedBy: null,
       },
-    }).then(() => { added++; }).catch((e: any) => {
-      skippedFailed++;
-      if (!firstFailure) firstFailure = String(e?.message || e).slice(0, 300);
     });
+    return {
+      journal: journal.title, department: journal.domain, journalId: journal.id, added: 0, skipped: 0,
+      error: badCursor ? 'the source rejected the saved cursor; starting this journal over' : (res.error || 'the source did not answer'),
+      note: badCursor ? undefined : `will retry after ${failureBackoffMinutes(failures)} min`,
+    };
+  }
+
+  const d = res.json;
+  const next: string | null = d.meta?.next_cursor ?? null;
+  const results: any[] = d.results || [];
+
+  // ── Nothing left in the window ───────────────────────────────────────────
+  if (!results.length) {
+    await p.journal.update({
+      where: { id: journal.id },
+      data: {
+        lastIngestedAt: now(), fetchCursor: null, exhaustedAt: now(),
+        // Start again from the top next week so newly published work is picked up — a time, never a verdict.
+        nextEligibleAt: new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
+        noChangeCount: (journal.noChangeCount || 0) + 1, failureCount: 0, lastIngestionStatus: 'exhausted',
+        claimedAt: null, claimedBy: null,
+      },
+    });
+    return { journal: journal.title, department: journal.domain, journalId: journal.id, added: 0, skipped: 0, note: 'nothing new in this journal' };
+  }
+
+  // ── Judge every record with the one shared rule set, then write the ones that pass ─────────────
+  const works = results.map(openAlexWork);
+  const held = await findHeldArticles(works);
+  const possibleDupes = await findPossibleDuplicates(journal.id, works);
+
+  let added = 0, skippedHeld = 0, skippedFailed = 0, skippedRejected = 0, needsReview = 0;
+  let firstFailure: string | null = null;
+  const seenThisPage = new Set<string>();
+
+  for (let i = 0; i < works.length; i++) {
+    // Enough new records for this journal's limit; the rest of the page is not needed.
+    if (v2 && added + needsReview >= remaining) break;
+
+    const w = works[i];
+    const fingerprint = canonicalFingerprint(w);
+    // Two records on one page can share a key (the same work listed twice); the second is held, not a failure.
+    const heldHere = held.get(i) ?? (seenThisPage.has(fingerprint) ? { articleId: '(this page)', via: 'fingerprint' as const, journalId: journal.id } : null);
+    const decision = judgeArticle(w, { journal, held: heldHere, possibleDuplicateOf: possibleDupes.get(i) ?? null });
+
+    if (decision.outcome === 'HELD') { skippedHeld++; continue; }
+    if (decision.outcome === 'REJECTED') { skippedRejected++; continue; }
+
+    const raw = w.raw;
+    try {
+      await p.article.create({
+        data: {
+          title: w.title || raw.display_name || 'Untitled',
+          authors: w.authors,
+          abstract: null,                              // see the abstract decision — not stored for ingested work
+          doi: w.doi,
+          pdfUrl: w.pdfUrl,
+          journalId: journal.id,
+          journalName: journal.title,
+          journalIssn: journal.issn,
+          publisherName: journal.publisherName,
+          volume: raw.biblio?.volume || null,
+          issue: raw.biblio?.issue || null,
+          year: w.year,
+          originalDate: raw.publication_date ? new Date(raw.publication_date) : null,
+          originalUrl: raw.primary_location?.landing_page_url || (w.doi ? `https://doi.org/${w.doi}` : null),
+          domain: journal.domain,
+          subject: (raw.concepts || [])[0]?.display_name || null,
+          licence: w.licence,
+          licenceIsNC: decision.licenceVerdict !== 'allows-commercial',
+          rightsHolder: journal.publisherName,
+          accessStatus: decision.access,
+          parentKind: 'Journal',
+          parentId: journal.id,
+          contentType: 'Periodicals',
+          // Published, or Draft where a person has to look first (it then appears under Drafts in the admin).
+          status: decision.status,
+          source: 'OpenAlex',
+          ownershipSource: 'Ingested',
+          fingerprint,
+          // Where it came from, so the same record arriving again is recognised by the source's own id.
+          sourceRecordId: w.sourceRecordId,
+        },
+      });
+      seenThisPage.add(fingerprint);
+      decision.outcome === 'NEEDS_REVIEW' ? needsReview++ : added++;
+    } catch (e: any) {
+      // The database's own uniqueness check is the last line of defence against a duplicate: losing that race
+      // means the record is held, which is the engine working, not failing.
+      if (e?.code === 'P2002') { skippedHeld++; seenThisPage.add(fingerprint); }
+      else { skippedFailed++; if (!firstFailure) firstFailure = String(e?.message || e).slice(0, 300); }
+    }
   }
 
   // Refresh this journal's coverage so its page never computes counts live.
@@ -637,21 +788,43 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
             min(year) f, max(year) l from "Article" where "journalId" = $1`, journal.id);
   const s = agg[0];
 
-  // Where to resume. No next cursor means the source has no more to give inside
-  // the window, so the journal is marked finished and drops into the weekly
-  // rotation instead of taking a turn every pass.
-  //
-  // A journal that has reached the limit is finished the same way.
+  // Where to resume, and when to come back.
   const full = cap > 0 && s.a >= cap;
-  await p.journal.update({
-    where: { id: journal.id },
-    data: {
-      articleCount: s.a, volumeCount: s.v, issueCount: s.i, firstYear: s.f, lastYear: s.l,
-      lastIngestedAt: new Date(),
-      fetchCursor: full ? null : next,
-      exhaustedAt: next && !full ? null : new Date(),
-    },
-  });
+  const gained = added + needsReview > 0;
+  const noChange = (journal.noChangeCount || 0) + 1;
+  const data: any = {
+    articleCount: s.a, volumeCount: s.v, issueCount: s.i, firstYear: s.f, lastYear: s.l,
+    lastIngestedAt: now(), failureCount: 0, claimedAt: null, claimedBy: null,
+  };
+
+  if (full) {
+    // Finished for now: at its limit. (If the limit is raised later it simply becomes a candidate again.)
+    Object.assign(data, { fetchCursor: null, exhaustedAt: now(), nextEligibleAt: null, noChangeCount: 0, lastIngestionStatus: 'full' });
+  } else if (gained) {
+    // Gave something, so back to the normal rotation. At the end of the journal, the weekly look for new work.
+    Object.assign(data, {
+      fetchCursor: next, exhaustedAt: next ? null : now(),
+      nextEligibleAt: next ? null : new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
+      noChangeCount: 0, lastIngestionStatus: 'added',
+    });
+  } else if (!next) {
+    // Read to the end and nothing new: look again next week, never sooner.
+    Object.assign(data, {
+      fetchCursor: null, exhaustedAt: now(), nextEligibleAt: new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
+      noChangeCount: noChange, lastIngestionStatus: 'exhausted',
+    });
+  } else {
+    // A whole page held and more behind it: it is part-way through its own past. Carry on from the cursor, but
+    // after a pause that lengthens the longer this goes on — the engine moves to another journal meanwhile.
+    Object.assign(data, {
+      fetchCursor: next, exhaustedAt: null, noChangeCount: noChange, lastIngestionStatus: 'nochange',
+      nextEligibleAt: new Date(Date.now() + minutes(noChangeCooldownMinutes(noChange))),
+    });
+  }
+  if (!v2) { delete data.nextEligibleAt; delete data.noChangeCount; delete data.lastIngestionStatus; delete data.failureCount; delete data.claimedAt; delete data.claimedBy;
+    data.fetchCursor = full ? null : next; data.exhaustedAt = next && !full ? null : new Date(); }
+
+  await p.journal.update({ where: { id: journal.id }, data });
 
   return {
     journal: journal.title,
@@ -660,10 +833,16 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
     added,
     skippedHeld,
     skippedFailed,
+    skippedRejected,
+    needsReview,
     skipped: skippedHeld + skippedFailed,   // kept so existing callers still read
     more: Boolean(next) && !full,
     error: firstFailure,
-    note: full ? `holds ${s.a} articles, the limit set` : next ? undefined : 'reached the end of this journal',
+    note: [
+      recovered ? 'took over an abandoned claim' : null,
+      full ? `holds ${s.a} articles, the limit set` : next ? undefined : 'reached the end of this journal',
+      !full && !gained && next ? `nothing new on this page; resting ${noChangeCooldownMinutes(noChange)} min` : null,
+    ].filter(Boolean).join(' · ') || undefined,
   };
 }
 
@@ -686,6 +865,9 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
  * filled: books get one pass in ten, so an operator who wants five thousand of
  * them could only ask by pressing a button five hundred times.
  */
+/** One journal visit, for tests and diagnostics. The engine itself reaches it through runIngestionPass. */
+export { fetchArticlesForOneJournal as ingestNextJournal };
+
 export async function runIngestionPass(
   departments: string[],
   opts: { force?: boolean; only?: 'journals' | 'articles' | 'books'; departments?: string[] } = {},
@@ -752,11 +934,22 @@ export async function runIngestionPass(
         if (!sweep) continue;
 
         if (source === 'DOAJ') {
-          const r = await discoverJournalsPage(sweep);
+          const r: any = await discoverJournalsPage(sweep).catch(async (e: any) => { await releaseClaim('departmentSweep', sweep.id); throw e; });
+          if (r.failed) {
+            // The source did not answer. The sweep was left where it was, so nothing is counted as seen.
+            await p.ingestionState.update({ where: { id: 'singleton' }, data: { phase: 'Journals', currentDepartment: sweep.department, lastRunAt: new Date() } });
+            await record({
+              phase: 'Journals', source: 'DOAJ', department: sweep.department, more: true,
+              note: `"${sweep.term}": DOAJ did not answer — the sweep was left where it was and will be tried again`,
+              error: 'DOAJ did not answer',
+            });
+            return { phase: 'Journals', source, department: sweep.department, term: sweep.term, ...r };
+          }
           await p.ingestionState.update({
             where: { id: 'singleton' },
             data: {
               phase: 'Journals', currentDepartment: sweep.department, lastRunAt: new Date(), lastError: null,
+              lastSuccessAt: new Date(), consecutiveFailures: 0,
               journalsSeen: { increment: r.seen },
               journalsAccepted: { increment: r.accepted },
               journalsRejected: { increment: r.rejected },
@@ -773,11 +966,12 @@ export async function runIngestionPass(
           return { phase: 'Journals', source, department: sweep.department, term: sweep.term, ...r };
         }
 
-        const r = await discoverBooksPage(sweep);
+        const r = await discoverBooksPage(sweep).catch(async (e: any) => { await releaseClaim('departmentSweep', sweep.id); throw e; });
         await p.ingestionState.update({
           where: { id: 'singleton' },
           data: {
             phase: 'Books', currentDepartment: sweep.department, lastRunAt: new Date(), lastError: null,
+            lastSuccessAt: new Date(), consecutiveFailures: 0,
             booksAdded: { increment: r.added },
             booksSkipped: { increment: r.skippedHeld + r.skippedFailed },
           },
@@ -831,12 +1025,13 @@ export async function runIngestionPass(
         if (!more.journal) break;
         await p.ingestionState.update({
           where: { id: 'singleton' },
-          data: { articlesAdded: { increment: more.added }, articlesSkipped: { increment: more.skipped } },
+          data: { articlesAdded: { increment: more.added }, articlesSkipped: { increment: more.skipped }, lastSuccessAt: new Date(), consecutiveFailures: 0 },
         });
         await record({
           phase: 'Articles', source: 'OpenAlex',
           journalId: (more as any).journalId ?? null, journalTitle: more.journal,
           added: more.added, skippedHeld: (more as any).skippedHeld ?? 0, skippedFailed: (more as any).skippedFailed ?? 0,
+          skippedRejected: (more as any).skippedRejected ?? 0, needsReview: (more as any).needsReview ?? 0,
           more: Boolean((more as any).more), note: (more as any).note ?? null, error: (more as any).error ?? null,
         });
       }
@@ -859,6 +1054,7 @@ export async function runIngestionPass(
       data: {
         phase: 'Articles', currentJournal: r.journal, currentDepartment: (r as any).department ?? null,
         lastRunAt: new Date(), lastError: null,
+        lastSuccessAt: new Date(), consecutiveFailures: 0,
         articlesAdded: { increment: r.added },
         articlesSkipped: { increment: r.skipped },
       },
@@ -870,6 +1066,8 @@ export async function runIngestionPass(
       added: r.added,
       skippedHeld: (r as any).skippedHeld ?? 0,
       skippedFailed: (r as any).skippedFailed ?? 0,
+      skippedRejected: (r as any).skippedRejected ?? 0,
+      needsReview: (r as any).needsReview ?? 0,
       more: Boolean((r as any).more),
       note: (r as any).note ?? null,
       error: (r as any).error ?? null,
@@ -878,7 +1076,7 @@ export async function runIngestionPass(
   } catch (e: any) {
     await p.ingestionState.update({
       where: { id: 'singleton' },
-      data: { lastError: String(e?.message || e).slice(0, 1000), lastRunAt: new Date() },
+      data: { lastError: String(e?.message || e).slice(0, 1000), lastRunAt: new Date(), consecutiveFailures: { increment: 1 } },
     }).catch(() => {});
     // A pass that threw is the one most worth having a record of.
     await record({ phase: 'Error', error: String(e?.message || e).slice(0, 1000) });

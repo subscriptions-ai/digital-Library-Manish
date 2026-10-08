@@ -281,6 +281,21 @@ export function PreviewHeader() {
   );
 }
 
+/** Inline WhatsApp SVG — used in the footer social strip. */
+function WhatsAppSvgIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      width={size}
+      height={size}
+      aria-hidden="true"
+    >
+      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.14-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.88 9.88zM20.52 3.45A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.88 11.88 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.17-3.48-8.41z" />
+    </svg>
+  );
+}
+
 export function PreviewFooter() {
   const totals = useDepartmentTotals();
   const year = new Date().getFullYear();
@@ -298,38 +313,63 @@ export function PreviewFooter() {
   const socialClass = `flex h-9 w-9 items-center justify-center rounded-full border border-rule bg-surface text-ink-2 transition-colors hover:border-accent hover:bg-accent hover:text-surface ${focus}`;
   const rowIcon = 'h-4 w-4 shrink-0 text-accent';
 
-  const social = [
-    { name: 'Facebook', href: COMPANY_DETAILS.social.facebook, Icon: Facebook },
-    { name: 'LinkedIn', href: COMPANY_DETAILS.social.linkedin, Icon: Linkedin },
-  ].filter(s => s.href);
-
   return (
     <footer className="border-t border-rule bg-surface">
-      <div className="container-public grid grid-cols-1 items-start gap-8 pb-8 pt-9 sm:grid-cols-2 lg:grid-cols-[minmax(16rem,1.6fr)_auto_auto_minmax(14rem,1.4fr)] lg:gap-x-12">
+      <div className="container-public grid grid-cols-1 items-start gap-8 pb-8 pt-9 sm:grid-cols-2 lg:grid-cols-[minmax(16rem,1.5fr)_minmax(10rem,1fr)_minmax(12rem,1.2fr)_minmax(14rem,1.3fr)] lg:gap-x-12">
+        {/* 1. Brand Column */}
         <div className="min-w-0">
           <Link to="/" className={`inline-flex items-center gap-3 rounded ${focus}`}>
             <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-rule bg-surface p-1.5">
-              <img src="/logo.png" alt="" className="h-full w-full object-contain" />
+              <img src="/logo.png" alt="STM Digital Library" className="h-full w-full object-contain" />
             </span>
             <span className="text-[19px] font-semibold leading-tight tracking-tight text-ink">{COMPANY_DETAILS.name}</span>
           </Link>
-          <p className="mt-2.5 text-[13px] text-muted lg:whitespace-nowrap">Operated by {COMPANY_DETAILS.operatorDisplayName}</p>
+          <p className="mt-2.5 text-[13px] text-muted">Operated by {COMPANY_DETAILS.operatorDisplayName}</p>
           <p className="mt-3 max-w-xs text-[14px] leading-relaxed text-ink-2">
             An academic discovery and access platform for journals, books, research literature and learning resources.
           </p>
-          {social.length > 0 && (
-            <div className="mt-4 flex gap-2.5">
-              {social.map(({ name, href, Icon }) => (
-                <a key={name} href={href} target="_blank" rel="noopener noreferrer"
-                  aria-label={`${COMPANY_DETAILS.name} on ${name} (opens in a new tab)`} title={name} className={socialClass}>
-                  <Icon size={16} aria-hidden="true" />
-                </a>
-              ))}
-            </div>
-          )}
+          <div className="mt-4 flex flex-wrap items-center gap-2.5">
+            {COMPANY_DETAILS.social.facebook && (
+              <a
+                href={COMPANY_DETAILS.social.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${COMPANY_DETAILS.name} on Facebook (opens in a new tab)`}
+                title="Facebook"
+                className={socialClass}
+              >
+                <Facebook size={16} aria-hidden="true" />
+              </a>
+            )}
+            {COMPANY_DETAILS.social.linkedin && (
+              <a
+                href={COMPANY_DETAILS.social.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${COMPANY_DETAILS.name} on LinkedIn (opens in a new tab)`}
+                title="LinkedIn"
+                className={socialClass}
+              >
+                <Linkedin size={16} aria-hidden="true" />
+              </a>
+            )}
+            {COMPANY_DETAILS.social.whatsappChannel && (
+              <a
+                href={COMPANY_DETAILS.social.whatsappChannel}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow STM Digital Library WhatsApp Channel (opens in a new tab)"
+                title="WhatsApp Channel"
+                className={`${socialClass} hover:border-[#25D366] hover:bg-[#25D366] hover:text-white`}
+              >
+                <WhatsAppSvgIcon size={18} />
+              </a>
+            )}
+          </div>
         </div>
 
-        <nav aria-label="Explore">
+        {/* 2. Explore Column */}
+        <nav aria-label="Explore" className="min-w-0">
           <p className={colLabel}>Explore</p>
           <ul className="mt-3 space-y-0.5">
             <li><Link to="/" className={linkClass}>Home</Link></li>
@@ -337,22 +377,25 @@ export function PreviewFooter() {
             <li><Link to="/for-institutions" className={linkClass}>For Institutions</Link></li>
             <li><Link to="/for-students" className={linkClass}>For Students &amp; Researchers</Link></li>
             <li><Link to="/about" className={linkClass}>About Us</Link></li>
+            <li><Link to="/faq" className={linkClass}>FAQs</Link></li>
             <li><Link to="/contact" className={linkClass}>Contact Us</Link></li>
           </ul>
         </nav>
 
-        <nav aria-label="Trust, policies and support">
+        {/* 3. Trust, Policies & Support Column */}
+        <nav aria-label="Trust, Policies & Support" className="min-w-0">
           <p className={colLabel}>Trust, Policies &amp; Support</p>
           <ul className="mt-3 space-y-0.5">
             <li><Link to="/content-sources" className={linkClass}>Content Sources</Link></li>
             <li><Link to="/privacy-policy" className={linkClass}>Privacy Policy</Link></li>
             <li><Link to="/terms-and-conditions" className={linkClass}>Terms &amp; Conditions</Link></li>
             <li><Link to="/content-removal" className={linkClass}>Content Removal</Link></li>
-            <li><Link to="/faq" className={linkClass}>FAQs</Link></li>
             <li><Link to="/legal-disclaimer" className={linkClass}>Legal Disclaimer</Link></li>
+            <li><Link to="/returns-refunds-cancellation" className={linkClass}>Returns, Refunds &amp; Cancellation</Link></li>
           </ul>
         </nav>
 
+        {/* 4. Contact Column */}
         <div className="min-w-0">
           <p className={colLabel}>Contact</p>
           <ul className="mt-3 space-y-3 text-[14px] text-ink-2">
@@ -367,7 +410,13 @@ export function PreviewFooter() {
               <Phone className={`${rowIcon} mt-2`} aria-hidden="true" />
               <span className="flex flex-wrap gap-x-3 gap-y-0">
                 {COMPANY_DETAILS.tel.map((t: string) => (
-                  <a key={t} href={`tel:${t.replace(/[^\d+]/g, '')}`} className={`tnum inline-flex min-h-8 items-center whitespace-nowrap rounded hover:text-accent focus-visible:text-accent ${focus}`}>{t}</a>
+                  <a
+                    key={t}
+                    href={`tel:${t.replace(/[^\d+]/g, '')}`}
+                    className={`tnum inline-flex min-h-8 items-center whitespace-nowrap rounded hover:text-accent focus-visible:text-accent ${focus}`}
+                  >
+                    {t}
+                  </a>
                 ))}
               </span>
             </li>
@@ -375,7 +424,12 @@ export function PreviewFooter() {
               <Mail className={`${rowIcon} mt-2`} aria-hidden="true" />
               {/* TODO: OFFICIAL_CONTACT_EMAIL_CONFIRMATION — see COMPANY_DETAILS.email. Existing contact
                   column only; this address must not be copied into any new trust or company block. */}
-              <a href={`mailto:${COMPANY_DETAILS.email}`} className={`inline-flex min-h-8 items-center break-all rounded hover:text-accent focus-visible:text-accent ${focus}`}>{COMPANY_DETAILS.email}</a>
+              <a
+                href={`mailto:${COMPANY_DETAILS.email}`}
+                className={`inline-flex min-h-8 items-center break-all rounded hover:text-accent focus-visible:text-accent ${focus}`}
+              >
+                {COMPANY_DETAILS.email}
+              </a>
             </li>
           </ul>
         </div>
@@ -384,7 +438,9 @@ export function PreviewFooter() {
       {/* One row. The right padding keeps it clear of the floating WhatsApp button. */}
       <div className="border-t border-rule">
         <div className="container-public flex flex-col gap-1 py-3 pr-20 sm:flex-row sm:items-center sm:justify-between sm:pr-24">
-          <p className="text-[12px] text-ink-2">© {year} {COMPANY_DETAILS.name}. All rights reserved.</p>
+          <p className="text-[12px] text-ink-2">
+            © {year} {COMPANY_DETAILS.name}. Operated by {COMPANY_DETAILS.operatorDisplayName}. All rights reserved.
+          </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-2">
             {catalogueLive && (
               <span className="inline-flex items-center gap-2">
@@ -395,7 +451,12 @@ export function PreviewFooter() {
                 <span className="font-semibold text-success">Catalogue live</span>
               </span>
             )}
-            <Link to="/admin" className={`inline-flex min-h-8 items-center rounded text-muted hover:text-accent focus-visible:text-accent ${focus}`}>Admin Login</Link>
+            <Link
+              to="/admin"
+              className={`inline-flex min-h-8 items-center rounded text-muted hover:text-accent focus-visible:text-accent ${focus}`}
+            >
+              Admin Login
+            </Link>
           </div>
         </div>
       </div>
