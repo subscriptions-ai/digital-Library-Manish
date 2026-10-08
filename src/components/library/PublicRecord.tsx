@@ -30,9 +30,10 @@ function Shell({ children }: { children: React.ReactNode }) {
 function Missing({ what }: { what: string }) {
   return (
     <Shell>
-      <h1 className="font-serif text-[26px] text-ink">That {what} is not here</h1>
+      <Helmet><meta name="robots" content="noindex, follow" /></Helmet>
+      <h1 className="font-serif text-[26px] text-ink">This {what} is unavailable</h1>
       <p className="mt-2 text-[14.5px] text-muted">
-        It may have been withdrawn, or the link may be wrong.
+        Please try again later or browse the library for another record.
       </p>
       <Link to="/digital-library" className={buttonClass('brand', 'md', 'mt-5')}>
         Browse the library

@@ -167,6 +167,7 @@ function FirstLoginGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+import { RouteMetadata } from "./components/RouteMetadata";
 import { HelmetProvider } from "react-helmet-async";
 import { AnalyticsTracker } from "./components/AnalyticsTracker";
 import { CookieConsent } from "./components/CookieConsent";
@@ -181,6 +182,7 @@ export default function App() {
         <ThemeProvider>
           <AuthProvider>
             <Router>
+              <RouteMetadata />
               <AnalyticsTracker />
               <ScrollToTop />
               <FirstLoginGate>
@@ -352,12 +354,15 @@ export default function App() {
                       <Route path="/home-preview" element={<Navigate to="/" replace />} />
                       <Route path="/institutions" element={<InstitutionsPage />} />
                       {/* The home page until 28 September 2026, kept reachable. */}
-                      <Route path="/home-classic" element={<Home />} />
+                      <Route path="/home-classic" element={<Navigate to="/" replace />} />
                       <Route path="/digital-library" element={<DigitalLibrary />} />
+                      <Route path="/subscriptions" element={<KeepQuery to="/for-institutions" />} />
+                      <Route path="/for-researchers" element={<KeepQuery to="/for-students" />} />
+                      <Route path="/departments" element={<Navigate to="/digital-library#departments" replace />} />
                       <Route path="/for-institutions" element={<ForInstitutions />} />
                       <Route path="/for-students" element={<ForStudents />} />
 
-                      <Route path="/journals" element={<DigitalLibrary />} />
+                      <Route path="/journals" element={<KeepQuery to="/digital-library" />} />
                       <Route path="/journal/:journalId" element={<JournalDetail />} />
                       <Route path="/library/journal/:journalId" element={<JournalPage articleBase="/library/article" departmentBase="/library/department" publisherBase="/library/publisher" subjectBase="/library/subject" />} />
                       <Route path="/library/author/:authorId" element={<AuthorPage journalBase="/library/journal" articleBase="/library/article" departmentBase="/library/department" />} />

@@ -96,7 +96,7 @@ export function FeedbackWidget() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Send feedback"
-        className="fixed bottom-[var(--fab-bottom)] right-[var(--fab-right)] mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))] z-40 flex h-12 w-12 items-center justify-center gap-2 rounded-full bg-accent text-accent-on shadow-[var(--shadow-pop)] transition-[margin,background-color] duration-200 hover:bg-accent-hover sm:w-auto sm:px-5"
+        className="fixed bottom-[var(--fab-bottom)] right-[var(--fab-right)] mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))] z-40 flex h-12 w-12 items-center justify-center gap-2 rounded-full bg-primary-fill text-primary-ink shadow-[var(--shadow-pop)] transition-[margin,background-color] duration-200 hover:bg-primary-fill-hover sm:w-auto sm:px-5"
       >
         <MessageSquareHeart size={20} aria-hidden="true" />
         <span className="hidden whitespace-nowrap text-sm font-semibold sm:inline">Feedback</span>

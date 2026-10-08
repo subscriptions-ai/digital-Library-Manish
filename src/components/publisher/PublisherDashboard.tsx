@@ -427,7 +427,7 @@ function AgreementModal({ agreement, me, onClose: onCloseProp, onDone }: any) {
     >
       {/* Document */}
       {agreement.documentUrl ? (
-        <iframe src={agreement.documentUrl} title="Agreement" className="w-full h-[46vh] border border-rule rounded-lg bg-white" />
+        <iframe src={agreement.documentUrl} title="Agreement" className="w-full keep-light h-[46vh] border border-rule rounded-lg bg-white" />
       ) : (
         <div className="whitespace-pre-wrap break-words text-sm text-ink-2 leading-relaxed border border-rule rounded-lg p-4 bg-surface-2 min-h-[30vh]">{agreement.body || 'No document body provided.'}</div>
       )}
@@ -451,7 +451,7 @@ function AgreementModal({ agreement, me, onClose: onCloseProp, onDone }: any) {
                 onPointerDown={e => { drawing.current = true; canvasRef.current!.getContext('2d')!.beginPath(); }}
                 onPointerMove={draw} onPointerUp={() => { drawing.current = false; }} onPointerLeave={() => { drawing.current = false; }}
                 aria-label="Signature pad — draw your signature"
-                className="w-full border border-rule-2 rounded-lg bg-white touch-none cursor-crosshair" />
+                className="w-full keep-light border border-rule-2 rounded-lg bg-white touch-none cursor-crosshair" />
               <Button variant="ghost" size="sm" onClick={clearCanvas} className="mt-1 -ml-3">Clear</Button>
             </div>
           )}

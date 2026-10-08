@@ -96,11 +96,11 @@ export function useSubscriptionCard(): { summary: SubscriptionSummary | null; to
   return { summary: loaded.summary, to, failed: loaded.failed };
 }
 
-const box = 'mx-3 mb-2 min-w-0 rounded-xl bg-accent px-4 py-3 text-accent-on';
+const box = 'brand-card mx-3 mb-2 min-w-0 rounded-xl px-4 py-3';
 const eyebrow = 'text-[11px] font-semibold uppercase tracking-wider opacity-80';
 const headline = 'mt-1 break-words text-[13px] font-semibold leading-snug';
 const detail = 'mt-0.5 break-words text-xs leading-snug opacity-85';
-const button = 'mt-2.5 h-8 w-full truncate rounded-lg bg-white/15 px-2 text-[12px] font-semibold transition-colors hover:bg-white/25';
+const button = 'brand-card-btn mt-2.5 h-8 w-full truncate rounded-lg px-2 text-[12px] font-semibold';
 
 const departments = (n: number) => `${n} department${n === 1 ? '' : 's'}`;
 

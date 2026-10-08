@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell, FileText, Sparkles, Menu, X, ArrowRight } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -173,6 +174,7 @@ export function SalesLayout({ children }: { children: React.ReactNode }) {
                 <p className="truncate text-sm font-semibold text-ink">{profile.displayName || profile.email}</p>
                 <p className="truncate text-xs text-muted">{ROLE_LABEL[profile.role] || profile.role}</p>
               </div>
+              <ThemeToggle className="btn btn-ghost btn-icon" size={18} />
               <button onClick={handleSignOut} className="btn btn-ghost btn-icon" title="Sign Out" aria-label="Sign Out">
                 <LogOut size={18} aria-hidden="true" />
               </button>

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./dark-legacy.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -70,6 +71,14 @@
 
   /* Page widths. Public pages share one, signed-in screens another, and long
      reading text a third so a line never runs the full width of a monitor. */
+  /* Chrome heights. The signed-in header, the viewer's own bar and its page strip each have one
+     height, here. Anything that has to sit below them reads these instead of a literal.
+     Stacking, low to high: viewer content < page strip (z-10) < viewer bar (z-20) < app header (z-30)
+     < sidebar and dropdowns (z-40/50) < dialogs (z-100). */
+  --app-header-h: 64px;
+  --viewer-bar-h: 56px;
+  --viewer-pager-h: 44px;
+
   --w-public: 1200px;
   --w-app: 1280px;
   --w-prose: 72ch;
@@ -134,6 +143,88 @@
   --on-dark-6: #93c8ef;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Semantic roles.
+
+   The names a designer reaches for — page, surface 1-3, three border weights,
+   four text weights, brand, status, input — mapped onto the tokens above so
+   there is one vocabulary. Where a role already existed it is an alias; where
+   it did not (a third surface, a hover surface, a subtle border, a disabled
+   text, an info status, input and skeleton colours) it is new, and its light
+   value is chosen to be exactly what the component used before, so the light
+   theme does not move.
+   ──────────────────────────────────────────────────────────────────────────── */
+:root {
+  --page-bg: var(--ground);
+  --surface-1: var(--surface);
+  --surface-3: #e0e0dc;      /* = --rule: what a secondary button turned into on hover */
+  --surface-hover: #f6f6f4;  /* = what a table row used to mix to */
+
+  --border-subtle: #ebebe7;
+  --border-default: var(--rule);
+  --border-strong: var(--rule-2);
+
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-muted: var(--muted);
+  --text-disabled: #b4b8bd;
+
+  --brand-primary: var(--accent);
+  --brand-accent: var(--accent-hover);
+  --brand-soft: var(--accent-soft);
+  /* A solid brand fill that carries WHITE text. In the light theme that is the accent
+     itself; in the dark theme the accent is light, so the fill steps darker. */
+  --accent-solid: var(--accent);
+  --accent-solid-hover: var(--accent-hover);
+
+  --success-bg: var(--success-soft);
+  --warning: var(--caution);
+  --warning-bg: var(--caution-soft);
+  --danger: var(--alarm);
+  --danger-bg: var(--alarm-soft);
+  --alarm-solid: var(--alarm);
+  --info: #1d5fa8;
+  --info-bg: #e3eefa;
+
+  --input-bg: var(--surface);
+  --input-border: var(--rule-2);
+  --input-border-hover: var(--muted);
+  --focus-ring-color: var(--accent);
+
+  /* the ground of the public pages, the quieter alternate band, and the signed-in sidebar */
+  --public-bg: var(--surface);
+  --public-alt: #f6f8fb;
+  --sidebar-bg: var(--surface);
+
+  /* The main action. Light: the accent with its own ink. Dark: the accent family's deeper
+     solid with white, which keeps the button on-brand without a glowing fill. */
+  --btn-primary-bg: var(--accent);
+  --btn-primary-hover: var(--accent-hover);
+  --btn-primary-ink: var(--accent-on);
+
+  /* A brand-coloured status card (the sidebar's subscription card). Light is the solid
+     accent block it always was; dark is an elevated surface with an accent edge. */
+  --brand-card-bg: var(--accent);
+  --brand-card-ink: var(--accent-on);
+  --brand-card-edge: transparent;
+  --brand-card-btn: rgba(255, 255, 255, 0.15);
+  --brand-card-btn-hover: rgba(255, 255, 255, 0.25);
+  --brand-card-btn-ink: var(--accent-on);
+
+  --overlay: rgba(15, 18, 22, 0.5);
+  --track: var(--surface-2);   /* the unfilled part of a progress bar or donut */
+  --tooltip-bg: var(--surface);
+  /* The reader's three areas: the page being read, the toolbar over it, the record panel beside it.
+     In light they keep the colours the viewer already uses; the tokens matter in dark. */
+  --viewer-doc: #f1f5f9;
+  --viewer-bar: var(--surface);
+  --viewer-side: var(--surface);
+  --skeleton-base: var(--surface-2);
+  --skeleton-shine: color-mix(in srgb, var(--surface) 60%, transparent);
+  --scrollbar-thumb: var(--rule-2);
+  --scrollbar-thumb-hover: var(--muted);
+}
+
 .dark {
   color-scheme: dark;
 
@@ -142,29 +233,83 @@
      physically unpleasant. Text softens to ~12:1, the ground drops and the
      surface lifts so a panel actually sits above the page instead of dissolving
      into it, and the small uppercase labels move above the readable floor. */
-  --ground: #0f1216;
-  --surface: #1c2129;
-  --surface-2: #262c35;
+  /* Depth, from the page up: page → card → elevated (filters, dialogs) → selected.
+     A navy family with the same hue the hero already uses, each step 1.1-1.2x the
+     one below in luminance, so a card reads as a card without a heavy shadow. */
+  --ground: #0a1020;          /* level 0 — the page */
+  --surface: #131d33;         /* level 1 — cards and sections */
+  --surface-2: #19263f;       /* level 2 — elevated: filters, table heads, dialogs */
+  --surface-3: #223253;       /* level 3 — selected / active */
+  --surface-hover: #1c2b47;
 
-  --ink: #d9dce1;
-  --ink-2: #aeb4bd;
-  --muted: #8f969e;
-  --faint: #838b95;
+  /* Text. Not pure white (that is the eye strain), and every step is measured:
+     on the card surface primary 14.3:1, secondary 9.6:1, muted 6.8:1, faint 6.0:1;
+     on the selected surface the lowest, faint, is still 4.5:1. */
+  --ink: #e8edf5;
+  --ink-2: #bac5d8;
+  --muted: #98a6be;
+  --faint: #8d9bb5;
+  --text-disabled: #6b7a95;
 
-  --rule: #2f353e;
-  --rule-2: #3f4650;
+  /* Three border weights. Subtle for rules inside a card, default for a card's own
+     edge, strong for what has to be seen (a control, a divider that matters). */
+  --border-subtle: #1d2a45;
+  --rule: #2b3b5c;
+  --rule-2: #42557d;
 
-  --accent: #5cb3aa;
-  --accent-hover: #7ecac2;
-  --accent-soft: #16302e;
-  --accent-on: #0b1416;
+  /* Brand teal for interaction. A cyan-leaning teal on purpose: it stays apart from the
+     success green and from WhatsApp's, which are three different meanings. */
+  --accent: #4fb3bf;
+  --accent-hover: #75c9d3;
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  --accent-on: #04181c;
+  --accent-solid: #186b78;       /* white on it: 6.2:1, and 4.6:1 even at 80% opacity */
+  --accent-solid-hover: #1e8294;
 
-  --caution: #d3944d;
-  --caution-soft: #33250f;
-  --alarm: #d9736b;
-  --alarm-soft: #2c1513;
-  --success: #6cc496;
-  --success-soft: #14291e;
+  /* Status: a tinted ground and a readable ink, never the light theme's pastel. */
+  --caution: #e0a458;
+  --caution-soft: color-mix(in srgb, var(--caution) 14%, var(--surface));
+  --alarm: #ef8a83;
+  --alarm-soft: color-mix(in srgb, var(--alarm) 14%, var(--surface));
+  --alarm-solid: #b8403a;
+  --success: #5fc58f;
+  --success-soft: color-mix(in srgb, var(--success) 14%, var(--surface));
+  --info: #82b4f2;
+  --info-bg: color-mix(in srgb, var(--info) 15%, var(--surface));
+
+  /* Controls: an inset field, darker than the card it sits on, with a border that
+     clears the 3:1 non-text contrast line (3.3:1 on the card). */
+  --input-bg: #0e1628;
+  --input-border: #5a6f98;
+  --input-border-hover: #7a8db4;
+
+  --public-bg: var(--ground);
+  --public-alt: #0e1628;      /* the quieter alternate band on public pages */
+  --sidebar-bg: #0d1527;
+
+  --btn-primary-bg: var(--accent-solid);
+  --btn-primary-hover: var(--accent-solid-hover);
+  --btn-primary-ink: #ffffff;
+
+  --brand-card-bg: var(--surface-2);
+  --brand-card-ink: var(--ink);
+  --brand-card-edge: color-mix(in srgb, var(--accent) 50%, transparent);
+  --brand-card-btn: var(--accent-solid);
+  --brand-card-btn-hover: var(--accent-solid-hover);
+  --brand-card-btn-ink: #ffffff;
+
+  --overlay: rgba(4, 8, 18, 0.68);
+  --track: var(--surface-3);
+  --tooltip-bg: var(--surface-3);   /* a floating panel reads one step above the card it floats over */
+  /* Three steps apart, so toolbar, document and record panel never read as one navy:
+     the document is the deepest, the record panel one up, the toolbar the lightest. */
+  --viewer-doc: #060a14;
+  --viewer-side: #0d1527;
+  --viewer-bar: #152038;
+  --skeleton-base: var(--surface-2);
+  --skeleton-shine: rgba(232, 237, 245, 0.07);
+  --scrollbar-thumb: #33466b;
+  --scrollbar-thumb-hover: #5a6f98;
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.45);
@@ -197,10 +342,24 @@
   --t5-bg: #143026; --t5-ink: #86d7ac;
   --t6-bg: #17293a; --t6-ink: #93c8ef;
 
-  --hero-1: #0b111b;
-  --hero-2: #0c2228;
-  --hero-3: #141329;
+  --hero-1: #0c1a3a;
+  --hero-2: #0b3340;
+  --hero-3: #1a1b45;
   --hero-warm: #f2b544;
+}
+
+/* A region that is meant to stay light inside a dark page — a white search pill on the hero, a logo
+   plate, a paper-white document. The tokens inside it resolve to their LIGHT values, so anything
+   written with them (text-ink, border-rule, the accent focus ring) is correct there without a
+   per-element exception. Keep this list to the tokens that carry colour. */
+.dark .keep-light {
+  color-scheme: light;
+  --surface: #ffffff; --surface-2: #f0f0ed; --ground: #f6f6f4;
+  --ink: #16181d; --ink-2: #3d434b; --muted: #6a6f76; --faint: #9aa0a6;
+  --rule: #e0e0dc; --rule-2: #cfcfc9;
+  --accent: #0d5c63; --accent-hover: #0a4a50; --accent-soft: #e2eeee; --accent-on: #ffffff;
+  --input-bg: #ffffff; --input-border: #cfcfc9;
+  --alarm: #a3302a; --alarm-soft: #fbeceb; --success: #1d6b43; --success-soft: #e3f2e9; --caution: #b45309; --caution-soft: #fbf0e0;
 }
 
 /* `inline` makes Tailwind emit var(--ground) rather than the resolved colour,
@@ -217,6 +376,26 @@
 
   --color-rule: var(--rule);
   --color-rule-2: var(--rule-2);
+  --color-rule-subtle: var(--border-subtle);
+
+  --color-surface-3: var(--surface-3);
+  --color-surface-hover: var(--surface-hover);
+  --color-track: var(--track);
+  --color-tooltip: var(--tooltip-bg);
+  --color-viewer-doc: var(--viewer-doc);
+  --color-viewer-bar: var(--viewer-bar);
+  --color-viewer-side: var(--viewer-side);
+  --color-public: var(--public-bg);
+  --color-public-alt: var(--public-alt);
+  --color-sidebar: var(--sidebar-bg);
+  --color-disabled: var(--text-disabled);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-bg);
+  --color-accent-solid: var(--accent-solid);
+  --color-primary-fill: var(--btn-primary-bg);
+  --color-primary-fill-hover: var(--btn-primary-hover);
+  --color-primary-ink: var(--btn-primary-ink);
+  --color-alarm-solid: var(--alarm-solid);
 
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
@@ -294,12 +473,19 @@
   --np-body: #475569;
   --np-line: #e6e9ef;
   --np-soft: #f6f8fb;
+  --np-track: var(--np-soft);   /* the empty part of a bar */
+  --np-action: var(--np-navy);  /* a filled action: the navy button, the icon tile */
+  --np-brand-ink: var(--np-navy); /* brand-coloured text on a card */
 }
 .dark .np {
-  --np-ink: #e8ecf3;
-  --np-body: #aeb6c2;
-  --np-line: #2b3340;
-  --np-soft: #161b23;
+  /* One dark theme: the public pages read the shared tokens instead of keeping their own greys. */
+  --np-ink: var(--ink);
+  --np-body: var(--ink-2);
+  --np-line: var(--rule);
+  --np-soft: var(--public-alt);
+  --np-track: var(--surface-3); /* visible on a card, so a 0% row still shows its bar */
+  --np-action: var(--accent-solid); /* navy would vanish on a navy surface */
+  --np-brand-ink: var(--accent);
 }
 .np-display { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.02em; }
 .np-strong  { font-family: var(--font-sans); font-weight: 700; }
@@ -434,7 +620,7 @@ body {
    visible against the surface they sit on. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--rule-2) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 *::-webkit-scrollbar {
   width: 9px;
@@ -444,13 +630,13 @@ body {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--rule-2);
+  background: var(--scrollbar-thumb);
   border: 2px solid transparent;
   background-clip: content-box;
   border-radius: 9999px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
+  background: var(--scrollbar-thumb-hover);
   background-clip: content-box;
 }
 *::-webkit-scrollbar-corner {
@@ -551,10 +737,10 @@ body {
   .btn-sm.btn-icon { width: 32px; }
   .btn-block { width: 100%; }
 
-  .btn-primary   { background: var(--accent); color: var(--accent-on); }
-  .btn-primary:not(:disabled):hover { background: var(--accent-hover); }
+  .btn-primary   { background: var(--btn-primary-bg); color: var(--btn-primary-ink); }
+  .btn-primary:not(:disabled):hover { background: var(--btn-primary-hover); }
   .btn-secondary { background: var(--surface-2); color: var(--ink); border-color: var(--rule); }
-  .btn-secondary:not(:disabled):hover { background: var(--rule); }
+  .btn-secondary:not(:disabled):hover { background: var(--surface-3); }
   .btn-outline   { background: var(--surface); color: var(--ink-2); border-color: var(--rule-2); }
   .btn-outline:not(:disabled):hover { background: var(--surface-2); color: var(--ink); }
   .btn-ghost     { background: transparent; color: var(--ink-2); }
@@ -562,13 +748,15 @@ body {
   /* Public pages: navy for the main action, amber for the one invitation to sign up. */
   .btn-brand     { background: var(--navy); color: #fff; }
   .btn-brand:not(:disabled):hover { background: var(--navy-2); }
+  .dark .btn-brand { background: var(--accent-solid); }
+  .dark .btn-brand:not(:disabled):hover { background: var(--accent-solid-hover); }
   .btn-highlight { background: var(--amber); color: var(--amber-ink); }
   .btn-highlight:not(:disabled):hover { background: color-mix(in srgb, var(--amber) 88%, #000); }
   /* On a navy field, where the navy brand button would disappear. */
   .btn-on-dark   { background: rgba(238, 242, 246, 0.07); color: #eef2f6; border-color: rgba(238, 242, 246, 0.22); }
   .btn-on-dark:not(:disabled):hover { background: rgba(238, 242, 246, 0.14); }
-  .btn-danger    { background: var(--alarm); color: #fff; }
-  .btn-danger:not(:disabled):hover { background: color-mix(in srgb, var(--alarm) 86%, #000); }
+  .btn-danger    { background: var(--alarm-solid); color: #fff; }
+  .btn-danger:not(:disabled):hover { background: color-mix(in srgb, var(--alarm-solid) 86%, #000); }
 
   /* Form fields. A label above, a 40px control, help or error below. */
   .field { display: flex; flex-direction: column; gap: 6px; }
@@ -578,14 +766,14 @@ body {
   .field-error { font-size: var(--fs-meta); color: var(--alarm); line-height: 1.45; font-weight: 500; }
   .input {
     width: 100%; height: 40px; padding: 0 12px; border-radius: var(--radius-md);
-    background: var(--surface); color: var(--ink); border: 1px solid var(--rule-2);
+    background: var(--input-bg); color: var(--ink); border: 1px solid var(--input-border);
     font-size: 0.875rem; line-height: 1.4;
     transition: border-color 150ms ease, box-shadow 150ms ease;
   }
   textarea.input { height: auto; min-height: 96px; padding: 10px 12px; line-height: 1.55; resize: vertical; }
   select.input { padding-right: 32px; }
   .input::placeholder { color: var(--faint); }
-  .input:hover:not(:disabled) { border-color: var(--muted); }
+  .input:hover:not(:disabled) { border-color: var(--input-border-hover); }
   .input:focus, .input:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
   .input:disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
   .input[aria-invalid="true"] { border-color: var(--alarm); }
@@ -598,6 +786,12 @@ body {
   .card-title { font-size: var(--fs-card); font-weight: 600; color: var(--ink); line-height: 1.35; }
   .card-interactive { transition: border-color 150ms ease, box-shadow 150ms ease; }
   .card-interactive:hover { border-color: var(--rule-2); box-shadow: var(--shadow-pop); }
+
+  /* A status card in the brand colour: the solid accent in light, an elevated surface with
+     an accent edge in dark. The edge is an inset shadow, so it costs no layout in light. */
+  .brand-card { background: var(--brand-card-bg); color: var(--brand-card-ink); box-shadow: inset 0 0 0 1px var(--brand-card-edge); }
+  .brand-card-btn { background: var(--brand-card-btn); color: var(--brand-card-btn-ink); transition: background-color 150ms ease; }
+  .brand-card-btn:hover { background: var(--brand-card-btn-hover); }
 
   /* Status badges. Same shape everywhere; the tone carries the meaning and the
      words always say it too, so nothing depends on colour alone. */
@@ -625,7 +819,7 @@ body {
   .data-table tbody td { padding: 12px 16px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
   .data-table tbody tr:last-child td { border-bottom: 0; }
   .data-table tbody tr { transition: background-color 120ms ease; }
-  .data-table tbody tr:hover { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+  .data-table tbody tr:hover { background: var(--surface-hover); }
   .data-table tbody tr[aria-selected="true"] { background: var(--accent-soft); }
 
   /* Dense tables (logs, previews): tighter cells and a header that stays put. */
@@ -653,17 +847,17 @@ body {
   .metric-context { font-size: var(--fs-meta); color: var(--muted); line-height: 1.45; }
 
   /* Loading placeholders that hold the layout while data arrives. */
-  .skeleton { position: relative; overflow: hidden; background: var(--surface-2); border-radius: var(--radius-sm); }
+  .skeleton { position: relative; overflow: hidden; background: var(--skeleton-base); border-radius: var(--radius-sm); }
   .skeleton::after {
     content: ""; position: absolute; inset: 0; transform: translateX(-100%);
-    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 60%, transparent), transparent);
+    background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
     animation: skeleton-sweep 1.4s ease-in-out infinite;
   }
   @keyframes skeleton-sweep { to { transform: translateX(100%); } }
   @media (prefers-reduced-motion: reduce) { .skeleton::after { animation: none; } }
 
   /* Dialogs and drawers. */
-  .overlay { position: fixed; inset: 0; background: rgba(15, 18, 22, 0.5); backdrop-filter: blur(2px); }
+  .overlay { position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(2px); }
   .dialog-panel {
     background: var(--surface); color: var(--ink); border: 1px solid var(--rule);
     border-radius: var(--radius-xl); box-shadow: var(--shadow-modal);
@@ -679,3 +873,11 @@ body {
 /* On the signup form the chat button steps aside while a field is being filled in, so it never
    sits over the number being typed, the WhatsApp tick or Create Account. */
 body:has(#signup-form :is(input, select, textarea, button):focus) .fab-avoid-form { opacity: 0; pointer-events: none; }
+
+/* Dark: a solid accent fill carrying the accent's own dark ink (selected chips, small primary buttons,
+   avatar discs) is the loudest thing on a navy screen. Keep the brand colour and the edge, but let the
+   fill be the deeper solid with white text — the same treatment the shared primary button gets. */
+.dark .bg-accent.text-accent-on:not(.keep-bright) { background-color: var(--accent-solid); color: #fff; }
+.dark .bg-accent.text-accent-on.hover\:bg-accent-hover:not(.keep-bright):hover { background-color: var(--accent-solid-hover); }
+/* …and what sits inside such a chip (a count, an icon) must follow it to white, or it keeps the dark ink. */
+.dark .bg-accent.text-accent-on:not(.keep-bright) .text-accent-on { color: #fff; }

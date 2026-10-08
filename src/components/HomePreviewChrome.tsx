@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  ChevronDown, Facebook, LayoutGrid, Linkedin, Lock, LogOut, Mail, MapPin, Menu, Phone, X,
+  ChevronDown, Facebook, LayoutGrid, Linkedin, LogOut, Mail, MapPin, Menu, Phone, X,
 } from 'lucide-react';
 import { DOMAINS } from '../constants';
 
@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getDashboardRoute } from '../lib/dashboardRoute';
 import { usePublisherSafeMode } from '../lib/publicSettings';
 import { HeaderSearch } from './GlobalSearch';
+import { ThemeToggle } from './ui/ThemeToggle';
 
 /**
  * The header and footer for the home page and the pages that belong with it,
@@ -34,7 +35,8 @@ function useDepartmentTotals() {
     fetch('/api/library/stats')
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
-        if (!d?.departmentTotals) return;
+        if (!Array.isArray(d?.departmentTotals) || typeof d.total !== "number" || !Number.isFinite(d.total) || d.total < 0) return;
+        if (!d.departmentTotals.every((row: any) => typeof row.name === "string" && typeof row.total === "number" && Number.isFinite(row.total) && row.total >= 0)) return;
         const byName: Record<string, number> = {};
         for (const row of d.departmentTotals) byName[row.name] = row.total;
         setTotals({ byName, total: d.total, count: d.departmentTotals.length });
@@ -187,6 +189,8 @@ export function PreviewHeader() {
             />
           )}
 
+          <ThemeToggle className="btn btn-ghost btn-icon" size={18} />
+
           {user ? (
             <div ref={profileRef} className="relative hidden xl:block">
               <button type="button" onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen}
@@ -280,99 +284,120 @@ export function PreviewHeader() {
 export function PreviewFooter() {
   const totals = useDepartmentTotals();
   const year = new Date().getFullYear();
+  // "Live" is claimed only while the catalogue is actually answering.
+  //
+  // The exact total is deliberately not printed here. The backend agrees with itself (stats,
+  // insights and public/counts all say the same number), but /digital-library still carries a
+  // hand-typed "30,000+", so a precise figure in the footer would contradict a page one click away.
+  // TODO: print the count again once that hardcoded figure is replaced with the live one.
+  const catalogueLive = totals !== null;
+
   const colLabel = 'text-[12px] font-semibold uppercase tracking-[0.12em] text-muted';
-  const linkClass =
-    'group inline-flex items-center gap-1 rounded text-[13.5px] leading-7 text-ink-2 transition-colors hover:text-accent focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
-  const arrow = <span aria-hidden="true" className="-ml-1 translate-x-0 text-accent opacity-0 transition-all group-hover:ml-0 group-hover:opacity-100 group-focus-visible:opacity-100">→</span>;
-  const socialClass =
-    'flex h-10 w-10 items-center justify-center rounded-full border border-rule bg-surface text-ink-2 transition-colors hover:border-accent hover:bg-accent hover:text-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
-  const iconBox = 'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rule bg-surface text-accent';
+  const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+  const linkClass = `inline-flex min-h-8 items-center rounded text-[14px] text-ink-2 transition-colors hover:text-accent focus-visible:text-accent ${focus}`;
+  const socialClass = `flex h-9 w-9 items-center justify-center rounded-full border border-rule bg-surface text-ink-2 transition-colors hover:border-accent hover:bg-accent hover:text-surface ${focus}`;
+  const rowIcon = 'h-4 w-4 shrink-0 text-accent';
+
+  const social = [
+    { name: 'Facebook', href: COMPANY_DETAILS.social.facebook, Icon: Facebook },
+    { name: 'LinkedIn', href: COMPANY_DETAILS.social.linkedin, Icon: Linkedin },
+  ].filter(s => s.href);
 
   return (
     <footer className="border-t border-rule bg-surface">
-      <div className="container-public grid grid-cols-1 gap-10 py-12 sm:grid-cols-2 sm:py-16 lg:grid-cols-[1.5fr_0.9fr_1.1fr_1.5fr] lg:gap-12">
+      <div className="container-public grid grid-cols-1 items-start gap-8 pb-8 pt-9 sm:grid-cols-2 lg:grid-cols-[minmax(16rem,1.6fr)_auto_auto_minmax(14rem,1.4fr)] lg:gap-x-12">
         <div className="min-w-0">
-          <Link to="/" className="inline-flex items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface p-1.5 border border-rule">
+          <Link to="/" className={`inline-flex items-center gap-3 rounded ${focus}`}>
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-rule bg-surface p-1.5">
               <img src="/logo.png" alt="" className="h-full w-full object-contain" />
             </span>
-            <span className="text-[19px] font-semibold leading-tight tracking-tight text-ink">STM Digital Library</span>
+            <span className="text-[19px] font-semibold leading-tight tracking-tight text-ink">{COMPANY_DETAILS.name}</span>
           </Link>
-          <p className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.16em] text-accent">{COMPANY_DETAILS.positioning}</p>
-          <p className="mt-4 max-w-xs text-[13.5px] leading-[1.8] text-ink-2">
-            A digital library providing curated academic journals and research papers to institutions and researchers worldwide.
+          <p className="mt-2.5 text-[13px] text-muted lg:whitespace-nowrap">Operated by {COMPANY_DETAILS.operatorDisplayName}</p>
+          <p className="mt-3 max-w-xs text-[14px] leading-relaxed text-ink-2">
+            An academic discovery and access platform for journals, books, research literature and learning resources.
           </p>
-          <div className="mt-6 flex gap-2.5">
-            <a href="https://www.facebook.com/STMDigitalLibrary" target="_blank" rel="noopener noreferrer" aria-label="STM Digital Library on Facebook" className={socialClass}><Facebook size={17} aria-hidden="true" /></a>
-            <a href="https://linkedin.com/in/stmdigitallibrary" target="_blank" rel="noopener noreferrer" aria-label="STM Digital Library on LinkedIn" className={socialClass}><Linkedin size={17} aria-hidden="true" /></a>
-          </div>
+          {social.length > 0 && (
+            <div className="mt-4 flex gap-2.5">
+              {social.map(({ name, href, Icon }) => (
+                <a key={name} href={href} target="_blank" rel="noopener noreferrer"
+                  aria-label={`${COMPANY_DETAILS.name} on ${name} (opens in a new tab)`} title={name} className={socialClass}>
+                  <Icon size={16} aria-hidden="true" />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         <nav aria-label="Explore">
           <p className={colLabel}>Explore</p>
-          <ul className="mt-5 space-y-1">
-            <li><Link to="/" className={linkClass}>Home{arrow}</Link></li>
-            <li><Link to="/digital-library" className={linkClass}>Journals{arrow}</Link></li>
-            <li><Link to="/for-institutions" className={linkClass}>For Institutions{arrow}</Link></li>
-            <li><Link to="/for-students" className={linkClass}>For Students & Researchers{arrow}</Link></li>
-            <li><Link to="/about" className={linkClass}>About Us{arrow}</Link></li>
-            <li><Link to="/contact" className={linkClass}>Contact Us{arrow}</Link></li>
+          <ul className="mt-3 space-y-0.5">
+            <li><Link to="/" className={linkClass}>Home</Link></li>
+            <li><Link to="/digital-library" className={linkClass}>Journals</Link></li>
+            <li><Link to="/for-institutions" className={linkClass}>For Institutions</Link></li>
+            <li><Link to="/for-students" className={linkClass}>For Students &amp; Researchers</Link></li>
+            <li><Link to="/about" className={linkClass}>About Us</Link></li>
+            <li><Link to="/contact" className={linkClass}>Contact Us</Link></li>
           </ul>
         </nav>
 
-        <nav aria-label="Legal and support">
-          <p className={colLabel}>Legal & support</p>
-          <ul className="mt-5 space-y-1">
-            <li><Link to="/privacy-policy" className={linkClass}>Privacy Policy{arrow}</Link></li>
-            <li><Link to="/terms-and-conditions" className={linkClass}>Terms & Conditions{arrow}</Link></li>
-            <li><Link to="/faq" className={linkClass}>FAQs{arrow}</Link></li>
-            <li><Link to="/content-removal" className={linkClass}>Content Removal{arrow}</Link></li>
-            <li><Link to="/content-sources" className={linkClass}>Content Sources{arrow}</Link></li>
-            <li><Link to="/legal-disclaimer" className={linkClass}>Legal Disclaimer{arrow}</Link></li>
-            <li><Link to="/admin" className={linkClass}><Lock size={13} aria-hidden="true" className="text-accent" />Admin Login{arrow}</Link></li>
+        <nav aria-label="Trust, policies and support">
+          <p className={colLabel}>Trust, Policies &amp; Support</p>
+          <ul className="mt-3 space-y-0.5">
+            <li><Link to="/content-sources" className={linkClass}>Content Sources</Link></li>
+            <li><Link to="/privacy-policy" className={linkClass}>Privacy Policy</Link></li>
+            <li><Link to="/terms-and-conditions" className={linkClass}>Terms &amp; Conditions</Link></li>
+            <li><Link to="/content-removal" className={linkClass}>Content Removal</Link></li>
+            <li><Link to="/faq" className={linkClass}>FAQs</Link></li>
+            <li><Link to="/legal-disclaimer" className={linkClass}>Legal Disclaimer</Link></li>
           </ul>
         </nav>
 
         <div className="min-w-0">
           <p className={colLabel}>Contact</p>
-          <ul className="mt-5 space-y-4 text-[13.5px] text-ink-2">
+          <ul className="mt-3 space-y-3 text-[14px] text-ink-2">
             <li className="flex gap-3">
-              <span className={iconBox}><MapPin size={15} aria-hidden="true" /></span>
-              <span className="leading-relaxed"><span className="sr-only">Address: </span>{COMPANY_DETAILS.address}</span>
+              <MapPin className={`${rowIcon} mt-[3px]`} aria-hidden="true" />
+              <span className="leading-relaxed">
+                <span className="block text-[12px] font-semibold text-muted">{COMPANY_DETAILS.salesOfficeLabel}</span>
+                {COMPANY_DETAILS.address}
+              </span>
             </li>
             <li className="flex gap-3">
-              <span className={iconBox}><Phone size={15} aria-hidden="true" /></span>
-              <span className="flex flex-col">
+              <Phone className={`${rowIcon} mt-2`} aria-hidden="true" />
+              <span className="flex flex-wrap gap-x-3 gap-y-0">
                 {COMPANY_DETAILS.tel.map((t: string) => (
-                  <a key={t} href={`tel:${t.replace(/[^\d+]/g, '')}`} className="tnum rounded font-mono text-[13px] leading-7 hover:text-accent focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">{t}</a>
+                  <a key={t} href={`tel:${t.replace(/[^\d+]/g, '')}`} className={`tnum inline-flex min-h-8 items-center whitespace-nowrap rounded hover:text-accent focus-visible:text-accent ${focus}`}>{t}</a>
                 ))}
               </span>
             </li>
             <li className="flex gap-3">
-              <span className={iconBox}><Mail size={15} aria-hidden="true" /></span>
-              <a href={`mailto:${COMPANY_DETAILS.email}`} className="break-all rounded leading-8 hover:text-accent focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">{COMPANY_DETAILS.email}</a>
+              <Mail className={`${rowIcon} mt-2`} aria-hidden="true" />
+              {/* TODO: OFFICIAL_CONTACT_EMAIL_CONFIRMATION — see COMPANY_DETAILS.email. Existing contact
+                  column only; this address must not be copied into any new trust or company block. */}
+              <a href={`mailto:${COMPANY_DETAILS.email}`} className={`inline-flex min-h-8 items-center break-all rounded hover:text-accent focus-visible:text-accent ${focus}`}>{COMPANY_DETAILS.email}</a>
             </li>
           </ul>
         </div>
       </div>
 
+      {/* One row. The right padding keeps it clear of the floating WhatsApp button. */}
       <div className="border-t border-rule">
-        <div className="container-public flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
+        <div className="container-public flex flex-col gap-1 py-3 pr-20 sm:flex-row sm:items-center sm:justify-between sm:pr-24">
           <p className="text-[12px] text-ink-2">© {year} {COMPANY_DETAILS.name}. All rights reserved.</p>
-          {totals && (
-            <div className="flex items-start gap-2.5 md:text-right">
-              <span className="relative mt-[5px] flex h-2 w-2 shrink-0 md:order-2">
-                <span aria-hidden="true" className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60 motion-reduce:animate-none" />
-                <span aria-hidden="true" className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-2">
+            {catalogueLive && (
+              <span className="inline-flex items-center gap-2">
+                <span aria-hidden="true" className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60 motion-reduce:animate-none" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+                </span>
+                <span className="font-semibold text-success">Catalogue live</span>
               </span>
-              <p className="font-mono text-[11px] leading-relaxed text-ink-2 md:order-1">
-                <span className="font-semibold text-success">Catalogue live</span><br />
-                {n(totals.total)} items across {totals.count} departments, counted from the catalogue
-              </p>
-            </div>
-          )}
+            )}
+            <Link to="/admin" className={`inline-flex min-h-8 items-center rounded text-muted hover:text-accent focus-visible:text-accent ${focus}`}>Admin Login</Link>
+          </div>
         </div>
-        <p className="container-public select-none pb-4 text-[10px] text-faint/30 md:text-right">shubham a developer</p>
       </div>
     </footer>
   );

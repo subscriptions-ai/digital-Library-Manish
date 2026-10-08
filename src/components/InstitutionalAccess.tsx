@@ -22,7 +22,7 @@ export function InstitutionalAccess() {
         const response = await fetch('/api/public/counts');
         if (response.ok) {
           const data = await response.json();
-          if (data?.totalContent) {
+          if (typeof data?.totalContent === "number" && Number.isFinite(data.totalContent) && data.totalContent >= 0) {
             setTotalContentCount(data.totalContent);
           }
         }
@@ -73,7 +73,7 @@ export function InstitutionalAccess() {
             <div>
               <h1 className="on-dark text-5xl font-bold leading-tight">Empower Your Entire Institution</h1>
               <p className="on-dark-2 mt-6 text-base leading-relaxed sm:text-lg">
-                Provide seamless, unlimited access to STM Digital Library for your students, faculty, and researchers. Trusted by 1,200+ universities worldwide.
+                Provide academic library access for your students, faculty, and researchers, with departments and access terms defined by your institutional subscription.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link to="/signup" className={buttonClass("highlight", "lg")}>
@@ -131,12 +131,12 @@ export function InstitutionalAccess() {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
             {[
-              { icon: Zap, title: "IP-Based Authentication", desc: "No individual logins required. Seamless access for anyone on your campus network." },
-              { icon: Globe, title: "Remote Access", desc: "Enable access for students and faculty working from home via proxy or Shibboleth." },
-              { icon: BarChart3, title: "Usage Statistics", desc: "COUNTER-compliant reports to help you understand resource utilization." },
+              { icon: Zap, title: "Managed Authentication", desc: "Account and subscription controls manage access for your institution." },
+              { icon: Globe, title: "Remote Access", desc: "Students and faculty can sign in remotely according to their account access permissions." },
+              { icon: BarChart3, title: "Usage Statistics", desc: "Usage reports help librarians understand activity within their institution." },
               { icon: ShieldCheck, title: "Librarian Dashboard", desc: "Centralized control panel to manage access and view analytics." },
               { icon: Users, title: "Users That Scale", desc: `Up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users with every subscription, at no extra charge.` },
-              { icon: BookOpen, title: "Archival Rights", desc: "Permanent access to content published during your access period." }
+              { icon: BookOpen, title: "Access Terms", desc: "Content availability and access duration depend on your subscription and the source terms." }
             ].map((feature, i) => (
               <div key={i} className="card card-pad">
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
@@ -162,8 +162,8 @@ export function InstitutionalAccess() {
               <ol className="mt-10 space-y-8">
                 {[
                   { step: "01", title: "Request a Quote", desc: "Tell us about your institution size and required domains." },
-                  { step: "02", title: "Setup IP Ranges", desc: "Provide your campus IP ranges for seamless authentication." },
-                  { step: "03", title: "Go Live", desc: "Your entire campus gets instant access to the digital library." }
+                  { step: "02", title: "Set Up Access", desc: "Confirm your departments, account details, and subscription terms." },
+                  { step: "03", title: "Go Live", desc: "Invite eligible users once institutional access is activated." }
                 ].map((item, i) => (
                   <li key={i} className="flex gap-6">
                     <div className="w-12 shrink-0 text-3xl font-bold text-accent tnum" aria-hidden="true">{item.step}</div>

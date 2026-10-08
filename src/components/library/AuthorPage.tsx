@@ -75,6 +75,7 @@ export function AuthorPage({
   if (state === 'missing' || !a) {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
+        <Helmet><meta name="robots" content="noindex, follow" /></Helmet>
         <h1 className="font-serif text-xl font-medium text-ink">Author not found</h1>
         <button type="button" onClick={() => navigate(-1)} className={buttonClass('outline', 'md', 'mt-6')}>
           Go back

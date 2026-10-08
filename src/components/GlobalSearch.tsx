@@ -49,7 +49,7 @@ export function SearchBox({ value, onChange, onSubmit, variant = 'popover', auto
         role="search" onSubmit={submit} noValidate
         className={cn(
           'flex w-full flex-col gap-2 min-[480px]:flex-row min-[480px]:items-stretch',
-          hero && 'rounded-xl bg-white p-1.5 shadow-[var(--shadow-modal)]',
+          hero && 'keep-light rounded-xl bg-white p-1.5 shadow-[var(--shadow-modal)]',
         )}
       >
         <label htmlFor={id} className="sr-only">{SEARCH_LABEL}</label>
@@ -57,7 +57,7 @@ export function SearchBox({ value, onChange, onSubmit, variant = 'popover', auto
           className={cn(
             'flex min-w-0 shrink-0 items-center gap-2.5 rounded-lg border border-rule-2 px-3.5 min-[480px]:flex-1 min-[480px]:shrink transition-[border-color,box-shadow] duration-150',
             'focus-within:border-accent focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_12%,transparent)]',
-            hero ? 'h-12 bg-white text-[#16181d]' : 'h-[46px] bg-surface text-ink',
+            hero ? 'keep-light h-12 bg-white text-[#16181d]' : 'h-[46px] bg-surface text-ink',
           )}
         >
           <Search size={hero ? 19 : 18} strokeWidth={1.75} aria-hidden="true" className="shrink-0 text-muted" />

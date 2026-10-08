@@ -549,41 +549,50 @@ export function ProtectedContentViewer() {
       // The reader fills its container exactly. It used to ask for h-screen
       // inside a box that is one header shorter than the viewport, so the page
       // overflowed by 64px and grew a second scrollbar beside the reader's own.
-      className={`absolute inset-0 flex flex-col ${darkMode ? 'bg-slate-950' : 'bg-slate-100'} transition-colors duration-300`}
+      className={`absolute inset-0 flex flex-col bg-slate-100 dark:bg-viewer-doc transition-colors duration-300`}
     >
       {/* ─── TOP BAR ─────────────────────────────────── */}
-      <div className={`h-14 shrink-0 flex items-center justify-between px-3 sm:px-5 border-b ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-surface border-rule'} shadow-md z-20`}>
-        {/* Left: back + title */}
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="relative z-20 grid h-[var(--viewer-bar-h)] shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-rule bg-surface px-2 shadow-md dark:border-rule dark:bg-viewer-bar sm:gap-4 sm:px-5">
+        {/* Left: back + title. The title is the only part that gives way; everything beside it keeps its size. */}
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => navigate(-1)}
             aria-label="Go back"
             title="Go back"
-            className={`p-2 rounded-lg transition-colors shrink-0 ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            className={`p-2 rounded-lg transition-colors shrink-0 text-muted hover:text-ink hover:bg-surface-2 dark:text-muted dark:hover:text-ink dark:hover:bg-surface-hover`}
           >
             <ArrowLeft size={20} aria-hidden="true" />
           </button>
-          <div className="min-w-0">
-            <h1 className={`font-bold leading-tight line-clamp-1 text-sm sm:text-base ${darkMode ? 'text-white' : 'text-ink'}`}>
+          <div className="group min-w-0 max-w-[44rem]">
+            {/* One line, cut with an ellipsis. The whole title appears on hover, on keyboard focus and on tap —
+                a native title="" would do none of the last two. The h1 itself always holds the full text for
+                screen readers; the panel is for eyes only. */}
+            <h1 tabIndex={0} className="truncate rounded font-bold leading-tight text-ink focus-visible:outline-2">
               {content?.title}
             </h1>
+            {content?.title && (
+              <span aria-hidden="true"
+                className="pointer-events-none absolute left-2 top-full z-30 mt-1 hidden w-max max-w-[min(40rem,calc(100%-1rem))] rounded-lg border border-rule bg-tooltip px-3 py-2 text-[13px] font-medium leading-snug text-ink shadow-lg group-focus-within:block group-hover:block sm:left-5 sm:max-w-[min(40rem,calc(100%-2.5rem))]">
+                <span className="line-clamp-6 break-words">{content.title}</span>
+              </span>
+            )}
             {/* The way back into the catalogue: which journal this came from, and
                 its full record. Without this the reader is a dead end. */}
-            <p className="flex items-center gap-1.5 truncate font-mono text-[11px] uppercase tracking-wider text-muted">
+            <p className="flex min-w-0 items-center gap-1.5 truncate font-mono text-[11px] uppercase tracking-wider text-muted">
               <span className="shrink-0">{content?.contentType}</span>
               {content?.journalIssn && content?.journalName && (
                 <>
-                  <span className="text-rule-2">·</span>
-                  <Link to={`${libBase}/journal/${encodeURIComponent(content.journalIssn)}`}
-                    className="truncate normal-case tracking-normal text-accent hover:underline">
+                  <span className="text-rule-2 dark:text-faint">·</span>
+                  <Link to={`${libBase}/journal/${encodeURIComponent(content.journalIssn)}`} title={content.journalName}
+                    className="min-w-0 truncate normal-case tracking-normal text-accent hover:underline">
                     {content.journalName}
                   </Link>
                 </>
               )}
               {content?.kind === 'article' && (
                 <>
-                  <span className="text-rule-2">·</span>
+                  <span className="text-rule-2 dark:text-faint">·</span>
                   <Link to={`${libBase}/article/${id}`}
                     className="shrink-0 normal-case tracking-normal text-accent hover:underline">
                     Full record
@@ -595,10 +604,10 @@ export function ProtectedContentViewer() {
         </div>
 
         {/* Right: controls */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
           {/* Page indicator (PDF only) */}
           {isPdf && numPages > 0 && (
-            <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold ${darkMode ? 'bg-white/5 text-slate-300' : 'bg-surface-2 text-ink-2'}`}>
+            <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-surface-2 text-ink-2 dark:bg-surface-2 dark:text-ink-2`}>
               <span>{currentPage}</span>
               <span className="text-muted">/</span>
               <span>{numPages}</span>
@@ -612,7 +621,7 @@ export function ProtectedContentViewer() {
               type="button"
               title="Zoom Out"
               aria-label="Zoom out"
-              className={`p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+              className={`p-2 rounded-lg transition-colors text-muted hover:text-ink hover:bg-surface-2 dark:text-muted dark:hover:text-ink dark:hover:bg-surface-hover`}
             >
               <ZoomOut size={18} aria-hidden="true" />
             </button>
@@ -625,7 +634,7 @@ export function ProtectedContentViewer() {
               type="button"
               title="Zoom In"
               aria-label="Zoom in"
-              className={`p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+              className={`p-2 rounded-lg transition-colors text-muted hover:text-ink hover:bg-surface-2 dark:text-muted dark:hover:text-ink dark:hover:bg-surface-hover`}
             >
               <ZoomIn size={18} aria-hidden="true" />
             </button>
@@ -638,7 +647,7 @@ export function ProtectedContentViewer() {
               type="button"
               title="Reset Zoom"
               aria-label="Reset zoom"
-              className={`hidden sm:block p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+              className={`hidden sm:block p-2 rounded-lg transition-colors text-muted hover:text-ink hover:bg-surface-2 dark:text-muted dark:hover:text-ink dark:hover:bg-surface-hover`}
             >
               <RotateCcw size={16} aria-hidden="true" />
             </button>
@@ -652,7 +661,7 @@ export function ProtectedContentViewer() {
             title={isFavorite ? "Remove from Wish List" : "Add to Wish List"}
             aria-label={isFavorite ? "Remove from Wish List" : "Add to Wish List"}
             aria-pressed={isFavorite}
-            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${isFavorite ? 'text-alarm hover:bg-alarm-soft' : (darkMode ? 'text-slate-400 hover:text-red-400 hover:bg-white/10' : 'text-muted hover:text-alarm hover:bg-surface-2')}`}
+            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${isFavorite ? 'text-alarm hover:bg-alarm-soft' : 'text-muted hover:text-alarm hover:bg-surface-2 dark:text-muted dark:hover:text-alarm dark:hover:bg-surface-hover'}`}
           >
             <Heart size={18} fill={isFavorite ? "currentColor" : "none"} aria-hidden="true" />
           </button>
@@ -665,22 +674,23 @@ export function ProtectedContentViewer() {
               title={railOpen ? 'Hide record' : 'Show record'}
               aria-label={railOpen ? 'Hide record' : 'Show record'}
               aria-pressed={railOpen}
-              className={`hidden lg:block p-2 rounded-lg transition-colors ${railOpen ? 'text-accent' : (darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2')}`}
+              className={`hidden lg:block p-2 rounded-lg transition-colors ${railOpen ? 'text-accent' : 'text-muted hover:text-ink hover:bg-surface-2 dark:text-muted dark:hover:text-ink dark:hover:bg-surface-hover'}`}
             >
               <PanelRight size={18} aria-hidden="true" />
             </button>
           )}
 
-          {/* Dark mode toggle */}
-          <button
+          {/* Theme switch: the layout's header carries one, so this one only appears in fullscreen,
+              where that header is not on screen. Two moons side by side read as a mistake. */}
+          {fullscreen && <button
             onClick={toggleDark}
             type="button"
             title={darkMode ? 'Light Mode' : 'Dark Mode'}
             aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            className={`p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            className={`p-2 rounded-lg transition-colors text-muted hover:text-ink hover:bg-surface-2 dark:text-muted dark:hover:text-ink dark:hover:bg-surface-hover`}
           >
             {darkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
-          </button>
+          </button>}
 
           {/* Fullscreen (Hidden on mobile) */}
           <button
@@ -688,39 +698,39 @@ export function ProtectedContentViewer() {
             type="button"
             title="Fullscreen"
             aria-label="Fullscreen"
-            className={`hidden sm:block p-2 rounded-lg transition-colors ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            className={`hidden sm:block p-2 rounded-lg transition-colors text-muted hover:text-ink hover:bg-surface-2 dark:text-muted dark:hover:text-ink dark:hover:bg-surface-hover`}
           >
             <Maximize2 size={18} aria-hidden="true" />
           </button>
 
           {/* Secure badge */}
-          <div className="badge badge-accent hidden sm:inline-flex">
+          <div className="badge badge-accent hidden lg:inline-flex">
             <Shield size={12} aria-hidden="true" /> Secure
           </div>
         </div>
-      </div>
+      </header>
 
       {/* ─── PDF PAGE NAV BAR (prev / next) ─────────── */}
       {isPdf && numPages > 0 && (
-        <div className={`shrink-0 flex items-center justify-center gap-3 py-2 border-b ${darkMode ? 'bg-slate-900/80 border-white/5' : 'bg-white/80 border-slate-200'} backdrop-blur z-10`}>
+        <div className={`relative z-10 flex min-h-[var(--viewer-pager-h)] shrink-0 items-center justify-center gap-3 border-b bg-white/80 border-slate-200 dark:bg-viewer-bar/80 dark:border-rule-subtle backdrop-blur z-10`}>
           <button
             type="button"
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
             aria-label="Previous page"
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-surface-2 text-ink-2 hover:bg-rule'}`}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 bg-surface-2 text-ink-2 hover:bg-rule dark:bg-surface-2 dark:text-ink dark:hover:bg-surface-3`}
           >
             <ChevronLeft size={14} aria-hidden="true" /> Prev
           </button>
-          <span className={`text-xs font-mono ${darkMode ? 'text-slate-400' : 'text-muted'}`}>
-            Page <strong className={darkMode ? 'text-white' : 'text-ink'}>{currentPage}</strong> of <strong className={darkMode ? 'text-white' : 'text-ink'}>{numPages}</strong>
+          <span className={`text-xs font-mono text-muted dark:text-muted`}>
+            Page <strong className="text-ink dark:text-ink">{currentPage}</strong> of <strong className="text-ink dark:text-ink">{numPages}</strong>
           </span>
           <button
             type="button"
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= numPages}
             aria-label="Next page"
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 ${darkMode ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-surface-2 text-ink-2 hover:bg-rule'}`}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30 bg-surface-2 text-ink-2 hover:bg-rule dark:bg-surface-2 dark:text-ink dark:hover:bg-surface-3`}
           >
             Next <ChevronRight size={14} aria-hidden="true" />
           </button>
@@ -744,39 +754,39 @@ export function ProtectedContentViewer() {
                 : isOapenPdf ? 'Full text opens outside the library'
                 : 'Full text opens at the publisher'}
             </p>
-            <h2 className={`mt-2 font-serif text-2xl font-medium leading-snug ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+            <h2 className={`mt-2 font-serif text-2xl font-medium leading-snug text-slate-900 dark:text-ink`}>
               {content?.title}
             </h2>
 
             {record?.authors_structured?.length > 0 ? (
-              <p className={`mt-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+              <p className={`mt-2 text-sm text-slate-700 dark:text-ink-2`}>
                 {record.authors_structured.map((a: any, i: number) => (
                   <React.Fragment key={a.id}>
-                    {i > 0 && <span className={darkMode ? 'text-slate-500' : 'text-slate-400'}> · </span>}
+                    {i > 0 && <span className="text-slate-400 dark:text-faint"> · </span>}
                     <Link to={`${libBase}/author/${a.id}`} className="text-accent hover:underline">{a.name}</Link>
                   </React.Fragment>
                 ))}
               </p>
             ) : (record?.authors || content?.authors) ? (
-              <p className={`mt-2 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{record?.authors || content?.authors}</p>
+              <p className={`mt-2 text-sm text-slate-700 dark:text-ink-2`}>{record?.authors || content?.authors}</p>
             ) : null}
 
-            <p className={`tnum mt-2 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`tnum mt-2 flex flex-wrap items-center gap-x-2 font-mono text-[11.5px] text-slate-500 dark:text-muted`}>
               {content?.journalName && (
                 content?.journalIssn
                   ? <Link to={`${libBase}/journal/${encodeURIComponent(content.journalIssn)}`}
-                      className={`${darkMode ? 'text-slate-300' : 'text-slate-700'} hover:text-accent hover:underline`}>{content.journalName}</Link>
-                  : <span className={darkMode ? 'text-slate-300' : 'text-slate-700'}>{content.journalName}</span>
+                      className={`text-slate-700 dark:text-ink-2 hover:text-accent hover:underline`}>{content.journalName}</Link>
+                  : <span className="text-slate-700 dark:text-ink-2">{content.journalName}</span>
               )}
-              {content?.volume && <><span className={darkMode ? 'text-slate-600' : 'text-slate-300'}>·</span><span>{content.volume}{content.issue ? `(${content.issue})` : ''}</span></>}
-              {content?.year && <><span className={darkMode ? 'text-slate-600' : 'text-slate-300'}>·</span><span>{content.year}</span></>}
-              {content?.journalIssn && <><span className={darkMode ? 'text-slate-600' : 'text-slate-300'}>·</span><span>ISSN {content.journalIssn}</span></>}
+              {content?.volume && <><span className="text-slate-300 dark:text-faint">·</span><span>{content.volume}{content.issue ? `(${content.issue})` : ''}</span></>}
+              {content?.year && <><span className="text-slate-300 dark:text-faint">·</span><span>{content.year}</span></>}
+              {content?.journalIssn && <><span className="text-slate-300 dark:text-faint">·</span><span>ISSN {content.journalIssn}</span></>}
             </p>
 
             {record?.abstract && (
-              <div className={`mt-6 border-t pt-5 ${darkMode ? 'border-white/10' : 'border-slate-200'}`}>
-                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Abstract</p>
-                <p className={`mt-2 whitespace-pre-wrap text-[14.5px] leading-relaxed ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{record.abstract}</p>
+              <div className={`mt-6 border-t pt-5 border-slate-200 dark:border-rule`}>
+                <p className={`font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-muted`}>Abstract</p>
+                <p className={`mt-2 whitespace-pre-wrap text-[14.5px] leading-relaxed text-slate-700 dark:text-ink-2`}>{record.abstract}</p>
               </div>
             )}
 
@@ -792,19 +802,19 @@ export function ProtectedContentViewer() {
               {doi && (
                 <a href={`https://doi.org/${String(doi).replace(/^https?:\/\/(dx\.)?doi\.org\//i, '')}`}
                   target="_blank" rel="noreferrer"
-                  className={`inline-flex items-center gap-2 rounded-md border px-4 py-2.5 font-mono text-[12px] hover:border-accent hover:text-accent ${darkMode ? 'border-white/20 text-slate-400' : 'border-slate-300 text-slate-500'}`}>
+                  className={`inline-flex items-center gap-2 rounded-md border px-4 py-2.5 font-mono text-[12px] hover:border-accent hover:text-accent border-slate-300 text-slate-500 dark:border-rule-2 dark:text-muted`}>
                   DOI {doi}
                 </a>
               )}
               {record && content?.kind !== 'book' && (
                 <Link to={`${libBase}/article/${id}`}
-                  className={`font-mono text-[11px] uppercase tracking-wider underline-offset-4 hover:text-accent hover:underline ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                  className={`font-mono text-[11px] uppercase tracking-wider underline-offset-4 hover:text-accent hover:underline text-slate-400 dark:text-faint`}>
                   Full record
                 </Link>
               )}
             </div>
 
-            <p className={`mt-6 text-[12.5px] leading-relaxed ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+            <p className={`mt-6 text-[12.5px] leading-relaxed text-slate-400 dark:text-faint`}>
               {pdfError === 'restricted'
                 ? 'We hold this record and its metadata. The publisher\u2019s copy did not respond, so the link above may not work either.'
                 : isOapenPdf
@@ -836,11 +846,11 @@ export function ProtectedContentViewer() {
                 </div>
               </div>
               <div className="text-center">
-                <p className={`text-[13.5px] ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Loading document…</p>
-                <p className={`tnum mt-1 font-mono text-[11.5px] ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`text-[13.5px] text-slate-700 dark:text-ink-2`}>Loading document…</p>
+                <p className={`tnum mt-1 font-mono text-[11.5px] text-slate-400 dark:text-faint`}>
                   {total > 0 ? `${fmt(loaded)} of ${fmt(total)}` : (loaded > 0 ? `${fmt(loaded)} downloaded` : 'Preparing secure stream…')}
                 </p>
-                {total > 1048576 * 8 && <p className={`text-[11px] mt-1 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Large file — this may take a moment</p>}
+                {total > 1048576 * 8 && <p className={`text-[11px] mt-1 text-slate-400 dark:text-faint`}>Large file — this may take a moment</p>}
               </div>
             </div>
           );
@@ -889,7 +899,7 @@ export function ProtectedContentViewer() {
             )}
             <iframe
               src={`/api/content/${id}/proxy-frame?token=${localStorage.getItem('token')}`}
-              className="w-full h-[82vh] border-0 bg-white"
+              className="keep-light w-full h-[82vh] border-0 bg-white"
               title={content.title}
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
             />
@@ -899,24 +909,24 @@ export function ProtectedContentViewer() {
 
       {/* ─── CONTEXT RAIL ────────────────────────────── */}
       {record && railOpen && (
-        <aside className={`hidden w-[320px] shrink-0 overflow-y-auto border-l lg:block ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+        <aside className={`hidden w-[320px] shrink-0 overflow-y-auto border-l pb-28 lg:block bg-white border-slate-200 dark:bg-viewer-side dark:border-rule`}>
           <div className="space-y-7 p-5">
 
             {record.journal && (
               <section>
-                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Published in</p>
+                <p className={`font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-muted`}>Published in</p>
                 <Link
                   to={`${libBase}/journal/${encodeURIComponent(record.journal.issn || record.journal.id)}`}
-                  className={`mt-1.5 block font-serif text-[15px] font-medium leading-snug hover:text-accent ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}
+                  className={`mt-1.5 block font-serif text-[15px] font-medium leading-snug hover:text-accent text-slate-900 dark:text-ink`}
                 >
                   {record.journal.title}
                 </Link>
-                <p className={`tnum mt-1 font-mono text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`tnum mt-1 font-mono text-[11px] text-slate-500 dark:text-muted`}>
                   {record.journal.issn && <>ISSN {record.journal.issn}</>}
                   {record.journal.firstYear && record.journal.lastYear && <> · {record.journal.firstYear}–{record.journal.lastYear}</>}
                 </p>
                 {record.journal.publisherName && (
-                  <p className={`mt-1 text-[12.5px] leading-snug ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{record.journal.publisherName}</p>
+                  <p className={`mt-1 text-[12.5px] leading-snug text-slate-500 dark:text-muted`}>{record.journal.publisherName}</p>
                 )}
               </section>
             )}
@@ -926,14 +936,14 @@ export function ProtectedContentViewer() {
                 goes nowhere. */}
             {!record.authors_structured?.length && record.authors && (
               <section>
-                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Authors</p>
-                <p className={`mt-1.5 text-[13.5px] leading-snug ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{record.authors}</p>
+                <p className={`font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-muted`}>Authors</p>
+                <p className={`mt-1.5 text-[13.5px] leading-snug text-slate-700 dark:text-ink-2`}>{record.authors}</p>
               </section>
             )}
 
             {record.authors_structured?.length > 0 && (
               <section>
-                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Authors</p>
+                <p className={`font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-muted`}>Authors</p>
                 <ul className="mt-1.5 space-y-1">
                   {record.authors_structured.map((a: any) => (
                     <li key={a.id}>
@@ -941,7 +951,7 @@ export function ProtectedContentViewer() {
                         {a.name}
                       </Link>
                       {a.articleCount > 1 && (
-                        <span className={`tnum ml-1.5 font-mono text-[11px] ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{a.articleCount}</span>
+                        <span className={`tnum ml-1.5 font-mono text-[11px] text-slate-400 dark:text-faint`}>{a.articleCount}</span>
                       )}
                     </li>
                   ))}
@@ -950,7 +960,7 @@ export function ProtectedContentViewer() {
             )}
 
             <section>
-              <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>This record</p>
+              <p className={`font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-muted`}>This record</p>
               <dl className="mt-1.5 space-y-1.5 text-[12.5px]">
                 {record.contentType && <RailRow k="Type">{record.contentType}</RailRow>}
                 {record.domain && <RailRow k="Dept">{record.domain}</RailRow>}
@@ -964,7 +974,7 @@ export function ProtectedContentViewer() {
               {record.journal && (
                 <Link
                   to={`${libBase}/article/${id}`}
-                  className={`mt-3 inline-block font-mono text-[11px] uppercase tracking-wider underline-offset-4 hover:text-accent hover:underline ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}
+                  className={`mt-3 inline-block font-mono text-[11px] uppercase tracking-wider underline-offset-4 hover:text-accent hover:underline text-slate-400 dark:text-faint`}
                 >
                   Full record
                 </Link>
@@ -973,15 +983,15 @@ export function ProtectedContentViewer() {
 
             {(record.siblings?.length > 0 || record.related?.length > 0) && (
               <section>
-                <p className={`font-mono text-[11px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-muted`}>
                   {record.siblings?.length ? 'Also in this issue' : (record.relatedLabel || 'Related')}
                 </p>
-                <ul className={`mt-1.5 divide-y border-t ${darkMode ? 'divide-white/10 border-white/10' : 'divide-slate-200 border-slate-200'}`}>
+                <ul className={`mt-1.5 divide-y border-t divide-slate-200 border-slate-200 dark:divide-rule dark:border-rule`}>
                   {(record.siblings?.length ? record.siblings : record.related).slice(0, 12).map((sb: any) => (
                     <li key={sb.id} className="py-2">
                       <Link
                         to={`${libBase}/viewer/${sb.id}`}
-                        className={`block text-[13px] leading-snug hover:text-accent ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}
+                        className={`block text-[13px] leading-snug hover:text-accent text-slate-700 dark:text-ink-2`}
                       >
                         {sb.title}
                       </Link>
@@ -997,7 +1007,7 @@ export function ProtectedContentViewer() {
 
       {/* ─── BOTTOM STATUS BAR ───────────────────────── */}
       {isPdf && numPages > 0 && (
-        <div className={`shrink-0 h-9 flex items-center justify-between px-5 border-t text-[11px] ${darkMode ? 'bg-slate-900 border-white/10 text-slate-500' : 'bg-surface border-rule text-faint'}`}>
+        <div className={`shrink-0 h-9 flex items-center justify-between px-5 border-t text-[11px] bg-surface border-rule text-faint dark:bg-viewer-bar dark:border-rule dark:text-faint`}>
           <span className="flex items-center gap-2">
             <Shield size={11} className="text-accent" />
             Protected Content — Reading session is logged

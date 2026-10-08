@@ -1,7 +1,9 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 
-const WHATSAPP_NUMBER = '919810078958';
+import { COMPANY_DETAILS } from '../config';
+
+const WHATSAPP_NUMBER = COMPANY_DETAILS.whatsapp.replace(/\D/g, '');
 
 /** Staff tools. A visitor-facing chat button has no place inside them. */
 const HIDDEN_PREFIXES = ['/admin', '/manager', '/sales', '/studio'];

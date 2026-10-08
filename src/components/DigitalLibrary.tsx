@@ -31,25 +31,30 @@ import {
   Clock
 } from "lucide-react";
 
+function validCounts(data: unknown): Record<string, number> {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  return Object.fromEntries(Object.entries(data).filter(([, value]) => typeof value === 'number' && Number.isFinite(value) && value >= 0));
+}
+
 const ADVANCED_FEATURES = [
   {
-    title: "AI-Powered Semantic Search",
-    desc: "Unlike traditional keyword-based systems, our neural search understands the context of your query, finding highly relevant research papers and datasets in milliseconds.",
+    title: "Academic Search",
+    desc: "Search academic records by title, author, subject, and department to find material relevant to your research.",
     icon: <Search size={28} aria-hidden="true" />
   },
   {
-    title: "Proprietary 8KB Stream-Limit Engine",
-    desc: "Load heavy 100MB+ academic PDFs instantly. Our custom streaming architecture processes documents chunk-by-chunk for zero-latency reading, bypassing standard network timeouts.",
+    title: "Optimized Document Delivery",
+    desc: "Read available documents through the library viewer. Delivery depends on the source, document size, and your connection.",
     icon: <Zap size={28} aria-hidden="true" />
   },
   {
-    title: "Automated Metadata Validation",
-    desc: "Our continuous AI background workers scrub and validate data links 24/7, ensuring 100% active, non-duplicate content across our entire massive repository.",
+    title: "Metadata and Source-Quality Checks",
+    desc: "Metadata validation and source checks support catalogue maintenance. Availability and rights information can vary by record and source.",
     icon: <Cpu size={28} aria-hidden="true" />
   },
   {
-    title: "Military-Grade DRM & Access",
-    desc: "State-of-the-art encryption combined with dynamic IP-based and Shibboleth/OpenAthens authentication, ensuring airtight institutional data security.",
+    title: "Secure Access Controls",
+    desc: "Role-based and subscription-based controls manage access for individual users and institutions.",
     icon: <Lock size={28} aria-hidden="true" />
   }
 ];
@@ -85,9 +90,9 @@ export function DigitalLibrary() {
   useEffect(() => {
     // Fetch content type counts
     fetch("/api/public/content-type-counts")
-      .then(res => res.json())
+      .then(res => { if (!res.ok) throw new Error("Unavailable"); return res.json(); })
       .then(data => {
-        setCounts(data);
+        setCounts(validCounts(data));
         setLoading(false);
       })
       .catch(err => {
@@ -97,9 +102,9 @@ export function DigitalLibrary() {
 
     // Fetch domain counts
     fetch("/api/public/domain-counts")
-      .then(res => res.json())
+      .then(res => { if (!res.ok) throw new Error("Unavailable"); return res.json(); })
       .then(data => {
-        setDomainCounts(data);
+        setDomainCounts(validCounts(data));
       })
       .catch(err => {
         console.error("Error fetching domain counts:", err);
@@ -107,13 +112,13 @@ export function DigitalLibrary() {
   }, []);
 
   const OFFERINGS = [
-    { name: "Journals", count: counts["Journals"] ?? 0, icon: <BookOpen size={24} aria-hidden="true" />, desc: "Peer-reviewed journals, held as full runs" },
-    { name: "Articles", count: counts["Articles"] ?? 0, icon: <FileText size={24} aria-hidden="true" /> },
-    { name: "Academic E-Books", count: counts["Books"] ?? 0, icon: <Book size={24} aria-hidden="true" /> },
-    { name: "Research Theses", count: counts["Theses"] ?? 0, icon: <GraduationCap size={24} aria-hidden="true" /> },
-    { name: "Conference Proceedings", count: counts["Conference Proceedings"] ?? 0, icon: <Presentation size={24} aria-hidden="true" /> },
-    { name: "Educational Videos", count: counts["Educational Videos"] ?? 0, icon: <Video size={24} aria-hidden="true" /> },
-    { name: "Subject Newsletters", count: counts["Newsletters"] ?? 0, icon: <Newspaper size={24} aria-hidden="true" /> }
+    { name: "Journals", count: counts["Journals"], icon: <BookOpen size={24} aria-hidden="true" />, desc: "Peer-reviewed journals, held as full runs" },
+    { name: "Articles", count: counts["Articles"], icon: <FileText size={24} aria-hidden="true" /> },
+    { name: "Academic E-Books", count: counts["Books"], icon: <Book size={24} aria-hidden="true" /> },
+    { name: "Research Theses", count: counts["Theses"], icon: <GraduationCap size={24} aria-hidden="true" /> },
+    { name: "Conference Proceedings", count: counts["Conference Proceedings"], icon: <Presentation size={24} aria-hidden="true" /> },
+    { name: "Educational Videos", count: counts["Educational Videos"], icon: <Video size={24} aria-hidden="true" /> },
+    { name: "Subject Newsletters", count: counts["Newsletters"], icon: <Newspaper size={24} aria-hidden="true" /> }
   ];
   return (
     <div className="min-h-screen bg-surface">
@@ -138,8 +143,7 @@ export function DigitalLibrary() {
                 </span>
               </h1>
               <p className="on-dark-2 mt-6 max-w-xl text-base leading-relaxed sm:text-lg">
-                We don't just store static files. We engineer advanced digital ecosystems. 
-                Experience the market's most technically advanced repository, designed 
+                Built for modern academic discovery, with organized resources designed
                 specifically for top-tier institutions, researchers, and forward-thinking librarians.
               </p>
               
@@ -205,13 +209,12 @@ export function DigitalLibrary() {
       <section id="why-advanced" className="scroll-mt-20 bg-surface py-16 sm:py-24">
         <div className="container-public">
           <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-16">
-            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-accent">Our Competitive Edge</p>
+            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-accent">Academic Discovery</p>
             <h2 className="text-3xl font-bold text-ink sm:text-4xl">
-              Why We Are Technically Advanced Than Others in the Market
+              Built for Modern Academic Discovery
             </h2>
             <p className="mt-5 text-base text-ink-2 sm:text-lg">
-              Legacy library systems rely on outdated databases and slow monolithic servers. 
-              We rebuilt the academic repository from the ground up using modern AI and streaming technologies.
+              Search, structured metadata, and access controls support academic discovery.
             </p>
           </div>
 
@@ -252,7 +255,7 @@ export function DigitalLibrary() {
           </div>
 
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {OFFERINGS.filter(offer => loading || offer.count > 0).map((offer, i) => (
+            {OFFERINGS.map((offer, i) => (
               <div 
                 key={i}
                 className="on-dark-fill on-dark-edge flex flex-col items-center rounded-xl border p-4 text-center sm:p-6"
@@ -261,7 +264,7 @@ export function DigitalLibrary() {
                   {offer.icon}
                 </div>
                 <div className="on-dark mb-1 text-2xl font-bold tnum">
-                  {loading ? <span className="on-dark-fill inline-block h-6 w-16 animate-pulse rounded" aria-label="Loading"></span> : `${offer.count.toLocaleString("en-IN")}+`}
+                  {loading ? <span className="on-dark-fill inline-block h-6 w-16 animate-pulse rounded" aria-label="Loading"></span> : typeof offer.count === "number" ? offer.count.toLocaleString("en-IN") : "Browse resources"}
                 </div>
                 <div className="on-dark-2 text-xs font-semibold uppercase tracking-wide">{offer.name}</div>
               </div>
@@ -271,7 +274,7 @@ export function DigitalLibrary() {
       </section>
 
       {/* ─── DOMAINS SECTION (Cards with Images) ───────────────────────────── */}
-      <section className="bg-surface py-16 sm:py-24">
+      <section id="departments" className="scroll-mt-24 bg-surface py-16 sm:py-24">
         <div className="container-public">
           <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-16">
             <p className="mb-3 text-xs font-bold uppercase tracking-widest text-accent">Explore by Department</p>
@@ -279,7 +282,7 @@ export function DigitalLibrary() {
               Dive into our Specialized Domains
             </h2>
             <p className="mt-5 text-base text-ink-2 sm:text-lg">
-              Access highly curated, peer-reviewed content meticulously organized across 25+ specialized academic departments.
+              Explore academic records organized by department, with source information where available.
             </p>
           </div>
 

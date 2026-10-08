@@ -165,7 +165,7 @@ function PreferenceRow({ title, body, checked, locked, onToggle }: {
           type="button" role="switch" aria-checked={checked} aria-label={title} disabled={locked} onClick={onToggle}
           className={`flex h-6 w-11 items-center rounded-full p-1 transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 ${checked ? 'justify-end bg-accent' : 'justify-start bg-rule-2'}`}
         >
-          <span className="h-4 w-4 rounded-full bg-white shadow-sm" />
+          <span className="keep-light h-4 w-4 rounded-full bg-white shadow-sm" />
         </button>
       </div>
     </div>

@@ -78,6 +78,7 @@ export function SubjectPage({
   if (state === 'missing' || !s) {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
+        <Helmet><meta name="robots" content="noindex, follow" /></Helmet>
         <h1 className="font-serif text-xl font-medium text-ink">Subject not found</h1>
         <p className="mt-2 text-sm text-muted">We hold no journals classed under that subject.</p>
         <button type="button" onClick={() => navigate(-1)} className={buttonClass('outline', 'md', 'mt-6')}>

@@ -715,7 +715,7 @@ export function Signup() {
                     className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-rule-2 accent-[var(--accent)]"
                   />
                   <span className="text-sm leading-snug text-ink-2">
-                    I explicitly consent and agree to the <Link to="/terms-and-conditions" className="font-semibold text-accent hover:underline">Terms of Service</Link>.
+                    I explicitly consent and agree to the <Link to="/terms-and-conditions" className="font-semibold text-accent hover:underline">Terms &amp; Conditions</Link>.
                   </span>
                 </label>
 
@@ -727,7 +727,7 @@ export function Signup() {
                     className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-rule-2 accent-[var(--accent)]"
                   />
                   <span className="text-sm leading-snug text-ink-2">
-                    I explicitly consent to the collection, processing, and storage of my personal data as described in the <Link to="/privacy-policy" className="font-semibold text-accent hover:underline">Privacy Policy</Link> (in compliance with GDPR and DPDP Act).
+                    I explicitly consent to the collection, processing, and storage of my personal data as described in the <Link to="/privacy-policy" className="font-semibold text-accent hover:underline">Privacy Policy</Link>.
                   </span>
                 </label>
               </div>

@@ -20,7 +20,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
+import { ThemeToggle } from './ui/ThemeToggle';
 import { ReadingClock, useAllowance } from './membership/ReadingClock';
 import { SubscriptionSidebarCard } from './subscription/SubscriptionSidebarCard';
 import { dashboardTitle, affiliation } from '../lib/identity';
@@ -54,7 +54,6 @@ const sidebarItems: SidebarItem[] = [
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { dark, toggleDark } = useTheme();
   const { profile, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -145,7 +144,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         ${isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-20'} 
         bg-surface border-r border-rule transition-all duration-200 flex flex-col
       `}>
-        <div className={`flex h-16 shrink-0 items-center border-b border-rule px-4 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
+        <div className={`flex h-[var(--app-header-h)] shrink-0 items-center border-b border-rule px-4 ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
             <Link to="/" className="flex min-w-0 items-center gap-2">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent" aria-hidden="true">
@@ -221,7 +220,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ground">
         {/* Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-rule bg-surface/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 flex h-[var(--app-header-h)] items-center justify-between border-b border-rule bg-surface/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2 sm:gap-4">
             <button 
               type="button"
@@ -245,7 +244,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="flex shrink-0 items-center gap-1 sm:gap-3">
             {/* A limit nobody can see is indistinguishable from a broken site. */}
             <ReadingClock allowance={allowance} msLeft={msLeft} msUntil={msUntil} />
-            <div className="text-right hidden sm:flex flex-col items-end">
+            <div className="text-right hidden lg:flex flex-col items-end">
               <div className="flex items-center gap-2 text-sm font-medium text-ink">
                 {profile?.isDemoAccount && (
                   <span className="badge badge-caution">Demo</span>
@@ -255,23 +254,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               {/* What they are and where, rather than the internal word for
                   the row their account sits in. */}
               {affiliation(profile as any) ? (
-                <p className="max-w-[170px] truncate text-xs text-muted lg:max-w-[260px]">{affiliation(profile as any)}</p>
+                <p className="hidden max-w-[170px] truncate text-xs text-muted xl:block xl:max-w-[260px]">{affiliation(profile as any)}</p>
               ) : (
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{profile?.role}</p>
+                <p className="hidden text-[11px] font-semibold uppercase tracking-wider text-muted xl:block">{profile?.role}</p>
               )}
             </div>
             <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-rule bg-surface-2 font-medium text-muted sm:flex" aria-hidden="true">
               {profile?.displayName?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase()}
             </div>
-            <button
-              type="button"
-              onClick={toggleDark}
-              title={dark ? 'Light theme' : 'Dark theme'}
-              aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-              className="btn btn-ghost btn-icon btn-sm"
-            >
-              {dark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
-            </button>
+            <ThemeToggle />
             <div className="mx-1 hidden h-7 w-px bg-rule sm:block" aria-hidden="true"></div>
             <button
               type="button"

@@ -1,11 +1,8 @@
 User-agent: *
 Allow: /
-Disallow: /admin/
-Disallow: /dashboard/
-Disallow: /sales/
-Disallow: /manager/
-Disallow: /institution/
-Disallow: /validator/
 Disallow: /api/
 
+# Private and account pages send X-Robots-Tag: noindex, nofollow.
+# Let crawlers fetch their public login shell to see that directive;
+# data and actions remain protected by authentication.
 Sitemap: https://journalslibrary.com/sitemap.xml

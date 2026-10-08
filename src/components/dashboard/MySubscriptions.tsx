@@ -163,7 +163,7 @@ export function MySubscriptions() {
                 {/* Progress Bar */}
                 <div className="mt-6 pl-2">
                   <div
-                    className="h-2 w-full overflow-hidden rounded-full bg-surface-2"
+                    className="h-2 w-full overflow-hidden rounded-full bg-track"
                     role="progressbar"
                     aria-valuenow={progress}
                     aria-valuemin={0}
