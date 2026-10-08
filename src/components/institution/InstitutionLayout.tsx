@@ -188,7 +188,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col min-h-screen overflow-hidden bg-surface-2">
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-rule bg-surface px-4 sm:gap-6 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 flex h-[var(--app-header-h)] shrink-0 items-center justify-between gap-3 border-b border-rule bg-surface px-4 sm:gap-6 sm:px-6 lg:px-8">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Open menu"
             aria-expanded={mobileOpen} aria-controls="institution-nav"
             className="btn btn-ghost btn-sm btn-icon -ml-2 shrink-0 md:hidden">
@@ -214,7 +214,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
           <form
             onSubmit={(e) => { e.preventDefault(); if (q.trim()) navigate(`/institution/explore?q=${encodeURIComponent(q.trim())}`); }}
             role="search"
-            className="hidden h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-rule bg-surface-2 px-3 transition-colors focus-within:border-accent lg:flex lg:max-w-md"
+            className="hidden h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-rule bg-surface-2 px-3 transition-colors focus-within:border-accent lg:flex lg:min-w-[10rem] lg:max-w-md"
           >
             <Search size={16} className="shrink-0 text-faint" aria-hidden="true" />
             <input
@@ -229,13 +229,13 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ReadingClock allowance={allowance} msLeft={msLeft} msUntil={msUntil} />
-            <div className="hidden items-center gap-2.5 border-l border-rule pl-3 lg:flex">
+            <div className="hidden shrink-0 items-center gap-2.5 border-l border-rule pl-3 lg:flex">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-bold text-accent" aria-hidden="true">
                 {(profile.displayName || profile.organization || 'IN').substring(0, 2).toUpperCase()}
               </div>
-              <div className="min-w-0 leading-tight">
-                <p className="truncate text-[13px] font-semibold text-ink">{profile.displayName || 'Librarian'}</p>
-                <p className="max-w-[160px] truncate text-xs text-muted">{profile.email}</p>
+              <div className="hidden min-w-0 leading-tight min-[1180px]:block">
+                <p className="max-w-[140px] truncate text-[13px] font-semibold text-ink">{profile.displayName || 'Librarian'}</p>
+                <p className="hidden max-w-[160px] truncate text-xs text-muted min-[1360px]:block">{profile.email}</p>
               </div>
             </div>
             <ThemeToggle className="btn btn-outline btn-sm btn-icon" />
@@ -250,7 +250,7 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             </button>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div className="relative flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </main>

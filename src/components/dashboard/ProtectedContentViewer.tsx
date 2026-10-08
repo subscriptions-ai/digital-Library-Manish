@@ -552,9 +552,9 @@ export function ProtectedContentViewer() {
       className={`absolute inset-0 flex flex-col bg-slate-100 dark:bg-viewer-doc transition-colors duration-300`}
     >
       {/* ─── TOP BAR ─────────────────────────────────── */}
-      <div className={`h-14 shrink-0 flex items-center justify-between px-3 sm:px-5 border-b bg-surface border-rule dark:bg-viewer-bar dark:border-rule shadow-md z-20`}>
-        {/* Left: back + title */}
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="relative z-20 grid h-[var(--viewer-bar-h)] shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-rule bg-surface px-2 shadow-md dark:border-rule dark:bg-viewer-bar sm:gap-4 sm:px-5">
+        {/* Left: back + title. The title is the only part that gives way; everything beside it keeps its size. */}
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -564,26 +564,35 @@ export function ProtectedContentViewer() {
           >
             <ArrowLeft size={20} aria-hidden="true" />
           </button>
-          <div className="min-w-0">
-            <h1 className={`font-bold leading-tight line-clamp-1 text-sm sm:text-base text-ink dark:text-ink`}>
+          <div className="group min-w-0 max-w-[44rem]">
+            {/* One line, cut with an ellipsis. The whole title appears on hover, on keyboard focus and on tap —
+                a native title="" would do none of the last two. The h1 itself always holds the full text for
+                screen readers; the panel is for eyes only. */}
+            <h1 tabIndex={0} className="truncate rounded font-bold leading-tight text-ink focus-visible:outline-2">
               {content?.title}
             </h1>
+            {content?.title && (
+              <span aria-hidden="true"
+                className="pointer-events-none absolute left-2 top-full z-30 mt-1 hidden w-max max-w-[min(40rem,calc(100%-1rem))] rounded-lg border border-rule bg-tooltip px-3 py-2 text-[13px] font-medium leading-snug text-ink shadow-lg group-focus-within:block group-hover:block sm:left-5 sm:max-w-[min(40rem,calc(100%-2.5rem))]">
+                <span className="line-clamp-6 break-words">{content.title}</span>
+              </span>
+            )}
             {/* The way back into the catalogue: which journal this came from, and
                 its full record. Without this the reader is a dead end. */}
-            <p className="flex items-center gap-1.5 truncate font-mono text-[11px] uppercase tracking-wider text-muted">
+            <p className="flex min-w-0 items-center gap-1.5 truncate font-mono text-[11px] uppercase tracking-wider text-muted">
               <span className="shrink-0">{content?.contentType}</span>
               {content?.journalIssn && content?.journalName && (
                 <>
-                  <span className="text-rule-2">·</span>
-                  <Link to={`${libBase}/journal/${encodeURIComponent(content.journalIssn)}`}
-                    className="truncate normal-case tracking-normal text-accent hover:underline">
+                  <span className="text-rule-2 dark:text-faint">·</span>
+                  <Link to={`${libBase}/journal/${encodeURIComponent(content.journalIssn)}`} title={content.journalName}
+                    className="min-w-0 truncate normal-case tracking-normal text-accent hover:underline">
                     {content.journalName}
                   </Link>
                 </>
               )}
               {content?.kind === 'article' && (
                 <>
-                  <span className="text-rule-2">·</span>
+                  <span className="text-rule-2 dark:text-faint">·</span>
                   <Link to={`${libBase}/article/${id}`}
                     className="shrink-0 normal-case tracking-normal text-accent hover:underline">
                     Full record
@@ -595,10 +604,10 @@ export function ProtectedContentViewer() {
         </div>
 
         {/* Right: controls */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
           {/* Page indicator (PDF only) */}
           {isPdf && numPages > 0 && (
-            <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-surface-2 text-ink-2 dark:bg-surface-2 dark:text-ink-2`}>
+            <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-surface-2 text-ink-2 dark:bg-surface-2 dark:text-ink-2`}>
               <span>{currentPage}</span>
               <span className="text-muted">/</span>
               <span>{numPages}</span>
@@ -671,8 +680,9 @@ export function ProtectedContentViewer() {
             </button>
           )}
 
-          {/* Dark mode toggle */}
-          <button
+          {/* Theme switch: the layout's header carries one, so this one only appears in fullscreen,
+              where that header is not on screen. Two moons side by side read as a mistake. */}
+          {fullscreen && <button
             onClick={toggleDark}
             type="button"
             title={darkMode ? 'Light Mode' : 'Dark Mode'}
@@ -680,7 +690,7 @@ export function ProtectedContentViewer() {
             className={`p-2 rounded-lg transition-colors text-muted hover:text-ink hover:bg-surface-2 dark:text-muted dark:hover:text-ink dark:hover:bg-surface-hover`}
           >
             {darkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
-          </button>
+          </button>}
 
           {/* Fullscreen (Hidden on mobile) */}
           <button
@@ -694,15 +704,15 @@ export function ProtectedContentViewer() {
           </button>
 
           {/* Secure badge */}
-          <div className="badge badge-accent hidden sm:inline-flex">
+          <div className="badge badge-accent hidden lg:inline-flex">
             <Shield size={12} aria-hidden="true" /> Secure
           </div>
         </div>
-      </div>
+      </header>
 
       {/* ─── PDF PAGE NAV BAR (prev / next) ─────────── */}
       {isPdf && numPages > 0 && (
-        <div className={`shrink-0 flex items-center justify-center gap-3 py-2 border-b bg-white/80 border-slate-200 dark:bg-viewer-bar/80 dark:border-rule-subtle backdrop-blur z-10`}>
+        <div className={`relative z-10 flex min-h-[var(--viewer-pager-h)] shrink-0 items-center justify-center gap-3 border-b bg-white/80 border-slate-200 dark:bg-viewer-bar/80 dark:border-rule-subtle backdrop-blur z-10`}>
           <button
             type="button"
             onClick={() => goToPage(currentPage - 1)}
@@ -899,7 +909,7 @@ export function ProtectedContentViewer() {
 
       {/* ─── CONTEXT RAIL ────────────────────────────── */}
       {record && railOpen && (
-        <aside className={`hidden w-[320px] shrink-0 overflow-y-auto border-l lg:block bg-white border-slate-200 dark:bg-viewer-side dark:border-rule`}>
+        <aside className={`hidden w-[320px] shrink-0 overflow-y-auto border-l pb-28 lg:block bg-white border-slate-200 dark:bg-viewer-side dark:border-rule`}>
           <div className="space-y-7 p-5">
 
             {record.journal && (

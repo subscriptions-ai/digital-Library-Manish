@@ -65,6 +65,13 @@ export const COMPANY_DETAILS = {
     // TODO: confirm — /in/ is a personal-profile path; a company page would be /company/<name>.
     // LinkedIn blocks automated checks, so this could not be verified from here.
     linkedin: "https://linkedin.com/in/stmdigitallibrary",
+    /**
+     * Official STM Digital Library WhatsApp Channel.
+     * This is a broadcast/updates channel — distinct from the enquiry/support
+     * WhatsApp number above. Do NOT attach auto-fill messages to this URL.
+     * Replace the placeholder below with the verified channel URL once confirmed.
+     */
+    whatsappChannel: "https://www.whatsapp.com/channel/0029Vaxy4ls4o7qG1sSal91N",
   },
 
   bank: {

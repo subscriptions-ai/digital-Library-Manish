@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { type DeptRow } from './charts';
 import { SearchBox } from './GlobalSearch';
+import { COMPANY_DETAILS } from '../config';
 
 /**
  * The home page.
@@ -1194,6 +1195,124 @@ function Questions() {
   );
 }
 
+// ── WhatsApp Channel — Stay Updated ─────────────────────────────────────────
+
+/**
+ * Inline WhatsApp SVG icon — shared between the banner CTA and the icon slot.
+ * Kept here rather than imported so this section is self-contained.
+ */
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.14-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.88 9.88zM20.52 3.45A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.88 11.88 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.17-3.48-8.41z" />
+    </svg>
+  );
+}
+
+/**
+ * Compact "Stay Updated" strip that surfaces the official STM Digital Library
+ * WhatsApp Channel. Deliberately lightweight — not a full promotional banner.
+ *
+ * Positioned between the FAQ section and the closing CTA band so it sits in the
+ * lower informational part of the page without competing with the hero.
+ *
+ * WhatsApp green (#25D366) is used only for the icon and the button to preserve
+ * brand association, while the card background follows the page's own palette.
+ */
+function WhatsAppChannelBanner() {
+  return (
+    <section
+      aria-labelledby="wa-channel-heading"
+      className="py-10"
+      style={{ background: 'var(--np-bg, var(--color-ground))' }}
+    >
+      <div className="container-public">
+        <div
+          className="
+            relative flex flex-col items-center gap-5 overflow-hidden
+            rounded-2xl border px-6 py-8 text-center
+            sm:flex-row sm:gap-8 sm:text-left
+            md:px-10 md:py-10
+          "
+          style={{
+            borderColor: 'var(--np-line)',
+            background: 'var(--color-surface, #fff)',
+          }}
+        >
+          {/* Subtle green glow — top-left decorative blob, aria-hidden */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-10 -top-10 h-48 w-48 rounded-full opacity-10"
+            style={{ background: '#25D366', filter: 'blur(60px)' }}
+          />
+
+          {/* Icon slot */}
+          <div
+            className="
+              flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl
+              shadow-sm ring-1
+            "
+            style={{
+              background: '#edfdf4',
+              color: '#25D366',
+              boxShadow: '0 0 0 1px rgba(37,211,102,0.25)',
+            }}
+            aria-hidden="true"
+          >
+            <WhatsAppIcon className="h-7 w-7" />
+          </div>
+
+          {/* Text */}
+          <div className="flex-1 min-w-0">
+            <p
+              className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] mb-2"
+              style={{ background: 'var(--np-soft)', color: 'var(--np-body)' }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--np-amber)' }} />
+              Stay Updated
+            </p>
+            <h2
+              id="wa-channel-heading"
+              className="np-strong text-[18px] leading-snug sm:text-[20px]"
+              style={{ color: 'var(--np-ink)' }}
+            >
+              Follow STM Digital Library on WhatsApp
+            </h2>
+            <p
+              className="mt-1.5 text-[13.5px] leading-relaxed max-w-2xl"
+              style={{ color: 'var(--np-body)' }}
+            >
+              Get updates on newly added academic resources, journals, books, theses, conference
+              proceedings, institutional access and important academic announcements.
+            </p>
+          </div>
+
+          {/* CTA */}
+          <a
+            href={COMPANY_DETAILS.social.whatsappChannel}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Follow STM Digital Library WhatsApp Channel"
+            id="wa-channel-home-cta"
+            className="
+              inline-flex shrink-0 items-center gap-2
+              rounded-xl px-5 py-2.5 text-sm font-semibold text-white
+              transition-opacity hover:opacity-90 focus:outline-none
+              focus-visible:ring-2 focus-visible:ring-offset-2
+            "
+            style={{
+              background: '#25D366',
+            }}
+          >
+            <WhatsAppIcon className="h-4 w-4" />
+            Follow WhatsApp Channel
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── 11. The closing band, and the notice ────────────────────────────────────
 
 function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | null }) {
@@ -1265,6 +1384,7 @@ export function HomePreview() {
       <Walkthrough stats={stats} depts={depts} subjects={subjects} articles={articles} />
       <Audiences stats={stats} />
       <Questions />
+      <WhatsAppChannelBanner />
       <Closing stats={stats} inst={institutions} />
     </div>
   );

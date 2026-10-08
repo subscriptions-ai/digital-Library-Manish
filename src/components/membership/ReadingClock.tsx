@@ -146,7 +146,7 @@ export function ReadingClock({ allowance, msLeft, msUntil, className = '' }: {
       className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold tabular-nums transition-opacity duration-150 hover:opacity-80 ${tone} ${className}`}
     >
       {s === 'waiting' || s === 'spent' ? <Lock size={12} aria-hidden="true" /> : <Clock size={12} aria-hidden="true" />}
-      <span aria-hidden="true"><span className="hidden sm:inline">Free Preview ·</span> {label}</span>
+      <span aria-hidden="true"><span className="hidden xl:inline">Free Preview ·</span> {label}</span>
     </Link>
   );
 }

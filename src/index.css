@@ -71,6 +71,14 @@
 
   /* Page widths. Public pages share one, signed-in screens another, and long
      reading text a third so a line never runs the full width of a monitor. */
+  /* Chrome heights. The signed-in header, the viewer's own bar and its page strip each have one
+     height, here. Anything that has to sit below them reads these instead of a literal.
+     Stacking, low to high: viewer content < page strip (z-10) < viewer bar (z-20) < app header (z-30)
+     < sidebar and dropdowns (z-40/50) < dialogs (z-100). */
+  --app-header-h: 64px;
+  --viewer-bar-h: 56px;
+  --viewer-pager-h: 44px;
+
   --w-public: 1200px;
   --w-app: 1280px;
   --w-prose: 72ch;
