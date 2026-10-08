@@ -31,6 +31,7 @@ import { TermsAndConditions } from "./components/TermsAndConditions";
 import { LegalDisclaimer } from "./components/LegalDisclaimer";
 import { ContentSources } from "./components/ContentSources";
 import { ContentRemoval } from "./components/ContentRemoval";
+import { ReturnsRefundsCancellation } from "./components/ReturnsRefundsCancellation";
 // Lazy-loaded so the plan/price data it imports lands in its own chunk and is
 // never downloaded by public visitors — only by admins/managers who open it.
 const QuotationBuilder = lazy(() =>
@@ -377,6 +378,7 @@ export default function App() {
                       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                       <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                       <Route path="/legal-disclaimer" element={<LegalDisclaimer />} />
+                      <Route path="/returns-refunds-cancellation" element={<ReturnsRefundsCancellation />} />
                       <Route path="/content-sources" element={<ContentSources />} />
                       <Route path="/content-removal" element={<ContentRemoval />} />
                       <Route path="/login" element={<Login />} />

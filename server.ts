@@ -29,7 +29,12 @@ import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, Q
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
 import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
-import { importDoajCatalogue } from "./src/lib/doajCatalogue.js";
+import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
+import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
+import { validateSettings } from "./src/lib/ingestion/settings.js";
+import { engineStatus, last24Hours, repeatedNoChangeAlerts, metrics as ingestionMetrics, runHistory } from "./src/lib/ingestion/status.js";
+import { INGESTION_POLICY, schedulerV2 } from "./src/lib/ingestion/policy.js";
+import { classifyCandidates, summarise as summariseCandidates, createPreview, loadPreview, commitOneOff, previewToCsv, PreviewError } from "./src/lib/ingestion/importService.js";
 import sanitizeHtml from "sanitize-html";
 import {
   TEMPLATES, TEMPLATE_LIST, renderTemplate, missingInstitutionFields,
@@ -8419,6 +8424,8 @@ async function startServer() {
       subject: (w.concepts || [])[0]?.display_name || null,
       openAccess: !!w.open_access?.is_oa,
       source: 'OpenAlex',
+      sourceRecordId: w.id || null,
+      licence: w.best_oa_location?.license || null,
     };
   };
 
@@ -8470,6 +8477,8 @@ async function startServer() {
         subject: (b.subject || [])[0]?.term || null,
         openAccess: true,
         source: 'DOAJ',
+        sourceRecordId: rec.id || null,
+        licence: (b.journal?.license || [])[0]?.type || null,
       };
     }).filter((x: any) => x.pdfUrl || x.doi);
     return (trustedOnly ? mapped.filter((x: any) => isTrustedPdfHost(x.pdfUrl)) : mapped).slice(0, perDept);
@@ -8493,7 +8502,8 @@ async function startServer() {
         journalName: get('arxiv:journal_ref') || 'arXiv',
         issn: null, publisherName: 'arXiv', volume: null, issue: null,
         year: published ? parseInt(published.slice(0, 4)) : null,
-        subject: null, openAccess: true, source: 'arXiv',
+        // arXiv declares no open licence for a paper, so nothing here is verifiable and the file is not served.
+        subject: null, openAccess: true, source: 'arXiv', sourceRecordId: arxivId ? `arxiv:${arxivId}` : null, licence: null,
       };
     }).filter((a: any) => a.pdfUrl);
   }
@@ -8544,6 +8554,7 @@ async function startServer() {
         volume: ji.volume || null, issue: ji.issue || null,
         year: ji.yearOfPublication ? parseInt(ji.yearOfPublication) : (x.pubYear ? parseInt(x.pubYear) : null),
         subject: null, openAccess: true, source: 'EuropePMC',
+        sourceRecordId: x.pmcid || x.pmid || x.id || null, licence: x.license || null,
       };
     }).filter((a: any) => a.title && a.pdfUrl);
   }
@@ -8565,143 +8576,81 @@ async function startServer() {
     return { kept, skipped };
   }
 
-  // Preview (dry run) — fetch & map, NO insert (frontend can export CSV from this)
-  app.post("/api/admin/ingest/preview", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
-    try {
-      const { source = 'openalex', departments = [], perDept = 10 } = req.body;
-      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department" });
-      const trustedOnly = req.body.trustedHostsOnly !== false && (source === 'openalex' || source === 'doaj');
-      const limit = Math.min(Math.max(parseInt(perDept) || 10, 1), 50);
-      const items: any[] = [];
-      for (const dept of departments) {
-        try { const got = await fetchForDept(source, dept, limit, trustedOnly); items.push(...got.map((x: any) => ({ ...x, department: dept }))); }
-        catch (e) { console.error(`Preview fetch [${source}/${dept}]`, e); }
-      }
-      res.json({ source, trustedOnly, count: items.length, items });
-    } catch (e: any) { console.error("Ingest preview error:", e); res.status(500).json({ error: "Preview failed" }); }
-  });
-
-  // Background ingestion jobs (in-memory). Admin bulk ingest is re-runnable + dedup-skips,
-  // so losing job state on redeploy is harmless. Large runs must NOT block the HTTP request.
-  const ingestJobs = new Map<string, any>();
-
-  async function processIngestJob(job: any, req: any) {
-    const { source, departments, limit, validate, trustedOnly } = job.params;
-    const publishersTouched = new Set<string>();
-    try {
-      for (const dept of departments) {
-        job.currentDept = dept;
-        let items: any[] = [];
-        try { items = await fetchForDept(source, dept, limit, trustedOnly); }
-        catch (e) { console.error(`Ingest fetch [${source}/${dept}]`, e); continue; }
-        job.fetched += items.length;
-
-        // Confirm each candidate actually opens (parallel — trusted-host filter means no slow hangs).
-        if (validate) {
-          const { kept, skipped } = await keepOpenable(items);
-          job.skippedUnopenable += skipped;
-          items = kept;
-        }
-
-        for (const it of items) {
-          try {
-            const fp = articleFingerprint(it.doi, it.title, it.authors);
-            const exists = await (prisma as any).article.findUnique({ where: { fingerprint: fp } });
-            if (exists) { job.duplicates++; continue; }
-
-            const publisher = await upsertPublisherByName(it.publisherName, it.source);
-            if (publisher) publishersTouched.add(publisher.id);
-            const journal = await upsertJournalByIssn(it.issn, {
-              title: it.journalName || 'Unknown Journal',
-              publisherId: publisher?.id || null, publisherName: it.publisherName || null,
-              domain: dept, subject: it.subject || null, openAccess: !!it.openAccess, startYear: it.year || null,
-            });
-
-            await (prisma as any).article.create({
-              data: {
-                title: it.title, authors: it.authors || null, doi: it.doi || null, pdfUrl: it.pdfUrl || null,
-                journalId: journal?.id || null, journalName: it.journalName || null, journalIssn: it.issn || null,
-                publisherId: publisher?.id || null, publisherName: it.publisherName || null,
-                volume: it.volume ? String(it.volume) : null, issue: it.issue ? String(it.issue) : null,
-                year: it.year || null, domain: dept, subject: it.subject || null,
-                accessType: 'OpenAccess', status: 'Published', source: it.source, fingerprint: fp,
-                createdBy: req.user?.email || 'Ingestion',
-              }
-            });
-            job.inserted++;
-          } catch (e) { job.failed++; }
-        }
-      }
-      job.publishersDiscovered = publishersTouched.size;
-      job.status = 'done';
-    } catch (e: any) {
-      console.error("Ingest job error:", e);
-      job.status = 'error'; job.error = e?.message || 'Ingestion failed';
-    } finally {
-      job.currentDept = null; job.finishedAt = Date.now();
-    }
-  }
-
-  // Run — starts a background job, returns jobId immediately (poll /ingest/status/:id for live progress)
-  // ── Continuous ingestion ────────────────────────────────────────────────
-  // Switched on once and left alone. The timer does one small slice per tick and
-  // records where it reached, so a restart costs at most a single slice — which
-  // is the difference between "leave it running" and "babysit a four-hour job".
+  // ══════════════════════════════════════════════════════════════════════════
+  //  DATA INGESTION — ADMIN API
+  //
+  //  Every route below is behind authenticateJWT + requireSuperAdmin on the SERVER. The screen's own checks
+  //  are a courtesy and nothing here relies on them. Every route that writes is a POST; no GET triggers work.
+  //
+  //  Nothing in this block deletes, truncates or resets a catalogue row. Writes are: new journals/articles
+  //  (additive), the engine's own state row, and the append-only audit, preview and run-log tables.
+  // ══════════════════════════════════════════════════════════════════════════
 
   const ALL_DEPARTMENTS = DOMAINS.map((d: any) => d.name);
+  const adminOf = (req: any) => ({ uid: req.user?.uid, email: req.user?.email });
+  const MAX_CANDIDATES = INGESTION_POLICY.preview.maxItems;
+
+  // The timer's real rhythm, so the screen can say when the next pass is due. Set by the interval below.
+  const ingestTimer = { lastTickAt: null as number | null, nextTickAt: null as number | null, busy: false };
+  let manualPassRunning = false;
+
+  /** The state row plus everything computed from it, in one response. */
+  const ingestionEnvelope = async () => {
+    const state = await getIngestionState();
+    const [status, last24h, alerts] = await Promise.all([
+      engineStatus(state, ingestTimer), last24Hours(), repeatedNoChangeAlerts(),
+    ]);
+    return { ...state, status, last24h, alerts, schedulerV2: schedulerV2(), limits: INGESTION_POLICY.settings };
+  };
 
   app.get("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
-    try { res.json(await getIngestionState()); }
+    try { res.json(await ingestionEnvelope()); }
     catch { res.status(500).json({ error: "Failed to read ingestion state" }); }
   });
 
+  // POST /api/admin/ingest/state — change settings, scope, or switch the engine on/off.
+  //
+  // Validated here, never defaulted: a value that is not a whole number inside its range is refused and the
+  // saved value is left alone. Every change is audited with what it was and what it became.
   app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      const { enabled, yearsBack, departments, batchSize, discoverEvery, focus, articlesPerJournal } = req.body || {};
-      const data: any = {};
-      if (typeof enabled === 'boolean') data.enabled = enabled;
-      if (Number.isInteger(yearsBack) && yearsBack > 0 && yearsBack <= 50) data.yearsBack = yearsBack;
-      if (Array.isArray(departments)) data.departments = departments;
-      if (Number.isInteger(batchSize) && batchSize > 0 && batchSize <= 200) data.batchSize = batchSize;
-      // Zero would mean every pass looks for more titles and none ever fetches
-      // an article, which is the failure this setting exists to prevent.
-      if (Number.isInteger(discoverEvery) && discoverEvery > 0 && discoverEvery <= 50) data.discoverEvery = discoverEvery;
-      if (['auto', 'journals', 'books', 'articles'].includes(focus)) data.focus = focus;
-      if (Number.isInteger(articlesPerJournal) && articlesPerJournal >= 0 && articlesPerJournal <= 10000) data.articlesPerJournal = articlesPerJournal;
-      await getIngestionState();
-      res.json(await (prisma as any).ingestionState.update({ where: { id: 'singleton' }, data }));
-    } catch { res.status(500).json({ error: "Failed to update ingestion state" }); }
+      const current = await getIngestionState();
+      const v: any = validateSettings(req.body, current, ALL_DEPARTMENTS);
+      if (!v.ok) return res.status(v.status).json({ error: v.errors[0], errors: v.errors, needsConfirmation: v.needsConfirmation });
+      if (Object.keys(v.data).length) await (prisma as any).ingestionState.update({ where: { id: 'singleton' }, data: v.data });
+
+      const who = adminOf(req);
+      if (v.enabledChange) await ingestionAudit(who, v.data.enabled ? 'ENGINE_RESUMED' : 'ENGINE_PAUSED', { engineWas: current.enabled });
+      if (v.scope) await ingestionAudit(who, 'INGESTION_SCOPE_CHANGED', { from: v.scope.from, to: v.scope.to, engineRunning: !!current.enabled });
+      const settingChanges = Object.fromEntries(Object.entries(v.changes as Record<string, any>).filter(([k]) => !['enabled', 'departments'].includes(k)));
+      if (Object.keys(settingChanges).length) await ingestionAudit(who, 'INGESTION_SETTINGS_CHANGED', { changes: settingChanges });
+
+      res.json(await ingestionEnvelope());
+    } catch (e: any) {
+      console.error('POST ingest/state error:', e?.message);
+      res.status(500).json({ error: "Failed to update ingestion state" });
+    }
   });
 
-  /** Run one slice now, so the switch can be tested without waiting for the timer. */
-  // GET /api/admin/ingest/history — what the engine has actually been doing.
-  //
-  // The screen could show cumulative totals and nothing else, so an operator
-  // could see that 422,835 items had been skipped at some point and had no way
-  // to find out when, from which journal, or whether "skipped" meant we already
-  // held it or the write had failed.
+  // GET /api/admin/ingest/history — the run log, filtered and paged on the server so the screen never loads it all.
+  //   ?result=all|added|held|failed|skipped  ?phase=articles|books|journals  ?limit=  ?before=<ISO time>
   app.get("/api/admin/ingest/history", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
-    try {
-      const take = Math.min(parseInt(req.query.limit as string) || 40, 200);
-      const since = new Date(Date.now() - 7 * 864e5);
+    try { res.json(await runHistory({ result: req.query.result as string, phase: req.query.phase as string, limit: Number(req.query.limit), before: req.query.before as string })); }
+    catch (e: any) { console.error('GET ingest/history error:', e?.message); res.status(500).json({ error: "Failed to load history" }); }
+  });
 
-      const [runs, totals, worst, sweeps, journalsHeld, booksHeld] = await Promise.all([
-        (prisma as any).ingestionRun.findMany({ orderBy: { at: 'desc' }, take }),
-        (prisma as any).ingestionRun.aggregate({
-          where: { at: { gte: since } },
-          _sum: { added: true, skippedHeld: true, skippedFailed: true },
-          _count: { _all: true },
-        }),
-        // Passes that failed to write are the ones worth surfacing; they used to
-        // be indistinguishable from ordinary duplicates.
-        (prisma as any).ingestionRun.findMany({
-          where: { OR: [{ error: { not: null } }, { skippedFailed: { gt: 0 } }] },
-          orderBy: { at: 'desc' }, take: 10,
-        }),
-        // How far each department has been swept, per source. Totals said what
-        // had been collected but never how much was left — a department could
-        // sit on one page of a source holding a thousand more and nothing on
-        // the screen would say so.
+  // GET /api/admin/ingest/metrics?period=lifetime|7d|24h — lifetime is the engine's own running totals, untouched.
+  app.get("/api/admin/ingest/metrics", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const period = (['lifetime', '7d', '24h'] as const).find(p => p === req.query.period) || 'lifetime';
+      res.json(await ingestionMetrics(await getIngestionState(), period));
+    } catch (e: any) { res.status(500).json({ error: "Failed to load metrics" }); }
+  });
+
+  // GET /api/admin/ingest/coverage — how far each department's sweep of each source has got.
+  app.get("/api/admin/ingest/coverage", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try {
+      const [sweeps, journalsHeld, booksHeld] = await Promise.all([
         prisma.$queryRawUnsafe(`
           select department, source,
                  sum(seen)::int      as seen,
@@ -8711,152 +8660,256 @@ async function startServer() {
                  count(*) filter (where "exhaustedAt" is null)::int as "termsOpen",
                  max("lastSweptAt")  as "lastSweptAt"
           from "DepartmentSweep" group by 1, 2`),
-        prisma.$queryRawUnsafe(
-          `select domain, count(*)::int n from "Journal" where domain is not null group by 1`),
-        prisma.$queryRawUnsafe(
-          `select domain, count(*)::int n from "Book"
-           where status = 'Published' and domain is not null group by 1`),
+        prisma.$queryRawUnsafe(`select domain, count(*)::int n from "Journal" where domain is not null group by 1`),
+        prisma.$queryRawUnsafe(`select domain, count(*)::int n from "Book" where status = 'Published' and domain is not null group by 1`),
       ]);
-
       const held = (rows: any[]) => new Map(rows.map((r: any) => [r.domain, r.n]));
-      const jHeld = held(journalsHeld as any[]);
-      const bHeld = held(booksHeld as any[]);
-
+      const jHeld = held(journalsHeld as any[]); const bHeld = held(booksHeld as any[]);
       const byDept = new Map<string, any>();
       for (const row of sweeps as any[]) {
-        const d = byDept.get(row.department) || {
-          department: row.department,
-          journalsHeld: jHeld.get(row.department) || 0,
-          booksHeld: bHeld.get(row.department) || 0,
-        };
-        d[row.source === 'DOAJ' ? 'doaj' : 'doab'] = {
-          seen: row.seen, accepted: row.accepted, refused: row.refused,
-          terms: row.terms, termsOpen: row.termsOpen, lastSweptAt: row.lastSweptAt,
-        };
+        const d = byDept.get(row.department) || { department: row.department, journalsHeld: jHeld.get(row.department) || 0, booksHeld: bHeld.get(row.department) || 0 };
+        d[row.source === 'DOAJ' ? 'doaj' : 'doab'] = { seen: row.seen, accepted: row.accepted, refused: row.refused, terms: row.terms, termsOpen: row.termsOpen, lastSweptAt: row.lastSweptAt };
         byDept.set(row.department, d);
       }
-      // A department with no sweep row yet has still not been reached; it belongs
-      // on the list precisely because it is empty.
+      // A department with no sweep row yet has still not been reached; it belongs on the list precisely because it is empty.
       for (const dep of new Set([...jHeld.keys(), ...bHeld.keys()]) as any) {
-        if (!byDept.has(dep)) byDept.set(dep, {
-          department: dep, journalsHeld: jHeld.get(dep) || 0, booksHeld: bHeld.get(dep) || 0,
-        });
+        if (!byDept.has(dep)) byDept.set(dep, { department: dep, journalsHeld: jHeld.get(dep) || 0, booksHeld: bHeld.get(dep) || 0 });
       }
+      res.json({ coverage: [...byDept.values()].sort((a, b) => a.department.localeCompare(b.department)) });
+    } catch (e: any) { console.error('GET ingest/coverage error:', e?.message); res.status(500).json({ error: "Failed to load coverage" }); }
+  });
 
-      res.json({
-        runs,
-        lastSevenDays: {
-          passes: totals._count._all,
-          added: totals._sum.added || 0,
-          alreadyHeld: totals._sum.skippedHeld || 0,
-          failedToWrite: totals._sum.skippedFailed || 0,
-        },
-        problems: worst,
-        coverage: [...byDept.values()].sort((a, b) => a.department.localeCompare(b.department)),
-      });
+  // GET /api/admin/ingest/audit — what administrators and the engine's own safeguards have done, newest first.
+  app.get("/api/admin/ingest/audit", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const take = Math.min(parseInt(req.query.limit as string) || 20, 100);
+      res.json({ events: await (prisma as any).ingestionAudit.findMany({ orderBy: { at: 'desc' }, take }) });
+    } catch { res.status(500).json({ error: "Failed to load audit log" }); }
+  });
+
+  // POST /api/admin/ingest/tick — "Run extra pass now". Refused while a pass is already running, so repeated clicks
+  // can never start concurrent workers. (Claims on the journals make a concurrent pass safe anyway; this keeps it from happening.)
+  app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    if (manualPassRunning || ingestTimer.busy) return res.status(409).json({ error: 'A pass is already running. It will finish on its own.', busy: true });
+    manualPassRunning = true;
+    try {
+      const state = await getIngestionState();
+      await ingestionAudit(adminOf(req), 'MANUAL_PASS_REQUESTED', { engineEnabled: !!state.enabled });
+      // A manual pass runs even while the engine is paused; that is the point of the button. The timer still respects the switch.
+      res.json(await runIngestionPass(ALL_DEPARTMENTS, { force: true }));
+    } catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
+    finally { manualPassRunning = false; }
+  });
+
+  // The timer. One slice a minute is deliberately unhurried: it stays well inside the API's polite limits and never
+  // competes with live traffic.
+  const TICK_MS = INGESTION_POLICY.health.tickSeconds * 1000;
+  ingestTimer.nextTickAt = Date.now() + TICK_MS;
+  setInterval(async () => {
+    ingestTimer.lastTickAt = Date.now(); ingestTimer.nextTickAt = Date.now() + TICK_MS;
+    if (ingestTimer.busy || manualPassRunning) return;
+    ingestTimer.busy = true;
+    try { await runIngestionPass(ALL_DEPARTMENTS); }
+    catch (e) { console.error('[ingest] pass failed:', e); }
+    finally { ingestTimer.busy = false; }
+  }, TICK_MS);
+
+  // ── Jobs (in memory). Everything they do is re-runnable and idempotent, so losing one on a redeploy loses progress, never data. ──
+  const ingestJobs = new Map<string, any>();
+  const jobId = (k: string) => `${k}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  const keepJob = (id: string) => setTimeout(() => ingestJobs.delete(id), 30 * 60 * 1000);
+  const runningJob = (kind: string) => [...ingestJobs.values()].find(j => j.kind === kind && j.status === 'running');
+
+  // GET /api/admin/ingest/jobs/active — so a refreshed page can pick up what is still running instead of starting it again.
+  app.get("/api/admin/ingest/jobs/active", authenticateJWT, requireSuperAdmin, (_req: any, res: any) => {
+    res.json({
+      jobs: [...ingestJobs.values()].filter(j => j.status === 'running').map(j => ({ jobId: j.id, kind: j.kind, startedAt: j.startedAt, progress: j.progress })),
+      pass: { running: manualPassRunning || ingestTimer.busy },
+      doajCatalogue: doajCatalogueJob,
+    });
+  });
+
+  // ── One-off import, step 1: the dry run ─────────────────────────────────────
+  //
+  // Fetches candidates, judges each with the same rules the engine uses, checks what is already held, and keeps the
+  // result as a snapshot. It writes NOTHING to the catalogue: the only rows it creates are the preview itself and an
+  // audit entry. It runs in the background because checking that files open can take a minute.
+  app.post("/api/admin/ingest/dry-run", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { source = 'openalex', departments = [], perDept = 25, accessPolicy = 'verifiable' } = req.body || {};
+      if (!['openalex', 'doaj', 'europepmc', 'arxiv'].includes(source)) return res.status(400).json({ error: "Unknown source." });
+      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department to continue." });
+      const unknown = departments.filter((d: any) => !ALL_DEPARTMENTS.includes(d));
+      if (unknown.length) return res.status(400).json({ error: `Unknown department: ${unknown[0]}` });
+      const per = Number(perDept);
+      if (!Number.isInteger(per) || per < 1 || per > 300) return res.status(400).json({ error: "Items per department must be a whole number from 1 to 300." });
+      if (per * departments.length > MAX_CANDIDATES) return res.status(400).json({ error: `That would fetch more than ${MAX_CANDIDATES.toLocaleString()} candidates. Reduce the departments or the items per department.` });
+      if (runningJob('dry-run')) return res.status(409).json({ error: 'A dry run is already in progress.' });
+
+      const verifiable = accessPolicy !== 'any';
+      const job: any = { id: jobId('dry'), kind: 'dry-run', status: 'running', startedAt: Date.now(), progress: { department: null, done: 0, total: departments.length }, params: { source, departments, perDept: per, accessPolicy: verifiable ? 'verifiable' : 'any' } };
+      ingestJobs.set(job.id, job);
+      res.status(202).json({ jobId: job.id });
+
+      (async () => {
+        try {
+          const candidates: any[] = []; let errors = 0;
+          for (const dept of departments) {
+            job.progress.department = dept;
+            try {
+              let got = await fetchForDept(source, dept, per, verifiable && (source === 'openalex' || source === 'doaj'));
+              // "Verifiable open-access full text": the file must actually open from here. Checked, not assumed.
+              if (verifiable) {
+                const opens = await Promise.all(got.map((g: any) => isFetchablePdf(g.pdfUrl)));
+                got = got.map((g: any, i: number) => ({ ...g, fileOpensHere: opens[i] }));
+              }
+              candidates.push(...got.map((g: any) => ({ ...g, department: dept })));
+            } catch (e: any) { errors++; console.error(`Dry run fetch [${source}/${dept}]:`, e?.message); }
+            job.progress.done++;
+          }
+          const classified = await classifyCandidates(candidates);
+          // Under the verifiable-only policy a record whose file does not open is refused, visibly, with the reason.
+          for (const c of classified) {
+            if (verifiable && c.outcome === 'ADD' && c.fileOpensHere === false) { c.outcome = 'REJECTED'; c.reasons = ['full text could not be verified as open']; c.access = undefined; }
+          }
+          const summary = { ...summariseCandidates(classified, errors), source, departments };
+          const row = await createPreview('ONE_OFF', adminOf(req), job.params, summary, classified);
+          Object.assign(job, { status: 'done', previewId: row.id, summary, expiresAt: row.expiresAt, finishedAt: Date.now() });
+        } catch (e: any) {
+          console.error('Dry run error:', e);
+          Object.assign(job, { status: 'error', error: String(e?.message || 'Dry run failed'), finishedAt: Date.now() });
+        } finally { keepJob(job.id); }
+      })();
+    } catch (e: any) { console.error('POST ingest/dry-run error:', e); res.status(500).json({ error: "Dry run failed to start" }); }
+  });
+
+  // Job progress, for both dry runs and writes.
+  const jobView = (j: any) => ({
+    jobId: j.id, kind: j.kind, status: j.status, progress: j.progress, previewId: j.previewId || null, summary: j.summary || null,
+    result: j.result || null, error: j.error || null, expiresAt: j.expiresAt || null, startedAt: j.startedAt, finishedAt: j.finishedAt || null,
+  });
+  app.get("/api/admin/ingest/status/:jobId", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    const job = ingestJobs.get(req.params.jobId);
+    if (!job) return res.status(404).json({ error: "Job not found (may have finished and expired)" });
+    res.json(jobView(job));
+  });
+
+  // A preview's contents (paged) and its CSV. Both are reads; neither writes.
+  app.get("/api/admin/ingest/preview/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const row = await (prisma as any).ingestionPreview.findUnique({ where: { id: req.params.id } });
+      if (!row || row.kind !== 'ONE_OFF') return res.status(404).json({ error: "Preview not found" });
+      const items: any[] = Array.isArray(row.items) ? row.items : [];
+      const offset = Math.max(0, parseInt(req.query.offset as string) || 0), limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+      const outcome = req.query.outcome as string;
+      const filtered = outcome ? items.filter(i => i.outcome === outcome) : items;
+      res.json({ id: row.id, params: row.params, summary: row.summary, expiresAt: row.expiresAt, consumedAt: row.consumedAt, expired: row.expiresAt < new Date(), total: filtered.length, items: filtered.slice(offset, offset + limit) });
+    } catch { res.status(500).json({ error: "Failed to load preview" }); }
+  });
+  app.get("/api/admin/ingest/preview/:id/csv", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const row = await (prisma as any).ingestionPreview.findUnique({ where: { id: req.params.id } });
+      if (!row || row.kind !== 'ONE_OFF') return res.status(404).json({ error: "Preview not found" });
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="ingest_preview_${String((row.params as any)?.source || 'source')}.csv"`);
+      res.send(previewToCsv(Array.isArray(row.items) ? row.items : []));
+    } catch { res.status(500).json({ error: "Failed to export preview" }); }
+  });
+
+  // ── One-off import, step 2: write what the preview showed ────────────────────
+  //
+  // Takes a preview id and nothing else. The records come from the server's snapshot, not from the browser, so an edited
+  // request cannot add a record that was never previewed. Each record is judged again against the catalogue as it is now.
+  app.post("/api/admin/ingest/run", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { previewId, retryFailed } = req.body || {};
+      if (!previewId) return res.status(400).json({ error: "Run a dry run first, then ingest from its result." });
+      if (runningJob('write')) return res.status(409).json({ error: 'An import is already running.' });
+      const row = await loadPreview(String(previewId), 'ONE_OFF');
+      if (row.consumedAt && retryFailed !== true) return res.status(409).json({ error: 'This preview has already been ingested. Run a new dry run to import again.' });
+
+      const job: any = { id: jobId('write'), kind: 'write', status: 'running', startedAt: Date.now(), previewId: row.id, progress: { done: 0, total: 0 } };
+      ingestJobs.set(job.id, job);
+      res.status(202).json({ jobId: job.id });
+
+      commitOneOff(row.id, adminOf(req), {
+        retryFailed: retryFailed === true,
+        onProgress: (p: any) => { job.progress = { done: p.attempted, total: p.total }; },
+      }).then((sum: any) => {
+        Object.assign(job, { status: 'done', result: sum, finishedAt: Date.now() });
+      }).catch((e: any) => {
+        console.error('One-off import error:', e);
+        Object.assign(job, { status: 'error', error: String(e?.message || 'Import failed'), finishedAt: Date.now() });
+      }).finally(() => keepJob(job.id));
     } catch (e: any) {
-      console.error('GET ingest/history error:', e?.message);
-      res.status(500).json({ error: "Failed to load history" });
+      if (e instanceof PreviewError) return res.status(e.status).json({ error: e.message });
+      console.error("Ingest run error:", e); res.status(500).json({ error: "Ingestion failed to start" });
     }
   });
 
-  // POST /api/admin/ingest/doaj-catalogue — every journal DOAJ lists, in one go.
+  // ── Every DOAJ journal: check first, then import exactly what the check found ──────────────────────────
   //
-  // DOAJ's search stops at 1,000 results a query, so searching by department
-  // cannot get past about ten thousand of its twenty-three thousand journals.
-  // Its full journal list is one public CSV; reading it takes a minute or two,
-  // so it runs in the background and the screen asks how it is getting on.
-  let doajCatalogueJob: { running: boolean; startedAt: string; finishedAt?: string; result?: any; error?: string; dryRun: boolean } | null = null;
+  // DOAJ's search stops at 1,000 results a query, so searching by department cannot get past about ten thousand of its
+  // twenty-three thousand journals. Its full list is one public CSV; reading it takes a minute or two, so both steps run
+  // in the background and the screen asks how they are getting on.
+  let doajCatalogueJob: any = null;
   app.post("/api/admin/ingest/doaj-catalogue", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
-    if (doajCatalogueJob?.running) return res.status(409).json({ error: 'An import is already running', job: doajCatalogueJob });
-    const dryRun = req.body?.dryRun === true;
-    const job = doajCatalogueJob = { running: true, startedAt: new Date().toISOString(), dryRun };
-    res.status(202).json({ job });
-    const started = Date.now();
+    if (doajCatalogueJob?.running) return res.status(409).json({ error: 'A DOAJ check or import is already running', job: doajCatalogueJob });
+    const body = req.body || {};
+    const who = adminOf(req);
     try {
-      const r = await importDoajCatalogue({ dryRun });
-      Object.assign(job, { running: false, finishedAt: new Date().toISOString(), result: r });
-      if (!dryRun) {
-        await (prisma as any).ingestionState.update({
-          where: { id: 'singleton' },
-          data: {
-            journalsSeen: { increment: r.inFile }, journalsAccepted: { increment: r.accepted },
-            journalsRejected: { increment: r.metadataOnly }, lastRunAt: new Date(),
-          },
-        }).catch(() => {});
-        await (prisma as any).ingestionRun.create({ data: {
-          phase: 'Journals', source: 'DOAJ catalogue',
-          journalsSeen: r.inFile, journalsAccepted: r.accepted, journalsRefused: r.metadataOnly,
-          durationMs: Date.now() - started,
-          note: `full DOAJ list: ${r.added} new journals added (${r.accepted} full text, ${r.metadataOnly} metadata only), ${r.alreadyHeld} already held`,
-        } }).catch(() => {});
+      // Step 1 — CHECK. Reads the file and classifies every journal; writes nothing to the catalogue.
+      if (body.dryRun === true) {
+        const job: any = doajCatalogueJob = { running: true, kind: 'check', startedAt: new Date().toISOString(), dryRun: true };
+        res.status(202).json({ job });
+        (async () => {
+          try {
+            const check = await checkDoajCatalogue();
+            const row = await createPreview('DOAJ_CATALOGUE', who, { source: 'DOAJ catalogue' }, check.summary, { newIssns: check.newIssns, reviewSample: check.reviewSample } as any);
+            Object.assign(job, { running: false, finishedAt: new Date().toISOString(), previewId: row.id, expiresAt: row.expiresAt, result: { ...check.summary, reviewSample: check.reviewSample } });
+          } catch (e: any) { Object.assign(job, { running: false, finishedAt: new Date().toISOString(), error: String(e?.message || e) }); }
+        })();
+        return;
       }
+      // Step 2 — IMPORT. Only from a check, only after confirmation, only the journals the check reported as new.
+      if (!body.previewId) return res.status(400).json({ error: 'Check first: run the check, review what it found, then import.' });
+      if (body.confirm !== true) return res.status(400).json({ error: 'Confirmation is required to import.' });
+      const row = await loadPreview(String(body.previewId), 'DOAJ_CATALOGUE');
+      const claimed = await (prisma as any).ingestionPreview.updateMany({ where: { id: row.id, consumedAt: null }, data: { consumedAt: new Date(), consumedBy: who.email || who.uid || null } });
+      if (claimed.count === 0) return res.status(409).json({ error: 'This check has already been imported. Run a new check to import again.' });
+      const newIssns: string[] = ((row.items as any)?.newIssns) || [];
+      await ingestionAudit(who, 'MASS_JOURNAL_IMPORT_STARTED', { previewId: row.id, newJournals: newIssns.length, summary: row.summary });
+
+      const job: any = doajCatalogueJob = { running: true, kind: 'import', startedAt: new Date().toISOString(), dryRun: false, previewId: row.id };
+      res.status(202).json({ job });
+      const started = Date.now();
+      (async () => {
+        try {
+          const r = await importCheckedJournals(newIssns);
+          Object.assign(job, { running: false, finishedAt: new Date().toISOString(), result: { ...r, requested: newIssns.length } });
+          // Counters grow by what this import actually dealt with. (They used to grow by the size of DOAJ's whole file
+          // every run, whatever was added.) Nothing already counted is changed.
+          await (prisma as any).ingestionState.update({
+            where: { id: 'singleton' },
+            data: { journalsSeen: { increment: r.added }, journalsAccepted: { increment: r.accepted }, journalsRejected: { increment: r.metadataOnly }, lastRunAt: new Date() },
+          }).catch(() => {});
+          await (prisma as any).ingestionRun.create({ data: {
+            phase: 'Journals', source: 'DOAJ catalogue', journalsSeen: r.added, journalsAccepted: r.accepted, journalsRefused: r.metadataOnly,
+            durationMs: Date.now() - started,
+            note: `DOAJ catalogue import: ${r.added} new journals added (${r.accepted} full text, ${r.metadataOnly} metadata only)${r.alreadyHeldNow ? `, ${r.alreadyHeldNow} already held by then` : ''}`,
+          } }).catch(() => {});
+        } catch (e: any) {
+          Object.assign(job, { running: false, finishedAt: new Date().toISOString(), error: String(e?.message || e) });
+          await (prisma as any).ingestionRun.create({ data: { phase: 'Error', source: 'DOAJ catalogue', error: String(e?.message || e).slice(0, 1000), durationMs: Date.now() - started } }).catch(() => {});
+        }
+      })();
     } catch (e: any) {
-      Object.assign(job, { running: false, finishedAt: new Date().toISOString(), error: String(e?.message || e) });
-      await (prisma as any).ingestionRun.create({ data: {
-        phase: 'Error', source: 'DOAJ catalogue', error: String(e?.message || e).slice(0, 1000), durationMs: Date.now() - started,
-      } }).catch(() => {});
+      if (e instanceof PreviewError) return res.status(e.status).json({ error: e.message });
+      console.error('POST doaj-catalogue error:', e); res.status(500).json({ error: 'Could not start' });
     }
   });
   app.get("/api/admin/ingest/doaj-catalogue", authenticateJWT, requireSuperAdmin, (_req: any, res: any) => {
     res.json({ job: doajCatalogueJob });
-  });
-
-  app.post("/api/admin/ingest/tick", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
-    // A manual pass runs even while the engine is paused; that is the point of
-    // the button. The timer below still respects the switch.
-    try { res.json(await runIngestionPass(ALL_DEPARTMENTS, { force: true })); }
-    catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
-  });
-
-  // The timer. One slice a minute is deliberately unhurried: it stays well
-  // inside the API's polite limits and never competes with live traffic.
-  let ingestBusy = false;
-  setInterval(async () => {
-    if (ingestBusy) return;
-    ingestBusy = true;
-    try { await runIngestionPass(ALL_DEPARTMENTS); }
-    catch (e) { console.error('[ingest] pass failed:', e); }
-    finally { ingestBusy = false; }
-  }, 60_000);
-
-  app.post("/api/admin/ingest/run", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
-    try {
-      const { source = 'openalex', departments = [], perDept = 25 } = req.body;
-      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department" });
-      const limit = Math.min(Math.max(parseInt(perDept) || 25, 1), 300);
-      const validate = req.body.validatePdf !== false; // default ON — only ingest PDFs that open in-app
-      const trustedOnly = req.body.trustedHostsOnly !== false && (source === 'openalex' || source === 'doaj');
-      const jobId = `ing_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-      const job: any = {
-        id: jobId, status: 'running', startedAt: Date.now(), finishedAt: null, currentDept: null,
-        params: { source, departments, limit, validate, trustedOnly },
-        source, trustedOnly, departments, totalDepts: departments.length,
-        fetched: 0, inserted: 0, duplicates: 0, failed: 0, skippedUnopenable: 0, publishersDiscovered: 0,
-      };
-      ingestJobs.set(jobId, job);
-      // fire-and-forget; do not await
-      processIngestJob(job, req).finally(() => {
-        // keep finished jobs for 30 min so the UI can read the final summary, then GC
-        setTimeout(() => ingestJobs.delete(jobId), 30 * 60 * 1000);
-      });
-      res.json({ started: true, jobId, ...jobSummary(job) });
-    } catch (e: any) { console.error("Ingest run error:", e); res.status(500).json({ error: "Ingestion failed" }); }
-  });
-
-  const jobSummary = (job: any) => ({
-    jobId: job.id, status: job.status, source: job.source, trustedOnly: job.trustedOnly,
-    departments: job.departments, totalDepts: job.totalDepts, currentDept: job.currentDept,
-    fetched: job.fetched, inserted: job.inserted, duplicates: job.duplicates, failed: job.failed,
-    skippedUnopenable: job.skippedUnopenable, publishersDiscovered: job.publishersDiscovered,
-    error: job.error || null,
-  });
-
-  // Status — poll for live progress of a running/finished ingest job
-  app.get("/api/admin/ingest/status/:jobId", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
-    const job = ingestJobs.get(req.params.jobId);
-    if (!job) return res.status(404).json({ error: "Job not found (may have finished & expired)" });
-    res.json(jobSummary(job));
   });
 
   // ==========================================

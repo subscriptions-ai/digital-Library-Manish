@@ -137,11 +137,15 @@ export function departmentForDoajRow(row: Record<string, string>): string | null
   return null;
 }
 
-// ── The import ─────────────────────────────────────────────────────────────
+// ── The check, and the import ─────────────────────────────────────────────
 
 export type CatalogueResult = {
   inFile: number; alreadyHeld: number; added: number; accepted: number; metadataOnly: number;
   noDepartment: number; byDepartment: Record<string, number>; dryRun: boolean;
+  /** Rows with no ISSN or no title: they cannot be catalogued. */
+  unusable?: number;
+  /** A new ISSN whose title matches a journal we hold under different ISSNs. Reported, never imported. */
+  needsReview?: number;
 };
 
 export function doajRowToJournal(row: Record<string, string>) {
@@ -177,49 +181,113 @@ export function doajRowToJournal(row: Record<string, string>) {
   };
 }
 
-export async function importDoajCatalogue(opts: { dryRun?: boolean; csvText?: string } = {}): Promise<CatalogueResult> {
-  const text = opts.csvText ?? await (async () => {
+async function readCsv(csvText?: string) {
+  const text = csvText ?? await (async () => {
     const r = await fetch(DOAJ_CSV_URL, { headers: { 'User-Agent': 'STM Digital Library (mailto:info@celnet.in)' } });
     if (!r.ok) throw new Error(`DOAJ answered HTTP ${r.status} for the journal list`);
     return r.text();
   })();
-  const rows = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true }).data;
+  return Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true }).data;
+}
 
-  // Everything already held, by every ISSN it is known by, read once.
-  const held = new Set<string>();
-  const heldTitles = new Set<string>();
+/** Everything held, read once: by every ISSN it is known by, and by title (for the review count only). */
+async function readHeld() {
+  const issns = new Set<string>(); const titles = new Map<string, string>();
   for (const j of await p.journal.findMany({ select: { issn: true, eissn: true, title: true } })) {
-    if (j.issn) held.add(j.issn);
-    if (j.eissn) held.add(j.eissn);
-    heldTitles.add(j.title.trim().toLowerCase());
+    if (j.issn) issns.add(j.issn);
+    if (j.eissn) issns.add(j.eissn);
+    titles.set(j.title.trim().toLowerCase(), j.issn || '');
   }
+  return { issns, titles };
+}
 
-  const result: CatalogueResult = {
-    inFile: rows.length, alreadyHeld: 0, added: 0, accepted: 0, metadataOnly: 0,
-    noDepartment: 0, byDepartment: {}, dryRun: !!opts.dryRun,
+export type CatalogueCheck = {
+  summary: {
+    inFile: number; alreadyHeld: number; new: number; fullTextEligible: number; metadataOnly: number;
+    rejected: number; needsReview: number; noDepartment: number; byDepartment: Record<string, number>;
   };
-  const fresh: any[] = [];
+  /** The ISSNs a confirmed import is allowed to add — exactly the "new" ones, and nothing else. */
+  newIssns: string[];
+  reviewSample: { title: string; issn: string }[];
+};
+
+/**
+ * What an import would do, without doing it.
+ *
+ * "Already held" means the same ISSN or e-ISSN — an identifier. It used to also mean the same title, which
+ * silently refused any journal that merely shares a name with one we hold: there are four different
+ * journals called "Revista de Derecho". Those are now counted as "needs review" and, as before, not imported
+ * automatically; the difference is that they are reported instead of vanishing into "already held".
+ */
+export async function checkDoajCatalogue(opts: { csvText?: string } = {}): Promise<CatalogueCheck> {
+  const rows = await readCsv(opts.csvText);
+  const { issns: held, titles: heldTitles } = await readHeld();
+  const out: CatalogueCheck = {
+    summary: { inFile: rows.length, alreadyHeld: 0, new: 0, fullTextEligible: 0, metadataOnly: 0, rejected: 0, needsReview: 0, noDepartment: 0, byDepartment: {} },
+    newIssns: [], reviewSample: [],
+  };
+  const s = out.summary;
   for (const row of rows) {
     const j = doajRowToJournal(row);
-    if (!j) continue;
-    if (held.has(j.issn) || (j.eissn && held.has(j.eissn)) || heldTitles.has(j.title.toLowerCase())) {
-      result.alreadyHeld++;
+    if (!j) { s.rejected++; continue; }
+    if (held.has(j.issn) || (j.eissn && held.has(j.eissn))) { s.alreadyHeld++; continue; }
+    const sameTitle = heldTitles.get(j.title.toLowerCase());
+    if (sameTitle !== undefined) {
+      s.needsReview++;
+      if (out.reviewSample.length < 20) out.reviewSample.push({ title: j.title, issn: j.issn });
       continue;
     }
     // The same title can appear twice in the file under its two ISSNs.
-    held.add(j.issn); if (j.eissn) held.add(j.eissn);
-    fresh.push(j);
-    j.status === 'Accepted' ? result.accepted++ : result.metadataOnly++;
-    if (!j.domain) result.noDepartment++;
+    held.add(j.issn); if (j.eissn) held.add(j.eissn); heldTitles.set(j.title.toLowerCase(), j.issn);
+    out.newIssns.push(j.issn);
+    s.new++;
+    j.status === 'Accepted' ? s.fullTextEligible++ : s.metadataOnly++;
+    if (!j.domain) s.noDepartment++;
     const k = j.domain || '(none)';
-    result.byDepartment[k] = (result.byDepartment[k] || 0) + 1;
+    s.byDepartment[k] = (s.byDepartment[k] || 0) + 1;
   }
+  return out;
+}
 
-  if (!opts.dryRun) {
-    for (let i = 0; i < fresh.length; i += 500) {
-      const r = await p.journal.createMany({ data: fresh.slice(i, i + 500), skipDuplicates: true });
-      result.added += r.count;
-    }
+/**
+ * Add exactly the journals a check reported as new — each re-checked against the catalogue as it is now, and
+ * `skipDuplicates` guards the unique ISSN column, so running it again adds nothing and overwrites nothing.
+ */
+export async function importCheckedJournals(allowedIssns: string[], opts: { csvText?: string } = {}) {
+  const allowed = new Set(allowedIssns);
+  const rows = await readCsv(opts.csvText);
+  const { issns: held } = await readHeld();
+  const fresh: any[] = []; let alreadyHeldNow = 0, accepted = 0, metadataOnly = 0;
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const j = doajRowToJournal(row);
+    if (!j || !allowed.has(j.issn)) continue;
+    if (seen.has(j.issn)) continue;                                                             // listed twice in the file: one journal
+    seen.add(j.issn);
+    if (held.has(j.issn) || (j.eissn && held.has(j.eissn))) { alreadyHeldNow++; continue; }     // taken since the check
+    fresh.push(j);
+    j.status === 'Accepted' ? accepted++ : metadataOnly++;
   }
+  let added = 0;
+  for (let i = 0; i < fresh.length; i += 500) {
+    const r = await p.journal.createMany({ data: fresh.slice(i, i + 500), skipDuplicates: true });
+    added += r.count;
+  }
+  return { added, alreadyHeldNow, accepted, metadataOnly, requested: allowed.size };
+}
+
+/**
+ * The previous single-call entry point, kept for scripts. `dryRun` returns what a check finds; otherwise it
+ * checks and then imports what the check found. The admin screen no longer calls this: it checks, shows the
+ * result, and imports only after confirmation.
+ */
+export async function importDoajCatalogue(opts: { dryRun?: boolean; csvText?: string } = {}): Promise<CatalogueResult> {
+  const check = await checkDoajCatalogue({ csvText: opts.csvText });
+  const s = check.summary;
+  const result: CatalogueResult = {
+    inFile: s.inFile, alreadyHeld: s.alreadyHeld + s.needsReview, added: 0, accepted: s.fullTextEligible, metadataOnly: s.metadataOnly,
+    noDepartment: s.noDepartment, byDepartment: s.byDepartment, dryRun: !!opts.dryRun, unusable: s.rejected, needsReview: s.needsReview,
+  };
+  if (!opts.dryRun) result.added = (await importCheckedJournals(check.newIssns, { csvText: opts.csvText })).added;
   return result;
 }

@@ -254,6 +254,23 @@ model Journal {
   /// than walked again from the start.
   exhaustedAt DateTime?
 
+  // ── Scheduling (additive; null/zero means "behave as before") ──────────────
+  /// Not before this moment. Set after a visit that added nothing, or failed, so the
+  /// engine moves on to another journal instead of asking the same source the same
+  /// question again straight away. Never permanent: it is a time, not a verdict.
+  nextEligibleAt      DateTime?
+  /// Visits in a row that added nothing. Lengthens the cooldown; reset the moment
+  /// something is added.
+  noChangeCount       Int       @default(0)
+  /// Requests in a row that failed (source down, rate limited). Drives retry backoff.
+  failureCount        Int       @default(0)
+  /// added | nochange | exhausted | full | failed
+  lastIngestionStatus String?
+  /// An atomic processing claim, so two passes cannot work on one journal at once.
+  /// A claim older than the timeout is treated as abandoned and recovered.
+  claimedAt           DateTime?
+  claimedBy           String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -264,6 +281,8 @@ model Journal {
   @@index([startYear])
   @@index([status])
   @@index([licenceIsNC])
+  @@index([nextEligibleAt])
+  @@index([claimedAt])
 }
 
 model Article {
@@ -300,6 +319,10 @@ model Article {
   rejectionNote String? // shown to publisher when rejected
   source        String? // DOAJ | OpenAlex | Manual | ...
   fingerprint   String? @unique // dedup (doi or issn+title+vol+issue)
+  /// The source's own identifier for this record (an OpenAlex work id, a DOAB handle).
+  /// Set on records ingested from now on; older rows stay null. With `source` it is the
+  /// strongest idempotency key we have, because unlike a title it cannot collide.
+  sourceRecordId String?
 
   // Who this content originated from. CRITICAL for stealth: publisher-facing
   // queries only ever return PublisherSubmitted — pre-scraped Ingested rows
@@ -346,6 +369,7 @@ model Article {
   @@index([ownershipSource])
   @@index([accessStatus])
   @@index([parentKind, parentId])
+  @@index([source, sourceRecordId])
 }
 
 model Book {
@@ -394,6 +418,8 @@ model Book {
   rejectionNote  String? // shown to publisher when rejected
   source         String?
   fingerprint    String?   @unique
+  /// The source's own identifier for this record. New ingestion only; older rows stay null.
+  sourceRecordId String?
 
   ownershipSource String  @default("Ingested") // Ingested | PublisherSubmitted | AdminEntered
   uploadId        String?
@@ -411,6 +437,7 @@ model Book {
   @@index([rightsStatus])
   @@index([licenceIsNC])
   @@index([ownershipSource])
+  @@index([source, sourceRecordId])
 }
 
 model Chapter {
@@ -1560,6 +1587,11 @@ model IngestionState {
   lastRunAt         DateTime?
   lastError         String?   @db.Text
   updatedAt         DateTime  @updatedAt
+
+  // ── Health (additive) ─────────────────────────────────────
+  /// The last pass that finished without an error, and how many in a row have not.
+  lastSuccessAt       DateTime?
+  consecutiveFailures Int       @default(0)
 }
 
 /// One row per thing that happened, written once and never updated.
@@ -1635,6 +1667,10 @@ model IngestionRun {
   /// working correctly; failed to write is not, and used to look identical.
   skippedHeld   Int @default(0)
   skippedFailed Int @default(0)
+  /// Records refused by a rule (no title, licence not allowed) and records set aside for a
+  /// person to look at. Historical rows carry zero for both.
+  skippedRejected Int @default(0)
+  needsReview     Int @default(0)
 
   // Discovery passes report on titles rather than articles.
   journalsSeen     Int @default(0)
@@ -1650,6 +1686,57 @@ model IngestionRun {
   @@index([at])
   @@index([phase, at])
   @@index([journalId, at])
+}
+
+/// What an administrator did to the ingestion engine, written once and never updated.
+/// Safe metadata only — never a credential.
+model IngestionAudit {
+  id         String   @id @default(uuid())
+  at         DateTime @default(now())
+  adminId    String?
+  adminEmail String?
+  /// ENGINE_PAUSED | ENGINE_RESUMED | MANUAL_PASS_REQUESTED | INGESTION_SETTINGS_CHANGED |
+  /// INGESTION_SCOPE_CHANGED | DRY_RUN_CREATED | ONE_OFF_IMPORT_STARTED |
+  /// MASS_JOURNAL_IMPORT_STARTED | STALE_CLAIM_RECOVERED | SOURCE_PAUSED
+  action     String
+  meta       Json?
+
+  @@index([at])
+  @@index([action, at])
+}
+
+/// A dry run, kept so the write that follows it can be checked against what was shown.
+///
+/// Holds candidate records and how each was classified. It never touches the catalogue:
+/// a preview is a snapshot and an audit record, nothing more. The id is the token the
+/// write step presents, and it expires.
+model IngestionPreview {
+  id         String    @id @default(uuid())
+  /// ONE_OFF | DOAJ_CATALOGUE
+  kind       String
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  consumedAt DateTime?
+  consumedBy String?
+  params     Json
+  summary    Json
+  items      Json?
+
+  @@index([createdAt])
+  @@index([kind, createdAt])
+}
+
+/// How a source is behaving, so one that keeps failing can be left alone for a while
+/// without stopping the sources that are fine.
+model IngestionSourceHealth {
+  source              String    @id
+  consecutiveFailures Int       @default(0)
+  pausedUntil         DateTime?
+  lastError           String?   @db.Text
+  lastFailureAt       DateTime?
+  lastOkAt            DateTime?
+  updatedAt           DateTime  @updatedAt
 }
 
 /// How far a department's sweep of one source has got.
@@ -1680,6 +1767,10 @@ model DepartmentSweep {
   seen     Int @default(0)
   accepted Int @default(0)
   refused  Int @default(0)
+
+  /// An atomic claim, like Journal's, so two passes cannot walk one sweep at once.
+  claimedAt DateTime?
+  claimedBy String?
 
   @@unique([department, source, term])
   @@index([source, exhaustedAt])
