@@ -24,6 +24,9 @@ import jwt from "jsonwebtoken";
 import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
+import { setupAIAssistantRoutes } from "./src/routes/aiAssistant.js";
+import { searchContent } from "./src/lib/catalogueSearch.js";
+import { contentTypeCounts } from "./src/lib/publicCounts.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, buildInstitutionPlanSnapshot, buildSoloPlanSnapshot, planSnapshotToRow, type QuoteDoc, type PlanSnapshot } from "./src/lib/quotation/quotationModel.js";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
@@ -613,29 +616,7 @@ async function startServer() {
   // it named a storage category rather than anything a librarian recognises.
   app.get("/api/public/content-type-counts", async (req, res) => {
     try {
-      const [legacy, articles, newBooks, journalRows] = await Promise.all([
-        prisma.content.groupBy({
-          by: ['contentType'],
-          where: { status: { not: 'Draft' } },
-          _count: { id: true },
-        }),
-        (prisma as any).article.count({ where: { status: 'Published' } }),
-        (prisma as any).book.count({ where: { status: 'Published' } }),
-        (prisma as any).$queryRawUnsafe(
-          `select count(distinct "journalId")::int as n from "Article"
-           where status = 'Published' and "journalId" is not null`),
-      ]);
-
-      const countsMap: Record<string, number> = {};
-      for (const g of legacy as any[]) {
-        if (g.contentType) countsMap[g.contentType] = g._count.id;
-      }
-
-      countsMap['Journals'] = Number(journalRows?.[0]?.n || 0);
-      countsMap['Articles'] = articles + (countsMap['Periodicals'] || 0);
-      countsMap['Books'] = (countsMap['Books'] || 0) + newBooks;
-      delete countsMap['Periodicals'];
-
+      const countsMap = await contentTypeCounts(prisma);
       res.json(countsMap);
     } catch (error) {
       console.error("Content type counts error:", error);
@@ -6632,40 +6613,14 @@ async function startServer() {
   app.get("/api/search", async (req, res) => {
     try {
       const { q, domain, contentType, page = "1", limit = "20" } = req.query as Record<string, string>;
-      if (!q || q.trim().length < 2) {
-        return res.json({ data: [], total: 0, query: q || "" });
-      }
-      const skip = (parseInt(page) - 1) * parseInt(limit);
-      const where: any = {
-        status: "Published",
-        OR: [
-          { title:       { contains: q, mode: "insensitive" } },
-          { authors:     { contains: q, mode: "insensitive" } },
-          { description: { contains: q, mode: "insensitive" } },
-          { domain:      { contains: q, mode: "insensitive" } },
-          { contentType: { contains: q, mode: "insensitive" } },
-          { subjectArea: { contains: q, mode: "insensitive" } },
-        ],
-      };
-      if (domain)      where.domain      = domain;
-      if (contentType) where.contentType = contentType;
-
-      const [data, total] = await Promise.all([
-        prisma.content.findMany({
-          where,
-          skip,
-          take: parseInt(limit),
-          orderBy: { publishedAt: "desc" },
-          select: {
-            id: true, title: true, authors: true, domain: true,
-            contentType: true, description: true, subjectArea: true,
-            thumbnailUrl: true, accessType: true, price: true,
-            publishedAt: true,
-          },
-        }),
-        prisma.content.count({ where }),
-      ]);
-      res.json({ data, total, query: q, page: parseInt(page), limit: parseInt(limit) });
+      const result = await searchContent(prisma, {
+        q: q || "",
+        domain,
+        contentType,
+        page: parseInt(page),
+        limit: parseInt(limit),
+      });
+      res.json(result);
     } catch (err) {
       console.error("GET /api/search error:", err);
       res.status(500).json({ error: "Search failed" });
@@ -15361,6 +15316,9 @@ async function startServer() {
 
   // Mount extraction routes BEFORE Vite/Static middleware
   setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
+  // The assistant is public-site only; when the admin hides commercial
+  // UI on the public site, it stops quoting prices too.
+  setupAIAssistantRoutes(app, { isPricingVisible: () => !getSystemSettings().hidePricing });
 
   // The institutional brochure, sent as a download with its own name. It has to
   // be a route of its own: the static handler below falls back to index.html for

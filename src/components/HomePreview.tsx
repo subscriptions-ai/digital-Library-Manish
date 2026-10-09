@@ -757,7 +757,7 @@ function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
               {[
                 // Not the number of journals: it is the smallest figure here and
                 // the least of what a department actually amounts to.
-                ['Articles', d?.articles], ['Books', d?.books],
+                ['Research Articles', d?.articles], ['Books', d?.books],
                 ['Authors', d?.authors], ['Publishers', d?.publishers.length],
               ].map(([label, value], k) => (
                 <div key={label as string} className="border-r px-5 py-4 last:border-r-0" style={{ borderColor: 'var(--np-line)' }}>
@@ -1062,7 +1062,7 @@ function Walkthrough({ stats, depts, subjects, articles }: {
               <span className="text-[11.5px]" style={{ color: 'var(--np-body)' }}>Search the library…</span>
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              {[['Departments', depts.length || undefined], ['Subjects', subjects.length || undefined], ['Articles', stats?.articles]].map(([label, value]) => (
+              {[['Departments', depts.length || undefined], ['Subjects', subjects.length || undefined], ['Research Articles', stats?.articles]].map(([label, value]) => (
                 <div key={label as string} className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--np-line)' }}>
                   <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--np-body)' }}>{label}</p>
                   <p className="np-strong mt-0.5 text-[13px]" style={{ color: 'var(--np-ink)' }}><Figure value={value as number | undefined} /></p>

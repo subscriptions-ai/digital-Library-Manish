@@ -1856,3 +1856,31 @@ model Campaign {
   @@index([ownerName])
   @@index([channel])
 }
+
+model AIConversation {
+  id              String       @id @default(uuid())
+  sessionId       String
+  startedAt       DateTime     @default(now())
+  lastActivityAt  DateTime     @default(now())
+  leadId          String?
+  sourcePage      String?
+  status          String       @default("Active")
+  retentionDate   DateTime?
+  
+  messages        AIMessage[]
+  
+  @@index([sessionId])
+  @@index([sessionId, status])
+  @@index([lastActivityAt])
+}
+
+model AIMessage {
+  id             String         @id @default(uuid())
+  conversationId String
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String         @db.Text
+  createdAt      DateTime       @default(now())
+  
+  @@index([conversationId, createdAt])
+}

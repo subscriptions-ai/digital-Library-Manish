@@ -127,8 +127,8 @@ export function DepartmentPage({
           {/* The question a college asks first */}
           <dl className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
             {([
-              ['Journals', d.journals.length],
-              ['Articles', d.articles],
+              ['Journal Titles', d.journals.length],
+              ['Research Articles', d.articles],
               ...(d.books > 0 ? [['Books', d.books] as const] : []),
             ] as const).map(([label, n]) => (
               <div key={label}>

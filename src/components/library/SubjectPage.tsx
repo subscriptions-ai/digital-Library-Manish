@@ -112,11 +112,11 @@ export function SubjectPage({
 
           <dl className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
             <div>
-              <dt className={LABEL}>Journals</dt>
+              <dt className={LABEL}>Journal Titles</dt>
               <dd className="tnum mt-0.5 font-mono text-[22px] text-ink">{s.journals.length.toLocaleString()}</dd>
             </div>
             <div>
-              <dt className={LABEL}>Articles</dt>
+              <dt className={LABEL}>Research Articles</dt>
               <dd className="tnum mt-0.5 font-mono text-[22px] text-ink">{s.articles.toLocaleString()}</dd>
             </div>
             {s.firstYear && s.lastYear && (
