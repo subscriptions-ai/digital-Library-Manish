@@ -111,9 +111,9 @@ export function DigitalLibrary() {
       });
   }, []);
 
-  const OFFERINGS = [
-    { name: "Journals", count: counts["Journals"], icon: <BookOpen size={24} aria-hidden="true" />, desc: "Peer-reviewed journals, held as full runs" },
-    { name: "Articles", count: counts["Articles"], icon: <FileText size={24} aria-hidden="true" /> },
+  const OFFERINGS: { name: string; count: number | undefined; icon: React.ReactNode; desc?: string }[] = [
+    { name: "Journal Titles", count: counts["Journals"], icon: <BookOpen size={24} aria-hidden="true" />, desc: "Distinct journal publications available in the catalogue." },
+    { name: "Research Articles", count: counts["Articles"], icon: <FileText size={24} aria-hidden="true" />, desc: "Individual research papers available across journal titles and sources." },
     { name: "Academic E-Books", count: counts["Books"], icon: <Book size={24} aria-hidden="true" /> },
     { name: "Research Theses", count: counts["Theses"], icon: <GraduationCap size={24} aria-hidden="true" /> },
     { name: "Conference Proceedings", count: counts["Conference Proceedings"], icon: <Presentation size={24} aria-hidden="true" /> },
@@ -255,20 +255,26 @@ export function DigitalLibrary() {
           </div>
 
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {OFFERINGS.map((offer, i) => (
-              <div 
-                key={i}
-                className="on-dark-fill on-dark-edge flex flex-col items-center rounded-xl border p-4 text-center sm:p-6"
-              >
-                <div className="on-dark-fill mb-4 flex h-14 w-14 items-center justify-center rounded-xl text-amber">
-                  {offer.icon}
+            {OFFERINGS.map((offer, i) => {
+              const countText = typeof offer.count === "number" ? offer.count.toLocaleString("en-IN") : "";
+              return (
+                <div
+                  key={i}
+                  role="group"
+                  aria-label={countText ? `${countText} ${offer.name.toLowerCase()}` : offer.name}
+                  title={offer.desc}
+                  className="on-dark-fill on-dark-edge flex flex-col items-center rounded-xl border p-4 text-center sm:p-6"
+                >
+                  <div className="on-dark-fill mb-4 flex h-14 w-14 items-center justify-center rounded-xl text-amber">
+                    {offer.icon}
+                  </div>
+                  <div className="on-dark mb-1 text-2xl font-bold tnum">
+                    {loading ? <span className="on-dark-fill inline-block h-6 w-16 animate-pulse rounded" aria-label="Loading"></span> : typeof offer.count === "number" ? offer.count.toLocaleString("en-IN") : "Browse resources"}
+                  </div>
+                  <div className="on-dark-2 text-xs font-semibold uppercase tracking-wide">{offer.name}</div>
                 </div>
-                <div className="on-dark mb-1 text-2xl font-bold tnum">
-                  {loading ? <span className="on-dark-fill inline-block h-6 w-16 animate-pulse rounded" aria-label="Loading"></span> : typeof offer.count === "number" ? offer.count.toLocaleString("en-IN") : "Browse resources"}
-                </div>
-                <div className="on-dark-2 text-xs font-semibold uppercase tracking-wide">{offer.name}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
