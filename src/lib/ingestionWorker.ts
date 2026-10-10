@@ -20,6 +20,7 @@ import {
   INGESTION_POLICY, schedulerV2, noChangeCooldownMinutes, failureBackoffMinutes, minutes, days,
 } from './ingestion/policy.js';
 import { judgeArticle, licenceAllowsCommercialUse } from './ingestion/eligibility.js';
+import { runScheduledHarvest, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED } from './ingestion/books/oaiHarvest.js';
 import { findHeldArticles, findPossibleDuplicates, canonicalFingerprint, normaliseDoi } from './ingestion/dedup.js';
 
 /** The worker's connection, shared with the catalogue import and the safety services. */
@@ -57,45 +58,10 @@ const DEPARTMENT_TERMS: Record<string, string[]> = {
   'Multidisciplinary':                           ['multidisciplinary'],
 };
 
+export { licenceFromProse } from './ingestion/licenceProse.js';
+import { licenceFromProse } from './ingestion/licenceProse.js';
+
 /** The terms to search for a department — its own name unless mapped above. */
-/**
- * Read a licence out of a publisher's sentence about its licensing.
- *
- * DOAJ declares a licence per journal with an explicit non-commercial flag.
- * DOAB declares nothing of the kind. What it carries is `publisher.oalicense`,
- * free prose written by the publisher about its books in general — "Springer
- * Nature books are published under the Creative Commons…" — and it is present on
- * fewer than half the records. Publishers spell it three ways: a licence URL, a
- * code such as CC BY-NC-ND, or the words written out in full.
- *
- * A blanket sentence about a publisher's catalogue is weaker evidence than a
- * per-title declaration, so what this returns is recorded under its own rights
- * basis and is never on its own grounds to host anything.
- */
-export function licenceFromProse(raw?: string | null): string | null {
-  const t = String(raw || '').trim();
-  if (!t) return null;
-
-  const url = t.match(/creativecommons\.org\/(?:licenses|publicdomain)\/([a-z0-9-]+)/i);
-  if (url) {
-    const code = url[1].toLowerCase();
-    return code === 'zero' || code === 'mark' ? 'CC0' : `CC ${code.toUpperCase()}`;
-  }
-  if (/\bCC[\s-]?0\b/i.test(t)) return 'CC0';
-
-  const code = t.match(/\bCC[\s-]?(BY(?:[\s-]?(?:NC|ND|SA))*)\b/i);
-  if (code) return `CC ${code[1].replace(/[\s-]+/g, '-').toUpperCase()}`;
-
-  if (/creative commons/i.test(t) && /attribution/i.test(t)) {
-    const parts = ['BY'];
-    if (/non[\s-]?commercial/i.test(t)) parts.push('NC');
-    if (/no[\s-]?deriv/i.test(t)) parts.push('ND');
-    if (/share[\s-]?alike/i.test(t)) parts.push('SA');
-    return `CC ${parts.join('-')}`;
-  }
-  return null;
-}
-
 export function searchTermsFor(department: string): string[] {
   return DEPARTMENT_TERMS[department] || [department];
 }
@@ -113,6 +79,9 @@ export function normaliseIssn(raw?: string | null): string | null {
   const m = t.match(/^(\d{4})-?(\d{3}[\dX])$/);
   return m ? `${m[1]}-${m[2]}` : null;
 }
+
+/** BOOKS_OAI=0 puts DOAB back on keyword sweeps. On by default. */
+const booksOai = () => process.env.BOOKS_OAI !== '0';
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -929,6 +898,46 @@ export async function runIngestionPass(
       for (const source of order) {
         if (only === 'journals' && source !== 'DOAJ') continue;
         if (only === 'books' && source !== 'DOAB') continue;
+
+        // DOAB is harvested whole, by OAI-PMH, and departments come from each book's own subjects — not
+        // from which search term found it. The keyword sweeps below stay as they were and are what runs
+        // again if BOOKS_OAI=0. The harvest is not narrowed by the department chooser: a record it
+        // skipped would be behind the checkpoint and never seen again.
+        if (source === 'DOAB' && booksOai()) {
+          // Each book provider has its own checkpoint and its own circuit breaker, so one failing never
+          // stops another: a failed provider is recorded and the loop moves on to the next.
+          const providers = [DOAB_OAI, ...(process.env.BOOKS_OAPEN === '0' ? [] : [OAPEN_OAI]), ...(process.env.BOOKS_OTL === '0' ? [] : [OTL_FEED]), ...(process.env.BOOKS_NCBI === '0' ? [] : [NCBI_FEED])];
+          let failure: any = null;
+          for (const cfg of providers) {
+            const h = await runScheduledHarvest(cfg, { maxPages: 3 }).catch((e: any) => ({ threw: String(e?.message || e) }) as any);
+            if (!h) continue;                                         // nothing due for this provider
+            if (h.threw || (h.sourceError && !h.pages)) {
+              const why = h.threw || h.sourceError;
+              failure ||= { provider: cfg.provider, why };
+              await record({ phase: 'Books', source: cfg.provider, more: true, error: String(why).slice(0, 500), note: `${cfg.provider} OAI-PMH did not answer — its harvest was left where it was and will resume` });
+              continue;
+            }
+            const dups = Object.values(h.duplicates).reduce((a: number, b: any) => a + b, 0);
+            await p.ingestionState.update({
+              where: { id: 'singleton' },
+              data: { phase: 'Books', currentDepartment: null, lastRunAt: new Date(), lastError: null, lastSuccessAt: new Date(), consecutiveFailures: 0,
+                booksAdded: { increment: h.added }, booksSkipped: { increment: dups + h.department.none + h.failed } },
+            });
+            await record({
+              phase: 'Books', source: cfg.provider, added: h.added, skippedHeld: dups, skippedFailed: h.failed,
+              skippedRejected: h.department.none, needsReview: h.queuedForReview, more: !h.completed, error: h.firstError,
+              note: `${cfg.kind === 'otl' ? 'JSON' : cfg.kind === 'ncbi' ? 'archive list' : 'OAI-PMH'} ${h.pages} page(s): ${h.fetched} records, ${h.added} added, ${h.enriched} enriched, ${dups} already held, `
+                + `${h.queuedForReview} sent to review, ${h.department.none} no department match`
+                + (h.completeListSize ? ` (of ${h.completeListSize} in the set)` : '') + (h.completed ? ' — caught up' : '') + (h.deferred ? ` — paused: ${h.deferred}` : ''),
+            });
+            return { phase: 'Books', source: cfg.provider, ...h };
+          }
+          if (failure) {
+            await p.ingestionState.update({ where: { id: 'singleton' }, data: { phase: 'Books', currentDepartment: null, lastRunAt: new Date() } });
+            return { phase: 'Books', source, failed: true, provider: failure.provider, error: failure.why };
+          }
+          continue;                                                   // nothing due anywhere
+        }
 
         const sweep = await claimSweep(source, wanted);
         if (!sweep) continue;

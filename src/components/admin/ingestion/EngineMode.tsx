@@ -5,7 +5,7 @@ import { N } from './format';
 
 const MODES = [
   ['auto', 'Everything', 'Journals, books and articles in rotation — right for keeping the catalogue up to date.'],
-  ['books', 'Books', 'Every pass fetches about 200 books from DOAB.'],
+  ['books', 'Books', 'Every pass reads from the DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf catalogue feeds, from where each last stopped.'],
   ['journals', 'Journals', 'Every pass reads 100 journals from DOAJ and decides each licence.'],
   ['articles', 'Articles', 'Every pass fills one journal from OpenAlex.'],
 ] as const;
@@ -14,7 +14,9 @@ export function EngineMode({ state, coverage, onChanged }: { state: any; coverag
   const [pending, setPending] = useState<string | null>(null);
   const focus: string = state.focus || 'auto';
   const open = (k: 'doaj' | 'doab') => coverage.reduce((n, c) => n + (c[k]?.termsOpen || 0), 0);
-  const nothingLeft = (focus === 'journals' && coverage.length && open('doaj') === 0) || (focus === 'books' && coverage.length && open('doab') === 0);
+  const booksOai = !!state.booksHarvest?.oai;
+  // Book passes under OAI follow a checkpoint, not department sweeps, so "no sweeps left" says nothing about them.
+  const nothingLeft = (focus === 'journals' && coverage.length && open('doaj') === 0) || (focus === 'books' && !booksOai && coverage.length && open('doab') === 0);
 
   const choose = async (id: string) => {
     if (id === focus) return;

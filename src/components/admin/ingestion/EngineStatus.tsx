@@ -59,8 +59,8 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
             <Badge tone={HEALTH_TONE[st.health] || 'neutral'}>{st.health === 'running' ? 'Healthy' : st.health === 'paused' ? 'Switched off' : st.health === 'delayed' ? 'Behind schedule' : 'Action needed'}</Badge>
           </h2>
           <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted">
-            Journals come from DOAJ, where their licence is decided once per title. Articles follow from OpenAlex. Books come from DOAB, which holds no book file,
-            so each book is catalogued with a link to its publisher.
+            Journals come from DOAJ, where their licence is decided once per title. Articles follow from OpenAlex. Books come from DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf;
+            no book file is hosted here, so each book is catalogued with a link to its source.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
