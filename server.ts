@@ -7520,10 +7520,39 @@ async function startServer() {
     try {
       const [articles, books] = await Promise.all([
         (prisma as any).article.findMany({ where: { status: 'Draft' }, orderBy: { createdAt: 'desc' }, take: 200 }),
-        (prisma as any).book.findMany({ where: { status: 'Draft' }, orderBy: { createdAt: 'desc' }, take: 200 }),
+        // Publisher submissions only. Books the harvest set aside for placement are many and low-urgency, so they
+        // have their own list below and never bury a publisher's submission.
+        (prisma as any).book.findMany({ where: { status: 'Draft', ownershipSource: { not: 'Ingested' } }, orderBy: { createdAt: 'desc' }, take: 200 }),
       ]);
-      res.json({ articles, books });
+      const ingestedBooks = await (prisma as any).book.count({ where: { status: 'Draft', ownershipSource: 'Ingested' } });
+      res.json({ articles, books, ingestedBooks });
     } catch (e: any) { res.status(500).json({ error: "Failed to fetch review queue" }); }
+  });
+
+  // Books the OAI harvest found plausible but could not place with confidence. Non-public Drafts (every public
+  // query filters on status 'Published'); a person chooses the department on approval.
+  app.get("/api/admin/review/ingested-books", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const take = Math.min(parseInt(req.query.limit as string) || 25, 100);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const where: any = { status: 'Draft', ownershipSource: 'Ingested' };
+      if (req.query.source) where.source = String(req.query.source);
+      const [rows, total] = await Promise.all([
+        (prisma as any).book.findMany({
+          where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * take, take,
+          select: { id: true, title: true, authors: true, publisherName: true, year: true, doi: true, isbn: true, subject: true, language: true,
+            licence: true, accessStatus: true, source: true, originalUrl: true, coverUrl: true, metadata: true, createdAt: true },
+        }),
+        (prisma as any).book.count({ where }),
+      ]);
+      res.json({ total, page, take, departments: ALL_DEPARTMENTS, books: rows.map((b: any) => ({
+        ...b, metadata: undefined,
+        suggested: b.metadata?.harvest?.department?.suggested ?? null,
+        runnerUp: b.metadata?.harvest?.department?.runnerUp ?? null,
+        score: b.metadata?.harvest?.department?.score ?? null,
+        reasons: b.metadata?.harvest?.department?.reasons ?? [],
+      })) });
+    } catch (e: any) { res.status(500).json({ error: "Failed to fetch ingested books" }); }
   });
 
   const reviewAction = (model: 'article' | 'book') => async (req: any, res: any) => {
@@ -7531,7 +7560,18 @@ async function startServer() {
       const { id } = req.params;
       const { action, note } = req.body;
       if (action === 'approve') {
-        const updated = await (prisma as any)[model].update({ where: { id }, data: { status: 'Published', rejectionNote: null } });
+        const data: any = { status: 'Published', rejectionNote: null };
+        if (model === 'book') {
+          // A book the harvest set aside has no department. Publishing one without a department would count it in
+          // the library but leave it on no shelf, so approval names the department — only ever one that exists.
+          const held = await (prisma as any).book.findUnique({ where: { id }, select: { domain: true, ownershipSource: true } });
+          if (!held) return res.status(404).json({ error: "No such book" });
+          const department = typeof req.body.department === 'string' ? req.body.department : null;
+          if (department && !ALL_DEPARTMENTS.includes(department)) return res.status(400).json({ error: "Unknown department" });
+          if (department) data.domain = department;
+          else if (held.ownershipSource === 'Ingested' && !held.domain) return res.status(400).json({ error: "Choose a department to approve this book" });
+        }
+        const updated = await (prisma as any)[model].update({ where: { id }, data });
         return res.json(updated);
       } else if (action === 'reject') {
         const updated = await (prisma as any)[model].update({ where: { id }, data: { status: 'Rejected', rejectionNote: note || 'Rejected by reviewer' } });
@@ -8293,7 +8333,7 @@ async function startServer() {
       const messages = Object.values(byPub);
       const [pa, pb] = await Promise.all([
         (prisma as any).article.count({ where: { status: 'Draft' } }),
-        (prisma as any).book.count({ where: { status: 'Draft' } }),
+        (prisma as any).book.count({ where: { status: 'Draft', ownershipSource: { not: 'Ingested' } } }),
       ]);
       const reviewCount = pa + pb;
       const recent = await (prisma as any).publisherAgreement.findMany({
@@ -8555,7 +8595,14 @@ async function startServer() {
     const [status, last24h, alerts] = await Promise.all([
       engineStatus(state, ingestTimer), last24Hours(), repeatedNoChangeAlerts(),
     ]);
-    return { ...state, status, last24h, alerts, schedulerV2: schedulerV2(), limits: INGESTION_POLICY.settings };
+    // Where each book provider's OAI harvest stands. Books are harvested whole and classified afterwards, so the
+    // department scope below does not apply to them; the screen says so.
+    const harvests = await (prisma as any).bookHarvestCheckpoint.findMany({ select: { provider: true, lastSuccessfulSyncAt: true, harvestStartedAt: true, cursor: true } }).catch(() => []);
+    const booksHarvest = {
+      oai: process.env.BOOKS_OAI !== '0',
+      providers: harvests.map((h: any) => ({ provider: h.provider, lastSuccessfulSyncAt: h.lastSuccessfulSyncAt, inProgress: !!h.cursor, startedAt: h.harvestStartedAt })),
+    };
+    return { ...state, status, last24h, alerts, schedulerV2: schedulerV2(), limits: INGESTION_POLICY.settings, booksHarvest };
   };
 
   app.get("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
@@ -8635,10 +8682,31 @@ async function startServer() {
   });
 
   // GET /api/admin/ingest/audit — what administrators and the engine's own safeguards have done, newest first.
+  // Routine per-download events (one for every NCBI archive, which the daily quota is counted from) are kept in
+  // the log but left out of the default view and summarised instead; ?action=NCBI_ARCHIVE_DOWNLOADED or
+  // ?includeRoutine=1 shows them.
   app.get("/api/admin/ingest/audit", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const take = Math.min(parseInt(req.query.limit as string) || 20, 100);
-      res.json({ events: await (prisma as any).ingestionAudit.findMany({ orderBy: { at: 'desc' }, take }) });
+      const action = typeof req.query.action === 'string' && /^[A-Z_]{3,60}$/.test(req.query.action) ? req.query.action : null;
+      const where = action ? { action } : req.query.includeRoutine === '1' ? {} : { action: { notIn: ['NCBI_ARCHIVE_DOWNLOADED'] } };
+      const events = await (prisma as any).ingestionAudit.findMany({ where, orderBy: { at: 'desc' }, take });
+      const day = new Date(); day.setUTCHours(0, 0, 0, 0);
+      const [n]: any[] = await (prisma as any).$queryRawUnsafe(
+        `select count(*)::int as total, coalesce(sum((meta->>'bytes')::bigint), 0)::float8 as bytes,
+                (count(*) filter (where at >= $1))::int as today, coalesce(sum((meta->>'bytes')::bigint) filter (where at >= $1), 0)::float8 as todaybytes
+           from "IngestionAudit" where action = 'NCBI_ARCHIVE_DOWNLOADED'`, day);
+      const health = await (prisma as any).ingestionSourceHealth.findUnique({ where: { source: 'NCBI' } }).catch(() => null);
+      const mb = (b: number) => Math.round((b || 0) / 104857.6) / 10;
+      res.json({
+        events,
+        summaries: n?.total ? [{
+          provider: 'NCBI Bookshelf', archivesDownloaded: n.total, mbDownloaded: mb(n.bytes),
+          today: { archives: n.today, mbDownloaded: mb(n.todaybytes) },
+          providerFailures: health?.consecutiveFailures ?? 0,
+          detail: 'Individual downloads: ?action=NCBI_ARCHIVE_DOWNLOADED',
+        }] : [],
+      });
     } catch { res.status(500).json({ error: "Failed to load audit log" }); }
   });
 
@@ -10351,7 +10419,15 @@ async function startServer() {
         });
       }
 
-      res.json({ data, total, page: parseInt(page as string) || 1, limit: take });
+      // Harvested books are offered as a link to the source. Their internal harvest record (which keeps the verified
+      // file address for the day the Book reader can serve it) is not part of the public answer, and a raw file
+      // address is only given for a book that is explicitly viewable here.
+      const forPublic = (b: any) => {
+        if (b.ownershipSource !== 'Ingested') return b;
+        const { metadata, ...rest } = b;
+        return b.accessStatus === 'ViewableHere' ? rest : { ...rest, pdfUrl: null };
+      };
+      res.json({ data: data.map(forPublic), total, page: parseInt(page as string) || 1, limit: take });
     } catch (e: any) { res.status(500).json({ error: "Failed to load books" }); }
   });
 

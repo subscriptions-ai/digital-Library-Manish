@@ -1,6 +1,8 @@
 import { ingestionDb as db } from './db.js';
 import { INGESTION_POLICY, minutes } from './policy.js';
 import { audit } from './audit.js';
+import https from 'node:https';
+import { Readable } from 'node:stream';
 
 /**
  * How each upstream source is behaving, and a request helper that respects it.
@@ -25,12 +27,48 @@ export type SourceResult = {
   error?: string;
 };
 
+/**
+ * A request that names its own connection timeout. Node tries IPv6 and IPv4 in turn and gives each address
+ * only 250 ms; on a network where that is too short for one host (NCBI's from here, where every connection
+ * then fails with ETIMEDOUT while curl works) that source can ask for longer, and every other source keeps the
+ * default. The global `fetch` has no such option, so this one request goes through `https`; the answer comes
+ * back as an ordinary `Response`, and only the connect step differs. Redirects are followed a few hops.
+ */
+function fetchWithConnectTimeout(url: string, init: RequestInit | undefined, connectTimeoutMs: number, hops = 0): Promise<Response> {
+  return new Promise<Response>((resolve, reject) => {
+    const u = new URL(url);
+    if (u.protocol !== 'https:') return resolve(fetch(url, init));
+    const req = https.request(u, {
+      method: 'GET', headers: (init?.headers as Record<string, string>) || {}, signal: init?.signal ?? undefined,
+      autoSelectFamily: true, autoSelectFamilyAttemptTimeout: connectTimeoutMs,
+    } as https.RequestOptions, res => {
+      const status = res.statusCode || 0;
+      const loc = res.headers.location;
+      if ([301, 302, 303, 307, 308].includes(status) && loc && hops < 3) {
+        res.resume();
+        return fetchWithConnectTimeout(new URL(loc, u).toString(), init, connectTimeoutMs, hops + 1).then(resolve, reject);
+      }
+      const headers = new Headers();
+      for (const [k, v] of Object.entries(res.headers)) if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(', ') : String(v));
+      const bodyless = status === 204 || status === 205 || status === 304;
+      resolve(new Response(bodyless ? null : (Readable.toWeb(res) as any), { status, statusText: res.statusMessage, headers }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+type Transport = (url: string, init?: RequestInit, connectTimeoutMs?: number) => Promise<Response>;
+
 /** Replaceable so the engine can be exercised against a fake source. */
-const realFetch = (url: string, init?: RequestInit) => fetch(url, init);
-let httpFetch: (url: string, init?: RequestInit) => Promise<Response> = realFetch;
-export function __useFetchForTests(f: ((url: string, init?: RequestInit) => Promise<Response>) | null) { httpFetch = f ?? realFetch; }
+const realFetch: Transport = (url, init, connectTimeoutMs) => connectTimeoutMs ? fetchWithConnectTimeout(url, init, connectTimeoutMs) : fetch(url, init);
+let httpFetch: Transport = realFetch;
+export function __useFetchForTests(f: Transport | null) { httpFetch = f ?? realFetch; }
 let sleeper = (ms: number) => new Promise(r => setTimeout(r, ms));
 export function __useSleepForTests(f: ((ms: number) => Promise<any>) | null) { sleeper = f ?? ((ms: number) => new Promise(r => setTimeout(r, ms))); }
+
+/** One raw request through the same (replaceable) transport, with no health bookkeeping — for probes that must not count against a source's breaker. */
+export const fetchRaw = (url: string, init?: RequestInit, connectTimeoutMs?: number) => httpFetch(url, init, connectTimeoutMs);
 
 export function sourceFor(url: string): string {
   try {
@@ -74,12 +112,12 @@ export async function recordSourceFailure(source: string, error: string) {
 }
 
 /**
- * GET a JSON document from a source. Never throws. `source` defaults from the host.
+ * GET a JSON document from a source (or, with `text`, the body as a string — OAI-PMH answers in XML; it comes back in `json`). Never throws. `source` defaults from the host.
  *
  * `timeoutMs` is not a nicety: a request with no deadline holds the whole pass open for ever.
  */
 export async function fetchSourceJson(
-  url: string, opts: { source?: string; timeoutMs?: number; headers?: Record<string, string>; attempts?: number } = {},
+  url: string, opts: { source?: string; timeoutMs?: number; headers?: Record<string, string>; attempts?: number; text?: boolean; encoding?: string; connectTimeoutMs?: number } = {},
 ): Promise<SourceResult> {
   const source = opts.source || sourceFor(url);
   const st = await sourceStatus(source);
@@ -89,8 +127,8 @@ export async function fetchSourceJson(
   let last: SourceResult = { ok: false, status: null, json: null, transient: true, error: 'no attempt made' };
   for (let i = 1; i <= attempts; i++) {
     try {
-      const r = await httpFetch(url, { headers: opts.headers, signal: AbortSignal.timeout(opts.timeoutMs ?? 120_000) });
-      if (r.ok) { const json = await r.json(); await recordSourceOk(source); return { ok: true, status: r.status, json }; }
+      const r = await httpFetch(url, { headers: opts.headers, signal: AbortSignal.timeout(opts.timeoutMs ?? 120_000) }, opts.connectTimeoutMs);
+      if (r.ok) { const json = opts.encoding ? new TextDecoder(opts.encoding).decode(await r.arrayBuffer()) : opts.text ? await r.text() : await r.json(); await recordSourceOk(source); return { ok: true, status: r.status, json }; }
       const transient = r.status === 429 || r.status >= 500;
       last = { ok: false, status: r.status, json: null, transient, error: `${source} answered HTTP ${r.status}` };
       if (!transient) return last;                                  // a permanent refusal: not the source's fault, not retried

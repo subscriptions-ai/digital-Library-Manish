@@ -10,7 +10,7 @@ const TILES: { key: string; label: string; tip: string }[] = [
   { key: 'accepted', label: 'Accepted', tip: 'Journals whose declared licence permits commercial use, so full text may be served here.' },
   { key: 'refused', label: 'Refused — non-commercial', tip: 'Journals catalogued as metadata only because their declared licence does not permit commercial use. They link to the publisher; no file is served.' },
   { key: 'articlesAdded', label: 'Articles added', tip: 'New articles the engine wrote to the catalogue from OpenAlex.' },
-  { key: 'booksAdded', label: 'Books added', tip: 'New books catalogued from DOAB. DOAB holds no book files, so each is catalogued with a link.' },
+  { key: 'booksAdded', label: 'Books added', tip: 'New books catalogued from DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf. No book files are hosted here, so each is catalogued with a link.' },
   { key: 'alreadyHeld', label: 'Already held', tip: 'Records encountered during ingestion that already exist in the catalogue. (Totals from before the latest update also include a small number of records that could not be written.)' },
 ];
 

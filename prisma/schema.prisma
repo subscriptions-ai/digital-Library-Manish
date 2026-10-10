@@ -1884,3 +1884,19 @@ model AIMessage {
   
   @@index([conversationId, createdAt])
 }
+
+/// Where an OAI-PMH book harvest got to, one row per provider.
+///
+/// `cursor` is the provider's resumptionToken while a harvest is part-way through, and null
+/// between harvests. `harvestStartedAt` is the boundary the next incremental sync starts from:
+/// it is taken when a harvest BEGINS, so a record created while the harvest runs is picked up
+/// by the following sync rather than missed. Provider health lives in IngestionSourceHealth.
+model BookHarvestCheckpoint {
+  id                   String    @id @default(uuid())
+  provider             String    @unique
+  cursor               String?   @db.Text
+  lastSuccessfulSyncAt DateTime?
+  harvestStartedAt     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}

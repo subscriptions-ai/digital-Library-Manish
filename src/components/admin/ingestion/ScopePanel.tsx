@@ -45,6 +45,10 @@ export function DepartmentPicker({ value, onChange, disabled }: { value: string[
 export function ScopePanel({ state, onChanged }: { state: any; onChanged: () => void }) {
   const running = !!state.enabled;
   const scope = scopeLabel(state.departments);
+  // Books are harvested whole from DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf and placed by their own subjects afterwards, so this scope
+  // cannot filter them. In Books mode it would be misleading to show it as if it did.
+  const booksOai = !!state.booksHarvest?.oai;
+  const booksOnly = booksOai && state.focus === 'books';
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -74,13 +78,20 @@ export function ScopePanel({ state, onChanged }: { state: any; onChanged: () => 
           <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent"><Target size={18} /></span>
           <div>
             <h2 id="scope-heading" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Active scope</h2>
-            <p className="mt-0.5 text-lg font-semibold text-ink">{scope.short}</p>
-            <p className="mt-0.5 text-[13px] text-muted">{scope.long}{!scope.all && ' The scope is only ever changed here, by you.'}</p>
+            <p className="mt-0.5 text-lg font-semibold text-ink">{booksOnly ? 'All departments' : scope.short}</p>
+            <p className="mt-0.5 text-[13px] text-muted">
+              {booksOnly
+                ? 'Automatically classified from each book’s metadata. The department scope does not apply to books.'
+                : <>{scope.long}{!scope.all && ' The scope is only ever changed here, by you.'}</>}
+            </p>
+            {booksOai && !booksOnly && (
+              <p className="mt-1 text-[12.5px] text-muted">Books are not filtered by this scope: they are collected from every department and placed by their own metadata.</p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={open}>Change Scope</Button>
-          {!scope.all && <Button variant="secondary" onClick={() => (running ? setConfirmAll(true) : save([], false))} loading={saving && !editing}>Use All Departments</Button>}
+          <Button variant="outline" onClick={open} disabled={booksOnly}>Change Scope</Button>
+          {!scope.all && !booksOnly && <Button variant="secondary" onClick={() => (running ? setConfirmAll(true) : save([], false))} loading={saving && !editing}>Use All Departments</Button>}
         </div>
       </div>
       {!scope.all && state.departments?.length > 1 && (
