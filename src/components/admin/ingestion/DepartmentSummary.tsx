@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
 import { N, dayLabel } from './format';
-import { rangeQuery, type DateRangeValue } from './DateRange';
+import { rangeQuery, rangeLabel, honoured, STALE_SERVER, type DateRangeValue } from './DateRange';
 
 function Tile({ label, value, note }: { label: string; value: any; note?: string | null }) {
   return (
@@ -26,13 +26,15 @@ function Group({ title, caption, children, cols }: { title: string; caption?: st
 }
 
 export type SummaryFilters = { phase: string; source: string; result: string };
+const RESULT_RUNS: Record<string, string> = { added: 'Added runs', held: 'Held runs', failed: 'Failed runs', skipped: 'Skipped runs' };
 
 /**
  * What the chosen department holds now, and what ingestion did for it over the chosen dates — in two separate blocks,
  * because they are different kinds of number: one is a state of the library, the other a count of events.
  *
- * The first block ignores the date and every run filter. The second is a sum over exactly the runs the list below shows.
- * Every figure comes from /api/admin/ingest/department-metrics. If it cannot be loaded nothing is shown, never zeros.
+ * The first block ignores the date and every run filter. The second, the by-day table and the unattributed line are all
+ * derived on the server from one filtered set of runs — the same set the list below shows. If the answer cannot be loaded,
+ * or the server did not apply the range that was asked for, nothing is shown rather than numbers for another period.
  */
 export function DepartmentSummary({ department, range, filters, narrowedBy, refreshKey }: {
   department: string; range: DateRangeValue; filters: SummaryFilters; narrowedBy: string[]; refreshKey: number;
@@ -51,27 +53,32 @@ export function DepartmentSummary({ department, range, filters, narrowedBy, refr
     let alive = true; setData(null); setFailed(null);
     const load = async () => {
       const r = await api(`/api/admin/ingest/department-metrics?${qs}`);
-      if (!alive) return;
-      if (r.ok) { setData(r.data); setFailed(null); } else setFailed(r.data?.error || 'could not be loaded');
+      if (!alive) return;                                          // the filters changed while this was on its way
+      if (!r.ok) { setFailed(r.data?.error || 'could not be loaded'); return; }
+      if (!honoured(range, r.data?.range)) { setData(null); setFailed(STALE_SERVER); return; }
+      setData(r.data); setFailed(null);
     };
     load(); const t = setInterval(load, 30_000);
     return () => { alive = false; clearInterval(t); };
   }, [qs, refreshKey]);
 
   const title = department || 'All departments';
+  const label = rangeLabel(range);                                  // from what was asked for: never a placeholder
+  const resultNote = RESULT_RUNS[filters.result];
   if (failed && !data) {
-    return <p role="alert" className="border-b border-rule px-5 py-4 text-sm text-alarm">The figures for {title} could not be loaded just now ({failed}), so none are shown rather than zeros that would mean nothing.</p>;
+    return <p role="alert" className="border-b border-rule px-5 py-4 text-sm text-alarm">The figures for {title} could not be shown ({failed}){failed === STALE_SERVER ? '' : ' — none are shown rather than zeros that would mean nothing.'}</p>;
   }
 
   const c = data?.catalogue; const g = data?.ingestion; const u = data?.unattributed; const rg = data?.range;
   const empty = !!c && !c.books && !c.articles && !c.journals;
-  const label = rg?.label || '…';
-  const missed = u && (u.booksAdded || u.articlesAdded || u.journalsAccepted)
-    ? [u.booksAdded && `${N(u.booksAdded)} book${u.booksAdded === 1 ? '' : 's'}`, u.articlesAdded && `${N(u.articlesAdded)} article${u.articlesAdded === 1 ? '' : 's'}`, u.journalsAccepted && `${N(u.journalsAccepted)} journal${u.journalsAccepted === 1 ? '' : 's'}`].filter(Boolean).join(', ')
+  const unplaced = u && (u.runs > 0)
+    ? [u.booksAdded && `${N(u.booksAdded)} book${u.booksAdded === 1 ? '' : 's'} added`, u.articlesAdded && `${N(u.articlesAdded)} article${u.articlesAdded === 1 ? '' : 's'} added`, u.journalsAccepted && `${N(u.journalsAccepted)} journal${u.journalsAccepted === 1 ? '' : 's'} accepted`, u.failedRuns && `${N(u.failedRuns)} failed run${u.failedRuns === 1 ? '' : 's'}`].filter(Boolean).join(', ') || `${N(u.runs)} run${u.runs === 1 ? '' : 's'} with nothing added`
     : null;
   const caption = !rg ? null : rg.key === 'lifetime'
-    ? `Run log${data.ingestionSince ? ` since ${dayLabel(data.ingestionSince.slice(0, 10))} ${data.ingestionSince.slice(0, 4)}` : ''}`
+    ? `Run log${data.ingestionSince ? ` since ${dayLabel(data.ingestionSince.slice(0, 10))}` : ''}`
     : rg.text || null;
+  const days: any[] | null = data?.byDay || null;
+  const total = days ? days.reduce((t, d) => ({ books: t.books + d.books, articles: t.articles + d.articles, journals: t.journals + d.journals, held: t.held + d.held, failedRuns: t.failedRuns + d.failedRuns, sentToReview: t.sentToReview + d.sentToReview }), { books: 0, articles: 0, journals: 0, held: 0, failedRuns: 0, sentToReview: 0 }) : null;
 
   return (
     <div className="space-y-4 border-b border-rule bg-surface-2/40 px-5 py-4" aria-live="polite" aria-busy={!data}>
@@ -88,7 +95,7 @@ export function DepartmentSummary({ department, range, filters, narrowedBy, refr
       </Group>
       {empty && <p className="text-[12.5px] text-muted">No catalogue content found for this department yet.</p>}
 
-      <Group title={`Ingestion activity — ${label}`} caption={caption} cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
+      <Group title={`Ingestion activity — ${label}${resultNote ? ` · ${resultNote}` : ''}`} caption={caption} cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
         <Tile label="Books added" value={g?.booksAdded} />
         <Tile label="Articles added" value={g?.articlesAdded} />
         <Tile label="Journals accepted" value={g?.journalsAccepted} />
@@ -97,12 +104,17 @@ export function DepartmentSummary({ department, range, filters, narrowedBy, refr
         <Tile label="Sent to review" value={g?.sentToReview} />
         <Tile label="Refused by a rule" value={g?.refused} />
       </Group>
-      {narrowedBy.length > 0 && <p className="text-[12px] text-muted">These totals cover only the runs matching {narrowedBy.join(' · ')}.</p>}
-      {g && g.runs === 0 && <p className="text-[12.5px] text-muted">No ingestion activity was recorded for this department and date range.</p>}
-      {missed && (
+      {g && narrowedBy.length > 0 && (
         <p className="text-[12px] text-muted">
-          Not counted above: {missed} added in this range by book harvests, Quick Import or catalogue imports. Those runs cover many departments and the run log does not say which.
+          Counted only from the {N(g.runs)} run{g.runs === 1 ? '' : 's'} matching {narrowedBy.join(' · ')} in this range. Every figure above is what those same runs recorded — nothing from other runs or other dates.
         </p>
+      )}
+      {g && g.runs === 0 && <p className="text-[12.5px] text-muted">No ingestion activity was recorded for this department and date range.</p>}
+      {unplaced && (
+        <div className="rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-[12px] text-muted">
+          <p className="font-semibold text-ink-2">Unattributed activity</p>
+          <p className="mt-0.5">{unplaced} in this range, kept apart from {title}. These runs — book harvests, Quick Import and catalogue imports — did not store a department, so they are not part of {title}’s figures above.</p>
+        </div>
       )}
 
       <div>
@@ -110,22 +122,37 @@ export function DepartmentSummary({ department, range, filters, narrowedBy, refr
           {byDay ? 'Hide' : 'Show'} by day
         </button>
         {byDay && (
-          !data?.byDay ? <span className="skeleton mt-2 block h-5 w-full" />
-          : !data.byDay.length ? <p className="mt-2 text-[12.5px] text-muted">No day in this range has any activity.</p>
+          !days ? <span className="skeleton mt-2 block h-5 w-full" />
+          : !days.length ? <p className="mt-2 text-[12.5px] text-muted">No ingestion activity was recorded for this department and date range.</p>
           : (
-            <div className="mt-2 max-h-64 overflow-auto rounded-xl border border-rule bg-surface">
-              <table className="w-full text-left text-[13px]">
+            <div className="mt-2 max-h-72 overflow-auto rounded-xl border border-rule bg-surface">
+              <table className="w-full min-w-[460px] text-left text-[13px]">
                 <thead className="sticky top-0 bg-surface text-[11px] uppercase tracking-wide text-muted">
-                  <tr><th className="px-4 py-2 font-semibold">Date</th><th className="px-3 py-2 text-right font-semibold">Books</th><th className="px-3 py-2 text-right font-semibold">Articles</th><th className="px-4 py-2 text-right font-semibold">Journals</th></tr>
+                  <tr>
+                    <th className="px-4 py-2 font-semibold">Date</th><th className="px-3 py-2 text-right font-semibold">Books</th><th className="px-3 py-2 text-right font-semibold">Articles</th>
+                    <th className="px-3 py-2 text-right font-semibold">Journals</th><th className="px-3 py-2 text-right font-semibold">Held</th><th className="px-3 py-2 text-right font-semibold">Failed</th><th className="px-4 py-2 text-right font-semibold">Review</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-rule">
-                  {data.byDay.map((d: any) => (
-                    <tr key={d.day}><td className="px-4 py-1.5 text-ink">{dayLabel(d.day)}{rg?.key === 'lifetime' || rg?.fromDay?.slice(0, 4) !== rg?.toDay?.slice(0, 4) ? ` ${d.day.slice(0, 4)}` : ''}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{N(d.books)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(d.articles)}</td><td className="px-4 py-1.5 text-right tabular-nums">{N(d.journals)}</td></tr>
+                  {days.map(d => (
+                    <tr key={d.day} className={d.books || d.articles || d.journals || d.held || d.failedRuns || d.sentToReview ? '' : 'text-muted'}>
+                      <td className="px-4 py-1.5">{dayLabel(d.day)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{N(d.books)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(d.articles)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(d.journals)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{N(d.held)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(d.failedRuns)}</td><td className="px-4 py-1.5 text-right tabular-nums">{N(d.sentToReview)}</td>
+                    </tr>
                   ))}
                 </tbody>
+                {total && (
+                  <tfoot className="sticky bottom-0 bg-surface-2 font-semibold text-ink">
+                    <tr>
+                      <td className="px-4 py-1.5">Total</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{N(total.books)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(total.articles)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(total.journals)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{N(total.held)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(total.failedRuns)}</td><td className="px-4 py-1.5 text-right tabular-nums">{N(total.sentToReview)}</td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
-              <p className="border-t border-rule px-4 py-1.5 text-[11.5px] text-muted">India days. A day with no activity is left out.</p>
+              <p className="border-t border-rule px-4 py-1.5 text-[11.5px] text-muted">India days. {rg?.key === 'lifetime' ? 'Only days with activity are listed, newest first.' : 'Every day in the range is listed, oldest first; a day with no activity is 0.'} The total equals the figures above.</p>
             </div>
           )
         )}

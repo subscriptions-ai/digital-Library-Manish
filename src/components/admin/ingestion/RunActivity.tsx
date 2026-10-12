@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, EmptyState } from '../../ui';
 import { api } from './api';
 import { N, ago, exactTime } from './format';
 import { DepartmentSummary } from './DepartmentSummary';
-import { DateRange, LIFETIME, rangeQuery, type DateRangeValue } from './DateRange';
+import { DateRange, LIFETIME, rangeQuery, honoured, STALE_SERVER, type DateRangeValue } from './DateRange';
 import { DOMAINS } from '../../../constants';
 
 /** The existing department taxonomy, in its own order. No names are made up here. */
@@ -47,27 +47,39 @@ export function RunActivity({ refreshKey, department, onDepartment }: { refreshK
   const [sources, setSources] = useState<string[]>([]);
   const [runs, setRuns] = useState<any[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [more, setMore] = useState(false);
 
   const query = (before?: string | null) => `/api/admin/ingest/history?result=${result}${phase ? `&phase=${phase}` : ''}${department ? `&department=${encodeURIComponent(department)}` : ''}${source ? `&source=${encodeURIComponent(source)}` : ''}&${rangeQuery(range)}&limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`;
 
+  // Every request carries a number; only the newest one may touch the list. Without it a slow answer for the old date
+  // could arrive after the new one and put the old rows back, and "Load older" could append old-range rows to a new range.
+  const latest = useRef(0);
+  const olderLoaded = useRef(false);
+
   const load = useCallback(async () => {
+    const mine = ++latest.current;
     const r = await api(query());
-    if (!r.ok) { setError(true); return; }
-    setError(false); setRuns(r.data.runs); setNext(r.data.nextBefore);
+    if (mine !== latest.current) return;
+    if (!r.ok) { setError('The run log could not be loaded. Nothing is shown rather than an empty list.'); return; }
+    if (!honoured(range, r.data?.range)) { setRuns(null); setError(STALE_SERVER); return; }
+    setError(null); setRuns(r.data.runs); setNext(r.data.nextBefore);
   }, [result, phase, department, source, range]);
 
-  // Any change of filter or date reloads from the first page (load depends on all of them); the older pages are dropped.
-  useEffect(() => { setRuns(null); setNext(null); load(); }, [load, refreshKey]);
+  // Any change of filter or date starts again from the first page: the old rows and the old cursor are dropped.
+  useEffect(() => { olderLoaded.current = false; setRuns(null); setNext(null); setMore(false); load(); }, [load, refreshKey]);
   useEffect(() => { api('/api/admin/ingest/run-sources').then(r => { if (r.ok) setSources(r.data.sources || []); }); }, [refreshKey]);
-  useEffect(() => { const t = setInterval(load, 20_000); return () => clearInterval(t); }, [load]);
+  // The list refreshes itself, but never collapses pages the reader has chosen to load.
+  useEffect(() => { const t = setInterval(() => { if (!olderLoaded.current) load(); }, 20_000); return () => clearInterval(t); }, [load]);
 
   const loadMore = async () => {
+    const mine = latest.current;
+    olderLoaded.current = true;                          // from here the self-refresh leaves the list alone
     setMore(true);
     const r = await api(query(next));
     setMore(false);
-    if (r.ok) { setRuns(prev => [...(prev || []), ...r.data.runs]); setNext(r.data.nextBefore); }
+    if (mine !== latest.current) return;                 // the filters changed while this was loading: these rows belong to the old ones
+    if (r.ok && honoured(range, r.data?.range)) { setRuns(prev => [...(prev || []), ...r.data.runs]); setNext(r.data.nextBefore); }
   };
 
   const grouped = runs ? group(runs) : [];
@@ -103,7 +115,7 @@ export function RunActivity({ refreshKey, department, onDepartment }: { refreshK
 
       <DepartmentSummary department={department} range={range} filters={{ phase, source, result }} narrowedBy={narrowedBy} refreshKey={refreshKey} />
 
-      {error && <p role="alert" className="px-5 py-4 text-sm text-alarm">The run log could not be loaded. Nothing is shown rather than an empty list.</p>}
+      {error && <p role="alert" className="px-5 py-4 text-sm text-alarm">{error}</p>}
       {!error && runs === null && <div className="space-y-2 p-5" aria-busy="true"><span className="skeleton block h-5 w-full" /><span className="skeleton block h-5 w-5/6" /><span className="skeleton block h-5 w-2/3" /></div>}
       {!error && runs && !grouped.length && (narrowedBy.length
         ? <EmptyState title="No runs match these filters" description="Try a different result, kind or source, or a wider date range." />

@@ -76,7 +76,7 @@ const RANGES: Rg[] = [
 ];
 
 // ── The seed list ────────────────────────────────────────────────────────────
-type Seed = { dept: string | null; phase: 'Books' | 'Articles' | 'Journals'; source: string; at: Date; added?: number; accepted?: number; error?: string; journal?: string };
+type Seed = { dept: string | null; phase: 'Books' | 'Articles' | 'Journals'; source: string; at: Date; added?: number; accepted?: number; error?: string; journal?: string; held?: number; review?: number; writeFailed?: number };
 const seeds: Seed[] = [];
 const S = (dept: string | null, phase: Seed['phase'], source: string, off: number, hh: number, mm: number, ss: number, extra: Partial<Seed> = {}) =>
   seeds.push({ dept, phase, source, at: istAt(off, hh, mm, ss), ...extra });
@@ -92,6 +92,10 @@ S('Architecture', 'Books', 'OAPEN', -1, 12, 0, 0, { added: 100 });  // same depa
 for (const [off, hh, n] of [[0, 0, 2], [-1, 12, 4], [-3, 12, 6], [-10, 12, 8], [-40, 12, 10]] as const) S('Commerce', 'Articles', 'OpenAlex', off, hh, hh === 0 ? 0 : 0, hh === 0 ? 5 : 0, { added: n, journal: 'commerce' });
 // Dental · failed journal discovery
 for (const [off, hh, mm, ss] of [[0, 0, 0, 5], [-1, 23, 59, 55], [-3, 12, 0, 0], [-40, 12, 0, 0]] as const) S('Dental', 'Journals', 'DOAJ', off, hh, mm, ss, { accepted: 0, error: 'DOAJ did not answer' });
+// Isolated runs (a source nothing else uses) so their figures can be checked in absolute terms, not as a change
+const ISO_SRC = `Iso-${RUN}`;
+S('Commerce', 'Articles', ISO_SRC, -5, 10, 0, 0, { added: 37, held: 4, review: 2, journal: 'commerce' });   // the known article run on one day
+S('Commerce', 'Books', ISO_SRC, -7, 15, 0, 0, { added: 5, writeFailed: 1 });                               // two days earlier, with a failure; the day between has nothing
 // A run with no department anywhere
 S(null, 'Books', 'OAPEN', -1, 12, 0, 0, { added: 50 });
 
@@ -114,15 +118,16 @@ const expected = (c: Combo, r: Rg): Want => {
     if (c.phase && s.phase.toLowerCase() !== c.phase) continue;
     if (c.source && s.source !== c.source) continue;
     if (c.result === 'added' && !((s.added || 0) > 0 || (s.accepted || 0) > 0)) continue;
-    if (c.result === 'failed' && !s.error) continue;
+    if (c.result === 'failed' && !s.error && !s.writeFailed) continue;
     w.runs++;
     if (s.phase === 'Books') w.booksAdded += s.added || 0;
     if (s.phase === 'Articles') w.articlesAdded += s.added || 0;
     w.journalsAccepted += s.accepted || 0;
-    if (s.error) w.failedRuns++;
+    if (s.error || s.writeFailed) w.failedRuns++;
   }
   return w;
 };
+const dayLabelFull = (d: string) => `${d.slice(8)} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4)}`;
 const filterQs = (c: Combo) => `${c.dept ? `&department=${encodeURIComponent(c.dept)}` : ''}${c.phase ? `&phase=${c.phase}` : ''}${c.source ? `&source=${encodeURIComponent(c.source)}` : ''}${c.result ? `&result=${c.result}` : ''}`;
 const summary = async (c: Combo, r: Rg, extra = '') => (await A(`/api/admin/ingest/department-metrics?${r.q}${filterQs(c)}${extra}`)).data;
 const pick = (i: any): Want => ({ runs: i.runs, booksAdded: i.booksAdded, articlesAdded: i.articlesAdded, journalsAccepted: i.journalsAccepted, failedRuns: i.failedRuns });
@@ -134,7 +139,7 @@ const allRows = async (c: Combo, r: Rg, limit = 200) => {
     const res: any = await A(`/api/admin/ingest/history?${r.q}${filterQs(c)}&limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ''}`);
     if (res.status !== 200) throw new Error(`history ${res.status}`);
     rows.push(...res.data.runs); pages++;
-    if (!res.data.nextBefore || pages > 200) break;
+    if (!res.data.nextBefore || pages > 1000) break;
     before = res.data.nextBefore;
   }
   return { rows, pages };
@@ -166,9 +171,10 @@ try {
   check('presets are labelled in words', (await hd('range=today')).label === 'Today' && (await hd('range=yesterday')).label === 'Yesterday' && (await hd('range=last7')).label === 'Last 7 days' && (await hd('range=last30')).label === 'Last 30 days' && (await hd('range=month')).label === 'This month' && (await hd('range=lifetime')).label === 'Lifetime');
   const lab = (d: string) => `${Number(d.slice(8))} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(d.slice(5, 7)) - 1]}`;
   const multi = await hd(`range=custom&from=2026-10-01&to=2026-10-12`);
-  check('a custom range reads “1 Oct–12 Oct 2026”', multi.label === '1 Oct–12 Oct 2026', multi.label);
+  check('a custom range in one month reads “01–12 Oct 2026”', multi.label === '01–12 Oct 2026', multi.label);
+  check('a range across two months names both', (await hd('range=custom&from=2026-09-28&to=2026-10-05')).label === '28 Sep–05 Oct 2026');
   check('a custom single day reads “12 Oct 2026”', (await hd('range=custom&from=2026-10-12&to=2026-10-12')).label === '12 Oct 2026');
-  check('a range across a year end names both years', (await hd('range=custom&from=2025-12-30&to=2026-01-02')).label === '30 Dec 2025–2 Jan 2026');
+  check('a range across a year end names both years', (await hd('range=custom&from=2025-12-30&to=2026-01-02')).label === '30 Dec 2025–02 Jan 2026');
   check('“Today” covers today’s dates, from India midnight', (await hd('range=today')).fromDay === TODAY && (await hd('range=today')).start === istAt(0, 0, 0, 0).toISOString(), `${(await hd('range=today')).start}`);
   void lab;
 
@@ -182,7 +188,7 @@ try {
   for (const s of seeds) {
     await db.ingestionRun.create({ data: {
       phase: s.phase, source: s.source, department: s.journal ? null : s.dept, journalId: s.journal ? journals[s.journal] : null, journalTitle: s.journal ? cj.title : null,
-      added: s.phase === 'Journals' ? 0 : (s.added || 0), journalsAccepted: s.accepted || 0, error: s.error || null, at: s.at, note: `DF ${RUN}`,
+      added: s.phase === 'Journals' ? 0 : (s.added || 0), journalsAccepted: s.accepted || 0, error: s.error || null, skippedHeld: s.held || 0, needsReview: s.review || 0, skippedFailed: s.writeFailed || 0, at: s.at, note: `DF ${RUN}`,
     } });
   }
 
@@ -220,13 +226,20 @@ try {
     check(`${c.name}: 13 single days add up to the 13-day range`, sumDays === whole.ingestion.booksAdded && sumRuns === whole.ingestion.runs, `${sumRuns} runs / ${sumDays} books vs ${whole.ingestion.runs} / ${whole.ingestion.booksAdded}`);
   }
 
-  section('By day');
-  for (const c of [COMBOS[0], COMBOS[3], COMBOS[5]]) {
-    for (const r of [RANGES[3], RANGES[4], RANGES[7]]) {
+  section('By day reconciles with the summary, column for column');
+  const spanDays = (r: Rg) => (Date.parse(`${r.to}T00:00:00Z`) - Date.parse(`${r.from}T00:00:00Z`)) / DAY + 1;
+  for (const c of COMBOS) {
+    for (const r of RANGES) {
       const s = await summary(c, r, '&byDay=1');
-      const tot = (k: string) => s.byDay.reduce((n: number, d: any) => n + d[k], 0);
-      check(`${c.name} · ${r.name}: the days add up to the totals`, tot('books') === s.ingestion.booksAdded && tot('articles') === s.ingestion.articlesAdded && tot('journals') === s.ingestion.journalsAccepted);
-      check(`${c.name} · ${r.name}: days are India days inside the range, newest first`, s.byDay.every((d: any) => d.day >= r.from! && d.day <= r.to!) && s.byDay.every((d: any, i: number, a: any[]) => i === 0 || a[i - 1].day > d.day));
+      const sum = (k: string) => s.byDay.reduce((n: number, d: any) => n + d[k], 0);
+      check(`${c.name} · ${r.name}: Books, Articles, Journals, Held, Failed and Review each add up to the summary`,
+        sum('books') === s.ingestion.booksAdded && sum('articles') === s.ingestion.articlesAdded && sum('journals') === s.ingestion.journalsAccepted && sum('held') === s.ingestion.held && sum('failedRuns') === s.ingestion.failedRuns && sum('sentToReview') === s.ingestion.sentToReview);
+      if (r.from) {
+        check(`${c.name} · ${r.name}: one row for every day in the range (${spanDays(r)}), oldest first, none outside it`,
+          s.byDay.length === spanDays(r) && s.byDay[0].day === r.from && s.byDay[s.byDay.length - 1].day === r.to && s.byDay.every((d: any, i: number, a: any[]) => i === 0 || a[i - 1].day < d.day));
+      } else {
+        check(`${c.name} · ${r.name}: only days with activity, newest first`, s.byDay.every((d: any, i: number, a: any[]) => (i === 0 || a[i - 1].day > d.day)) && s.byDay.every((d: any) => d.books || d.articles || d.journals || d.held || d.failedRuns || d.sentToReview));
+      }
     }
   }
   const bd = (await summary(arch, RANGES[4], '&byDay=1')).byDay;
@@ -235,7 +248,59 @@ try {
   const baseDay = async (off: number) => { const s = await db.$queryRawUnsafe(`select coalesce(sum(added),0)::int n from "IngestionRun" where phase='Books' and source='DOAB' and note is distinct from 'DF ${RUN}' and (department='Architecture') and to_char("at" + interval '330 minutes','YYYY-MM-DD') = $1`, dayOf(off)); return s[0].n; };
   check('yesterday’s date holds both yesterday runs (the 23:59:55 one and the 12:00 one)', rowFor(dayOf(-1)) === 5 + 7 + await baseDay(-1), `${rowFor(dayOf(-1))}`);
   check('the 00:00:05 run lands on today’s date', rowFor(dayOf(0)) === 3 + await baseDay(0), `${rowFor(dayOf(0))}`);
-  check('a day with no activity is left out', !bd.some((d: any) => d.books === 0 && d.articles === 0 && d.journals === 0));
+
+  section('A. A single day with no Books added: zero in the summary, in By day and in the list');
+  const quiet = await (async () => {
+    for (let off = -20; off >= -80; off--) {
+      const d = dayOf(off);
+      const n = (await db.$queryRawUnsafe(`select count(*)::int n from "IngestionRun" where phase = 'Books' and to_char("at" + interval '330 minutes','YYYY-MM-DD') = $1`, d))[0].n;
+      if (n === 0) return d;
+    }
+    return null;
+  })();
+  if (!quiet) console.log('  SKIP  no Books-free day found in the scratch database');
+  else {
+    const rq: Rg = { name: 'quiet', q: `range=custom&from=${quiet}&to=${quiet}`, from: quiet, to: quiet };
+    for (const c of [{ ...COMBOS[5], phase: 'books', name: 'All + Books' }, COMBOS[0], COMBOS[1]]) {
+      const s = await summary(c, rq, '&byDay=1');
+      check(`${quiet} · ${c.name}: Books added is 0 in the summary and in By day`, s.ingestion.booksAdded === 0 && s.byDay.length === 1 && s.byDay[0].books === 0 && s.range.label === dayLabelFull(quiet));
+      check(`${quiet} · ${c.name}: the list has no row from any other date`, (await allRows(c, rq)).rows.length === 0);
+    }
+    const life = await summary(COMBOS[5], RANGES[0]);
+    check('…and the Lifetime totals are not what that day shows', life.ingestion.booksAdded > 0 && (await summary({ ...COMBOS[5], phase: 'books' }, rq)).ingestion.booksAdded === 0);
+  }
+
+  section('B and C. Known runs on isolated source: exact summary, and three days that add up');
+  const iso: Combo = { name: 'isolated', dept: null, phase: null, source: ISO_SRC, result: null };
+  const dB = dayOf(-5), dA = dayOf(-7), dMid = dayOf(-6);
+  const sB = await summary(iso, { name: 'b', q: `range=custom&from=${dB}&to=${dB}`, from: dB, to: dB }, '&byDay=1');
+  check('B: the single day shows exactly the one article run (37 added, 4 held, 2 for review, no failure)', sB.ingestion.runs === 1 && sB.ingestion.articlesAdded === 37 && sB.ingestion.booksAdded === 0 && sB.ingestion.held === 4 && sB.ingestion.sentToReview === 2 && sB.ingestion.failedRuns === 0, JSON.stringify(sB.ingestion));
+  check('B: Show by day gives the same single row', sB.byDay.length === 1 && sB.byDay[0].articles === 37 && sB.byDay[0].held === 4 && sB.byDay[0].sentToReview === 2);
+  const r3: Rg = { name: 'three', q: `range=custom&from=${dA}&to=${dB}`, from: dA, to: dB };
+  const s3 = await summary(iso, r3, '&byDay=1');
+  check('C: the 3-day range has one row per day, the middle day a plain 0', s3.byDay.length === 3 && same(s3.byDay.map((d: any) => d.day), [dA, dMid, dB]) && s3.byDay[1].books === 0 && s3.byDay[1].articles === 0 && s3.byDay[1].held === 0, JSON.stringify(s3.byDay));
+  check('C: the daily rows add up to the summary (5 books, 37 articles, 4 held, 1 failed, 2 for review)', s3.ingestion.booksAdded === 5 && s3.ingestion.articlesAdded === 37 && s3.ingestion.held === 4 && s3.ingestion.failedRuns === 1 && s3.ingestion.sentToReview === 2 && s3.byDay.reduce((n: number, d: any) => n + d.books + d.articles, 0) === 42);
+  check('C: the list shows those two runs and nothing else', (await allRows(iso, r3)).rows.length === 2 && (await allRows(iso, { name: 'x', q: `range=custom&from=${dMid}&to=${dMid}`, from: dMid, to: dMid })).rows.length === 0);
+  check('C: Lifetime on the same source returns the same two runs (historical totals come back)', (await summary(iso, RANGES[0])).ingestion.runs === 2);
+
+  section('Unattributed activity stays apart from the department');
+  const UN_SRC = `Unat-${RUN}`;
+  await db.ingestionRun.create({ data: { phase: 'Books', source: UN_SRC, department: null, added: 61, at: istAt(-2, 11, 0, 0), note: `DF ${RUN}` } });       // no department recorded
+  await db.ingestionRun.create({ data: { phase: 'Books', source: UN_SRC, department: 'Architecture', added: 3, at: istAt(-2, 11, 30, 0), note: `DF ${RUN}` } });
+  const d2 = dayOf(-2), r2: Rg = { name: 'two', q: `range=custom&from=${d2}&to=${d2}`, from: d2, to: d2 };
+  const un = await summary({ name: 'un', dept: 'Architecture', phase: null, source: UN_SRC, result: null }, r2, '&byDay=1');
+  check('Architecture shows only its own 3 books — the 61 with no department are not added to it', un.ingestion.booksAdded === 3 && un.ingestion.runs === 1 && un.byDay[0].books === 3, JSON.stringify(un.ingestion));
+  check('…and are reported separately as unattributed', un.unattributed.booksAdded === 61 && un.unattributed.runs === 1);
+  const unAll = await summary({ name: 'unAll', dept: null, phase: null, source: UN_SRC, result: null }, r2, '&byDay=1');
+  check('All departments counts both (64): it is every run in the library', unAll.ingestion.booksAdded === 64 && unAll.unattributed === null && unAll.byDay[0].books === 64);
+  check('the list under Architecture does not show the department-less run', (await allRows({ name: 'x', dept: 'Architecture', phase: null, source: UN_SRC, result: null }, r2)).rows.length === 1);
+
+  section('The range echoed back is the range applied (the screen refuses an answer that does not say so)');
+  for (const r of [RANGES[0], RANGES[1], RANGES[6], RANGES[7]]) {
+    const m = (await A(`/api/admin/ingest/department-metrics?${r.q}`)).data.range, h = (await A(`/api/admin/ingest/history?${r.q}&limit=1`)).data.range;
+    const key = r.q.match(/range=(\w+)/)![1];
+    check(`${r.name}: summary and list both echo it`, m.key === key && h.key === key && (key !== 'custom' || (m.fromDay === r.from && m.toDay === r.to && h.fromDay === r.from && h.toDay === r.to)));
+  }
 
   section('Pagination');
   for (const [c, r] of [[COMBOS[5], RANGES[7]], [COMBOS[3], RANGES[4]], [COMBOS[5], RANGES[0]]] as [Combo, Rg][]) {

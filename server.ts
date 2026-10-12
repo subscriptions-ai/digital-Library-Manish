@@ -8559,7 +8559,9 @@ async function startServer() {
       if (department && !(await departmentExists(department))) return res.status(400).json({ error: `Unknown department: ${department}` });
       const rg = resolveRange(req.query);
       if ('error' in rg) return res.status(400).json({ error: rg.error });
-      res.json(await runHistory({ result: str(req.query.result), phase: str(req.query.phase), department, source: str(req.query.source), start: rg.range.start, end: rg.range.end, limit: Number(req.query.limit), before: str(req.query.before) }));
+      const page = await runHistory({ result: str(req.query.result), phase: str(req.query.phase), department, source: str(req.query.source), start: rg.range.start, end: rg.range.end, limit: Number(req.query.limit), before: str(req.query.before) });
+      // The range actually applied is echoed back, so the screen can refuse to show a list the server did not filter as asked.
+      res.json({ ...page, range: { key: rg.range.key, label: rg.range.label, fromDay: rg.range.fromDay, toDay: rg.range.toDay } });
     }
     catch (e: any) { console.error('GET ingest/history error:', e?.message); res.status(500).json({ error: "Failed to load history" }); }
   });

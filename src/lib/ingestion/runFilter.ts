@@ -26,13 +26,21 @@ const addDays = (day: string, n: number) => new Date((dayNumber(day) + n) * DAY_
 /** 00:00:00.000 IST of that day, as an instant. */
 const istMidnight = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - IST_OFFSET_MS);
 const validDay = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
-const short = (day: string) => `${Number(day.slice(8))} ${MONTHS[Number(day.slice(5, 7)) - 1]}`;
+const short = (day: string) => `${day.slice(8)} ${MONTHS[Number(day.slice(5, 7)) - 1]}`;
 const full = (day: string) => `${short(day)} ${day.slice(0, 4)}`;
 
-/** "12 Oct 2026", "1 Oct–12 Oct 2026", "1 Oct 2025–12 Oct 2026". */
+/** "05 Oct 2026", "01–12 Oct 2026", "28 Sep–05 Oct 2026", "30 Dec 2025–02 Jan 2026". */
 export function rangeText(fromDay: string, toDay: string): string {
   if (fromDay === toDay) return full(toDay);
+  if (fromDay.slice(0, 7) === toDay.slice(0, 7)) return `${fromDay.slice(8)}–${full(toDay)}`;
   return fromDay.slice(0, 4) === toDay.slice(0, 4) ? `${short(fromDay)}–${full(toDay)}` : `${full(fromDay)}–${full(toDay)}`;
+}
+
+/** Every IST day from `fromDay` to `toDay`, inclusive, oldest first. */
+export function eachDay(fromDay: string, toDay: string): string[] {
+  const out: string[] = [];
+  for (let d = fromDay; d <= toDay; d = addDays(d, 1)) out.push(d);
+  return out;
 }
 
 export type ResolvedRange = {
@@ -115,16 +123,22 @@ export const FAILED_RUN_SQL = `(r."skippedFailed" > 0 or r.error is not null or 
  */
 export function runConditions(f: RunFilter, params: any[]): string[] {
   const out: string[] = []; const p = (v: any) => { params.push(v); return `$${params.length}`; };
+  /**
+   * `at` is stored as UTC wall-clock time in a column without a time zone. An instant is therefore sent as an ISO string
+   * with its Z and converted explicitly to UTC wall-clock time, so the comparison means the same thing whatever time zone
+   * the database session happens to be set to. (A bare Date parameter would be read in the session's zone.)
+   */
+  const at = (d: Date) => `((${p(d.toISOString())}::text)::timestamptz at time zone 'UTC')`;
   const phase = normalisePhase(f.phase);
   if (phase) out.push(`r.phase = ${p(phase)}`);
   if (f.source) out.push(`r.source = ${p(f.source)}`);
   if (f.department) out.push(`coalesce(r.department, j.domain) = ${p(f.department)}`);
-  if (f.start) out.push(`r."at" >= ${p(f.start)}`);
-  if (f.end) out.push(`r."at" < ${p(f.end)}`);
+  if (f.start) out.push(`r."at" >= ${at(f.start)}`);          // inclusive: 00:00:00.000 IST of the first day
+  if (f.end) out.push(`r."at" < ${at(f.end)}`);               // exclusive: 00:00:00.000 IST of the day after the last
   if (f.before) {
     const [iso, id] = f.before.split('|');
     const t = new Date(iso);
-    if (!isNaN(t.getTime())) out.push(id ? `(r."at" < ${p(t)} or (r."at" = ${p(t)} and r.id < ${p(id)}))` : `r."at" < ${p(t)}`);
+    if (!isNaN(t.getTime())) out.push(id ? `(r."at" < ${at(t)} or (r."at" = ${at(t)} and r.id < ${p(id)}))` : `r."at" < ${at(t)}`);
   }
   switch ((f.result || 'all').toLowerCase()) {
     case 'added':   out.push(`(r.added > 0 or r."journalsAccepted" > 0)`); break;
