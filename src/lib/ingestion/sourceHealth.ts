@@ -77,6 +77,9 @@ export function sourceFor(url: string): string {
     if (h.endsWith('doaj.org')) return 'DOAJ';
     if (h.endsWith('doabooks.org')) return 'DOAB';
     if (h.endsWith('oapen.org')) return 'OAPEN';
+    if (h.endsWith('crossref.org')) return 'Crossref';
+    if (h.endsWith('ebi.ac.uk')) return 'EuropePMC';
+    if (h.endsWith('arxiv.org')) return 'arXiv';
     return h;
   } catch { return 'unknown'; }
 }
@@ -85,6 +88,20 @@ export async function sourceStatus(source: string): Promise<{ paused: boolean; u
   const row = await db.ingestionSourceHealth.findUnique({ where: { source } }).catch(() => null);
   const until: Date | null = row?.pausedUntil ?? null;
   return { paused: !!until && until.getTime() > Date.now(), until, failures: row?.consecutiveFailures ?? 0 };
+}
+
+/**
+ * Is a source resting, and why? "Rate limited" when the last failure was HTTP 429, "cooling down" when it
+ * was paused for any other repeated failure. Read from the same row the engine's breaker writes, so a
+ * manual import can never be more eager than the engine is allowed to be.
+ */
+export async function sourceCooldown(source: string): Promise<{ state: 'ok' | 'rate_limited' | 'cooling' | 'failing'; until: Date | null; lastError: string | null; failures: number }> {
+  const row = await db.ingestionSourceHealth.findUnique({ where: { source } }).catch(() => null);
+  const until: Date | null = row?.pausedUntil ?? null;
+  const failures = row?.consecutiveFailures ?? 0;
+  const lastError: string | null = row?.lastError ?? null;
+  if (until && until.getTime() > Date.now()) return { state: /\b429\b/.test(lastError || '') ? 'rate_limited' : 'cooling', until, lastError, failures };
+  return { state: failures >= 3 ? 'failing' : 'ok', until: null, lastError, failures };
 }
 
 export async function recordSourceOk(source: string) {

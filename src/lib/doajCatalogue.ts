@@ -129,6 +129,8 @@ export type CatalogueCheck = {
   summary: {
     inFile: number; alreadyHeld: number; new: number; fullTextEligible: number; metadataOnly: number;
     rejected: number; needsReview: number; noDepartment: number; byDepartment: Record<string, number>;
+    /** With a scope: journals that are new but in a department that was not asked for, and new ones past the limit. */
+    outsideScope?: number; beyondLimit?: number;
   };
   /** The ISSNs a confirmed import is allowed to add — exactly the "new" ones, and nothing else. */
   newIssns: string[];
@@ -143,7 +145,13 @@ export type CatalogueCheck = {
  * journals called "Revista de Derecho". Those are now counted as "needs review" and, as before, not imported
  * automatically; the difference is that they are reported instead of vanishing into "already held".
  */
-export async function checkDoajCatalogue(opts: { csvText?: string } = {}): Promise<CatalogueCheck> {
+export async function checkDoajCatalogue(opts: {
+  csvText?: string;
+  /** Only journals the department mapping puts in one of these are new for this check. Empty or absent means all. */
+  departments?: string[];
+  /** At most this many new journals. The rest are counted, not listed, and stay for another time. */
+  limit?: number;
+} = {}): Promise<CatalogueCheck> {
   const rows = await readCsv(opts.csvText);
   const { issns: held, titles: heldTitles } = await readHeld();
   const out: CatalogueCheck = {
@@ -161,6 +169,8 @@ export async function checkDoajCatalogue(opts: { csvText?: string } = {}): Promi
       if (out.reviewSample.length < 20) out.reviewSample.push({ title: j.title, issn: j.issn });
       continue;
     }
+    if (opts.departments?.length && !opts.departments.includes(j.domain as string)) { s.outsideScope = (s.outsideScope || 0) + 1; continue; }
+    if (opts.limit != null && out.newIssns.length >= opts.limit) { s.beyondLimit = (s.beyondLimit || 0) + 1; continue; }
     // The same title can appear twice in the file under its two ISSNs.
     held.add(j.issn); if (j.eissn) held.add(j.eissn); heldTitles.set(j.title.toLowerCase(), j.issn);
     out.newIssns.push(j.issn);

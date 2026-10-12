@@ -60,11 +60,11 @@ export function useEngineState(intervalMs = 10_000) {
 }
 
 /** Poll a server job until it stops running. */
-export function pollJob(jobId: string, onUpdate: (job: any) => void, intervalMs = 2000): () => void {
+export function pollJob(jobId: string, onUpdate: (job: any) => void, intervalMs = 2000, base = '/api/admin/ingest/status'): () => void {
   let stop = false;
   const tick = async () => {
     if (stop) return;
-    const r = await api(`/api/admin/ingest/status/${jobId}`);
+    const r = await api(`${base}/${jobId}`);
     if (stop) return;
     if (!r.ok) { onUpdate({ status: 'error', error: r.status === 404 ? 'The server no longer has this job. If it was an import, check the run activity before starting it again.' : (r.data?.error || 'Lost track of the job') }); return; }
     onUpdate(r.data);

@@ -1,5 +1,6 @@
 import { ingestionDb as db } from './db.js';
 import { INGESTION_POLICY, minutes } from './policy.js';
+import { runConditions, RUN_FROM } from './runFilter.js';
 
 /**
  * What the admin screen shows about the engine, computed from what is actually in the database.
@@ -129,29 +130,30 @@ export async function metrics(state: any, period: Period) {
 
 // ── The run log, filtered and paged on the server ──────────────────────────
 
-export type HistoryQuery = { result?: string; phase?: string; limit?: number; before?: string };
+export type HistoryQuery = { result?: string; phase?: string; department?: string; source?: string; start?: Date | null; end?: Date | null; limit?: number; before?: string };
 
+/**
+ * Filtered and paged on the server. Every filter — department, kind, source, result, date range — is one condition from
+ * runConditions, the same function the department summary uses, so the rows and the figures above them are the same runs.
+ */
 export async function runHistory(q: HistoryQuery) {
   const take = Math.min(Math.max(Number(q.limit) || 50, 1), 200);
-  const where: any = {};
-  const and: any[] = [];
-
-  const phases: Record<string, string> = { articles: 'Articles', books: 'Books', journals: 'Journals' };
-  if (q.phase && phases[q.phase.toLowerCase()]) and.push({ phase: phases[q.phase.toLowerCase()] });
-
-  switch ((q.result || 'all').toLowerCase()) {
-    case 'added':   and.push({ OR: [{ added: { gt: 0 } }, { journalsAccepted: { gt: 0 } }] }); break;
-    case 'held':    and.push({ skippedHeld: { gt: 0 } }); break;
-    case 'failed':  and.push({ OR: [{ skippedFailed: { gt: 0 } }, { error: { not: null } }, { phase: 'Error' }] }); break;
-    // Skipped: the pass wrote nothing and nothing failed — a rule refused records, they await review, or there was nothing to do.
-    case 'skipped': and.push({ added: 0, skippedHeld: 0, skippedFailed: 0, journalsAccepted: 0, error: null },
-                              { OR: [{ skippedRejected: { gt: 0 } }, { needsReview: { gt: 0 } }, { phase: 'Idle' }, { note: { not: null } }] }); break;
-  }
-  if (q.before) { const d = new Date(q.before); if (!isNaN(d.getTime())) and.push({ at: { lt: d } }); }
-  if (and.length) where.AND = and;
-
-  const rows: any[] = await db.ingestionRun.findMany({ where, orderBy: [{ at: 'desc' }, { id: 'desc' }], take: take + 1 });
+  const params: any[] = [];
+  const where = runConditions({ result: q.result, phase: q.phase, department: q.department, source: q.source, start: q.start, end: q.end, before: q.before }, params);
+  params.push(take + 1);
+  const rows: any[] = await db.$queryRawUnsafe(
+    `select r.* from ${RUN_FROM} ${where.length ? `where ${where.join(' and ')}` : ''}
+      order by r."at" desc, r.id desc limit $${params.length}`, ...params);
   const more = rows.length > take;
   const runs = more ? rows.slice(0, take) : rows;
-  return { runs, hasMore: more, nextBefore: more ? runs[runs.length - 1].at.toISOString() : null };
+  return { runs, hasMore: more, nextBefore: more ? `${runs[runs.length - 1].at.toISOString()}|${runs[runs.length - 1].id}` : null };
+}
+
+/** The sources the run log has seen, for the Source filter. A short list, held for a minute. */
+let sourcesCache: { at: number; list: string[] } | null = null;
+export async function runSources(): Promise<string[]> {
+  if (sourcesCache && Date.now() - sourcesCache.at < 60_000) return sourcesCache.list;
+  const rows: any[] = await db.$queryRawUnsafe(`select distinct source from "IngestionRun" where source is not null order by 1`);
+  sourcesCache = { at: Date.now(), list: rows.map(r => r.source) };
+  return sourcesCache.list;
 }

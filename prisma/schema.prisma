@@ -1699,7 +1699,8 @@ model IngestionAudit {
   adminEmail String?
   /// ENGINE_PAUSED | ENGINE_RESUMED | MANUAL_PASS_REQUESTED | INGESTION_SETTINGS_CHANGED |
   /// INGESTION_SCOPE_CHANGED | DRY_RUN_CREATED | ONE_OFF_IMPORT_STARTED |
-  /// MASS_JOURNAL_IMPORT_STARTED | STALE_CLAIM_RECOVERED | SOURCE_PAUSED
+  /// MASS_JOURNAL_IMPORT_STARTED | STALE_CLAIM_RECOVERED | SOURCE_PAUSED |
+  /// QUICK_IMPORT_STARTED | QUICK_IMPORT_FINISHED | QUICK_IMPORT_FAILED
   action     String
   meta       Json?
 
@@ -1901,4 +1902,27 @@ model BookHarvestCheckpoint {
   harvestStartedAt     DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+}
+
+/// One small named setting that must survive a redeploy and be changed without one. Values are plain JSON.
+/// First use: AI_ASSISTANT_ENABLED = { "enabled": true | false }. No row means "never set", which means enabled.
+/// Never holds secrets or API keys.
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+/// Who changed a switch, and when. Append-only. AI_ASSISTANT_ENABLED | AI_ASSISTANT_DISABLED.
+/// meta never carries secrets.
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  at         DateTime @default(now())
+  adminId    String?
+  adminEmail String?
+  action     String
+  meta       Json?
+
+  @@index([action, at])
 }

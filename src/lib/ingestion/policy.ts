@@ -54,6 +54,20 @@ export const INGESTION_POLICY = {
   /** How long a dry run stays valid for the write that follows it, and how large it may be. */
   preview: { ttlMinutes: 60, maxItems: 2000 },
 
+  /**
+   * Quick Import: a bounded batch brought in by hand when the continuous engine is slow, paused or rate limited.
+   * Each source has its own default because the sources are not alike — a Crossref request is cheap, an NCBI archive
+   * is a download. `QUICK_IMPORT_LIMIT_<SOURCE>` (e.g. QUICK_IMPORT_LIMIT_CROSSREF=150) changes a default, and is held
+   * inside `ceiling` however it is set. NCBI is capped at 25 archives and is also bound by its daily limits.
+   */
+  quick: {
+    defaults: { doaj: 100, crossref: 250, openalex: 200, europepmc: 100, arxiv: 100, doab: 100, oapen: 100, otl: 100, ncbi: 25 } as Record<string, number>,
+    ceiling: { doaj: 500, crossref: 1000, openalex: 1000, europepmc: 500, arxiv: 300, doab: 500, oapen: 500, otl: 500, ncbi: 25 } as Record<string, number>,
+    /** One run is also bounded in time and in how many journals it visits, so a quiet source cannot hold it open for ever. */
+    maxJournalsPerRun: 40,
+    runBudgetMs: 4 * 60_000,
+  },
+
   /** Server-side limits for what an administrator may set. The screen mirrors these; the server decides. */
   settings: {
     yearsBack:          { min: 1, max: 50 },

@@ -22,6 +22,7 @@ import {
 import { judgeArticle, licenceAllowsCommercialUse } from './ingestion/eligibility.js';
 import { runScheduledHarvest, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED } from './ingestion/books/oaiHarvest.js';
 import { findHeldArticles, findPossibleDuplicates, canonicalFingerprint, normaliseDoi } from './ingestion/dedup.js';
+import { tryLockProvider, unlockProvider } from './ingestion/providerLocks.js';
 
 /** The worker's connection, shared with the catalogue import and the safety services. */
 const p = ingestionDb;
@@ -571,8 +572,22 @@ async function noJournalNote(departments: string[] | undefined, cap: number): Pr
   return departments?.length ? `no journal to fetch from in ${departments.join(', ')} yet` : 'every journal is up to date';
 }
 
+/**
+ * The request for one journal's open-access works, newest first. The engine's visit and an administrator's
+ * Quick Import build it the same way, so what a manual import asks OpenAlex for is what the engine would.
+ */
+export function openAlexJournalUrl(issn: string, fromYear: number, perPage: number, cursor = '*') {
+  return `https://api.openalex.org/works`
+    + `?filter=primary_location.source.issn:${encodeURIComponent(issn)}`
+    + `,from_publication_date:${fromYear}-01-01,open_access.is_oa:true`
+    + `&per-page=${perPage}`
+    + `&sort=publication_date:desc`
+    + `&cursor=${encodeURIComponent(cursor)}`;
+}
+export const OPENALEX_HEADERS = UA;
+
 /** An OpenAlex work, reduced to what the rules and the writer need. */
-function openAlexWork(w: any) {
+export function openAlexWork(w: any) {
   const doi = normaliseDoi(w.doi);
   return {
     source: 'OpenAlex',
@@ -622,12 +637,7 @@ async function visitJournal(journal: any, state: any, cap: number, v2: boolean, 
 
   // The cursor is the whole point. Without it this asked for the same first page every pass.
   const cursor = journal.fetchCursor || '*';
-  const url = `https://api.openalex.org/works`
-    + `?filter=primary_location.source.issn:${encodeURIComponent(journal.issn)}`
-    + `,from_publication_date:${fromYear}-01-01,open_access.is_oa:true`
-    + `&per-page=${perPage}`
-    + `&sort=publication_date:desc`
-    + `&cursor=${encodeURIComponent(cursor)}`;
+  const url = openAlexJournalUrl(journal.issn, fromYear, perPage, cursor);
 
   const res = await fetchSourceJson(url, { headers: UA, attempts: v2 ? 3 : 1 });
 
@@ -942,6 +952,10 @@ export async function runIngestionPass(
         const sweep = await claimSweep(source, wanted);
         if (!sweep) continue;
 
+        // DOAJ is one worker at a time too: an administrator's journal import may be reading it.
+        const lockName = source === 'DOAJ' ? 'DOAJ' : null;
+        if (lockName && !tryLockProvider(lockName, 'continuous')) { await releaseClaim('departmentSweep', sweep.id); continue; }
+        try {
         if (source === 'DOAJ') {
           const r: any = await discoverJournalsPage(sweep).catch(async (e: any) => { await releaseClaim('departmentSweep', sweep.id); throw e; });
           if (r.failed) {
@@ -994,6 +1008,7 @@ export async function runIngestionPass(
             : `"${sweep.term}" has no more to give`,
         });
         return { phase: 'Books', source, department: sweep.department, term: sweep.term, ...r };
+        } finally { if (lockName) unlockProvider(lockName, 'continuous'); }
       }
       return null;
     };
@@ -1021,29 +1036,40 @@ export async function runIngestionPass(
       }
     }
 
-    const r = await fetchArticlesForOneJournal(state, narrowed ? wanted : undefined);
+    // OpenAlex belongs to one worker at a time. If an administrator's Quick Import has it, this pass waits for
+    // the next tick instead of walking the same source beside it.
+    let busy = false;
+    let r: any;
+    if (!tryLockProvider('OpenAlex', 'continuous')) {
+      busy = true;
+      r = { journal: null, added: 0, skipped: 0, note: 'OpenAlex is being used by a manual import right now; this pass was left for the next one' };
+    } else {
+      try {
+        r = await fetchArticlesForOneJournal(state, narrowed ? wanted : undefined);
 
-    // With a limit set, each journal is one small request, and one a minute
-    // would take a fortnight to give ten thousand journals their first articles.
-    // So the pass carries on to the next journal, and the next, until it has
-    // done ARTICLE_JOURNALS_PER_PASS of them or used its time. Each leaves its
-    // own row in the run log.
-    if (r.journal && (state.articlesPerJournal ?? 0) > 0) {
-      for (let k = 1; k < ARTICLE_JOURNALS_PER_PASS && Date.now() - startedAt < ARTICLE_PASS_BUDGET_MS; k++) {
-        const more = await fetchArticlesForOneJournal(state, narrowed ? wanted : undefined);
-        if (!more.journal) break;
-        await p.ingestionState.update({
-          where: { id: 'singleton' },
-          data: { articlesAdded: { increment: more.added }, articlesSkipped: { increment: more.skipped }, lastSuccessAt: new Date(), consecutiveFailures: 0 },
-        });
-        await record({
-          phase: 'Articles', source: 'OpenAlex',
-          journalId: (more as any).journalId ?? null, journalTitle: more.journal,
-          added: more.added, skippedHeld: (more as any).skippedHeld ?? 0, skippedFailed: (more as any).skippedFailed ?? 0,
-          skippedRejected: (more as any).skippedRejected ?? 0, needsReview: (more as any).needsReview ?? 0,
-          more: Boolean((more as any).more), note: (more as any).note ?? null, error: (more as any).error ?? null,
-        });
-      }
+        // With a limit set, each journal is one small request, and one a minute
+        // would take a fortnight to give ten thousand journals their first articles.
+        // So the pass carries on to the next journal, and the next, until it has
+        // done ARTICLE_JOURNALS_PER_PASS of them or used its time. Each leaves its
+        // own row in the run log.
+        if (r.journal && (state.articlesPerJournal ?? 0) > 0) {
+          for (let k = 1; k < ARTICLE_JOURNALS_PER_PASS && Date.now() - startedAt < ARTICLE_PASS_BUDGET_MS; k++) {
+            const more = await fetchArticlesForOneJournal(state, narrowed ? wanted : undefined);
+            if (!more.journal) break;
+            await p.ingestionState.update({
+              where: { id: 'singleton' },
+              data: { articlesAdded: { increment: more.added }, articlesSkipped: { increment: more.skipped }, lastSuccessAt: new Date(), consecutiveFailures: 0 },
+            });
+            await record({
+              phase: 'Articles', source: 'OpenAlex',
+              journalId: (more as any).journalId ?? null, journalTitle: more.journal,
+              added: more.added, skippedHeld: (more as any).skippedHeld ?? 0, skippedFailed: (more as any).skippedFailed ?? 0,
+              skippedRejected: (more as any).skippedRejected ?? 0, needsReview: (more as any).needsReview ?? 0,
+              more: Boolean((more as any).more), note: (more as any).note ?? null, error: (more as any).error ?? null,
+            });
+          }
+        }
+      } finally { unlockProvider('OpenAlex', 'continuous'); }
     }
 
     // Nothing to fetch from in the chosen departments: spend the pass finding
@@ -1053,7 +1079,7 @@ export async function runIngestionPass(
       const found = await discover(['DOAJ', 'DOAB']);
       if (found) return found;
     }
-    if (!r.journal && narrowed) {
+    if (!r.journal && narrowed && !busy) {
       (r as any).note = only === 'articles'
         ? `no journal to fetch from in ${wanted.join(', ')} — choose "Everything" or "Journals only" so the engine can find some`
         : `nothing to fetch or discover in ${wanted.join(', ')} right now — every search there has been walked out, and they reopen within 30 days`;

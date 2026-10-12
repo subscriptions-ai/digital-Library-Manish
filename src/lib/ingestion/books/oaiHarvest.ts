@@ -9,6 +9,7 @@ import { findHeldBooks, bookFingerprint, type BookMatch } from './dedupe.js';
 import { fillEmptyPatch } from './merge.js';
 import { FileChecker, type FileVerdict } from './fileCheck.js';
 import { licenceAllowsCommercialUse } from '../eligibility.js';
+import { tryLockProvider, unlockProvider, providerHolder } from '../providerLocks.js';
 
 /**
  * Incremental OAI-PMH harvest of one book provider.
@@ -128,6 +129,21 @@ export type HarvestOptions = {
   startToken?: string | null;
   /** NCBI dry run: how many archives to read for the sample (default 25). */
   maxArchives?: number;
+  /**
+   * A MANUAL run (an administrator's Quick Import, or the write step of a one-off book import).
+   *
+   * It does everything a harvest does — fetch, normalise, dedupe, classify, judge rights, write — and
+   * nothing to the provider's checkpoint: not the saved token, not the start stamp, not the last-sync
+   * time. It begins from `startToken` / `from` (its own position, held by the caller) and reports where
+   * it stopped in `nextCursor`. The continuous harvest therefore resumes exactly where it was.
+   */
+  manual?: boolean;
+  /** Stop after the page that brings the records examined to at least this many. */
+  maxRecords?: number;
+  /** NCBI: read at most this many archives, still strictly by tier, still under the daily limits. */
+  archiveCap?: number;
+  /** Called after every page, with the report so far. */
+  onPage?: (report: HarvestReport) => void;
   db?: any;
   now?: () => Date;
   sleep?: (ms: number) => Promise<any>;
@@ -413,6 +429,7 @@ async function ncbiBatch(cfg: OaiProviderConfig, token: string | null, ctx: Batc
     if (held.get(i - start)) { st.existing++; continue; }
     // A bounded run reads a limited sample of archives; the rest of the queue is still counted by stage 1.
     if (bounded && st.archives >= ctx.maxArchives!) { stop = 'sample complete'; break; }
+    if (ctx.archiveCap != null && st.archives >= ctx.archiveCap) { stop = 'archive cap'; break; }
     if (thisBatch >= lim.archivesPerBatch) break;
     // Stage 2: the archive, under the daily limits.
     const res = await fetchArchive(row, ctx.db, lim);
@@ -439,11 +456,12 @@ async function ncbiBatch(cfg: OaiProviderConfig, token: string | null, ctx: Batc
       rest.forEach((_, n) => { if (h.get(n)) st.existing++; else st.notSampled++; });
     }
   }
-  const more = i < seq.length && !stop;
+  // A bounded sample is finished when it says so; a manual run that reached its archive cap is only paused, and keeps its place.
+  const more = i < seq.length && (!stop || stop === 'archive cap');
   return { books, count: i - start, deleted: 0, unusable: 0, next: more ? `${i}@${order.join('|')}` : null, total: seq.length, error: null, deferred, stop };
 }
 
-export type BatchContext = { db: any; report: HarvestReport; maxArchives?: number; pauseMs?: number };
+export type BatchContext = { db: any; report: HarvestReport; maxArchives?: number; archiveCap?: number; pauseMs?: number };
 
 export async function fetchBatch(cfg: OaiProviderConfig, token: string | null, from: string | null, ctx?: BatchContext): Promise<Batch | { failed: string }> {
   if (cfg.kind === 'ncbi') return ncbiBatch(cfg, token, ctx!);
@@ -451,7 +469,9 @@ export async function fetchBatch(cfg: OaiProviderConfig, token: string | null, f
     const page = token ? Number(token) : 1;
     const r = await fetchSourceJson(`${cfg.baseUrl}?page=${page}`, { timeoutMs: 90_000, attempts: 3, headers: { 'User-Agent': `STM Digital Library (mailto:${process.env.OPENALEX_CONTACT || 'info@celnet.in'})` } });
     if (!r.ok) return { failed: r.error || `HTTP ${r.status}` };
-    const items: any[] = Array.isArray(r.json?.data) ? r.json.data : [];
+    // A reply that is not the list we expect is a failure, not an empty last page: the harvest must not read it as "finished".
+    if (!Array.isArray(r.json?.data)) return { failed: 'Open Textbook Library sent a response in a shape we do not recognise' };
+    const items: any[] = r.json.data;
     // The library reports more pages than it has (202 claimed, 189 with books): an empty page is the end.
     const totalPages = items.length ? Number(r.json?.links?.total_pages) || page : page;
     let unusable = 0;
@@ -486,7 +506,7 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
   const dry = !!opts.dryRun;
   // A capped write (`maxWrites`) stops part-way down a page. Remembering a position after that would
   // skip the rest of the page for ever, so a capped run, like a dry run, never touches the checkpoint.
-  const keepsCheckpoint = !dry && opts.maxWrites == null;
+  const keepsCheckpoint = !dry && opts.maxWrites == null && !opts.manual;
   const sleep = opts.sleep ?? defaultSleep;
   const now = opts.now ?? (() => new Date());
   const report = emptyReport(cfg.provider, dry);
@@ -517,7 +537,7 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
 
   const maxPages = opts.maxPages ?? 3;
   for (let n = 0; n < maxPages; n++) {
-    const got = await fetchBatch(cfg, token, from, { db, report, maxArchives: opts.maxArchives ?? (dry && cfg.kind === 'ncbi' ? 25 : undefined), pauseMs: opts.pageDelayMs });
+    const got = await fetchBatch(cfg, token, from, { db, report, maxArchives: opts.maxArchives ?? (dry && cfg.kind === 'ncbi' && opts.archiveCap == null ? 25 : undefined), archiveCap: opts.archiveCap, pauseMs: opts.pageDelayMs });
     if ('failed' in got) { report.sourceError = got.failed; break; }                          // stay put; resume later
     const page = got;
 
@@ -616,10 +636,12 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
     token = page.next;
     report.nextCursor = token;
     if (keepsCheckpoint) await db.bookHarvestCheckpoint.update({ where: { provider: cfg.provider }, data: { cursor: token } });
+    opts.onPage?.(report);
     if (page.stop) break;                                          // a dry-run sample is complete
     if (page.deferred) break;                                      // a daily limit: resume from the saved position later
     if (!token) { report.completed = true; break; }
     if (opts.maxWrites != null && report.added + report.queuedForReview + report.enriched >= opts.maxWrites) break;
+    if (opts.maxRecords != null && report.fetched >= opts.maxRecords) break;
     await (opts.pageDelayMs === 0 ? Promise.resolve() : sleep(opts.pageDelayMs ?? 1000));
   }
 
@@ -632,8 +654,7 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
   return report;
 }
 
-/** One harvest at a time per provider in this process; the timer and a manual pass must not both walk the same token. */
-const running = new Set<string>();
+/** One harvest at a time per provider in this process: the timer, a manual pass and a Quick Import all go through providerLocks. */
 
 /** How long to leave a provider alone after a harvest that reached the end. New records are rare by the hour. */
 export const OAI_RESYNC_MINUTES = 6 * 60;
@@ -647,7 +668,7 @@ export const harvestOai = harvestFeed;
  */
 export async function runScheduledHarvest(cfg: OaiProviderConfig, opts: HarvestOptions = {}): Promise<HarvestReport | null> {
   const db = opts.db ?? ingestionDb;
-  if (running.has(cfg.provider)) return null;
+  if (providerHolder(cfg.provider)) return null;                  // someone — the timer, or an administrator's manual import — has it
   // OAPEN waits for DOAB's first full harvest, so what DOAB already holds is enriched rather than created twice.
   if (cfg.after) {
     const prior = await readCheckpoint(db, cfg.after);
@@ -656,6 +677,6 @@ export async function runScheduledHarvest(cfg: OaiProviderConfig, opts: HarvestO
   const cp = await readCheckpoint(db, cfg.provider);
   const now = (opts.now ?? (() => new Date()))();
   if (!cp?.cursor && cp?.lastSuccessfulSyncAt && now.getTime() - cp.lastSuccessfulSyncAt.getTime() < (cfg.resyncMinutes ?? OAI_RESYNC_MINUTES) * 60_000) return null;
-  running.add(cfg.provider);
-  try { return await harvestFeed(cfg, opts); } finally { running.delete(cfg.provider); }
+  if (!tryLockProvider(cfg.provider, 'continuous')) return null;
+  try { return await harvestFeed(cfg, opts); } finally { unlockProvider(cfg.provider, 'continuous'); }
 }

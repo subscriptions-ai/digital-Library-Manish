@@ -873,6 +873,8 @@ body {
 /* On the signup form the chat button steps aside while a field is being filled in, so it never
    sits over the number being typed, the WhatsApp tick or Create Account. */
 body:has(#signup-form :is(input, select, textarea, button):focus) .fab-avoid-form { opacity: 0; pointer-events: none; }
+/* On a phone the AI assistant takes the whole screen; the WhatsApp button must not float over its form. It comes back when the panel closes. */
+@media (max-width: 639px) { html[data-ai-open] .fab-whatsapp { display: none; } }
 
 /* Dark: a solid accent fill carrying the accent's own dark ink (selected chips, small primary buttons,
    avatar discs) is the loudest thing on a navy screen. Keep the brand colour and the edge, but let the
