@@ -42,6 +42,11 @@ export type Candidate = {
   department: string;
   /** False when the file's host is one our server cannot fetch from, so it could not open in the reader. */
   fileOpensHere?: boolean;
+  /**
+   * What the source says about the record that has no column of its own. A preprint keeps its identity
+   * here (`{ preprint: true, repository: 'arXiv' }`) instead of being given a journal it never had.
+   */
+  extra?: Record<string, any> | null;
 };
 
 export type Classified = Candidate & {
@@ -131,7 +136,7 @@ export function summarise(items: Classified[], errors = 0): PreviewSummary {
 // ── The snapshot ────────────────────────────────────────────────────────────
 
 export async function createPreview(
-  kind: 'ONE_OFF' | 'DOAJ_CATALOGUE', admin: any, params: Record<string, any>, summary: any, items: any[] | null,
+  kind: 'ONE_OFF' | 'DOAJ_CATALOGUE' | 'BOOKS_ONE_OFF', admin: any, params: Record<string, any>, summary: any, items: any[] | null,
 ) {
   const row = await db.ingestionPreview.create({
     data: {
@@ -149,7 +154,7 @@ export class PreviewError extends Error {
 }
 
 /** Load a preview for a write, refusing one that is missing, of the wrong kind, or too old. */
-export async function loadPreview(id: string, kind: 'ONE_OFF' | 'DOAJ_CATALOGUE') {
+export async function loadPreview(id: string, kind: 'ONE_OFF' | 'DOAJ_CATALOGUE' | 'BOOKS_ONE_OFF') {
   if (!id || typeof id !== 'string') throw new PreviewError(400, 'A preview is required. Run a dry run first.');
   const row = await db.ingestionPreview.findUnique({ where: { id } });
   if (!row || row.kind !== kind) throw new PreviewError(404, 'That preview does not exist. Run a dry run first.');
@@ -159,7 +164,7 @@ export async function loadPreview(id: string, kind: 'ONE_OFF' | 'DOAJ_CATALOGUE'
 
 // ── The write ──────────────────────────────────────────────────────────────
 
-export type WriteSummary = { attempted: number; added: number; held: number; rejected: number; failed: number; skippedNeedsReview: number; firstError?: string };
+export type WriteSummary = { attempted: number; added: number; held: number; rejected: number; failed: number; skippedNeedsReview: number; /** Records written as Drafts for a person to look at (only when asked for). */ reviewWritten: number; firstError?: string };
 
 async function upsertPublisher(tx: any, name: string | null | undefined, source: string) {
   if (!name) return null;
@@ -170,31 +175,19 @@ async function upsertPublisher(tx: any, name: string | null | undefined, source:
 }
 
 /**
- * Write the eligible records of a preview. Idempotent: every record is checked against the catalogue as it is
- * now, so running it twice, or after someone else added the same record, adds nothing the second time.
- *
- * `retryFailed` re-attempts only the records the last write could not store; everything already added or held
- * is left alone.
+ * Write what has been judged, one record at a time, each judged AGAIN first against the catalogue as it is now.
+ * The records are the caller's own in-memory list — a preview's snapshot, or a Quick Import's batch — and each gets
+ * its `result` set. Nothing is read from anywhere else, and nothing already held is overwritten.
  */
-export async function commitOneOff(
-  previewId: string, admin: any, opts: { retryFailed?: boolean; onProgress?: (s: WriteSummary & { total: number }) => void } = {},
+export async function writeClassified(
+  items: Classified[], admin: any,
+  opts: { retryFailed?: boolean; writeReview?: boolean; onProgress?: (s: WriteSummary & { total: number }) => void } = {},
 ): Promise<WriteSummary> {
-  const row = await loadPreview(previewId, 'ONE_OFF');
-  const claimed = await db.ingestionPreview.updateMany({
-    where: { id: previewId, consumedAt: null }, data: { consumedAt: new Date(), consumedBy: admin?.email || admin?.uid || null },
-  });
-  if (claimed.count === 0 && !opts.retryFailed) throw new PreviewError(409, 'This preview has already been ingested. Run a new dry run to import again.');
-
-  const items: Classified[] = Array.isArray(row.items) ? (row.items as any) : [];
   const todo = items
     .map((it, idx) => ({ it, idx }))
-    .filter(({ it }) => it.outcome === 'ADD' && (opts.retryFailed ? it.result === 'failed' : !it.result));
+    .filter(({ it }) => (it.outcome === 'ADD' || (opts.writeReview && it.outcome === 'NEEDS_REVIEW')) && (opts.retryFailed ? it.result === 'failed' : !it.result));
 
-  const sum: WriteSummary = { attempted: 0, added: 0, held: 0, rejected: 0, failed: 0, skippedNeedsReview: items.filter(i => i.outcome === 'NEEDS_REVIEW').length };
-
-  await audit(admin, 'ONE_OFF_IMPORT_STARTED', {
-    previewId, retry: !!opts.retryFailed, eligible: todo.length, source: (row.params as any)?.source, departments: (row.params as any)?.departments,
-  });
+  const sum: WriteSummary = { attempted: 0, added: 0, held: 0, rejected: 0, failed: 0, reviewWritten: 0, skippedNeedsReview: opts.writeReview ? 0 : items.filter(i => i.outcome === 'NEEDS_REVIEW').length };
 
   const BATCH = 25;
   for (let b = 0; b < todo.length; b += BATCH) {
@@ -204,7 +197,7 @@ export async function commitOneOff(
     for (let k = 0; k < batch.length; k++) {
       const { it, idx } = batch[k]; const f = fresh[k];
       sum.attempted++;
-      if (f.outcome !== 'ADD') {
+      if (f.outcome !== 'ADD' && !(opts.writeReview && f.outcome === 'NEEDS_REVIEW')) {
         const held = f.outcome === 'HELD';
         items[idx].result = held ? 'held' : f.outcome === 'REJECTED' ? 'rejected' : 'review';
         items[idx].resultDetail = f.reasons.join('; ');
@@ -220,7 +213,7 @@ export async function commitOneOff(
             try {
               journal = await tx.journal.create({ data: {
                 title: f.journalName || 'Unknown Journal', issn, publisherId: publisher?.id || null, publisherName: f.publisherName || null,
-                domain: f.department, subject: f.subject || null, openAccess: !!f.openAccess, startYear: f.year || null,
+                domain: f.department || null, subject: f.subject || null, openAccess: !!f.openAccess, startYear: f.year || null,
               } });
             } catch { journal = await findJournalByAnyIssn([issn], tx); }
           }
@@ -230,15 +223,19 @@ export async function commitOneOff(
             journalId: journal?.id || null, journalName: f.journalName || null, journalIssn: issn || f.issn || null,
             publisherId: publisher?.id || null, publisherName: f.publisherName || null,
             volume: f.volume ? String(f.volume) : null, issue: f.issue ? String(f.issue) : null,
-            year: f.year || null, domain: f.department, subject: f.subject || null,
+            year: f.year || null, domain: f.department || null, subject: f.subject || null,
             accessType: 'OpenAccess', accessStatus: f.access, licence: f.licence || null,
             licenceIsNC: f.licenceVerdict !== 'allows-commercial',
             originalUrl: doi ? `https://doi.org/${doi}` : null,
+            // Belongs to its journal, as the engine's own records do.
+            ...(journal ? { parentKind: 'Journal', parentId: journal.id } : {}),
+            ...(f.extra ? { metadata: f.extra } : {}),
             status: f.status || 'Published', source: f.source, sourceRecordId: f.sourceRecordId || null,
             fingerprint: f.key, createdBy: admin?.email || 'Ingestion',
           } });
         });
-        items[idx].result = 'added'; sum.added++;
+        if (f.outcome === 'NEEDS_REVIEW') { items[idx].result = 'review'; sum.reviewWritten++; }
+        else { items[idx].result = 'added'; sum.added++; }
       } catch (e: any) {
         // Losing a race to another writer means the record is held — the system working, not failing.
         if (e?.code === 'P2002') { items[idx].result = 'held'; items[idx].resultDetail = 'already added by another writer'; sum.held++; }
@@ -250,6 +247,41 @@ export async function commitOneOff(
     }
     opts.onProgress?.({ ...sum, total: todo.length });
   }
+  return sum;
+}
+
+/**
+ * Write the eligible records of a preview. Idempotent: every record is checked against the catalogue as it is
+ * now, so running it twice, or after someone else added the same record, adds nothing the second time.
+ *
+ * `retryFailed` re-attempts only the records the last write could not store; everything already added or held
+ * is left alone.
+ */
+export async function commitOneOff(
+  previewId: string, admin: any,
+  opts: {
+    retryFailed?: boolean;
+    /**
+     * Also write the records the rules set aside for a person (malformed DOI, implausible year, possible
+     * duplicate) — as Drafts, never Published, the way the continuous engine does. The wizard leaves them
+     * out and says so; a Quick Import sends them to the review queue.
+     */
+    writeReview?: boolean;
+    onProgress?: (s: WriteSummary & { total: number }) => void;
+  } = {},
+): Promise<WriteSummary> {
+  const row = await loadPreview(previewId, 'ONE_OFF');
+  const claimed = await db.ingestionPreview.updateMany({
+    where: { id: previewId, consumedAt: null }, data: { consumedAt: new Date(), consumedBy: admin?.email || admin?.uid || null },
+  });
+  if (claimed.count === 0 && !opts.retryFailed) throw new PreviewError(409, 'This preview has already been ingested. Run a new dry run to import again.');
+
+  const items: Classified[] = Array.isArray(row.items) ? (row.items as any) : [];
+  await audit(admin, 'ONE_OFF_IMPORT_STARTED', {
+    previewId, retry: !!opts.retryFailed, eligible: items.filter(i => i.outcome === 'ADD' && (opts.retryFailed ? i.result === 'failed' : !i.result)).length,
+    source: (row.params as any)?.source, departments: (row.params as any)?.departments,
+  });
+  const sum = await writeClassified(items, admin, opts);
 
   // Remember what happened to each record, so a failed one can be retried and nothing is guessed later.
   await db.ingestionPreview.update({

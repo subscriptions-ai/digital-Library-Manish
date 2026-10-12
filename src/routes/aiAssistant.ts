@@ -4,6 +4,7 @@ import { generateAssistantResponse, maskPII, AssistantError } from '../server/ai
 import { aiConfig } from '../server/aiAssistantConfig.js';
 import { localReply } from '../server/aiAssistantLocal.js';
 import { readQuota, recordEvent } from '../server/aiAssistantQuota.js';
+import { aiAssistantEnabled, DISABLED_BODY } from '../server/aiAssistantSwitch.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -45,6 +46,18 @@ function makeRateLimit(maxPerWindow: number) {
 }
 const rateLimit = makeRateLimit(10);
 const statusRateLimit = makeRateLimit(60);
+/** The public on/off question is asked once a minute by each open page; this keeps one address from hammering it. */
+const switchRateLimit = makeRateLimit(120);
+
+/**
+ * The master switch, checked before anything else on the chat route: no allowance is read, no conversation is
+ * created and no model is called while the admin has the assistant off. Quote and lead capture are not behind it.
+ */
+async function requireAssistantOn(_req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (await aiAssistantEnabled(prisma)) return next();
+  res.set('Cache-Control', 'no-store');
+  return res.status(503).json(DISABLED_BODY);
+}
 
 /** Field limits keep a junk submission from becoming a junk lead. */
 const LIMITS = { name: 100, email: 100, phone: 100, organization: 150, purpose: 300, notes: 500 } as const;
@@ -159,7 +172,7 @@ router.get('/status', statusRateLimit, async (req, res) => {
   }
 });
 
-router.post('/chat', rateLimit, async (req, res) => {
+router.post('/chat', requireAssistantOn, rateLimit, async (req, res) => {
   let lockedSession: string | null = null;
   try {
     const { message } = req.body;
@@ -245,7 +258,7 @@ router.post('/chat', rateLimit, async (req, res) => {
 
 router.post('/lead', rateLimit, async (req, res) => {
   try {
-    const { name, email, phone, organization, purpose, marketingConsent } = req.body;
+    const { name, email, phone, organization, purpose, message, marketingConsent } = req.body;
     const sessionId = resolveSession(req, res, req.body.sessionId);
 
     if (!sessionId) {
@@ -277,6 +290,9 @@ router.post('/lead', rateLimit, async (req, res) => {
     if (marketingConsent !== undefined && marketingConsent !== null && typeof marketingConsent !== 'boolean') {
       return res.status(400).json({ error: 'marketingConsent must be a boolean' });
     }
+    if (message !== undefined && message !== null && (typeof message !== 'string' || message.length > LIMITS.notes)) {
+      return res.status(400).json({ error: 'Message must be a short string' });
+    }
 
     const conversation = await prisma.aIConversation.findFirst({
       where: { sessionId }
@@ -288,8 +304,10 @@ router.post('/lead', rateLimit, async (req, res) => {
     // public form. Short dated notes are what the other public
     // web forms — Contact Inquiry, Demo Request — record.)
     const maskedPurpose = maskPII(purpose.trim()).slice(0, LIMITS.notes);
+    const maskedMessage = typeof message === 'string' ? maskPII(message.trim()).slice(0, LIMITS.notes) : '';
     const summary =
       `AI Assistant enquiry (${new Date().toISOString().slice(0, 10)}): visitor asked about ${maskedPurpose}` +
+      `${maskedMessage ? `\nRequirement: ${maskedMessage}` : ''}` +
       `${marketingConsent ? '\nMarketing consent: yes' : '\nMarketing consent: no'}`;
 
     // Cross-source deduplication: a visitor who already
@@ -359,5 +377,11 @@ export function setupAIAssistantRoutes(
   // The getter is read per request, not once at boot: the admin
   // can hide public pricing while the server keeps running.
   app.set('aiPricingVisible', options.isPricingVisible ?? (() => true));
+  // Whether the public assistant is on — and nothing else. No provider, key, quota or billing detail is ever in here.
+  // Cached for a short while by the browser too, so the page can ask it once a minute without cost.
+  app.get('/api/public/ai-assistant/status', switchRateLimit, async (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=30');
+    res.json({ enabled: await aiAssistantEnabled(prisma) });
+  });
   app.use('/api/ai-assistant', router);
 }

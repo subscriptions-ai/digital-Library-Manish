@@ -3,7 +3,7 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 import {
   LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, PenLine, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon, ShieldAlert, Megaphone
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, PenLine, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon, ShieldAlert, Megaphone, Bot
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -257,6 +257,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             onClick={() => navigate('/admin/email-settings')}
           />
 
+          {/* AI Assistant on/off */}
+          <NavButton
+            icon={<Bot size={17} />}
+            label="AI Assistant"
+            active={location.pathname === '/admin/ai-assistant'}
+            collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/ai-assistant')}
+          />
+
           <NavButton
             icon={<Activity size={17} />}
             label="Traffic Analytics"
@@ -506,6 +515,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/takedown' ? 'Content Removal Requests'
               : location.pathname === '/admin/email-verifications' ? 'Email Verifications'
               : location.pathname === '/admin/email-settings' ? 'SMTP & Email Configuration'
+              : location.pathname === '/admin/ai-assistant' ? 'AI Assistant'
               : location.pathname === '/admin/payments' ? 'Payments'
               : location.pathname.startsWith('/admin/extraction') ? 'AI Extraction Engine'
               : location.pathname.startsWith('/admin/coupons') ? 'Coupons'

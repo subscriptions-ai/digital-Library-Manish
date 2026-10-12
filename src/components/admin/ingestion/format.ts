@@ -30,3 +30,24 @@ export function scopeLabel(departments: string[] | undefined | null): { short: s
   if (d.length === 1) return { short: `${d[0]} only`, long: `Only ${d[0]} is worked on.`, all: false };
   return { short: `${d.length} departments`, long: `Only these ${d.length} departments are worked on: ${d.join(', ')}.`, all: false };
 }
+
+// ── Exact times, in the application's timezone ─────────────────────────────
+// The server counts days in India time, so the screen shows India time too: the date on a row is the date the summary counted it under.
+const IST = 'Asia/Kolkata';
+
+/** "09 Sep 2026 · 3:42 PM" (India time). */
+export function exactTime(iso?: string | null) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: IST });
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: IST });
+  return `${date} · ${time}`;
+}
+
+/** Today's India date as YYYY-MM-DD. */
+export const istToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+
+/** "2026-10-12" → "12 Oct". */
+export function dayLabel(day: string) {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+}

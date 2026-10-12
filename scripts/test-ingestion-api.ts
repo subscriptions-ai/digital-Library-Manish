@@ -73,7 +73,7 @@ try {
   const t0 = Date.now(); for (;;) { try { const r = await call('/api/admin/ingest/state'); if (r.status === 401) break; } catch {} if (Date.now() - t0 > 90_000) throw new Error('server did not start\n' + serverLog.slice(-2000)); await sleep(700); }
 
   section('Access: every ingestion route is for the super admin only, enforced on the server');
-  const routes: [string, string][] = [['GET', '/api/admin/ingest/state'], ['POST', '/api/admin/ingest/state'], ['GET', '/api/admin/ingest/history'], ['GET', '/api/admin/ingest/metrics'], ['GET', '/api/admin/ingest/coverage'], ['GET', '/api/admin/ingest/audit'],
+  const routes: [string, string][] = [['GET', '/api/admin/ingest/state'], ['POST', '/api/admin/ingest/state'], ['GET', '/api/admin/ingest/history'], ['GET', '/api/admin/ingest/metrics'], ['GET', '/api/admin/ingest/coverage'], ['GET', '/api/admin/ingest/department-metrics'], ['GET', '/api/admin/ingest/audit'],
     ['POST', '/api/admin/ingest/tick'], ['POST', '/api/admin/ingest/dry-run'], ['POST', '/api/admin/ingest/run'], ['POST', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/jobs/active']];
   for (const [m, p] of routes) {
     const none = await call(p, { method: m, body: m === 'POST' ? {} : undefined });

@@ -26,6 +26,8 @@ import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { setupAIAssistantRoutes } from "./src/routes/aiAssistant.js";
 import { usageSummary as aiAssistantUsage } from "./src/server/aiAssistantQuota.js";
+import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
+import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
@@ -36,9 +38,17 @@ import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
 import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
 import { validateSettings } from "./src/lib/ingestion/settings.js";
-import { engineStatus, last24Hours, repeatedNoChangeAlerts, metrics as ingestionMetrics, runHistory } from "./src/lib/ingestion/status.js";
+import { engineStatus, last24Hours, repeatedNoChangeAlerts, metrics as ingestionMetrics, runHistory, runSources } from "./src/lib/ingestion/status.js";
 import { INGESTION_POLICY, schedulerV2 } from "./src/lib/ingestion/policy.js";
 import { classifyCandidates, summarise as summariseCandidates, createPreview, loadPreview, commitOneOff, previewToCsv, PreviewError } from "./src/lib/ingestion/importService.js";
+import { fetchForDept, checkFiles, SourceError } from "./src/lib/ingestion/articleSources.js";
+import {
+  listQuickSources, beginQuickImport, getQuickJob, activeQuickJobs, isQuickId, previewManualBooks, loadDoajCsv, asQuickError, healthKeyFor,
+  QuickError, MSG as QUICK_MSG, quickLimit,
+} from "./src/lib/ingestion/quickImport.js";
+import { sourceCooldown } from "./src/lib/ingestion/sourceHealth.js";
+import { departmentMetrics, departmentTable, departmentExists } from "./src/lib/ingestion/departmentMetrics.js";
+import { resolveRange } from "./src/lib/ingestion/runFilter.js";
 import sanitizeHtml from "sanitize-html";
 import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, publishProblems, COVER_MAX_BYTES, type PublishProblems } from "./src/lib/blogCover.js";
 import {
@@ -8473,200 +8483,8 @@ async function startServer() {
     catch { return (prisma as any).journal.findUnique({ where: { issn } }); }
   };
 
-  // Hosts whose OA PDFs are directly fetchable by our server (no Cloudflare/WAF/JS-challenge block).
-  // Grounded by probing OpenAlex OA links live — OA-native publishers that return real PDF bytes to a server.
-  // Anything not on this list (doi.org redirects, Wiley, ACS, RSC, ScienceDirect, MDPI, Hindawi, most repos)
-  // is skipped because it only opens in a real browser, never in our in-app viewer.
-  const TRUSTED_PDF_HOSTS = [
-    'arxiv.org', 'biorxiv.org', 'medrxiv.org',
-    'biomedcentral.com',          // all BMC journals (*.biomedcentral.com) — verified
-    'journals.plos.org', 'plos.org',
-    'frontiersin.org',
-    'elifesciences.org',
-    'peerj.com',
-    'nature.com',                 // OA articles — verified
-    'escholarship.org',           // UC repository — verified
-    'f1000research.com', 'wellcomeopenresearch.org', 'gatesopenresearch.org',
-    'dovepress.com',
-    'copernicus.org',             // *.copernicus.org (ACP, ESSD, etc.)
-    'mdpi-res.com',               // MDPI's asset CDN (mdpi.com itself is blocked)
-    'ojs.', 'jstage.jst.go.jp', 'scielo.br', 'scielo.org',
-  ];
-  function isTrustedPdfHost(url?: string | null): boolean {
-    if (!url) return false;
-    try {
-      const h = new URL(url).hostname.replace(/^www\./, '');
-      return TRUSTED_PDF_HOSTS.some(t => h === t || h.endsWith('.' + t) || h.endsWith(t) || h.includes(t));
-    } catch { return false; }
-  }
-
-  const mapOpenAlexWork = (w: any) => {
-    const src = w.primary_location?.source || {};
-    return {
-      title: w.title || w.display_name || 'Untitled',
-      authors: (w.authorships || []).map((a: any) => a.author?.display_name).filter(Boolean).join(', '),
-      doi: w.doi || null,
-      pdfUrl: w.best_oa_location?.pdf_url || w.open_access?.oa_url || null,
-      journalName: src.display_name || null,
-      issn: src.issn_l || (src.issn && src.issn[0]) || null,
-      publisherName: src.host_organization_name || null,
-      volume: w.biblio?.volume || null,
-      issue: w.biblio?.issue || null,
-      year: w.publication_year || null,
-      subject: (w.concepts || [])[0]?.display_name || null,
-      openAccess: !!w.open_access?.is_oa,
-      source: 'OpenAlex',
-      sourceRecordId: w.id || null,
-      licence: w.best_oa_location?.license || null,
-    };
-  };
-
-  // trustedOnly=true → over-fetch via cursor and keep ONLY whitelisted-host PDFs (structure + in-app openable).
-  async function fetchOpenAlex(department: string, perDept: number, trustedOnly = false) {
-    const out: any[] = [];
-    const perPage = 200;
-    let cursor = '*';
-    const maxPages = trustedOnly ? 30 : Math.max(1, Math.ceil(perDept / perPage));
-    for (let page = 0; page < maxPages; page++) {
-      const url = `https://api.openalex.org/works?search=${encodeURIComponent(department)}&filter=has_doi:true,open_access.is_oa:true,primary_location.source.type:journal&per-page=${perPage}&cursor=${encodeURIComponent(cursor)}`;
-      const r = await fetch(url); const d: any = await r.json();
-      const results = d?.results || [];
-      if (!results.length) break;
-      for (const w of results) {
-        const m = mapOpenAlexWork(w);
-        if (!m.pdfUrl) continue;
-        if (trustedOnly && !isTrustedPdfHost(m.pdfUrl)) continue;
-        out.push(m);
-        if (out.length >= perDept) break;
-      }
-      if (out.length >= perDept) break;
-      cursor = d?.meta?.next_cursor;
-      if (!cursor) break;
-    }
-    return out.slice(0, perDept);
-  }
-
-  async function fetchDOAJ(department: string, perDept: number, trustedOnly = false) {
-    const url = `https://doaj.org/api/search/articles/${encodeURIComponent(department)}?pageSize=${Math.min(perDept * (trustedOnly ? 5 : 1), 100)}`;
-    const r = await fetch(url); const d: any = await r.json();
-    const results = d?.results || [];
-    const mapped = results.map((rec: any) => {
-      const b = rec.bibjson || {};
-      const ids = b.identifier || [];
-      const issnObj = ids.find((i: any) => i.type === 'eissn') || ids.find((i: any) => i.type === 'pissn');
-      const pdfLink = (b.link || []).find((l: any) => l.type === 'fulltext');
-      return {
-        title: b.title || 'Untitled',
-        authors: (b.author || []).map((a: any) => a.name).filter(Boolean).join(', '),
-        doi: (ids.find((i: any) => i.type === 'doi') || {}).id || null,
-        pdfUrl: pdfLink?.url || null,
-        journalName: b.journal?.title || null,
-        issn: issnObj?.id || null,
-        publisherName: b.journal?.publisher || null,
-        volume: b.journal?.volume || null,
-        issue: b.journal?.number || null,
-        year: b.year ? parseInt(b.year) : null,
-        subject: (b.subject || [])[0]?.term || null,
-        openAccess: true,
-        source: 'DOAJ',
-        sourceRecordId: rec.id || null,
-        licence: (b.journal?.license || [])[0]?.type || null,
-      };
-    }).filter((x: any) => x.pdfUrl || x.doi);
-    return (trustedOnly ? mapped.filter((x: any) => isTrustedPdfHost(x.pdfUrl)) : mapped).slice(0, perDept);
-  }
-
-  // arXiv — direct, always-openable PDFs (no paywall / no Cloudflare). Most reliable source.
-  async function fetchArxiv(department: string, perDept: number) {
-    const q = encodeURIComponent(department);
-    const url = `http://export.arxiv.org/api/query?search_query=all:${q}&start=0&max_results=${Math.min(perDept, 50)}&sortBy=submittedDate&sortOrder=descending`;
-    const r = await fetch(url); const xml = await r.text();
-    const entries = xml.split('<entry>').slice(1);
-    return entries.map((e: string) => {
-      const get = (tag: string) => { const m = e.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`)); return m ? m[1].replace(/\s+/g, ' ').trim() : ''; };
-      const arxivId = ((get('id').split('/abs/')[1]) || '').replace(/v\d+$/, '');
-      const published = get('published');
-      return {
-        title: get('title') || 'Untitled',
-        authors: [...e.matchAll(/<name>([\s\S]*?)<\/name>/g)].map((m: any) => m[1].trim()).join(', '),
-        doi: get('arxiv:doi') || null,
-        pdfUrl: arxivId ? `https://arxiv.org/pdf/${arxivId}` : null,
-        journalName: get('arxiv:journal_ref') || 'arXiv',
-        issn: null, publisherName: 'arXiv', volume: null, issue: null,
-        year: published ? parseInt(published.slice(0, 4)) : null,
-        // arXiv declares no open licence for a paper, so nothing here is verifiable and the file is not served.
-        subject: null, openAccess: true, source: 'arXiv', sourceRecordId: arxivId ? `arxiv:${arxivId}` : null, licence: null,
-      };
-    }).filter((a: any) => a.pdfUrl);
-  }
-
-  // Verify a PDF URL actually opens (real PDF, not a landing page / Cloudflare block / 404).
-  const PDF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-  async function isFetchablePdf(url: string | null): Promise<boolean> {
-    if (!url) return false;
-    try {
-      const nodeFetch = (await import('node-fetch')).default;
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 12000);
-      const res: any = await nodeFetch(url, {
-        method: 'GET',
-        headers: { 'User-Agent': PDF_UA, 'Accept': 'application/pdf,*/*', 'Range': 'bytes=0-2047' },
-        redirect: 'follow', signal: ctrl.signal as any,
-      });
-      clearTimeout(timer);
-      if (res.status >= 400) return false;
-      const ct = (res.headers.get('content-type') || '').toLowerCase();
-      if (ct.includes('application/pdf')) return true;
-      if (ct.includes('text/html')) return false;
-      const buf = Buffer.from(await res.arrayBuffer());
-      return buf.slice(0, 5).toString('latin1').startsWith('%PDF');
-    } catch { return false; }
-  }
-
-  // Europe PMC — full journal structure (journal, ISSN, volume, issue) + OA articles.
-  async function fetchEuropePMC(department: string, perDept: number) {
-    const q = encodeURIComponent(`${department} AND OPEN_ACCESS:Y`);
-    const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${q}&format=json&pageSize=${Math.min(perDept, 50)}&resultType=core`;
-    const r = await fetch(url); const d: any = await r.json();
-    const results = d?.resultList?.result || [];
-    return results.map((x: any) => {
-      const ji = x.journalInfo || {}; const j = ji.journal || {};
-      const urls = x.fullTextUrlList?.fullTextUrl || [];
-      const pdf = urls.find((u: any) => u.documentStyle === 'pdf');
-      const html = urls.find((u: any) => u.documentStyle === 'html');
-      const readUrl = pdf?.url || html?.url || (x.pmcid ? `https://europepmc.org/article/PMC/${x.pmcid}` : (x.doi ? `https://doi.org/${x.doi}` : null));
-      return {
-        title: x.title || 'Untitled',
-        authors: x.authorString || null,
-        doi: x.doi || null,
-        pdfUrl: readUrl,
-        journalName: j.title || null,
-        issn: j.issn || j.essn || null,
-        publisherName: null,
-        volume: ji.volume || null, issue: ji.issue || null,
-        year: ji.yearOfPublication ? parseInt(ji.yearOfPublication) : (x.pubYear ? parseInt(x.pubYear) : null),
-        subject: null, openAccess: true, source: 'EuropePMC',
-        sourceRecordId: x.pmcid || x.pmid || x.id || null, licence: x.license || null,
-      };
-    }).filter((a: any) => a.title && a.pdfUrl);
-  }
-
-  const fetchForDept = (source: string, dept: string, limit: number, trustedOnly = false) =>
-    source === 'doaj' ? fetchDOAJ(dept, limit, trustedOnly)
-      : source === 'arxiv' ? fetchArxiv(dept, limit)
-        : source === 'europepmc' ? fetchEuropePMC(dept, limit)
-          : fetchOpenAlex(dept, limit, trustedOnly);
-
-  // Validate a batch of candidate PDFs in parallel (bounded concurrency) → returns only the openable ones.
-  async function keepOpenable(items: any[], concurrency = 12): Promise<{ kept: any[]; skipped: number }> {
-    const kept: any[] = []; let skipped = 0;
-    for (let i = 0; i < items.length; i += concurrency) {
-      const batch = items.slice(i, i + concurrency);
-      const oks = await Promise.all(batch.map(it => isFetchablePdf(it.pdfUrl)));
-      batch.forEach((it, j) => oks[j] ? kept.push(it) : skipped++);
-    }
-    return { kept, skipped };
-  }
+  // The article fetchers (OpenAlex, Crossref, Europe PMC, arXiv, DOAJ) and the check that a file opens live in
+  // src/lib/ingestion/articleSources.ts, shared with Quick Import and going through the same source breaker as the engine.
 
   // ══════════════════════════════════════════════════════════════════════════
   //  DATA INGESTION — ADMIN API
@@ -8732,9 +8550,17 @@ async function startServer() {
   });
 
   // GET /api/admin/ingest/history — the run log, filtered and paged on the server so the screen never loads it all.
-  //   ?result=all|added|held|failed|skipped  ?phase=articles|books|journals  ?limit=  ?before=<ISO time>
+  //   ?result=all|added|held|failed|skipped  ?phase=articles|books|journals  ?department=<name>  ?source=<as logged>
+  //   ?range=lifetime|today|yesterday|last7|last30|month|custom (with ?from=&to= as YYYY-MM-DD, India days)  ?limit=  ?before=<ISO time>
   app.get("/api/admin/ingest/history", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
-    try { res.json(await runHistory({ result: req.query.result as string, phase: req.query.phase as string, limit: Number(req.query.limit), before: req.query.before as string })); }
+    try {
+      const str = (v: any) => (typeof v === 'string' && v ? v : undefined);
+      const department = str(req.query.department);
+      if (department && !(await departmentExists(department))) return res.status(400).json({ error: `Unknown department: ${department}` });
+      const rg = resolveRange(req.query);
+      if ('error' in rg) return res.status(400).json({ error: rg.error });
+      res.json(await runHistory({ result: str(req.query.result), phase: str(req.query.phase), department, source: str(req.query.source), start: rg.range.start, end: rg.range.end, limit: Number(req.query.limit), before: str(req.query.before) }));
+    }
     catch (e: any) { console.error('GET ingest/history error:', e?.message); res.status(500).json({ error: "Failed to load history" }); }
   });
 
@@ -8746,7 +8572,30 @@ async function startServer() {
     } catch (e: any) { res.status(500).json({ error: "Failed to load metrics" }); }
   });
 
-  // GET /api/admin/ingest/coverage — how far each department's sweep of each source has got.
+  // GET /api/admin/ingest/department-metrics?department=<name>&range=…&from=&to=&phase=&source=&result=&byDay=1
+  //
+  // Two kinds of number, never mixed. `catalogue` is what is in the library now: it ignores the date range and every run filter.
+  // `ingestion` is what the run log holds for the range, narrowed by the same filters the run list takes. Days are India days,
+  // resolved here. (`period=lifetime|7d|24h` still works as a rolling window.) Leave `department` out for the whole library.
+  // Numbers only; read-only.
+  app.get("/api/admin/ingest/department-metrics", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const department = typeof req.query.department === 'string' && req.query.department ? req.query.department : null;
+      if (department && !(await departmentExists(department))) return res.status(400).json({ error: `Unknown department: ${department}` });
+      const rg = resolveRange(req.query);
+      if ('error' in rg) return res.status(400).json({ error: rg.error });
+      const str = (v: any) => (typeof v === 'string' && v ? v : null);
+      res.json(await departmentMetrics(department, rg.range, { phase: str(req.query.phase), source: str(req.query.source), result: str(req.query.result) }, { byDay: req.query.byDay === '1' }));
+    } catch (e: any) { console.error('GET ingest/department-metrics error:', e?.message); res.status(500).json({ error: "Failed to load department metrics" }); }
+  });
+
+  // GET /api/admin/ingest/run-sources — the sources the run log has seen, for the Source filter.
+  app.get("/api/admin/ingest/run-sources", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json({ sources: await runSources() }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to load sources" }); }
+  });
+
+  // GET /api/admin/ingest/coverage — how far each department's sweep of each source has got, and what each department holds.
   app.get("/api/admin/ingest/coverage", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
     try {
       const [sweeps, journalsHeld, booksHeld] = await Promise.all([
@@ -8771,10 +8620,19 @@ async function startServer() {
         byDept.set(row.department, d);
       }
       // A department with no sweep row yet has still not been reached; it belongs on the list precisely because it is empty.
-      for (const dep of new Set([...jHeld.keys(), ...bHeld.keys()]) as any) {
+      for (const dep of new Set([...ALL_DEPARTMENTS, ...jHeld.keys(), ...bHeld.keys()]) as any) {
         if (!byDept.has(dep)) byDept.set(dep, { department: dep, journalsHeld: jHeld.get(dep) || 0, booksHeld: bHeld.get(dep) || 0 });
       }
-      res.json({ coverage: [...byDept.values()].sort((a, b) => a.department.localeCompare(b.department)) });
+      // The current catalogue, beside the sweep progress (journalsHeld / booksHeld above keep their old meaning).
+      const table = await departmentTable();
+      for (const t of table.departments) {
+        if (!byDept.has(t.department)) byDept.set(t.department, { department: t.department, journalsHeld: 0, booksHeld: 0 });
+        Object.assign(byDept.get(t.department), t);
+      }
+      res.json({
+        coverage: [...byDept.values()].sort((a, b) => a.department.localeCompare(b.department)),
+        failureWindowDays: table.failureWindowDays, unplacedReview: table.unplacedReview,
+      });
     } catch (e: any) { console.error('GET ingest/coverage error:', e?.message); res.status(500).json({ error: "Failed to load coverage" }); }
   });
 
@@ -8846,6 +8704,7 @@ async function startServer() {
       jobs: [...ingestJobs.values()].filter(j => j.status === 'running').map(j => ({ jobId: j.id, kind: j.kind, startedAt: j.startedAt, progress: j.progress })),
       pass: { running: manualPassRunning || ingestTimer.busy },
       doajCatalogue: doajCatalogueJob,
+      quick: activeQuickJobs().map(q => ({ jobId: q.id, provider: q.provider, label: q.label, group: q.group, startedAt: q.startedAt, limit: q.limit, progress: q.progress })),
     });
   });
 
@@ -8854,39 +8713,95 @@ async function startServer() {
   // Fetches candidates, judges each with the same rules the engine uses, checks what is already held, and keeps the
   // result as a snapshot. It writes NOTHING to the catalogue: the only rows it creates are the preview itself and an
   // audit entry. It runs in the background because checking that files open can take a minute.
+  //
+  // The sources are the approved ones — journals from DOAJ; articles from Crossref, OpenAlex, Europe PMC and arXiv; books
+  // from DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf. ("doaj" on its own is DOAJ's articles, kept for callers that
+  // used it before; the screen offers DOAJ as journals.) None of them is allowed to be more eager than the engine: a source
+  // that is resting is refused here too, with the time it will be back.
+  const ARTICLE_SOURCES = ['crossref', 'openalex', 'europepmc', 'arxiv', 'doaj'];
+  const BOOK_SOURCES = ['doab', 'oapen', 'otl', 'ncbi'];
+  const quickErrorBody = (e: any) => ({ error: e.message, code: e.code, until: e.until ? e.until.toISOString() : null });
+
   app.post("/api/admin/ingest/dry-run", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      const { source = 'openalex', departments = [], perDept = 25, accessPolicy = 'verifiable' } = req.body || {};
-      if (!['openalex', 'doaj', 'europepmc', 'arxiv'].includes(source)) return res.status(400).json({ error: "Unknown source." });
-      if (!Array.isArray(departments) || !departments.length) return res.status(400).json({ error: "Select at least one department to continue." });
+      const { source = 'crossref', departments = [], perDept = 25, accessPolicy = 'verifiable' } = req.body || {};
+      const isBook = BOOK_SOURCES.includes(source), isJournals = source === 'doaj-journals', isArticles = ARTICLE_SOURCES.includes(source);
+      if (!isBook && !isJournals && !isArticles) return res.status(400).json({ error: "Unknown source." });
+      if (!Array.isArray(departments) || departments.some((d: any) => typeof d !== 'string')) return res.status(400).json({ error: "Departments must be a list." });
       const unknown = departments.filter((d: any) => !ALL_DEPARTMENTS.includes(d));
       if (unknown.length) return res.status(400).json({ error: `Unknown department: ${unknown[0]}` });
-      const per = Number(perDept);
-      if (!Number.isInteger(per) || per < 1 || per > 300) return res.status(400).json({ error: "Items per department must be a whole number from 1 to 300." });
-      if (per * departments.length > MAX_CANDIDATES) return res.status(400).json({ error: `That would fetch more than ${MAX_CANDIDATES.toLocaleString()} candidates. Reduce the departments or the items per department.` });
       if (runningJob('dry-run')) return res.status(409).json({ error: 'A dry run is already in progress.' });
 
+      // A resting source is not asked, here or anywhere.
+      const cd = await sourceCooldown(healthKeyFor(source) as string);
+      if (cd.state === 'rate_limited' || cd.state === 'cooling') {
+        return res.status(429).json({ error: QUICK_MSG.rateLimited(cd.until), code: 'RATE_LIMITED', until: cd.until ? cd.until.toISOString() : null });
+      }
+
+      const per = Number(perDept);
       const verifiable = accessPolicy !== 'any';
-      const job: any = { id: jobId('dry'), kind: 'dry-run', status: 'running', startedAt: Date.now(), progress: { department: null, done: 0, total: departments.length }, params: { source, departments, perDept: per, accessPolicy: verifiable ? 'verifiable' : 'any' } };
+      const state = await getIngestionState();
+      const fromYear = new Date().getFullYear() - (Math.max(1, state.yearsBack || 5) - 1);
+
+      if (isArticles) {
+        if (!departments.length) return res.status(400).json({ error: "Select at least one department to continue." });
+        if (!Number.isInteger(per) || per < 1 || per > 300) return res.status(400).json({ error: "Items per department must be a whole number from 1 to 300." });
+        if (per * departments.length > MAX_CANDIDATES) return res.status(400).json({ error: `That would fetch more than ${MAX_CANDIDATES.toLocaleString()} candidates. Reduce the departments or the items per department.` });
+      } else {
+        const ceiling = isJournals ? 2000 : INGESTION_POLICY.quick.ceiling[source];
+        if (!Number.isInteger(per) || per < 1 || per > ceiling) return res.status(400).json({ error: `Enter a whole number from 1 to ${ceiling.toLocaleString()}.` });
+      }
+
+      const job: any = { id: jobId('dry'), kind: 'dry-run', status: 'running', startedAt: Date.now(), progress: { department: null, done: 0, total: isArticles ? departments.length : 1 }, params: { source, departments, perDept: per, accessPolicy: isArticles ? (verifiable ? 'verifiable' : 'any') : undefined } };
       ingestJobs.set(job.id, job);
       res.status(202).json({ jobId: job.id });
 
       (async () => {
         try {
+          // ── Journals (DOAJ): the journal list, read once, checked against what we hold ──
+          if (isJournals) {
+            const text = await loadDoajCsv();
+            const check = await checkDoajCatalogue({ csvText: text, departments, limit: per });
+            const c = check.summary;
+            const summary = {
+              journals: true, source, departments, found: c.inFile, eligible: c.new, viewable: c.fullTextEligible, metadataOnly: c.metadataOnly,
+              alreadyHeld: c.alreadyHeld, needsReview: c.needsReview, rejected: c.rejected, errors: 0, noDepartment: c.noDepartment,
+              byDepartment: c.byDepartment, outsideScope: c.outsideScope || 0, beyondLimit: c.beyondLimit || 0,
+            };
+            const row = await createPreview('DOAJ_CATALOGUE', adminOf(req), job.params, summary, { newIssns: check.newIssns, reviewSample: check.reviewSample } as any);
+            Object.assign(job, { status: 'done', previewId: row.id, summary, expiresAt: row.expiresAt, finishedAt: Date.now() });
+            return;
+          }
+          // ── Books: the same read the engine makes, judged the same way, written nowhere ──
+          if (isBook) {
+            const pv = await previewManualBooks(source as any, per);
+            const summary = { ...pv.summary, books: { ...pv.summary.books, sample: pv.sample }, source, departments };
+            const row = await createPreview('BOOKS_ONE_OFF', adminOf(req), { ...job.params, ...pv.params }, summary, null);
+            Object.assign(job, { status: 'done', previewId: row.id, summary, expiresAt: row.expiresAt, finishedAt: Date.now() });
+            return;
+          }
+          // ── Articles ──
           const candidates: any[] = []; let errors = 0;
+          let firstFetchError: any = null;
           for (const dept of departments) {
             job.progress.department = dept;
             try {
-              let got = await fetchForDept(source, dept, per, verifiable && (source === 'openalex' || source === 'doaj'));
+              let got: any[] = await fetchForDept(source, dept, per, { trustedOnly: verifiable && (source === 'openalex' || source === 'doaj'), fromYear, db: prisma });
               // "Verifiable open-access full text": the file must actually open from here. Checked, not assumed.
               if (verifiable) {
-                const opens = await Promise.all(got.map((g: any) => isFetchablePdf(g.pdfUrl)));
+                const opens = await checkFiles(got.map((g: any) => g.pdfUrl));
                 got = got.map((g: any, i: number) => ({ ...g, fileOpensHere: opens[i] }));
               }
               candidates.push(...got.map((g: any) => ({ ...g, department: dept })));
-            } catch (e: any) { errors++; console.error(`Dry run fetch [${source}/${dept}]:`, e?.message); }
+            } catch (e: any) {
+              errors++; firstFetchError ||= e;
+              console.error(`Dry run fetch [${source}/${dept}]:`, e?.message);
+              // A response we cannot read, or a source that is resting, is the same answer for every department: stop asking.
+              if (e instanceof SourceError && (e.kind === 'invalid' || e.kind === 'rate_limited')) break;
+            }
             job.progress.done++;
           }
+          if (!candidates.length && firstFetchError) throw firstFetchError;
           const classified = await classifyCandidates(candidates);
           // Under the verifiable-only policy a record whose file does not open is refused, visibly, with the reason.
           for (const c of classified) {
@@ -8897,7 +8812,8 @@ async function startServer() {
           Object.assign(job, { status: 'done', previewId: row.id, summary, expiresAt: row.expiresAt, finishedAt: Date.now() });
         } catch (e: any) {
           console.error('Dry run error:', e);
-          Object.assign(job, { status: 'error', error: String(e?.message || 'Dry run failed'), finishedAt: Date.now() });
+          const qe = e instanceof Error && (e as any).code === undefined && !(e instanceof SourceError) && !(e instanceof QuickError) ? null : await asQuickError(e, healthKeyFor(source) as string);
+          Object.assign(job, { status: 'error', error: qe ? qe.message : String(e?.message || 'Dry run failed'), errorCode: qe?.code ?? null, finishedAt: Date.now() });
         } finally { keepJob(job.id); }
       })();
     } catch (e: any) { console.error('POST ingest/dry-run error:', e); res.status(500).json({ error: "Dry run failed to start" }); }
@@ -8906,9 +8822,18 @@ async function startServer() {
   // Job progress, for both dry runs and writes.
   const jobView = (j: any) => ({
     jobId: j.id, kind: j.kind, status: j.status, progress: j.progress, previewId: j.previewId || null, summary: j.summary || null,
-    result: j.result || null, error: j.error || null, expiresAt: j.expiresAt || null, startedAt: j.startedAt, finishedAt: j.finishedAt || null,
+    result: j.result || null, error: j.error || null, errorCode: j.errorCode || null, expiresAt: j.expiresAt || null, startedAt: j.startedAt, finishedAt: j.finishedAt || null,
+  });
+  /** A Quick Import job as the wizard's write step reads it, so an advanced book import can be polled like any other write. */
+  const quickAsWrite = (j: any) => ({
+    jobId: j.id, kind: 'write', status: j.status, startedAt: j.startedAt, finishedAt: j.finishedAt || null,
+    progress: { done: j.progress.checked, total: j.progress.limit ?? j.progress.checked },
+    result: j.result ? { added: j.result.added, held: j.result.alreadyHeld, failed: j.result.failed, skippedNeedsReview: 0, review: j.result.needsReview, skipped: j.result.skipped, enriched: j.result.enriched ?? 0, notes: j.result.notes, partial: j.result.partial ?? null } : null,
+    error: j.error?.message || null, errorCode: j.error?.code || null,
   });
   app.get("/api/admin/ingest/status/:jobId", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    const quick = getQuickJob(req.params.jobId);
+    if (quick) return res.json(quickAsWrite(quick));
     const job = ingestJobs.get(req.params.jobId);
     if (!job) return res.status(404).json({ error: "Job not found (may have finished and expired)" });
     res.json(jobView(job));
@@ -8945,6 +8870,50 @@ async function startServer() {
       const { previewId, retryFailed } = req.body || {};
       if (!previewId) return res.status(400).json({ error: "Run a dry run first, then ingest from its result." });
       if (runningJob('write')) return res.status(409).json({ error: 'An import is already running.' });
+      const peek = await (prisma as any).ingestionPreview.findUnique({ where: { id: String(previewId) }, select: { kind: true } });
+      const who = adminOf(req);
+
+      // ── A journal import (DOAJ): exactly the journals the check reported as new ──
+      if (peek?.kind === 'DOAJ_CATALOGUE') {
+        const row = await loadPreview(String(previewId), 'DOAJ_CATALOGUE');
+        const claimed = await (prisma as any).ingestionPreview.updateMany({ where: { id: row.id, consumedAt: null }, data: { consumedAt: new Date(), consumedBy: who.email || who.uid || null } });
+        if (claimed.count === 0) return res.status(409).json({ error: 'This preview has already been ingested. Run a new dry run to import again.' });
+        const newIssns: string[] = ((row.items as any)?.newIssns) || [];
+        await ingestionAudit(who, 'MASS_JOURNAL_IMPORT_STARTED', { previewId: row.id, newJournals: newIssns.length, summary: row.summary, source: 'doaj-journals' });
+        const job: any = { id: jobId('write'), kind: 'write', status: 'running', startedAt: Date.now(), previewId: row.id, progress: { done: 0, total: newIssns.length } };
+        ingestJobs.set(job.id, job);
+        res.status(202).json({ jobId: job.id });
+        const started = Date.now();
+        (async () => {
+          try {
+            const r = await importCheckedJournals(newIssns, { csvText: await loadDoajCsv() });
+            await recordJournalImport(r, started, 'DOAJ journal import');
+            Object.assign(job, { status: 'done', result: { added: r.added, held: r.alreadyHeldNow, failed: 0, skippedNeedsReview: 0, accepted: r.accepted, metadataOnly: r.metadataOnly }, progress: { done: newIssns.length, total: newIssns.length }, finishedAt: Date.now() });
+          } catch (e: any) {
+            const qe = await asQuickError(e, 'DOAJ');
+            Object.assign(job, { status: 'error', error: qe.message, errorCode: qe.code, finishedAt: Date.now() });
+          } finally { keepJob(job.id); }
+        })();
+        return;
+      }
+
+      // ── A book import: the same harvest the engine makes, begun where the preview read, never touching the checkpoint ──
+      if (peek?.kind === 'BOOKS_ONE_OFF') {
+        const row = await loadPreview(String(previewId), 'BOOKS_ONE_OFF');
+        const claimed = await (prisma as any).ingestionPreview.updateMany({ where: { id: row.id, consumedAt: null }, data: { consumedAt: new Date(), consumedBy: who.email || who.uid || null } });
+        if (claimed.count === 0) return res.status(409).json({ error: 'This preview has already been ingested. Run a new dry run to import again.' });
+        const pr: any = row.params;
+        try {
+          const job = await beginQuickImport(pr.source, who, { advanced: { limit: pr.limit, startToken: pr.startToken ?? null, from: pr.from ?? null } });
+          return res.status(202).json({ jobId: job.id });
+        } catch (e: any) {
+          // It never started, so the preview is still good.
+          await (prisma as any).ingestionPreview.update({ where: { id: row.id }, data: { consumedAt: null, consumedBy: null } }).catch(() => {});
+          if (e instanceof QuickError) return res.status(e.status).json(quickErrorBody(e));
+          throw e;
+        }
+      }
+
       const row = await loadPreview(String(previewId), 'ONE_OFF');
       if (row.consumedAt && retryFailed !== true) return res.status(409).json({ error: 'This preview has already been ingested. Run a new dry run to import again.' });
 
@@ -8966,6 +8935,52 @@ async function startServer() {
       console.error("Ingest run error:", e); res.status(500).json({ error: "Ingestion failed to start" });
     }
   });
+
+  // ── Quick Import ───────────────────────────────────────────────────────────
+  //
+  // A bounded batch from one source, started by hand when the continuous engine is slow, paused or rate limited. It is an
+  // addition to the engine, never a replacement: it goes through the same pipelines, never moves a provider's checkpoint,
+  // respects the same source breaker, and takes the provider's lock so it never works a source beside the engine.
+
+  // The cards: every approved source, its limit, and how it is doing right now.
+  app.get("/api/admin/ingest/sources", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json({ sources: await listQuickSources() }); }
+    catch (e: any) { console.error('GET ingest/sources error:', e?.message); res.status(500).json({ error: "Failed to read the sources" }); }
+  });
+
+  app.post("/api/admin/ingest/quick", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { provider, confirm } = req.body || {};
+      if (!isQuickId(provider)) return res.status(400).json({ error: "Unknown source." });
+      // The screen asks first ("Import up to 250 … now?"). The server does not take a click for an answer.
+      if (confirm !== true) return res.status(400).json({ error: "Confirmation is required to start a Quick Import." });
+      const job = await beginQuickImport(provider, adminOf(req));
+      res.status(202).json({ jobId: job.id, provider, limit: job.limit });
+    } catch (e: any) {
+      if (e instanceof QuickError) return res.status(e.status).json(quickErrorBody(e));
+      console.error('POST ingest/quick error:', e);
+      res.status(500).json({ error: "The Quick Import could not start." });
+    }
+  });
+
+  app.get("/api/admin/ingest/quick/:jobId", authenticateJWT, requireSuperAdmin, (req: any, res: any) => {
+    const j = getQuickJob(req.params.jobId);
+    if (!j) return res.status(404).json({ error: "That Quick Import is no longer tracked. Check the run activity for what it did." });
+    res.json({ jobId: j.id, provider: j.provider, label: j.label, group: j.group, status: j.status, startedAt: j.startedAt, finishedAt: j.finishedAt || null, limit: j.limit, progress: j.progress, result: j.result || null, error: j.error || null });
+  });
+
+  /** Counters grow by what a journal import actually dealt with, and the run log says so. Nothing already counted is changed. */
+  const recordJournalImport = async (r: any, started: number, label: string) => {
+    await (prisma as any).ingestionState.update({
+      where: { id: 'singleton' },
+      data: { journalsSeen: { increment: r.added }, journalsAccepted: { increment: r.accepted }, journalsRejected: { increment: r.metadataOnly }, lastRunAt: new Date() },
+    }).catch(() => {});
+    await (prisma as any).ingestionRun.create({ data: {
+      phase: 'Journals', source: 'DOAJ catalogue', journalsSeen: r.added, journalsAccepted: r.accepted, journalsRefused: r.metadataOnly,
+      durationMs: Date.now() - started,
+      note: `Manual · ${label}: ${r.added} new journals added (${r.accepted} full text, ${r.metadataOnly} metadata only)${r.alreadyHeldNow ? `, ${r.alreadyHeldNow} already held by then` : ''}`,
+    } }).catch(() => {});
+  };
 
   // ── Every DOAJ journal: check first, then import exactly what the check found ──────────────────────────
   //
@@ -9007,17 +9022,7 @@ async function startServer() {
         try {
           const r = await importCheckedJournals(newIssns);
           Object.assign(job, { running: false, finishedAt: new Date().toISOString(), result: { ...r, requested: newIssns.length } });
-          // Counters grow by what this import actually dealt with. (They used to grow by the size of DOAJ's whole file
-          // every run, whatever was added.) Nothing already counted is changed.
-          await (prisma as any).ingestionState.update({
-            where: { id: 'singleton' },
-            data: { journalsSeen: { increment: r.added }, journalsAccepted: { increment: r.accepted }, journalsRejected: { increment: r.metadataOnly }, lastRunAt: new Date() },
-          }).catch(() => {});
-          await (prisma as any).ingestionRun.create({ data: {
-            phase: 'Journals', source: 'DOAJ catalogue', journalsSeen: r.added, journalsAccepted: r.accepted, journalsRefused: r.metadataOnly,
-            durationMs: Date.now() - started,
-            note: `DOAJ catalogue import: ${r.added} new journals added (${r.accepted} full text, ${r.metadataOnly} metadata only)${r.alreadyHeldNow ? `, ${r.alreadyHeldNow} already held by then` : ''}`,
-          } }).catch(() => {});
+          await recordJournalImport(r, started, 'DOAJ catalogue import');
         } catch (e: any) {
           Object.assign(job, { running: false, finishedAt: new Date().toISOString(), error: String(e?.message || e) });
           await (prisma as any).ingestionRun.create({ data: { phase: 'Error', source: 'DOAJ catalogue', error: String(e?.message || e).slice(0, 1000), durationMs: Date.now() - started } }).catch(() => {});
@@ -15501,6 +15506,36 @@ async function startServer() {
       const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 90);
       res.json(await aiAssistantUsage(prisma as any, days));
     } catch (e: any) { console.error('GET ai-assistant/usage error:', e?.message); res.status(500).json({ error: "Failed to load assistant usage" }); }
+  });
+
+  // The master switch for the public assistant. Super admin only, to read as well as to change. The state lives in the
+  // database (AppSetting), so it survives restarts and redeploys; the public chat route and the public status route both read
+  // the same value. Nothing here carries a key, a token or a billing detail: the provider is named, never configured.
+  app.get("/api/admin/ai-assistant/switch", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try {
+      const [state, history] = await Promise.all([aiAssistantSwitchState(prisma as any), aiAssistantSwitchHistory(prisma as any)]);
+      const lastAnswer: any = await (prisma as any).aIMessage.findFirst({ where: { role: 'assistant' }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } }).catch(() => null);
+      const day: any = await aiAssistantUsage(prisma as any, 1).catch(() => null);
+      res.json({
+        ...state, history,
+        provider: { name: 'Gemini', model: aiConfig().model },
+        lastAnswerAt: lastAnswer?.createdAt ? lastAnswer.createdAt.toISOString() : null,
+        last24h: day ? { answered: day.modelAnsweredQuestions, errors: day.modelErrors, timeouts: day.modelTimeouts } : null,
+      });
+    } catch (e: any) { console.error('GET ai-assistant/switch error:', e?.message); res.status(500).json({ error: "Could not read the AI Assistant setting" }); }
+  });
+
+  app.post("/api/admin/ai-assistant/switch", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ error: "enabled must be true or false" });
+      const want: boolean = req.body.enabled;
+      const before = await aiAssistantSwitchState(prisma as any);
+      // Asking for the state it is already in changes nothing and writes no audit row.
+      if (before.enabled === want) return res.json({ ...before, changed: false });
+      const state = await setAiAssistantEnabled(prisma as any, want, { id: req.user?.uid, email: req.user?.email });
+      console.log(`AI Assistant ${want ? 'ENABLED' : 'DISABLED'} by ${req.user?.email || req.user?.uid}`);
+      res.json({ ...state, changed: true, history: await aiAssistantSwitchHistory(prisma as any) });
+    } catch (e: any) { console.error('POST ai-assistant/switch error:', e?.message); res.status(500).json({ error: "Could not change the AI Assistant setting" }); }
   });
 
   // The institutional brochure, sent as a download with its own name. It has to

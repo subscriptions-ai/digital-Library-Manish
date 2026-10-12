@@ -3,7 +3,8 @@ import { api } from './api';
 import { N } from './format';
 import { InfoTip } from './InfoTip';
 
-const PERIODS = [['lifetime', 'Lifetime'], ['7d', '7 days'], ['24h', '24 hours']] as const;
+export type Period = 'lifetime' | '7d' | '24h';
+export const PERIODS = [['lifetime', 'Lifetime'], ['7d', '7 days'], ['24h', '24 hours']] as const;
 
 const TILES: { key: string; label: string; tip: string }[] = [
   { key: 'journalsSeen', label: 'Journals seen', tip: 'Journal listings read from DOAJ. A journal read again on a later sweep is counted again.' },
@@ -14,8 +15,9 @@ const TILES: { key: string; label: string; tip: string }[] = [
   { key: 'alreadyHeld', label: 'Already held', tip: 'Records encountered during ingestion that already exist in the catalogue. (Totals from before the latest update also include a small number of records that could not be written.)' },
 ];
 
+/** The engine's own headline figures. Run activity below has its own date filter; this block is not part of it. */
 export function Metrics({ state }: { state: any }) {
-  const [period, setPeriod] = useState<'lifetime' | '7d' | '24h'>('lifetime');
+  const [period, onPeriod] = useState<Period>('lifetime');
   const [data, setData] = useState<any>(null);
   const [failed, setFailed] = useState(false);
 
@@ -40,7 +42,7 @@ export function Metrics({ state }: { state: any }) {
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h2 id="metrics-heading" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Metrics</h2>
         <div className="segmented" role="group" aria-label="Time period">
-          {PERIODS.map(([id, label]) => <button key={id} type="button" aria-pressed={period === id} onClick={() => setPeriod(id)}>{label}</button>)}
+          {PERIODS.map(([id, label]) => <button key={id} type="button" aria-pressed={period === id} onClick={() => onPeriod(id)}>{label}</button>)}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-3 lg:grid-cols-6">

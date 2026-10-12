@@ -95,6 +95,7 @@ import { ExtractionDashboard } from './components/admin/ExtractionDashboard';
 import { ExtractionJobDetails } from './components/admin/ExtractionJobDetails';
 import { EmailVerificationsPage } from './components/admin/EmailVerificationsPage';
 import { AdminEmailSettings } from './components/admin/settings/AdminEmailSettings';
+import { AdminAiAssistant } from './components/admin/settings/AdminAiAssistant';
 import { DetailedAnalyticsPage } from './components/admin/dashboard/DetailedAnalyticsPage';
 
 import { CONTENT_MODULES } from "./constants";
@@ -257,6 +258,7 @@ export default function App() {
                 <Route path="/admin/extraction/jobs/:id" element={<AdminLayout><ExtractionJobDetails /></AdminLayout>} />
                 <Route path="/admin/email-verifications" element={<AdminLayout><EmailVerificationsPage /></AdminLayout>} />
                 <Route path="/admin/email-settings" element={<AdminLayout><AdminEmailSettings /></AdminLayout>} />
+                <Route path="/admin/ai-assistant" element={<AdminLayout><AdminAiAssistant /></AdminLayout>} />
                 <Route path="/admin/emails" element={<AdminLayout><AdminEmails /></AdminLayout>} />
                 <Route path="/admin/blog" element={<AdminLayout><AdminBlog /></AdminLayout>} />
 

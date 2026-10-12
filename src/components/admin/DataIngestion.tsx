@@ -21,6 +21,8 @@ export function DataIngestion() {
   const [coverage, setCoverage] = useState<any[] | null>(null);
   const [tab, setTab] = useState<'log' | 'coverage'>('log');
   const [bump, setBump] = useState(0);
+  // The department filter belongs to the page, so a click in Coverage can set it. Dates, kind, source and result belong to Run activity.
+  const [department, setDepartment] = useState('');
 
   const loadCoverage = useCallback(async () => { const r = await api('/api/admin/ingest/coverage'); if (r.ok) setCoverage(r.data.coverage); }, []);
   useEffect(() => { loadCoverage(); const t = setInterval(loadCoverage, 60_000); return () => clearInterval(t); }, [loadCoverage]);
@@ -51,7 +53,11 @@ export function DataIngestion() {
           <button key={id} type="button" role="tab" aria-selected={tab === id} aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>
         ))}
       </div>
-      {tab === 'log' ? <RunActivity refreshKey={bump} /> : <Coverage coverage={coverage} />}
+      {tab === 'log' ? (
+        <RunActivity refreshKey={bump} department={department} onDepartment={setDepartment} />
+      ) : (
+        <Coverage coverage={coverage} selected={department} onSelect={d => { setDepartment(d); setTab('log'); }} />
+      )}
 
       <EngineSettings state={state} onChanged={changed} />
       <DoajImport onDone={changed} />
