@@ -47,7 +47,7 @@ export function exactTime(iso?: string | null) {
 /** Today's India date as YYYY-MM-DD. */
 export const istToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
 
-/** "2026-10-12" → "12 Oct". */
+/** "2026-10-05" → "05 Oct 2026". */
 export function dayLabel(day: string) {
-  return new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }

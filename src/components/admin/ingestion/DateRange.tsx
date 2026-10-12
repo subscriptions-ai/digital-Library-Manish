@@ -15,6 +15,41 @@ const MAX_SPAN_DAYS = 366;
 /** The query string for a range. The server turns it into India-day boundaries; the browser never does that arithmetic. */
 export const rangeQuery = (r: DateRangeValue) => `range=${r.key}${r.key === 'custom' ? `&from=${r.from}&to=${r.to}` : ''}`;
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const short = (d: string) => `${d.slice(8)} ${MONTHS[Number(d.slice(5, 7)) - 1]}`;
+const full = (d: string) => `${short(d)} ${d.slice(0, 4)}`;
+
+/**
+ * The words for a range — "Today", "05 Oct 2026", "01–12 Oct 2026" — worked out here from what was asked for, so a heading
+ * never depends on the server's answer arriving (and is never a placeholder). The server's own label is the same text.
+ */
+export function rangeLabel(r: DateRangeValue): string {
+  switch (r.key) {
+    case 'lifetime': return 'Lifetime';
+    case 'today': return 'Today';
+    case 'yesterday': return 'Yesterday';
+    case 'last7': return 'Last 7 days';
+    case 'last30': return 'Last 30 days';
+    case 'month': return 'This month';
+    default:
+      if (r.from === r.to) return full(r.to);
+      if (r.from.slice(0, 7) === r.to.slice(0, 7)) return `${r.from.slice(8)}–${full(r.to)}`;
+      return r.from.slice(0, 4) === r.to.slice(0, 4) ? `${short(r.from)}–${full(r.to)}` : `${full(r.from)}–${full(r.to)}`;
+  }
+}
+
+/**
+ * Did the server apply the range that was asked for? Every answer echoes the range it used. If the echo is missing or
+ * different — an older server still running, a bug — the figures must not be shown, because they would be for some
+ * other period under a heading that says this one.
+ */
+export function honoured(asked: DateRangeValue, echo: any): boolean {
+  if (!echo || echo.key !== asked.key) return false;
+  return asked.key !== 'custom' || (echo.fromDay === asked.from && echo.toDay === asked.to);
+}
+
+export const STALE_SERVER = 'The server did not apply the date filter, so no figures are shown rather than ones for the wrong period. Restart the server so it is running the current code.';
+
 /** Same rules the server enforces, so a mistake is explained before a request is made. The server checks again. */
 export function checkCustom(from: string, to: string): string | null {
   if (!from || !to) return 'Choose both a From date and a To date.';
