@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isUsableCoverUrl } from '../../lib/blogCover';
 
 /**
  * A cover for a post that has none, or whose picture no longer loads.
@@ -107,6 +108,8 @@ export function blogCoverFor(seed: string) {
 
 type PostImageProps = {
   src?: string | null; seed: string; className?: string; loading?: 'lazy' | 'eager';
+  /** What the picture shows. Left out, the picture is decoration beside a heading. */
+  alt?: string | null;
 };
 
 /** Remount the loader when navigating to another post or changing its image URL. */
@@ -114,14 +117,20 @@ export function PostImage(props: PostImageProps) {
   return <PostImageLoader key={JSON.stringify([props.src, props.seed])} {...props} />;
 }
 
-function PostImageLoader({ src, seed, className = '', loading = 'lazy' }: PostImageProps) {
-  const cover = src?.trim();
+function PostImageLoader({ src, seed, className = '', loading = 'lazy', alt }: PostImageProps) {
+  // Anything that is not a plausible address goes straight to the fallback.
+  const cover = isUsableCoverUrl(src) ? src.trim() : undefined;
   const fallback = blogCoverFor(seed);
   const [failed, setFailed] = useState<string[]>([]);
   const image = cover && !failed.includes(cover) ? cover : fallback;
   // Preserve the inline artwork as a final fallback if even a local asset fails.
   if (failed.includes(image)) return <GeneratedCover seed={seed} className={className} />;
-  return <img key={image} src={image} alt="" loading={loading} decoding="async"
-    onError={() => setFailed(previous => [...previous, image])}
+  const giveUp = () => setFailed(previous => (previous.includes(image) ? previous : [...previous, image]));
+  // The fallback's own words are not the cover's: only a real cover carries the writer's alt.
+  const isCover = image === cover;
+  return <img key={image} src={image} alt={isCover ? (alt || '') : ''} loading={loading} decoding="async"
+    onError={giveUp}
+    // Some failures (an empty or undecodable 200) fire load, not error.
+    onLoad={e => { if (!e.currentTarget.naturalWidth) giveUp(); }}
     className={`object-cover ${className}`} />;
 }

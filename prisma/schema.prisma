@@ -1245,6 +1245,8 @@ model BlogPost {
   /// The body as HTML from the editor, cleaned on the way in.
   body     String  @db.Text
   coverUrl String?
+  /// What the cover shows, for readers who cannot see it. Never a filename.
+  coverAlt String?
 
   /// Draft — nobody but the writer sees it. Published — it is on the site.
   status   String  @default("Draft")

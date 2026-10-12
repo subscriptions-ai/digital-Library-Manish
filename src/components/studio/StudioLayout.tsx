@@ -36,7 +36,7 @@ export function StudioLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-type flex min-h-screen bg-ground text-ink">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-rule bg-surface p-3 md:flex">
+      <aside className="hidden w-60 shrink-0 flex-col self-start border-r border-rule bg-surface p-3 md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto">
         <Link to="/" title="Go to home page" aria-label="Go to the STM Digital Library home page"
           className="flex items-center gap-2.5 px-2 py-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
           <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
