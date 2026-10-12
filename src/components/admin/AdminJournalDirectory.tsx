@@ -178,7 +178,7 @@ export function AdminJournalDirectory() {
               { value: domain, set: pickDomain, label: 'Any department',
                 options: departments.map(d => [d.name ?? NONE, `${deptLabel(d.name)} (${n(d.count)})`]) },
               { value: status, set: choose(setStatus), label: 'Any licence',
-                options: [['Accepted', `Full text allowed (${n(data?.statuses?.Accepted || 0)})`], ['MetadataOnly', `Metadata only (${n(data?.statuses?.MetadataOnly || 0)})`]] },
+                options: [['Accepted', `Full text allowed (${n(data?.statuses?.Accepted || 0)})`], ['MetadataOnly', `Metadata only (${n(data?.statuses?.MetadataOnly || 0)})`], ['NeedsReview', `Needs review — open access unverified (${n(data?.statuses?.NeedsReview || 0)})`]] },
               { value: articles, set: choose(setArticles), label: 'Articles: any',
                 options: [['with', 'Has articles'], ['without', 'No articles yet']] },
               { value: sort, set: choose(setSort), label: '',
@@ -227,7 +227,7 @@ export function AdminJournalDirectory() {
                       <td className="px-5 py-3">
                         <span className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-bold ${
                           j.status === 'Accepted' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                          {j.status === 'Accepted' ? 'Full text' : j.status === 'MetadataOnly' ? 'Metadata only' : j.status}
+                          {j.status === 'Accepted' ? 'Full text' : j.status === 'MetadataOnly' ? 'Metadata only' : j.status === 'NeedsReview' ? 'Needs review' : j.status}
                         </span>
                         {j.licence && <p className="mt-0.5 text-[11px] text-slate-400">{j.licence}</p>}
                       </td>

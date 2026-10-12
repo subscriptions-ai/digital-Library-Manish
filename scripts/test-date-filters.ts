@@ -90,8 +90,11 @@ S('Architecture', 'Books', 'DOAB', -40, 12, 0, 0, { added: 17 });
 S('Architecture', 'Books', 'OAPEN', -1, 12, 0, 0, { added: 100 });  // same department and kind, another source
 // Commerce · articles, attributed through their journal
 for (const [off, hh, n] of [[0, 0, 2], [-1, 12, 4], [-3, 12, 6], [-10, 12, 8], [-40, 12, 10]] as const) S('Commerce', 'Articles', 'OpenAlex', off, hh, hh === 0 ? 0 : 0, hh === 0 ? 5 : 0, { added: n, journal: 'commerce' });
-// Dental · failed journal discovery
-for (const [off, hh, mm, ss] of [[0, 0, 0, 5], [-1, 23, 59, 55], [-3, 12, 0, 0], [-40, 12, 0, 0]] as const) S('Dental', 'Journals', 'DOAJ', off, hh, mm, ss, { accepted: 0, error: 'DOAJ did not answer' });
+// Dental · a source that did not answer (a PROVIDER failure) and books that failed to write (a catalogue failure) — counted apart
+for (const [off, hh, mm, ss] of [[0, 0, 0, 5], [-1, 23, 59, 55], [-3, 12, 0, 0], [-40, 12, 0, 0]] as const) {
+  S('Dental', 'Journals', 'DOAJ', off, hh, mm, ss, { accepted: 0, error: 'Provider request failed — DOAJ did not answer' });
+  S('Dental', 'Books', 'DOAB', off, hh, mm + 1, ss, { added: 0, writeFailed: 1 });
+}
 // Isolated runs (a source nothing else uses) so their figures can be checked in absolute terms, not as a change
 const ISO_SRC = `Iso-${RUN}`;
 S('Commerce', 'Articles', ISO_SRC, -5, 10, 0, 0, { added: 37, held: 4, review: 2, journal: 'commerce' });   // the known article run on one day
@@ -99,7 +102,7 @@ S('Commerce', 'Books', ISO_SRC, -7, 15, 0, 0, { added: 5, writeFailed: 1 });    
 // A run with no department anywhere
 S(null, 'Books', 'OAPEN', -1, 12, 0, 0, { added: 50 });
 
-type Want = { runs: number; booksAdded: number; articlesAdded: number; journalsAccepted: number; failedRuns: number };
+type Want = { runs: number; booksAdded: number; articlesAdded: number; journalsAccepted: number; failedRuns: number; providerFailures: number };
 type Combo = { name: string; dept: string | null; phase: string | null; source: string | null; result: string | null };
 const COMBOS: Combo[] = [
   { name: 'Architecture + Books + DOAB', dept: 'Architecture', phase: 'books', source: 'DOAB', result: null },
@@ -108,9 +111,10 @@ const COMBOS: Combo[] = [
   { name: 'Commerce + Articles', dept: 'Commerce', phase: 'articles', source: null, result: null },
   { name: 'Dental + Failed', dept: 'Dental', phase: null, source: null, result: 'failed' },
   { name: 'All departments + all types', dept: null, phase: null, source: null, result: null },
+  { name: 'Dental + Provider issues', dept: 'Dental', phase: null, source: null, result: 'provider' },
 ];
 const expected = (c: Combo, r: Rg): Want => {
-  const w: Want = { runs: 0, booksAdded: 0, articlesAdded: 0, journalsAccepted: 0, failedRuns: 0 };
+  const w: Want = { runs: 0, booksAdded: 0, articlesAdded: 0, journalsAccepted: 0, failedRuns: 0, providerFailures: 0 };
   for (const s of seeds) {
     const day = istDay(s.at.getTime());
     if (r.from && (day < r.from || day > r.to!)) continue;
@@ -118,20 +122,22 @@ const expected = (c: Combo, r: Rg): Want => {
     if (c.phase && s.phase.toLowerCase() !== c.phase) continue;
     if (c.source && s.source !== c.source) continue;
     if (c.result === 'added' && !((s.added || 0) > 0 || (s.accepted || 0) > 0)) continue;
-    if (c.result === 'failed' && !s.error && !s.writeFailed) continue;
+    if (c.result === 'failed' && !s.writeFailed) continue;
+    if (c.result === 'provider' && !s.error) continue;
     w.runs++;
     if (s.phase === 'Books') w.booksAdded += s.added || 0;
     if (s.phase === 'Articles') w.articlesAdded += s.added || 0;
     w.journalsAccepted += s.accepted || 0;
-    if (s.error || s.writeFailed) w.failedRuns++;
+    if (s.writeFailed) w.failedRuns++;
+    if (s.error) w.providerFailures++;
   }
   return w;
 };
 const dayLabelFull = (d: string) => `${d.slice(8)} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4)}`;
 const filterQs = (c: Combo) => `${c.dept ? `&department=${encodeURIComponent(c.dept)}` : ''}${c.phase ? `&phase=${c.phase}` : ''}${c.source ? `&source=${encodeURIComponent(c.source)}` : ''}${c.result ? `&result=${c.result}` : ''}`;
 const summary = async (c: Combo, r: Rg, extra = '') => (await A(`/api/admin/ingest/department-metrics?${r.q}${filterQs(c)}${extra}`)).data;
-const pick = (i: any): Want => ({ runs: i.runs, booksAdded: i.booksAdded, articlesAdded: i.articlesAdded, journalsAccepted: i.journalsAccepted, failedRuns: i.failedRuns });
-const delta = (a: Want, b: Want): Want => ({ runs: a.runs - b.runs, booksAdded: a.booksAdded - b.booksAdded, articlesAdded: a.articlesAdded - b.articlesAdded, journalsAccepted: a.journalsAccepted - b.journalsAccepted, failedRuns: a.failedRuns - b.failedRuns });
+const pick = (i: any): Want => ({ runs: i.runs, booksAdded: i.booksAdded, articlesAdded: i.articlesAdded, journalsAccepted: i.journalsAccepted, failedRuns: i.failedRuns, providerFailures: i.providerFailures });
+const delta = (a: Want, b: Want): Want => ({ runs: a.runs - b.runs, booksAdded: a.booksAdded - b.booksAdded, articlesAdded: a.articlesAdded - b.articlesAdded, journalsAccepted: a.journalsAccepted - b.journalsAccepted, failedRuns: a.failedRuns - b.failedRuns, providerFailures: a.providerFailures - b.providerFailures });
 /** Every row the list would show for these filters, page by page, the way "Load older runs" does. */
 const allRows = async (c: Combo, r: Rg, limit = 200) => {
   const rows: any[] = []; let before: string | null = null; let pages = 0;
@@ -203,9 +209,11 @@ try {
       // The list and the summary, for the same filters, are the same runs — absolute, no baseline.
       const { rows } = await allRows(c, r);
       const sum = (phase: string, key: string) => rows.filter((x: any) => x.phase === phase).reduce((n: number, x: any) => n + x[key], 0);
-      const failed = rows.filter((x: any) => x.skippedFailed > 0 || x.error || x.phase === 'Error').length;
+      const provider = (x: any) => x.error && x.skippedFailed === 0 && (/^Provider request failed/.test(x.error) || /(did not answer|answered http|fetch failed|timed? ?out|aborted|paused after repeated|rate.?limit|econn|enotfound|etimedout|socket hang up|stopped answering|is resting)/i.test(x.error));
+      const failed = rows.filter((x: any) => x.skippedFailed > 0 || x.phase === 'Error' || (x.error && !provider(x))).length;
+      const providerN = rows.filter(provider).length;
       check(`${c.name} · ${r.name}: ${rows.length} listed row(s) add up to the summary`,
-        rows.length === s.ingestion.runs && sum('Books', 'added') === s.ingestion.booksAdded && sum('Articles', 'added') === s.ingestion.articlesAdded && sum('Journals', 'journalsAccepted') === s.ingestion.journalsAccepted && failed === s.ingestion.failedRuns);
+        rows.length === s.ingestion.runs && sum('Books', 'added') === s.ingestion.booksAdded && sum('Articles', 'added') === s.ingestion.articlesAdded && sum('Journals', 'journalsAccepted') === s.ingestion.journalsAccepted && failed === s.ingestion.failedRuns && providerN === s.ingestion.providerFailures);
       check(`${c.name} · ${r.name}: Current Catalogue unchanged`, same(s.catalogue, life.catalogue));
       // No listed row falls outside the days asked for, in India time.
       if (r.from) check(`${c.name} · ${r.name}: every row’s India date is inside the range`, rows.every((x: any) => { const d = istDay(new Date(x.at).getTime()); return d >= r.from! && d <= r.to!; }));
@@ -232,20 +240,25 @@ try {
     for (const r of RANGES) {
       const s = await summary(c, r, '&byDay=1');
       const sum = (k: string) => s.byDay.reduce((n: number, d: any) => n + d[k], 0);
-      check(`${c.name} · ${r.name}: Books, Articles, Journals, Held, Failed and Review each add up to the summary`,
-        sum('books') === s.ingestion.booksAdded && sum('articles') === s.ingestion.articlesAdded && sum('journals') === s.ingestion.journalsAccepted && sum('held') === s.ingestion.held && sum('failedRuns') === s.ingestion.failedRuns && sum('sentToReview') === s.ingestion.sentToReview);
+      check(`${c.name} · ${r.name}: Books, Articles, Journals, Held, Failed, Provider issues and Review each add up to the summary`,
+        sum('books') === s.ingestion.booksAdded && sum('articles') === s.ingestion.articlesAdded && sum('journals') === s.ingestion.journalsAccepted && sum('held') === s.ingestion.held && sum('failedRuns') === s.ingestion.failedRuns && sum('providerFailures') === s.ingestion.providerFailures && sum('sentToReview') === s.ingestion.sentToReview);
       if (r.from) {
         check(`${c.name} · ${r.name}: one row for every day in the range (${spanDays(r)}), oldest first, none outside it`,
           s.byDay.length === spanDays(r) && s.byDay[0].day === r.from && s.byDay[s.byDay.length - 1].day === r.to && s.byDay.every((d: any, i: number, a: any[]) => i === 0 || a[i - 1].day < d.day));
       } else {
-        check(`${c.name} · ${r.name}: only days with activity, newest first`, s.byDay.every((d: any, i: number, a: any[]) => (i === 0 || a[i - 1].day > d.day)) && s.byDay.every((d: any) => d.books || d.articles || d.journals || d.held || d.failedRuns || d.sentToReview));
+        check(`${c.name} · ${r.name}: only days on which something ran, newest first`, s.byDay.every((d: any, i: number, a: any[]) => (i === 0 || a[i - 1].day > d.day)) && s.byDay.every((d: any) => d.runs > 0));
       }
     }
   }
   const bd = (await summary(arch, RANGES[4], '&byDay=1')).byDay;
   const dayOf = (off: number) => dayPlus(TODAY, off);
   const rowFor = (day: string) => bd.find((d: any) => d.day === day)?.books;
-  const baseDay = async (off: number) => { const s = await db.$queryRawUnsafe(`select coalesce(sum(added),0)::int n from "IngestionRun" where phase='Books' and source='DOAB' and note is distinct from 'DF ${RUN}' and (department='Architecture') and to_char("at" + interval '330 minutes','YYYY-MM-DD') = $1`, dayOf(off)); return s[0].n; };
+  const baseDay = async (off: number) => {
+    const day = dayOf(off);
+    const own = await db.$queryRawUnsafe(`select coalesce(sum(added),0)::int n from "IngestionRun" r where phase='Books' and source='DOAB' and note is distinct from 'DF ${RUN}' and department='Architecture' and not exists (select 1 from "IngestionRunDepartmentStat" s where s."runId" = r.id) and to_char("at" + interval '330 minutes','YYYY-MM-DD') = $1`, day);
+    const broken = await db.$queryRawUnsafe(`select coalesce(sum(s.added),0)::int n from "IngestionRunDepartmentStat" s join "IngestionRun" r on r.id = s."runId" where r.phase='Books' and r.source='DOAB' and r.note is distinct from 'DF ${RUN}' and s.department='Architecture' and to_char(r."at" + interval '330 minutes','YYYY-MM-DD') = $1`, day);
+    return own[0].n + broken[0].n;
+  };
   check('yesterday’s date holds both yesterday runs (the 23:59:55 one and the 12:00 one)', rowFor(dayOf(-1)) === 5 + 7 + await baseDay(-1), `${rowFor(dayOf(-1))}`);
   check('the 00:00:05 run lands on today’s date', rowFor(dayOf(0)) === 3 + await baseDay(0), `${rowFor(dayOf(0))}`);
 
@@ -337,7 +350,7 @@ try {
   section('Empty range');
   const nowhere: Combo = { name: 'Dental + Books', dept: 'Dental', phase: 'books', source: 'Nothing used this source', result: null };
   const e = await summary(nowhere, RANGES[1]);
-  check('no runs: every figure is zero (so the screen can say so) and the catalogue is still there', same(pick(e.ingestion), { runs: 0, booksAdded: 0, articlesAdded: 0, journalsAccepted: 0, failedRuns: 0 }) && typeof e.catalogue.books === 'number');
+  check('no runs: every figure is zero (so the screen can say so) and the catalogue is still there', same(pick(e.ingestion), { runs: 0, booksAdded: 0, articlesAdded: 0, journalsAccepted: 0, failedRuns: 0, providerFailures: 0 }) && typeof e.catalogue.books === 'number');
   check('…and the list is empty', (await allRows(nowhere, RANGES[1])).rows.length === 0);
   const life = await summary(nowhere, RANGES[0]);
   check('Dental catalogue is the same with and without the empty range', same(e.catalogue, life.catalogue));

@@ -9,15 +9,33 @@ import { DOMAINS } from '../../../constants';
 /** The existing department taxonomy, in its own order. No names are made up here. */
 const DEPARTMENTS: string[] = (DOMAINS as any[]).map(d => d.name).slice().sort((a, b) => a.localeCompare(b));
 
-const RESULTS = [['all', 'All'], ['added', 'Added'], ['held', 'Held'], ['failed', 'Failed'], ['skipped', 'Skipped']] as const;
+const RESULTS = [['all', 'All'], ['added', 'Added'], ['held', 'Held'], ['failed', 'Failed'], ['provider', 'Provider'], ['skipped', 'Skipped']] as const;
 const PHASES = [['', 'All kinds'], ['articles', 'Articles'], ['books', 'Books'], ['journals', 'Journals']] as const;
 
 /** Started by an administrator (Quick Import, a wizard import, a journal import) rather than by the engine's timer. */
 const isManual = (r: any) => typeof r.note === 'string' && r.note.startsWith('Manual');
 
+/**
+ * A source that did not answer is the SOURCE having a problem, not the catalogue failing to write something — it is shown (and counted)
+ * as a provider issue, in a calmer tone, so one outage retried a few times does not read as a pile of failures.
+ */
+const PROVIDER_WORDS = /(did not answer|answered http|fetch failed|timed? ?out|aborted|paused after repeated|rate.?limit|econn|enotfound|etimedout|socket hang up|stopped answering|is resting)/i;
+const isProviderFailure = (r: any) => !!r.error && !r.skippedFailed && (/^Provider request failed/.test(r.error) || PROVIDER_WORDS.test(r.error));
+
 /** One sentence per row, in plain words. */
 function rowText(r: any): string {
-  if (r.error) return r.error;
+  if (r.error) return isProviderFailure(r) ? `${(r.note ? `${r.note} — ` : '')}${r.error.replace(/^Provider request failed — /, '')}` : r.error;
+  // Rows the rotation writes already say everything: "100 checked · 28 added · 19 enriched · 41 held …".
+  if (/^\d+ checked/.test(r.note || '')) return r.note;
+  if (r.hasBreakdown && r.dept !== undefined) {
+    const where = r.dept === '' ? 'no confirmed department yet' : r.dept;
+    const bits = [`${N(r.added)} added${r.dept === '' ? '' : ` to ${where}`}`];
+    if (r.skippedHeld) bits.push(`${N(r.skippedHeld)} already held`);
+    if (r.needsReview) bits.push(`${N(r.needsReview)} sent to review (${where})`);
+    if (r.skippedRejected) bits.push(`${N(r.skippedRejected)} skipped`);
+    if (r.skippedFailed) bits.push(`${N(r.skippedFailed)} failed to write`);
+    return `${bits.join(' · ')} — part of a run that added ${N(r.runAdded)} in all`;
+  }
   if (isManual(r) && r.note) return r.note.replace(/^Manual · /, '');
   if (r.phase === 'Journals') return r.note || `${N(r.journalsSeen)} journals read · ${N(r.journalsAccepted)} accepted · ${N(r.journalsRefused)} metadata only`;
   const bits = [`${N(r.added)} added`];
@@ -124,17 +142,19 @@ export function RunActivity({ refreshKey, department, onDepartment }: { refreshK
       {!error && runs && grouped.length > 0 && (
         <ul className="divide-y divide-rule">
           {grouped.map(({ head: r, n }) => {
-            const failed = !!r.error || r.phase === 'Error' || r.skippedFailed > 0;
+            const provider = isProviderFailure(r);
+            const failed = !provider && (!!r.error || r.phase === 'Error' || r.skippedFailed > 0);
             return (
               <li key={r.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3 text-[13px]">
                 <span className="w-[10.5rem] shrink-0 text-[12px] tabular-nums text-ink-2" title={`${exactTime(r.at)} IST`}>
                   {exactTime(r.at)}
                   <span className="block text-[11px] text-muted">{ago(r.at)}</span>
                 </span>
-                <span className={`badge ${failed ? 'badge-alarm' : 'badge-neutral'}`}>{r.phase}</span>
+                <span className={`badge ${failed ? 'badge-alarm' : provider ? 'badge-caution' : 'badge-neutral'}`}>{r.phase}</span>
+                {provider && <span className="badge badge-caution" title="The source did not answer. Nothing was lost; the engine moves to another source.">Source issue</span>}
                 {isManual(r) && <span className="badge badge-accent" title="Started by an administrator, not by the continuous engine">Manual</span>}
                 <span className="min-w-0 flex-1 text-ink-2">
-                  <b className="font-semibold text-ink">{r.journalTitle || (r.department ? r.department : r.source) || '—'}</b>
+                  <b className="font-semibold text-ink">{r.journalTitle || (r.hasBreakdown && r.dept ? r.dept : r.department ? r.department : r.source) || '—'}</b>
                   <span className="text-muted"> · </span>{rowText(r)}
                   {n > 1 && <span className="ml-2 text-muted">(×{n} in a row)</span>}
                 </span>

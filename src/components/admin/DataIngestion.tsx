@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { EngineStatus } from './ingestion/EngineStatus';
 import { EngineMode } from './ingestion/EngineMode';
+import { RotationStatus } from './ingestion/RotationStatus';
 import { Metrics } from './ingestion/Metrics';
 import { RunActivity } from './ingestion/RunActivity';
 import { EngineSettings } from './ingestion/EngineSettings';
@@ -46,6 +47,7 @@ export function DataIngestion() {
       <EngineStatus state={state} onChanged={changed} />
       <ScopePanel state={state} onChanged={changed} />
       <EngineMode state={state} coverage={coverage || []} onChanged={changed} />
+      <RotationStatus state={state} />
       <Metrics state={state} />
 
       <div className="segmented" role="tablist" aria-label="Activity view">

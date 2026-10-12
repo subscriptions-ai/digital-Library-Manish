@@ -10,7 +10,11 @@ import { clock, N } from './format';
 export type SourceCard = {
   id: string; label: string; group: 'Journals' | 'Articles' | 'Books'; description: string; badge: 'Recommended' | 'Fallback' | null;
   limit: number; unitLabel: string; confirm: string;
-  state: 'healthy' | 'running' | 'cooling' | 'rate_limited' | 'unavailable'; until: string | null; detail: string | null;
+  role?: string | null; tier?: string | null;
+  state: 'healthy' | 'degraded' | 'running' | 'cooling' | 'rate_limited' | 'unavailable' | 'not_connected'; until: string | null; detail: string | null;
+  health?: { state: string; failures: number; threshold: number; until: string | null; lastError: string | null };
+  yield?: 'productive' | 'low' | 'exhausted' | null;
+  lastBatch?: { at: string; checked: number; added: number; held: number; enriched: number; sentToReview: number; outcome: string } | null;
   quota: { archivesLeft: number; archivesPerDay: number } | null;
   runningJobId: string | null; canQuickImport: boolean; blockedBy: string | null;
   last: { at: string; checked?: number; added?: number } | null;
@@ -20,6 +24,8 @@ export type Kind = 'all' | 'Journals' | 'Articles' | 'Books';
 const FILTERS: [Kind, string][] = [['all', 'All'], ['Journals', 'Journals'], ['Articles', 'Articles'], ['Books', 'Books']];
 const GROUPS: SourceCard['group'][] = ['Journals', 'Articles', 'Books'];
 const ICON = { Journals: Library, Articles: FileText, Books: BookOpen };
+/** These journal sources have a Quick Import but no step-by-step preview yet; the button says so rather than opening something that cannot work. */
+const NO_WIZARD = new Set(['road', 'crossrefjournals', 'openalexsources']);
 
 /** What a card says about the source's state, and in what tone. Words as well as colour, so it never relies on colour alone. */
 function health(s: SourceCard): { label: string; tone: string; note: string | null } {
@@ -28,7 +34,9 @@ function health(s: SourceCard): { label: string; tone: string; note: string | nu
     case 'running': return { label: 'Running', tone: 'badge-accent', note: s.detail };
     case 'rate_limited': return { label: 'Rate limited', tone: 'badge-caution', note: at ? `retry ${at}` : 'retry later' };
     case 'cooling': return { label: 'Cooling down', tone: 'badge-caution', note: at ? `${s.detail ? `${s.detail} · ` : ''}retry ${at}` : s.detail };
-    case 'unavailable': return { label: 'Unavailable', tone: 'badge-alarm', note: s.detail };
+    case 'unavailable': return { label: 'Unavailable', tone: 'badge-alarm', note: at ? `retry ${at}` : s.detail };
+    case 'degraded': return { label: 'Degraded', tone: 'badge-caution', note: s.detail };
+    case 'not_connected': return { label: 'Not connected', tone: 'badge-neutral', note: s.detail };
     default: return { label: 'Healthy', tone: 'badge-success', note: null };
   }
 }
@@ -72,6 +80,7 @@ export function SourceCards({ sources, failed, onRetry, filter, onFilter, select
                       <span className="text-[14px] font-semibold text-ink">{s.label}</span>
                       {s.badge && <span className={`badge ${s.badge === 'Recommended' ? 'badge-accent' : 'badge-neutral'}`}>{s.badge}</span>}
                     </div>
+                    {s.role && <p className="mt-0.5 text-[11.5px] font-medium uppercase tracking-wide text-muted">{s.role}</p>}
                     <p className="mt-1 text-[12.5px] leading-relaxed text-ink-2">{s.description}</p>
 
                     <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
@@ -79,6 +88,14 @@ export function SourceCards({ sources, failed, onRetry, filter, onFilter, select
                       {h.note && <span>{h.note}</span>}
                       {s.id === 'ncbi' && s.quota && <span>{N(s.quota.archivesLeft)} of {N(s.quota.archivesPerDay)} daily archives left</span>}
                     </p>
+                    {/* Health and yield are different things: a source can be perfectly healthy and give nothing new. */}
+                    {(s.yield || (s.health && s.health.failures > 0) || s.lastBatch) && (
+                      <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
+                        {s.yield && <span className={`badge ${s.yield === 'productive' ? 'badge-success' : 'badge-neutral'}`}>{s.yield === 'productive' ? 'Productive' : s.yield === 'low' ? 'Low yield' : 'Exhausted for now'}</span>}
+                        {s.health && s.health.failures > 0 && <span>{s.health.failures} consecutive failure{s.health.failures === 1 ? '' : 's'}</span>}
+                        {s.lastBatch && <span>Last batch: {N(s.lastBatch.added)} added / {N(s.lastBatch.checked)} checked</span>}
+                      </p>
+                    )}
 
                     <div className="mt-3 flex flex-wrap gap-2 pt-1">
                       <Button size="sm" onClick={() => onQuick(s)} disabled={quickBlocked || starting !== null}
@@ -87,13 +104,14 @@ export function SourceCards({ sources, failed, onRetry, filter, onFilter, select
                         {s.state === 'running' && s.runningJobId ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Zap size={14} aria-hidden="true" />}
                         Quick Import
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => onConfigure(s)} aria-label={`Configure ${s.label}`} disabled={starting !== null}>
+                      <Button size="sm" variant="outline" onClick={() => onConfigure(s)} aria-label={`Configure ${s.label}`} disabled={starting !== null || NO_WIZARD.has(s.id)}
+                        title={NO_WIZARD.has(s.id) ? 'The step-by-step import is not available for this source yet. Quick Import runs the same review-first batch.' : undefined}>
                         <Settings2 size={14} aria-hidden="true" /> Configure
                       </Button>
                     </div>
                     {quickBlocked && (
                       <p className="mt-2 text-[12px] text-muted">
-                        Quick Import disabled{s.blockedBy ? ` — ${s.blockedBy}` : h.note ? ` — ${h.label.toLowerCase()}, ${h.note}` : ` — ${h.label.toLowerCase()}`}.
+                        Quick Import disabled{s.blockedBy ? ` — ${s.blockedBy}` : h.note ? ` — ${h.label.toLowerCase()}, ${h.note}` : ` — ${h.label.toLowerCase()}`}.{s.state === 'rate_limited' || s.state === 'cooling' || s.state === 'unavailable' ? ' Healthy sources carry on in the engine.' : ''}
                       </p>
                     )}
                   </li>

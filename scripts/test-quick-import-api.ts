@@ -69,8 +69,8 @@ try {
   section('The source cards');
   const src = await A('/api/admin/ingest/sources');
   const cards: any[] = src.data?.sources || [];
-  check('nine sources, grouped Journals / Articles / Books, in the approved order', src.status === 200 && cards.map(c => c.id).join() === 'doaj,crossref,openalex,europepmc,arxiv,doab,oapen,otl,ncbi' && cards.map(c => c.group).join() === 'Journals,Articles,Articles,Articles,Articles,Books,Books,Books,Books');
-  check('each carries its description, limit, confirmation and health', cards.every(c => c.description && c.limit > 0 && c.confirm && ['healthy', 'running', 'cooling', 'rate_limited', 'unavailable'].includes(c.state)));
+  check('twelve sources, grouped Journals / Articles / Books, in the approved order', src.status === 200 && cards.map(c => c.id).join() === 'doaj,road,crossrefjournals,openalexsources,crossref,openalex,europepmc,arxiv,doab,oapen,otl,ncbi' && cards.map(c => c.group).join() === 'Journals,Journals,Journals,Journals,Articles,Articles,Articles,Articles,Books,Books,Books,Books');
+  check('each carries its description, limit, confirmation and health', cards.every(c => c.description && c.limit > 0 && c.confirm && ['healthy', 'degraded', 'running', 'cooling', 'rate_limited', 'unavailable', 'not_connected'].includes(c.state)));
   check('the limit override reaches the card (Europe PMC = 12)', cards.find(c => c.id === 'europepmc').limit === 12);
 
   section('Starting one: validated, confirmed, bounded');

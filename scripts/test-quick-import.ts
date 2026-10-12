@@ -208,17 +208,20 @@ const JIDS = [JID(0), JID(1), JID(2)];
 section('Registry, limits and cards');
 {
   check('default limits are provider-specific', ['doaj', 'crossref', 'openalex', 'europepmc', 'arxiv', 'doab', 'oapen', 'otl', 'ncbi'].map(i => Q.quickLimit(i as any)).join() === '100,250,200,100,100,100,100,100,25');
+  check('the new journal sources default to 100 candidates', ['road', 'crossrefjournals', 'openalexsources'].map(i => Q.quickLimit(i as any)).join() === '100,100,100');
   process.env.QUICK_IMPORT_LIMIT_CROSSREF = '99999'; check('an override is held inside the ceiling', Q.quickLimit('crossref') === 1000);
   process.env.QUICK_IMPORT_LIMIT_CROSSREF = '40'; check('an override changes the default', Q.quickLimit('crossref') === 40);
   process.env.QUICK_IMPORT_LIMIT_CROSSREF = 'abc'; check('nonsense falls back to the default', Q.quickLimit('crossref') === 250);
   delete process.env.QUICK_IMPORT_LIMIT_CROSSREF;
   const cards = await Q.listQuickSources();
-  check('all nine approved sources are offered, grouped', cards.length === 9
-    && cards.filter((c: any) => c.group === 'Journals').map((c: any) => c.id).join() === 'doaj'
+  check('all twelve approved sources are offered, grouped', cards.length === 12
+    && cards.filter((c: any) => c.group === 'Journals').map((c: any) => c.id).join() === 'doaj,road,crossrefjournals,openalexsources'
     && cards.filter((c: any) => c.group === 'Articles').map((c: any) => c.id).join() === 'crossref,openalex,europepmc,arxiv'
     && cards.filter((c: any) => c.group === 'Books').map((c: any) => c.id).join() === 'doab,oapen,otl,ncbi');
   check('Crossref is Recommended, OpenAlex is Fallback', cards.find((c: any) => c.id === 'crossref').badge === 'Recommended' && cards.find((c: any) => c.id === 'openalex').badge === 'Fallback');
-  check('each card carries its confirmation text and a healthy state', cards.every((c: any) => /^(Import up to|Read up to) \d+ /.test(c.confirm) && c.state === 'healthy' && c.canQuickImport));
+  check('each card carries its confirmation text, and every connected source is healthy and importable', cards.every((c: any) => /^(Import up to|Read up to) \d+ /.test(c.confirm)) && cards.filter((c: any) => c.id !== 'road').every((c: any) => c.state === 'healthy' && c.canQuickImport));
+  const roadCard = cards.find((c: any) => c.id === 'road');
+  check('ROAD is shown honestly as not connected, and cannot be started', roadCard.state === 'not_connected' && roadCard.canQuickImport === false && /no public data interface/i.test(roadCard.detail || ''), JSON.stringify([roadCard.state, roadCard.detail]));
   check('the confirmation says existing records are not overwritten', cards.every((c: any) => /will not be overwritten/.test(c.confirm)));
   check('Crossref card reads exactly as specified', cards.find((c: any) => c.id === 'crossref').confirm === 'Import up to 250 new Crossref article candidates now? Existing records will not be overwritten.');
 }
@@ -312,7 +315,7 @@ section('C. OpenAlex: rate limited, and the cooldown is respected — never bypa
   openalex[IS[0]] = [oaItem(1, IS[0], { pdf: `https://files.example/${RUN}/ok.pdf` }), oaItem(2, IS[0])];
   // The engine's breaker has opened on HTTP 429.
   const until = new Date(Date.now() + 25 * 60_000);
-  await db.ingestionSourceHealth.upsert({ where: { source: 'OpenAlex' }, create: { source: 'OpenAlex', consecutiveFailures: 5, pausedUntil: until, lastError: 'OpenAlex answered HTTP 429' }, update: { consecutiveFailures: 5, pausedUntil: until, lastError: 'OpenAlex answered HTTP 429' } });
+  await db.ingestionSourceHealth.upsert({ where: { source: 'OpenAlex' }, create: { source: 'OpenAlex', consecutiveFailures: 0, pausedUntil: until, lastError: 'OpenAlex answered HTTP 429 (rate limited)' }, update: { consecutiveFailures: 0, pausedUntil: until, lastError: 'OpenAlex answered HTTP 429' } });
   const card = (await Q.listQuickSources()).find((c: any) => c.id === 'openalex');
   check('the card says Rate limited, with the time it is back', card.state === 'rate_limited' && !!card.until && Math.abs(new Date(card.until).getTime() - until.getTime()) < 1000);
   check('Quick Import is disabled on the card', card.canQuickImport === false);
@@ -327,7 +330,8 @@ section('C. OpenAlex: rate limited, and the cooldown is respected — never bypa
   modes.openalex = '429';
   const j = await run('openalex');
   check('a live 429 ends the run as rate limited, without writing', j.status === 'error' && j.error.code === 'RATE_LIMITED' && /^Source is temporarily rate limited/.test(j.error.message));
-  check('…and it fed the same breaker the engine uses', ((await db.ingestionSourceHealth.findUnique({ where: { source: 'OpenAlex' } }))?.consecutiveFailures ?? 0) >= 1);
+  const h429 = await db.ingestionSourceHealth.findUnique({ where: { source: 'OpenAlex' } });
+  check('…and it set the source aside on the same health row the engine reads, at once, without a failure strike', !!h429?.pausedUntil && h429.consecutiveFailures === 0 && /429/.test(h429.lastError || ''));
   check('…and logged that it did not run', !!(await db.ingestionRun.findFirst({ where: { source: 'OpenAlex', note: { startsWith: 'Manual · Quick Import' }, error: { not: null } } })));
   delete modes.openalex; await db.ingestionSourceHealth.deleteMany({});
 

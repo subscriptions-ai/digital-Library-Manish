@@ -1,5 +1,5 @@
 import { ingestionDb as db } from './db.js';
-import { INGESTION_POLICY, minutes } from './policy.js';
+import { INGESTION_POLICY, rotationConfig, minutes } from './policy.js';
 import { audit } from './audit.js';
 import https from 'node:https';
 import { Readable } from 'node:stream';
@@ -24,6 +24,10 @@ export type SourceResult = {
   paused?: boolean;
   /** A failure worth retrying later (network, 429, 5xx), as opposed to a permanent refusal. */
   transient?: boolean;
+  /** HTTP 429: the source asked us to slow down. Not retried; the source is set aside until `retryAt`. */
+  rateLimited?: boolean;
+  /** When a paused or rate-limited source may be asked again. */
+  retryAt?: Date | null;
   error?: string;
 };
 
@@ -80,6 +84,7 @@ export function sourceFor(url: string): string {
     if (h.endsWith('crossref.org')) return 'Crossref';
     if (h.endsWith('ebi.ac.uk')) return 'EuropePMC';
     if (h.endsWith('arxiv.org')) return 'arXiv';
+    if (h.endsWith('issn.org')) return 'ROAD';
     return h;
   } catch { return 'unknown'; }
 }
@@ -96,12 +101,9 @@ export async function sourceStatus(source: string): Promise<{ paused: boolean; u
  * manual import can never be more eager than the engine is allowed to be.
  */
 export async function sourceCooldown(source: string): Promise<{ state: 'ok' | 'rate_limited' | 'cooling' | 'failing'; until: Date | null; lastError: string | null; failures: number }> {
-  const row = await db.ingestionSourceHealth.findUnique({ where: { source } }).catch(() => null);
-  const until: Date | null = row?.pausedUntil ?? null;
-  const failures = row?.consecutiveFailures ?? 0;
-  const lastError: string | null = row?.lastError ?? null;
-  if (until && until.getTime() > Date.now()) return { state: /\b429\b/.test(lastError || '') ? 'rate_limited' : 'cooling', until, lastError, failures };
-  return { state: failures >= 3 ? 'failing' : 'ok', until: null, lastError, failures };
+  const h = await sourceHealthState(source);
+  if (h.until) return { state: h.health === 'rate_limited' ? 'rate_limited' : 'cooling', until: h.until, lastError: h.lastError, failures: h.failures };
+  return { state: h.failures >= h.threshold ? 'failing' : 'ok', until: null, lastError: h.lastError, failures: h.failures };
 }
 
 export async function recordSourceOk(source: string) {
@@ -113,19 +115,76 @@ export async function recordSourceOk(source: string) {
 
 export async function recordSourceFailure(source: string, error: string) {
   const cfg = INGESTION_POLICY.breaker;
+  // The third consecutive failure (INGESTION_FAILURES_BEFORE_FALLBACK) opens the breaker, not the fifth: the engine
+  // moves to the next source at that point instead of asking a failing one two more times.
+  const threshold = rotationConfig().failuresBeforeFallback;
   const row = await db.ingestionSourceHealth.upsert({
     where: { source }, create: { source, consecutiveFailures: 1, lastFailureAt: new Date(), lastError: error.slice(0, 500) },
     update: { consecutiveFailures: { increment: 1 }, lastFailureAt: new Date(), lastError: error.slice(0, 500) },
   }).catch(() => null);
   const n = row?.consecutiveFailures ?? 0;
-  if (n > 0 && n % cfg.failuresToOpen === 0) {
-    const level = Math.min(cfg.pauseMinutes.length - 1, n / cfg.failuresToOpen - 1);
+  // From the threshold on, every failed request rests the source again, one level longer each time: the first rest ends, the
+  // next request is the test, and if that fails too the source does not get two more free tries.
+  if (n >= threshold) {
+    const level = Math.min(cfg.pauseMinutes.length - 1, n - threshold);
     const until = new Date(Date.now() + minutes(cfg.pauseMinutes[level]));
     await db.ingestionSourceHealth.update({ where: { source }, data: { pausedUntil: until } }).catch(() => {});
     await audit(null, 'SOURCE_PAUSED', { source, consecutiveFailures: n, pausedUntil: until, lastError: error.slice(0, 200) });
     return { opened: true, until };
   }
   return { opened: false, until: null as Date | null };
+}
+
+/** `Retry-After` is either a number of seconds or an HTTP date. */
+export function parseRetryAfter(v: string | null | undefined, now = Date.now()): number | null {
+  if (!v) return null;
+  const n = Number(v);
+  if (Number.isFinite(n) && n >= 0) return n * 1000;
+  const t = Date.parse(v);
+  return Number.isFinite(t) ? Math.max(0, t - now) : null;
+}
+
+/**
+ * HTTP 429. Not a fault of the source and not a reason to ask again: the source is set aside until the time it asked for
+ * (bounded; a few minutes when it did not say), the engine hands the turn to the next source, and the failure count is
+ * left alone — being busy is not being broken.
+ */
+export async function recordRateLimited(source: string, retryAfterMs: number | null, error?: string): Promise<Date> {
+  const cfg = INGESTION_POLICY.breaker;
+  const ms = Math.min(minutes(cfg.rateLimitMaxMinutes), Math.max(minutes(cfg.rateLimitMinMinutes), retryAfterMs ?? minutes(cfg.rateLimitDefaultMinutes)));
+  const until = new Date(Date.now() + ms);
+  const msg = (error || `${source} answered HTTP 429 (rate limited)`).slice(0, 500);
+  await db.ingestionSourceHealth.upsert({
+    where: { source }, create: { source, pausedUntil: until, lastFailureAt: new Date(), lastError: msg },
+    update: { pausedUntil: until, lastFailureAt: new Date(), lastError: msg },
+  }).catch(() => {});
+  await audit(null, 'SOURCE_RATE_LIMITED', { source, retryAfterMs: retryAfterMs ?? null, pausedUntil: until });
+  return until;
+}
+
+export type Health = 'healthy' | 'degraded' | 'rate_limited' | 'cooling' | 'unavailable';
+
+/**
+ * How a source is behaving, from the one row everything writes (IngestionSourceHealth) — so a card, the engine and Quick
+ * Import cannot disagree.
+ *
+ *   healthy       no recent failure
+ *   degraded      failing, but not enough in a row to rest it yet (or resting is over and the next request is the test)
+ *   rate_limited  answered HTTP 429; resting until the time it gave
+ *   cooling       rested after repeated failures; retry is scheduled
+ *   unavailable   rested again and again: it has been down for a while
+ */
+export async function sourceHealthState(source: string) {
+  const row = await db.ingestionSourceHealth.findUnique({ where: { source } }).catch(() => null);
+  const threshold = rotationConfig().failuresBeforeFallback;
+  const failures: number = row?.consecutiveFailures ?? 0;
+  const until: Date | null = row?.pausedUntil && row.pausedUntil.getTime() > Date.now() ? row.pausedUntil : null;
+  const lastError: string | null = row?.lastError ?? null;
+  let health: Health = 'healthy';
+  // The last thing the source said decides how it reads: a 429 is "rate limited" whatever the count (older rows carry both), a long run of other failures is "unavailable".
+  if (until) health = /\b429\b/.test(lastError || '') ? 'rate_limited' : failures >= threshold * 2 ? 'unavailable' : 'cooling';
+  else if (failures > 0) health = 'degraded';
+  return { health, until, failures, threshold, lastError, lastOkAt: (row?.lastOkAt as Date | null) ?? null, lastFailureAt: (row?.lastFailureAt as Date | null) ?? null };
 }
 
 /**
@@ -138,7 +197,7 @@ export async function fetchSourceJson(
 ): Promise<SourceResult> {
   const source = opts.source || sourceFor(url);
   const st = await sourceStatus(source);
-  if (st.paused) return { ok: false, status: null, json: null, paused: true, transient: true, error: `${source} is paused after repeated failures; it will be tried again automatically` };
+  if (st.paused) return { ok: false, status: null, json: null, paused: true, transient: true, retryAt: st.until, error: `${source} is paused after repeated failures; it will be tried again automatically` };
 
   const attempts = Math.max(1, opts.attempts ?? 3);
   let last: SourceResult = { ok: false, status: null, json: null, transient: true, error: 'no attempt made' };
@@ -146,11 +205,17 @@ export async function fetchSourceJson(
     try {
       const r = await httpFetch(url, { headers: opts.headers, signal: AbortSignal.timeout(opts.timeoutMs ?? 120_000) }, opts.connectTimeoutMs);
       if (r.ok) { const json = opts.encoding ? new TextDecoder(opts.encoding).decode(await r.arrayBuffer()) : opts.text ? await r.text() : await r.json(); await recordSourceOk(source); return { ok: true, status: r.status, json }; }
-      const transient = r.status === 429 || r.status >= 500;
+      // HTTP 429 is answered once, here and now: read what the source asked for, set it aside until then, and hand back.
+      // Asking again two more times only to reach a failure count is what kept an already-limited source limited.
+      if (r.status === 429) {
+        const retryMs = parseRetryAfter(r.headers?.get?.('retry-after'));
+        const retryAt = await recordRateLimited(source, retryMs);
+        return { ok: false, status: 429, json: null, transient: true, rateLimited: true, retryAt, error: `${source} answered HTTP 429 (rate limited)` };
+      }
+      const transient = r.status >= 500;
       last = { ok: false, status: r.status, json: null, transient, error: `${source} answered HTTP ${r.status}` };
       if (!transient) return last;                                  // a permanent refusal: not the source's fault, not retried
-      const ra = Number(r.headers?.get?.('retry-after'));
-      if (i < attempts) await sleeper(Number.isFinite(ra) && ra > 0 ? Math.min(30_000, ra * 1000) : 1000 * 3 ** (i - 1));
+      if (i < attempts) await sleeper(1000 * 3 ** (i - 1));
     } catch (e: any) {
       last = { ok: false, status: null, json: null, transient: true, error: String(e?.message || e) };
       // A request that has already waited out its whole deadline is not worth repeating three times over.
