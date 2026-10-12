@@ -10,6 +10,7 @@ import { fillEmptyPatch } from './merge.js';
 import { FileChecker, type FileVerdict } from './fileCheck.js';
 import { licenceAllowsCommercialUse } from '../eligibility.js';
 import { tryLockProvider, unlockProvider, providerHolder } from '../providerLocks.js';
+import { bump, type DeptStats } from '../departmentStats.js';
 
 /**
  * Incremental OAI-PMH harvest of one book provider.
@@ -159,6 +160,11 @@ export type HarvestReport = {
   access: { FullText: number; OpenExternal: number; MetadataOnly: number };
   licences: Record<string, number>;
   added: number; queuedForReview: number; failed: number; firstError: string | null;
+  /**
+   * The department breakdown, counted as each book's fate is decided (see departmentStats.ts). '' is unassigned / needs review.
+   * Σ added = `added`, Σ sentToReview = `queuedForReview`, Σ failed = `failed`, Σ held = every kind of duplicate.
+   */
+  departmentStats: DeptStats;
   /** Held books given an empty licence from this provider, and held books whose licence this provider contradicts. */
   licenceFilled: number; licenceConflicts: number;
   /** Left out because the book did not land in one of this provider's departments. */
@@ -189,7 +195,7 @@ export function emptyReport(provider: string, dryRun: boolean): HarvestReport {
     duplicates: { doi: 0, isbn: 0, sourceRecordId: 0, fingerprint: 0, title: 0, inRun: 0 }, enriched: 0,
     department: { strong: 0, review: 0, none: 0, byDepartment: {}, suggestions: {} },
     access: { FullText: 0, OpenExternal: 0, MetadataOnly: 0 }, licences: {},
-    added: 0, queuedForReview: 0, failed: 0, firstError: null, completed: false, fullTextEligible: 0, licenceFilled: 0, licenceConflicts: 0, outsideScope: 0, deferred: null, ncbi: null,
+    added: 0, queuedForReview: 0, failed: 0, firstError: null, departmentStats: {}, completed: false, fullTextEligible: 0, licenceFilled: 0, licenceConflicts: 0, outsideScope: 0, deferred: null, ncbi: null,
     files: { checked: 0, opened: 0, refused: 0, reasons: {} }, resumedFrom: null, nextCursor: null,
     completeListSize: null, sourceError: null, sample: [],
   };
@@ -361,6 +367,20 @@ async function readCheckpoint(db: any, provider: string) {
   return db.bookHarvestCheckpoint.findUnique({ where: { provider } });
 }
 
+/**
+ * The department of each book already held that this page matched: the department it was published into, or unassigned
+ * ('') when it is itself waiting for review. Read from the held row now, so a book edited or moved since is counted where
+ * it is, not where it once was.
+ */
+async function heldDepartments(db: any, judged: Judged[]): Promise<Map<string, string>> {
+  const ids = [...new Set(judged.filter(j => j.match).map(j => j.match!.bookId))];
+  const out = new Map<string, string>();
+  if (!ids.length) return out;
+  const rows: any[] = await db.book.findMany({ where: { id: { in: ids } }, select: { id: true, status: true, domain: true } });
+  for (const r of rows) out.set(r.id, r.status === 'Published' && r.domain ? r.domain : '');
+  return out;
+}
+
 /** Fetch one page, returning the parsed page or a reason it could not be had. */
 export async function fetchPage(cfg: OaiProviderConfig, token: string | null, from: string | null) {
   const url = token
@@ -511,6 +531,7 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
   const now = opts.now ?? (() => new Date());
   const report = emptyReport(cfg.provider, dry);
   const seenInRun = new Set<string>();
+  const seenDept = new Map<string, string>();
   const checker = cfg.verifyFiles ? new FileChecker() : null;
 
   let cp = await readCheckpoint(db, cfg.provider);
@@ -560,6 +581,10 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
 
     const judged = await judgeBooks(cfg, page.books, db, checker);
     report.deleted += page.deleted; report.unusable += page.unusable;
+    // Records that were never books (deleted at the source, or unreadable) are skipped, with no department to put them in.
+    if (page.deleted + page.unusable) bump(report.departmentStats, '', 'skipped', page.deleted + page.unusable);
+    const heldDept = await heldDepartments(db, judged);
+    const stats: DeptStats = report.departmentStats;
 
     // Books already held come first: enriching what we have matters more than adding, and a capped run
     // must not spend its whole allowance on new books before reaching the matches.
@@ -567,8 +592,14 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
       const b = j.book;
       // The same book twice in one run (e.g. two records sharing a DOI) is a duplicate of the first.
       const keys = [b.doi && `doi:${b.doi}`, ...b.isbns.map(i => `isbn:${i}`), b.sourceRecordId && `id:${b.sourceRecordId}`].filter(Boolean) as string[];
-      if (!j.match && keys.some(k => seenInRun.has(k))) { report.duplicates.inRun++; continue; }
-      keys.forEach(k => seenInRun.add(k));
+      // Where this book will count: the held book's department, or — for a new one — the department it would be published into.
+      const here = j.match ? (heldDept.get(j.match.bookId) ?? '') : (j.verdict.band === 'strong' ? (j.verdict.department || '') : '');
+      if (!j.match && keys.some(k => seenInRun.has(k))) {
+        report.duplicates.inRun++;
+        bump(stats, seenDept.get(keys.find(k => seenInRun.has(k))!) ?? '', 'held');     // held by the first sighting, in that one's department
+        continue;
+      }
+      keys.forEach(k => { seenInRun.add(k); seenDept.set(k, here); });
 
       if (j.file) {
         report.files.checked++;
@@ -578,6 +609,7 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
 
       if (j.match) {
         report.duplicates[j.match.via]++;
+        bump(stats, heldDept.get(j.match.bookId) ?? '', 'held');
         // Identified by DOI, ISBN or the provider's id → fill what is empty. A title-only match is
         // a suggestion and the row is left exactly as it is.
         if (j.match.via !== 'title') {
@@ -619,15 +651,16 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
       // A clearly-classified book is catalogued. A plausible but unclear one becomes a non-public
       // Draft for a person to place, so it is not lost behind the checkpoint. No reliable match is
       // logged and nothing more: it is never given a department to make a number look better.
-      if (cfg.allowedDepartments && j.verdict.band !== 'none' && !(j.verdict.suggested && cfg.allowedDepartments.includes(j.verdict.suggested))) { report.outsideScope++; continue; }
-      if (j.verdict.band === 'none') continue;
-      if (dry) { j.verdict.band === 'strong' ? report.added++ : report.queuedForReview++; continue; }
+      if (cfg.allowedDepartments && j.verdict.band !== 'none' && !(j.verdict.suggested && cfg.allowedDepartments.includes(j.verdict.suggested))) { report.outsideScope++; bump(stats, here, 'skipped'); continue; }
+      if (j.verdict.band === 'none') { bump(stats, '', 'skipped'); continue; }
+      if (dry) { if (j.verdict.band === 'strong') { report.added++; bump(stats, here, 'added'); } else { report.queuedForReview++; bump(stats, '', 'sentToReview'); } continue; }
       if (opts.maxWrites != null && report.added + report.queuedForReview + report.enriched >= opts.maxWrites) continue;
       try {
         await db.book.create({ data: bookRow(j, cfg, j.verdict.band === 'strong' ? 'Published' : 'Draft') });
-        j.verdict.band === 'strong' ? report.added++ : report.queuedForReview++;
+        // Published: counted in the department it was published into. Waiting for review: unassigned, whatever it suggests.
+        if (j.verdict.band === 'strong') { report.added++; bump(stats, here, 'added'); } else { report.queuedForReview++; bump(stats, '', 'sentToReview'); }
       } catch (e: any) {
-        report.failed++; report.firstError ||= String(e?.message || e).slice(0, 300);
+        report.failed++; bump(stats, here, 'failed'); report.firstError ||= String(e?.message || e).slice(0, 300);
       }
     }
 
@@ -666,17 +699,30 @@ export const harvestOai = harvestFeed;
  * The engine's entry point. Returns null when there is nothing to do right now — a harvest is
  * already running, or the last one finished recently — so the pass can go on to other work.
  */
-export async function runScheduledHarvest(cfg: OaiProviderConfig, opts: HarvestOptions = {}): Promise<HarvestReport | null> {
+/**
+ * Is a pass over this provider due? (Nothing locked, nothing taken: the caller decides who holds the provider.)
+ *
+ * `waitForAfter` is the old rule that OAPEN, OTL and NCBI wait for DOAB's first full harvest, so what DOAB already holds is
+ * enriched rather than created twice. Under the fair rotation each provider takes its turn independently — a first DOAB harvest
+ * takes hundreds of turns, and a failing DOAB must never hold the others back — so the rotation passes false, and a book
+ * another provider created is simply found by the DOI, ISBN or id match when it arrives.
+ */
+export async function harvestDue(cfg: OaiProviderConfig, opts: HarvestOptions & { waitForAfter?: boolean } = {}): Promise<boolean> {
   const db = opts.db ?? ingestionDb;
-  if (providerHolder(cfg.provider)) return null;                  // someone — the timer, or an administrator's manual import — has it
-  // OAPEN waits for DOAB's first full harvest, so what DOAB already holds is enriched rather than created twice.
-  if (cfg.after) {
+  if (cfg.after && opts.waitForAfter !== false) {
     const prior = await readCheckpoint(db, cfg.after);
-    if (!prior?.lastSuccessfulSyncAt) return null;
+    if (!prior?.lastSuccessfulSyncAt) return false;
   }
   const cp = await readCheckpoint(db, cfg.provider);
   const now = (opts.now ?? (() => new Date()))();
-  if (!cp?.cursor && cp?.lastSuccessfulSyncAt && now.getTime() - cp.lastSuccessfulSyncAt.getTime() < (cfg.resyncMinutes ?? OAI_RESYNC_MINUTES) * 60_000) return null;
+  if (!cp?.cursor && cp?.lastSuccessfulSyncAt && now.getTime() - cp.lastSuccessfulSyncAt.getTime() < (cfg.resyncMinutes ?? OAI_RESYNC_MINUTES) * 60_000) return false;
+  return true;
+}
+
+export async function runScheduledHarvest(cfg: OaiProviderConfig, opts: HarvestOptions = {}): Promise<HarvestReport | null> {
+  const db = opts.db ?? ingestionDb;
+  if (providerHolder(cfg.provider)) return null;                  // someone — the timer, or an administrator's manual import — has it
+  if (!(await harvestDue(cfg, { ...opts, db }))) return null;
   if (!tryLockProvider(cfg.provider, 'continuous')) return null;
   try { return await harvestFeed(cfg, opts); } finally { unlockProvider(cfg.provider, 'continuous'); }
 }

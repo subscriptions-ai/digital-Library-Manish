@@ -6,8 +6,8 @@ import { N } from './format';
 const MODES = [
   ['auto', 'Everything', 'Journals, books and articles in rotation — right for keeping the catalogue up to date.'],
   ['books', 'Books', 'Every pass reads from the DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf catalogue feeds, from where each last stopped.'],
-  ['journals', 'Journals', 'Every pass reads 100 journals from DOAJ and decides each licence.'],
-  ['articles', 'Articles', 'Every pass fills one journal from OpenAlex.'],
+  ['journals', 'Journals', 'Every pass takes a turn of journal sources, DOAJ first, with the others as fallbacks.'],
+  ['articles', 'Articles', 'Every pass takes a turn of article sources, Crossref first.'],
 ] as const;
 
 export function EngineMode({ state, coverage, onChanged }: { state: any; coverage: any[]; onChanged: () => void }) {
@@ -40,7 +40,9 @@ export function EngineMode({ state, coverage, onChanged }: { state: any; coverag
       </div>
       <p className="mt-3 text-[13px] leading-relaxed text-muted">
         {focus === 'auto'
-          ? 'One pass a minute, shared out: one in five looks for new titles, the rest fetch articles.'
+          ? (state.status?.rotation?.enabled
+            ? `One turn a minute, taken fairly: Journals, then Articles, then Books, and round again. Each turn checks up to ${N(state.status.rotation.batchSize)} candidates from one source; a source that cannot be asked is stepped over, never waited for.`
+            : 'One pass a minute, shared out: one in five looks for new titles, the rest fetch articles.')
           : `Every pass will do ${MODES.find(m => m[0] === focus)?.[1].toLowerCase()} and nothing else, one a minute, for as long as the engine is running. It keeps going with this screen closed. Set it back to Everything when you are done.`}
       </p>
       {nothingLeft && (

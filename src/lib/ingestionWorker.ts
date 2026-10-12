@@ -14,7 +14,7 @@
  * accepted journal was refreshed longest ago.
  */
 import { ingestionDb } from './ingestion/db.js';
-import { fetchSourceJson } from './ingestion/sourceHealth.js';
+import { fetchSourceJson, type SourceResult } from './ingestion/sourceHealth.js';
 import { claimJournal, claimSweepRow, releaseClaim } from './ingestion/claims.js';
 import {
   INGESTION_POLICY, schedulerV2, noChangeCooldownMinutes, failureBackoffMinutes, minutes, days,
@@ -23,6 +23,7 @@ import { judgeArticle, licenceAllowsCommercialUse } from './ingestion/eligibilit
 import { runScheduledHarvest, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED } from './ingestion/books/oaiHarvest.js';
 import { findHeldArticles, findPossibleDuplicates, canonicalFingerprint, normaliseDoi } from './ingestion/dedup.js';
 import { tryLockProvider, unlockProvider } from './ingestion/providerLocks.js';
+import { readCursor, writeCursor, type CursorProvider } from './ingestion/journalCursor.js';
 
 /** The worker's connection, shared with the catalogue import and the safety services. */
 const p = ingestionDb;
@@ -82,7 +83,7 @@ export function normaliseIssn(raw?: string | null): string | null {
 }
 
 /** BOOKS_OAI=0 puts DOAB back on keyword sweeps. On by default. */
-const booksOai = () => process.env.BOOKS_OAI !== '0';
+export const booksOai = () => process.env.BOOKS_OAI !== '0';
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -110,7 +111,7 @@ export async function getState() {
  * and a sweep that ran out is only reopened a month later, because DOAJ and DOAB
  * both grow and a department that was complete in March is not complete in June.
  */
-async function claimSweep(source: string, departments: string[]) {
+export async function claimSweep(source: string, departments: string[]) {
   const wanted: { department: string; term: string }[] = [];
   for (const dep of departments) for (const term of searchTermsFor(dep)) wanted.push({ department: dep, term });
 
@@ -153,7 +154,7 @@ async function claimSweep(source: string, departments: string[]) {
 }
 
 /** Record where a sweep got to. A short page means the source has no more today. */
-async function closeSweep(sweep: any, r: { seen: number; accepted: number; rejected: number }, nextPosition: number, full: boolean) {
+export async function closeSweep(sweep: any, r: { seen: number; accepted: number; rejected: number }, nextPosition: number, full: boolean) {
   await p.departmentSweep.update({
     where: { id: sweep.id },
     data: {
@@ -201,23 +202,44 @@ function refreshPatch(existing: any, incoming: any) {
   return patch;
 }
 
-/** One page of DOAJ journals for one department term; each title's licence decided here. */
+/** DOAJ's search API will not return anything past its first 1,000 results (page 10 at 100 a page). */
+const DOAJ_MAX_PAGE = 10;
+
+/**
+ * One page of DOAJ journals for one department term; each title's licence decided here.
+ *
+ * It tells apart what "no page" can mean, because they are not the same and used to be reported as one thing:
+ *   · the source did not answer (network, 5xx, timeout, 429, or resting after repeated failures) → `failed`, with the reason.
+ *     The failure is already on the source's health row (fetchSourceJson put it there); the sweep is left exactly where it was.
+ *   · the source answered and refused this request (a 4xx that is not 429) → `refused`. That is not the source being down and
+ *     must not count against it, but it must not be asked again every pass either: the sweep moves to the back of the queue.
+ */
 async function discoverJournalsPage(sweep: any) {
   const page = sweep.position + 1;          // DOAJ counts pages from one
-  const d = await getJson(
-    `https://doaj.org/api/search/journals/${encodeURIComponent(sweep.term)}`
-    + `?pageSize=${DOAJ_PAGE}&page=${page}`);
+  const r = { seen: 0, accepted: 0, rejected: 0, created: 0, enriched: 0 };
+
+  // Past the 1,000th result there is nothing to ask for: the sweep has reached the end of what the search can give.
+  if (page > DOAJ_MAX_PAGE) {
+    await closeSweep(sweep, r, sweep.position, false);
+    return { ...r, more: false, total: null };
+  }
+
+  const res: SourceResult = await fetchSourceJson(
+    `https://doaj.org/api/search/journals/${encodeURIComponent(sweep.term)}?pageSize=${DOAJ_PAGE}&page=${page}`,
+    { headers: UA, timeoutMs: 120_000, attempts: schedulerV2() ? 3 : 1 });
+  const d = res.ok ? res.json : null;
+
+  if (!res.ok && schedulerV2()) {
+    await releaseClaim('departmentSweep', sweep.id);
+    if (res.status && res.status < 500 && res.status !== 429) {
+      // Refused, not down. Rotate this sweep to the back so one bad search cannot be the only thing asked for.
+      await p.departmentSweep.update({ where: { id: sweep.id }, data: { lastSweptAt: new Date() } }).catch(() => {});
+      return { ...r, more: false, total: null, refused: true as const, status: res.status, error: res.error || `HTTP ${res.status}` };
+    }
+    return { ...r, more: false, total: null, failed: true as const, status: res.status ?? null, rateLimited: !!res.rateLimited, error: res.error || 'DOAJ did not answer' };
+  }
 
   const records: any[] = d?.results || [];
-  const r = { seen: 0, accepted: 0, rejected: 0 };
-
-  // No answer is not "no more results". Closing the sweep here marked it exhausted and reset its
-  // position to the start, so one DOAJ hiccup parked a department for a month. Leave it exactly where
-  // it was and say so.
-  if (d === null && schedulerV2()) {
-    await releaseClaim('departmentSweep', sweep.id);
-    return { ...r, more: false, total: null, failed: true as const };
-  }
   if (!records.length) {
     await closeSweep(sweep, r, sweep.position, false);
     return { ...r, more: false, total: d?.total ?? null };
@@ -266,7 +288,7 @@ async function discoverJournalsPage(sweep: any) {
         // licence came from DOAJ in the first place.
         if (issn) {
           const patch = refreshPatch(existing, data);
-          if (Object.keys(patch).length) await p.journal.update({ where: { id: existing.id }, data: patch });
+          if (Object.keys(patch).length) { await p.journal.update({ where: { id: existing.id }, data: patch }); r.enriched++; }
         }
       } else {
         // Nor move a journal another department already claimed; several terms
@@ -276,6 +298,7 @@ async function discoverJournalsPage(sweep: any) {
       }
     } else {
       await p.journal.create({ data });
+      r.created++;
     }
     ok ? r.accepted++ : r.rejected++;
   }
@@ -284,6 +307,8 @@ async function discoverJournalsPage(sweep: any) {
   await closeSweep(sweep, r, sweep.position + 1, full);
   return { ...r, more: full, total: d?.total ?? null };
 }
+
+export { discoverJournalsPage };
 
 // ── Books ────────────────────────────────────────────────────────────────────
 
@@ -376,7 +401,7 @@ function doabFields(rec: any) {
  * exactly what the reader gets, and the licence prose is recorded for what it is
  * rather than used as permission to serve anything.
  */
-async function discoverBooksPage(sweep: any) {
+export async function discoverBooksPage(sweep: any) {
   const r = { seen: 0, accepted: 0, rejected: 0 };
   let added = 0, skippedHeld = 0, skippedFailed = 0;
   let firstFailure: string | null = null;
@@ -526,7 +551,7 @@ export async function nextJournalForArticles(departments?: string[], cap = 0) {
  * one of them gets it. A journal cooling down after a visit that gave nothing is not a candidate until
  * its time comes; neither is one whose claim is fresh.
  */
-async function pickJournal(departments: string[] | undefined, cap: number, v2: boolean): Promise<{ journal: any; recovered: boolean } | null> {
+export async function pickJournal(departments: string[] | undefined, cap: number, v2: boolean): Promise<{ journal: any; recovered: boolean } | null> {
   // A journal that already holds its share is finished, not merely resting.
   const inScope = {
     ...(departments?.length ? { domain: { in: departments } } : {}),
@@ -619,7 +644,7 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
   }
 }
 
-async function visitJournal(journal: any, state: any, cap: number, v2: boolean, recovered: boolean) {
+export async function visitJournal(journal: any, state: any, cap: number, v2: boolean, recovered: boolean, opts: { rowsBudget?: number } = {}) {
   const policy = INGESTION_POLICY;
   const now = () => new Date();
   const fromYear = new Date().getFullYear() - (state.yearsBack - 1);
@@ -634,10 +659,12 @@ async function visitJournal(journal: any, state: any, cap: number, v2: boolean, 
   const perPage = cap > 0
     ? (v2 ? Math.min(policy.articles.pageMax, Math.max(remaining, policy.articles.pageMin)) : Math.min(200, Math.max(1, cap - have)))
     : Math.min(state.batchSize, 200);
+  // A rotation turn looks at a bounded number of candidates; the page asked for never exceeds what is left of that budget.
+  const pageSize = opts.rowsBudget ? Math.max(10, Math.min(perPage, opts.rowsBudget)) : perPage;
 
   // The cursor is the whole point. Without it this asked for the same first page every pass.
-  const cursor = journal.fetchCursor || '*';
-  const url = openAlexJournalUrl(journal.issn, fromYear, perPage, cursor);
+  const cursor = readCursor(journal.fetchCursor, 'openalex') || '*';
+  const url = openAlexJournalUrl(journal.issn, fromYear, pageSize, cursor);
 
   const res = await fetchSourceJson(url, { headers: UA, attempts: v2 ? 3 : 1 });
 
@@ -648,19 +675,19 @@ async function visitJournal(journal: any, state: any, cap: number, v2: boolean, 
       await p.journal.update({ where: { id: journal.id }, data: { lastIngestedAt: now(), fetchCursor: null } });
       return { journal: journal.title, department: journal.domain, added: 0, skipped: 0, note: 'the source did not answer' };
     }
-    if (res.paused) {
+    if (res.paused || res.rateLimited) {
       // Not this journal's doing: leave it exactly as it was, and say the source is resting.
-      return { journal: null, department: journal.domain, added: 0, skipped: 0, note: `OpenAlex is temporarily paused after repeated failures — ${res.error}` } as any;
+      return { journal: null, department: journal.domain, added: 0, skipped: 0, checked: 0, providerFailure: { paused: !!res.paused, rateLimited: !!res.rateLimited, status: res.status ?? null, error: res.error || 'OpenAlex is resting' }, note: `OpenAlex is resting — ${res.error}` } as any;
     }
     // A cursor the source refuses (HTTP 400) is the one failure that justifies starting over. Anything else
     // — the source down, rate limiting, a timeout — keeps the cursor: dropping it here is how a journal that
     // was part-way through came to be re-walked from its newest record.
-    const badCursor = res.status === 400 && !!journal.fetchCursor;
+    const badCursor = res.status === 400 && !!readCursor(journal.fetchCursor, 'openalex');
     const failures = badCursor ? journal.failureCount || 0 : (journal.failureCount || 0) + 1;
     await p.journal.update({
       where: { id: journal.id },
       data: {
-        fetchCursor: badCursor ? null : journal.fetchCursor,
+        fetchCursor: badCursor ? writeCursor(journal.fetchCursor, 'openalex', null) : journal.fetchCursor,
         failureCount: failures,
         lastIngestionStatus: 'failed',
         nextEligibleAt: badCursor ? null : new Date(Date.now() + minutes(failureBackoffMinutes(failures))),
@@ -668,8 +695,9 @@ async function visitJournal(journal: any, state: any, cap: number, v2: boolean, 
       },
     });
     return {
-      journal: journal.title, department: journal.domain, journalId: journal.id, added: 0, skipped: 0,
+      journal: journal.title, department: journal.domain, journalId: journal.id, added: 0, skipped: 0, checked: 0,
       error: badCursor ? 'the source rejected the saved cursor; starting this journal over' : (res.error || 'the source did not answer'),
+      providerFailure: badCursor ? undefined : { paused: false, rateLimited: false, status: res.status ?? null, error: res.error || 'the source did not answer' },
       note: badCursor ? undefined : `will retry after ${failureBackoffMinutes(failures)} min`,
     };
   }
@@ -683,14 +711,14 @@ async function visitJournal(journal: any, state: any, cap: number, v2: boolean, 
     await p.journal.update({
       where: { id: journal.id },
       data: {
-        lastIngestedAt: now(), fetchCursor: null, exhaustedAt: now(),
+        lastIngestedAt: now(), fetchCursor: writeCursor(journal.fetchCursor, 'openalex', null), exhaustedAt: now(),
         // Start again from the top next week so newly published work is picked up — a time, never a verdict.
         nextEligibleAt: new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
         noChangeCount: (journal.noChangeCount || 0) + 1, failureCount: 0, lastIngestionStatus: 'exhausted',
         claimedAt: null, claimedBy: null,
       },
     });
-    return { journal: journal.title, department: journal.domain, journalId: journal.id, added: 0, skipped: 0, note: 'nothing new in this journal' };
+    return { journal: journal.title, department: journal.domain, journalId: journal.id, added: 0, skipped: 0, checked: 0, note: 'nothing new in this journal' };
   }
 
   // ── Judge every record with the one shared rule set, then write the ones that pass ─────────────
@@ -761,6 +789,40 @@ async function visitJournal(journal: any, state: any, cap: number, v2: boolean, 
     }
   }
 
+  const fin = await finishJournalVisit(journal, cap, v2, { added, needsReview, next, provider: 'openalex' });
+
+  return {
+    journal: journal.title,
+    department: journal.domain,
+    journalId: journal.id,
+    checked: results.length,
+    added,
+    skippedHeld,
+    skippedFailed,
+    skippedRejected,
+    needsReview,
+    skipped: skippedHeld + skippedFailed,   // kept so existing callers still read
+    more: Boolean(next) && !fin.full,
+    error: firstFailure,
+    note: [
+      recovered ? 'took over an abandoned claim' : null,
+      fin.full ? `holds ${fin.articles} articles, the limit set` : next ? undefined : 'reached the end of this journal',
+      !fin.full && !fin.gained && next ? `nothing new on this page; resting ${noChangeCooldownMinutes(fin.noChange)} min` : null,
+    ].filter(Boolean).join(' · ') || undefined,
+  };
+}
+
+/**
+ * What a journal's row says after a visit by any article source: its coverage counts, where THAT source got to, and when it is
+ * next due. One helper so every source treats a journal the same way. The cursor written is the visiting source's own; the
+ * others' places are left exactly as they were.
+ */
+export async function finishJournalVisit(
+  journal: any, cap: number, v2: boolean,
+  r: { added: number; needsReview: number; next: string | null; provider: CursorProvider },
+) {
+  const policy = INGESTION_POLICY;
+  const now = () => new Date();
   // Refresh this journal's coverage so its page never computes counts live.
   const agg = await p.$queryRawUnsafe(
     `select count(*)::int a, count(distinct volume)::int v, count(distinct issue)::int i,
@@ -768,9 +830,11 @@ async function visitJournal(journal: any, state: any, cap: number, v2: boolean, 
   const s = agg[0];
 
   // Where to resume, and when to come back.
+  const { added, needsReview, next, provider } = r;
   const full = cap > 0 && s.a >= cap;
   const gained = added + needsReview > 0;
   const noChange = (journal.noChangeCount || 0) + 1;
+  const place = (v: string | null) => writeCursor(journal.fetchCursor, provider, v);
   const data: any = {
     articleCount: s.a, volumeCount: s.v, issueCount: s.i, firstYear: s.f, lastYear: s.l,
     lastIngestedAt: now(), failureCount: 0, claimedAt: null, claimedBy: null,
@@ -778,51 +842,33 @@ async function visitJournal(journal: any, state: any, cap: number, v2: boolean, 
 
   if (full) {
     // Finished for now: at its limit. (If the limit is raised later it simply becomes a candidate again.)
-    Object.assign(data, { fetchCursor: null, exhaustedAt: now(), nextEligibleAt: null, noChangeCount: 0, lastIngestionStatus: 'full' });
+    Object.assign(data, { fetchCursor: place(null), exhaustedAt: now(), nextEligibleAt: null, noChangeCount: 0, lastIngestionStatus: 'full' });
   } else if (gained) {
     // Gave something, so back to the normal rotation. At the end of the journal, the weekly look for new work.
     Object.assign(data, {
-      fetchCursor: next, exhaustedAt: next ? null : now(),
+      fetchCursor: place(next), exhaustedAt: next ? null : now(),
       nextEligibleAt: next ? null : new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
       noChangeCount: 0, lastIngestionStatus: 'added',
     });
   } else if (!next) {
     // Read to the end and nothing new: look again next week, never sooner.
     Object.assign(data, {
-      fetchCursor: null, exhaustedAt: now(), nextEligibleAt: new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
+      fetchCursor: place(null), exhaustedAt: now(), nextEligibleAt: new Date(Date.now() + days(policy.cooldown.exhaustedDays)),
       noChangeCount: noChange, lastIngestionStatus: 'exhausted',
     });
   } else {
     // A whole page held and more behind it: it is part-way through its own past. Carry on from the cursor, but
     // after a pause that lengthens the longer this goes on — the engine moves to another journal meanwhile.
     Object.assign(data, {
-      fetchCursor: next, exhaustedAt: null, noChangeCount: noChange, lastIngestionStatus: 'nochange',
+      fetchCursor: place(next), exhaustedAt: null, noChangeCount: noChange, lastIngestionStatus: 'nochange',
       nextEligibleAt: new Date(Date.now() + minutes(noChangeCooldownMinutes(noChange))),
     });
   }
   if (!v2) { delete data.nextEligibleAt; delete data.noChangeCount; delete data.lastIngestionStatus; delete data.failureCount; delete data.claimedAt; delete data.claimedBy;
-    data.fetchCursor = full ? null : next; data.exhaustedAt = next && !full ? null : new Date(); }
+    data.fetchCursor = place(full ? null : next); data.exhaustedAt = next && !full ? null : new Date(); }
 
   await p.journal.update({ where: { id: journal.id }, data });
-
-  return {
-    journal: journal.title,
-    department: journal.domain,
-    journalId: journal.id,
-    added,
-    skippedHeld,
-    skippedFailed,
-    skippedRejected,
-    needsReview,
-    skipped: skippedHeld + skippedFailed,   // kept so existing callers still read
-    more: Boolean(next) && !full,
-    error: firstFailure,
-    note: [
-      recovered ? 'took over an abandoned claim' : null,
-      full ? `holds ${s.a} articles, the limit set` : next ? undefined : 'reached the end of this journal',
-      !full && !gained && next ? `nothing new on this page; resting ${noChangeCooldownMinutes(noChange)} min` : null,
-    ].filter(Boolean).join(' · ') || undefined,
-  };
+  return { full, gained, noChange, articles: s.a as number };
 }
 
 /**

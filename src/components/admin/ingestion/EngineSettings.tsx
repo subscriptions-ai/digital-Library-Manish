@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { Lock } from 'lucide-react';
 import { Button, Field } from '../../ui';
 import { api } from './api';
+import { N } from './format';
 
 const FIELDS = [
   { key: 'yearsBack', label: 'Years to collect', help: 'Only material published within this many years is collected.' },
@@ -18,6 +19,7 @@ const FIELDS = [
 export function EngineSettings({ state, onChanged }: { state: any; onChanged: () => void }) {
   const running = !!state.enabled;
   const limits = state.limits || {};
+  const rotation = state.status?.rotation;
   const saved = (k: string) => String(state[k] ?? '');
   const [draft, setDraft] = useState<Record<string, string>>(() => Object.fromEntries(FIELDS.map(f => [f.key, saved(f.key)])));
   const [dirty, setDirty] = useState(false);
@@ -52,7 +54,11 @@ export function EngineSettings({ state, onChanged }: { state: any; onChanged: ()
       {running && <p role="note" className="mt-2 text-[13px] text-ink-2">Pause the engine to edit ingestion settings.</p>}
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {FIELDS.map(f => (
-          <Field key={f.key} label={f.label} help={f.help} error={dirty ? errorFor(f.key) : null}>
+          <Field key={f.key} label={f.label} help={rotation?.enabled && f.key === 'discoverEvery'
+            ? 'Not used while the rotation is on: Everything mode already gives Journals, Articles and Books a turn each.'
+            : rotation?.enabled && f.key === 'batchSize'
+              ? `Only when a journal has no limit: the most articles asked for in one request. Each turn checks up to ${N(rotation.batchSize)} candidates.`
+              : f.help} error={dirty ? errorFor(f.key) : null}>
             <input className="input tabular-nums" inputMode="numeric" value={draft[f.key]} disabled={running || saving}
               onChange={e => { setDraft(d => ({ ...d, [f.key]: e.target.value })); setDirty(true); }} />
           </Field>

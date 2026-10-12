@@ -114,12 +114,25 @@ export type RunFilter = {
 const PHASES: Record<string, string> = { articles: 'Articles', books: 'Books', journals: 'Journals' };
 export const normalisePhase = (v: unknown) => (typeof v === 'string' ? PHASES[v.toLowerCase()] || null : null);
 
-/** The "Failed" test, one place, used by the list's Failed filter and by the summary's Failed runs figure. */
-export const FAILED_RUN_SQL = `(r."skippedFailed" > 0 or r.error is not null or r.phase = 'Error')`;
+/**
+ * A request to a source that did not get an answer: the source down, timing out, rate limited, or resting. It says something about
+ * the SOURCE, not about what was written to the catalogue, so it is counted apart from failed runs — one outage, retried and
+ * switched away from, must not look like hundreds of catalogue failures. New rows are marked with the "Provider request failed"
+ * prefix; older rows are recognised by the words the engine used for the same thing.
+ */
+export const PROVIDER_FAILURE_SQL =
+  `(r.error is not null and r."skippedFailed" = 0 and (r.error like 'Provider request failed%' or r.error ~* '(did not answer|answered http|fetch failed|timed? ?out|aborted|paused after repeated|rate.?limit|econn|enotfound|etimedout|socket hang up|stopped answering|is resting)'))`;
 
 /**
- * SQL conditions over `"IngestionRun" r left join "Journal" j on j.id = r."journalId"`. Values go in `params`, never into the text.
+ * The "Failed" test, one place, used by the list's Failed filter and by the summary's Failed runs figure: a run that failed to
+ * write, errored inside the engine, or was an engine error. A source that did not answer is PROVIDER_FAILURE_SQL, not this.
+ */
+export const FAILED_RUN_SQL = `(r."skippedFailed" > 0 or r.phase = 'Error' or (r.error is not null and not ${PROVIDER_FAILURE_SQL}))`;
+
+/**
+ * SQL conditions over a run set (RUN_LEVEL or RUN_BY_DEPARTMENT, both aliased `r`). Values go in `params`, never into the text.
  * An unknown phase or result is ignored (as the list always did); an unknown source simply matches nothing.
+ * `department` is only meaningful over RUN_BY_DEPARTMENT, where `r.dept` is the department each row belongs to.
  */
 export function runConditions(f: RunFilter, params: any[]): string[] {
   const out: string[] = []; const p = (v: any) => { params.push(v); return `$${params.length}`; };
@@ -132,7 +145,7 @@ export function runConditions(f: RunFilter, params: any[]): string[] {
   const phase = normalisePhase(f.phase);
   if (phase) out.push(`r.phase = ${p(phase)}`);
   if (f.source) out.push(`r.source = ${p(f.source)}`);
-  if (f.department) out.push(`coalesce(r.department, j.domain) = ${p(f.department)}`);
+  if (f.department) out.push(`r.dept = ${p(f.department)}`);
   if (f.start) out.push(`r."at" >= ${at(f.start)}`);          // inclusive: 00:00:00.000 IST of the first day
   if (f.end) out.push(`r."at" < ${at(f.end)}`);               // exclusive: 00:00:00.000 IST of the day after the last
   if (f.before) {
@@ -144,6 +157,7 @@ export function runConditions(f: RunFilter, params: any[]): string[] {
     case 'added':   out.push(`(r.added > 0 or r."journalsAccepted" > 0)`); break;
     case 'held':    out.push(`r."skippedHeld" > 0`); break;
     case 'failed':  out.push(FAILED_RUN_SQL); break;
+    case 'provider': out.push(PROVIDER_FAILURE_SQL); break;
     // Skipped: the pass wrote nothing and nothing failed — a rule refused records, they await review, or there was nothing to do.
     case 'skipped': out.push(`(r.added = 0 and r."skippedHeld" = 0 and r."skippedFailed" = 0 and r."journalsAccepted" = 0 and r.error is null)`,
                              `(r."skippedRejected" > 0 or r."needsReview" > 0 or r.phase = 'Idle' or r.note is not null)`); break;
@@ -151,4 +165,32 @@ export function runConditions(f: RunFilter, params: any[]): string[] {
   return out;
 }
 
-export const RUN_FROM = `"IngestionRun" r left join "Journal" j on j.id = r."journalId"`;
+/** One row per run. What "All departments" is made of: a run counts once, whatever departments it touched. */
+export const RUN_LEVEL = `"IngestionRun" r`;
+
+/**
+ * One row per run per department — the rows a department is made of.
+ *
+ *   · A run that recorded a department breakdown (IngestionRunDepartmentStat) contributes one row for each department it touched,
+ *     carrying THAT department's counts. department '' is unassigned / needs review: a book waiting for a person, which belongs to
+ *     no department yet and is never counted as one.
+ *   · A run with no breakdown — every run from before the breakdown existed, journal discovery, article visits — contributes one
+ *     row, in the department it names or, for an article visit, the department of the journal it visited. If it names neither,
+ *     `dept` is null: its department was not recorded, and it stays that way.
+ *
+ * Same column names as the run itself, so the same conditions and sums apply to either set.
+ */
+export const RUN_BY_DEPARTMENT = `(
+  select r.id, r."at", r.phase, r.source, s.department as dept, r."journalId", r."journalTitle", r.department,
+         s.added, s.held as "skippedHeld", s.failed as "skippedFailed", s.skipped as "skippedRejected", s."sentToReview" as "needsReview",
+         0 as "journalsSeen", 0 as "journalsAccepted", 0 as "journalsRefused", r."durationMs", r.more, r.note, r.error,
+         true as "hasBreakdown", r.added as "runAdded", r."skippedHeld" as "runHeld", r."needsReview" as "runReview"
+    from "IngestionRun" r join "IngestionRunDepartmentStat" s on s."runId" = r.id
+  union all
+  select r.id, r."at", r.phase, r.source, coalesce(r.department, j.domain) as dept, r."journalId", r."journalTitle", r.department,
+         r.added, r."skippedHeld", r."skippedFailed", r."skippedRejected", r."needsReview",
+         r."journalsSeen", r."journalsAccepted", r."journalsRefused", r."durationMs", r.more, r.note, r.error,
+         false as "hasBreakdown", r.added as "runAdded", r."skippedHeld" as "runHeld", r."needsReview" as "runReview"
+    from "IngestionRun" r left join "Journal" j on j.id = r."journalId"
+   where not exists (select 1 from "IngestionRunDepartmentStat" s where s."runId" = r.id)
+) r`;

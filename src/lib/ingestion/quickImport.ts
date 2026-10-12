@@ -2,8 +2,14 @@ import { ingestionDb as db } from './db.js';
 import { audit } from './audit.js';
 import { INGESTION_POLICY } from './policy.js';
 import { tryLockProvider, unlockProvider, providerHolder } from './providerLocks.js';
-import { fetchSourceJson, sourceCooldown } from './sourceHealth.js';
-import { classifyCandidates, writeClassified, type Candidate, type Classified } from './importService.js';
+import { fetchSourceJson, sourceCooldown, sourceHealthState } from './sourceHealth.js';
+import { type Candidate } from './importService.js';
+import { judgeVerifyWrite } from './articlePipeline.js';
+import { createRunWithStats, runColumnsFromStats, totals, bump, type DeptStats } from './departmentStats.js';
+import { fetchCrossrefJournals, fetchOpenAlexSources, writeJournalCandidates, type JournalPage } from './journalSources.js';
+import { rotationStatus, getProviders } from './rotation.js';
+import { searchTermsFor } from '../ingestionWorker.js';
+import { ensureProviders, getRoadAdapter } from './engine.js';
 import {
   SourceError, articlePause, checkFiles, fetchArxiv, fetchCrossrefForJournal, fetchEuropePmc, fetchOpenAlexForJournal, type RawCandidate,
 } from './articleSources.js';
@@ -35,7 +41,7 @@ import { DOMAINS } from '../../constants.js';
  * engine, and a second click on the same source is refused rather than run in parallel.
  */
 
-export type QuickId = 'doaj' | 'crossref' | 'openalex' | 'europepmc' | 'arxiv' | 'doab' | 'oapen' | 'otl' | 'ncbi';
+export type QuickId = 'doaj' | 'road' | 'crossrefjournals' | 'openalexsources' | 'crossref' | 'openalex' | 'europepmc' | 'arxiv' | 'doab' | 'oapen' | 'otl' | 'ncbi';
 export type QuickGroup = 'Journals' | 'Articles' | 'Books';
 
 export type QuickCode = 'BUSY' | 'UNAVAILABLE' | 'RATE_LIMITED' | 'INVALID_RESPONSE' | 'QUOTA' | 'FAILED';
@@ -65,7 +71,9 @@ export type QuickOutcome = {
   /** The run ended early for a reason that is not a failure of what was written. */
   partial?: string | null;
   moreAvailable: boolean;
-  counters?: { accepted?: number; metadataOnly?: number };
+  counters?: { accepted?: number; metadataOnly?: number; seen?: number };
+  /** The breakdown by department (books and articles): written beside the run, so a department sees what was added to it. */
+  byDepartment?: DeptStats;
 };
 
 type Ctx = {
@@ -191,6 +199,57 @@ async function runDoaj(ctx: Ctx): Promise<QuickOutcome> {
   };
 }
 
+// ── Journals: sources that list journals by search term (Crossref Journals, OpenAlex Sources, ROAD) ─────
+
+/**
+ * A bounded manual run over a journal source: the departments' search terms in turn, each from the manual run's own saved place
+ * (kept in the audit log, like every Quick Import's), never from the continuous engine's sweeps. Everything found is written the
+ * review-first way — not accepted, open access unverified — by the same writer the engine uses.
+ */
+async function runJournalSource(ctx: Ctx, label: 'Crossref Journals' | 'OpenAlex Sources' | 'ROAD', fetchPage: (term: string, position: number, size: number) => Promise<JournalPage>): Promise<QuickOutcome> {
+  const targets: { department: string; term: string }[] = [];
+  for (const dep of ALL_DEPARTMENTS) for (const term of searchTermsFor(dep)) targets.push({ department: dep, term });
+  const places: Record<string, number> = { ...(ctx.position?.places || {}) };
+  let turn: number = Number.isInteger(ctx.position?.turn) ? ctx.position.turn % targets.length : 0;
+  const started = Date.now();
+  const out = { checked: 0, created: 0, held: 0, enriched: 0, skipped: 0, failed: 0, firstError: null as string | null };
+  const stats: DeptStats = {};
+  const spent = new Set<number>();
+  for (let n = 0; n < targets.length && out.checked < ctx.limit && spent.size < targets.length && Date.now() - started < INGESTION_POLICY.quick.runBudgetMs; n++) {
+    const t = targets[turn];
+    const key = `${t.department}|${t.term}`;
+    const size = Math.min(100, ctx.limit - out.checked);
+    let page: JournalPage;
+    try {
+      page = await fetchPage(t.term, places[key] ?? 0, size);
+    } catch (e: any) {
+      if (e instanceof SourceError && e.kind === 'invalid') throw e;
+      if (out.checked > 0) { ctx.progress({ stage: `${label} stopped answering part-way` }); break; }
+      throw e;
+    }
+    const w = await writeJournalCandidates(label, t.department, page.items, page.fetched, page.skipped);
+    out.checked += w.checked; out.created += w.created; out.held += w.held; out.enriched += w.enriched; out.skipped += w.skipped; out.failed += w.failed; out.firstError ||= w.firstError;
+    bump(stats, t.department, 'sentToReview', w.created); bump(stats, t.department, 'held', w.held); bump(stats, t.department, 'skipped', w.skipped); bump(stats, t.department, 'failed', w.failed);
+    places[key] = page.fetched >= size ? (places[key] ?? 0) + 1 : 0;
+    if (page.fetched < size) spent.add(turn);
+    turn = (turn + 1) % targets.length;
+    ctx.progress({ stage: `Reading ${label}… ${t.department}`, checked: out.checked, limit: ctx.limit, open: false, review: out.created, held: out.held });
+  }
+  return {
+    checked: out.checked, added: 0, alreadyHeld: out.held, needsReview: out.created, skipped: out.skipped, failed: out.failed, enriched: out.enriched,
+    notes: [`${out.created} new journals were held for review: ${label} does not say whether a journal is open access, so none was accepted.`, ...(out.firstError ? [`First write error: ${out.firstError}`] : [])],
+    nextPosition: { turn, places }, moreAvailable: spent.size < targets.length, byDepartment: stats, counters: { seen: out.checked },
+  };
+}
+
+const runCrossrefJournals = (ctx: Ctx) => runJournalSource(ctx, 'Crossref Journals', (t, pos, n) => fetchCrossrefJournals(t, pos * n, n));
+const runOpenAlexSources = (ctx: Ctx) => runJournalSource(ctx, 'OpenAlex Sources', (t, pos, n) => fetchOpenAlexSources(t, pos + 1, n));
+const runRoad = async (ctx: Ctx) => {
+  const adapter = getRoadAdapter();
+  if (!adapter) throw new QuickError('UNAVAILABLE', 'ROAD is not connected: it has no public data interface this engine can use yet. No catalogue changes were made.', null, 503);
+  return runJournalSource(ctx, 'ROAD', adapter);
+};
+
 // ── Articles ───────────────────────────────────────────────────────────────
 
 type Gathered = { items: (RawCandidate & { department: string | null })[]; fetched: number; skipped: number; partial: string | null; nextPosition: any; moreAvailable: boolean };
@@ -283,53 +342,21 @@ async function gatherBySearch(ctx: Ctx, def: Def, departments: string[], fetchPa
   return out;
 }
 
-/** Judge, check the files, write — the shared pipeline — and report. */
+/** Judge, check the files, write — the shared pipeline (articlePipeline.ts) — and report. */
 async function finishArticles(ctx: Ctx, def: Def, g: Gathered): Promise<QuickOutcome> {
   const cands: Candidate[] = g.items.map(i => ({ ...i, department: i.department as any, extra: i.extra ?? null }));
-  ctx.progress({ stage: 'Checking what is already held…', checked: g.fetched, limit: ctx.limit, open: false });
-  let classified: Classified[] = await classifyCandidates(cands);
-
-  // A record is only offered as readable here if its file really opens. Only the ones that would be are checked.
-  const toVerify = classified.map((c, i) => ({ c, i })).filter(({ c }) => c.outcome === 'ADD' && c.access === 'ViewableHere' && c.pdfUrl);
-  if (toVerify.length) {
-    ctx.progress({ stage: `Opening ${toVerify.length} file${toVerify.length === 1 ? '' : 's'} to confirm they work…` });
-    const opens = await checkFiles(toVerify.map(({ c }) => c.pdfUrl || null));
-    toVerify.forEach(({ i }, k) => { cands[i].fileOpensHere = opens[k]; });
-    classified = await classifyCandidates(cands);
-  }
-
-  const heldAlready = classified.filter(c => c.outcome === 'HELD').length;
-  const rejected = classified.filter(c => c.outcome === 'REJECTED').length;
-  ctx.progress({ stage: 'Adding records…', held: heldAlready, skipped: g.skipped + rejected, review: 0, added: 0 });
-
-  const sum = await writeClassified(classified, ctx.admin, {
-    writeReview: true,
-    onProgress: s => ctx.progress({ stage: 'Adding records…', added: s.added, review: s.reviewWritten, failed: s.failed, held: heldAlready + s.held, skipped: g.skipped + rejected + s.rejected }),
-  });
-
-  await refreshCoverage(classified);
+  ctx.progress({ checked: g.fetched, limit: ctx.limit, open: false });
+  const { sum, heldAlready, rejected, viewable, byDepartment } = await judgeVerifyWrite(cands, ctx.admin, { skippedAtFetch: g.skipped, progress: p => ctx.progress(p as any) });
 
   const notes: string[] = [];
-  const viewable = classified.filter(c => c.result === 'added' && c.access === 'ViewableHere').length;
   if (sum.added) notes.push(`${viewable} of the ${sum.added} added open in the viewer; the rest link to the publisher.`);
   if (sum.failed && sum.firstError) notes.push(`First write error: ${sum.firstError}`);
   return {
     checked: g.fetched, added: sum.added, alreadyHeld: heldAlready + sum.held, needsReview: sum.reviewWritten,
     skipped: g.skipped + rejected + sum.rejected, failed: sum.failed, notes,
     nextPosition: g.nextPosition, partial: g.partial, moreAvailable: g.moreAvailable,
+    byDepartment,
   };
-}
-
-/** A journal's counts are what its own page shows; they follow what was just written. Its cursor and cooldown are the engine's and are not touched. */
-async function refreshCoverage(items: Classified[]) {
-  const issns = [...new Set(items.filter(i => i.result === 'added' || i.result === 'review').map(i => i.issn).filter(Boolean) as string[])];
-  for (const issn of issns) {
-    const j = await db.journal.findFirst({ where: { OR: [{ issn }, { eissn: issn }] }, select: { id: true } }).catch(() => null);
-    if (!j) continue;
-    const [s]: any[] = await db.$queryRawUnsafe(
-      `select count(*)::int a, count(distinct volume)::int v, count(distinct issue)::int i, min(year) f, max(year) l from "Article" where "journalId" = $1`, j.id);
-    await db.journal.update({ where: { id: j.id }, data: { articleCount: s.a, volumeCount: s.v, issueCount: s.i, firstYear: s.f, lastYear: s.l } }).catch(() => {});
-  }
 }
 
 const runCrossref = async (ctx: Ctx) => { const d = DEFS.crossref; return finishArticles(ctx, d, await gatherByJournal(ctx, d, fetchCrossrefForJournal, 120)); };
@@ -343,6 +370,15 @@ const runArxiv = async (ctx: Ctx) => {
   // arXiv asks for no more than one request every three seconds.
   return finishArticles(ctx, d, await gatherBySearch(ctx, d, ARXIV_DEPARTMENTS, (dept, size, at, fromYear) => fetchArxiv(dept, size, { start: at, fromYear }), 0, 25, 3000));
 };
+
+/**
+ * The continuous engine's turn on a department-search source (Europe PMC, arXiv): this very gather and this very write, started
+ * from the ENGINE'S own saved place and never from Quick Import's, so neither can move the other.
+ */
+export async function runSearchProvider(id: 'europepmc' | 'arxiv', limit: number, position: any): Promise<QuickOutcome> {
+  const ctx: Ctx = { job: null as any, limit, admin: null, position, progress: () => {} };
+  return id === 'europepmc' ? runEuropePmc(ctx) : runArxiv(ctx);
+}
 
 // ── Books ──────────────────────────────────────────────────────────────────
 
@@ -409,8 +445,8 @@ function booksRunner(cfg: OaiProviderConfig, healthKey: string) {
     const checked = isNcbi ? (report.ncbi?.archives ?? 0) : report.fetched;
     return {
       checked, added: report.added, alreadyHeld: dupTotal(report), needsReview: report.queuedForReview,
-      skipped: report.department.none + report.outsideScope + report.unusable + report.deleted, failed: report.failed,
-      enriched: report.enriched, notes,
+      skipped: totals(report.departmentStats).skipped, failed: report.failed,
+      enriched: report.enriched, byDepartment: report.departmentStats, notes,
       partial: report.sourceError ? `${cfg.label} stopped answering part-way (${report.sourceError}); what was read before that was still imported.` : null,
       // A finished set starts afresh from the last sync next time; an unfinished one carries on from here.
       nextPosition: report.completed ? null : { cursor: report.nextCursor },
@@ -461,6 +497,18 @@ const DEFS: Record<QuickId, Def> = {
     id: 'doaj', label: 'DOAJ', group: 'Journals', healthKey: 'DOAJ', lock: 'DOAJ', unitLabel: 'new DOAJ journal candidates',
     description: 'Directory of Open Access Journals and journal discovery.', run: runDoaj,
   },
+  road: {
+    id: 'road', label: 'ROAD / ISSN', group: 'Journals', healthKey: 'ROAD', lock: 'ROAD', unitLabel: 'ROAD journal candidates',
+    description: 'Open-access journal fallback from the ISSN Centre’s directory.', run: runRoad,
+  },
+  crossrefjournals: {
+    id: 'crossrefjournals', label: 'Crossref Journals', group: 'Journals', healthKey: 'Crossref', lock: 'CrossrefJournals', unitLabel: 'Crossref journal candidates',
+    description: 'Journal identity and ISSN fallback. Open access is not verified, so new journals wait for review.', run: runCrossrefJournals,
+  },
+  openalexsources: {
+    id: 'openalexsources', label: 'OpenAlex Sources', group: 'Journals', healthKey: 'OpenAlex', lock: 'OpenAlexSources', unitLabel: 'OpenAlex journal candidates',
+    description: 'Supplementary journal fallback. Open access is not verified, so new journals wait for review.', run: runOpenAlexSources,
+  },
   crossref: {
     id: 'crossref', label: 'Crossref', group: 'Articles', healthKey: 'Crossref', lock: 'Crossref', unitLabel: 'new Crossref article candidates', badge: 'Recommended',
     description: 'Primary scholarly article metadata source with DOI and journal information.', run: runCrossref,
@@ -498,6 +546,7 @@ export const QUICK_IDS = Object.keys(DEFS) as QuickId[];
 /** Which source-health row governs a source, by the id the wizard and Quick Import both use. */
 export const healthKeyFor = (source: string): string | undefined => ({
   crossref: 'Crossref', openalex: 'OpenAlex', europepmc: 'EuropePMC', arxiv: 'arXiv', doaj: 'DOAJ', 'doaj-journals': 'DOAJ',
+  road: 'ROAD', crossrefjournals: 'Crossref', openalexsources: 'OpenAlex',
   doab: 'DOAB', oapen: 'OAPEN', otl: 'open.umn.edu', ncbi: 'NCBI',
 } as Record<string, string>)[source];
 export const isQuickId = (x: any): x is QuickId => typeof x === 'string' && x in DEFS;
@@ -514,29 +563,44 @@ export function __resetQuickJobsForTests() { jobs.clear(); }
 
 const blank = (limit: number | null): QuickProgress => ({ stage: 'Checking the source…', checked: 0, limit, added: 0, held: 0, review: 0, skipped: 0, failed: 0, open: true });
 
-/** The state of one source, as its card shows it. */
+/**
+ * The state of one source, as its card shows it — from the same health row the engine's scheduler reads, so a card, the engine and
+ * the Quick Import button can never disagree.
+ *
+ *   healthy       no recent failure
+ *   degraded      failing, but not yet resting — OR resting is over and the next request is the test. Quick Import stays available:
+ *                 a manual run is then the only probe if the engine is off, and refusing it would leave the source stuck for ever.
+ *   running       the engine, or another import, is on it now
+ *   rate_limited / cooling / unavailable   resting until a time; Quick Import is refused
+ *   not_connected no data interface behind it (ROAD), or switched off
+ */
 export async function sourceState(id: QuickId) {
   const def = DEFS[id];
+  ensureProviders();
+  const provider = getProviders().find(p => p.id === id);
   const holder = providerHolder(def.lock);
-  const cd = await sourceCooldown(def.healthKey);
-  let state: 'healthy' | 'running' | 'cooling' | 'rate_limited' | 'unavailable' = 'healthy';
+  const h = await sourceHealthState(def.healthKey);
+  let state: 'healthy' | 'degraded' | 'running' | 'cooling' | 'rate_limited' | 'unavailable' | 'not_connected' = 'healthy';
   let until: Date | null = null;
   let detail: string | null = null;
-  if (holder) { state = 'running'; detail = holder.owner === 'continuous' ? 'The Continuous Engine is working on it' : 'A Quick Import is running'; }
-  else if (cd.state === 'rate_limited') { state = 'rate_limited'; until = cd.until; }
-  else if (cd.state === 'cooling') { state = 'cooling'; until = cd.until; }
-  else if (cd.state === 'failing') { state = 'unavailable'; detail = 'Recent requests failed'; }
+  const configured = provider?.configured?.() ?? true;
+  if (configured !== true) { state = 'not_connected'; detail = String(configured).replace(/^not connected — /, ''); }
+  else if (holder) { state = 'running'; detail = holder.owner === 'continuous' ? 'The Continuous Engine is working on it' : 'A Quick Import is running'; }
+  else if (h.until) { state = h.health === 'rate_limited' ? 'rate_limited' : h.health === 'unavailable' ? 'unavailable' : 'cooling'; until = h.until; detail = state === 'unavailable' ? 'Unavailable — retry scheduled' : null; }
+  else if (h.failures > 0) { state = 'degraded'; detail = `${h.failures} of ${h.threshold} failures in a row`; }
   let quota: any = null;
   if (id === 'ncbi') {
     const lim = ncbiLimits(); const used = await usedToday(db);
     quota = { archivesLeft: Math.max(0, lim.maxArchivesPerDay - used.archives), archivesPerDay: lim.maxArchivesPerDay };
     if (!holder && (used.archives >= lim.maxArchivesPerDay || used.bytes >= lim.maxBytesPerDay)) { state = 'cooling'; until = nextUtcMidnight(); detail = 'Daily limit reached'; }
   }
-  return { state, until, detail, quota };
+  return { state, until, detail, quota, health: h };
 }
 
 export async function listQuickSources() {
+  ensureProviders();
   const recent: any[] = await db.ingestionAudit.findMany({ where: { action: 'QUICK_IMPORT_FINISHED' }, orderBy: { at: 'desc' }, take: 60 }).catch(() => []);
+  const rot = await rotationStatus();
   const out = [];
   for (const id of QUICK_IDS) {
     const def = DEFS[id];
@@ -545,15 +609,22 @@ export async function listQuickSources() {
     const mine = activeQuickJobs().find(j => j.provider === id) ?? null;
     const last = recent.find(r => (r.meta as any)?.provider === id);
     const limit = quickLimit(id);
+    const rp = rot.providers.find(p => p.id === id) || null;
     out.push({
       id, label: def.label, group: def.group, description: def.description, badge: def.badge ?? null,
+      role: rp?.role ?? null, tier: rp?.tier ?? null,
       limit, unitLabel: def.unitLabel,
       confirm: id === 'ncbi'
         ? `Read up to ${limit} NCBI Bookshelf archives now? Existing records will not be overwritten, and NCBI's daily limits still apply.`
         : `Import up to ${limit} ${def.unitLabel} now? Existing records will not be overwritten.`,
       state: st.state, until: st.until ? st.until.toISOString() : null, detail: st.detail, quota: st.quota,
+      // Health, and what the source has been yielding, kept apart: a source can be perfectly healthy and give nothing new.
+      health: { state: st.health.health, failures: st.health.failures, threshold: st.health.threshold, until: st.health.until ? st.health.until.toISOString() : null, lastError: st.health.lastError },
+      yield: rp?.yield ?? null,
+      lastBatch: rp?.lastBatch ?? null,
+      inRotation: rp ? rp.availability.state !== 'unavailable' || rp.availability.kind === 'busy' : false,
       runningJobId: mine?.id ?? null,
-      canQuickImport: (st.state === 'healthy' || st.state === 'unavailable') && !groupJob,
+      canQuickImport: (st.state === 'healthy' || st.state === 'degraded') && !groupJob,
       blockedBy: groupJob && groupJob.provider !== id ? `${groupJob.label} Quick Import is running` : null,
       last: last ? { at: last.at, ...(last.meta as any)?.summary } : null,
     });
@@ -635,12 +706,14 @@ async function record(def: Def, r: QuickResult, admin: any, how: string) {
   const note = `Manual · ${how} · ${bits.join(' · ')}${r.partial ? ` — ${r.partial}` : ''}`;
 
   const row: any = { phase: def.group, source: def.label, durationMs: r.durationMs, more: r.moreAvailable, note: note.slice(0, 900) };
-  if (def.group === 'Journals') Object.assign(row, { journalsSeen: r.added, journalsAccepted: r.counters?.accepted ?? 0, journalsRefused: r.counters?.metadataOnly ?? 0 });
+  if (def.group === 'Journals') Object.assign(row, { journalsSeen: r.counters?.seen ?? r.added, journalsAccepted: r.counters?.accepted ?? 0, journalsRefused: r.counters?.metadataOnly ?? 0, needsReview: r.needsReview || 0, skippedHeld: def.id === 'doaj' ? 0 : r.alreadyHeld });
+  else if (r.byDepartment) Object.assign(row, runColumnsFromStats(r.byDepartment));      // the run's totals ARE the sums of its breakdown
   else Object.assign(row, { added: r.added, skippedHeld: r.alreadyHeld, skippedFailed: r.failed, skippedRejected: r.skipped, needsReview: r.needsReview });
-  await db.ingestionRun.create({ data: row }).catch(() => {});
+  // The same writer the continuous engine uses: the run and its department breakdown, together or not at all.
+  await createRunWithStats(row, def.group === 'Journals' ? null : r.byDepartment, def.group === 'Books' ? 'Books' : 'Articles');
 
   const inc: any = {};
-  if (def.group === 'Journals') Object.assign(inc, { journalsSeen: { increment: r.added }, journalsAccepted: { increment: r.counters?.accepted ?? 0 }, journalsRejected: { increment: r.counters?.metadataOnly ?? 0 } });
+  if (def.group === 'Journals') Object.assign(inc, { journalsSeen: { increment: r.counters?.seen ?? r.added }, journalsAccepted: { increment: r.counters?.accepted ?? 0 }, journalsRejected: { increment: r.counters?.metadataOnly ?? 0 } });
   else if (def.group === 'Articles') Object.assign(inc, { articlesAdded: { increment: r.added }, articlesSkipped: { increment: r.alreadyHeld + r.failed } });
   else Object.assign(inc, { booksAdded: { increment: r.added }, booksSkipped: { increment: r.alreadyHeld + r.failed + r.skipped } });
   await db.ingestionState.update({ where: { id: 'singleton' }, data: inc }).catch(() => {});

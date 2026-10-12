@@ -717,6 +717,115 @@ catalogue = [
   check('immediately after: DOAB not due again, OAPEN finds nothing, no duplicate', (await db.book.count()) === 1 && !(second.added > 0), JSON.stringify(second).slice(0, 160));
 }
 
+// ── N: the department breakdown ───────────────────────────────────────────
+section('N. Department breakdown: counted as each book is decided, reconciled with the run, shared by every way in');
+{
+  const { runEnginePass } = await import('../src/lib/ingestion/engine.js');
+  const { __resetRotationState } = await import('../src/lib/ingestion/rotationState.js');
+  const { __resetProviderLocks } = await import('../src/lib/ingestion/providerLocks.js');
+  const { departmentMetrics } = await import('../src/lib/ingestion/departmentMetrics.js');
+  const { resolveRange } = await import('../src/lib/ingestion/runFilter.js');
+  const { runHistory } = await import('../src/lib/ingestion/status.js');
+  const { beginQuickImport, getQuickJob, __resetQuickJobsForTests } = await import('../src/lib/ingestion/quickImport.js');
+
+  const ARCH = ['THEMA EDITEUR::A THE ARTS::AM ARCHITECTURE'];
+  const COM = ['THEMA EDITEUR::K ECONOMICS, FINANCE, BUSINESS AND MANAGEMENT::KC ECONOMICS'];
+  const ITC = ['THEMA EDITEUR::U COMPUTING AND INFORMATION TECHNOLOGY::UB INFORMATION TECHNOLOGY: GENERAL ISSUES'];
+  const mk = (n: number, title: string, codes: string[] | undefined, kw: string[], extra: any = {}): Spec => ({ handle: `20.500.12854/N${n}`, title, doi: `10.7/n${n}`, codes, kw, rights: 'CC-BY', ...extra });
+  const fixtures: Spec[] = [
+    ...[1, 2, 3, 4].map(i => mk(i, `Architecture Studio ${i}`, ARCH, ['architecture'])),
+    ...[5, 6, 7].map(i => mk(i, `Economics and Finance ${i}`, COM, ['economics', 'finance'])),
+    ...[8, 9].map(i => mk(i, `Contract Law ${i}`, LAW, ['contract law'])),
+    ...[10, 11].map(i => mk(i, `Information Technology ${i}`, ITC, ['information technology', 'computer science'])),
+    ...[12, 13].map(i => mk(i, `Dental Implants ${i}`, undefined, ['dental implants'])),            // words only: waits for a person
+    mk(14, 'Soro Soke', undefined, ['current affairs']),                                              // no evidence at all
+    mk(15, 'Architecture Studio 1 (again)', ARCH, ['architecture'], { doi: '10.7/n1' }),              // the same book twice in one run
+    { handle: '20.500.12854/N16', title: 'Already Held Law', doi: '10.7/heldlaw', codes: LAW, kw: ['law'], rights: 'CC-BY' },
+    { handle: '20.500.12854/N17', title: 'Already Held Draft', doi: '10.7/helddraft', codes: LAW, kw: ['law'], rights: 'CC-BY' },
+  ];
+  // the fixtures really do classify the way the test says they do
+  const verdicts = fixtures.slice(0, 13).map(x => classifyDepartment({ classifications: x.codes, subjects: x.kw, title: x.title }));
+  check('fixtures: 11 are confidently placed in a department, 2 are only suggestions', verdicts.slice(0, 11).every(v => v.band === 'strong') && verdicts.slice(11).every(v => v.band === 'review' && v.department === null),
+    verdicts.map(v => `${v.band}:${v.department ?? v.suggested}`).join(' '));
+
+  await reset(); await __resetRotationState(); __resetProviderLocks();
+  await db.ingestionRunDepartmentStat.deleteMany({}); await db.ingestionRun.deleteMany({ where: { phase: 'Books' } });
+  await db.book.create({ data: { title: 'Already Held Law', doi: '10.7/heldlaw', status: 'Published', domain: 'Law', source: 'DOAB', sourceRecordId: '20.500.12854/N16', fingerprint: 'doab:doi:10.7/heldlaw' } });
+  await db.book.create({ data: { title: 'Already Held Draft', doi: '10.7/helddraft', status: 'Draft', domain: null, source: 'DOAB', sourceRecordId: '20.500.12854/N17', fingerprint: 'doab:doi:10.7/helddraft', ownershipSource: 'Ingested' } });
+  catalogue = fixtures;
+  await db.ingestionState.upsert({ where: { id: 'singleton' }, create: { id: 'singleton', enabled: true }, update: { enabled: true } });
+
+  const range = (key: string) => (resolveRange({ range: key }) as any).range;
+  const beforeArch = await departmentMetrics('Architecture', range('lifetime'));
+  const beforeAll = await departmentMetrics(null, range('lifetime'));
+
+  const pass: any = await runEnginePass([], { force: true, only: 'books' });
+  const row = await db.ingestionRun.findFirst({ where: { phase: 'Books', source: 'DOAB' }, orderBy: { at: 'desc' } });
+  const stats: any[] = await db.ingestionRunDepartmentStat.findMany({ where: { runId: row!.id } });
+  const by = Object.fromEntries(stats.map(x => [x.department, x]));
+  const sum = (k: string) => stats.reduce((n, x) => n + x[k], 0);
+
+  check('the engine’s rotation took the Books turn from DOAB', pass.phase === 'Books' && pass.provider === 'doab', JSON.stringify([pass.phase, pass.provider, pass.error]));
+  check('Published: Architecture 4, Commerce 3, Law 2, Computer / IT 2 — 11 in all', by['Architecture']?.added === 4 && by['Commerce']?.added === 3 && by['Law']?.added === 2 && by['Computer / IT']?.added === 2 && sum('added') === 11, JSON.stringify(stats.map(x => [x.department, x.added])));
+  check('the run’s own “added” is the sum of its departments (global = breakdown)', row!.added === 11 && row!.added === sum('added'));
+  check('the two words-only books are NOT given a department: unassigned / needs review, 2', by['']?.sentToReview === 2 && row!.needsReview === 2 && sum('sentToReview') === 2);
+  check('nothing was filed under the suggestion (no “Dental” row)', !by['Dental']);
+  check('held: the Law book already held counts under Law, the held Draft under unassigned, the repeat under Architecture', by['Law']?.held === 1 && by['']?.held === 1 && by['Architecture']?.held === 1 && row!.skippedHeld === 3 && sum('held') === 3, JSON.stringify(stats.map(x => [x.department, x.held])));
+  check('the book with no evidence is skipped, unassigned, and the run agrees', by['']?.skipped === 1 && row!.skippedRejected === sum('skipped'), String(row!.skippedRejected));
+  check('every column of the run equals the sum of its breakdown', row!.added === sum('added') && row!.skippedHeld === sum('held') && row!.needsReview === sum('sentToReview') && row!.skippedRejected === sum('skipped') && row!.skippedFailed === sum('failed'));
+  check('the run row is NOT unattributed: it has a breakdown', stats.length >= 5 && row!.department === null);
+  check('the books really are in those departments now', (await db.book.count({ where: { source: 'DOAB', status: 'Published', domain: 'Architecture', title: { startsWith: 'Architecture Studio' } } })) === 4);
+
+  // ── what the screen asks ────────────────────────────────────────────────
+  const afterArch = await departmentMetrics('Architecture', range('lifetime'));
+  const afterAll = await departmentMetrics(null, range('lifetime'));
+  check('Architecture: Books added +4, from its own breakdown', afterArch.ingestion.booksAdded - beforeArch.ingestion.booksAdded === 4, `${afterArch.ingestion.booksAdded - beforeArch.ingestion.booksAdded}`);
+  check('All departments: Books added +11 — one run counted once, not once per department', afterAll.ingestion.booksAdded - beforeAll.ingestion.booksAdded === 11);
+  const dep = ['Architecture', 'Commerce', 'Law', 'Computer / IT'];
+  const per = await Promise.all(dep.map(d => departmentMetrics(d, range('lifetime'))));
+  const before = await Promise.all(dep.map(async d => d === 'Architecture' ? beforeArch : null));
+  check('the departments (+ unassigned) add up to the global figure for this run', stats.reduce((n, x) => n + x.added, 0) === afterAll.ingestion.booksAdded - beforeAll.ingestion.booksAdded);
+  void per; void before;
+  check('the unassigned / needs-review line is separate and shows the 2', (afterArch.unassigned as any).sentToReview >= 2);
+  const today = range('today');
+  const archToday = await departmentMetrics('Architecture', today, { phase: 'books', source: 'DOAB', result: 'added' }, { byDay: true });
+  check('Architecture + Books + DOAB + Added + today: exactly this run’s 4', archToday.ingestion.booksAdded === 4 && archToday.ingestion.runs === 1, JSON.stringify(archToday.ingestion));
+  check('By day agrees with that summary', archToday.byDay!.length === 1 && archToday.byDay![0].books === 4);
+  const hist = await runHistory({ department: 'Architecture', source: 'DOAB', phase: 'books', result: 'added', start: today.start, end: today.end, limit: 50 });
+  check('the list shows the same one row, with Architecture’s 4 (not the run’s 11)', hist.runs.length === 1 && hist.runs[0].added === 4 && hist.runs[0].runAdded === 11 && hist.runs[0].hasBreakdown === true, JSON.stringify(hist.runs.map((x: any) => [x.added, x.runAdded])));
+  const histAll = await runHistory({ source: 'DOAB', phase: 'books', result: 'added', start: today.start, end: today.end, limit: 50 });
+  check('with no department chosen the list shows the run once, with all 11', histAll.runs.length === 1 && histAll.runs[0].added === 11);
+  const sumDept = (await Promise.all(['Architecture', 'Commerce', 'Law', 'Computer / IT'].map(d => runHistory({ department: d, source: 'DOAB', phase: 'books', result: 'added', start: today.start, end: today.end, limit: 50 })))).reduce((n, h) => n + h.runs.reduce((m: number, x: any) => m + x.added, 0), 0);
+  check('the four departments’ rows add up to the run’s 11', sumDept === 11);
+  const noDeptBooks = await departmentMetrics('Commerce', today, { phase: 'books', source: 'DOAB' }, {});
+  check('Commerce sees 3, never the run’s other 8', noDeptBooks.ingestion.booksAdded === 3);
+
+  // ── an old run, with no breakdown, is not given one ─────────────────────
+  const old = await db.ingestionRun.create({ data: { phase: 'Books', source: 'OAPEN', added: 9, note: `Manual · Quick Import · history ${Date.now()}` } });
+  const oldStats = await db.ingestionRunDepartmentStat.count({ where: { runId: old.id } });
+  const archAfterOld = await departmentMetrics('Architecture', range('lifetime'));
+  const oldUnattr = archAfterOld.unattributed!.booksAdded - afterArch.unattributed!.booksAdded;
+  check('a historical run with no breakdown stays unattributed: not in any department, reported apart', oldStats === 0 && oldUnattr === 9 && archAfterOld.ingestion.booksAdded === afterArch.ingestion.booksAdded, `unattributed +${oldUnattr}`);
+
+  // ── Quick Import writes the very same breakdown ─────────────────────────
+  __resetQuickJobsForTests(); __resetProviderLocks();
+  await db.bookHarvestCheckpoint.deleteMany({}); await db.ingestionSourceHealth.deleteMany({});
+  catalogue = [
+    mk(21, 'Architecture Quick 1', ARCH, ['architecture']), mk(22, 'Architecture Quick 2', ARCH, ['architecture']),
+    mk(23, 'Quick Contract Law', LAW, ['contract law']), mk(24, 'Quick Dental Implants', undefined, ['dental implants']),
+  ];
+  // "Import more" resumes from the last saved position; another suite's DOAB position could lie past this fixture. Start clean (scratch database).
+  await db.ingestionAudit.deleteMany({ where: { action: 'QUICK_IMPORT_FINISHED' } });
+  const qStart = new Date();
+  const job = await beginQuickImport('doab', { uid: 'u', email: 'qa@test' });
+  for (let i = 0; i < 100 && getQuickJob(job.id)?.status === 'running'; i++) await new Promise(r => setTimeout(r, 100));
+  const qrow = await db.ingestionRun.findFirst({ where: { phase: 'Books', source: 'DOAB', at: { gte: qStart }, note: { startsWith: 'Manual · Quick Import' } }, orderBy: { at: 'desc' } });
+  const qstats: any[] = qrow ? await db.ingestionRunDepartmentStat.findMany({ where: { runId: qrow.id } }) : [];
+  const qby = Object.fromEntries(qstats.map(x => [x.department, x]));
+  check('Quick Import: the same breakdown — Architecture 2, Law 1, and the dental one unassigned', qby['Architecture']?.added === 2 && qby['Law']?.added === 1 && qby['']?.sentToReview === 1, `${JSON.stringify(qstats.map(x => [x.department, x.added, x.sentToReview]))} job=${getQuickJob(job.id)?.status} ${JSON.stringify(getQuickJob(job.id)?.error ?? null)}`);
+  check('Quick Import: its run totals are the sums of the breakdown', !!qrow && qrow.added === qstats.reduce((n, x) => n + x.added, 0) && qrow.needsReview === 1);
+}
+
 await reset();
 __useFetchForTests(null);
 console.log(`\n${pass} passed, ${fail} failed`);

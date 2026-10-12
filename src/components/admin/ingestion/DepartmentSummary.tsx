@@ -26,7 +26,7 @@ function Group({ title, caption, children, cols }: { title: string; caption?: st
 }
 
 export type SummaryFilters = { phase: string; source: string; result: string };
-const RESULT_RUNS: Record<string, string> = { added: 'Added runs', held: 'Held runs', failed: 'Failed runs', skipped: 'Skipped runs' };
+const RESULT_RUNS: Record<string, string> = { added: 'Added runs', held: 'Held runs', failed: 'Failed runs', provider: 'Source-issue runs', skipped: 'Skipped runs' };
 
 /**
  * What the chosen department holds now, and what ingestion did for it over the chosen dates — in two separate blocks,
@@ -78,7 +78,7 @@ export function DepartmentSummary({ department, range, filters, narrowedBy, refr
     ? `Run log${data.ingestionSince ? ` since ${dayLabel(data.ingestionSince.slice(0, 10))}` : ''}`
     : rg.text || null;
   const days: any[] | null = data?.byDay || null;
-  const total = days ? days.reduce((t, d) => ({ books: t.books + d.books, articles: t.articles + d.articles, journals: t.journals + d.journals, held: t.held + d.held, failedRuns: t.failedRuns + d.failedRuns, sentToReview: t.sentToReview + d.sentToReview }), { books: 0, articles: 0, journals: 0, held: 0, failedRuns: 0, sentToReview: 0 }) : null;
+  const total = days ? days.reduce((t, d) => ({ books: t.books + d.books, articles: t.articles + d.articles, journals: t.journals + d.journals, held: t.held + d.held, failedRuns: t.failedRuns + d.failedRuns, providerFailures: t.providerFailures + d.providerFailures, sentToReview: t.sentToReview + d.sentToReview }), { books: 0, articles: 0, journals: 0, held: 0, failedRuns: 0, providerFailures: 0, sentToReview: 0 }) : null;
 
   return (
     <div className="space-y-4 border-b border-rule bg-surface-2/40 px-5 py-4" aria-live="polite" aria-busy={!data}>
@@ -95,12 +95,13 @@ export function DepartmentSummary({ department, range, filters, narrowedBy, refr
       </Group>
       {empty && <p className="text-[12.5px] text-muted">No catalogue content found for this department yet.</p>}
 
-      <Group title={`Ingestion activity — ${label}${resultNote ? ` · ${resultNote}` : ''}`} caption={caption} cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
+      <Group title={`Ingestion activity — ${label}${resultNote ? ` · ${resultNote}` : ''}`} caption={caption} cols="grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
         <Tile label="Books added" value={g?.booksAdded} />
         <Tile label="Articles added" value={g?.articlesAdded} />
         <Tile label="Journals accepted" value={g?.journalsAccepted} />
         <Tile label="Held" value={g?.held} note={g ? 'already in catalogue' : null} />
         <Tile label="Failed runs" value={g?.failedRuns} note={g && g.failedWrites ? `${N(g.failedWrites)} records not written` : null} />
+        <Tile label="Source issues" value={g?.providerFailures} note={g ? 'a source did not answer' : null} />
         <Tile label="Sent to review" value={g?.sentToReview} />
         <Tile label="Refused by a rule" value={g?.refused} />
       </Group>
@@ -110,10 +111,16 @@ export function DepartmentSummary({ department, range, filters, narrowedBy, refr
         </p>
       )}
       {g && g.runs === 0 && <p className="text-[12.5px] text-muted">No ingestion activity was recorded for this department and date range.</p>}
+      {data?.unassigned && (data.unassigned.sentToReview > 0 || data.unassigned.held > 0) && (
+        <div className="rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-[12px] text-muted">
+          <p className="font-semibold text-ink-2">Unassigned / needs review</p>
+          <p className="mt-0.5">{[data.unassigned.sentToReview > 0 && `${N(data.unassigned.sentToReview)} book${data.unassigned.sentToReview === 1 ? '' : 's'} sent to review`, data.unassigned.held > 0 && `${N(data.unassigned.held)} already held while waiting`].filter(Boolean).join(', ')} in this range. These have no confirmed department yet — a person places them — so they are not part of {title}’s figures, and a suggested department is never counted as one.</p>
+        </div>
+      )}
       {unplaced && (
         <div className="rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-[12px] text-muted">
           <p className="font-semibold text-ink-2">Unattributed activity</p>
-          <p className="mt-0.5">{unplaced} in this range, kept apart from {title}. These runs — book harvests, Quick Import and catalogue imports — did not store a department, so they are not part of {title}’s figures above.</p>
+          <p className="mt-0.5">{unplaced} in this range, kept apart from {title}. Department breakdown was not recorded for these historical runs, so they are not part of {title}’s figures above.</p>
         </div>
       )}
 
@@ -126,19 +133,19 @@ export function DepartmentSummary({ department, range, filters, narrowedBy, refr
           : !days.length ? <p className="mt-2 text-[12.5px] text-muted">No ingestion activity was recorded for this department and date range.</p>
           : (
             <div className="mt-2 max-h-72 overflow-auto rounded-xl border border-rule bg-surface">
-              <table className="w-full min-w-[460px] text-left text-[13px]">
+              <table className="w-full min-w-[540px] text-left text-[13px]">
                 <thead className="sticky top-0 bg-surface text-[11px] uppercase tracking-wide text-muted">
                   <tr>
                     <th className="px-4 py-2 font-semibold">Date</th><th className="px-3 py-2 text-right font-semibold">Books</th><th className="px-3 py-2 text-right font-semibold">Articles</th>
-                    <th className="px-3 py-2 text-right font-semibold">Journals</th><th className="px-3 py-2 text-right font-semibold">Held</th><th className="px-3 py-2 text-right font-semibold">Failed</th><th className="px-4 py-2 text-right font-semibold">Review</th>
+                    <th className="px-3 py-2 text-right font-semibold">Journals</th><th className="px-3 py-2 text-right font-semibold">Held</th><th className="px-3 py-2 text-right font-semibold">Failed</th><th className="px-3 py-2 text-right font-semibold">Source issues</th><th className="px-4 py-2 text-right font-semibold">Review</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-rule">
                   {days.map(d => (
-                    <tr key={d.day} className={d.books || d.articles || d.journals || d.held || d.failedRuns || d.sentToReview ? '' : 'text-muted'}>
+                    <tr key={d.day} className={d.books || d.articles || d.journals || d.held || d.failedRuns || d.providerFailures || d.sentToReview ? '' : 'text-muted'}>
                       <td className="px-4 py-1.5">{dayLabel(d.day)}</td>
                       <td className="px-3 py-1.5 text-right tabular-nums">{N(d.books)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(d.articles)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(d.journals)}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{N(d.held)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(d.failedRuns)}</td><td className="px-4 py-1.5 text-right tabular-nums">{N(d.sentToReview)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{N(d.held)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(d.failedRuns)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(d.providerFailures)}</td><td className="px-4 py-1.5 text-right tabular-nums">{N(d.sentToReview)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -147,7 +154,7 @@ export function DepartmentSummary({ department, range, filters, narrowedBy, refr
                     <tr>
                       <td className="px-4 py-1.5">Total</td>
                       <td className="px-3 py-1.5 text-right tabular-nums">{N(total.books)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(total.articles)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(total.journals)}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{N(total.held)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(total.failedRuns)}</td><td className="px-4 py-1.5 text-right tabular-nums">{N(total.sentToReview)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{N(total.held)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(total.failedRuns)}</td><td className="px-3 py-1.5 text-right tabular-nums">{N(total.providerFailures)}</td><td className="px-4 py-1.5 text-right tabular-nums">{N(total.sentToReview)}</td>
                     </tr>
                   </tfoot>
                 )}

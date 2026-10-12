@@ -1,6 +1,8 @@
 import { ingestionDb as db } from './db.js';
 import { INGESTION_POLICY, minutes } from './policy.js';
-import { runConditions, RUN_FROM } from './runFilter.js';
+import { runConditions, PROVIDER_FAILURE_SQL, RUN_LEVEL, RUN_BY_DEPARTMENT } from './runFilter.js';
+import { rotationStatus, type RotationStatus } from './rotation.js';
+import { ensureProviders, rotationEnabled } from './engine.js';
 
 /**
  * What the admin screen shows about the engine, computed from what is actually in the database.
@@ -14,9 +16,15 @@ export type Health = 'running' | 'paused' | 'delayed' | 'attention';
 
 const SOURCE_FOR_PHASE: Record<string, string> = { Articles: 'OpenAlex', Journals: 'DOAJ', Books: 'DOAB' };
 
+const GROUP_FOR_PHASE: Record<string, 'Journals' | 'Articles' | 'Books'> = { Journals: 'Journals', Articles: 'Articles', Books: 'Books' };
+const clock = (d: Date | string) => new Date(d).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).toUpperCase();
+
 export async function engineStatus(state: any, timer: { nextTickAt: number | null; lastTickAt: number | null; busy: boolean }) {
   const now = Date.now();
   const policy = INGESTION_POLICY.health;
+  const rotating = rotationEnabled();
+  let rot: RotationStatus | null = null;
+  if (rotating) { ensureProviders(); rot = await rotationStatus().catch(() => null); }
 
   const [sources, staleClaims, cooling, claimed] = await Promise.all([
     db.ingestionSourceHealth.findMany(),
@@ -26,14 +34,19 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
   ]);
 
   const pausedSources = sources.filter((s: any) => s.pausedUntil && s.pausedUntil.getTime() > now);
+  // What a person can act on: a source that cannot be asked for a reason that is a problem (not a daily quota, not a Quick Import on it,
+  // not a source that is simply not connected). The engine has NOT stopped when there are some — the others carry on, and the screen says so.
+  const problems = (rot?.providers || []).filter(p => p.availability.state === 'unavailable' && ['rate_limited', 'cooling', 'unavailable'].includes(p.availability.kind || ''))
+    .map(p => ({ id: p.id, label: p.label, group: p.group, kind: p.availability.kind as string, until: p.availability.until, text: `${p.label} — ${p.availability.kind === 'rate_limited' ? `rate limited until ${p.availability.until ? clock(p.availability.until) : 'later'}` : p.availability.kind === 'unavailable' ? 'unavailable, retry scheduled' : `cooling down${p.availability.until ? ` until ${clock(p.availability.until)}` : ''}`}` }));
   const reasons: string[] = [];
   let health: Health;
   if (!state.enabled) {
     health = 'paused';
-  } else if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures || pausedSources.length) {
+  } else if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures || (rotating ? problems.length : pausedSources.length)) {
     health = 'attention';
     if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures) reasons.push(`${state.consecutiveFailures} passes in a row failed`);
-    for (const s of pausedSources) reasons.push(`${s.source} is paused after repeated failures and will be tried again by itself`);
+    if (rotating) { for (const p of problems) reasons.push(p.text); if (problems.length) reasons.push('Healthy providers continue running automatically.'); }
+    else for (const s of pausedSources) reasons.push(`${s.source} is paused after repeated failures and will be tried again by itself`);
   } else if (staleClaims > 0) {
     health = 'attention'; reasons.push(`${staleClaims} journal claim${staleClaims === 1 ? '' : 's'} abandoned by a worker that stopped`);
   } else if (state.lastSuccessAt && now - new Date(state.lastSuccessAt).getTime() > minutes(policy.delayedAfterMinutes)) {
@@ -42,14 +55,21 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
     health = 'running';
     if (!state.lastSuccessAt) reasons.push('waiting for the first pass');
   }
+  if (rot && state.enabled) for (const g of ['Journals', 'Articles', 'Books'] as const) if (rot.groups[g].waiting) reasons.push(`${g}: waiting for source recovery${rot.groups[g].retryAt ? ` (next try ${clock(rot.groups[g].retryAt!)})` : ''}`);
 
   const label = { running: 'Running normally', paused: 'Paused', delayed: 'Delayed', attention: 'Needs attention' }[health];
   const coolingCount = cooling._count._all as number;
 
+  // The source working RIGHT NOW, or the one that last worked for what the engine was last doing — never a fixed guess from the phase.
+  const group = GROUP_FOR_PHASE[state.phase];
+  const currentSource = rot
+    ? (rot.running?.label ?? (group ? rot.groups[group].current : null))
+    : (SOURCE_FOR_PHASE[state.phase] || null);
+
   return {
     health, label, reasons,
     mode: state.focus || 'auto',
-    currentSource: SOURCE_FOR_PHASE[state.phase] || null,
+    currentSource,
     currentlyProcessing: claimed[0]?.title || (state.currentJournal || null),
     lastPassAt: state.lastRunAt ?? null,
     // The timer's real rhythm. Known only while the engine is on and the server has ticked since it started.
@@ -61,22 +81,26 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
       status: s.pausedUntil && s.pausedUntil.getTime() > now ? 'delayed' : (s.consecutiveFailures || 0) > 0 ? 'failing' : 'ok',
       pausedUntil: s.pausedUntil ?? null, lastError: s.lastError ?? null, lastOkAt: s.lastOkAt ?? null,
     })),
+    rotation: rot ? { enabled: true, ...rot, problems } : { enabled: false },
   };
 }
 
-/** What the engine did in the last 24 hours, from the run log. */
+/**
+ * What the engine did in the last 24 hours, from the run log.
+ *
+ * `failed` and `errors` are CATALOGUE failures — records that could not be written, runs that broke inside the engine. A request to a
+ * source that did not answer is `providerFailures`, counted apart: one outage, retried and switched away from, used to read as hundreds
+ * of failures because every row with an error text was counted the same way.
+ */
 export async function last24Hours() {
-  const since = new Date(Date.now() - 24 * 3600_000);
-  const a = await db.ingestionRun.aggregate({
-    where: { at: { gte: since } },
-    _sum: { added: true, skippedHeld: true, skippedFailed: true, needsReview: true, skippedRejected: true },
-    _count: { _all: true },
-  });
-  const errors = await db.ingestionRun.count({ where: { at: { gte: since }, error: { not: null } } });
-  return {
-    passes: a._count._all, added: a._sum.added || 0, held: a._sum.skippedHeld || 0,
-    failed: (a._sum.skippedFailed || 0), errors, rejected: a._sum.skippedRejected || 0, needsReview: a._sum.needsReview || 0,
-  };
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const [r]: any[] = await db.$queryRawUnsafe(
+    `select count(*)::int passes, coalesce(sum(r.added), 0)::int added, coalesce(sum(r."skippedHeld"), 0)::int held,
+            coalesce(sum(r."skippedFailed"), 0)::int failed, coalesce(sum(r."skippedRejected"), 0)::int rejected, coalesce(sum(r."needsReview"), 0)::int "needsReview",
+            (count(*) filter (where ${PROVIDER_FAILURE_SQL}))::int "providerFailures",
+            (count(*) filter (where r.error is not null and not ${PROVIDER_FAILURE_SQL}))::int errors
+       from "IngestionRun" r where r."at" >= ((($1)::text)::timestamptz at time zone 'UTC')`, since);
+  return { passes: r.passes, added: r.added, held: r.held, failed: r.failed, errors: r.errors, providerFailures: r.providerFailures, rejected: r.rejected, needsReview: r.needsReview };
 }
 
 /**
@@ -142,7 +166,8 @@ export async function runHistory(q: HistoryQuery) {
   const where = runConditions({ result: q.result, phase: q.phase, department: q.department, source: q.source, start: q.start, end: q.end, before: q.before }, params);
   params.push(take + 1);
   const rows: any[] = await db.$queryRawUnsafe(
-    `select r.* from ${RUN_FROM} ${where.length ? `where ${where.join(' and ')}` : ''}
+    // With a department chosen the rows are that department's: a run that spans departments shows what it did FOR it.
+    `select r.* from ${q.department ? RUN_BY_DEPARTMENT : RUN_LEVEL} ${where.length ? `where ${where.join(' and ')}` : ''}
       order by r."at" desc, r.id desc limit $${params.length}`, ...params);
   const more = rows.length > take;
   const runs = more ? rows.slice(0, take) : rows;

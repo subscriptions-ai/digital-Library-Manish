@@ -69,11 +69,23 @@ const diff = (after: any, before: any) => {
 };
 
 // The same failure test the run log's "Failed" filter uses, written independently here for the cross-check.
-const FAILED = `(r."skippedFailed" > 0 or r.error is not null or r.phase = 'Error')`;
+// A source that did not answer is a provider failure, counted apart; a failed run is a catalogue/engine failure. Restated here on purpose.
+const PROVIDER_WORDS = `r.error ~* '(did not answer|answered http|fetch failed|timed? ?out|aborted|paused after repeated|rate.?limit|econn|enotfound|etimedout|socket hang up|stopped answering|is resting)' or r.error like 'Provider request failed%'`;
+const FAILED = `(r."skippedFailed" > 0 or r.phase = 'Error' or (r.error is not null and not (r."skippedFailed" = 0 and (${PROVIDER_WORDS}))))`;
 const expectedRunIds = async (dept: string, phase?: string, result?: 'failed' | 'added') => {
+  // Written independently of the code under test: a run that recorded a department breakdown belongs to each department it names, with that
+  // department's own counts; every other run belongs to the department it names, or its journal's.
   const rows: any[] = await db.$queryRawUnsafe(
-    `select r.id from "IngestionRun" r left join "Journal" j on j.id = r."journalId"
-      where coalesce(r.department, j.domain) = $1 ${phase ? `and r.phase = '${phase}'` : ''}
+    `with eff as (
+        select r.id, r."at", r.phase, s.department as dept, s.added, s.failed as "skippedFailed", 0 as "journalsAccepted", r.error
+          from "IngestionRun" r join "IngestionRunDepartmentStat" s on s."runId" = r.id
+        union all
+        select r.id, r."at", r.phase, coalesce(r.department, j.domain), r.added, r."skippedFailed", r."journalsAccepted", r.error
+          from "IngestionRun" r left join "Journal" j on j.id = r."journalId"
+         where not exists (select 1 from "IngestionRunDepartmentStat" s where s."runId" = r.id)
+     )
+     select r.id from eff r
+      where r.dept = $1 ${phase ? `and r.phase = '${phase}'` : ''}
         ${result === 'failed' ? `and ${FAILED}` : result === 'added' ? `and (r.added > 0 or r."journalsAccepted" > 0)` : ''}
       order by r."at" desc, r.id desc limit 200`, dept);
   return rows.map(r => r.id);
@@ -119,9 +131,9 @@ try {
   const after = await snapshot();
 
   const WANT: Record<string, any> = {
-    lifetime: { booksAdded: 4, articlesAdded: 5, journalsAccepted: 2, held: 2, failedRuns: 2, failedWrites: 1, sentToReview: 3, refused: 0, runs: 3 },
-    '7d':     { booksAdded: 4, articlesAdded: 5, journalsAccepted: 0, held: 2, failedRuns: 1, failedWrites: 1, sentToReview: 3, refused: 0, runs: 2 },
-    '24h':    { booksAdded: 4, articlesAdded: 0, journalsAccepted: 0, held: 2, failedRuns: 0, failedWrites: 0, sentToReview: 0, refused: 0, runs: 1 },
+    lifetime: { booksAdded: 4, articlesAdded: 5, journalsAccepted: 2, held: 2, failedRuns: 1, providerFailures: 1, failedWrites: 1, sentToReview: 3, refused: 0, runs: 3 },
+    '7d':     { booksAdded: 4, articlesAdded: 5, journalsAccepted: 0, held: 2, failedRuns: 1, providerFailures: 0, failedWrites: 1, sentToReview: 3, refused: 0, runs: 2 },
+    '24h':    { booksAdded: 4, articlesAdded: 0, journalsAccepted: 0, held: 2, failedRuns: 0, providerFailures: 0, failedWrites: 0, sentToReview: 0, refused: 0, runs: 1 },
   };
   const CAT = { books: 2, articles: 3, journals: 1, needsReview: 2 };   // 2 published books · 3 published articles · 1 accepted journal · 1 review book + 1 draft article
 

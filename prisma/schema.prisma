@@ -1685,9 +1685,33 @@ model IngestionRun {
   note       String?
   error      String? @db.Text
 
+  departmentStats IngestionRunDepartmentStat[]
+
   @@index([at])
   @@index([phase, at])
   @@index([journalId, at])
+}
+
+/// What one run did for one department and kind of content, recorded at the moment each item was written — never
+/// reconstructed afterwards. A run that spans many departments has one row per department it touched. Items that could
+/// not be given a confirmed department are counted under department = '' (unassigned / needs review), never a suggestion.
+/// Runs from before this table existed have no rows here and stay "department breakdown not recorded".
+model IngestionRunDepartmentStat {
+  id          String       @id @default(uuid())
+  run         IngestionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId       String
+  /// Confirmed department, or '' for unassigned (not null, so the unique key below holds).
+  department  String       @default("")
+  contentType String       @default("Books")
+  added         Int @default(0)
+  held          Int @default(0)
+  sentToReview  Int @default(0)
+  skipped       Int @default(0)
+  failed        Int @default(0)
+  createdAt   DateTime     @default(now())
+
+  @@unique([runId, department, contentType])
+  @@index([department, contentType])
 }
 
 /// What an administrator did to the ingestion engine, written once and never updated.

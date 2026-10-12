@@ -12,11 +12,29 @@ const MODE_LABEL: Record<string, string> = { auto: 'Everything', books: 'Books',
 function describePass(d: any): { kind: 'success' | 'error' | 'info'; text: string } {
   if (d.error) return { kind: 'error', text: d.error };
   if (d.skipped === 'disabled') return { kind: 'info', text: 'The engine is paused — resume it to let it run on its own.' };
+  // The rotation: one turn, by one source — say which, and what it did.
+  if (d.ran === true) return { kind: 'success', text: `${d.label}: ${d.checked} checked · ${d.added} added${d.enriched ? ` · ${d.enriched} enriched` : ''} · ${d.held} held${d.sentToReview ? ` · ${d.sentToReview} sent to review` : ''}${d.switchedFrom?.length ? ` — took over from ${d.switchedFrom.length === 1 ? 'a source that was not answering' : 'sources that were not answering'}` : ''}` };
+  if (d.ran === false) return { kind: d.failed?.length ? 'error' : 'info', text: d.note || 'Nothing to fetch right now.' };
   if (d.failed) return { kind: 'error', text: `${d.department} · "${d.term}": the source did not answer. The sweep was left where it was.` };
   if (d.phase === 'Journals') return { kind: 'success', text: `${d.department} · "${d.term}": ${d.accepted} accepted, ${d.rejected} catalogued as metadata only` };
   if (d.phase === 'Books') return { kind: 'success', text: `${d.department} · "${d.term}": ${d.added} books added${d.skippedHeld ? `, ${d.skippedHeld} already held` : ''}` };
   if (d.phase === 'Articles' && d.journal) return { kind: d.error ? 'error' : 'success', text: `${d.journal}: ${d.added} added${d.skippedHeld ? `, ${d.skippedHeld} already held` : ''}${d.note ? ` — ${d.note}` : ''}` };
   return { kind: 'info', text: d.note || 'Nothing to fetch right now.' };
+}
+
+/** What the engine does, in words that match what the backend does: the connected fallbacks are named, an unconnected one is said to be unconnected. */
+function EngineCopy({ rotation }: { rotation: any }) {
+  const label = (id: string) => rotation.providers.find((p: any) => p.id === id)?.label || id;
+  const connected = (id: string) => rotation.providers.find((p: any) => p.id === id)?.configured === true;
+  const fallbacks = ['road', 'crossrefjournals', 'openalexsources'].filter(connected).map(label);
+  const list = (a: string[]) => a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
+  return (
+    <>
+      Journals are discovered through DOAJ, with {list(fallbacks)} available as fallbacks{connected('road') ? '' : ' (ROAD / ISSN is in the chain but not connected yet: it has no public data interface)'}.
+      {' '}Articles are collected primarily through Crossref, with OpenAlex, Europe PMC and arXiv used where appropriate.
+      {' '}Books are collected through DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf; no book file is hosted here, so each book is catalogued with a link to its source.
+    </>
+  );
 }
 
 export function EngineStatus({ state, onChanged }: { state: any; onChanged: () => void }) {
@@ -59,8 +77,10 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
             <Badge tone={HEALTH_TONE[st.health] || 'neutral'}>{st.health === 'running' ? 'Healthy' : st.health === 'paused' ? 'Switched off' : st.health === 'delayed' ? 'Behind schedule' : 'Action needed'}</Badge>
           </h2>
           <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted">
-            Journals come from DOAJ, where their licence is decided once per title. Articles follow from OpenAlex. Books come from DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf;
-            no book file is hosted here, so each book is catalogued with a link to its source.
+            {st.rotation?.enabled ? <EngineCopy rotation={st.rotation} /> : (
+              <>Journals come from DOAJ, where their licence is decided once per title. Articles follow from OpenAlex. Books come from DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf;
+              no book file is hosted here, so each book is catalogued with a link to its source.</>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -96,7 +116,8 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
       <p className="mt-5 text-[13px] text-ink-2">
         <span className="font-semibold text-ink">Last 24 hours:</span>{' '}
         <b className="tabular-nums text-ink">{N(day.added)}</b> added · <b className="tabular-nums text-ink">{N(day.held)}</b> held ·{' '}
-        <b className={`tabular-nums ${day.failed || day.errors ? 'text-alarm' : 'text-ink'}`}>{N((day.failed || 0) + (day.errors || 0))}</b> failed
+        <b className={`tabular-nums ${day.failed || day.errors ? 'text-alarm' : 'text-ink'}`}>{N((day.failed || 0) + (day.errors || 0))}</b> failed to write
+        {day.providerFailures ? <> · <b className="tabular-nums text-ink">{N(day.providerFailures)}</b> source request{day.providerFailures === 1 ? '' : 's'} did not get an answer</> : null}
         {day.needsReview ? <> · <b className="tabular-nums text-ink">{N(day.needsReview)}</b> sent to review</> : null}
         {day.rejected ? <> · <b className="tabular-nums text-ink">{N(day.rejected)}</b> refused by a rule</> : null}
         <span className="text-muted"> · {N(day.passes)} runs</span>
@@ -113,8 +134,8 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
           <p className="flex items-center gap-2 font-semibold"><AlertTriangle size={15} aria-hidden="true" className={st.health === 'attention' ? 'text-alarm' : 'text-caution'} /> {st.health === 'attention' ? 'Needs attention' : 'Worth knowing'}</p>
           <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-ink-2">
             {st.reasons?.map((r: string) => <li key={r}>{r}</li>)}
-            {st.sources?.filter((s: any) => s.status === 'delayed').map((s: any) => <li key={s.source}>{s.source}: source temporarily delayed{s.pausedUntil ? ` until ${clock(s.pausedUntil)}` : ''}. The rest of the engine carries on.</li>)}
-            {st.sources?.filter((s: any) => s.status === 'failing').map((s: any) => <li key={s.source}>{s.source} is failing — it will pause itself if that continues.</li>)}
+            {!st.rotation?.enabled && st.sources?.filter((s: any) => s.status === 'delayed').map((s: any) => <li key={s.source}>{s.source}: source temporarily delayed{s.pausedUntil ? ` until ${clock(s.pausedUntil)}` : ''}. The rest of the engine carries on.</li>)}
+            {!st.rotation?.enabled && st.sources?.filter((s: any) => s.status === 'failing').map((s: any) => <li key={s.source}>{s.source} is failing — it will pause itself if that continues.</li>)}
           </ul>
         </div>
       )}

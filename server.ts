@@ -34,7 +34,8 @@ import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, buildInstitutionPlanSnapshot, buildSoloPlanSnapshot, planSnapshotToRow, type QuoteDoc, type PlanSnapshot } from "./src/lib/quotation/quotationModel.js";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
-import { runIngestionPass, getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
+import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
+import { runEnginePass } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
 import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
 import { validateSettings } from "./src/lib/ingestion/settings.js";
@@ -8676,7 +8677,7 @@ async function startServer() {
       const state = await getIngestionState();
       await ingestionAudit(adminOf(req), 'MANUAL_PASS_REQUESTED', { engineEnabled: !!state.enabled });
       // A manual pass runs even while the engine is paused; that is the point of the button. The timer still respects the switch.
-      res.json(await runIngestionPass(ALL_DEPARTMENTS, { force: true }));
+      res.json(await runEnginePass(ALL_DEPARTMENTS, { force: true }));
     } catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
     finally { manualPassRunning = false; }
   });
@@ -8689,7 +8690,7 @@ async function startServer() {
     ingestTimer.lastTickAt = Date.now(); ingestTimer.nextTickAt = Date.now() + TICK_MS;
     if (ingestTimer.busy || manualPassRunning) return;
     ingestTimer.busy = true;
-    try { await runIngestionPass(ALL_DEPARTMENTS); }
+    try { await runEnginePass(ALL_DEPARTMENTS); }
     catch (e) { console.error('[ingest] pass failed:', e); }
     finally { ingestTimer.busy = false; }
   }, TICK_MS);
@@ -9208,9 +9209,10 @@ async function startServer() {
       const key = decodeURIComponent(req.params.issn);
       // Accept whichever spelling the caller has; ours are stored inconsistently.
       const norm = normaliseIssn(key);
+      // A journal awaiting review (found by Crossref or OpenAlex, open access unverified) is not part of the library yet.
       const journal = await (prisma as any).journal.findFirst({
-        where: { OR: [{ issn: key }, { eissn: key }, { id: key },
-                      ...(norm ? [{ issn: norm }, { eissn: norm }] : [])] },
+        where: { AND: [{ status: { not: 'NeedsReview' } }, { OR: [{ issn: key }, { eissn: key }, { id: key },
+                      ...(norm ? [{ issn: norm }, { eissn: norm }] : [])] }] },
       });
       if (!journal) return res.status(404).json({ error: "Journal not found" });
 
@@ -9270,8 +9272,8 @@ async function startServer() {
       const volume = decodeURIComponent(req.params.volume);
       const norm = normaliseIssn(key);
       const journal = await (prisma as any).journal.findFirst({
-        where: { OR: [{ issn: key }, { eissn: key }, { id: key },
-                      ...(norm ? [{ issn: norm }, { eissn: norm }] : [])] },
+        where: { AND: [{ status: { not: 'NeedsReview' } }, { OR: [{ issn: key }, { eissn: key }, { id: key },
+                      ...(norm ? [{ issn: norm }, { eissn: norm }] : [])] }] },
         select: { id: true, title: true, domain: true, issn: true, licence: true },
       });
       if (!journal) return res.status(404).json({ error: "Journal not found" });
