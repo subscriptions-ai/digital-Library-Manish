@@ -1,6 +1,9 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { generateAssistantResponse, maskPII } from '../server/aiAssistantService.js';
+import { generateAssistantResponse, maskPII, AssistantError } from '../server/aiAssistantService.js';
+import { aiConfig } from '../server/aiAssistantConfig.js';
+import { localReply } from '../server/aiAssistantLocal.js';
+import { readQuota, recordEvent } from '../server/aiAssistantQuota.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -10,38 +13,95 @@ const prisma = new PrismaClient();
 // per-process. If the API is ever run behind more than one process,
 // move the counter to a shared store (e.g. Redis); until then a
 // single-process deployment is correctly limited.
-const rateLimits = new Map<string, { count: number, resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10;
 /** Bound the map: expired entries for one-off visitors do not stay forever. */
 const RATE_LIMIT_MAX_ENTRIES = 1000;
 
-function rateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const ip = req.ip || req.connection.remoteAddress || 'unknown';
-  const now = Date.now();
+/** A per-address request limiter. Chat and lead submissions share the strict one; reading the allowance has its own, looser one. */
+function makeRateLimit(maxPerWindow: number) {
+  const hits = new Map<string, { count: number, resetTime: number }>();
+  return function rateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const now = Date.now();
 
-  const record = rateLimits.get(ip);
-  if (!record || now > record.resetTime) {
-    if (rateLimits.size >= RATE_LIMIT_MAX_ENTRIES) {
-      for (const [key, value] of rateLimits) {
-        if (now > value.resetTime) rateLimits.delete(key);
+    const record = hits.get(ip);
+    if (!record || now > record.resetTime) {
+      if (hits.size >= RATE_LIMIT_MAX_ENTRIES) {
+        for (const [key, value] of hits) {
+          if (now > value.resetTime) hits.delete(key);
+        }
       }
+      hits.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+      return next();
     }
-    rateLimits.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return next();
-  }
 
-  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
-    return res.status(429).json({ error: 'Rate limit exceeded. Please try again later.' });
-  }
+    if (record.count >= maxPerWindow) {
+      return res.status(429).json({ error: 'Rate limit exceeded. Please try again later.' });
+    }
 
-  record.count += 1;
-  next();
+    record.count += 1;
+    next();
+  };
 }
+const rateLimit = makeRateLimit(10);
+const statusRateLimit = makeRateLimit(60);
 
 /** Field limits keep a junk submission from becoming a junk lead. */
 const LIMITS = { name: 100, email: 100, phone: 100, organization: 150, purpose: 300, notes: 500 } as const;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// ── Who is asking ─────────────────────────────────────────────────────────
+// The allowance belongs to a session the SERVER recognises, not to whatever the page says. The first request
+// sets an httpOnly cookie carrying the session id; from then on that cookie wins over the id in the request
+// body, so clearing localStorage or editing the page's script does not start a fresh allowance. Visitors who
+// refuse cookies fall back to the id they send, which is still enforced here. A visitor who clears cookies AND
+// storage starts again; the per-address ceiling below bounds what that is worth.
+const SESSION_COOKIE = 'ai_sid';
+const SESSION_ID_RE = /^[A-Za-z0-9_-]{8,100}$/;
+
+function cookieValue(req: express.Request, name: string): string | null {
+  const raw = req.headers.cookie;
+  if (!raw) return null;
+  for (const part of raw.split(';')) {
+    const [k, ...v] = part.trim().split('=');
+    if (k === name) return v.join('=') || null;
+  }
+  return null;
+}
+
+/** The session this request is judged as, or null if no usable id was given. Sets the cookie when it is new. */
+function resolveSession(req: express.Request, res: express.Response, bodyId: unknown): string | null {
+  const fromCookie = cookieValue(req, SESSION_COOKIE);
+  const fromBody = typeof bodyId === 'string' ? bodyId : null;
+  const id = fromCookie && SESSION_ID_RE.test(fromCookie) ? fromCookie : fromBody && SESSION_ID_RE.test(fromBody) ? fromBody : null;
+  if (id && id !== fromCookie) {
+    res.cookie(SESSION_COOKIE, id, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 30 * 86_400_000, path: '/api/ai-assistant' });
+  }
+  return id;
+}
+
+/** One model request at a time per session. Per-process, like the limiter above (see SHARED_RATE_LIMITER_IF_HORIZONTAL_SCALING). */
+const inFlight = new Set<string>();
+
+/** Abuse ceiling on model calls per address. Generous, because an institution can sit behind one address; it is not the product allowance. */
+const ipCalls = new Map<string, { count: number; resetTime: number }>();
+function ipAllows(ip: string, now = Date.now()): boolean {
+  const cfg = aiConfig();
+  const rec = ipCalls.get(ip);
+  if (!rec || now > rec.resetTime) {
+    if (ipCalls.size >= RATE_LIMIT_MAX_ENTRIES) for (const [k, v] of ipCalls) if (now > v.resetTime) ipCalls.delete(k);
+    ipCalls.set(ip, { count: 1, resetTime: now + cfg.windowMinutes * 60_000 });
+    return true;
+  }
+  if (rec.count >= cfg.ipQuestions) return false;
+  rec.count += 1;
+  return true;
+}
+
+const limitReachedText = (limit: number) =>
+  `You've used your ${limit} complimentary AI questions for this session. Share your details to continue, request a quotation, or speak with our team.`;
+const LEAD_LIMIT_TEXT =
+  "You've reached the hourly limit for AI questions. Please try again a little later, or request a quotation or speak with our team.";
 
 /**
  * Find the lead this enquiry belongs to, if one already exists —
@@ -87,81 +147,108 @@ async function findExistingLead(email: string, phone: string) {
   return null;
 }
 
-router.post('/chat', rateLimit, async (req, res) => {
+/** Where the visitor stands, without spending anything. Lets the page show the allowance after a refresh. */
+router.get('/status', statusRateLimit, async (req, res) => {
   try {
-    const { sessionId, message } = req.body;
+    const sessionId = resolveSession(req, res, req.query.sessionId);
+    if (!sessionId) return res.status(400).json({ error: 'Valid sessionId required' });
+    res.json({ quota: await readQuota(prisma, sessionId) });
+  } catch (error) {
+    console.error('AI Status Error:', error);
+    res.status(500).json({ error: 'Could not read the allowance' });
+  }
+});
 
-    if (!sessionId || typeof sessionId !== 'string') {
-      return res.status(400).json({ error: 'Valid sessionId required' });
-    }
+router.post('/chat', rateLimit, async (req, res) => {
+  let lockedSession: string | null = null;
+  try {
+    const { message } = req.body;
+    const sessionId = resolveSession(req, res, req.body.sessionId);
+    if (!sessionId) return res.status(400).json({ error: 'Valid sessionId required' });
 
     if (!message || typeof message !== 'string' || message.length > 1000) {
       return res.status(400).json({ error: 'Message must be between 1 and 1000 characters' });
     }
 
-    // 1. Get or create conversation
-    let conversation = await prisma.aIConversation.findFirst({
-      where: { sessionId }
-    });
-
-    if (!conversation) {
-      conversation = await prisma.aIConversation.create({
-        data: { sessionId }
-      });
+    // 1. A greeting, a thank-you or "get a quote" needs no model, no allowance and no wait.
+    const local = localReply(message);
+    if (local) {
+      void recordEvent(prisma, sessionId, `local:${local.kind}`);
+      return res.json({ text: local.text, local: true, ...(local.action ? { action: local.action } : {}) });
     }
 
-    // 2. Fetch history
-    const history = await prisma.aIMessage.findMany({
-      where: { conversationId: conversation.id },
-      orderBy: { createdAt: 'asc' },
-      take: 20 // Only send last 20 messages to LLM to prevent size issues
-    });
+    // 2. One question at a time per session; a second while one is running is refused, not queued. The lock is
+    //    taken before the allowance is read, so two quick sends cannot both see the last place free.
+    if (inFlight.has(sessionId)) return res.status(409).json({ code: 'busy', error: 'Please wait for the current answer.' });
+    inFlight.add(sessionId); lockedSession = sessionId;
 
-    const formattedHistory = history.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
+    // 3. The allowance, from what is stored. Over it, the model is not called.
+    const quota = await readQuota(prisma, sessionId);
+    if (quota.remaining <= 0) {
+      void recordEvent(prisma, sessionId, 'quota:reached');
+      return res.status(429).json({
+        code: 'quota_reached',
+        text: quota.tier === 'lead' ? LEAD_LIMIT_TEXT : limitReachedText(quota.limit),
+        quota,
+      });
+    }
+    if (!ipAllows(req.ip || req.connection.remoteAddress || 'unknown')) {
+      return res.status(429).json({ code: 'rate_limited', error: 'Too many questions from this network right now. Please try again later or use Get a quote.' });
+    }
 
-    // 3. Generate response (tools run server-side inside the service)
+    // 4. Only the last exchange is context.
+    const cfg = aiConfig();
+    let conversation = await prisma.aIConversation.findFirst({ where: { sessionId } });
+    if (!conversation) conversation = await prisma.aIConversation.create({ data: { sessionId } });
+    const recent = cfg.historyMessages > 0
+      ? (await prisma.aIMessage.findMany({
+          where: { conversationId: conversation.id, role: { in: ['user', 'assistant'] } },
+          orderBy: { createdAt: 'desc' }, take: cfg.historyMessages,
+        })).reverse()
+      : [];
+
+    // 5. Ask the model (tools run server-side inside the service), under a deadline.
     const pricingVisible = (req.app.get('aiPricingVisible') || (() => true))() as boolean;
-    const { text, sanitizedInput } = await generateAssistantResponse(formattedHistory, message, {
-      prisma,
-      pricingVisible,
-    });
+    let result;
+    try {
+      result = await generateAssistantResponse(recent.map(m => ({ role: m.role, content: m.content })), message, { prisma, pricingVisible });
+    } catch (err) {
+      // No answer, no question used: nothing is saved for a timeout or a provider failure.
+      if (err instanceof AssistantError && err.kind === 'timeout') {
+        void recordEvent(prisma, sessionId, 'model:timeout');
+        return res.status(504).json({ code: 'timeout', error: 'That response is taking longer than expected.', quota });
+      }
+      void recordEvent(prisma, sessionId, 'model:error');
+      return res.status(503).json({ code: 'unavailable', error: 'AI Assistant is temporarily unavailable.', quota });
+    }
 
-    // 4. Save sanitized user message and assistant response
+    // 6. Answered: save the sanitised question and the answer. Saving the question is what spends the allowance.
+    // Explicit, distinct times: rows written together would share one timestamp and could be read back in either order.
+    const askedAt = new Date();
     await prisma.aIMessage.createMany({
       data: [
-        {
-          conversationId: conversation.id,
-          role: 'user',
-          content: sanitizedInput
-        },
-        {
-          conversationId: conversation.id,
-          role: 'assistant',
-          content: text
-        }
-      ]
+        { conversationId: conversation.id, role: 'user', content: result.sanitizedInput, createdAt: askedAt },
+        { conversationId: conversation.id, role: 'assistant', content: result.text, createdAt: new Date(askedAt.getTime() + 1) },
+      ],
     });
+    await prisma.aIConversation.update({ where: { id: conversation.id }, data: { lastActivityAt: new Date() } });
 
-    await prisma.aIConversation.update({
-      where: { id: conversation.id },
-      data: { lastActivityAt: new Date() }
-    });
-
-    res.json({ text });
+    const used = quota.used + 1;
+    res.json({ text: result.text, quota: { ...quota, used, remaining: Math.max(0, quota.limit - used) } });
   } catch (error) {
     console.error('AI Chat Error:', error);
-    res.status(503).json({ error: 'AI Assistant is temporarily unavailable.' });
+    res.status(503).json({ code: 'unavailable', error: 'AI Assistant is temporarily unavailable.' });
+  } finally {
+    if (lockedSession) inFlight.delete(lockedSession);
   }
 });
 
 router.post('/lead', rateLimit, async (req, res) => {
   try {
-    const { sessionId, name, email, phone, organization, purpose, marketingConsent } = req.body;
+    const { name, email, phone, organization, purpose, marketingConsent } = req.body;
+    const sessionId = resolveSession(req, res, req.body.sessionId);
 
-    if (!sessionId || typeof sessionId !== 'string') {
+    if (!sessionId) {
       return res.status(400).json({ error: 'Valid sessionId required' });
     }
     if (!name || typeof name !== 'string' || name.trim().length > LIMITS.name) {
@@ -244,6 +331,8 @@ router.post('/lead', rateLimit, async (req, res) => {
       leadId = newLead.id;
     }
 
+    // The conversation carries the lead from here on: it is what moves the visitor to the lead allowance, and
+    // the form is not shown again. A visitor who used the quote form before chatting gets a conversation too.
     if (conversation) {
       await prisma.aIConversation.update({
         where: { id: conversation.id },
@@ -252,9 +341,11 @@ router.post('/lead', rateLimit, async (req, res) => {
           leadId
         }
       });
+    } else {
+      await prisma.aIConversation.create({ data: { sessionId, status: 'Converted', leadId } });
     }
 
-    res.json({ success: true });
+    res.json({ success: true, quota: await readQuota(prisma, sessionId) });
   } catch (error) {
     console.error('AI Lead Error:', error);
     res.status(500).json({ error: 'Failed to submit lead' });

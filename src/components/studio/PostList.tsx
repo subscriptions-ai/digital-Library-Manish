@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, FileText, PenLine, Search } from 'lucide-react';
+import { Eye, FileText, ImageOff, PenLine, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { EmptyState, Skeleton, buttonClass } from '../ui';
+import { PostImage } from '../blog/GeneratedCover';
 
 /** Everything the writer has written, drafts first when they are unfinished. */
 export function PostList() {
@@ -63,10 +64,9 @@ export function PostList() {
         {posts.map(p => (
           <Link key={p.id} to={`/studio/posts/${p.id}`}
             className="card card-interactive flex gap-3 p-3 sm:gap-4 sm:p-4">
-            <div className="h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-surface-2 sm:h-20 sm:w-28">
-              {p.coverUrl
-                ? <img src={p.coverUrl} alt="" className="h-full w-full object-cover" />
-                : <div className="flex h-full items-center justify-center text-faint"><FileText size={18} aria-hidden="true" /></div>}
+            {/* The same 16:9 frame and the same fallback as the public blog. */}
+            <div className="aspect-video w-24 shrink-0 self-start overflow-hidden rounded-lg bg-surface-2 sm:w-32">
+              <PostImage src={p.coverUrl} seed={p.slug} className="h-full w-full" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -74,6 +74,11 @@ export function PostList() {
                   {p.status}
                 </span>
                 {p.category && <span className="text-xs text-muted">{p.category}</span>}
+                {!p.coverUrl && (
+                  p.status === 'Published'
+                    ? <span className="badge badge-caution"><ImageOff size={12} aria-hidden="true" /> Cover image required</span>
+                    : <span className="text-xs text-muted">No cover yet</span>
+                )}
               </div>
               <p className="mt-1 truncate font-serif text-[17px] text-ink">{p.title}</p>
               {p.excerpt && <p className="mt-0.5 line-clamp-1 text-[13px] text-muted">{p.excerpt}</p>}

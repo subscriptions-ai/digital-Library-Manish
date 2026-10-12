@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { PostImage } from './GeneratedCover';
+import { PostImage, blogCoverFor } from './GeneratedCover';
+import { isUsableCoverUrl } from '../../lib/blogCover';
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Clock, FileQuestion, Newspaper, Search } from 'lucide-react';
 import { Button, EmptyState, Skeleton, buttonClass } from '../ui';
 
@@ -155,7 +156,7 @@ export function BlogList() {
         {lead && page === 1 && !q && !category && (
           <Link to={`/blog/${lead.slug}`}
             className="card card-interactive group mb-10 grid grid-cols-1 overflow-hidden lg:grid-cols-2">
-            <Cover post={lead} loading="eager" className="h-64 w-full lg:h-full" />
+            <Cover post={lead} loading="eager" className="aspect-video w-full lg:aspect-auto lg:h-full" />
             <div className="flex flex-col justify-center p-6 sm:p-8">
               <p className={LABEL}>{lead.category || 'Latest'}</p>
               <h2 className="mt-3 text-2xl font-bold leading-tight text-ink transition-colors duration-150 group-hover:text-accent sm:text-[28px]">
@@ -173,7 +174,7 @@ export function BlogList() {
           {(page === 1 && !q && !category ? rest : posts).map(p => (
             <Link key={p.slug} to={`/blog/${p.slug}`}
               className="card card-interactive group flex flex-col overflow-hidden">
-              <Cover post={p} className="h-44 w-full" />
+              <Cover post={p} className="aspect-video w-full" />
               <div className="flex flex-1 flex-col p-5">
                 <p className={LABEL}>{p.category || 'Post'}</p>
                 <h3 className="mt-2 line-clamp-2 text-lg font-bold leading-tight text-ink transition-colors duration-150 group-hover:text-accent">
@@ -239,7 +240,7 @@ export function BlogPost() {
       <Skeleton className="h-4 w-24" />
       <Skeleton className="mt-4 h-10 w-4/5" />
       <Skeleton className="mt-3 h-5 w-3/5" />
-      <Skeleton className="mt-8 aspect-[5/3] h-auto rounded-xl" />
+      <Skeleton className="mt-8 aspect-video h-auto rounded-xl" />
     </div>
   );
 
@@ -247,6 +248,11 @@ export function BlogPost() {
   const related: Card[] = data.related || [];
   const fromLibrary: any[] = data.fromLibrary || [];
   const url = `https://journalslibrary.com/blog/${p.slug}`;
+  // The cover is the social image unless a different one was set on purpose; a
+  // crawler needs an absolute address, and a post with neither still gets the
+  // site's own artwork rather than a bare link.
+  const social = (u: string) => (/^https?:\/\//i.test(u) ? u : `https://journalslibrary.com${u}`);
+  const shareImage = social((isUsableCoverUrl(p.ogImage) && p.ogImage) || (isUsableCoverUrl(p.coverUrl) && p.coverUrl) || blogCoverFor(p.slug));
 
   return (
     <div className="bg-ground">
@@ -257,13 +263,13 @@ export function BlogPost() {
         <meta property="og:type" content="article" />
         <meta property="og:title" content={p.seoTitle || p.title} />
         <meta property="og:description" content={p.seoDescription || p.excerpt || ''} />
-        {p.ogImage && <meta property="og:image" content={p.ogImage} />}
+        <meta property="og:image" content={shareImage} />
         <meta property="og:url" content={url} />
-        <meta name="twitter:card" content={p.ogImage ? 'summary_large_image' : 'summary'} />
+        <meta name="twitter:card" content="summary_large_image" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org', '@type': 'BlogPosting',
           headline: p.title, description: p.seoDescription || p.excerpt || undefined,
-          image: p.ogImage || undefined, datePublished: p.publishedAt, dateModified: p.updatedAt,
+          image: shareImage, datePublished: p.publishedAt, dateModified: p.updatedAt,
           author: { '@type': 'Person', name: p.authorName || 'STM Digital Library' },
           publisher: { '@type': 'Organization', name: 'STM Digital Library' },
           mainEntityOfPage: url,
@@ -285,7 +291,7 @@ export function BlogPost() {
           <span className="flex items-center gap-1.5"><Clock size={12} aria-hidden="true" /> {p.readMinutes} min read</span>
         </div>
 
-        <PostImage src={p.coverUrl} seed={p.slug} loading="eager" className="mt-8 aspect-[5/3] w-full rounded-xl border border-rule" />
+        <PostImage src={p.coverUrl} alt={p.coverAlt} seed={p.slug} loading="eager" className="mt-8 aspect-video w-full rounded-xl border border-rule" />
 
         {/* The body is cleaned on the server before it is ever stored. */}
         <div className="prose-post mt-8 max-w-[72ch] break-words" dangerouslySetInnerHTML={{ __html: p.body }} />

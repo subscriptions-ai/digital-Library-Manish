@@ -21,6 +21,10 @@ process.env.GEMINI_API_KEY = 'mock-test-key';
 
 /** Every request body the mock received, for assertions. */
 const requests: any[] = [];
+/** Every request URL, to see which model was asked. */
+const urls: string[] = [];
+/** Make the next provider response late, in ms. */
+let delayNext = 0;
 /** Scripted responses, consumed in order. */
 const script: any[] = [];
 
@@ -30,9 +34,14 @@ const mock: Server = createServer((req, res) => {
   req.on('end', () => {
     console.log(`[mock] ${req.method} ${req.url}`);
     requests.push(JSON.parse(body));
+    urls.push(req.url ?? '');
     const reply = script.shift() ?? textResponse('unexpected extra call');
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(reply));
+    const wait = delayNext; delayNext = 0;
+    setTimeout(() => {
+      if (res.destroyed) return;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(reply));
+    }, wait);
   });
 });
 
@@ -72,7 +81,7 @@ async function main() {
   const port = (mock.address() as { port: number }).port;
   setDefaultBaseUrls({ geminiUrl: `http://127.0.0.1:${port}/v1beta` });
 
-  const { generateAssistantResponse, maskPII } = await import('../src/server/aiAssistantService.js');
+  const { generateAssistantResponse, maskPII, AssistantError, trimHistory } = await import('../src/server/aiAssistantService.js');
   const { PrismaClient } = await import('@prisma/client');
   const { contentTypeCounts } = await import('../src/lib/publicCounts.js');
   const prisma = new PrismaClient();
@@ -83,7 +92,7 @@ async function main() {
   assert.equal(maskPII('also try 98765 43210'), 'also try [PHONE]');
   assert.equal(maskPII('in 2022 we grew'), 'in 2022 we grew', 'years are not phone numbers');
 
-  // ── 2. Two tool rounds, then a final answer ───────────────────
+  // ── 2. One tool round; a model that wants a second lookup is made to answer from it ──
   const userMessage = 'Reach me at priya@example.com, +91-98765-43210. Overview and solo pricing for 6 departments?';
   script.push(
     functionCallResponse('get_library_overview', {}),
@@ -155,16 +164,52 @@ async function main() {
     'hidden pricing returns the contact-us message',
   );
 
-  // ── 5. A model that never stops calling tools is bounded ───────
+  // ── 5. A model that never stops calling tools is bounded: initial call, one round, one forced answer ──
+  const before = requests.length;
   script.push(
     functionCallResponse('search_catalogue', { query: 'a' }),
     functionCallResponse('search_catalogue', { query: 'b' }),
     functionCallResponse('search_catalogue', { query: 'c' }),
     functionCallResponse('search_catalogue', { query: 'd' }),
   );
-  const bounded = await generateAssistantResponse([], 'search forever', { prisma, pricingVisible: true });
-  assert.equal(requests.length, 11, 'loop stopped after MAX_TOOL_ROUNDS, not forever');
-  assert.equal(bounded.text, "I'm sorry, I couldn't generate a response.");
+  await assert.rejects(() => generateAssistantResponse([], 'search forever', { prisma, pricingVisible: true }), (e: any) => e instanceof AssistantError && e.kind === 'provider');
+  assert.equal(requests.length - before, 3, 'initial call + one tool round + one forced answer, not a loop');
+  const forced = requests[requests.length - 1];
+  assert.equal(forced.tools, undefined, 'the forced final call offers no tools');
+  assert.equal(forced.toolConfig?.functionCallingConfig?.mode, 'NONE');
+  script.length = 0;
+
+  // ── 6. Cost controls on every request ──────────────────────────
+  script.push(textResponse('plain answer'));
+  const longHistory = Array.from({ length: 12 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `old message number ${i} ${'x'.repeat(900)}` }));
+  const prior = requests.length;
+  await generateAssistantResponse(longHistory, 'next question', { prisma, pricingVisible: true });
+  const sent = requests[prior];
+  assert.ok(sent.contents.length <= 3, `at most the last exchange plus the question, got ${sent.contents.length}`);
+  assert.ok(!JSON.stringify(sent.contents).includes('old message number 3 '), 'the transcript is not resent');
+  assert.ok(sent.contents.every((c: any) => c.parts.every((p: any) => (p.text || '').length <= 700)), 'each earlier message is cut');
+  assert.equal(sent.generationConfig.maxOutputTokens, 320, 'output is capped');
+  assert.equal(sent.contents[0].role, 'user', 'history starts at a visitor message');
+  assert.deepEqual(trimHistory([{ role: 'assistant', content: 'a' }, { role: 'user', content: 'b' }], 2).map(m => m.role), ['user'], 'a leading assistant message is dropped');
+  assert.deepEqual(trimHistory([{ role: 'user', content: 'mail me at a@b.co' }], 2)[0].content, 'mail me at [EMAIL]', 'history is masked again');
+
+  // ── 7. A model that never answers is cut off at the deadline ──
+  process.env.AI_ASSISTANT_TIMEOUT_MS = '1000';
+  delayNext = 3000;
+  script.push(textResponse('too late'));
+  const t0 = Date.now();
+  await assert.rejects(() => generateAssistantResponse([], 'slow one', { prisma, pricingVisible: true }), (e: any) => e instanceof AssistantError && e.kind === 'timeout');
+  assert.ok(Date.now() - t0 < 2500, 'gave up at the deadline, not when the provider finally answered');
+  delete process.env.AI_ASSISTANT_TIMEOUT_MS;
+  script.length = 0;
+
+  // ── 8. The model is configurable ─────────────────────────────
+  process.env.AI_ASSISTANT_MODEL = 'some-other-model';
+  script.push(textResponse('ok'));
+  const mark = urls.length;
+  await generateAssistantResponse([], 'which model?', { prisma, pricingVisible: true });
+  assert.ok(urls[mark].includes('some-other-model'), 'AI_ASSISTANT_MODEL is honoured');
+  delete process.env.AI_ASSISTANT_MODEL;
 
   await prisma.$disconnect();
   mock.close();

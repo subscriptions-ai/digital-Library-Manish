@@ -25,6 +25,7 @@ import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { setupAIAssistantRoutes } from "./src/routes/aiAssistant.js";
+import { usageSummary as aiAssistantUsage } from "./src/server/aiAssistantQuota.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
@@ -39,6 +40,7 @@ import { engineStatus, last24Hours, repeatedNoChangeAlerts, metrics as ingestion
 import { INGESTION_POLICY, schedulerV2 } from "./src/lib/ingestion/policy.js";
 import { classifyCandidates, summarise as summariseCandidates, createPreview, loadPreview, commitOneOff, previewToCsv, PreviewError } from "./src/lib/ingestion/importService.js";
 import sanitizeHtml from "sanitize-html";
+import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, publishProblems, COVER_MAX_BYTES, type PublishProblems } from "./src/lib/blogCover.js";
 import {
   TEMPLATES, TEMPLATE_LIST, renderTemplate, missingInstitutionFields,
   type TemplateKey, type MailContext,
@@ -1887,14 +1889,44 @@ async function startServer() {
       excerpt: String(b.excerpt || '').trim().slice(0, 500) || null,
       body,
       coverUrl: b.coverUrl || null,
+      // Alt text describes the picture, so it goes when the picture does.
+      coverAlt: b.coverUrl ? (cleanAlt(b.coverAlt) || null) : null,
       category: b.category || null,
       tags: Array.isArray(b.tags) ? b.tags.slice(0, 12) : [],
       domains: Array.isArray(b.domains) ? b.domains.slice(0, 6) : [],
       seoTitle: String(b.seoTitle || '').trim().slice(0, 120) || null,
       seoDescription: String(b.seoDescription || '').trim().slice(0, 300) || null,
-      ogImage: b.ogImage || b.coverUrl || null,
+      // The cover is the social image unless someone set a different one on
+      // purpose. "On purpose" = it differs from the cover it was saved beside,
+      // so a social image chosen by hand survives a cover change.
+      ogImage: b.ogImage
+        || (existing?.ogImage && existing.ogImage !== existing.coverUrl ? existing.ogImage : null)
+        || b.coverUrl || null,
       readMinutes: readingMinutes(body),
     };
+  };
+
+  /**
+   * Whether a post may be on the site: the same three questions the editor asks,
+   * answered again here because the editor is not the only thing that can call
+   * these endpoints. A cover that points into our own uploads must still exist.
+   */
+  const publishBlockers = (p: { title: any; body: any; coverUrl: any }): PublishProblems => {
+    const url = typeof p.coverUrl === 'string' ? p.coverUrl.trim() : '';
+    let hasCover = isUsableCoverUrl(url);
+    if (hasCover && url.startsWith('/uploads/')) {
+      const root = path.resolve(UPLOAD_DIR);
+      const onDisk = path.resolve(root, url.slice('/uploads/'.length));
+      hasCover = onDisk.startsWith(root + path.sep) && fs.existsSync(onDisk);
+    }
+    return publishProblems({ title: String(p.title || ''), body: String(p.body || ''), hasCover });
+  };
+  const blockedResponse = (res: any, problems: PublishProblems) => {
+    const n = Object.keys(problems).length;
+    return res.status(422).json({
+      error: n === 1 ? Object.values(problems)[0] : `Fix these ${n} things before publishing.`,
+      fields: problems,
+    });
   };
 
   // ── The editor's own endpoints ────────────────────────────────────────────
@@ -1953,6 +1985,12 @@ async function startServer() {
       const existing = await (prisma as any).blogPost.findUnique({ where: { id: req.params.id } });
       if (!existing) return res.status(404).json({ error: "No such post" });
       const data = await postFromBody(req.body || {}, existing);
+      // A draft may be saved half-finished. A live post may not lose what makes
+      // it fit to be live, so saving one asks what publishing asks.
+      if (existing.status === 'Published') {
+        const problems = publishBlockers({ title: req.body?.title, body: data.body, coverUrl: data.coverUrl });
+        if (Object.keys(problems).length) return blockedResponse(res, problems);
+      }
       res.json(await (prisma as any).blogPost.update({ where: { id: existing.id }, data }));
     } catch (e: any) {
       console.error('update post error', e?.message);
@@ -1966,6 +2004,10 @@ async function startServer() {
       const publish = req.body?.publish !== false;
       const existing = await (prisma as any).blogPost.findUnique({ where: { id: req.params.id } });
       if (!existing) return res.status(404).json({ error: "No such post" });
+      if (publish) {
+        const problems = publishBlockers(existing);
+        if (Object.keys(problems).length) return blockedResponse(res, problems);
+      }
       const me = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { displayName: true, email: true } });
       const who = me?.displayName || me?.email || req.user.uid;
       const post = await (prisma as any).blogPost.update({
@@ -7806,6 +7848,61 @@ async function startServer() {
     } catch (e: any) {
       console.error("media upload:", e);
       res.status(500).json({ error: "Upload failed" });
+    }
+  });
+
+  // POST /api/studio/cover — a blog cover, held to a stricter standard than a general upload.
+  // Same storage as every other picture (MEDIA_DIR + a MediaAsset row); what differs is
+  // that the type comes from the file's own bytes, never from its name.
+  app.post("/api/studio/cover", authenticateJWT, requireEditor, async (req: any, res: any) => {
+    try {
+      const { dataUrl, filename, altText } = req.body || {};
+      if (typeof dataUrl !== 'string' || !dataUrl) return res.status(400).json({ error: "Choose an image to upload." });
+
+      const comma = dataUrl.indexOf(',');
+      const head = comma > 0 && comma < 200 ? dataUrl.slice(0, comma) : '';
+      const hm = /^data:([^;,]*)(?:;[^;,=]+=[^;,]*)*;base64$/i.exec(head);
+      if (!hm) return res.status(400).json({ error: "That file could not be read as an image." });
+
+      const b64 = dataUrl.slice(comma + 1);
+      // Refuse on the encoded length first, so an oversized body is never decoded.
+      if (b64.length > Math.ceil(COVER_MAX_BYTES * 4 / 3) + 8) {
+        return res.status(413).json({ error: `That image is over the ${COVER_MAX_BYTES / 1048576} MB limit.` });
+      }
+      const buf = Buffer.from(b64, 'base64');
+      const check = checkCoverImage(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), hm[1]);
+      if (failed(check)) return res.status(check.code === 'too-big' ? 413 : 400).json({ error: check.message });
+
+      const { info } = check;
+      const original = String(filename || `cover.${info.ext}`).slice(0, 120);
+      const fsm = await import('node:fs');
+      fsm.mkdirSync(MEDIA_DIR, { recursive: true });
+      // The extension is the sniffed one: a PNG called "x.html" is stored as a PNG.
+      const stored = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-cover.${info.ext}`;
+      fsm.writeFileSync(path.join(MEDIA_DIR, stored), buf);
+
+      const asset = await (prisma as any).mediaAsset.create({
+        data: {
+          fileName: stored,
+          originalName: original,
+          url: `/uploads/media/${stored}`,
+          mimeType: info.mime,
+          ext: info.ext,
+          kind: 'image',
+          size: buf.length,
+          width: info.width,
+          height: info.height,
+          title: original.replace(/\.[^.]*$/, ''),
+          altText: cleanAlt(altText) || null,
+          folder: 'blog-cover',
+          uploadedBy: req.user?.email || null,
+          uploadedById: req.user?.uid || null,
+        },
+      });
+      res.json({ ...withAbsolute(req, asset), soft: check.soft, offRatio: check.offRatio });
+    } catch (e: any) {
+      console.error("cover upload:", e);
+      res.status(500).json({ error: "Upload failed. Please try again." });
     }
   });
 
@@ -15395,6 +15492,16 @@ async function startServer() {
   // The assistant is public-site only; when the admin hides commercial
   // UI on the public site, it stops quoting prices too.
   setupAIAssistantRoutes(app, { isPricingVisible: () => !getSystemSettings().hidePricing });
+
+  // How the public assistant is being used, read from the conversation tables: model-answered questions, replies
+  // that needed no model, timeouts and errors, how often the allowance ran out, and how many of those visitors left
+  // their details afterwards. Read-only, staff only.
+  app.get("/api/admin/ai-assistant/usage", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 90);
+      res.json(await aiAssistantUsage(prisma as any, days));
+    } catch (e: any) { console.error('GET ai-assistant/usage error:', e?.message); res.status(500).json({ error: "Failed to load assistant usage" }); }
+  });
 
   // The institutional brochure, sent as a download with its own name. It has to
   // be a route of its own: the static handler below falls back to index.html for
