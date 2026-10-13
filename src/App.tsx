@@ -170,7 +170,7 @@ function FirstLoginGate({ children }: { children: React.ReactNode }) {
 }
 
 import { RouteMetadata } from "./components/RouteMetadata";
-import { HelmetProvider } from "react-helmet-async";
+import { HelmetProvider } from './lib/head';
 import { AnalyticsTracker } from "./components/AnalyticsTracker";
 import { CookieConsent } from "./components/CookieConsent";
 import { WhatsAppFloatingButton } from "./components/WhatsAppFloatingButton";

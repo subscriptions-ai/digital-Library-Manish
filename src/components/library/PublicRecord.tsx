@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import { Helmet } from '../../lib/head';
 import { ArrowLeft, ArrowRight, BookOpen, Building2, Calendar, FileText, Hash, Layers } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buttonClass } from '../ui';

@@ -3,6 +3,7 @@ import { Bot } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Badge, Button, Card, CardHeader, ConfirmDialog, ErrorState, PageHeader, Skeleton } from '../../ui';
 import { ago } from '../ingestion/format';
+import { AiProviderConfig } from './AiProviderConfig';
 
 /**
  * The master switch for the public AI assistant. The server holds the value and enforces it; this screen only shows it and
@@ -92,7 +93,7 @@ export function AdminAiAssistant() {
           </Card>
 
           <Card className="mt-4">
-            <CardHeader title="Provider" description="Read from the server's settings. Keys and credentials are never shown here." />
+            <CardHeader title="Provider" description="Status of the provider the assistant is using. Keys and credentials are never shown." />
             <dl className="grid gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-4">
               {([
                 ['Provider', data.provider ? `${data.provider.name} · ${data.provider.model}` : '—'],
@@ -113,6 +114,8 @@ export function AdminAiAssistant() {
             )}
             <p className="mt-3 text-xs text-muted">The assistant is never switched off or on automatically; only an admin changes it.</p>
           </Card>
+
+          <AiProviderConfig onChanged={load} />
 
           {data.history.length > 0 && (
             <Card className="mt-4">

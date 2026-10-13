@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { Helmet } from '../lib/head';
 import { ShieldAlert, Scale, Info, Mail, BookOpen, ExternalLink, RefreshCw, FileText } from "lucide-react";
 import { COMPANY_DETAILS } from "../config";
 

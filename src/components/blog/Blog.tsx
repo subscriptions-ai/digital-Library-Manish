@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import { Helmet } from '../../lib/head';
 import { PostImage, blogCoverFor } from './GeneratedCover';
-import { isUsableCoverUrl } from '../../lib/blogCover';
+import { postSeo, blogListSeo } from '../../lib/seoMeta';
+import { SeoHead } from '../SeoHead';
+import { takeSeoData } from '../../lib/seoData';
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Clock, FileQuestion, Newspaper, Search } from 'lucide-react';
 import { Button, EmptyState, Skeleton, buttonClass } from '../ui';
 
@@ -29,19 +31,28 @@ function Cover({ post, className, loading = 'lazy' }: { post: Card; className: s
   return <PostImage src={post.coverUrl} seed={post.slug} loading={loading} className={className} />;
 }
 
+const ListHead = ({ page, category, q }: { page: number; category: string; q: string }) => <SeoHead seo={blogListSeo({ page, category, q })} />;
+
 export function BlogList() {
   const [sp, setSp] = useSearchParams();
   const category = sp.get('category') || '';
   const [search, setSearch] = useState(sp.get('q') || '');
   const [q, setQ] = useState(sp.get('q') || '');
-  const [data, setData] = useState<{ posts: Card[]; total: number; categories: { name: string; posts: number }[] } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  type ListData = { posts: Card[]; total: number; categories: { name: string; posts: number }[] };
   const page = Math.max(1, parseInt(sp.get('page') || '1') || 1);
+  // The server already wrote the plain list (and its numbered pages) into the page: start from that, and fetch only when the view changes.
+  const seed = useRef<{ key: string; list: ListData } | null>((!category && !q) ? takeSeoData('list', String(page)) : null);
+  const [data, setData] = useState<ListData | null>(seed.current?.list ?? null);
+  const [loading, setLoading] = useState(!seed.current);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => setQ(search.trim()), 350); return () => clearTimeout(t); }, [search]);
 
   useEffect(() => {
+    if (seed.current) {
+      if (seed.current.key === String(page) && !category && !q) return;   // still the page the server sent
+      seed.current = null;
+    }
     setLoading(true);
     setFailed(false);
     setData(null);
@@ -67,10 +78,7 @@ export function BlogList() {
 
   return (
     <div className="bg-ground">
-      <Helmet>
-        <title>Blog — STM Digital Library</title>
-        <meta name="description" content="Writing from STM Digital Library: what open-access research makes possible, how to get more from the library, and what has changed in the collection." />
-      </Helmet>
+      <ListHead page={page} category={category} q={q} />
 
       <section className="bg-navy">
         <div className="container-public py-12 text-center sm:py-16">
@@ -177,9 +185,9 @@ export function BlogList() {
               <Cover post={p} className="aspect-video w-full" />
               <div className="flex flex-1 flex-col p-5">
                 <p className={LABEL}>{p.category || 'Post'}</p>
-                <h3 className="mt-2 line-clamp-2 text-lg font-bold leading-tight text-ink transition-colors duration-150 group-hover:text-accent">
+                <h2 className="mt-2 line-clamp-2 text-lg font-bold leading-tight text-ink transition-colors duration-150 group-hover:text-accent">
                   {p.title}
-                </h3>
+                </h2>
                 {p.excerpt && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted">{p.excerpt}</p>}
                 <p className="mt-auto pt-4 text-xs text-muted">
                   {day(p.publishedAt)} · {p.readMinutes} min
@@ -189,17 +197,18 @@ export function BlogList() {
           ))}
         </div>
 
-        {data && data.total > 9 && (
-          <div className="mt-10 flex items-center justify-center gap-3">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => set('page', String(page - 1))}>
-              <ArrowLeft size={14} aria-hidden="true" /> Previous
-            </Button>
-            <span className="text-sm text-muted tnum">Page {page} of {Math.ceil(data.total / 9)}</span>
-            <Button variant="outline" size="sm" disabled={page >= Math.ceil(data.total / 9)} onClick={() => set('page', String(page + 1))}>
-              Next <ArrowRight size={14} aria-hidden="true" />
-            </Button>
-          </div>
-        )}
+        {data && data.total > 9 && (() => {
+          const pages = Math.ceil(data.total / 9);
+          // Real links, so every older post is reachable without running a script. Filters are kept out of the address of a numbered page.
+          const to = (n: number) => { const next = new URLSearchParams(sp); if (n > 1) next.set('page', String(n)); else next.delete('page'); const qs = next.toString(); return `/blog${qs ? `?${qs}` : ''}`; };
+          return (
+            <nav aria-label="Pagination" className="mt-10 flex items-center justify-center gap-3">
+              {page > 1 ? <Link to={to(page - 1)} rel="prev" className={buttonClass('outline', 'sm')}><ArrowLeft size={14} aria-hidden="true" /> Previous</Link> : <span className={buttonClass('outline', 'sm', 'pointer-events-none opacity-50')} aria-disabled="true"><ArrowLeft size={14} aria-hidden="true" /> Previous</span>}
+              <span className="text-sm text-muted tnum">Page {page} of {pages}</span>
+              {page < pages ? <Link to={to(page + 1)} rel="next" className={buttonClass('outline', 'sm')}>Next <ArrowRight size={14} aria-hidden="true" /></Link> : <span className={buttonClass('outline', 'sm', 'pointer-events-none opacity-50')} aria-disabled="true">Next <ArrowRight size={14} aria-hidden="true" /></span>}
+            </nav>
+          );
+        })()}
       </main>
     </div>
   );
@@ -207,10 +216,16 @@ export function BlogList() {
 
 export function BlogPost() {
   const { slug } = useParams();
-  const [data, setData] = useState<any>(null);
+  // The server wrote this post into the page it sent: show that at once, and fetch only when the reader moves to a different post.
+  const seed = useRef<any>(slug ? takeSeoData('post', slug) : null);
+  const [data, setData] = useState<any>(seed.current);
   const [missing, setMissing] = useState(false);
 
   useEffect(() => {
+    if (seed.current) {
+      if (seed.current.post?.slug === slug) return;
+      seed.current = null;
+    }
     window.scrollTo(0, 0);
     setData(null);
     setMissing(false);
@@ -247,39 +262,22 @@ export function BlogPost() {
   const p = data.post;
   const related: Card[] = data.related || [];
   const fromLibrary: any[] = data.fromLibrary || [];
-  const url = `https://journalslibrary.com/blog/${p.slug}`;
-  // The cover is the social image unless a different one was set on purpose; a
-  // crawler needs an absolute address, and a post with neither still gets the
-  // site's own artwork rather than a bare link.
-  const social = (u: string) => (/^https?:\/\//i.test(u) ? u : `https://journalslibrary.com${u}`);
-  const shareImage = social((isUsableCoverUrl(p.ogImage) && p.ogImage) || (isUsableCoverUrl(p.coverUrl) && p.coverUrl) || blogCoverFor(p.slug));
+  const seo = postSeo(p);
 
   return (
     <div className="bg-ground">
-      <Helmet>
-        <title>{`${p.seoTitle || p.title} — STM Digital Library`}</title>
-        <meta name="description" content={p.seoDescription || p.excerpt || ''} />
-        <link rel="canonical" href={url} />
-        <meta property="og:type" content="article" />
-        <meta property="og:title" content={p.seoTitle || p.title} />
-        <meta property="og:description" content={p.seoDescription || p.excerpt || ''} />
-        <meta property="og:image" content={shareImage} />
-        <meta property="og:url" content={url} />
-        <meta name="twitter:card" content="summary_large_image" />
-        <script type="application/ld+json">{JSON.stringify({
-          '@context': 'https://schema.org', '@type': 'BlogPosting',
-          headline: p.title, description: p.seoDescription || p.excerpt || undefined,
-          image: shareImage, datePublished: p.publishedAt, dateModified: p.updatedAt,
-          author: { '@type': 'Person', name: p.authorName || 'STM Digital Library' },
-          publisher: { '@type': 'Organization', name: 'STM Digital Library' },
-          mainEntityOfPage: url,
-        })}</script>
-      </Helmet>
+      <SeoHead seo={seo} />
 
       <article className="container-public max-w-3xl py-12">
-        <Link to="/blog" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
-          <ArrowLeft size={16} aria-hidden="true" /> All posts
-        </Link>
+        <nav aria-label="Breadcrumb" className="text-sm text-muted">
+          <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <li><Link to="/" className="font-semibold text-accent hover:underline">Home</Link></li>
+            <li aria-hidden="true">›</li>
+            <li><Link to="/blog" className="font-semibold text-accent hover:underline">Blog</Link></li>
+            <li aria-hidden="true">›</li>
+            <li aria-current="page" className="line-clamp-1">{p.title}</li>
+          </ol>
+        </nav>
 
         <p className={`${LABEL} mt-8`}>{p.category || 'Post'}</p>
         <h1 className="mt-3 text-3xl font-bold leading-[1.15] text-ink sm:text-[40px]">{p.title}</h1>
@@ -287,7 +285,7 @@ export function BlogPost() {
 
         <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-rule py-3 text-xs text-muted">
           <span>{p.authorName || 'STM Digital Library'}</span>
-          <span className="flex items-center gap-1.5"><Calendar size={12} aria-hidden="true" /> {day(p.publishedAt)}</span>
+          <span className="flex items-center gap-1.5"><Calendar size={12} aria-hidden="true" /> <time dateTime={p.publishedAt}>{day(p.publishedAt)}</time></span>
           <span className="flex items-center gap-1.5"><Clock size={12} aria-hidden="true" /> {p.readMinutes} min read</span>
         </div>
 
@@ -299,7 +297,7 @@ export function BlogPost() {
         {/* What the library holds on this subject */}
         {fromLibrary.length > 0 && (
           <section className="card card-pad mt-12">
-            <p className={LABEL}>In the library on this subject</p>
+            <h2 className={LABEL}>In the library on this subject</h2>
             <ul className="mt-4 divide-y divide-rule">
               {fromLibrary.map((a: any) => (
                 <li key={a.id} className="py-3 first:pt-0 last:pb-0">
@@ -320,7 +318,7 @@ export function BlogPost() {
 
         {related.length > 0 && (
           <section className="mt-12">
-            <p className={LABEL}>More like this</p>
+            <h2 className={LABEL}>More like this</h2>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
               {related.map(r => (
                 <Link key={r.slug} to={`/blog/${r.slug}`}
@@ -335,8 +333,10 @@ export function BlogPost() {
 
         <section className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-navy p-6">
           <div>
-            <p className="on-dark text-xl font-bold">Read the research itself</p>
-            <p className="on-dark-2 mt-1 text-sm">Free to register. The whole library, in half-hour sessions.</p>
+            <h2 className="on-dark text-xl font-bold">Read the research itself</h2>
+            <p className="on-dark-2 mt-1 text-sm">
+              Free to register. The whole library, in half-hour sessions. See also <Link to="/for-institutions" className="underline">for institutions</Link> and <Link to="/for-students" className="underline">for students and researchers</Link>.
+            </p>
           </div>
           <Link to="/signup?ref=blog" className={buttonClass('highlight')}>
             Register Now <ArrowRight size={16} aria-hidden="true" />

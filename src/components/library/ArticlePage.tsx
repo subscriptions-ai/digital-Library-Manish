@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import { Helmet } from '../../lib/head';
 import { ChevronRight, ExternalLink, Lock, Copy, Check } from 'lucide-react';
 import { Skeleton, buttonClass } from '../ui';
 

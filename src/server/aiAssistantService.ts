@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { Type } from '@google/genai';
 import type { Content, FunctionDeclaration } from '@google/genai';
 import dotenv from 'dotenv';
 import type { PrismaClient } from '@prisma/client';
@@ -22,10 +22,10 @@ import {
 import { searchContent } from '../lib/catalogueSearch.js';
 import { contentTypeCounts } from '../lib/publicCounts.js';
 import { aiConfig } from './aiAssistantConfig.js';
+import { categorizeProviderError, resolveActiveAIConfig, type ErrorCategory } from './aiProviderConfig.js';
 
 dotenv.config();
 
-const ai = new GoogleGenAI({});
 /** Enough catalogue rows to ground an answer, small enough to stay in context. */
 const SEARCH_LIMIT = 5;
 /** A model asking for more tools than this in one turn is not asking for a lookup. */
@@ -277,7 +277,8 @@ const TOOL_DECLARATIONS: FunctionDeclaration[] = [
 
 /** Why the assistant could not answer. Neither kind costs the visitor a question. */
 export class AssistantError extends Error {
-  constructor(public kind: 'timeout' | 'provider', message: string) { super(message); this.name = 'AssistantError'; }
+  /** `category` is the safe classification of a provider failure (never its text), for the admin status panel. */
+  constructor(public kind: 'timeout' | 'provider', message: string, public category?: ErrorCategory) { super(message); this.name = 'AssistantError'; }
 }
 
 /** The earlier messages worth sending: the last few, masked and cut, starting at a visitor message. */
@@ -293,6 +294,12 @@ export async function generateAssistantResponse(
   options: AssistantOptions
 ) {
   const cfg = aiConfig();
+  // The key and model in force right now (Admin configuration, else the server environment), resolved per request so a change
+  // made in the Admin panel applies to the next question with no restart.
+  const active = await resolveActiveAIConfig(options.prisma);
+  const ai = active.client();
+  if (!ai) throw new AssistantError('provider', 'No AI credential is configured.');
+  const model = active.model;
   // 1. Mask PII before it goes anywhere near the model.
   const sanitizedMessage = maskPII(userMessage);
 
@@ -315,7 +322,7 @@ export async function generateAssistantResponse(
     tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
   };
   const call = (c: typeof config | (Omit<typeof config, 'tools'> & { tools?: undefined; toolConfig?: unknown })) =>
-    ai.models.generateContent({ model: cfg.model, contents, config: c as any });
+    ai.models.generateContent({ model, contents, config: c as any });
   /** Run what the model asked for, server-side, and hand the results back as function responses. */
   const answerTools = async (response: Awaited<ReturnType<typeof call>>) => {
     contents.push({ role: 'model', parts: response.candidates?.[0]?.content?.parts ?? [] });
@@ -349,8 +356,10 @@ export async function generateAssistantResponse(
   } catch (error) {
     if (error instanceof AssistantError) throw error;
     if (deadline.signal.aborted) throw new AssistantError('timeout', 'The assistant took too long to answer.');
-    console.error('AI Assistant Error:', error);
-    throw new AssistantError('provider', 'AI Assistant is temporarily unavailable.');
+    // Only the category is logged: a provider's error text is not ours to repeat, and may echo request details.
+    const category = categorizeProviderError(error);
+    console.error('AI Assistant provider error:', category);
+    throw new AssistantError('provider', 'AI Assistant is temporarily unavailable.', category);
   } finally {
     clearTimeout(timer);
   }

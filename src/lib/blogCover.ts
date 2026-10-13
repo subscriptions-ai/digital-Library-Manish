@@ -164,6 +164,16 @@ export function isUsableCoverUrl(url: unknown): url is string {
   return (/^\/uploads\/[^\s?#]+$/.test(s) && !s.includes('..')) || /^https?:\/\/[^\s]+$/i.test(s);
 }
 
+/** Locally hosted artwork chosen by topic when a post has no usable cover. Shared by the page and by the search/social metadata. */
+export function blogCoverFor(seed: string) {
+  const topic = seed.toLowerCase();
+  if (/find-research|college.*research|research.*college/.test(topic)) return '/assets/blog/college-research.webp';
+  if (/academic-journal|peer-review|publishing/.test(topic)) return '/assets/blog/academic-journals.webp';
+  if (/transforming|share|sharing/.test(topic)) return '/assets/blog/knowledge-sharing.webp';
+  if (/student|importance/.test(topic)) return '/assets/blog/student-library.webp';
+  return '/assets/blog/digital-library-features.webp';
+}
+
 // ── Publishing ──────────────────────────────────────────────────────────────
 
 export type PublishFields = 'title' | 'body' | 'cover';

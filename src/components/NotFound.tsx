@@ -1,4 +1,4 @@
-import { Helmet } from "react-helmet-async";
+import { Helmet } from '../lib/head';
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { BookOpen, Home, Library } from "lucide-react";

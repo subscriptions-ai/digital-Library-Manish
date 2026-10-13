@@ -4,6 +4,7 @@ import { generateAssistantResponse, maskPII, AssistantError } from '../server/ai
 import { aiConfig } from '../server/aiAssistantConfig.js';
 import { localReply } from '../server/aiAssistantLocal.js';
 import { readQuota, recordEvent } from '../server/aiAssistantQuota.js';
+import { noteProviderError } from '../server/aiProviderConfig.js';
 import { aiAssistantEnabled, DISABLED_BODY } from '../server/aiAssistantSwitch.js';
 
 const router = express.Router();
@@ -232,6 +233,7 @@ router.post('/chat', requireAssistantOn, rateLimit, async (req, res) => {
         return res.status(504).json({ code: 'timeout', error: 'That response is taking longer than expected.', quota });
       }
       void recordEvent(prisma, sessionId, 'model:error');
+      if (err instanceof AssistantError) void noteProviderError(prisma, err.category);
       return res.status(503).json({ code: 'unavailable', error: 'AI Assistant is temporarily unavailable.', quota });
     }
 

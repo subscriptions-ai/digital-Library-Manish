@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { DOMAINS } from "../constants";
-import { Helmet } from "react-helmet-async";
+import { Helmet } from '../lib/head';
+import { SeoHead } from "./SeoHead";
+import { departmentSeo } from "../lib/seoMeta";
 import * as Icons from "lucide-react";
 import {
   BookOpen, ChevronRight, Check,
@@ -174,27 +176,10 @@ export function DomainLandingPage() {
 
   const relatedDomains = DOMAINS.filter((d) => d.id !== domain.id).slice(0, 4);
 
-  const schemaData = {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    "name": `${domain.name} Digital Library Collection`,
-    "description": domain.description,
-    "publisher": {
-      "@type": "Organization",
-      "name": "STM Digital Library"
-    }
-  };
 
   return (
     <div className="flex flex-col bg-surface">
-      <Helmet>
-        <title>{domain.name} Research Collection | STM Digital Library</title>
-        <meta name="description" content={`Explore comprehensive academic resources, journals, and books in ${domain.name}. ${domain.description}`} />
-        <meta name="keywords" content={`${domain.name}, digital library, research papers, journals, academic content, study material`} />
-        <script type="application/ld+json">
-          {JSON.stringify(schemaData)}
-        </script>
-      </Helmet>
+      <SeoHead seo={departmentSeo(domain)} />
 
       {/* ══ HERO ════════════════════════════════════════════════════════════════ */}
       <section className="bg-navy py-12 sm:py-16">

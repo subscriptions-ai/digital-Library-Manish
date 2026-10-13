@@ -26,6 +26,9 @@ import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { setupAIAssistantRoutes } from "./src/routes/aiAssistant.js";
 import { usageSummary as aiAssistantUsage } from "./src/server/aiAssistantQuota.js";
+import { providerState as aiProviderState, testConnection as aiTestConnection, activateConfig as aiActivateConfig, removeAdminKey as aiRemoveAdminKey, resolveActiveAIConfig } from "./src/server/aiProviderConfig.js";
+import { loadBlogList, loadBlogPost } from "./src/server/blogData.js";
+import { installSeoPages } from "./src/server/seoPages.js";
 import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
@@ -2082,29 +2085,7 @@ async function startServer() {
       const limit = Math.min(24, Math.max(3, parseInt(String(req.query.limit || '9')) || 9));
       const category = typeof req.query.category === 'string' && req.query.category ? req.query.category : null;
       const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-      const where: any = {
-        status: 'Published',
-        ...(category ? { category } : {}),
-        ...(q ? { OR: [
-          { title: { contains: q, mode: 'insensitive' } },
-          { excerpt: { contains: q, mode: 'insensitive' } },
-        ] } : {}),
-      };
-      const [posts, total, cats] = await Promise.all([
-        (prisma as any).blogPost.findMany({
-          where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * limit, take: limit,
-          select: {
-            slug: true, title: true, excerpt: true, coverUrl: true, category: true,
-            authorName: true, publishedAt: true, readMinutes: true,
-          },
-        }),
-        (prisma as any).blogPost.count({ where }),
-        (prisma as any).blogPost.groupBy({ by: ['category'], where: { status: 'Published' }, _count: { _all: true } }),
-      ]);
-      res.json({
-        posts, total, page, limit,
-        categories: cats.filter((c: any) => c.category).map((c: any) => ({ name: c.category, posts: c._count._all })),
-      });
+      res.json(await loadBlogList(prisma as any, { page, limit, category, q }));
     } catch {
       res.status(500).json({ error: "Failed to read the blog" });
     }
@@ -2112,30 +2093,9 @@ async function startServer() {
 
   app.get("/api/blog/posts/:slug", async (req: any, res: any) => {
     try {
-      const post = await (prisma as any).blogPost.findFirst({
-        where: { slug: req.params.slug, status: 'Published' },
-      });
-      if (!post) return res.status(404).json({ error: "No such post" });
-      (prisma as any).blogPost.update({ where: { id: post.id }, data: { views: { increment: 1 } } }).catch(() => {});
-
-      // What the library actually holds on the subject this post is about. A
-      // post that sends nobody into the library is a post that did half its job.
-      const domains: string[] = Array.isArray(post.domains) ? post.domains as string[] : [];
-      const [related, fromLibrary] = await Promise.all([
-        (prisma as any).blogPost.findMany({
-          where: { status: 'Published', id: { not: post.id }, ...(post.category ? { category: post.category } : {}) },
-          orderBy: { publishedAt: 'desc' }, take: 3,
-          select: { slug: true, title: true, excerpt: true, coverUrl: true, publishedAt: true, readMinutes: true },
-        }),
-        domains.length
-          ? (prisma as any).article.findMany({
-              where: { status: 'Published', domain: { in: domains } },
-              orderBy: { originalDate: 'desc' }, take: 5,
-              select: { id: true, title: true, journalName: true, domain: true, year: true },
-            })
-          : Promise.resolve([]),
-      ]);
-      res.json({ post, related, fromLibrary });
+      const found = await loadBlogPost(prisma as any, req.params.slug, { countView: true });
+      if (!found) return res.status(404).json({ error: "No such post" });
+      res.json(found);
     } catch (e: any) {
       console.error('blog post error', e?.message);
       res.status(500).json({ error: "Failed to read that post" });
@@ -15359,8 +15319,10 @@ async function startServer() {
       
       // Static sitemap
       xml += `  <sitemap>\n    <loc>${baseUrl}/sitemap-static.xml</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </sitemap>\n`;
-      // The blog, which is written to be found
-      xml += `  <sitemap>\n    <loc>${baseUrl}/sitemap-blog.xml</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </sitemap>\n`;
+      // The blog, which is written to be found. Its last-modified is the newest change to any published post, not "now".
+      const newest = await (prisma as any).blogPost.findFirst({ where: { status: 'Published' }, orderBy: { updatedAt: 'desc' }, select: { updatedAt: true } });
+      xml += `  <sitemap>\n    <loc>${baseUrl}/sitemap-blog.xml</loc>\n    <lastmod>${new Date(newest?.updatedAt || Date.now()).toISOString()}</lastmod>\n  </sitemap>\n`;
+      xml += `  <sitemap>\n    <loc>${baseUrl}/sitemap-departments.xml</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </sitemap>\n`;
       
       // Dynamic content sitemaps
       for (let i = 1; i <= totalPages; i++) {
@@ -15407,6 +15369,15 @@ async function startServer() {
     res.send(xml);
   });
 
+  // The department pages: public, with their own title, description and content.
+  app.get("/sitemap-departments.xml", (_req: any, res: any) => {
+    const baseUrl = "https://journalslibrary.com";
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+    for (const d of DOMAINS) xml += `  <url>\n    <loc>${baseUrl}/domain/${d.id}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n`;
+    xml += `</urlset>`;
+    res.type('application/xml').send(xml);
+  });
+
   // 3. PAGINATED CONTENT SITEMAPS
   /** Every published post, newest first. Drafts are not in here. */
   app.get("/sitemap-blog.xml", async (_req: any, res: any) => {
@@ -15417,7 +15388,7 @@ async function startServer() {
         select: { slug: true, updatedAt: true },
       });
       let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
-      xml += `  <url>\n    <loc>${baseUrl}/blog</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
+      xml += `  <url>\n    <loc>${baseUrl}/blog</loc>\n${posts[0] ? `    <lastmod>${new Date(posts[0].updatedAt).toISOString()}</lastmod>\n` : ''}    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
       for (const p2 of posts) {
         xml += `  <url>\n    <loc>${baseUrl}/blog/${p2.slug}</loc>\n`
           + `    <lastmod>${new Date(p2.updatedAt).toISOString()}</lastmod>\n`
@@ -15524,9 +15495,10 @@ async function startServer() {
       const [state, history] = await Promise.all([aiAssistantSwitchState(prisma as any), aiAssistantSwitchHistory(prisma as any)]);
       const lastAnswer: any = await (prisma as any).aIMessage.findFirst({ where: { role: 'assistant' }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } }).catch(() => null);
       const day: any = await aiAssistantUsage(prisma as any, 1).catch(() => null);
+      const active = await resolveActiveAIConfig(prisma as any);
       res.json({
         ...state, history,
-        provider: { name: 'Gemini', model: aiConfig().model },
+        provider: { name: 'Gemini', model: active.model },
         lastAnswerAt: lastAnswer?.createdAt ? lastAnswer.createdAt.toISOString() : null,
         last24h: day ? { answered: day.modelAnsweredQuestions, errors: day.modelErrors, timeouts: day.modelTimeouts } : null,
       });
@@ -15546,6 +15518,52 @@ async function startServer() {
     } catch (e: any) { console.error('POST ai-assistant/switch error:', e?.message); res.status(500).json({ error: "Could not change the AI Assistant setting" }); }
   });
 
+  // AI provider credential, model and test. Super admin only, enforced here and not by the page. The key is write-only: it arrives in
+  // a request body, is tested, encrypted and stored, and is never returned, logged or audited. Reading this config returns who/when/where
+  // from, never the key or anything derived from it. Turning the assistant on or off is the separate switch above and is never touched.
+  const aiProviderTests = new Map<string, number[]>();
+  const aiTestAllowed = (who: string) => {
+    const now = Date.now();
+    const recent = (aiProviderTests.get(who) || []).filter(t => now - t < 60_000);
+    if (recent.length >= (Number(process.env.AI_PROVIDER_TESTS_PER_MINUTE) || 10)) { aiProviderTests.set(who, recent); return false; }
+    recent.push(now); aiProviderTests.set(who, recent); return true;
+  };
+  const sendAiFailure = (res: any, r: { status?: number; code?: string; category?: string; message?: string }) =>
+    res.status(r.status || 500).json({ ok: false, code: r.code, category: r.category ?? null, error: r.message });
+
+  app.get("/api/admin/ai-assistant/provider", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json(await aiProviderState(prisma as any)); }
+    catch (e: any) { console.error('GET ai-assistant/provider error:', e?.name || 'error'); res.status(500).json({ error: "Could not read the AI provider settings" }); }
+  });
+
+  app.post("/api/admin/ai-assistant/provider/test", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      if (!aiTestAllowed(req.user?.uid || 'x')) return res.status(429).json({ ok: false, code: 'TOO_MANY_TESTS', error: 'Too many connection tests. Wait a minute and try again.' });
+      const r = await aiTestConnection(prisma as any, { id: req.user?.uid, email: req.user?.email }, req.body || {});
+      if (!r.ok && r.status !== 200) return sendAiFailure(res, r);
+      res.json(r.ok ? { ok: true, message: 'Connection successful.' } : { ok: false, category: r.category, message: r.message });
+    } catch (e: any) { console.error('POST ai-assistant/provider/test error:', e?.name || 'error'); res.status(500).json({ ok: false, error: "The connection test could not be run" }); }
+  });
+
+  app.post("/api/admin/ai-assistant/provider", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      if (!aiTestAllowed(req.user?.uid || 'x')) return res.status(429).json({ ok: false, code: 'TOO_MANY_TESTS', error: 'Too many attempts. Wait a minute and try again.' });
+      const r = await aiActivateConfig(prisma as any, { id: req.user?.uid, email: req.user?.email }, req.body || {});
+      if (!r.ok) return sendAiFailure(res, r);
+      console.log(`AI provider settings changed by ${req.user?.email || req.user?.uid} (key ${r.changed.key ? 'updated' : 'unchanged'}, model ${r.changed.model ? 'updated' : 'unchanged'})`);
+      res.json({ ok: true, changed: r.changed, state: await aiProviderState(prisma as any) });
+    } catch (e: any) { console.error('POST ai-assistant/provider error:', e?.name || 'error'); res.status(500).json({ ok: false, error: "The AI provider settings could not be saved" }); }
+  });
+
+  app.post("/api/admin/ai-assistant/provider/remove-key", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const r = await aiRemoveAdminKey(prisma as any, { id: req.user?.uid, email: req.user?.email });
+      if (!r.ok) return sendAiFailure(res, r);
+      console.log(`AI provider Admin key removed by ${req.user?.email || req.user?.uid}`);
+      res.json({ ok: true, state: await aiProviderState(prisma as any) });
+    } catch (e: any) { console.error('POST ai-assistant/provider/remove-key error:', e?.name || 'error'); res.status(500).json({ ok: false, error: "The Admin key could not be removed" }); }
+  });
+
   // The institutional brochure, sent as a download with its own name. It has to
   // be a route of its own: the static handler below falls back to index.html for
   // anything it cannot find, so a missing or misnamed file used to come back as
@@ -15562,15 +15580,19 @@ async function startServer() {
     res.sendFile(file);
   });
 
-  // Vite middleware for development
+  // Public pages (the blog, the department pages, the marketing pages) leave the server with their own title, description,
+  // canonical and structured data, and the blog's content as plain HTML. Everything else gets the plain app shell below.
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
+    installSeoPages(app, prisma as any, async (url) => vite.transformIndexHtml(url, await fs.promises.readFile(path.join(currentDir, 'index.html'), 'utf8')));
     app.use(vite.middlewares);
   } else {
+    let shellHtml: string | null = null;
+    installSeoPages(app, prisma as any, async () => (shellHtml ??= await fs.promises.readFile(path.join(currentDir, 'dist/index.html'), 'utf8')));
     app.use(express.static(path.join(currentDir, 'dist')));
     app.get('*', (req, res) => res.sendFile(path.join(currentDir, 'dist/index.html')));
   }
