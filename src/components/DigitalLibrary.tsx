@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { getLibraryPaths, libraryUrl } from "../lib/libraryRoute";
 import { motion, AnimatePresence } from "framer-motion";
 import { DOMAINS } from "../constants";
 import { HERO_IMAGES } from "./DomainLandingPage";
@@ -82,7 +84,14 @@ const FUNCTIONALITIES = [
   }
 ];
 
+/** The addresses other pages send to "the library" with a filter: All books, See everything, a department. */
+const LIBRARY_PARAMS = ['kind', 'domain', 'sort', 'q', 'mode', 'atype', 'recent', 'oa'];
+
 export function DigitalLibrary() {
+  // The same session the navbar reads. This page is the overview a visitor gets; a member is not asked to create an account.
+  const { profile } = useAuth();
+  const { search } = useLocation();
+  const paths = getLibraryPaths(profile);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [domainCounts, setDomainCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -110,6 +119,11 @@ export function DigitalLibrary() {
         console.error("Error fetching domain counts:", err);
       });
   }, []);
+
+  // A member who followed a link meant for the content library (…?kind=books, …?sort=added) goes to the content library with it.
+  if (profile && paths.reads && LIBRARY_PARAMS.some(k => new URLSearchParams(search).has(k))) {
+    return <Navigate to={`${paths.browse}${search}`} replace />;
+  }
 
   const OFFERINGS: { name: string; count: number | undefined; icon: React.ReactNode; desc?: string }[] = [
     { name: "Journal Titles", count: counts["Journals"], icon: <BookOpen size={24} aria-hidden="true" />, desc: "Distinct journal publications available in the catalogue." },
@@ -148,10 +162,17 @@ export function DigitalLibrary() {
               </p>
               
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/signup" className={buttonClass("highlight", "lg")}>
-                  Create a Free Account
-                  <ArrowRight size={18} aria-hidden="true" />
-                </Link>
+                {profile ? (
+                  <Link to={libraryUrl(profile)} className={buttonClass("highlight", "lg")}>
+                    Open the Library
+                    <ArrowRight size={18} aria-hidden="true" />
+                  </Link>
+                ) : (
+                  <Link to="/signup" className={buttonClass("highlight", "lg")}>
+                    Create a Free Account
+                    <ArrowRight size={18} aria-hidden="true" />
+                  </Link>
+                )}
                 <a 
                   href="#why-advanced" 
                   className="btn btn-lg on-dark on-dark-fill on-dark-edge"
@@ -392,9 +413,13 @@ export function DigitalLibrary() {
             Join the hundreds of forward-thinking universities and corporate R&D centers that trust our next-generation digital library platform.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Link to="/signup" className={buttonClass("highlight", "lg")}>
-              Create a Free Account
-            </Link>
+            {profile ? (
+              <Link to={libraryUrl(profile)} className={buttonClass("highlight", "lg")}>Open the Library</Link>
+            ) : (
+              <Link to="/signup" className={buttonClass("highlight", "lg")}>
+                Create a Free Account
+              </Link>
+            )}
           </div>
         </div>
       </section>

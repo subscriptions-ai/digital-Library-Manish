@@ -11,6 +11,9 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { EmptyState, ErrorState, Skeleton, buttonClass } from "./ui";
+import { useAuth } from "../contexts/AuthContext";
+import { AccessNotice, DepartmentContent, useDepartmentAccess } from "./library/DepartmentContent";
+import { getLibraryPaths, libraryUrl } from "../lib/libraryRoute";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ContentSummaryItem { type: string; count: number; }
@@ -95,6 +98,12 @@ export function DomainLandingPage() {
   const { domainId } = useParams<{ domainId: string }>();
   const domain = DOMAINS.find((d) => d.id === domainId);
   const DomainIcon = (Icons as any)[domain?.icon || "BookOpen"] || Icons.BookOpen;
+
+  // The same session the navbar and the dashboard read — not a second check. A signed-in member is never shown "Register".
+  const { profile } = useAuth();
+  const signedIn = !!profile;
+  const access = useDepartmentAccess(domain?.name ?? "", signedIn && !!domain);
+  const libraryPaths = getLibraryPaths(profile);
 
   /* API state */
   const [domainData, setDomainData] = useState<DomainData | null>(null);
@@ -216,10 +225,23 @@ export function DomainLandingPage() {
                 {domain.description}
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/signup" className={buttonClass("highlight", "lg")}>
-                  Register Free
-                </Link>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                {signedIn ? (
+                  access.eligible === false ? (
+                    <Link to={libraryPaths.membership} className={buttonClass("highlight", "lg")}>View subscription options</Link>
+                  ) : (
+                    <Link to={libraryUrl(profile, { domain: domain.name })} className={buttonClass("highlight", "lg")}>
+                      Browse {domain.name} Content <ArrowRight size={18} aria-hidden="true" />
+                    </Link>
+                  )
+                ) : (
+                  <>
+                    <Link to="/signup" className={buttonClass("highlight", "lg")}>
+                      Register Free
+                    </Link>
+                    <Link to="/login" className="on-dark-2 text-sm font-semibold underline-offset-4 hover:underline">Log in</Link>
+                  </>
+                )}
                 <a
                   href="#content-types"
                   className="btn btn-lg on-dark on-dark-fill on-dark-edge"
@@ -259,6 +281,18 @@ export function DomainLandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ══ FOR A SIGNED-IN MEMBER: where they stand, and this department's newest content ═════════ */}
+      {signedIn && (
+        <>
+          <section aria-label="Your access" className="bg-ground empty:hidden">
+            {(access.eligible === false || access.allowance?.timed) && (
+              <div className="container-public py-5"><AccessNotice access={access} department={domain.name} account={profile!} /></div>
+            )}
+          </section>
+          <DepartmentContent department={domain.name} account={profile!} access={access} />
+        </>
+      )}
 
       {/* ══ IMPORTANCE ══════════════════════════════════════════════════════════ */}
       <section className="bg-ground py-16 sm:py-20">
@@ -468,15 +502,37 @@ export function DomainLandingPage() {
       <section id="subscription" className="scroll-mt-8 bg-surface py-16 sm:py-20">
         <div className="container-public max-w-3xl text-center">
           <h2 className="text-3xl font-bold text-ink sm:text-4xl">Access {domain.name} content</h2>
-          <p className="mx-auto mt-3 max-w-xl text-ink-2">
-            Register free and start reading this department's journals, articles
-            and resources straight away.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link to="/signup" className={buttonClass("highlight", "lg")}>
-              Register Free
-            </Link>
-          </div>
+          {signedIn ? (
+            <>
+              <p className="mx-auto mt-3 max-w-xl text-ink-2">
+                {access.eligible === false
+                  ? `Your current plan does not include ${domain.name}. See what would.`
+                  : `Open the content library with ${domain.name} already selected.`}
+              </p>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                {access.eligible === false ? (
+                  <Link to={libraryPaths.membership} className={buttonClass("highlight", "lg")}>View subscription options</Link>
+                ) : (
+                  <Link to={libraryUrl(profile, { domain: domain.name })} className={buttonClass("highlight", "lg")}>
+                    Browse {domain.name} Content <ArrowRight size={18} aria-hidden="true" />
+                  </Link>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mx-auto mt-3 max-w-xl text-ink-2">
+                Register free and start reading this department's journals, articles
+                and resources straight away.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+                <Link to="/signup" className={buttonClass("highlight", "lg")}>
+                  Register Free
+                </Link>
+                <Link to="/login" className="text-sm font-semibold text-accent underline-offset-4 hover:underline">Already a member? Log in</Link>
+              </div>
+            </>
+          )}
         </div>
       </section>
 

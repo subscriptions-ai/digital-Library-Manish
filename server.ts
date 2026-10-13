@@ -4377,7 +4377,9 @@ async function startServer() {
   // GET /api/content/list - Lists all actual content items, with locked flags for regular users
   app.get("/api/content/list", async (req: any, res) => {
     try {
-      const { domain, contentType, search, subjectArea, tag, page = "1", limit = "20", onlyUnlocked } = req.query;
+      const { domain, contentType, search, subjectArea, tag, page = "1", limit = "20", onlyUnlocked, sort } = req.query;
+      // Title A–Z unless a caller asks for what was added last (the department page's "Latest").
+      const listOrder: any = sort === 'added' ? { publishedAt: 'desc' } : { title: 'asc' };
       
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
       const take = parseInt(limit as string);
@@ -4483,7 +4485,7 @@ async function startServer() {
         }
         
         const [contents, total] = await Promise.all([
-          prisma.content.findMany({ where, skip, take, orderBy: { title: 'asc' } }),
+          prisma.content.findMany({ where, skip, take, orderBy: listOrder }),
           prisma.content.count({ where })
         ]);
 
@@ -4505,7 +4507,7 @@ async function startServer() {
       }
 
       const [contents, total] = await Promise.all([
-        prisma.content.findMany({ where, skip, take, orderBy: { title: 'asc' } }),
+        prisma.content.findMany({ where, skip, take, orderBy: listOrder }),
         prisma.content.count({ where })
       ]);
 
@@ -10259,6 +10261,8 @@ async function startServer() {
           id: true, title: true, authors: true, publisherName: true, isbn: true, doi: true,
           year: true, edition: true, pages: true, subject: true, domain: true, language: true,
           country: true, description: true, coverUrl: true, chapterCount: true, createdAt: true,
+          // Already public in the book list: how this book is offered, and where its source is.
+          accessStatus: true, originalUrl: true,
         },
       });
       if (!book) return res.status(404).json({ error: "No such book" });
