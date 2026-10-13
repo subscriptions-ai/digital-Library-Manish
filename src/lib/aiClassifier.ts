@@ -1,11 +1,10 @@
-import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import type { PrismaClient } from '@prisma/client';
+import { categorizeProviderError, resolveActiveAIConfig } from '../server/aiProviderConfig.js';
 
 dotenv.config();
 
-// Initialize the Google Gen AI SDK
-// The SDK automatically picks up process.env.GEMINI_API_KEY
-const ai = new GoogleGenAI({});
+// The client is resolved per call: the active Admin configuration first, else process.env.GEMINI_API_KEY (see aiProviderConfig.ts).
 
 export interface RawMetadata {
   title?: string;
@@ -40,7 +39,7 @@ const CONTENT_TYPES = [
   "Conference Proceedings", "Educational Videos", "Newsletters"
 ];
 
-export async function classifyContent(raw: RawMetadata): Promise<ClassificationResult> {
+export async function classifyContent(raw: RawMetadata, prisma: PrismaClient): Promise<ClassificationResult> {
   const prompt = `
 You are an expert academic content classifier for a digital library. 
 You must analyze the following raw metadata and extract/standardize the fields.
@@ -76,6 +75,8 @@ Return ONLY a valid JSON object matching this structure without any markdown for
 `;
 
   try {
+    const ai = (await resolveActiveAIConfig(prisma)).client();
+    if (!ai) throw new Error('No AI credential is configured');
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -97,7 +98,7 @@ Return ONLY a valid JSON object matching this structure without any markdown for
     
     return result;
   } catch (error) {
-    console.error("AI Classification Error:", error);
+    console.error("AI Classification Error:", categorizeProviderError(error));
     throw new Error("Failed to classify content with AI");
   }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { Helmet } from '../lib/head';
 import { Book, User, Calendar, Tag, Lock, SearchX } from "lucide-react";
 import { EmptyState, Skeleton, buttonClass } from "./ui";
 

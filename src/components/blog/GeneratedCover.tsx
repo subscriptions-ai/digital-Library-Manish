@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { isUsableCoverUrl } from '../../lib/blogCover';
+import { isUsableCoverUrl, blogCoverFor } from '../../lib/blogCover';
 
 /**
  * A cover for a post that has none, or whose picture no longer loads.
@@ -96,15 +96,7 @@ export function GeneratedCover({ seed, className = '' }: { seed: string; classNa
   );
 }
 
-/** Locally hosted artwork selected by article topic when the supplied cover is unavailable. */
-export function blogCoverFor(seed: string) {
-  const topic = seed.toLowerCase();
-  if (/find-research|college.*research|research.*college/.test(topic)) return '/assets/blog/college-research.webp';
-  if (/academic-journal|peer-review|publishing/.test(topic)) return '/assets/blog/academic-journals.webp';
-  if (/transforming|share|sharing/.test(topic)) return '/assets/blog/knowledge-sharing.webp';
-  if (/student|importance/.test(topic)) return '/assets/blog/student-library.webp';
-  return '/assets/blog/digital-library-features.webp';
-}
+export { blogCoverFor };
 
 type PostImageProps = {
   src?: string | null; seed: string; className?: string; loading?: 'lazy' | 'eager';

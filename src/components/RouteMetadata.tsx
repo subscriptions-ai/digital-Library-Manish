@@ -1,18 +1,25 @@
-import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
 import { COMPANY_DETAILS } from '../config';
-import { isPrivatePage, PUBLIC_PAGES, PUBLIC_REDIRECTS } from '../lib/publicSeo';
+import { isPrivatePage, PUBLIC_REDIRECTS } from '../lib/publicSeo';
+import { SITE_URL, staticPageSeo, type SeoPage } from '../lib/seoMeta';
+import { SeoHead } from './SeoHead';
 
-/** Defaults mount before route-specific metadata so real content titles can override them. */
+/**
+ * The route's own metadata: the marketing pages' title, description and canonical (the same definition the server writes into the page
+ * it sends), and noindex for everything private. A page with its own metadata overrides this one tag by tag, so it never doubles up.
+ * The canonical is the path alone: a query string never makes a second page.
+ */
 export function RouteMetadata() {
   const { pathname } = useLocation();
   const path = pathname.replace(/\/$/, '') || '/';
-  const canonicalPath = PUBLIC_REDIRECTS[path] || path;
-  const page = PUBLIC_PAGES[canonicalPath.split('#')[0]];
-  return <Helmet>
-    <title>{page ? `${page[0]} | ${COMPANY_DETAILS.name}` : COMPANY_DETAILS.name}</title>
-    <meta name="description" content={page?.[1] || 'Explore academic resources and source information on STM Digital Library.'} />
-    <meta name="robots" content={isPrivatePage(path) ? 'noindex, nofollow' : 'index, follow'} />
-    <link rel="canonical" href={new URL(canonicalPath.split('#')[0], COMPANY_DETAILS.website).href} />
-  </Helmet>;
+  const canonicalPath = (PUBLIC_REDIRECTS[path] || path).split('#')[0];
+  const seo: SeoPage = {
+    ...(staticPageSeo(canonicalPath) ?? {
+      title: COMPANY_DETAILS.name,
+      description: 'Explore academic resources and source information on STM Digital Library.',
+      canonical: new URL(canonicalPath, SITE_URL).href,
+    }),
+    robots: isPrivatePage(path) ? 'noindex, nofollow' : 'index, follow',
+  };
+  return <SeoHead seo={seo} />;
 }

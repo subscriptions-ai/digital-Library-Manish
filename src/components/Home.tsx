@@ -18,7 +18,7 @@ const contentTypeIconMap: Record<string, any> = {
   Mail,
 };
 
-import { Helmet } from "react-helmet-async";
+import { Helmet } from '../lib/head';
 
 export function Home() {
   const [mousePosition, setMousePosition] = useState({ x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0 });

@@ -1,8 +1,13 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+# The pages call these to show their content. A crawler that renders the page must be able to read them too,
+# or it sees an empty blog (the most specific rule wins, so these override the line above).
+Allow: /api/blog/
+Allow: /api/domain-data
+Allow: /api/public/
 
-# Private and account pages send X-Robots-Tag: noindex, nofollow.
-# Let crawlers fetch their public login shell to see that directive;
+# Private and account pages (/admin, /studio, /dashboard, /login and the rest) send X-Robots-Tag: noindex, nofollow.
+# They are left crawlable on purpose, so a crawler can fetch the public login shell and see that directive;
 # data and actions remain protected by authentication.
 Sitemap: https://journalslibrary.com/sitemap.xml

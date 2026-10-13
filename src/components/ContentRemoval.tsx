@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { Helmet } from '../lib/head';
 import { toast } from "react-hot-toast";
 import { motion } from "motion/react";
 import {

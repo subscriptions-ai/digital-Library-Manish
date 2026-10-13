@@ -2,7 +2,7 @@ import { TrustFoundation } from './TrustFoundation';
 import { validPercent } from '../lib/percent';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import { Helmet } from '../lib/head';
 import {
   ArrowRight, Award, BookMarked, BookOpen, Building2, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardList, FileText, GraduationCap, Landmark, Layers, Library, Microscope, Minus, Network, Newspaper, Pause, Play,

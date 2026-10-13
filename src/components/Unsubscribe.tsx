@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import { Helmet } from '../lib/head';
 import { CheckCircle2, Loader2, MailX } from 'lucide-react';
 import { Button, buttonClass } from './ui';
 
