@@ -582,7 +582,7 @@ function ResultSkeleton() {
  * catalogue has always set them, and colour spent only on whether the thing can
  * actually be read.
  */
-const ResultCard = React.memo(function ResultCard({ it, n, kind, mode, onOpen, journalBase, lockedLabel }: {
+export const ResultCard = React.memo(function ResultCard({ it, n, kind, mode, onOpen, journalBase, lockedLabel }: {
   it: any; n: number; kind: Kind; mode: Mode; onOpen: () => void; journalBase: string; lockedLabel: string;
 }) {
   const isBook = kind === 'books' || it.contentType === 'Books';

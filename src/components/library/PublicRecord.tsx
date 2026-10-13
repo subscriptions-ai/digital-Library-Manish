@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, BookOpen, Building2, Calendar, FileText, Hash, Layers } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buttonClass } from '../ui';
+import { getLibraryPaths } from '../../lib/libraryRoute';
 
 /**
  * One article, or one book, on a page of its own.
@@ -77,6 +78,34 @@ function OpenIt({ to, label }: { to: string; label: string }) {
           <Link to="/login" className="text-sm font-semibold text-accent hover:underline">Already a member? Sign in</Link>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * A book's way in. Unlike an article it has no reader page of its own, and the link that used to stand here pointed at one that does not
+ * exist. A signed-in member is taken to what is real: the viewer when the book is readable here, otherwise its source. Registration is never
+ * offered to someone who is already a member; a stranger sees what they always did.
+ */
+function OpenBook({ book }: { book: any }) {
+  const { profile } = useAuth();
+  if (!profile) return <OpenIt to="" label="" />;
+  const paths = getLibraryPaths(profile);
+  const readable = book.accessStatus === 'ViewableHere' && paths.reads;
+  return (
+    <div className="card mt-8 flex flex-wrap items-center gap-3 p-5">
+      {readable ? (
+        <Link to={`${paths.viewer}/${book.id}`} className={buttonClass('brand', 'lg')}>
+          Read it in the library <ArrowRight size={16} aria-hidden="true" />
+        </Link>
+      ) : book.originalUrl ? (
+        <a href={book.originalUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('brand', 'lg')}>
+          Open at source <ArrowRight size={16} aria-hidden="true" />
+        </a>
+      ) : (
+        <p className="text-[14px] text-muted">This is a catalogue entry: no file or source link is held for it.</p>
+      )}
+      {!readable && book.originalUrl && <span className="text-[12.5px] text-muted">Opens on the publisher’s site.</span>}
     </div>
   );
 }
@@ -209,7 +238,7 @@ export function BookRecord() {
         <p className="mt-6 whitespace-pre-line text-[15px] leading-relaxed text-muted">{b.description}</p>
       )}
 
-      <OpenIt to={`/library/book/${b.id}`} label="Open it in the library" />
+      <OpenBook book={b} />
 
       <Facts rows={[
         ['Publisher', b.publisherName],

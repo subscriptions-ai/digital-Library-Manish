@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Lock, ArrowRight, Eye, EyeOff, User, Building, Building2, Briefcase, GraduationCap, MapPin, Check, ChevronDown, Search } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
@@ -8,6 +8,7 @@ import { Button, friendlyError } from "./ui";
 import { EmailVerificationInput } from "./EmailVerificationInput";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATION_GROUPS, DESIGNATIONS_BY_TYPE, POPULAR_DESIGNATIONS, COUNTRIES, COUNTRY_DIAL_CODES } from "../constants";
 import { INDIAN_STATES } from "../lib/gstUtils";
+import { libraryUrl } from "../lib/libraryRoute";
 
 /**
  * A small heading with a rule, so the form reads as four short questions.
@@ -233,7 +234,20 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ size?: number; className?
   Institute: Building2, Corporate: Briefcase, Solo: GraduationCap,
 };
 
+/**
+ * Someone who is already signed in has an account: they are not shown a fresh registration, and they are not asked to make a second one.
+ * It applies to who was signed in when the page OPENED — a member who has just registered is, a moment later, signed in too, and the
+ * form's own hand-off to their dashboard or plan page must run, not be pre-empted. (The accounts an administrator creates for others are
+ * made in the admin screens, not here, so nothing about them changes.)
+ */
 export function Signup() {
+  const { profile } = useAuth();
+  const arrivedSignedIn = useRef(!!profile);
+  if (arrivedSignedIn.current) return <Navigate to={libraryUrl(profile)} replace />;
+  return <SignupForm />;
+}
+
+function SignupForm() {
   const navigate = useNavigate();
   const { signup } = useAuth();
   const [formData, setFormData] = useState({

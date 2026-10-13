@@ -33,7 +33,7 @@ export type Allowance = {
  * this as a question and not as use. The countdown runs locally between asks so
  * the seconds move without a request a second.
  */
-export function useAllowance(pollMs = 30_000) {
+export function useAllowance(pollMs = 30_000, enabled = true) {
   const [allowance, setAllowance] = useState<Allowance | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -47,11 +47,13 @@ export function useAllowance(pollMs = 30_000) {
   }, []);
 
   useEffect(() => {
+    // A page that is shown to visitors who are not signed in has nobody to ask about: no request, no timers.
+    if (!enabled) return;
     refresh();
     const poll = setInterval(refresh, pollMs);
     const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => { clearInterval(poll); clearInterval(tick); };
-  }, [refresh, pollMs]);
+  }, [refresh, pollMs, enabled]);
 
   const endsAt = allowance?.endsAt ? Date.parse(allowance.endsAt) : null;
   const opensAt = allowance?.nextOpensAt ? Date.parse(allowance.nextOpensAt) : null;
