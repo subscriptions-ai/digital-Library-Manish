@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { ChevronDown, Download, FilePlus2, List, Mail, Printer, Save, Search } from 'lucide-react';
+import { Download, FilePlus2, List, Mail, Printer, Save } from 'lucide-react';
 import { issuerOf, type Issuer } from '../../config';
 import { Button, Card, CardHeader, Field, PageHeader, friendlyError } from '../ui';
-import { cn } from '../../lib/utils';
+import { canonicalDepartments } from '../../lib/institutionDepartmentGroups';
+import { DepartmentGroupPicker } from '../pricing/DepartmentGroupPicker';
 import {
   QUOTE_DEPARTMENTS, QUOTE_STATES, STATUSES, FREE_USERS, statusLabel,
   computeQuotePricing, docOfRow, docToRender, emptyDoc, money, userSlabLabel, type QuoteDoc,
@@ -54,9 +55,6 @@ export function QuotationBuilder() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<null | 'save' | 'download' | 'email'>(null);
-  const [deptOpen, setDeptOpen] = useState(false);
-  const [deptQuery, setDeptQuery] = useState('');
-  const deptRef = useRef<HTMLDivElement>(null);
 
   const patch = useCallback((p: Partial<QuoteDoc>) => setDoc(d => ({ ...d, ...p })), []);
 
@@ -87,7 +85,8 @@ export function QuotationBuilder() {
         if (!d) throw new Error('This quotation was made before the current format and cannot be edited. Create a new one instead.');
         if (row.status === 'Paid') throw new Error('A paid quotation can no longer be edited.');
         if (!live) return;
-        setDoc(d); setIssuer(issuerOf(row)); setSaved(true);
+        // Older quotations spelled three departments differently; open them under the catalogue's names.
+        setDoc({ ...d, departments: canonicalDepartments(d.departments) }); setIssuer(issuerOf(row)); setSaved(true);
       } catch (e) {
         if (!live) return;
         toast.error(friendlyError(e, 'Could not open that quotation.'));
@@ -99,21 +98,8 @@ export function QuotationBuilder() {
     return () => { live = false; };
   }, [editId, startNew, setParams]);
 
-  // Close the department list on an outside click.
-  useEffect(() => {
-    if (!deptOpen) return;
-    const onDown = (e: MouseEvent) => { if (!deptRef.current?.contains(e.target as Node)) setDeptOpen(false); };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [deptOpen]);
-
   const pricing = useMemo(() => computeQuotePricing(doc), [doc]);
   const render = useMemo(() => docToRender(doc, issuer), [doc, issuer]);
-  const visibleDepts = QUOTE_DEPARTMENTS.filter(d => d.toLowerCase().includes(deptQuery.trim().toLowerCase()));
-
-  const toggleDept = (name: string) =>
-    patch({ departments: doc.departments.includes(name) ? doc.departments.filter(x => x !== name) : [...doc.departments, name] });
-
   // Pre-fill a repeat client from their latest quotation, without overwriting what has been typed.
   const autofill = async () => {
     const email = doc.email.trim();
@@ -199,7 +185,6 @@ export function QuotationBuilder() {
   };
 
   const statuses = (STATUSES as readonly string[]).includes(doc.status) ? STATUSES : [...STATUSES, doc.status];
-  const deptCountLabel = doc.departments.length === 1 ? doc.departments[0] : doc.departments.length ? `${doc.departments.length} departments selected` : 'Select department(s)';
   const summary = [
     pricing.count ? `${pricing.count} department${pricing.count !== 1 ? 's' : ''}` : '',
     `${pricing.users} users`,
@@ -266,37 +251,11 @@ export function QuotationBuilder() {
           <Card>
             <CardHeader title="Subscription" />
             <div className="space-y-4">
-              <div className="field" ref={deptRef}>
-                <span className="field-label">Departments<span className="req" aria-hidden="true">*</span></span>
-                <button type="button" className="input flex items-center justify-between text-left" aria-expanded={deptOpen} onClick={() => setDeptOpen(o => !o)}>
-                  <span className={cn('truncate', !doc.departments.length && 'text-faint')}>{deptCountLabel}</span>
-                  <span className="ml-3 flex shrink-0 items-center gap-1 text-xs text-muted">{doc.departments.length} selected<ChevronDown size={14} aria-hidden="true" /></span>
-                </button>
-                {deptOpen && (
-                  <div className="overflow-hidden rounded-lg border border-rule bg-surface">
-                    <div className="relative border-b border-rule p-2">
-                      <Search size={14} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-faint" aria-hidden="true" />
-                      <input className="input pl-8" placeholder="Search department..." value={deptQuery} onChange={e => setDeptQuery(e.target.value)} aria-label="Search departments" />
-                    </div>
-                    <div className="max-h-60 overflow-auto p-1.5">
-                      {visibleDepts.map(name => (
-                        <label key={name} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-ink-2 hover:bg-surface-2">
-                          <input type="checkbox" checked={doc.departments.includes(name)} onChange={() => toggleDept(name)} className="h-4 w-4 accent-[var(--accent)]" />
-                          {name}
-                        </label>
-                      ))}
-                      {!visibleDepts.length && <p className="px-2 py-3 text-sm text-muted">No department matches.</p>}
-                    </div>
-                    <div className="flex justify-between border-t border-rule p-2">
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => patch({ departments: [...QUOTE_DEPARTMENTS] })}>Select all</Button>
-                        <Button size="sm" variant="outline" onClick={() => patch({ departments: [] })}>Clear</Button>
-                      </div>
-                      <Button size="sm" onClick={() => setDeptOpen(false)}>Done</Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <DepartmentGroupPicker
+                departments={QUOTE_DEPARTMENTS}
+                selected={doc.departments}
+                onChange={departments => patch({ departments })}
+              />
 
               <Field label="Total full-access users required" required>
                 <input className="input" type="number" min={1} step={1} value={doc.totalUsers || ''} onChange={e => patch({ totalUsers: Number(e.target.value) })} />

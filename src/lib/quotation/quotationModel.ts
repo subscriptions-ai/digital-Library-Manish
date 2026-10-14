@@ -3,6 +3,7 @@ import {
   DEPARTMENT_RATES, GST_RATE as PLAN_GST_RATE, MAX_INSTITUTION_USERS, TERM_MONTHS,
   departmentRate, departmentRateLadder, priceDepartments, slabLabel,
 } from '../institutionPricing';
+import { GROUPED_DEPARTMENTS } from '../institutionDepartmentGroups';
 import {
   SOLO_BULK_THRESHOLD, SOLO_RATE_BULK, SOLO_RATE_STANDARD, SOLO_TERM_MONTHS, calculateSoloSubscriptionPrice,
 } from '../soloPricing';
@@ -19,15 +20,11 @@ import {
 
 export const QUOTE_KIND = 'institutional-v2';
 
-/** The departments a quotation can be written for. */
-export const QUOTE_DEPARTMENTS = [
-  'Agriculture', 'Applied Mechanics', 'Applied Sciences', 'Architecture', 'Ayurveda',
-  'Bio Technology', 'Chemical Engineering', 'Chemistry', 'Civil/Construction Engineering',
-  'Computer/IT', 'Education & Social Sciences', 'Electrical Engineering',
-  'Electronics & Telecommunication Engineering', 'Energy', 'Law', 'Life Sciences',
-  'Management', 'Material Science', 'Mechanical Engineering', 'Medical Sciences',
-  'Multidisciplinary', 'Nano Technology', 'Nursing', 'Pharmacy',
-];
+/**
+ * The departments a quotation can be written for: the catalogue's own names, as the Subject Groups
+ * list them. The groups are only a way to find departments; a quotation still names each one.
+ */
+export const QUOTE_DEPARTMENTS: string[] = [...GROUPED_DEPARTMENTS];
 
 /**
  * How the subscribed departments are laid out on the sheet and in the PDF: one column while the

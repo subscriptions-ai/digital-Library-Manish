@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Download, Loader2, Lock, Search, X } from 'lucide-react';
+import { Check, Download, Loader2, Lock, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
@@ -12,6 +12,7 @@ import { fetchQuote, payForPurchase, requestQuotation, type InstitutionPlan, typ
 import { institutionPlanToRender } from '../../../lib/quotation/quotationModel';
 import { downloadQuotationPdf } from '../../../lib/quotation/quotationPdf';
 import { AnnualPricingBlock } from '../../pricing/AnnualPricingBlock';
+import { DepartmentGroupPicker } from '../../pricing/DepartmentGroupPicker';
 import { PRICE_LABELS, getInstitutionPricingDisplay } from '../../../lib/pricingDisplay';
 
 const gstPct = Math.round(GST_RATE * 100);
@@ -141,13 +142,15 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
   }, [plan.departments]);
 
   const [selected, setSelected] = useState<string[]>([]);
-  const [q, setQ] = useState('');
   const [paying, setPaying] = useState(false);
 
-  const toggle = (name: string) =>
-    setSelected((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
+  // Departments already held are shown ticked and fixed, with when they run until.
+  const lockedNotes = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [name, end] of held) m.set(name, `Active until ${shortDate(end)}`);
+    return m;
+  }, [held]);
 
-  const visible = plan.allDepartments.filter((d) => d.toLowerCase().includes(q.trim().toLowerCase()));
   const count = selected.length;
   const totalAfter = held.size + count;
   const institutionPricing = useMemo(() => getInstitutionPricingDisplay(), []);
@@ -211,42 +214,12 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
         </button>
       </>}
     >
-      <div className="flex items-center justify-between">
-        <label htmlFor="dept-modal-search" className="field-label">Select departments</label>
-        <span className="text-xs text-muted" aria-live="polite">{count} selected</span>
-      </div>
-      <div className="mt-2 overflow-hidden rounded-lg border border-rule">
-        <div className="relative border-b border-rule">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden="true" />
-          <input id="dept-modal-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search department…"
-            className="h-10 w-full bg-surface pl-9 pr-3 text-sm text-ink outline-none placeholder:text-faint focus-visible:bg-surface-2" />
-        </div>
-        <ul className="max-h-60 overflow-y-auto p-1.5">
-          {visible.length === 0 && <li className="px-3 py-4 text-center text-[13px] text-muted">No department matches.</li>}
-          {visible.map((name) => {
-            const until = held.get(name);
-            const on = selected.includes(name);
-            return (
-              <li key={name}>
-                <label className={`flex flex-wrap items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] ${until ? 'cursor-default text-muted' : 'cursor-pointer text-ink hover:bg-surface-2'}`}>
-                  <input type="checkbox" className="h-4 w-4 shrink-0 accent-[var(--accent)]" checked={!!until || on} disabled={!!until}
-                    onChange={() => toggle(name)} />
-                  <span className="min-w-0 flex-1">{name}</span>
-                  {until && (
-                    <span className="badge badge-success">
-                      Active until {shortDate(until)}
-                    </span>
-                  )}
-                </label>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="flex items-center justify-between border-t border-rule bg-surface-2 px-3 py-2">
-          <span className="min-w-0 truncate text-xs text-muted">{count ? selected.join(', ') : 'No department selected.'}</span>
-          {count > 0 && <button type="button" onClick={() => setSelected([])} className="shrink-0 text-xs font-semibold text-accent hover:underline">Clear</button>}
-        </div>
-      </div>
+      <DepartmentGroupPicker
+        departments={plan.allDepartments}
+        selected={selected}
+        onChange={setSelected}
+        locked={lockedNotes}
+      />
 
       {/* The price list, always: how much it costs does not wait for a selection. The tier that
           applies is marked, counted on the institution's total after this purchase. */}
