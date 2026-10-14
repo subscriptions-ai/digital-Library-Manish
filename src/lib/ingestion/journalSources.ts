@@ -2,6 +2,7 @@ import { ingestionDb as db } from './db.js';
 import { fetchSourceJson } from './sourceHealth.js';
 import { SourceError } from './articleSources.js';
 import { normaliseIssn } from '../ingestionWorker.js';
+import { canonicalDepartmentName } from '../departmentRegistry.js';
 
 /**
  * Journal discovery from sources that are NOT authorities on open access: Crossref's journal list and OpenAlex's source list.
@@ -102,6 +103,8 @@ export type WriteSummary = { checked: number; created: number; held: number; enr
  * and are never changed beyond filling an empty field. New ones are created as NeedsReview.
  */
 export async function writeJournalCandidates(source: JournalCandidate['source'], department: string | null, cands: JournalCandidate[], fetchedCount = cands.length, skippedAtFetch = 0): Promise<WriteSummary> {
+  // A department a source sent is stored as the official name; one the registry does not know is left unassigned for review, never guessed.
+  department = department ? canonicalDepartmentName(department) : null;
   const out: WriteSummary = { checked: fetchedCount, created: 0, held: 0, enriched: 0, skipped: skippedAtFetch, failed: 0, firstError: null };
   const issns = [...new Set(cands.flatMap(c => [c.issn, c.eissn]).filter(Boolean) as string[])];
   const heldRows: any[] = issns.length ? await db.journal.findMany({ where: { OR: [{ issn: { in: issns } }, { eissn: { in: issns } }] } }) : [];

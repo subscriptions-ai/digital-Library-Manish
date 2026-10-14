@@ -1,3 +1,4 @@
+import { CANONICAL_NAMES, canonicalDepartmentName } from './departmentRegistry.js';
 import dotenv from 'dotenv';
 import type { PrismaClient } from '@prisma/client';
 import { categorizeProviderError, resolveActiveAIConfig } from '../server/aiProviderConfig.js';
@@ -25,14 +26,9 @@ export interface ClassificationResult {
   confidence: number;
 }
 
-const DOMAINS = [
-  "Electrical Engineering", "Computer/IT", "Medical Sciences", "Management", 
-  "Chemistry", "Mechanical Engineering", "Pharmacy", "Civil/Construction", 
-  "Nano Technology", "Bio Technology", "Energy", "Life Sciences", "Law", 
-  "Agriculture", "Nursing", "Education & Social Sciences", "Applied Sciences", 
-  "Multidisciplinary", "Electronics & Telecom", "Chemical Engineering", 
-  "Ayurveda", "Architecture", "Material Science", "Applied Mechanics", "Social Sciences"
-];
+// The official departments, from the registry: the model is offered no other spelling, and its answer is read through the
+// registry again, so a known alias comes back as the official name.
+const DOMAINS = CANONICAL_NAMES;
 
 const CONTENT_TYPES = [
   "Books", "Periodicals", "Magazines", "Case Reports", "Theses", 
@@ -93,7 +89,7 @@ Return ONLY a valid JSON object matching this structure without any markdown for
     const result = JSON.parse(jsonStr) as ClassificationResult;
     
     // Ensure lists are respected
-    if (!DOMAINS.includes(result.domain)) result.domain = "Multidisciplinary";
+    result.domain = canonicalDepartmentName(result.domain) ?? "Multidisciplinary";
     if (!CONTENT_TYPES.includes(result.contentType)) result.contentType = "Periodicals";
     
     return result;

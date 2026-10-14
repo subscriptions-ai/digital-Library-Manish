@@ -34,7 +34,9 @@ import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
-import { canonicalDepartments } from "./src/lib/institutionDepartmentGroups.js";
+import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll } from "./src/lib/departmentRegistry.js";
+import { createDepartmentSpellings } from "./src/server/departmentSpellings.js";
+import { requireOfficialDepartments, requireOfficialDepartmentsOnEdit } from "./src/server/departmentInput.js";
 import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, buildInstitutionPlanSnapshot, buildSoloPlanSnapshot, planSnapshotToRow, type QuoteDoc, type PlanSnapshot } from "./src/lib/quotation/quotationModel.js";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
@@ -71,6 +73,8 @@ import {
 } from "./src/lib/emailTemplates.js";
 
 const prisma = new PrismaClient();
+// Which spellings of each department the stored records use, so a filter for "Medical Sciences" also finds rows kept as "Medical sciences".
+const deptSpellings = createDepartmentSpellings(prisma as any);
 
 // Resolve the app directory in a way that works both when this file is loaded
 // as an ES module (tsx: package.json "type":"module", no __dirname) and when it
@@ -511,7 +515,10 @@ async function startServer() {
    * A reader can open all of it, so all of it is counted. One definition, in one
    * place, and nothing downstream gets to hold an opinion about it.
    */
-  const collectionCounts = async (domains?: string[]) => {
+  const collectionCounts = async (scope?: string[]) => {
+    // A department is every spelling of it the catalogue holds. Each row carries one department value, so the
+    // rows found under all those spellings are each counted once.
+    const domains = scope?.length ? await deptSpellings.expand(scope) : undefined;
     const inDomains = domains?.length ? { domain: { in: domains } } : {};
     const live = { status: { not: "Draft" } };
 
@@ -556,7 +563,8 @@ async function startServer() {
    * departments sum to the library, and a chart drawn from this cannot quietly
    * claim more than there is.
    */
-  const collectionByDepartment = async (domains?: string[]) => {
+  const collectionByDepartment = async (scope?: string[]) => {
+    const domains = scope?.length ? await deptSpellings.expand(scope) : undefined;
     const f = (t: string) => (domains?.length ? `and ${t}."domain" = any($1)` : '');
     const args: any[] = domains?.length ? [domains] : [];
     const rows: any[] = await (prisma as any).$queryRawUnsafe(
@@ -585,10 +593,16 @@ async function startServer() {
        ) t
        group by 1
        order by (sum(articles) + sum(books) + sum(other)) desc`, ...args);
-    return rows.map(d => {
-      const articles = Number(d.articles), books = Number(d.books), other = Number(d.other);
-      return { name: d.domain as string, articles, books, other, total: articles + books + other };
-    });
+    // One line per department: "Medical sciences" and "Medical Sciences" are the same shelf, added together.
+    const byName = new Map<string, { name: string; articles: number; books: number; other: number; total: number }>();
+    for (const d of rows) {
+      const name = canonicalOrSelf(String(d.domain));
+      const row = byName.get(name) ?? { name, articles: 0, books: 0, other: 0, total: 0 };
+      row.articles += Number(d.articles); row.books += Number(d.books); row.other += Number(d.other);
+      row.total = row.articles + row.books + row.other;
+      byName.set(name, row);
+    }
+    return [...byName.values()].sort((a, b) => b.total - a.total);
   };
 
   app.get("/api/public/counts", async (req, res) => {
@@ -669,7 +683,9 @@ async function startServer() {
       for (const set of [legacy, articles, books] as any[]) {
         for (const g of set) {
           if (!g.domain) continue;
-          countsMap[g.domain] = (countsMap[g.domain] || 0) + g._count.id;
+          // Spellings of one department are one entry: each row has a single department, so adding counts nothing twice.
+          const name = canonicalOrSelf(g.domain);
+          countsMap[name] = (countsMap[name] || 0) + g._count.id;
         }
       }
       res.json(countsMap);
@@ -895,7 +911,7 @@ async function startServer() {
       // somewhere to write whatever one likes.
       const departmentNames = new Set(DOMAINS.map((d: any) => d.name));
       const interests: string[] = Array.isArray(interestedDomains)
-        ? [...new Set(interestedDomains.filter((d: any) => departmentNames.has(d)))].slice(0, 40)
+        ? [...new Set(interestedDomains.map((d: any) => canonicalDepartmentName(d)).filter((d: any) => d && departmentNames.has(d)))].slice(0, 40) as string[]
         : [];
 
       // Kept to the lists the form offers. A designation that is not one of
@@ -1381,6 +1397,8 @@ async function startServer() {
     const wholeLibrary = subs.some((s: any) => !Array.isArray(s.domains) || s.domains.length === 0);
     const departments = subs.flatMap((s: any) =>
       (Array.isArray(s.domains) ? s.domains : [])
+        // An older spelling in a subscription is the same department, so it still counts as held.
+        .map((name: string) => canonicalOrSelf(name))
         .filter((name: string) => soloDepartmentNames.has(name))
         .map((name: string) => ({ name, endDate: s.endDate })));
     // When the last one ran out, so the sidebar can say "expired" rather than "free" to someone
@@ -1395,7 +1413,7 @@ async function startServer() {
 
   /** Prices the departments asked for. Those already held are not sold again. */
   const priceSoloPurchase = async (me: any, body: any) => {
-    const wanted: string[] = Array.isArray(body?.departments) ? body.departments.map(String) : [];
+    const wanted: string[] = Array.isArray(body?.departments) ? body.departments.map((d: any) => canonicalOrSelf(String(d))) : [];
     const unknown = wanted.filter((name) => !soloDepartmentNames.has(name));
     if (unknown.length) return { error: `Unknown department: ${unknown.join(', ')}` };
     const held = await soloHoldings(me.id);
@@ -3560,7 +3578,7 @@ async function startServer() {
             activeSubs.flatMap(s => {
               const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
               return d as string[];
-            }).filter(Boolean)
+            }).filter(Boolean).map(canonicalOrSelf)   // an older spelling in a subscription is read as its department
           ));
 
       const free = req.user.role === 'Subscriber' && activeSubs.length === 0;
@@ -3570,7 +3588,7 @@ async function startServer() {
       const me = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { interestedDomains: true } });
       const known = new Set(DOMAINS.map((d: any) => d.name));
       const chosenDepartments: string[] = (Array.isArray(me?.interestedDomains) ? me!.interestedDomains as unknown[] : [])
-        .map(String).filter(n => known.has(n));
+        .map(String).map(canonicalOrSelf).filter(n => known.has(n));
 
       // What the reader can actually open, counted the way every other screen
       // counts it. The page used to headline "Accessible items" with the length
@@ -3665,7 +3683,7 @@ async function startServer() {
       const allowed: string[] = whole ? [] : Array.from(new Set(subs.flatMap(sb => {
         const d = Array.isArray(sb.domains) ? sb.domains : (sb.domains ? JSON.parse(sb.domains as string) : []);
         return d as string[];
-      }).filter(Boolean)));
+      }).filter(Boolean).map(canonicalOrSelf)));
 
       const me = await prisma.user.findUnique({
         where: { id: req.user.uid }, select: { interestedDomains: true },
@@ -3673,7 +3691,7 @@ async function startServer() {
       const interested: string[] = Array.isArray(me?.interestedDomains) ? (me!.interestedDomains as string[]) : [];
       const asked = String(req.query.domains || '').split(',').map(x => x.trim()).filter(Boolean);
 
-      const permitted = (list: string[]) => (allowed.length ? list.filter(d => allowed.includes(d)) : list);
+      const permitted = (list: string[]) => (allowed.length ? list.filter(d => entitlementCovers(allowed, d)) : list);
       let departments = permitted(asked.length ? asked : interested);
 
       // Nothing chosen, or nothing chosen that we hold: fall back to the
@@ -4050,7 +4068,9 @@ async function startServer() {
         domainMatch = true;
       } else {
         const safeContentDomain = content.domain ? content.domain.toLowerCase() : "";
-        domainMatch = d.some(subDomain => {
+        // "Medical sciences" in a subscription grants "Medical Sciences" content and the other way round,
+        // and so does any listed alias. This only adds matches; the rules below are as they were.
+        domainMatch = entitlementCovers([...d, sub.domainName].filter(Boolean) as string[], content.domain) || d.some(subDomain => {
           if (!subDomain) return false;
           const safeSub = subDomain.toLowerCase();
           return safeSub.includes(safeContentDomain) || safeContentDomain.includes(safeSub);
@@ -4165,9 +4185,9 @@ async function startServer() {
       for (const s of (subs || [])) {
         const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
         const c = Array.isArray(s.contentTypes) ? s.contentTypes : (s.contentTypes ? JSON.parse(s.contentTypes as string) : []);
-        d.forEach((x: string) => x && domains.add(x));
+        d.forEach((x: string) => x && domains.add(canonicalOrSelf(x)));
         c.forEach((x: string) => x && contentTypes.add(x));
-        if (s.domainName) domains.add(s.domainName);
+        if (s.domainName) domains.add(canonicalOrSelf(s.domainName));
       }
       res.json({ all: false, domains: [...domains], contentTypes: [...contentTypes] });
     } catch (e: any) {
@@ -4190,11 +4210,11 @@ async function startServer() {
       for (const sub of subs) {
         const d = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains as string) : []);
         const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
-        d.forEach((x: string) => x && scopeDomains.add(x));
+        d.forEach((x: string) => x && scopeDomains.add(canonicalOrSelf(x)));
         ct.forEach((x: string) => x && scopeTypes.add(x));
-        if (sub.domainName) scopeDomains.add(sub.domainName);
+        if (sub.domainName) scopeDomains.add(canonicalOrSelf(sub.domainName));
         const cond: any = {}; const dOr: any[] = [];
-        d.forEach((s: string) => s && dOr.push({ domain: { contains: s, mode: 'insensitive' } }));
+        (await deptSpellings.expand(d.filter(Boolean))).forEach((s: string) => dOr.push({ domain: { contains: s, mode: 'insensitive' } }));
         if (sub.domainName) dOr.push({ domain: { contains: sub.domainName, mode: 'insensitive' } });
         if (dOr.length) cond.OR = dOr;
         if (ct.length) cond.contentType = { in: ct };
@@ -4210,19 +4230,20 @@ async function startServer() {
           prisma.content.groupBy({ by: ['domain'], where: legacyWhere }),
           prisma.content.groupBy({ by: ['contentType'], where: legacyWhere }),
         ]);
-        legacyDepts = dg.map((x: any) => x.domain).filter(Boolean);
+        legacyDepts = canonicalOrSelfList(dg.map((x: any) => x.domain).filter(Boolean));
         legacyTypes = cg.map((x: any) => x.contentType).filter(Boolean);
       }
 
       // NEW structured dataset (Journals & Books "New") — Article/Book within the user's scope
-      const domFilter = isAdmin ? {} : { domain: { in: [...scopeDomains] } };
+      const domFilter = isAdmin ? {} : { domain: { in: await deptSpellings.expand([...scopeDomains]) } };
       const [aDepts, bDepts, aCount, bCount] = await Promise.all([
         (prisma as any).article.groupBy({ by: ['domain'], where: { status: 'Published', ...domFilter } }),
         (prisma as any).book.groupBy({ by: ['domain'], where: { status: 'Published', ...domFilter } }),
         (prisma as any).article.count({ where: { status: 'Published', ...domFilter } }),
         (prisma as any).book.count({ where: { status: 'Published', ...domFilter } }),
       ]);
-      const newDepts = [...new Set([...aDepts.map((x: any) => x.domain), ...bDepts.map((x: any) => x.domain)].filter(Boolean))];
+      // One entry per department, whatever spelling the rows were stored under.
+      const newDepts = canonicalOrSelfList([...aDepts.map((x: any) => x.domain), ...bDepts.map((x: any) => x.domain)].filter(Boolean));
 
       // ARCHIVED — all published legacy content (browse the whole archive)
       const [adg, acg] = await Promise.all([
@@ -4235,7 +4256,7 @@ async function startServer() {
         scope: { domains: [...scopeDomains], contentTypes: [...scopeTypes] },
         legacy: { departments: legacyDepts, contentTypes: legacyTypes },
         neu: { departments: newDepts, hasArticles: aCount > 0, hasBooks: bCount > 0 && (isAdmin || scopeTypes.has('Books')) },
-        archived: { departments: adg.map((x: any) => x.domain).filter(Boolean), contentTypes: acg.map((x: any) => x.contentType).filter(Boolean) },
+        archived: { departments: canonicalOrSelfList(adg.map((x: any) => x.domain).filter(Boolean)), contentTypes: acg.map((x: any) => x.contentType).filter(Boolean) },
       });
     } catch (e: any) { console.error("available-facets error:", e); res.status(500).json({ error: "Failed to load facets" }); }
   });
@@ -4247,11 +4268,8 @@ async function startServer() {
       const where: any = { status: "Published" };
       if (domain) {
         const domainList = String(domain).split(',').map(d => d.trim()).filter(Boolean);
-        if (domainList.length > 1) {
-          where.domain = { in: domainList };
-        } else if (domainList.length === 1) {
-          where.domain = domainList[0];
-        }
+        // A department is every spelling of it the catalogue holds.
+        if (domainList.length) where.domain = { in: await deptSpellings.expand(domainList) };
       }
       if (contentType) where.contentType = String(contentType);
       
@@ -4279,7 +4297,7 @@ async function startServer() {
             const d = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains as string) : []);
             const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
             const cond: any = {}; const dOr: any[] = [];
-            d.forEach((s: string) => s && dOr.push({ domain: { contains: s, mode: 'insensitive' } }));
+            (await deptSpellings.expand(d.filter(Boolean))).forEach((s: string) => dOr.push({ domain: { contains: s, mode: 'insensitive' } }));
             if (sub.domainName) dOr.push({ domain: { contains: sub.domainName, mode: 'insensitive' } });
             if (dOr.length) cond.OR = dOr;
             if (ct.length) cond.contentType = { in: ct };
@@ -4300,7 +4318,7 @@ async function startServer() {
       const selectedSubjects = subjectArea ? String(subjectArea).split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
 
       contents.forEach((c: any) => {
-        if (c.domain) domainsSet.add(c.domain.trim());
+        if (c.domain) domainsSet.add(canonicalOrSelf(c.domain.trim()));
         // Only a believable category is offered; a title or a bare number is not a subject.
         const cleanSubject = cleanSubjectArea(c.subjectArea, c.title);
         if (cleanSubject) subjectsSet.add(cleanSubject);
@@ -4350,8 +4368,7 @@ async function startServer() {
       // domain may be a single value or a comma-joined list ("All Subscribed Domains")
       if (domain) {
         const doms = String(domain).split(',').map(s => s.trim()).filter(Boolean);
-        if (doms.length === 1) where.domain = doms[0];
-        else if (doms.length > 1) where.domain = { in: doms };
+        if (doms.length) where.domain = { in: await deptSpellings.expand(doms) };
       }
       if (contentType) where.contentType = String(contentType);
       
@@ -4413,7 +4430,7 @@ async function startServer() {
             const domainOr: any[] = [];
             
             if (d.length > 0) {
-              d.forEach((domainStr: string) => {
+              (await deptSpellings.expand(d.filter(Boolean))).forEach((domainStr: string) => {
                 if (domainStr) domainOr.push({ domain: { contains: domainStr, mode: 'insensitive' } });
               });
             }
@@ -6408,13 +6425,23 @@ async function startServer() {
       where: { status: { in: ['Published', 'published'] }, domain: { not: null } },
       _count: { id: true }
     });
+    // One module per department and content type: a department filed under two spellings is counted together, and
+    // the module is written under the official name, so no second set of modules grows for a variant.
+    const folded = new Map<string, { domain: string; contentType: string; n: number }>();
     for (const g of groups) {
       if (!g.domain) continue;
+      const domain = canonicalOrSelf(g.domain);
+      const key = `${domain}|${g.contentType}`;
+      const row = folded.get(key) ?? { domain, contentType: g.contentType, n: 0 };
+      row.n += g._count.id;
+      folded.set(key, row);
+    }
+    for (const g of folded.values()) {
       for (const userType of USER_TYPES) {
         await (prisma as any).contentModule.upsert({
           where: { domain_contentType_userType: { domain: g.domain, contentType: g.contentType, userType } },
-          create: { domain: g.domain, contentType: g.contentType, userType, totalCount: g._count.id },
-          update: { totalCount: g._count.id }
+          create: { domain: g.domain, contentType: g.contentType, userType, totalCount: g.n },
+          update: { totalCount: g.n }
         });
       }
     }
@@ -6425,7 +6452,7 @@ async function startServer() {
     try {
       const { domain, userType } = req.query;
       const where: any = { isActive: true };
-      if (domain) where.domain = domain;
+      if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
       // Default to 'General' if no userType provided
       where.userType = userType ? userType : 'General';
       const modules = await (prisma as any).contentModule.findMany({
@@ -6650,8 +6677,11 @@ async function startServer() {
   // GET /api/domain-data?domain=X — content summary + pricing modules for a domain
   app.get("/api/domain-data", async (req, res) => {
     try {
-      const domain = req.query.domain as string;
-      if (!domain) return res.status(400).json({ error: "domain query param required" });
+      const asked = req.query.domain as string;
+      if (!asked) return res.status(400).json({ error: "domain query param required" });
+      // The department's name as the registry spells it; its rows are those filed under any spelling of it.
+      const domain = canonicalOrSelf(asked);
+      const spelled = await deptSpellings.expand([domain]);
 
       // 1. Content summary — per kind, across all three shelves.
       //    Counting only the legacy table left departments advertising nothing
@@ -6661,15 +6691,15 @@ async function startServer() {
         // Published alone made this page's shelves smaller than the library's.
         prisma.content.groupBy({
           by: ['contentType'],
-          where: { domain, status: { not: 'Draft' } },
+          where: { domain: { in: spelled }, status: { not: 'Draft' } },
           _count: { id: true },
           orderBy: { contentType: 'asc' },
         }),
-        (prisma as any).article.count({ where: { domain, status: 'Published' } }),
-        (prisma as any).book.count({ where: { domain, status: 'Published' } }),
+        (prisma as any).article.count({ where: { domain: { in: spelled }, status: 'Published' } }),
+        (prisma as any).book.count({ where: { domain: { in: spelled }, status: 'Published' } }),
         (prisma as any).$queryRawUnsafe(
           `select count(distinct "journalId")::int as n from "Article"
-           where status = 'Published' and "domain" = $1 and "journalId" is not null`, domain),
+           where status = 'Published' and "domain" = any($1) and "journalId" is not null`, spelled),
       ]);
 
       const byType: Record<string, number> = {};
@@ -6693,7 +6723,7 @@ async function startServer() {
 
       // 2. Pricing modules — active modules for this domain, optionally filtered by userType
       const { userType } = req.query as { userType?: string };
-      const moduleWhere: any = { domain, isActive: true };
+      const moduleWhere: any = { domain: { in: spelled }, isActive: true };
       if (userType) moduleWhere.userType = userType;
       else moduleWhere.userType = 'General';
 
@@ -7301,7 +7331,7 @@ async function startServer() {
         { publisherName: { contains: q, mode: 'insensitive' } },
       ] } : {};
       // "__none" is the journals no department was ever given.
-      const domainWhere: any = domain ? { domain: domain === '__none' ? null : domain } : {};
+      const domainWhere: any = domain ? { domain: domain === '__none' ? null : { in: await deptSpellings.expand([domain]) } } : {};
       const statusWhere: any = status ? { status } : {};
       const articlesWhere: any = articles === 'with' ? { articleCount: { gt: 0 } }
         : articles === 'without' ? { articleCount: 0 } : {};
@@ -7348,9 +7378,11 @@ async function startServer() {
 
       res.json({
         journals, total, page, limit, catalogue, withArticles,
-        departments: byDomain
-          .map((g: any) => ({ name: g.domain as string | null, count: g._count._all as number }))
-          .sort((a: any, b: any) => b.count - a.count),
+        // One line per department; `spellings` lists the stored values folded into it, so an admin can see them.
+        departments: [
+          ...foldCounts(byDomain.map((g: any) => ({ name: g.domain as string | null, count: g._count._all as number }))),
+          ...byDomain.filter((g: any) => !g.domain).map((g: any) => ({ name: null as string | null, count: g._count._all as number, spellings: [] as string[] })),
+        ].sort((a: any, b: any) => b.count - a.count),
         statuses: Object.fromEntries(byStatus.map((g: any) => [g.status, g._count._all])),
       });
     } catch (error) {
@@ -7514,7 +7546,7 @@ async function startServer() {
   });
 
   // --- Admin: create content on a publisher's behalf ---
-  app.post("/api/admin/publishers/:id/articles", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+  app.post("/api/admin/publishers/:id/articles", authenticateJWT, requireAdminOrManager, requireOfficialDepartments, async (req: any, res: any) => {
     try {
       const publisher = await (prisma as any).publisher.findUnique({ where: { id: req.params.id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
@@ -7522,7 +7554,7 @@ async function startServer() {
       res.json(article);
     } catch (e: any) { console.error(e); res.status(500).json({ error: "Failed to create article" }); }
   });
-  app.post("/api/admin/publishers/:id/books", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+  app.post("/api/admin/publishers/:id/books", authenticateJWT, requireAdminOrManager, requireOfficialDepartments, async (req: any, res: any) => {
     try {
       const publisher = await (prisma as any).publisher.findUnique({ where: { id: req.params.id } });
       if (!publisher) return res.status(404).json({ error: "Publisher not found" });
@@ -7582,7 +7614,7 @@ async function startServer() {
           // the library but leave it on no shelf, so approval names the department — only ever one that exists.
           const held = await (prisma as any).book.findUnique({ where: { id }, select: { domain: true, ownershipSource: true } });
           if (!held) return res.status(404).json({ error: "No such book" });
-          const department = typeof req.body.department === 'string' ? req.body.department : null;
+          const department = typeof req.body.department === 'string' ? (canonicalDepartmentName(req.body.department) ?? req.body.department) : null;
           if (department && !ALL_DEPARTMENTS.includes(department)) return res.status(400).json({ error: "Unknown department" });
           if (department) data.domain = department;
           else if (held.ownershipSource === 'Ingested' && !held.domain) return res.status(400).json({ error: "Choose a department to approve this book" });
@@ -7623,7 +7655,7 @@ async function startServer() {
     } catch (e: any) { res.status(500).json({ error: "Failed to load content" }); }
   });
 
-  app.post("/api/publisher/articles", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+  app.post("/api/publisher/articles", authenticateJWT, requirePublisher, requireOfficialDepartments, async (req: any, res: any) => {
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
@@ -7632,7 +7664,7 @@ async function startServer() {
     } catch (e: any) { console.error(e); res.status(500).json({ error: "Failed to submit article" }); }
   });
 
-  app.post("/api/publisher/books", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+  app.post("/api/publisher/books", authenticateJWT, requirePublisher, requireOfficialDepartments, async (req: any, res: any) => {
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.status(404).json({ error: "No publisher profile" });
@@ -7641,7 +7673,7 @@ async function startServer() {
     } catch (e: any) { res.status(500).json({ error: "Failed to submit book" }); }
   });
 
-  app.put("/api/publisher/articles/:id", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+  app.put("/api/publisher/articles/:id", authenticateJWT, requirePublisher, requireOfficialDepartmentsOnEdit(async (req) => (await (prisma as any).article.findUnique({ where: { id: req.params.id }, select: { domain: true } }))?.domain), async (req: any, res: any) => {
     try {
       const publisher = await resolvePublisherForUser(req);
       const existing = await (prisma as any).article.findUnique({ where: { id: req.params.id } });
@@ -7652,7 +7684,7 @@ async function startServer() {
       res.json(article);
     } catch (e: any) { res.status(500).json({ error: "Failed to update article" }); }
   });
-  app.put("/api/publisher/books/:id", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+  app.put("/api/publisher/books/:id", authenticateJWT, requirePublisher, requireOfficialDepartmentsOnEdit(async (req) => (await (prisma as any).book.findUnique({ where: { id: req.params.id }, select: { domain: true } }))?.domain), async (req: any, res: any) => {
     try {
       const publisher = await resolvePublisherForUser(req);
       const existing = await (prisma as any).book.findUnique({ where: { id: req.params.id } });
@@ -9024,16 +9056,20 @@ async function startServer() {
     const domains = new Set<string>();
     for (const s of subs) {
       const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
-      d.forEach((x: string) => x && domains.add(x));
-      if (s.domainName) domains.add(s.domainName);
+      d.forEach((x: string) => x && domains.add(canonicalOrSelf(x)));
+      if (s.domainName) domains.add(canonicalOrSelf(s.domainName));
     }
     return [...domains];
   };
-  const applyDomainScope = (where: any, requestedDomain: string | undefined, scope: string[] | null) => {
-    if (scope === null) { if (requestedDomain) where.domain = requestedDomain; return; }
-    const allowed = scope.length ? scope : ['__no_access__'];
-    if (requestedDomain) where.domain = allowed.includes(requestedDomain) ? requestedDomain : '__no_access__';
-    else where.domain = { in: allowed };
+  // Narrows a catalogue query to a department and to what the plan covers. A department is every spelling of it
+  // the catalogue holds, so a plan for "Medical sciences" opens "Medical Sciences" rows and the reverse.
+  const applyDomainScope = async (where: any, requestedDomain: string | undefined, scope: string[] | null) => {
+    if (scope === null) { if (requestedDomain) where.domain = { in: await deptSpellings.expand([requestedDomain]) }; return; }
+    const allowed = scope.length ? await deptSpellings.expand(scope) : ['__no_access__'];
+    if (requestedDomain) {
+      const asked = (await deptSpellings.expand([requestedDomain])).filter(a => allowed.includes(a));
+      where.domain = asked.length ? { in: asked } : '__no_access__';
+    } else where.domain = { in: allowed };
   };
 
   // Distinct publishers that actually have published articles the user can see (domain-scoped)
@@ -9041,7 +9077,7 @@ async function startServer() {
     try {
       const { domain } = req.query;
       const where: any = { status: 'Published' };
-      applyDomainScope(where, domain, await libraryScopeDomains(req));
+      await applyDomainScope(where, domain, await libraryScopeDomains(req));
       const groups = await (prisma as any).article.groupBy({ by: ['publisherName'], where, _count: { _all: true } });
       const list = groups
         .filter((g: any) => g.publisherName)
@@ -9055,7 +9091,7 @@ async function startServer() {
     try {
       const { domain, recentYears, search, publisher } = req.query;
       const where: any = {};
-      applyDomainScope(where, domain, await libraryScopeDomains(req));
+      await applyDomainScope(where, domain, await libraryScopeDomains(req));
       if (recentYears) { where.startYear = { gte: new Date().getFullYear() - (parseInt(recentYears as string) || 0) }; }
       if (publisher) where.publisherName = publisher;
       if (search) where.title = { contains: search as string, mode: 'insensitive' };
@@ -9123,7 +9159,7 @@ async function startServer() {
     try {
       const { domain, journalId, journalIds, journalIssn, publisher, year, volume, issue, search, oa, sort, page = '1', limit = '20' } = req.query;
       const where: any = { status: 'Published' };
-      applyDomainScope(where, domain, await libraryScopeDomains(req));
+      await applyDomainScope(where, domain, await libraryScopeDomains(req));
       const jidList = journalIds ? String(journalIds).split(',').filter(Boolean) : [];
       if (jidList.length) where.journalId = { in: jidList };
       else if (journalId) where.journalId = journalId;
@@ -9181,7 +9217,7 @@ async function startServer() {
 
       // Respect what the reader is entitled to see, exactly as the lists do.
       const scope = await libraryScopeDomains(req);
-      if (scope !== null && journal.domain && !scope.includes(journal.domain)) {
+      if (scope !== null && journal.domain && !entitlementCovers(scope, journal.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
@@ -9242,7 +9278,7 @@ async function startServer() {
       if (!journal) return res.status(404).json({ error: "Journal not found" });
 
       const scope = await libraryScopeDomains(req);
-      if (scope !== null && journal.domain && !scope.includes(journal.domain)) {
+      if (scope !== null && journal.domain && !entitlementCovers(scope, journal.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
@@ -9338,7 +9374,7 @@ async function startServer() {
       if (!article) return res.status(404).json({ error: "Article not found" });
 
       const scope = await libraryScopeDomains(req);
-      if (scope !== null && article.domain && !scope.includes(article.domain)) {
+      if (scope !== null && article.domain && !entitlementCovers(scope, article.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
@@ -9380,7 +9416,7 @@ async function startServer() {
       if (!c) return res.status(404).json({ error: "Record not found" });
 
       const scope = await libraryScopeDomains(req);
-      if (scope !== null && c.domain && !scope.includes(c.domain)) {
+      if (scope !== null && c.domain && !entitlementCovers(scope, c.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
@@ -9425,12 +9461,20 @@ async function startServer() {
         where: { domain: { not: null } },
         select: { domain: true }, distinct: ['domain'],
       });
-      const match = domains.find(d => departmentSlug(d.domain) === wanted);
+      // The page is the department, not one spelling of it: the public id, the library slug and the slug of an older
+      // spelling ("biotechnology") all open the same page, which shows every row filed under any spelling of it.
+      // A stored department the registry does not know keeps the page it always had, found by its own slug.
+      const known = departmentFromSlug(wanted);
+      const held = known ? await deptSpellings.expand([known.name]) : null;
+      const match = known
+        ? (domains.some(d => held!.includes(d.domain)) ? { domain: known.name } : undefined)
+        : domains.find(d => departmentSlug(d.domain) === wanted);
       if (!match) return res.status(404).json({ error: "Department not found" });
       const domain = match.domain;
+      const spelled = held ?? [domain];
 
       const scope = await libraryScopeDomains(req);
-      if (scope !== null && !scope.includes(domain)) {
+      if (scope !== null && !entitlementCovers(scope, domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
@@ -9456,23 +9500,23 @@ async function startServer() {
       // books' authors too.
       const authorsSql = `
         select count(distinct lower(btrim(x)))::int as authors from (
-          select a.authors as names from "Article" a where a.domain = $1 and a.status = 'Published'
+          select a.authors as names from "Article" a where a.domain = any($1) and a.status = 'Published'
           union all
-          select b.authors from "Book" b where b.domain = $1 and b.status = 'Published'
+          select b.authors from "Book" b where b.domain = any($1) and b.status = 'Published'
         ) s, unnest(string_to_array(s.names, ',')) x
         where s.names is not null and btrim(x) <> ''`;
 
       const [journals, articles, books, publishers, authorRows] = await Promise.all([
-        (prisma as any).$queryRawUnsafe(shelfSql('j.domain = $1'), domain),
-        (prisma as any).article.count({ where: { domain, status: 'Published' } }),
-        (prisma as any).book.count({ where: { domain, status: 'Published' } }),
+        (prisma as any).$queryRawUnsafe(shelfSql('j.domain = any($1)'), spelled),
+        (prisma as any).article.count({ where: { domain: { in: spelled }, status: 'Published' } }),
+        (prisma as any).book.count({ where: { domain: { in: spelled }, status: 'Published' } }),
         (prisma as any).$queryRawUnsafe(
           `select j."publisherName" as name, count(distinct j.id)::int as journals
            from "Journal" j
            join "Article" a on a."journalId" = j.id and a.status = 'Published'
-           where j.domain = $1 and j."publisherName" is not null
-           group by 1 order by 2 desc`, domain),
-        (prisma as any).$queryRawUnsafe(authorsSql, domain),
+           where j.domain = any($1) and j."publisherName" is not null
+           group by 1 order by 2 desc`, spelled),
+        (prisma as any).$queryRawUnsafe(authorsSql, spelled),
       ]);
 
       const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
@@ -9863,10 +9907,11 @@ async function startServer() {
       const domains = new Set<string>();
       for (const s of subs) {
         const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
-        (d as string[]).forEach(x => x && domains.add(x));
-        if (s.domainName) domains.add(s.domainName);
+        (d as string[]).forEach(x => x && domains.add(canonicalOrSelf(x)));
+        if (s.domainName) domains.add(canonicalOrSelf(s.domainName));
       }
       const covered = [...domains];
+      const coveredSpellings = covered.length ? await deptSpellings.expand(covered) : [];
       const soonest = subs.map(s => s.endDate).filter(Boolean).sort()[0] ?? null;
       const daysLeft = soonest ? Math.ceil((new Date(soonest).getTime() - Date.now()) / 864e5) : null;
 
@@ -9882,7 +9927,7 @@ async function startServer() {
       // ISSN, so counting distinct ISSNs drops 81 journals and 5,690 articles.
       const jWhere: any = {};
       const aWhere: any = { status: 'Published' };
-      if (covered.length) { jWhere.domain = { in: covered }; aWhere.domain = { in: covered }; }
+      if (covered.length) { jWhere.domain = { in: coveredSpellings }; aWhere.domain = { in: coveredSpellings }; }
 
       const since = new Date(Date.now() - 30 * 864e5);
       // The same count as everywhere else, narrowed to what this college covers.
@@ -10473,7 +10518,7 @@ async function startServer() {
     try {
       const { domain, search, oa, sort, page = '1', limit = '20' } = req.query;
       const where: any = { status: 'Published' };
-      applyDomainScope(where, domain, await libraryScopeDomains(req));
+      await applyDomainScope(where, domain, await libraryScopeDomains(req));
       if (search) where.title = { contains: search as string, mode: 'insensitive' };
       if (oa === '1') where.accessType = { in: ['OpenAccess', 'Free'] };
       const take = Math.min(parseInt(limit as string) || 20, 100);
@@ -10572,7 +10617,7 @@ async function startServer() {
       const skip = ((parseInt(page as string) || 1) - 1) * take;
       const where: any = {};
       if (kind === 'article') where.contentType = contentType;
-      if (domain) where.domain = domain;
+      if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
       if (status) where.status = status;
       if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
       const model = (prisma as any)[kind];
@@ -10593,7 +10638,7 @@ async function startServer() {
     } catch (e: any) { res.status(500).json({ error: "Failed to load item" }); }
   });
 
-  app.post("/api/admin/library/items", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+  app.post("/api/admin/library/items", authenticateJWT, requireAdminOrManager, requireOfficialDepartments, async (req: any, res: any) => {
     try {
       const by = req.user?.email || 'Admin';
       const kind = kindFor(req.body.contentType);
@@ -10621,7 +10666,7 @@ async function startServer() {
   });
 
   // Bulk import into the NEW structured dataset (Article/Book) — mirrors the single create above.
-  app.post("/api/admin/library/items/bulk", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+  app.post("/api/admin/library/items/bulk", authenticateJWT, requireAdminOrManager, requireOfficialDepartments, async (req: any, res: any) => {
     try {
       const by = req.user?.email || 'Admin';
       const kind = kindFor(req.body.contentType);
@@ -10668,7 +10713,7 @@ async function startServer() {
     } catch (e: any) { console.error("admin library bulk:", e); res.status(500).json({ error: "Bulk import failed" }); }
   });
 
-  app.put("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+  app.put("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, requireOfficialDepartmentsOnEdit(async (req) => (await (prisma as any)[req.params.kind === 'book' ? 'book' : 'article'].findUnique({ where: { id: req.params.id }, select: { domain: true } }))?.domain), async (req: any, res: any) => {
     try {
       const kind = req.params.kind === 'book' ? 'book' : 'article';
       const by = req.user?.email || 'Admin';
@@ -10738,7 +10783,7 @@ async function startServer() {
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
       
       const where: any = {};
-      if (domain) where.domain = domain;
+      if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
       if (contentType) where.contentType = contentType;
       if (status) where.status = status;
       if (search) {
@@ -10761,7 +10806,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.post("/api/admin/content", authenticateJWT, requireSuperAdmin, requireOfficialDepartments, async (req: any, res) => {
     try {
       const { title, description, authors, domain, contentType, subjectArea, fileUrl, thumbnailUrl, tags, price, accessType, status, publishingMode } = req.body;
       const newContent = await prisma.content.create({
@@ -10786,7 +10831,7 @@ async function startServer() {
     }
   });
 
-  app.put("/api/admin/content/:id", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.put("/api/admin/content/:id", authenticateJWT, requireSuperAdmin, requireOfficialDepartmentsOnEdit(async (req) => (await prisma.content.findUnique({ where: { id: req.params.id }, select: { domain: true } }))?.domain), async (req: any, res) => {
     try {
       const { id } = req.params;
       const data = req.body;
@@ -10883,7 +10928,7 @@ async function startServer() {
   });
 
   // Admin: Bulk Import Content
-  app.post("/api/admin/content/bulk", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+  app.post("/api/admin/content/bulk", authenticateJWT, requireSuperAdmin, requireOfficialDepartments, async (req: any, res) => {
     try {
       const { items } = req.body;
       if (!items || !Array.isArray(items)) {
@@ -12111,7 +12156,7 @@ async function startServer() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid client email.' };
     // Each department once, in the order chosen, so the count and the printed list always agree.
     // Older clients spelled three departments differently ("Computer/IT"); they are read as the catalogue's name.
-    const departments: string[] = Array.isArray(raw.departments) ? canonicalDepartments(raw.departments.map((d: any) => str(d, 100)).filter(Boolean)) : [];
+    const departments: string[] = Array.isArray(raw.departments) ? canonicalOrSelfList(raw.departments.map((d: any) => str(d, 100)).filter(Boolean)) : [];
     if (!departments.length) return { error: 'Select at least one department.' };
     if (departments.some(d => !QUOTE_DEPARTMENTS.includes(d))) return { error: 'One of the departments is not recognised.' };
     const state = str(raw.state, 100);
@@ -12910,7 +12955,8 @@ async function startServer() {
     const names = new Set<string>();
     for (const sub of subs) {
       const list: string[] = Array.isArray(sub.domains) ? sub.domains : [];
-      for (const name of list) if (departmentNames.has(name)) names.add(name);
+      // Read an older spelling as its department, so a plan stored as "Medical sciences" still counts as held.
+      for (const raw of list) { const name = canonicalOrSelf(raw); if (departmentNames.has(name)) names.add(name); }
     }
     return [...names];
   };
@@ -12925,7 +12971,8 @@ async function startServer() {
   const priceInstitutionPurchase = async (institutionId: string, body: any) => {
     const seats = await institutionSeats(institutionId);
     if (body?.kind === 'departments') {
-      const wanted: string[] = Array.isArray(body.departments) ? body.departments.map(String) : [];
+      // New selections are the official names; a listed alias is accepted and read as its department.
+      const wanted: string[] = Array.isArray(body.departments) ? body.departments.map((d: any) => canonicalOrSelf(String(d))) : [];
       const unknown = wanted.filter((name) => !departmentNames.has(name));
       if (unknown.length) return { error: `Unknown department: ${unknown.join(', ')}` };
       const held = new Set(coveredDepartments(seats.subscriptions));
@@ -12960,7 +13007,7 @@ async function startServer() {
       if (!institutionId) return res.status(403).json({ error: "Only an institution's librarian can see its plan." });
       const seats = await institutionSeats(institutionId);
       const departments = seats.subscriptions
-        .flatMap((sub: any) => (Array.isArray(sub.domains) ? sub.domains : []).map((name: string) => ({ name, endDate: sub.endDate })))
+        .flatMap((sub: any) => (Array.isArray(sub.domains) ? sub.domains : []).map((name: string) => ({ name: canonicalOrSelf(name), endDate: sub.endDate })))
         .filter((d: any) => departmentNames.has(d.name));
       res.json({
         unlimitedSeats: seats.unlimited,

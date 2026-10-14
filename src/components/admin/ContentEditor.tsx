@@ -4,6 +4,7 @@ import { Save, ArrowLeft, UploadCloud } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 import { DOMAINS, CONTENT_TYPES } from '../../constants';
+import { canonicalOrSelf } from '../../lib/departmentRegistry';
 
 export function ContentEditor() {
   const { id } = useParams();
@@ -46,7 +47,7 @@ export function ContentEditor() {
             title: item.title || '',
             description: item.description || '',
             authors: item.authors || '',
-            domain: item.domain || DOMAINS[0]?.name || '',
+            domain: canonicalOrSelf(item.domain || '') || DOMAINS[0]?.name || '',
             contentType: item.contentType || CONTENT_TYPES[0]?.name || '',
             subjectArea: item.subjectArea || 'General',
             fileUrl: item.fileUrl || '',

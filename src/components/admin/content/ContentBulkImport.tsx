@@ -3,6 +3,7 @@ import { UploadCloud, CheckCircle, AlertCircle, RefreshCw, ChevronRight, Downloa
 import Papa from 'papaparse';
 import { toast } from 'react-hot-toast';
 import { TYPE_FIELDS, type FieldDef } from './ContentSingleEditor';
+import { canonicalDepartmentName } from '../../../lib/departmentRegistry';
 
 // Base fields shared by every content type — same keys the single editor saves.
 const BASE_FIELDS: (FieldDef & { required?: boolean })[] = [
@@ -109,6 +110,21 @@ export function ContentBulkImport({ contentType }: ContentBulkImportProps) {
       item.metadata = metadata;
       return item;
     });
+
+    // Departments are read as the official names (a known spelling is fixed). Any value that is not a department of
+    // the library stops the import before anything is sent, with the file's own row numbers, rather than being stored.
+    const badDepartments: string[] = [];
+    items.forEach((it, i) => {
+      if (typeof it.domain !== 'string' || !it.domain.trim()) return;
+      const official = canonicalDepartmentName(it.domain);
+      if (official) it.domain = official;
+      else badDepartments.push(`row ${i + 1}: "${it.domain}"`);
+    });
+    if (badDepartments.length) {
+      setUploading(false);
+      toast.error(`Not a department of the library — ${badDepartments.slice(0, 5).join('; ')}${badDepartments.length > 5 ? ` (and ${badDepartments.length - 5} more)` : ''}. Correct the file; nothing was imported.`, { duration: 9000 });
+      return;
+    }
 
     // Send in batches so a 28k-row file doesn't overload one request (which times out → 500).
     const CHUNK = 300;

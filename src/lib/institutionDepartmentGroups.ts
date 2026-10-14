@@ -6,11 +6,13 @@
  * every screen that uses these groups hands the same flat list of department names to the same
  * pricing code it always used. "Select all" in a group simply ticks that group's departments.
  *
- * This file is the single place the grouping lives. The names must match the catalogue's
- * departments (`DOMAINS` in constants.ts) exactly; `scripts/test-department-groups.ts` fails if a
- * department is missing, repeated or invented. A department added to the catalogue and not yet
+ * This file is the single place the grouping lives. The names are the registry's official names
+ * (`departmentRegistry.ts`, which equals `DOMAINS` in constants.ts); `scripts/test-department-groups.ts`
+ * fails if a department is missing, repeated or invented. A department added to the catalogue and not yet
  * placed here still shows up, under "Other departments", so it can never become unselectable.
  */
+
+import { canonicalOrSelf, canonicalOrSelfList } from './departmentRegistry';
 
 export type DepartmentGroup = {
   id: string;
@@ -77,22 +79,11 @@ export const OTHER_GROUP_NAME = 'Other departments';
 /** Every department named in the groups, in group order — the list quotations are written against. */
 export const GROUPED_DEPARTMENTS: string[] = INSTITUTION_DEPARTMENT_GROUPS.flatMap((g) => g.departments);
 
-/**
- * Spellings an older quotation may carry for a department. They were typed into a separate list
- * before the groups existed and differ from the catalogue only in punctuation. They are read as
- * the catalogue's name; nothing is renamed in the catalogue.
- */
-const LEGACY_DEPARTMENT_NAMES: Record<string, string> = {
-  'Computer/IT': 'Computer / IT',
-  'Civil/Construction Engineering': 'Civil / Construction Engineering',
-  'Education & Social Sciences': 'Education and Social Sciences',
-};
+/** A department name as the registry spells it. Unrecognised names come back unchanged. */
+export const canonicalDepartment = canonicalOrSelf;
 
-/** A department name as the catalogue spells it. Unknown names come back unchanged. */
-export const canonicalDepartment = (name: string): string => LEGACY_DEPARTMENT_NAMES[name] ?? name;
-
-/** A list of department names as the catalogue spells them, each once, in the order given. */
-export const canonicalDepartments = (names: string[]): string[] => [...new Set(names.map(canonicalDepartment))];
+/** A list of department names as the registry spells them, each once, in the order given. */
+export const canonicalDepartments = canonicalOrSelfList;
 
 /**
  * The groups to show for `departments` (the names this screen may offer): each group keeps only the

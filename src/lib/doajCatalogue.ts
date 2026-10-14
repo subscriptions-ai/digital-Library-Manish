@@ -24,6 +24,7 @@ export const DOAJ_CSV_URL = 'https://doaj.org/csv';
 // ── Department, from the Library of Congress class ─────────────────────────
 
 import { parseLcc, departmentFromLcc } from './ingestion/lcc.js';
+import { canonicalDepartmentName } from './departmentRegistry.js';
 
 /**
  * Several departments have no class of their own in the Library of Congress
@@ -92,7 +93,7 @@ export function doajRowToJournal(row: Record<string, string>) {
     publisherName: (row['Publisher'] || '').trim() || null,
     country: (row['Country of publisher'] || '').trim() || null,
     language: (row['Languages in which the journal accepts manuscripts'] || '').trim() || null,
-    domain: departmentForDoajRow(row),
+    domain: canonicalDepartmentName(departmentForDoajRow(row)),
     subject: (row['Subjects'] || '').split('|')[0]?.trim() || null,
     subjects: (row['Subjects'] || '').split('|').map(s => s.trim()).filter(Boolean),
     homepage: (row['Journal URL'] || '').trim() || null,

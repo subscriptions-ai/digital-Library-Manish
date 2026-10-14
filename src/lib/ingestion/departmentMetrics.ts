@@ -1,3 +1,4 @@
+import { canonicalOrSelf } from '../departmentRegistry.js';
 import { ingestionDb as db } from './db.js';
 import { DOMAINS } from '../../constants.js';
 import { runConditions, eachDay, FAILED_RUN_SQL, PROVIDER_FAILURE_SQL, RUN_LEVEL, RUN_BY_DEPARTMENT, type RunFilter, type ResolvedRange } from './runFilter.js';
@@ -54,7 +55,10 @@ async function loadCatalogue(): Promise<CatalogueSnapshot> {
   let unplacedReview = 0;
   const add = (rows: any[], key: keyof CatalogueRow) => {
     for (const r of rows) {
-      const name = typeof r.domain === 'string' ? r.domain.trim() : '';
+      // A spelling the registry knows is counted under the department's official name; each row has one department, so
+      // nothing is counted twice. An unknown value ("Engineering") keeps its own row.
+      const raw = typeof r.domain === 'string' ? r.domain.trim() : '';
+      const name = raw ? canonicalOrSelf(raw) : '';
       if (name && !byDepartment.has(name)) byDepartment.set(name, zero());
       const target = (name && byDepartment.get(name)) || noDepartment;
       target[key] += r.n;
@@ -69,7 +73,8 @@ async function loadCatalogue(): Promise<CatalogueSnapshot> {
 /** A department the screen may ask about: one in the taxonomy, or one the catalogue really holds under that name. */
 export async function departmentExists(v: unknown): Promise<boolean> {
   if (typeof v !== 'string' || !v) return false;
-  return DEPARTMENT_NAMES.includes(v) || (await catalogueSnapshot()).byDepartment.has(v);
+  const name = canonicalOrSelf(v.trim());
+  return DEPARTMENT_NAMES.includes(name) || (await catalogueSnapshot()).byDepartment.has(name);
 }
 
 export async function catalogueSnapshot(): Promise<CatalogueSnapshot> {
