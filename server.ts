@@ -34,6 +34,7 @@ import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
+import { canonicalDepartments } from "./src/lib/institutionDepartmentGroups.js";
 import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, buildInstitutionPlanSnapshot, buildSoloPlanSnapshot, planSnapshotToRow, type QuoteDoc, type PlanSnapshot } from "./src/lib/quotation/quotationModel.js";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
@@ -12109,7 +12110,8 @@ async function startServer() {
     const email = str(raw.email, 200);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid client email.' };
     // Each department once, in the order chosen, so the count and the printed list always agree.
-    const departments: string[] = Array.isArray(raw.departments) ? [...new Set<string>(raw.departments.map((d: any) => str(d, 100)).filter(Boolean))] : [];
+    // Older clients spelled three departments differently ("Computer/IT"); they are read as the catalogue's name.
+    const departments: string[] = Array.isArray(raw.departments) ? canonicalDepartments(raw.departments.map((d: any) => str(d, 100)).filter(Boolean)) : [];
     if (!departments.length) return { error: 'Select at least one department.' };
     if (departments.some(d => !QUOTE_DEPARTMENTS.includes(d))) return { error: 'One of the departments is not recognised.' };
     const state = str(raw.state, 100);
