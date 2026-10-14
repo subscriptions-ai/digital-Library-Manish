@@ -1,3 +1,4 @@
+import { canonicalDepartmentName } from '../lib/departmentRegistry.js';
 import { PrismaClient } from '@prisma/client';
 import { generateFingerprint } from '../lib/dedup.js';
 import { classifyContent } from '../lib/aiClassifier.js';
@@ -14,7 +15,14 @@ export function setupExtractionRoutes(app: any, authenticateJWT: any, requireSup
   // Create a new extraction job
   app.post("/api/admin/extraction/jobs", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
-      const { name, sourceType, sourceConfig, targetDomain, targetContentType } = req.body;
+      const { name, sourceType, sourceConfig, targetContentType } = req.body;
+      // The department extracted content is filed under is an official one; a known spelling is read as its department.
+      let targetDomain = req.body.targetDomain;
+      if (typeof targetDomain === 'string' && targetDomain.trim()) {
+        const official = canonicalDepartmentName(targetDomain);
+        if (!official) return res.status(400).json({ error: `"${targetDomain}" is not a department of the library. Choose one from the list.`, code: 'UNKNOWN_DEPARTMENT' });
+        targetDomain = official;
+      }
       
       const job = await prisma.extractionJob.create({
         data: {

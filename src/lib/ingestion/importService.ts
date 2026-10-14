@@ -6,6 +6,7 @@ import {
   canonicalFingerprint, findHeldArticles, findJournalByAnyIssn, findPossibleDuplicates, normaliseDoi,
 } from './dedup.js';
 import { normaliseIssn } from '../ingestionWorker.js';
+import { canonicalDepartmentName, canonicalOrSelf } from '../departmentRegistry.js';
 
 /**
  * The one-off import: preview first, then write exactly what the preview showed — after checking it again.
@@ -213,7 +214,7 @@ export async function writeClassified(
             try {
               journal = await tx.journal.create({ data: {
                 title: f.journalName || 'Unknown Journal', issn, publisherId: publisher?.id || null, publisherName: f.publisherName || null,
-                domain: f.department || null, subject: f.subject || null, openAccess: !!f.openAccess, startYear: f.year || null,
+                domain: (f.department ? canonicalDepartmentName(f.department) : null), subject: f.subject || null, openAccess: !!f.openAccess, startYear: f.year || null,
               } });
             } catch { journal = await findJournalByAnyIssn([issn], tx); }
           }
@@ -223,7 +224,7 @@ export async function writeClassified(
             journalId: journal?.id || null, journalName: f.journalName || null, journalIssn: issn || f.issn || null,
             publisherId: publisher?.id || null, publisherName: f.publisherName || null,
             volume: f.volume ? String(f.volume) : null, issue: f.issue ? String(f.issue) : null,
-            year: f.year || null, domain: f.department || null, subject: f.subject || null,
+            year: f.year || null, domain: (f.department ? canonicalOrSelf(f.department) : null), subject: f.subject || null,
             accessType: 'OpenAccess', accessStatus: f.access, licence: f.licence || null,
             licenceIsNC: f.licenceVerdict !== 'allows-commercial',
             originalUrl: doi ? `https://doi.org/${doi}` : null,

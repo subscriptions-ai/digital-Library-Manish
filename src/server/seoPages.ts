@@ -1,3 +1,4 @@
+import { canonicalOrSelf } from '../lib/departmentRegistry.js';
 import type { Express, Request, Response } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { DOMAINS } from '../constants.js';
@@ -73,7 +74,7 @@ ${p.excerpt ? `<p class="mt-4 text-[17px] leading-relaxed text-muted">${esc(p.ex
 <img src="${esc(cover)}" alt="${esc(cover === p.coverUrl?.trim() ? p.coverAlt || '' : '')}" width="1600" height="900" class="object-cover mt-8 aspect-video w-full rounded-xl border border-rule" fetchpriority="high">
 <div class="prose-post mt-8 max-w-[72ch] break-words">${p.body}</div>
 ${fromLibrary.length ? `<section class="card card-pad mt-12"><h2 class="${LABEL}">In the library on this subject</h2><ul class="mt-4 divide-y divide-rule">${fromLibrary.map((a: any) =>
-    `<li class="py-3"><a href="/article/${esc(a.id)}" class="block"><span class="text-sm leading-snug text-ink-2">${esc(a.title)}</span><br><span class="text-xs text-muted">${esc([a.journalName, a.domain, a.year].filter(Boolean).join(' · '))}</span></a></li>`).join('')}</ul>
+    `<li class="py-3"><a href="/article/${esc(a.id)}" class="block"><span class="text-sm leading-snug text-ink-2">${esc(a.title)}</span><br><span class="text-xs text-muted">${esc([a.journalName, a.domain ? canonicalOrSelf(a.domain) : a.domain, a.year].filter(Boolean).join(' · '))}</span></a></li>`).join('')}</ul>
 <a href="/digital-library" class="btn btn-brand mt-5">Browse the library</a></section>` : ''}
 ${related.length ? `<section class="mt-12"><h2 class="${LABEL}">More like this</h2><ul class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">${related.map((r: any) =>
     `<li><a href="/blog/${esc(r.slug)}" class="card card-interactive block p-4"><span class="text-[15px] font-semibold leading-snug text-ink">${esc(r.title)}</span><br><span class="text-xs text-muted">${esc(day(r.publishedAt))}</span></a></li>`).join('')}</ul></section>` : ''}

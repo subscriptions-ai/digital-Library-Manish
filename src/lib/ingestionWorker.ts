@@ -24,6 +24,7 @@ import { runScheduledHarvest, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED } from '.
 import { findHeldArticles, findPossibleDuplicates, canonicalFingerprint, normaliseDoi } from './ingestion/dedup.js';
 import { tryLockProvider, unlockProvider } from './ingestion/providerLocks.js';
 import { readCursor, writeCursor, type CursorProvider } from './ingestion/journalCursor.js';
+import { canonicalDepartmentName, canonicalOrSelf } from './departmentRegistry.js';
 
 /** The worker's connection, shared with the catalogue import and the safety services. */
 const p = ingestionDb;
@@ -262,7 +263,7 @@ async function discoverJournalsPage(sweep: any) {
       eissn: normaliseIssn(b.eissn),
       publisherName: b.publisher?.name || null,
       country: b.publisher?.country || null,
-      domain: sweep.department,
+      domain: canonicalDepartmentName(sweep.department),
       subjects: (b.subject || []).map((x: any) => x.term).filter(Boolean),
       homepage: (b.link || []).find((l: any) => l.type === 'homepage')?.url || null,
       licence: lic?.type || null,
@@ -475,7 +476,7 @@ export async function discoverBooksPage(sweep: any) {
           pages: f.one('oapen.pages') || null,
           subject: f.one('dc.subject.other')
             || (f.one('dc.subject.classification') || '').split('::').pop() || null,
-          domain: sweep.department,
+          domain: canonicalOrSelf(sweep.department),
           language: f.one('dc.language') || null,
           country: f.one('publisher.country') || null,
           description: f.one('dc.description.abstract') || null,
@@ -761,7 +762,8 @@ export async function visitJournal(journal: any, state: any, cap: number, v2: bo
           year: w.year,
           originalDate: raw.publication_date ? new Date(raw.publication_date) : null,
           originalUrl: raw.primary_location?.landing_page_url || (w.doi ? `https://doi.org/${w.doi}` : null),
-          domain: journal.domain,
+          // A journal held under an older spelling still hands its articles the official name.
+          domain: journal.domain ? canonicalOrSelf(journal.domain) : journal.domain,
           subject: (raw.concepts || [])[0]?.display_name || null,
           licence: w.licence,
           licenceIsNC: decision.licenceVerdict !== 'allows-commercial',

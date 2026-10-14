@@ -4,6 +4,7 @@ import { Save, ArrowLeft, UploadCloud, Tag, Plus, Trash2, Layers } from 'lucide-
 import { toast } from 'react-hot-toast';
 
 import { DOMAINS } from '../../../constants';
+import { canonicalOrSelf } from '../../../lib/departmentRegistry';
 
 interface ContentSingleEditorProps {
   contentType: string;
@@ -92,7 +93,7 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
           // Legacy Content record — generic fields only
           setForm({
             title: item.title || '', description: item.description || '', authors: item.authors || '',
-            domain: item.domain || DOMAINS[0]?.name || '', subjectArea: item.subjectArea || '',
+            domain: canonicalOrSelf(item.domain || '') || DOMAINS[0]?.name || '', subjectArea: item.subjectArea || '',
             fileUrl: item.fileUrl || '', thumbnailUrl: item.thumbnailUrl || '',
             tags: Array.isArray(item.tags) ? item.tags.join(', ') : '',
             accessType: item.accessType || 'Subscription', status: item.status || 'Published',
@@ -103,7 +104,7 @@ export function ContentSingleEditor({ contentType }: ContentSingleEditorProps) {
         const meta = item.metadata || {};
         const next: Record<string, any> = {
           title: item.title || '', description: item.abstract || item.description || '', authors: item.authors || '',
-          domain: item.domain || DOMAINS[0]?.name || '', subjectArea: item.subject || '',
+          domain: canonicalOrSelf(item.domain || '') || DOMAINS[0]?.name || '', subjectArea: item.subject || '',
           fileUrl: item.pdfUrl || '', thumbnailUrl: item.coverUrl || meta.thumbnailUrl || '',
           originalUrl: item.originalUrl || '',
           tags: Array.isArray(meta.tags) ? meta.tags.join(', ') : '',

@@ -4,6 +4,7 @@ import {
   departmentRate, departmentRateLadder, priceDepartments, slabLabel,
 } from '../institutionPricing';
 import { GROUPED_DEPARTMENTS } from '../institutionDepartmentGroups';
+import { canonicalOrSelf } from '../departmentRegistry';
 import {
   SOLO_BULK_THRESHOLD, SOLO_RATE_BULK, SOLO_RATE_STANDARD, SOLO_TERM_MONTHS, calculateSoloSubscriptionPrice,
 } from '../soloPricing';
@@ -411,7 +412,8 @@ export function docToRender(doc: QuoteDoc, issuer: Issuer = issuerOf(null)): Quo
       { label: 'User entitlement', value: userSummary },
       { label: 'Valid until', value: dateDisplay(validTill) },
     ] : [],
-    departments: doc.departments,
+    // An older quotation may carry an old spelling; it is shown as the department's official name. The stored value is untouched.
+    departments: doc.departments.map(canonicalOrSelf),
   };
 }
 
@@ -820,9 +822,9 @@ export function institutionPlanToRender(s: InstitutionPlanSnapshot, issuer: Issu
     specialNote: '',
     issuer,
     summary,
-    departments: s.newDepartmentNames,
+    departments: s.newDepartmentNames.map(canonicalOrSelf),
     departmentsLabel: 'New departments in this quotation',
-    existingDepartments: existing > 0 ? { count: existing, names: s.existingDepartmentNames } : undefined,
+    existingDepartments: existing > 0 ? { count: existing, names: s.existingDepartmentNames.map(canonicalOrSelf) } : undefined,
     termsHeading: 'Institutional Commercial Terms & Conditions',
     termsPointer: 'Commercial Terms & Conditions',
   };
@@ -902,7 +904,7 @@ export function soloPlanToRender(s: SoloPlanSnapshot, issuer: Issuer = issuerOf(
       { label: 'User entitlement', value: 'Your own account (1 user)' },
       { label: 'Valid until', value: dateDisplay(validTill) },
     ],
-    departments: s.departmentNames,
+    departments: s.departmentNames.map(canonicalOrSelf),
     departmentsLabel: 'Subscribed departments',
     customerLabel: 'Customer details',
     termsHeading: 'Terms & Conditions',
