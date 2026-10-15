@@ -53,6 +53,10 @@ import {
   listQuickSources, beginQuickImport, getQuickJob, activeQuickJobs, isQuickId, previewManualBooks, loadDoajCsv, asQuickError, healthKeyFor,
   QuickError, MSG as QUICK_MSG, quickLimit,
 } from "./src/lib/ingestion/quickImport.js";
+import { bookCoverageByDepartment, journalCoverageByDepartment } from "./src/lib/ingestion/bookCoverage.js";
+import { catalogueGrowth, providerCoverage, isGrowthPeriod } from "./src/lib/ingestion/catalogueGrowth.js";
+import { targetingStatus, savePriorityConfig, PriorityError, beginTargetedImport, getTargetedJob, TargetedError } from "./src/lib/ingestion/targetedBooks.js";
+import { bulkStatus, beginBulk, getBulkJob, runningBulkJob, isBulkSource, BulkError } from "./src/lib/ingestion/bulkCatalogue.js";
 import { sourceCooldown } from "./src/lib/ingestion/sourceHealth.js";
 import { departmentMetrics, departmentTable, departmentExists } from "./src/lib/ingestion/departmentMetrics.js";
 import { resolveRange } from "./src/lib/ingestion/runFilter.js";
@@ -8513,12 +8517,24 @@ async function startServer() {
       oai: process.env.BOOKS_OAI !== '0',
       providers: harvests.map((h: any) => ({ provider: h.provider, lastSuccessfulSyncAt: h.lastSuccessfulSyncAt, inProgress: !!h.cursor, startedAt: h.harvestStartedAt })),
     };
-    return { ...state, status, last24h, alerts, schedulerV2: schedulerV2(), limits: INGESTION_POLICY.settings, booksHarvest };
+    const s2 = state as any;
+    const baseBatch = s2?.articlesPerPass ?? s2?.batchSize ?? 100;
+    const full = { 
+      journalsPerPass: s2?.journalsPerPass ?? 200,
+      booksPerPass: s2?.booksPerPass ?? 200,
+      articlesPerPass: baseBatch,
+      batchSize: baseBatch,
+      ...s2,
+    };
+    return { ...full, status, last24h, alerts, schedulerV2: schedulerV2(), limits: INGESTION_POLICY.settings, booksHarvest };
   };
 
   app.get("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
     try { res.json(await ingestionEnvelope()); }
-    catch { res.status(500).json({ error: "Failed to read ingestion state" }); }
+    catch (e: any) {
+      console.error('GET ingest/state error:', e?.message);
+      res.status(500).json({ error: "Failed to read ingestion state" });
+    }
   });
 
   // POST /api/admin/ingest/state — change settings, scope, or switch the engine on/off.
@@ -8965,6 +8981,78 @@ async function startServer() {
     const j = getQuickJob(req.params.jobId);
     if (!j) return res.status(404).json({ error: "That Quick Import is no longer tracked. Check the run activity for what it did." });
     res.json({ jobId: j.id, provider: j.provider, label: j.label, group: j.group, status: j.status, startedAt: j.startedAt, finishedAt: j.finishedAt || null, limit: j.limit, progress: j.progress, result: j.result || null, error: j.error || null });
+  });
+
+  // ── Catalogue growth and Book coverage ─────────────────────────────────────
+  //
+  // What the catalogue holds now (counted from the Book and Journal tables, never from a target) and what ingestion did (the run
+  // log) are separate figures and are returned separately.
+
+  app.get("/api/admin/ingest/book-coverage", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try {
+      const [books, journals, targeting] = await Promise.all([bookCoverageByDepartment(), journalCoverageByDepartment(), targetingStatus()]);
+      res.json({ books, journals, targeting });
+    } catch (e: any) { console.error('GET ingest/book-coverage error:', e?.message); res.status(500).json({ error: "Failed to read the coverage" }); }
+  });
+
+  app.get("/api/admin/ingest/catalogue-growth", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const period = isGrowthPeriod(req.query.period) ? req.query.period : '7d';
+      const [growth, providers] = await Promise.all([catalogueGrowth(period), providerCoverage()]);
+      res.json({ ...growth, providers });
+    } catch (e: any) { console.error('GET ingest/catalogue-growth error:', e?.message); res.status(500).json({ error: "Failed to read catalogue growth" }); }
+  });
+
+  app.post("/api/admin/ingest/book-priority", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { enabled, share, target } = req.body || {};
+      const config = await savePriorityConfig({ ...(enabled !== undefined ? { enabled } : {}), ...(share !== undefined ? { share } : {}), ...(target !== undefined ? { target } : {}) }, adminOf(req));
+      res.json({ config, targeting: await targetingStatus() });
+    } catch (e: any) {
+      if (e instanceof PriorityError) return res.status(400).json({ error: e.message });
+      console.error('POST ingest/book-priority error:', e?.message); res.status(500).json({ error: "Could not save the setting" });
+    }
+  });
+
+  // Quick Import for one department: its query profile, healthy providers, the same dedupe/rights/classifier, its own positions.
+  app.post("/api/admin/ingest/targeted-books", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { department, limit, confirm } = req.body || {};
+      if (confirm !== true) return res.status(400).json({ error: "Confirmation is required to start a targeted import." });
+      const job = await beginTargetedImport(String(department || ''), limit === undefined ? 100 : Number(limit), adminOf(req));
+      res.status(202).json({ jobId: job.id, department: job.department, limit: job.limit });
+    } catch (e: any) {
+      if (e instanceof TargetedError) return res.status(e.status).json({ error: e.message });
+      console.error('POST ingest/targeted-books error:', e?.message); res.status(500).json({ error: "The targeted import could not start." });
+    }
+  });
+  app.get("/api/admin/ingest/targeted-books/:jobId", authenticateJWT, requireSuperAdmin, (req: any, res: any) => {
+    const j = getTargetedJob(req.params.jobId);
+    if (!j) return res.status(404).json({ error: "That import is no longer tracked. Check the run activity for what it did." });
+    res.json({ jobId: j.id, department: j.department, status: j.status, limit: j.limit, startedAt: j.startedAt, finishedAt: j.finishedAt || null, progress: j.progress, result: j.result || null, error: j.error || null });
+  });
+
+  // Bulk Catalogue Expansion: separate from the continuous engine; positions of its own; never touches a continuous checkpoint.
+  app.get("/api/admin/ingest/bulk", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { const j = runningBulkJob(); res.json({ sources: await bulkStatus(), running: j ? { jobId: j.id, source: j.source, startedAt: j.startedAt } : null }); }
+    catch (e: any) { console.error('GET ingest/bulk error:', e?.message); res.status(500).json({ error: "Failed to read the bulk sources" }); }
+  });
+  app.post("/api/admin/ingest/bulk", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { source, records, confirm } = req.body || {};
+      if (!isBulkSource(source)) return res.status(400).json({ error: "Unknown bulk source." });
+      if (confirm !== true) return res.status(400).json({ error: "Confirmation is required to start a bulk run." });
+      const job = await beginBulk(source, records === undefined ? undefined : Number(records), adminOf(req));
+      res.status(202).json({ jobId: job.id, source });
+    } catch (e: any) {
+      if (e instanceof BulkError) return res.status(e.status).json({ error: e.message });
+      console.error('POST ingest/bulk error:', e?.message); res.status(500).json({ error: "The bulk run could not start." });
+    }
+  });
+  app.get("/api/admin/ingest/bulk/:jobId", authenticateJWT, requireSuperAdmin, (req: any, res: any) => {
+    const j = getBulkJob(req.params.jobId);
+    if (!j) return res.status(404).json({ error: "That bulk run is no longer tracked. Check the run activity for what it did." });
+    res.json({ jobId: j.id, source: j.source, status: j.status, startedAt: j.startedAt, finishedAt: j.finishedAt || null, result: j.result || null, error: j.error || null });
   });
 
   /** Counters grow by what a journal import actually dealt with, and the run log says so. Nothing already counted is changed. */
