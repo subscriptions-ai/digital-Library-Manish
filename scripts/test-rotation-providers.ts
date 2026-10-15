@@ -120,7 +120,9 @@ try {
 
   const es = await engineStatus(await getState(), { nextTickAt: null, lastTickAt: null, busy: false }) as any;
   check('Current source is the one that actually worked — Crossref Journals, not DOAJ', es.currentSource === 'Crossref Journals', String(es.currentSource));
-  check('Needs attention lists the actionable problem (DOAJ cooling down, with a time)…', es.health === 'attention' && es.reasons.some((r: string) => /^DOAJ — cooling down until/.test(r)), JSON.stringify(es.reasons));
+  // One source resting is worth knowing about, with its time and reason; it is not the engine failing — the others carry on.
+  check('the resting provider is listed with a time (DOAJ cooling down)…', es.reasons.some((r: string) => /^DOAJ — cooling down until/.test(r)), JSON.stringify(es.reasons));
+  check('…and it does not by itself make the engine "Needs attention"', !es.reasons.some((r: string) => /passes in a row failed|Every content type is waiting/.test(r)));
   check('…and says the healthy providers carry on', es.reasons.includes('Healthy providers continue running automatically.'));
   check('ROAD being unconnected is not presented as a fault', !es.reasons.some((r: string) => /ROAD/.test(r)));
 

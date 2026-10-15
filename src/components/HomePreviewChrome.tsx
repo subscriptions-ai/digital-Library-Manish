@@ -29,7 +29,7 @@ import { ThemeToggle } from './ui/ThemeToggle';
 const n = (x: number) => x.toLocaleString('en-IN');
 
 /** Department totals, counted the way the department pages count them. */
-function useDepartmentTotals() {
+export function useDepartmentTotals() {
   const [totals, setTotals] = useState<{ byName: Record<string, number>; total: number; count: number } | null>(null);
   useEffect(() => {
     fetch('/api/library/stats')
@@ -100,7 +100,7 @@ export function PreviewHeader() {
   }, []);
 
   useEffect(() => {
-    setDeptOpen(false);
+    closeDepts();
     setSearchOpen(false);
     setMenuOpen(false);
     setProfileOpen(false);
@@ -119,8 +119,52 @@ export function PreviewHeader() {
   }, [menuOpen]);
 
   const deptRef = useRef<HTMLDivElement>(null);
+  const deptButtonRef = useRef<HTMLButtonElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  useDismiss(deptOpen, () => setDeptOpen(false), deptRef);
+
+  // The menu opens when a mouse reaches it, and closes a moment after the mouse leaves, so a
+  // pointer crossing the gap to the panel does not lose it. A click or a key press "pins" it
+  // open: it then stays until Escape, a click elsewhere, or the same button again.
+  const deptPinned = useRef(false);
+  const deptCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelDeptClose = () => {
+    if (deptCloseTimer.current) { clearTimeout(deptCloseTimer.current); deptCloseTimer.current = null; }
+  };
+  const closeDepts = (returnFocus = false) => {
+    cancelDeptClose();
+    deptPinned.current = false;
+    setDeptOpen(false);
+    if (returnFocus) deptButtonRef.current?.focus();
+  };
+  useEffect(() => cancelDeptClose, []);
+  // Hover is for mice; a tap on a touch screen arrives as a click and is handled there.
+  const onDeptPointerEnter = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse') return;
+    cancelDeptClose();
+    setDeptOpen(true);
+  };
+  const onDeptPointerLeave = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse' || deptPinned.current) return;
+    cancelDeptClose();
+    deptCloseTimer.current = setTimeout(() => closeDepts(), 220);
+  };
+  const onDeptButtonClick = () => {
+    cancelDeptClose();
+    if (deptOpen && deptPinned.current) { closeDepts(); return; }
+    // Already open from hovering: the click keeps it open rather than flicking it shut.
+    deptPinned.current = true;
+    setDeptOpen(true);
+  };
+  const onDeptBlur = (e: React.FocusEvent) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && !deptRef.current?.contains(next)) closeDepts();
+  };
+  const onDeptKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Escape' || !deptOpen) return;
+    e.stopPropagation();
+    closeDepts(deptRef.current?.contains(document.activeElement) ?? false);
+  };
+  useDismiss(deptOpen, () => closeDepts(), deptRef);
   useDismiss(profileOpen, () => setProfileOpen(false), profileRef);
 
   const dashboardPath = getDashboardRoute(profile);
@@ -140,28 +184,30 @@ export function PreviewHeader() {
           <NavLink to="/for-institutions" className={navLinkClass}>For Institutions</NavLink>
           <NavLink to="/for-students" className={navLinkClass}>For Researchers</NavLink>
 
-          <div ref={deptRef} className="relative h-full" onMouseLeave={() => setDeptOpen(false)}>
-            <button type="button" aria-expanded={deptOpen} aria-haspopup="true"
-              onClick={() => setDeptOpen(o => !o)} onMouseEnter={() => setDeptOpen(true)}
-              className={`${navBase} gap-1 ${deptOpen || pathname.startsWith('/domain/') || pathname.startsWith('/digital-library') ? 'text-ink after:scale-x-100' : 'text-ink-2 after:scale-x-0 hover:after:scale-x-100'}`}>
+          <div ref={deptRef} className="relative h-full"
+            onPointerEnter={onDeptPointerEnter} onPointerLeave={onDeptPointerLeave}
+            onBlur={onDeptBlur} onKeyDown={onDeptKeyDown}>
+            <button ref={deptButtonRef} type="button" aria-expanded={deptOpen} aria-haspopup="true"
+              aria-controls="departments-menu" onClick={onDeptButtonClick}
+              className={`${navBase} gap-1 ${deptOpen || pathname.startsWith('/domain/') || pathname.startsWith('/departments') || pathname.startsWith('/digital-library') ? 'text-ink after:scale-x-100' : 'text-ink-2 after:scale-x-0 hover:after:scale-x-100'}`}>
               Departments <ChevronDown size={14} aria-hidden="true" className={`transition-transform duration-150 ${deptOpen ? 'rotate-180' : ''}`} />
             </button>
             {deptOpen && (
-              <div className="absolute left-1/2 top-full z-50 w-[min(880px,calc(100vw-2.5rem))] -translate-x-1/2 pt-0">
+              <div id="departments-menu" className="absolute left-1/2 top-full z-50 w-[min(880px,calc(100vw-2.5rem))] -translate-x-1/2 pt-0">
                 <div className="rounded-xl border border-rule bg-surface p-5 shadow-[var(--shadow-pop)]">
                   <div className="mb-4 flex items-baseline justify-between border-b border-rule pb-3">
                     <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
                       Departments {totals ? `· ${n(totals.total)} items across ${totals.count}` : ''}
                     </p>
-                    <Link to="/digital-library" onClick={() => setDeptOpen(false)}
-                      className="font-mono text-[10.5px] uppercase tracking-wider text-accent hover:underline">View all →</Link>
+                    <Link to="/departments" onClick={() => closeDepts()}
+                      className="rounded font-mono text-[10.5px] uppercase tracking-wider text-accent hover:underline focus-visible:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">View All →</Link>
                   </div>
                   <div className="grid max-h-[60vh] grid-cols-3 gap-x-5 gap-y-0.5 overflow-y-auto">
                     {DEPARTMENTS_AZ.map(d => {
                       const count = totals?.byName[d.name];
                       return (
-                        <Link key={d.id} to={`/domain/${d.id}`} onClick={() => setDeptOpen(false)}
-                          className="flex items-baseline justify-between gap-3 rounded-lg px-2.5 py-2 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-accent focus-visible:bg-surface-2 focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+                        <Link key={d.id} to={`/domain/${d.id}`} onClick={() => closeDepts()}
+                          className="flex cursor-pointer items-baseline justify-between gap-3 rounded-lg px-2.5 py-2 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-accent focus-visible:bg-surface-2 focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
                           <span className="truncate">{d.name}</span>
                           {typeof count === 'number' && count > 0 && (
                             <span className="tnum shrink-0 font-mono text-[11px] text-faint">{n(count)}</span>
@@ -239,14 +285,14 @@ export function PreviewHeader() {
               <NavLink key={to} to={to} end={to === '/'} onClick={() => setMenuOpen(false)}
                 className={({ isActive }) => `flex min-h-11 items-center border-b border-rule py-3 text-[15px] ${isActive ? 'font-semibold text-accent' : 'text-ink'}`}>{label}</NavLink>
             ))}
-            <button type="button" onClick={() => setMobileDepts(o => !o)} aria-expanded={mobileDepts}
+            <button type="button" onClick={() => setMobileDepts(o => !o)} aria-expanded={mobileDepts} aria-controls="mobile-departments"
               className="flex min-h-11 items-center justify-between border-b border-rule py-3 text-left text-[15px] text-ink">
               Departments <ChevronDown size={17} aria-hidden="true" className={`text-muted transition-transform duration-200 ${mobileDepts ? 'rotate-180' : ''}`} />
             </button>
             {mobileDepts && (
-              <div className="border-b border-rule py-2">
-                <Link to="/digital-library" onClick={() => setMenuOpen(false)}
-                  className="block py-2 font-mono text-[11px] uppercase tracking-wider text-accent">View all departments</Link>
+              <div id="mobile-departments" className="border-b border-rule py-2">
+                <Link to="/departments" onClick={() => setMenuOpen(false)}
+                  className="flex min-h-10 items-center font-mono text-[11px] uppercase tracking-wider text-accent">View All Departments →</Link>
                 {DEPARTMENTS_AZ.map(d => (
                   <Link key={d.id} to={`/domain/${d.id}`} onClick={() => setMenuOpen(false)}
                     className="flex min-h-10 items-center justify-between gap-3 py-2 text-[14px] text-ink-2">

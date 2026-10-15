@@ -1,6 +1,6 @@
 import { ingestionDb as db } from './db.js';
 import { rotationConfig } from './policy.js';
-import { sourceHealthState, recordSourceFailure } from './sourceHealth.js';
+import { sourceHealthState, recordSourceFailure, classifyFailure, type ErrorKind } from './sourceHealth.js';
 import { providerHolder, tryLockProvider, unlockProvider } from './providerLocks.js';
 import { createRunWithStats, runColumnsFromStats, type DeptStats } from './departmentStats.js';
 import {
@@ -22,8 +22,9 @@ import {
  *   · a daily quota (NCBI) → cooling, not failing; skipped until it resets.
  *   · its lock is held     → busy (a Quick Import is on it); skipped.
  *   · 3 batches with nothing useful → "exhausted for now"; left out for a few hours. Healthy, just not productive.
- * If no provider of a content type can be asked, that type WAITS FOR SOURCE RECOVERY and the turn goes to the next type in the
- * same tick — one dead source family never pauses Everything.
+ * If no provider of a content type can be asked — every one is down, rate limited, over its quota, busy, switched off or resting as
+ * exhausted — that type WAITS FOR SOURCE RECOVERY and the turn goes to the next type in the same tick. One dead source family never
+ * pauses Everything, and a source is never asked before its rest is over (an exhausted one included).
  *
  * Providers are plugged in (see providers.ts), so this file knows nothing about any one of them and the rules above can be
  * exercised with stand-ins.
@@ -48,6 +49,8 @@ export type TurnRan = {
   recordFailures: number;
   /** Useful: new content, valid enrichment, or a Draft that is the expected workflow. A held duplicate alone is not. */
   useful: number;
+  /** Provider requests that failed during this turn (a source that stopped answering part-way). Not records, and not counted in any record figure. */
+  requestFailures?: number;
   more: boolean;
   note?: string | null;
   error?: string | null;
@@ -69,7 +72,9 @@ export type TurnOutcome =
   | TurnRan
   | { kind: 'nothing-due'; note?: string }
   | { kind: 'busy' }
-  | { kind: 'request-failed'; error: string; status?: number | null; rateLimited?: boolean }
+  | { kind: 'request-failed'; error: string; status?: number | null; rateLimited?: boolean;
+      /** Something broke on our side (the database, a bug) rather than the provider not answering. The provider's health is not touched. */
+      internal?: boolean }
   | { kind: 'quota'; until: Date; note?: string };
 
 export type ProviderDef = {
@@ -92,6 +97,14 @@ export const setProviders = (list: ProviderDef[]) => { registry = list; };
 export const getProviders = () => registry;
 export const providersOf = (g: Group) => registry.filter(p => p.group === g);
 
+/**
+ * Whether this Books turn is a targeted one (the low-coverage engine's 70%), decided by whoever installs it. The scheduler asks once per
+ * Books turn and knows nothing about departments: it only puts the `targeted` provider first when told to, and last otherwise, so the
+ * other 30% of Books turns are the ordinary rotation and no department is ever starved.
+ */
+let targetedPolicy: (() => Promise<boolean>) | null = null;
+export const setTargetedPolicy = (f: (() => Promise<boolean>) | null) => { targetedPolicy = f; };
+
 // ── Availability ────────────────────────────────────────────────────────────
 
 export type Availability = { state: 'ok' | 'exhausted' | 'unavailable'; kind?: 'not-configured' | 'busy' | 'rate_limited' | 'cooling' | 'unavailable' | 'degraded-backoff' | 'quota'; until: Date | null; reason: string | null };
@@ -113,7 +126,7 @@ export async function availability(p: ProviderDef, s: RotationState, now = Date.
   const soft = rt.softBackoffUntil ? new Date(rt.softBackoffUntil) : null;
   if (soft && soft.getTime() > now) return { state: 'unavailable', kind: 'degraded-backoff', until: soft, reason: `retrying after a short pause (${h.failures}/${h.threshold} failures)` };
   const ex = rt.exhaustedUntil ? new Date(rt.exhaustedUntil) : null;
-  if (ex && ex.getTime() > now) return { state: 'exhausted', until: ex, reason: 'nothing new for now' };
+  if (ex && ex.getTime() > now) return { state: 'exhausted', until: ex, reason: `nothing new for now — eligible again ${fmtClock(ex)}` };
   return { state: 'ok', until: null, reason: null };
 }
 
@@ -153,15 +166,24 @@ export const PROVIDER_ERROR = 'Provider request failed';
 
 async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, 'position' | 'savePosition' | 'batch'>): Promise<TurnResult> {
   const cfg = rotationConfig();
-  const chain = providersOf(group);
+  const full = providersOf(group);
+  // The targeted provider (Books only) is not part of the round robin: it goes first on its share of turns and last on the rest.
+  const targeted = group === 'Books' ? full.find(p => p.id === 'targeted') ?? null : null;
+  const chain = targeted ? full.filter(p => p !== targeted) : full;
   const attempts: { provider: string; result: string }[] = [];
   const events: AttemptEvent[] = [];
-  if (!chain.length) return { ran: false, group, waiting: true, failed: false, reason: 'no source is wired for this', retryAt: null, attempts };
+  if (!full.length) return { ran: false, group, waiting: true, failed: false, reason: 'no source is wired for this', retryAt: null, attempts };
 
-  const start = (s.cursors[group] ?? 0) % chain.length;
-  const ordered = rotate(chain, start);
+  const start = chain.length ? (s.cursors[group] ?? 0) % chain.length : 0;
+  let ordered = rotate(chain, start);
+  if (targeted) {
+    const first = targetedPolicy ? await targetedPolicy().catch(() => false) : false;
+    ordered = first ? [targeted, ...ordered] : [...ordered, targeted];
+  }
   const avail = new Map<string, Availability>();
   for (const p of ordered) avail.set(p.id, await availability(p, s));
+  // How things stood before this turn touched anything: "waiting for source recovery" is about the sources, not about what this turn did to them.
+  const before = new Map(avail);
 
   const tried = new Set<string>();
   const noWork = new Set<string>();              // tried this turn and gave nothing to build on
@@ -172,9 +194,9 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
   let stoppedByFailure = false;
 
   while (!ran && !stoppedByFailure) {
-    let next = ordered.find(p => !tried.has(p.id) && avail.get(p.id)!.state === 'ok' && fallbackEligible(p));
-    // Last resort: a healthy source that has been unproductive is still better than doing nothing.
-    if (!next) next = ordered.find(p => !tried.has(p.id) && avail.get(p.id)!.state === 'exhausted' && fallbackEligible(p));
+    // Only a source that can be asked right now. One resting as exhausted is NOT asked again early: its rest is a time, it comes back by itself
+    // at the end of it, and in the meantime the turn goes to the next content type instead of knocking on a door that has just said "nothing".
+    const next = ordered.find(p => !tried.has(p.id) && avail.get(p.id)!.state === 'ok' && fallbackEligible(p));
     if (!next) break;
     tried.add(next.id);
 
@@ -186,12 +208,16 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
     const t0 = Date.now();
     let outcome: TurnOutcome;
     try {
-      outcome = await next.turn({ ...base, batch: cfg.batchSize, position: rt.position ?? null, savePosition: p => { rt.position = p; } });
+      const batchSizeForGroup = group === 'Journals' ? (base.state?.journalsPerPass ?? 200) : group === 'Articles' ? (base.state?.articlesPerPass ?? base.state?.batchSize ?? 100) : group === 'Books' ? (base.state?.booksPerPass ?? 200) : cfg.batchSize;
+      outcome = await next.turn({ ...base, batch: batchSizeForGroup, position: rt.position ?? null, savePosition: p => { rt.position = p; } });
     } catch (e: any) {
-      // A provider that throws has failed to answer, whatever it threw. Counted once, like any other failed request.
       const msg = String(e?.message || e).slice(0, 300);
-      await recordSourceFailure(next.healthKey, msg).catch(() => {});
-      outcome = { kind: 'request-failed', error: msg };
+      // A request that threw (no answer, a bad body) is a failed request and is counted, once, like any other. Anything else that threw —
+      // the database, a bug in our own code — is not the provider's fault: its health is left alone, so a fault of ours can never show as
+      // "289 consecutive failures" on a source that was never even asked.
+      const kind = classifyFailure(e);
+      if (kind !== 'unknown') { await recordSourceFailure(next.healthKey, msg, kind).catch(() => {}); outcome = { kind: 'request-failed', error: msg }; }
+      else outcome = { kind: 'request-failed', error: msg, internal: true };
     } finally { unlockProvider(next.lock, 'continuous'); s.running = null; }
     const durationMs = Date.now() - t0;
 
@@ -209,6 +235,14 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
       }
 
       case 'request-failed': {
+        if (outcome.internal) {
+          // Our own fault. Step over this source for a few minutes so a broken turn cannot repeat every tick; its health row is untouched.
+          runtimeOf(s, next.id).softBackoffUntil = new Date(Date.now() + 5 * 60_000).toISOString();
+          avail.set(next.id, { state: 'unavailable', kind: 'degraded-backoff', until: new Date(Date.now() + 5 * 60_000), reason: 'an internal error stopped the last turn; trying again shortly' }); noWork.add(next.id);
+          events.push({ provider: next, outcome, durationMs, note: ['Internal error (not the provider) — its failure count is unchanged'] });
+          attempts.push({ provider: next.id, result: 'internal-error' });
+          break;
+        }
         const h = await sourceHealthState(next.healthKey);
         const resting = !!h.until;                                   // 429 sets this at once; the third failure opens the breaker
         const note: string[] = [];
@@ -244,12 +278,15 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
 
   if (!ran) {
     // Nothing worked. Either the sources are down, or they are all caught up — and those are different things to say.
-    const down = ordered.filter(p => { const a = avail.get(p.id)!; return a.state === 'unavailable'; });
-    const waiting = down.length === ordered.length;
-    const untils = ordered.map(p => avail.get(p.id)!.until).filter(Boolean) as Date[];
+    // Waiting for source recovery = at the start of this turn not one source could be asked: each was down, rate limited, over its quota,
+    // busy, switched off, or resting as exhausted. (A source that WAS asked and found nothing to do is not waiting — it is caught up.)
+    // The targeted provider is the low-coverage engine, not a source: it is always "available" and says nothing about whether any source is.
+    const sources = ordered.filter(p => p !== targeted);
+    const waiting = sources.length > 0 && sources.every(p => before.get(p.id)!.state !== 'ok');
+    const untils = sources.map(p => avail.get(p.id)!.until).filter(Boolean) as Date[];
     const retryAt = untils.length ? new Date(Math.min(...untils.map(d => d.getTime()))) : null;
     const reason = waiting
-      ? ordered.map(p => `${p.label}: ${avail.get(p.id)!.reason || 'unavailable'}`).join('; ')
+      ? sources.map(p => `${p.label}: ${avail.get(p.id)!.reason || 'unavailable'}`).join('; ')
       : 'every source is up to date for now';
     if (waiting) s.waiting[group] = { since: s.waiting[group]?.since || new Date().toISOString(), reason, retryAt: retryAt ? retryAt.toISOString() : null };
     else delete s.waiting[group];
@@ -263,14 +300,16 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
   const { provider, outcome, durationMs } = ran;
   const rt = runtimeOf(s, provider.id);
   rt.softBackoffUntil = null;
-  const z = outcome.useful > 0 ? (rt.zeroYield = 0, rt.exhaustedUntil = null, { text: null as string | null, exhausted: false }) : noteZeroYield(s, provider.id, cfg);
+  const z = outcome.useful > 0 ? (rt.zeroYield = 0, rt.exhaustedUntil = null, rt.exhaustedAt = null, rt.refreshAfter = null, { text: null as string | null, exhausted: false }) : noteZeroYield(s, provider.id, cfg);
   const summary: BatchSummary = {
     at: new Date().toISOString(), outcome: 'ok', checked: outcome.checked, added: outcome.added, held: outcome.held, enriched: outcome.enriched,
-    sentToReview: outcome.sentToReview, skipped: outcome.skipped, recordFailures: outcome.recordFailures, requestFailures: 0, useful: outcome.useful, note: outcome.note ?? null,
+    sentToReview: outcome.sentToReview, skipped: outcome.skipped, recordFailures: outcome.recordFailures, requestFailures: outcome.requestFailures ?? 0, useful: outcome.useful, note: outcome.note ?? null,
   };
   rt.lastBatch = summary;
+  // What the source last GAVE, kept when later batches give nothing: "exhausted for now" is a state, not an erasure of what it did before.
+  if (outcome.useful > 0) rt.lastProductiveBatch = summary;
   const idx = chain.findIndex(p => p.id === provider.id);
-  s.cursors[group] = (idx + 1) % chain.length;
+  if (idx >= 0) s.cursors[group] = (idx + 1) % chain.length;           // a targeted turn does not move the round robin
   s.current[group] = provider.id;
 
   const switchedFrom = events.map(e => e.provider.label);
@@ -290,6 +329,8 @@ function noteZeroYield(s: RotationState, id: string, cfg: ReturnType<typeof rota
   const n = rt.zeroYield;
   if (n >= cfg.zeroYieldBatches) {
     rt.exhaustedUntil = new Date(Date.now() + cfg.exhaustedHours * 3600_000).toISOString();
+    rt.exhaustedAt = new Date().toISOString();
+    rt.refreshAfter = rt.exhaustedUntil;
     // The next empty batch after the rest sets it aside again straight away; any useful one resets the count.
     rt.zeroYield = Math.max(0, cfg.zeroYieldBatches - 1);
     return { text: `Zero-yield batch ${cfg.zeroYieldBatches}/${cfg.zeroYieldBatches} · Exhausted for now`, exhausted: true };
@@ -375,12 +416,22 @@ export async function runRotationPass(opts: PassOptions) {
 export type ProviderStatus = {
   id: string; label: string; group: Group; role: string; tier: Tier;
   configured: true | string;
-  health: { state: 'healthy' | 'degraded' | 'rate_limited' | 'cooling' | 'unavailable'; failures: number; threshold: number; until: string | null; lastError: string | null; lastOkAt: string | null };
+  health: {
+    state: 'healthy' | 'degraded' | 'rate_limited' | 'cooling' | 'unavailable'; failures: number; threshold: number; until: string | null; lastError: string | null; lastOkAt: string | null;
+    /** The category of the last failure and its plain-language form; only while the source is not healthy. */
+    lastErrorKind: ErrorKind | null; reason: string | null;
+    /** Failures since the last success (what the source is doing now) and every failure there has ever been (history); never mixed. */
+    lifetimeFailures: number; probeDue: boolean;
+  };
   /** Kept apart from health: a source can be perfectly healthy and give nothing new. */
   yield: 'productive' | 'low' | 'exhausted' | null;
   availability: { state: Availability['state']; kind: Availability['kind'] | null; until: string | null; reason: string | null };
   running: boolean;
+  /** When a source was set aside as exhausted and when it is due to be tried again (null unless it is resting as exhausted). */
+  exhaustedAt: string | null; refreshAfter: string | null;
   lastBatch: BatchSummary | null;
+  /** The last batch that gave something useful — kept after later, empty ones. */
+  lastProductiveBatch: BatchSummary | null;
 };
 
 export type RotationStatus = {
@@ -399,7 +450,7 @@ function peekNext(chain: ProviderDef[], cursor: number, avail: Map<string, Avail
   return ordered.find(p => avail.get(p.id)?.state === 'ok' && eligible(p)) ?? ordered.find(p => avail.get(p.id)?.state === 'exhausted' && eligible(p)) ?? null;
 }
 
-export async function rotationStatus(): Promise<RotationStatus> {
+export async function rotationStatus(opts: { state?: any } = {}): Promise<RotationStatus> {
   const s = await loadRotationState();
   const cfg = rotationConfig();
   const providers: ProviderStatus[] = [];
@@ -411,11 +462,17 @@ export async function rotationStatus(): Promise<RotationStatus> {
     const cfgState = p.configured?.() ?? true;
     providers.push({
       id: p.id, label: p.label, group: p.group, role: p.role, tier: p.tier, configured: cfgState,
-      health: { state: h.health, failures: h.failures, threshold: h.threshold, until: h.until ? h.until.toISOString() : null, lastError: h.lastError, lastOkAt: h.lastOkAt ? h.lastOkAt.toISOString() : null },
+      health: {
+        state: h.health, failures: h.failures, threshold: h.threshold, until: h.until ? h.until.toISOString() : null, lastError: h.lastError, lastOkAt: h.lastOkAt ? h.lastOkAt.toISOString() : null,
+        lastErrorKind: h.lastErrorKind, reason: h.reason, lifetimeFailures: h.lifetimeFailures, probeDue: h.probeDue,
+      },
       yield: yieldState(s, p.id),
       availability: { state: a.state, kind: a.kind ?? null, until: a.until ? a.until.toISOString() : null, reason: a.reason },
       running: s.running?.provider === p.id || !!providerHolder(p.lock),
+      exhaustedAt: a.state === 'exhausted' ? (s.providers[p.id]?.exhaustedAt ?? null) : null,
+      refreshAfter: a.state === 'exhausted' ? (s.providers[p.id]?.refreshAfter ?? s.providers[p.id]?.exhaustedUntil ?? null) : null,
       lastBatch: s.providers[p.id]?.lastBatch ?? null,
+      lastProductiveBatch: s.providers[p.id]?.lastProductiveBatch ?? null,
     });
   }
   const groups = {} as RotationStatus['groups'];
@@ -424,7 +481,8 @@ export async function rotationStatus(): Promise<RotationStatus> {
     const cur = s.current[g] ? chain.find(p => p.id === s.current[g]) : null;
     const next = peekNext(chain, s.cursors[g] ?? 0, avail);
     const w = s.waiting[g];
-    groups[g] = { current: cur?.label ?? null, next: next?.label ?? null, waiting: !!w, waitingReason: w?.reason ?? null, retryAt: w?.retryAt ?? null, batchSize: cfg.batchSize };
+    const batchSizeForGroup = g === 'Journals' ? (opts?.state?.journalsPerPass ?? 200) : g === 'Articles' ? (opts?.state?.articlesPerPass ?? opts?.state?.batchSize ?? 100) : g === 'Books' ? (opts?.state?.booksPerPass ?? 200) : cfg.batchSize;
+    groups[g] = { current: cur?.label ?? null, next: next?.label ?? null, waiting: !!w, waitingReason: w?.reason ?? null, retryAt: w?.retryAt ?? null, batchSize: batchSizeForGroup };
   }
   const run = s.running ? registry.find(p => p.id === s.running!.provider) : null;
   return {

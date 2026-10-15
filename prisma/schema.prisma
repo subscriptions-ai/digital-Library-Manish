@@ -1547,6 +1547,12 @@ model IngestionState {
   /// How many articles to pull per journal per pass, so one big journal cannot
   /// starve the rest.
   batchSize          Int  @default(200)
+  /// Journals checked per Journals turn in Everything mode
+  journalsPerPass    Int  @default(200)
+  /// Articles checked per Articles turn in Everything mode
+  articlesPerPass    Int  @default(100)
+  /// Books checked per Books turn in Everything mode
+  booksPerPass       Int  @default(200)
   /// The most articles held for any one journal; 0 means no limit.
   ///
   /// The catalogue is shown by how many journals it covers, and a pass spent
@@ -1758,12 +1764,20 @@ model IngestionPreview {
 /// without stopping the sources that are fine.
 model IngestionSourceHealth {
   source              String    @id
+  /// Failed requests in a row since the last request that worked. Reset to 0 by that request, and by nothing else.
   consecutiveFailures Int       @default(0)
   pausedUntil         DateTime?
   lastError           String?   @db.Text
   lastFailureAt       DateTime?
   lastOkAt            DateTime?
   updatedAt           DateTime  @updatedAt
+
+  /// Every failed request this source has ever had. Never reset: it is operational history, kept apart
+  /// from the consecutive count above, which says how the source is doing NOW.
+  lifetimeFailures Int @default(0)
+  /// What kind of failure the last one was (dns, timeout, connection_refused, tls, http_5xx, invalid_xml…).
+  /// A category only — never a response body.
+  lastErrorKind String?
 }
 
 /// How far a department's sweep of one source has got.

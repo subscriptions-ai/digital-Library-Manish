@@ -101,9 +101,15 @@ async function getJson(url: string, timeoutMs = 120_000): Promise<any | null> {
 }
 
 export async function getState() {
-  return p.ingestionState.upsert({
-    where: { id: 'singleton' }, update: {}, create: { id: 'singleton' },
-  });
+  try {
+    return await p.ingestionState.upsert({
+      where: { id: 'singleton' }, update: {}, create: { id: 'singleton' },
+    });
+  } catch (e: any) {
+    const st = await p.ingestionState.findUnique({ where: { id: 'singleton' } });
+    if (st) return st;
+    return { id: 'singleton' } as any;
+  }
 }
 
 /**

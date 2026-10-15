@@ -7,8 +7,10 @@ import { N } from './format';
 
 const FIELDS = [
   { key: 'yearsBack', label: 'Years to collect', help: 'Only material published within this many years is collected.' },
-  { key: 'batchSize', label: 'Articles per pass', help: 'The most articles one pass writes.' },
-  { key: 'articlesPerJournal', label: 'Articles per journal', help: 'The most articles held per journal.' },
+  { key: 'journalsPerPass', label: 'Journals per pass', help: 'Maximum journal candidates checked during each Journals turn.' },
+  { key: 'articlesPerPass', label: 'Articles per pass', help: 'Maximum article candidates checked during each Articles turn.' },
+  { key: 'booksPerPass', label: 'Books per pass', help: 'Maximum book candidates checked during each Books turn. Provider-specific safety limits still apply.' },
+  { key: 'articlesPerJournal', label: 'Articles per journal', help: 'The most articles retained/processed for one journal according to the current pipeline.' },
   { key: 'discoverEvery', label: 'Look for more every', help: 'In Everything mode, one pass in this many looks for new titles.' },
 ] as const;
 
@@ -26,7 +28,7 @@ export function EngineSettings({ state, onChanged }: { state: any; onChanged: ()
   const [saving, setSaving] = useState(false);
 
   // Follow the server until the person starts editing; never overwrite an edit in progress.
-  useEffect(() => { if (!dirty) setDraft(Object.fromEntries(FIELDS.map(f => [f.key, saved(f.key)]))); }, [state.yearsBack, state.batchSize, state.articlesPerJournal, state.discoverEvery, dirty]);
+  useEffect(() => { if (!dirty) setDraft(Object.fromEntries(FIELDS.map(f => [f.key, saved(f.key)]))); }, [state.yearsBack, state.articlesPerJournal, state.discoverEvery, state.journalsPerPass, state.articlesPerPass, state.booksPerPass, dirty]);
 
   const errorFor = (k: string): string | null => {
     const v = draft[k]; const { min, max } = limits[k] || {};
@@ -56,8 +58,8 @@ export function EngineSettings({ state, onChanged }: { state: any; onChanged: ()
         {FIELDS.map(f => (
           <Field key={f.key} label={f.label} help={rotation?.enabled && f.key === 'discoverEvery'
             ? 'Not used while the rotation is on: Everything mode already gives Journals, Articles and Books a turn each.'
-            : rotation?.enabled && f.key === 'batchSize'
-              ? `Only when a journal has no limit: the most articles asked for in one request. Each turn checks up to ${N(rotation.batchSize)} candidates.`
+            : (rotation?.enabled && (f.key === 'articlesPerPass'))
+              ? `Only when a journal has no limit: the most articles asked for in one request. Each turn checks up to ${N(rotation.batchSize || rotation.groups?.Articles?.batchSize || state.articlesPerPass || 0)} candidates.`
               : f.help} error={dirty ? errorFor(f.key) : null}>
             <input className="input tabular-nums" inputMode="numeric" value={draft[f.key]} disabled={running || saving}
               onChange={e => { setDraft(d => ({ ...d, [f.key]: e.target.value })); setDirty(true); }} />

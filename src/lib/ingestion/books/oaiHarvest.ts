@@ -1,7 +1,8 @@
 import { ingestionDb } from '../db.js';
-import { fetchSourceJson } from '../sourceHealth.js';
+import { fetchSourceJson, SourceParseError } from '../sourceHealth.js';
 import { parseOaiPage, type OaiRecord } from './oaiXml.js';
 import { normaliseOtlBook, OTL_BASE } from './otl.js';
+import { fetchOpenLibraryPage, normaliseOpenLibraryDoc, OPENLIBRARY_SEARCH } from './openLibrary.js';
 import { parseNcbiList, rowStub, fetchArchive, normaliseNcbi, ncbiLimits, buildQueue, interleave, departmentOrder, departmentCoverage, NCBI_LIST_URL, NCBI_PROVIDER, NCBI_TARGET_DEPARTMENTS, NCBI_CONNECT_TIMEOUT_MS, type NcbiRow, type Stage1 } from './ncbi.js';
 import { normaliseOaiBook, judgeBookAccess, bookFullTextEnabled, type NormalisedBook } from './normalise.js';
 import { classifyDepartment, type DepartmentVerdict } from './classifier.js';
@@ -33,7 +34,14 @@ export type OaiProviderConfig = {
   provider: string;
   baseUrl: string;
   /** How the provider is read. Default 'oai' (OAI-PMH); 'otl' is Open Textbook Library's paged JSON. */
-  kind?: 'oai' | 'otl' | 'ncbi';
+  kind?: 'oai' | 'otl' | 'ncbi' | 'openlibrary';
+  /** A subject-searchable provider: the phrases to ask for, in turn. The cursor is "<phrase index>|<page>". Used by targeted runs only. */
+  queries?: string[];
+  /**
+   * Nothing from this provider is published on the classifier's word alone: even a clearly classified book waits as a Draft for a
+   * person. For a provider that lists books of every kind and says nothing about rights.
+   */
+  reviewFirst?: boolean;
   /** OAI set to harvest: the books, not the chapters, funders or publishers also in the repository. */
   set: string;
   metadataPrefix: string;
@@ -113,6 +121,21 @@ export const NCBI_FEED: OaiProviderConfig = {
   after: 'DOAB',
   resyncMinutes: 30 * 24 * 60,
   allowedDepartments: NCBI_TARGET_DEPARTMENTS,
+};
+
+/**
+ * Open Library: searched by subject for a department that holds few books. Review-first and Metadata Only (see openLibrary.ts).
+ * It has no checkpoint and no feed to walk: it is only ever read by a targeted run, which keeps its own place.
+ */
+export const OPENLIBRARY_FEED: OaiProviderConfig = {
+  provider: 'OpenLibrary',
+  kind: 'openlibrary',
+  baseUrl: OPENLIBRARY_SEARCH,
+  set: '',
+  metadataPrefix: '',
+  label: 'Open Library (subject search)',
+  handleBase: 'https://openlibrary.org',
+  reviewFirst: true,
 };
 
 export type HarvestOptions = {
@@ -387,9 +410,22 @@ export async function fetchPage(cfg: OaiProviderConfig, token: string | null, fr
     ? `${cfg.baseUrl}?verb=ListRecords&resumptionToken=${encodeURIComponent(token)}`
     : `${cfg.baseUrl}?verb=ListRecords&metadataPrefix=${cfg.metadataPrefix}&set=${encodeURIComponent(cfg.set)}`
       + (from ? `&from=${encodeURIComponent(from)}` : '');
-  const r = await fetchSourceJson(url, { text: true, timeoutMs: 90_000, attempts: 3, headers: { 'User-Agent': `STM Digital Library (mailto:${process.env.OPENALEX_CONTACT || 'info@celnet.in'})` } });
-  if (!r.ok) return { error: r.error || `HTTP ${r.status}`, paused: !!r.paused } as const;
-  return { page: parseOaiPage(String(r.json)) } as const;
+  const r = await fetchSourceJson(url, {
+    text: true, timeoutMs: 90_000, attempts: 3, countClientErrors: true,
+    headers: { 'User-Agent': `STM Digital Library (mailto:${process.env.OPENALEX_CONTACT || 'info@celnet.in'})` },
+    // Checked before the request counts as having worked: a page that is not XML, or that is an OAI refusal, is the provider failing —
+    // not a success followed by an exception, which would reset the failure count every time and keep the source in the rotation for ever.
+    // "No records" and "bad resumption token" are ordinary answers the harvest handles itself.
+    parse: (body: any) => {
+      let page: ReturnType<typeof parseOaiPage>;
+      try { page = parseOaiPage(String(body)); } catch { throw new SourceParseError('invalid_xml', 'The reply was not valid OAI-PMH XML'); }
+      if (!page.error && !page.records.length && !/<OAI-PMH[\s>]/.test(String(body).slice(0, 2000))) throw new SourceParseError('invalid_xml', 'The reply was not an OAI-PMH document');
+      if (page.error && !['noRecordsMatch', 'badResumptionToken'].includes(page.error.code)) throw new SourceParseError('oai_protocol', `OAI error ${page.error.code}`);
+      return page;
+    },
+  });
+  if (!r.ok) return { error: r.error || `HTTP ${r.status}`, paused: !!r.paused, kind: r.errorKind } as const;
+  return { page: r.json as ReturnType<typeof parseOaiPage> } as const;
 }
 
 /** One page of a provider, in the shape the shared pipeline wants. */
@@ -485,12 +521,30 @@ export type BatchContext = { db: any; report: HarvestReport; maxArchives?: numbe
 
 export async function fetchBatch(cfg: OaiProviderConfig, token: string | null, from: string | null, ctx?: BatchContext): Promise<Batch | { failed: string }> {
   if (cfg.kind === 'ncbi') return ncbiBatch(cfg, token, ctx!);
+  if (cfg.kind === 'openlibrary') {
+    const queries = cfg.queries ?? [];
+    const [qi, pg] = (token || '0|1').split('|').map(Number);
+    const qIndex = Number.isInteger(qi) && qi >= 0 ? qi : 0, page = Number.isInteger(pg) && pg >= 1 ? pg : 1;
+    if (qIndex >= queries.length) return { books: [], count: 0, deleted: 0, unusable: 0, next: null, total: null, error: null };
+    const r = await fetchOpenLibraryPage(queries[qIndex], page);
+    if (!r.ok) return { failed: r.error || `HTTP ${r.status}` };
+    const docs: any[] = r.json.docs;
+    const books: NormalisedBook[] = [];
+    let unusable = 0;
+    for (const d of docs) { const b = normaliseOpenLibraryDoc(cfg.provider, d); if (b) books.push(b); else unusable++; }
+    // A short page is the end of that phrase; the next phrase starts at its first page. Nothing left at all ends the run.
+    const more = docs.length >= 20 && page < 5;
+    const next = more ? `${qIndex}|${page + 1}` : qIndex + 1 < queries.length ? `${qIndex + 1}|1` : null;
+    return { books, count: docs.length, deleted: 0, unusable, next, total: Number(r.json?.numFound) || null, error: null };
+  }
   if (cfg.kind === 'otl') {
     const page = token ? Number(token) : 1;
-    const r = await fetchSourceJson(`${cfg.baseUrl}?page=${page}`, { timeoutMs: 90_000, attempts: 3, headers: { 'User-Agent': `STM Digital Library (mailto:${process.env.OPENALEX_CONTACT || 'info@celnet.in'})` } });
+    const r = await fetchSourceJson(`${cfg.baseUrl}?page=${page}`, {
+      timeoutMs: 90_000, attempts: 3, countClientErrors: true, headers: { 'User-Agent': `STM Digital Library (mailto:${process.env.OPENALEX_CONTACT || 'info@celnet.in'})` },
+      // A reply that is not the list we expect is a failure, not an empty last page: the harvest must not read it as "finished" — and it must count against the source.
+      parse: (body: any) => { if (!Array.isArray(body?.data)) throw new SourceParseError('invalid_response', 'Open Textbook Library sent a response in a shape we do not recognise'); return body; },
+    });
     if (!r.ok) return { failed: r.error || `HTTP ${r.status}` };
-    // A reply that is not the list we expect is a failure, not an empty last page: the harvest must not read it as "finished".
-    if (!Array.isArray(r.json?.data)) return { failed: 'Open Textbook Library sent a response in a shape we do not recognise' };
     const items: any[] = r.json.data;
     // The library reports more pages than it has (202 claimed, 189 with books): an empty page is the end.
     const totalPages = items.length ? Number(r.json?.links?.total_pages) || page : page;
@@ -653,12 +707,14 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
       // logged and nothing more: it is never given a department to make a number look better.
       if (cfg.allowedDepartments && j.verdict.band !== 'none' && !(j.verdict.suggested && cfg.allowedDepartments.includes(j.verdict.suggested))) { report.outsideScope++; bump(stats, here, 'skipped'); continue; }
       if (j.verdict.band === 'none') { bump(stats, '', 'skipped'); continue; }
-      if (dry) { if (j.verdict.band === 'strong') { report.added++; bump(stats, here, 'added'); } else { report.queuedForReview++; bump(stats, '', 'sentToReview'); } continue; }
+      // A review-first provider publishes nothing by itself: a clearly classified book still waits for a person.
+      const publishes = j.verdict.band === 'strong' && !cfg.reviewFirst;
+      if (dry) { if (publishes) { report.added++; bump(stats, here, 'added'); } else { report.queuedForReview++; bump(stats, '', 'sentToReview'); } continue; }
       if (opts.maxWrites != null && report.added + report.queuedForReview + report.enriched >= opts.maxWrites) continue;
       try {
-        await db.book.create({ data: bookRow(j, cfg, j.verdict.band === 'strong' ? 'Published' : 'Draft') });
+        await db.book.create({ data: bookRow(j, cfg, publishes ? 'Published' : 'Draft') });
         // Published: counted in the department it was published into. Waiting for review: unassigned, whatever it suggests.
-        if (j.verdict.band === 'strong') { report.added++; bump(stats, here, 'added'); } else { report.queuedForReview++; bump(stats, '', 'sentToReview'); }
+        if (publishes) { report.added++; bump(stats, here, 'added'); } else { report.queuedForReview++; bump(stats, '', 'sentToReview'); }
       } catch (e: any) {
         report.failed++; bump(stats, here, 'failed'); report.firstError ||= String(e?.message || e).slice(0, 300);
       }

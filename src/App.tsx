@@ -9,6 +9,7 @@ import { useAuth } from "./contexts/AuthContext";
 import { ForcePasswordChange } from "./components/ForcePasswordChange";
 import { Home } from "./components/Home";
 import { HomePreview } from "./components/HomePreview";
+import { DepartmentsPage } from "./components/DepartmentsPage";
 import { PublicLayout } from "./components/PublicLayout";
 import { InstitutionsPage } from "./components/InstitutionsPage";
 import { NotFound } from "./components/NotFound";
@@ -361,7 +362,7 @@ export default function App() {
                       <Route path="/digital-library" element={<DigitalLibrary />} />
                       <Route path="/subscriptions" element={<KeepQuery to="/for-institutions" />} />
                       <Route path="/for-researchers" element={<KeepQuery to="/for-students" />} />
-                      <Route path="/departments" element={<Navigate to="/digital-library#departments" replace />} />
+                      <Route path="/departments" element={<DepartmentsPage />} />
                       <Route path="/for-institutions" element={<ForInstitutions />} />
                       <Route path="/for-students" element={<ForStudents />} />
 

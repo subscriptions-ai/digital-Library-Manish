@@ -11,6 +11,7 @@ import {
 import { type DeptRow } from './charts';
 import { SearchBox } from './GlobalSearch';
 import { COMPANY_DETAILS } from '../config';
+import { DOMAINS } from '../constants';
 
 /**
  * The home page.
@@ -53,14 +54,7 @@ type Institutions = {
   institutions: { name: string; kind: string; members: number }[];
   designations: { name: string; members: number }[];
 };
-type Department = {
-  domain: string; slug: string; articles: number; books: number; authors: number;
-  firstYear: number | null; lastYear: number | null;
-  journals: { id: string; title: string; publisherName: string | null; articleCount: number }[];
-  publishers: { name: string; journals: number }[];
-};
-
-const n = (x?: number) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x.toLocaleString('en-IN') : '—');
+export const n = (x?: number) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x.toLocaleString('en-IN') : '—');
 /** "University" → "Universities", "School" → "Schools". */
 const plural = (word: string, count: number) =>
   count === 1 ? word : /y$/.test(word) ? `${word.slice(0, -1)}ies` : `${word}s`;
@@ -117,7 +111,7 @@ function useLibrary() {
 // ── The furniture the reference is built from ───────────────────────────────
 
 /** The small uppercase line over every heading, with its amber dot. */
-function Eyebrow({ children, onDark = false }: { children: React.ReactNode; onDark?: boolean }) {
+export function Eyebrow({ children, onDark = false }: { children: React.ReactNode; onDark?: boolean }) {
   return (
     <p className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] ${
       onDark ? 'bg-white/10 text-white/80' : 'bg-[color:var(--np-soft)] text-[color:var(--np-body)]'}`}>
@@ -127,7 +121,7 @@ function Eyebrow({ children, onDark = false }: { children: React.ReactNode; onDa
   );
 }
 
-function Heading({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export function Heading({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <h2 className={`np-display mt-4 text-[30px] leading-[1.15] sm:text-[38px] ${className}`}
       style={{ color: 'var(--np-ink)' }}>{children}</h2>
@@ -135,7 +129,7 @@ function Heading({ children, className = '' }: { children: React.ReactNode; clas
 }
 
 /** A figure still loading shows a quiet bar, never a made-up number. */
-function Figure({ value, settled, className = '' }: { value?: number; settled?: boolean; className?: string }) {
+export function Figure({ value, settled, className = '' }: { value?: number; settled?: boolean; className?: string }) {
   if ((typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
     if (settled) return <span className={className} aria-label="Not available">—</span>;
     return <span aria-hidden="true" className={`inline-block h-[0.75em] w-20 animate-pulse rounded bg-[color:var(--np-soft)] align-middle ${className}`} />;
@@ -144,7 +138,7 @@ function Figure({ value, settled, className = '' }: { value?: number; settled?: 
 }
 
 // The shared button shape (48px, 8px radius); the colour comes from each call site.
-const btnPrimary = 'btn btn-lg text-white transition-opacity hover:opacity-90';
+export const btnPrimary = 'btn btn-lg text-white transition-opacity hover:opacity-90';
 const btnGhost = 'btn btn-lg border';
 
 /**
@@ -690,109 +684,46 @@ function AcademicCommunity({ community }: { community: Community | null | undefi
   );
 }
 
-// ── 5. The departments, as the reference shows its domains ──────────────────
+// ── 5. The departments: a way in, and a door to the page that holds the explorer ──
 
-function DepartmentExplorer({ depts }: { depts: DeptRow[] }) {
-  const [chosen, setChosen] = useState<string | null>(null);
-  const [cache, setCache] = useState<Record<string, Department>>({});
-  const [loading, setLoading] = useState(false);
-
-  const current = chosen ?? depts[0]?.name ?? null;
-  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-
-  useEffect(() => {
-    if (!current || cache[current]) return;
-    let live = true;
-    setLoading(true);
-    fetch(`/api/library/department/${slug(current)}`)
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (live && d?.domain) setCache(c => ({ ...c, [current]: d })); })
-      .catch(() => {})
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, [current, cache]);
-
-  const d = current ? cache[current] : undefined;
-  const row = depts.find(x => x.name === current);
-
+/**
+ * The detailed explorer lives on /departments. The home page keeps only the invitation, and the eight
+ * largest departments as plain links so a visitor can still start from a subject here.
+ */
+function DepartmentsTeaser({ depts }: { depts: DeptRow[] }) {
+  const biggest = depts.slice().sort((a, b) => b.total - a.total).slice(0, 8)
+    .map(row => ({ row, dept: DOMAINS.find(d => d.name === row.name) }))
+    .filter((x): x is { row: DeptRow; dept: (typeof DOMAINS)[number] } => Boolean(x.dept) && x.row.total > 0);
   return (
-    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+    <section className="border-y py-16 sm:py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
       <div className="container-public">
-        <Eyebrow>Core departments</Eyebrow>
-        <Heading className="max-w-3xl">Explore the collection department by department.</Heading>
-        <p className="mt-4 max-w-2xl text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
-          Choose a department to see what it holds — how many articles and books, which journals carry
-          the most, and how far back it reaches.
-        </p>
-
-        <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="max-h-[560px] overflow-y-auto rounded-xl border bg-surface p-2" style={{ borderColor: 'var(--np-line)' }}>
-            {(depts.length ? depts : Array.from({ length: 8 }) as any[]).map((x: DeptRow | undefined, k) => (
-              x ? (
-                <button key={x.name} type="button" onClick={() => setChosen(x.name)} aria-current={x.name === current}
-                  className="block w-full rounded-xl px-3.5 py-3 text-left transition-colors"
-                  style={x.name === current ? { background: 'var(--t1-bg)' } : undefined}>
-                  <span className="flex items-baseline justify-between gap-3">
-                    <span className="np-strong truncate text-[13.5px]"
-                      style={{ color: x.name === current ? 'var(--t1-ink)' : 'var(--np-ink)' }}>{x.name}</span>
-                    <span className="shrink-0 text-[11.5px]" style={{ color: 'var(--np-body)' }}>{n(x.total)}</span>
-                  </span>
-                </button>
-              ) : <div key={k} className="m-1 h-10 animate-pulse rounded-xl" style={{ background: 'var(--np-line)' }} />
-            ))}
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
+            <Eyebrow>Core departments</Eyebrow>
+            <Heading>Explore by Department</Heading>
+            <p className="mt-4 text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
+              Browse academic resources across subject areas.
+            </p>
           </div>
-
-          <div className="overflow-hidden rounded-xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
-            <div className="px-6 py-7 text-white"
-              style={{ background: 'linear-gradient(120deg, var(--np-navy) 0%, var(--np-navy-2) 70%, #23336b 100%)' }}>
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">Department</p>
-              <h3 className="np-display mt-2 text-[30px] leading-tight text-white">{current || '—'}</h3>
-              <p className="mt-2 text-[13.5px] text-white/70">
-                {row ? <>{n(row.total)} items held</> : 'Reading the catalogue…'}
-                {d?.firstYear ? <> · published {d.firstYear}–{d.lastYear}</> : null}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 border-b sm:grid-cols-4" style={{ borderColor: 'var(--np-line)' }}>
-              {[
-                // Not the number of journals: it is the smallest figure here and
-                // the least of what a department actually amounts to.
-                ['Research Articles', d?.articles], ['Books', d?.books],
-                ['Authors', d?.authors], ['Publishers', d?.publishers.length],
-              ].map(([label, value], k) => (
-                <div key={label as string} className="border-r px-5 py-4 last:border-r-0" style={{ borderColor: 'var(--np-line)' }}>
-                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--np-body)' }}>{label}</p>
-                  <p className="np-display mt-1 text-[20px]" style={{ color: 'var(--np-ink)' }}>
-                    {loading && !d ? <span className="inline-block h-4 w-12 animate-pulse rounded" style={{ background: 'var(--np-line)' }} /> : <Figure value={value as number | undefined} />}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="p-6">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
-                Journals with the most articles
-              </p>
-              <ul className="mt-3 divide-y" style={{ borderColor: 'var(--np-line)' }}>
-                {(d?.journals.slice().sort((a, b) => b.articleCount - a.articleCount).slice(0, 5) || Array.from({ length: 4 }) as any[])
-                  .map((j: any, k: number) => (
-                    j ? (
-                      <li key={j.id} className="flex items-baseline justify-between gap-4 border-t py-2.5 first:border-t-0"
-                        style={{ borderColor: 'var(--np-line)' }}>
-                        <span className="min-w-0 truncate text-[13.5px]" style={{ color: 'var(--np-ink)' }}>{j.title}</span>
-                        <span className="shrink-0 text-[12px]" style={{ color: 'var(--np-body)' }}>{n(j.articleCount)}</span>
-                      </li>
-                    ) : <li key={k} className="py-3"><div className="h-5 animate-pulse rounded" style={{ background: 'var(--np-line)' }} /></li>
-                  ))}
-              </ul>
-              {current && (
-                <Link to={`/domain/${slug(current)}`} className={`${btnPrimary} mt-6`} style={{ background: 'var(--np-action)' }}>
-                  Explore {current} <ArrowRight size={15} />
-                </Link>
-              )}
-            </div>
-          </div>
+          <Link to="/departments" className={`${btnPrimary} shrink-0 self-start sm:self-auto`} style={{ background: 'var(--np-action)' }}>
+            View All Departments <ArrowRight size={15} aria-hidden="true" />
+          </Link>
         </div>
+
+        {biggest.length > 0 && (
+          <ul className="mt-8 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
+            {biggest.map(({ row, dept }) => (
+              <li key={dept.id}>
+                <Link to={`/domain/${dept.id}`}
+                  className="flex h-full min-h-14 items-baseline justify-between gap-3 rounded-xl border bg-surface px-4 py-3.5 transition-colors hover:border-[color:var(--np-action)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  style={{ borderColor: 'var(--np-line)' }}>
+                  <span className="np-strong min-w-0 break-words text-[14px]" style={{ color: 'var(--np-ink)' }}>{dept.name}</span>
+                  <span className="shrink-0 text-[12px]" style={{ color: 'var(--np-body)' }}>{n(row.total)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );
@@ -1377,7 +1308,7 @@ export function HomePreview() {
       <InstitutionStrip inst={institutions} />
       <Impact stats={stats} settled={statsSettled} depts={depts} inst={institutions} />
       <AcademicCommunity community={community} />
-      <DepartmentExplorer depts={depts} />
+      <DepartmentsTeaser depts={depts} />
       <Principles />
       <TrustFoundation />
       <WhatIsNew books={books} articles={articles} settled={newSettled} />
