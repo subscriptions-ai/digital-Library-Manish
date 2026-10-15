@@ -29,6 +29,8 @@ const OA_HEADERS = { 'User-Agent': `STM Digital Library (mailto:${CONTACT})` };
 export type JournalCandidate = {
   source: 'Crossref Journals' | 'OpenAlex Sources' | 'ROAD';
   title: string; issn: string | null; eissn: string | null;
+  /** The linking ISSN, where the source gives one (OpenAlex does). It is one of the journal's ISSNs, so it identifies the same journal under either. */
+  issnL?: string | null;
   publisherName: string | null; country: string | null; homepage: string | null;
   subjects: string[];
   /** What the source itself says about openness, kept for the reviewer. Never used to accept anything. */
@@ -70,16 +72,11 @@ export async function fetchCrossrefJournals(term: string, offset: number, rows: 
   return { items, fetched: msg.items.length, skipped, total: Number.isFinite(msg['total-results']) ? msg['total-results'] : null };
 }
 
-/** One page of OpenAlex sources that are journals and are flagged open access, for a search term. Pages from one. */
-export async function fetchOpenAlexSources(term: string, page: number, perPage: number): Promise<JournalPage> {
-  const url = `https://api.openalex.org/sources?search=${encodeURIComponent(term)}&filter=${encodeURIComponent('type:journal,is_oa:true')}`
-    + `&per-page=${perPage}&page=${page}&mailto=${encodeURIComponent(CONTACT)}`;
-  const r = await fetchSourceJson(url, { source: 'OpenAlex', headers: OA_HEADERS, attempts: 3 });
-  if (!r.ok) fail('OpenAlex', r);
-  if (!Array.isArray(r.json?.results)) bad('OpenAlex', 'no results list');
+
+function openAlexItems(results: any[]): { items: JournalCandidate[]; fetched: number; skipped: number } {
   const items: JournalCandidate[] = [];
   let skipped = 0;
-  for (const it of r.json.results) {
+  for (const it of results) {
     const title = String(it.display_name || '').trim();
     const all: string[] = [it.issn_l, ...(Array.isArray(it.issn) ? it.issn : [])].map((x: string) => normaliseIssn(x)).filter(Boolean) as string[];
     const uniq = [...new Set(all)];
@@ -87,13 +84,37 @@ export async function fetchOpenAlexSources(term: string, page: number, perPage: 
     const eissn = uniq.find(x => x !== issn) || null;
     if (!title || !issn) { skipped++; continue; }
     items.push({
-      source: 'OpenAlex Sources', title, issn, eissn, publisherName: it.host_organization_name ? String(it.host_organization_name) : null,
+      source: 'OpenAlex Sources', title, issn, eissn, issnL: normaliseIssn(it.issn_l) || null, publisherName: it.host_organization_name ? String(it.host_organization_name) : null,
       country: it.country_code ? String(it.country_code) : null, homepage: it.homepage_url ? String(it.homepage_url) : null,
       subjects: (Array.isArray(it.topics) ? it.topics : []).slice(0, 5).map((x: any) => x?.display_name).filter(Boolean),
       hint: `OpenAlex flags it open access${it.is_in_doaj ? ' and lists it in DOAJ' : ''}; not verified here`,
     });
   }
+  return { items, fetched: results.length, skipped };
+}
+
+/** One page of OpenAlex sources that are journals and are flagged open access, for a search term. Pages from one. */
+export async function fetchOpenAlexSources(term: string, page: number, perPage: number): Promise<JournalPage> {
+  const url = `https://api.openalex.org/sources?search=${encodeURIComponent(term)}&filter=${encodeURIComponent('type:journal,is_oa:true')}`
+    + `&per-page=${perPage}&page=${page}&mailto=${encodeURIComponent(CONTACT)}`;
+  const r = await fetchSourceJson(url, { source: 'OpenAlex', headers: OA_HEADERS, attempts: 3 });
+  if (!r.ok) fail('OpenAlex', r);
+  if (!Array.isArray(r.json?.results)) bad('OpenAlex', 'no results list');
+  const { items, skipped } = openAlexItems(r.json.results);
   return { items, fetched: r.json.results.length, skipped, total: Number.isFinite(r.json?.meta?.count) ? r.json.meta.count : null };
+}
+
+/**
+ * One page of OpenAlex journals by CURSOR, for the bulk workflow: every open-access-flagged journal, not a search. `cursor` is null for the
+ * first page; `next` is null at the end. OpenAlex asks for a contact and a polite pace; the caller supplies the pace.
+ */
+export async function fetchOpenAlexSourcesCursor(cursor: string | null, perPage = 200): Promise<JournalPage & { next: string | null }> {
+  const url = `https://api.openalex.org/sources?filter=${encodeURIComponent('type:journal,is_oa:true')}&per-page=${perPage}&cursor=${encodeURIComponent(cursor || '*')}&mailto=${encodeURIComponent(CONTACT)}`;
+  const r = await fetchSourceJson(url, { source: 'OpenAlex', headers: OA_HEADERS, attempts: 3 });
+  if (!r.ok) fail('OpenAlex', r);
+  if (!Array.isArray(r.json?.results)) bad('OpenAlex', 'no results list');
+  const page = openAlexItems(r.json.results);
+  return { ...page, total: Number.isFinite(r.json?.meta?.count) ? r.json.meta.count : null, next: typeof r.json?.meta?.next_cursor === 'string' && r.json.results.length ? r.json.meta.next_cursor : null };
 }
 
 export type WriteSummary = { checked: number; created: number; held: number; enriched: number; skipped: number; failed: number; firstError: string | null };
@@ -106,16 +127,30 @@ export async function writeJournalCandidates(source: JournalCandidate['source'],
   // A department a source sent is stored as the official name; one the registry does not know is left unassigned for review, never guessed.
   department = department ? canonicalDepartmentName(department) : null;
   const out: WriteSummary = { checked: fetchedCount, created: 0, held: 0, enriched: 0, skipped: skippedAtFetch, failed: 0, firstError: null };
-  const issns = [...new Set(cands.flatMap(c => [c.issn, c.eissn]).filter(Boolean) as string[])];
+  // Identity, strongest first: the linking ISSN (ISSN-L), then the ISSN and eISSN, then — only when none of those is known here — the same
+  // title from the same publisher. A journal is never counted twice because two sources spell its identifiers differently.
+  const keysOf = (c: JournalCandidate) => [c.issnL, c.issn, c.eissn].filter(Boolean) as string[];
+  const issns = [...new Set(cands.flatMap(keysOf))];
   const heldRows: any[] = issns.length ? await db.journal.findMany({ where: { OR: [{ issn: { in: issns } }, { eissn: { in: issns } }] } }) : [];
   const byIssn = new Map<string, any>();
   for (const j of heldRows) { if (j.issn) byIssn.set(j.issn, j); if (j.eissn) byIssn.set(j.eissn, j); }
+
+  const norm = (t: unknown) => String(t || '').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const titleKey = (title: unknown, publisher: unknown) => (norm(title) && norm(publisher) ? `${norm(title)}|${norm(publisher)}` : null);
+  const byTitle = new Map<string, any>();
+  const unknownByIssn = cands.filter(c => !keysOf(c).some(k => byIssn.has(k)) && titleKey(c.title, c.publisherName));
+  if (unknownByIssn.length) {
+    const rows: any[] = await db.$queryRawUnsafe(
+      `select * from "Journal" where lower(btrim(title)) = any($1::text[])`, [...new Set(unknownByIssn.map(c => String(c.title).toLowerCase().trim()))]);
+    for (const j of rows) { const k = titleKey(j.title, j.publisherName); if (k && !byTitle.has(k)) byTitle.set(k, j); }
+  }
   const createdNow = new Set<string>();
 
   for (const c of cands) {
-    const keys = [c.issn, c.eissn].filter(Boolean) as string[];
-    if (keys.some(k => createdNow.has(k))) { out.held++; continue; }             // the same journal twice on one page
-    const existing = keys.map(k => byIssn.get(k)).find(Boolean);
+    const keys = keysOf(c);
+    const tk = titleKey(c.title, c.publisherName);
+    if (keys.some(k => createdNow.has(k)) || (tk && createdNow.has(`t:${tk}`))) { out.held++; continue; }             // the same journal twice on one page
+    const existing = keys.map(k => byIssn.get(k)).find(Boolean) ?? (tk ? byTitle.get(tk) : undefined);
     if (existing) {
       out.held++;
       if (existing.rightsBasis !== 'our own') {
@@ -145,6 +180,7 @@ export async function writeJournalCandidates(source: JournalCandidate['source'],
         },
       });
       for (const k of keys) createdNow.add(k);
+      if (tk) createdNow.add(`t:${tk}`);
       out.created++;
     } catch (e: any) {
       if (e?.code === 'P2002') out.held++;                                       // someone else wrote it first: held, not failed

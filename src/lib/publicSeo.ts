@@ -2,7 +2,6 @@
 export const PUBLIC_REDIRECTS: Record<string, string> = {
   '/subscriptions': '/for-institutions',
   '/for-researchers': '/for-students',
-  '/departments': '/digital-library#departments',
   '/home-preview': '/',
   '/home-classic': '/',
   '/journals': '/digital-library',
@@ -11,6 +10,7 @@ export const PUBLIC_REDIRECTS: Record<string, string> = {
 export const PUBLIC_PAGES: Record<string, [string, string]> = {
   '/': ['Academic Discovery', 'Discover academic resources by department, subject, and source on STM Digital Library.'],
   '/about': ['About Us', 'Learn about STM Digital Library, its operator, mission, and approach to academic discovery.'],
+  '/departments': ['Departments', 'Explore academic journals, articles and books by department and subject area on STM Digital Library.'],
   '/digital-library': ['Digital Library', 'Explore academic journals, articles, books, and other resources by department.'],
   '/for-institutions': ['For Institutions', 'Explore institutional subscriptions, library management, and academic access.'],
   '/for-students': ['For Students & Researchers', 'Explore academic resources and individual access options for students and researchers.'],

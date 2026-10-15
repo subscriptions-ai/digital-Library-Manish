@@ -119,6 +119,17 @@ ${crumbs([['Home', '/'], ['Digital Library', '/digital-library'], [d.name, null]
 </div></div>`;
 }
 
+/** The department index as plain links, so the whole list is in the first response. The browser's page replaces it with the same list. */
+function departmentsBody() {
+  const sorted = [...DOMAINS].sort((a, b) => a.name.localeCompare(b.name));
+  return `<div class="bg-surface"><div class="container-public py-12">
+${crumbs([['Home', '/'], ['Departments', null]])}
+<h1 class="mt-6 text-4xl font-bold leading-tight text-ink">Departments</h1>
+<p class="mt-5 max-w-3xl text-base leading-relaxed text-ink-2">Explore academic resources by subject area.</p>
+<ul class="mt-8 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">${sorted.map(d => `<li><a class="text-accent underline" href="/domain/${esc(d.id)}">${esc(d.name)}</a></li>`).join('')}</ul>
+</div></div>`;
+}
+
 // ── Routing ─────────────────────────────────────────────────────────────────────
 
 type Rendered = { status: number; seo: SeoPage; body?: string; data?: unknown; redirect?: string };
@@ -152,6 +163,11 @@ export async function renderPublicPage(prisma: PrismaClient, path: string, query
     if (!found) return { status: 404, seo: NOT_FOUND('Post') };
     const seo = postSeo(found.post);
     return { status: 200, seo, body: postBody(found), data: { kind: 'post', key: slug, ...found, post: { ...found.post, views: undefined } } };
+  }
+
+  if (path === '/departments') {
+    const seo = staticPageSeo(path);
+    if (seo) return { status: 200, seo, body: departmentsBody() };
   }
 
   const dept = /^\/domain\/([^/]+)$/.exec(path);

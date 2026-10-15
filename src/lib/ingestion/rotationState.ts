@@ -20,9 +20,14 @@ export type ProviderRuntime = {
   zeroYield: number;
   /** A healthy source that gave nothing for the set number of batches is left out of the rotation until then. A time, not a verdict. */
   exhaustedUntil?: string | null;
+  /** When it was set aside as exhausted, and when it becomes eligible for discovery again. "Exhausted for now" is never forever. */
+  exhaustedAt?: string | null;
+  refreshAfter?: string | null;
   /** After a failed request below the threshold the same source is not asked again before this. */
   softBackoffUntil?: string | null;
   lastBatch?: BatchSummary | null;
+  /** The last batch that gave something useful. `lastBatch` is overwritten by an empty one; this is not. */
+  lastProductiveBatch?: BatchSummary | null;
   /** The engine's own place in a source that has no checkpoint of its own (department-search sources). Never shared with Quick Import. */
   position?: any;
 };

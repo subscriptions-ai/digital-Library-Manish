@@ -1,12 +1,13 @@
 import { ingestionDb as db } from './db.js';
-import { setProviders, type ProviderDef, type TurnCtx, type TurnOutcome } from './rotation.js';
+import { setProviders, setTargetedPolicy, type ProviderDef, type TurnCtx, type TurnOutcome } from './rotation.js';
+import { targetedTurn, loadPriorityConfig, nextBooksTurn, isTargetedTurn } from './targetedBooks.js';
 import { totals } from './departmentStats.js';
 import { harvestFeed, harvestDue, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
 import { ncbiLimits, usedToday } from './books/ncbi.js';
 import { crossrefTurn, openAlexTurn, searchTurn } from './articleTurns.js';
 import { fetchCrossrefJournals, fetchOpenAlexSources, writeJournalCandidates, type JournalPage } from './journalSources.js';
 import { SourceError } from './articleSources.js';
-import { recordSourceFailure } from './sourceHealth.js';
+import { recordSourceFailure, classifyFailure } from './sourceHealth.js';
 import { claimSweep, closeSweep, discoverJournalsPage, discoverBooksPage, booksOai } from '../ingestionWorker.js';
 import { releaseClaim } from './claims.js';
 
@@ -123,7 +124,9 @@ function bookProvider(cfg: OaiProviderConfig, id: string, label: string, healthK
           ...(isNcbi ? { archiveCap } : {}),
         });
       } catch (e: any) {
-        return { kind: 'request-failed', error: String(e?.message || e).slice(0, 300) };
+        // Something threw. If it was a request, the source's own health row already says so; if it was not (the database, our code), it must
+        // not be counted against the provider, and the scheduler is told so.
+        return { kind: 'request-failed', error: String(e?.message || e).slice(0, 300), internal: classifyFailure(e) === 'unknown' };
       }
       // Not one page arrived: the source did not answer. (Its health row already says so.)
       if (h.sourceError && !h.pages) return { kind: 'request-failed', error: h.sourceError, rateLimited: /\b429\b/.test(h.sourceError) };
@@ -135,6 +138,8 @@ function bookProvider(cfg: OaiProviderConfig, id: string, label: string, healthK
       return {
         kind: 'ran', checked, added: t.added, held: t.held, enriched: h.enriched, sentToReview: t.sentToReview, skipped: t.skipped, recordFailures: t.failed,
         useful: t.added + h.enriched + t.sentToReview, more: !h.completed, error: h.firstError, departmentStats: stats,
+        // The source stopped answering part-way through: one failed REQUEST, reported apart from the records it did give us.
+        requestFailures: h.sourceError && !/resumption token expired/.test(h.sourceError) ? 1 : 0,
         note: [
           h.completed ? 'caught up' : null,
           h.deferred ? `paused: ${h.deferred}` : null,
@@ -191,8 +196,17 @@ export function buildProviders(): ProviderDef[] {
     bookProvider(OAPEN_OAI, 'oapen', 'OAPEN', 'OAPEN', 'BOOKS_OAPEN'),
     bookProvider(OTL_FEED, 'otl', 'Open Textbook Library', 'open.umn.edu', 'BOOKS_OTL'),
     bookProvider(NCBI_FEED, 'ncbi', 'NCBI Bookshelf', 'NCBI', 'BOOKS_NCBI'),
+    // Not a source: the low-coverage engine. Each of the sources it reads keeps its own health row, so this one never has a failure of its own.
+    {
+      id: 'targeted', label: 'Targeted coverage', group: 'Books', tier: 'supplementary', role: 'Books for the departments that hold the fewest',
+      healthKey: 'Targeted', lock: 'Targeted', turn: targetedTurn,
+    },
   ];
 }
 
 /** Register the real providers with the scheduler. Safe to call more than once. */
-export function installProviders() { setProviders(buildProviders()); }
+export function installProviders() {
+  setProviders(buildProviders());
+  // Of every ten Books turns, the configured share go to the lowest-covered department first (see targetedBooks.ts).
+  setTargetedPolicy(async () => { const c = await loadPriorityConfig(); return c.enabled && isTargetedTurn(await nextBooksTurn(), c.share); });
+}

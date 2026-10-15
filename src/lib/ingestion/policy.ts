@@ -40,7 +40,8 @@ export const INGESTION_POLICY = {
   breaker: {
     /** Overridden by INGESTION_FAILURES_BEFORE_FALLBACK; see rotationConfig(). Three, so the engine moves on at the third failure, not the fourth. */
     failuresToOpen: 3,
-    pauseMinutes: [10, 30, 60] as number[],
+    /** How long a source rests after its 3rd, 4th, 5th… failed request in a row; the last value repeats. A source that is down for days is tested a few times a day, not every hour. */
+    pauseMinutes: [10, 30, 60, 120, 240, 360] as number[],
     /** A rate-limited source rests for what it asked (Retry-After) within these bounds; with no answer, this long. */
     rateLimitDefaultMinutes: 5, rateLimitMinMinutes: 1, rateLimitMaxMinutes: 60,
   },
@@ -78,8 +79,11 @@ export const INGESTION_POLICY = {
   settings: {
     yearsBack:          { min: 1, max: 50 },
     batchSize:          { min: 1, max: 200 },
-    articlesPerJournal: { min: 0, max: 10000 },
+    articlesPerJournal: { min: 1, max: 100 },
     discoverEvery:      { min: 1, max: 50 },
+    journalsPerPass:    { min: 10, max: 500 },
+    articlesPerPass:    { min: 10, max: 500 },
+    booksPerPass:       { min: 10, max: 500 },
   },
 } as const;
 

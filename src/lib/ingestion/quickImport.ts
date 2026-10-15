@@ -589,12 +589,35 @@ export async function sourceState(id: QuickId) {
   else if (h.until) { state = h.health === 'rate_limited' ? 'rate_limited' : h.health === 'unavailable' ? 'unavailable' : 'cooling'; until = h.until; detail = state === 'unavailable' ? 'Unavailable — retry scheduled' : null; }
   else if (h.failures > 0) { state = 'degraded'; detail = `${h.failures} of ${h.threshold} failures in a row`; }
   let quota: any = null;
+  // A daily quota is an expected rest, not ill health: `state` stays 'cooling' so a manual import is refused until it resets, but the source's
+  // HEALTH is untouched (it is read from the failure record alone) and `quotaReached` lets the screen say so in its own line.
+  let quotaReached = false;
   if (id === 'ncbi') {
     const lim = ncbiLimits(); const used = await usedToday(db);
     quota = { archivesLeft: Math.max(0, lim.maxArchivesPerDay - used.archives), archivesPerDay: lim.maxArchivesPerDay };
-    if (!holder && (used.archives >= lim.maxArchivesPerDay || used.bytes >= lim.maxBytesPerDay)) { state = 'cooling'; until = nextUtcMidnight(); detail = 'Daily limit reached'; }
+    if (!holder && (used.archives >= lim.maxArchivesPerDay || used.bytes >= lim.maxBytesPerDay)) { state = 'cooling'; until = nextUtcMidnight(); detail = 'Daily limit reached'; quotaReached = true; }
   }
-  return { state, until, detail, quota, health: h };
+  return { state, until, detail, quota, health: h, quotaReached };
+}
+
+export type CardAvailability = { kind: 'available' | 'probe' | 'running' | 'quota' | 'exhausted' | 'cooling' | 'rate_limited' | 'unavailable' | 'not_connected'; label: string; until: string | null; detail: string | null };
+
+/**
+ * Whether the source can be asked right now, kept apart from how healthy it is. A source over its daily quota, or resting because it has
+ * nothing new, is perfectly healthy; one that keeps failing is not, and says why.
+ */
+function availabilityOf(st: Awaited<ReturnType<typeof sourceState>>, rp: { availability: { state: string; until: string | null } } | null): CardAvailability {
+  const iso = (d: Date | string | null) => (d ? new Date(d).toISOString() : null);
+  if (st.state === 'not_connected') return { kind: 'not_connected', label: 'Not connected', until: null, detail: st.detail };
+  if (st.state === 'running') return { kind: 'running', label: 'Running now', until: null, detail: st.detail };
+  if (st.quotaReached) return { kind: 'quota', label: 'Daily quota reached', until: iso(st.until), detail: null };
+  if (st.health.until) {
+    const kind = st.state === 'rate_limited' ? 'rate_limited' : st.state === 'unavailable' ? 'unavailable' : 'cooling';
+    return { kind, label: kind === 'rate_limited' ? 'Rate limited' : kind === 'unavailable' ? 'Unavailable' : 'Cooling down', until: iso(st.health.until), detail: st.health.reason };
+  }
+  if (rp?.availability.state === 'exhausted') return { kind: 'exhausted', label: 'Exhausted for now', until: rp.availability.until, detail: 'Nothing new for now; eligible again after the rest' };
+  if (st.health.probeDue) return { kind: 'probe', label: 'Test request due', until: null, detail: 'One request will be made to see whether it has recovered' };
+  return { kind: 'available', label: 'Available', until: null, detail: null };
 }
 
 export async function listQuickSources() {
@@ -618,10 +641,18 @@ export async function listQuickSources() {
         ? `Read up to ${limit} NCBI Bookshelf archives now? Existing records will not be overwritten, and NCBI's daily limits still apply.`
         : `Import up to ${limit} ${def.unitLabel} now? Existing records will not be overwritten.`,
       state: st.state, until: st.until ? st.until.toISOString() : null, detail: st.detail, quota: st.quota,
-      // Health, and what the source has been yielding, kept apart: a source can be perfectly healthy and give nothing new.
-      health: { state: st.health.health, failures: st.health.failures, threshold: st.health.threshold, until: st.health.until ? st.health.until.toISOString() : null, lastError: st.health.lastError },
+      // Three different questions, three different answers: how is the source (health), can it be asked now (availability), and what has it been
+      // giving (yield). A daily quota or an exhausted rest changes the second and third and never the first.
+      healthState: st.state === 'not_connected' ? 'not_connected' : st.health.health,
+      availability: availabilityOf(st, rp),
+      health: {
+        state: st.health.health, failures: st.health.failures, threshold: st.health.threshold, until: st.health.until ? st.health.until.toISOString() : null, lastError: st.health.lastError,
+        reason: st.health.reason, lastErrorKind: st.health.lastErrorKind, lifetimeFailures: st.health.lifetimeFailures,
+      },
       yield: rp?.yield ?? null,
       lastBatch: rp?.lastBatch ?? null,
+      lastProductiveBatch: rp?.lastProductiveBatch ?? null,
+      exhaustedAt: rp?.exhaustedAt ?? null, refreshAfter: rp?.refreshAfter ?? null,
       inRotation: rp ? rp.availability.state !== 'unavailable' || rp.availability.kind === 'busy' : false,
       runningJobId: mine?.id ?? null,
       canQuickImport: (st.state === 'healthy' || st.state === 'degraded') && !groupJob,

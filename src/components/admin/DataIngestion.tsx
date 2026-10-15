@@ -9,6 +9,9 @@ import { ScopePanel } from './ingestion/ScopePanel';
 import { DoajImport } from './ingestion/DoajImport';
 import { OneOffImport } from './ingestion/OneOffImport';
 import { Coverage } from './ingestion/Coverage';
+import { BookCoverage } from './ingestion/BookCoverage';
+import { CatalogueGrowth } from './ingestion/CatalogueGrowth';
+import { BulkExpansion } from './ingestion/BulkExpansion';
 import { api, useEngineState } from './ingestion/api';
 
 /**
@@ -20,7 +23,7 @@ import { api, useEngineState } from './ingestion/api';
 export function DataIngestion() {
   const { state, error, reload } = useEngineState();
   const [coverage, setCoverage] = useState<any[] | null>(null);
-  const [tab, setTab] = useState<'log' | 'coverage'>('log');
+  const [tab, setTab] = useState<'log' | 'coverage' | 'books' | 'growth' | 'bulk'>('log');
   const [bump, setBump] = useState(0);
   // The department filter belongs to the page, so a click in Coverage can set it. Dates, kind, source and result belong to Run activity.
   const [department, setDepartment] = useState('');
@@ -51,14 +54,20 @@ export function DataIngestion() {
       <Metrics state={state} />
 
       <div className="segmented" role="tablist" aria-label="Activity view">
-        {([['log', 'Run activity'], ['coverage', 'Coverage']] as const).map(([id, label]) => (
+        {([['log', 'Run activity'], ['coverage', 'Coverage'], ['books', 'Book coverage'], ['growth', 'Catalogue growth'], ['bulk', 'Bulk expansion']] as const).map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>
         ))}
       </div>
       {tab === 'log' ? (
         <RunActivity refreshKey={bump} department={department} onDepartment={setDepartment} />
-      ) : (
+      ) : tab === 'coverage' ? (
         <Coverage coverage={coverage} selected={department} onSelect={d => { setDepartment(d); setTab('log'); }} />
+      ) : tab === 'books' ? (
+        <BookCoverage onChanged={changed} />
+      ) : tab === 'growth' ? (
+        <CatalogueGrowth />
+      ) : (
+        <BulkExpansion onChanged={changed} />
       )}
 
       <EngineSettings state={state} onChanged={changed} />

@@ -28,7 +28,8 @@ export function RotationStatus({ state }: { state: any }) {
               {r.waiting ? (
                 <>
                   <p className="mt-1 text-[13.5px] font-semibold text-ink">Waiting for source recovery</p>
-                  <p className="mt-0.5 text-[11.5px] text-muted">{r.retryAt ? <><Clock3 size={11} className="mr-1 inline" aria-hidden="true" />next try {clock(r.retryAt)} · </> : null}Articles and Books keep running.</p>
+                  <p className="mt-0.5 text-[11.5px] text-muted">{r.retryAt ? <><Clock3 size={11} className="mr-1 inline" aria-hidden="true" />next try {clock(r.retryAt)} · </> : null}{ORDER.filter(o => o !== g).join(' and ')} keep running.</p>
+                  {r.waitingReason && <p className="mt-1 text-[11.5px] leading-snug text-muted">{r.waitingReason}</p>}
                 </>
               ) : (
                 <dl className="mt-1 space-y-0.5 text-[13px]">

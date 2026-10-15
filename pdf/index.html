@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>STM Digital Library — Direct 22-Slide PDF Generator & Interactive Deck</title>
+    <!-- jsPDF CDN for Direct Binary .PDF File Download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0b1120;
+            --bg-card: #151f32;
+            --accent-blue: #38bdf8;
+            --accent-indigo: #6366f1;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(148, 163, 184, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, sans-serif;
+            background: #050811;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            background: rgba(11, 17, 32, 0.95);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .brand span {
+            color: var(--text-muted);
+            font-weight: 400;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid var(--border);
+            padding: 9px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #0284c7, #4f46e5);
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+        }
+
+        .btn-download:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+
+        .status-banner {
+            background: rgba(16, 185, 129, 0.14);
+            border-bottom: 1px solid rgba(16, 185, 129, 0.35);
+            color: #34d399;
+            text-align: center;
+            padding: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* Interactive Animated Slide Stage */
+        .stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .slide-card {
+            width: 1120px;
+            min-height: 600px;
+            background: radial-gradient(circle at 85% 15%, rgba(99, 102, 241, 0.14), transparent 45%),
+                var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 40px 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+            animation: fadeSlide 0.35s ease-out;
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .kicker {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent-blue);
+            font-weight: 700;
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: 800;
+            margin-top: 4px;
+        }
+
+        .badge {
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: var(--accent-blue);
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .slide-content {
+            margin: 22px 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-top: 3px solid var(--accent-blue);
+            border-radius: 10px;
+            padding: 18px 20px;
+            animation: pulseBorder 3s infinite ease-in-out;
+        }
+
+        @keyframes pulseBorder {
+
+            0%,
+            100% {
+                border-top-color: #38bdf8;
+            }
+
+            50% {
+                border-top-color: #6366f1;
+            }
+        }
+
+        .panel h3 {
+            font-size: 15px;
+            color: var(--accent-blue);
+            margin-bottom: 10px;
+        }
+
+        .panel ul {
+            padding-left: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .panel li {
+            font-size: 13.5px;
+            line-height: 1.5;
+            color: #e2e8f0;
+        }
+
+        .workflow-bar {
+            grid-column: 1 / -1;
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: #7dd3fc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .workflow-bar strong {
+            color: #fff;
+            text-transform: uppercase;
+            font-size: 11px;
+            background: #0284c7;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        .slide-footer {
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="topbar">
+        <div class="brand">
+            STM Digital Library <span>| Complete Technical & Architectural Audit Deck (22 Slides)</span>
+        </div>
+        <div class="controls">
+            <button class="btn" onclick="prevSlide()">&#8592; Prev Slide</button>
+            <span id="slideCounter" style="font-size:13px; font-weight:600; min-width:70px; text-align:center;">1 /
+                22</span>
+            <button class="btn" onclick="nextSlide()">Next Slide &#8594;</button>
+            <button class="btn btn-download" onclick="generateDirectPDF()">&#11015; Download .PDF File Now</button>
+        </div>
+    </div>
+
+    <div id="statusBanner" class="status-banner">
+        Generating and downloading "STM_Digital_Library_Audit_Presentation.pdf" (22 Pages, Widescreen Landscape)...
+    </div>
+
+    <div class="stage">
+        <div id="slideViewport" class="slide-card"></div>
+    </div>
+
+    <script>
+        // Complete 22-Slide Data Model in Professional English
+        const SLIDES = [
+            {
+                num: 1,
+                kicker: "Cover & Statutory Identity",
+                title: "STM Digital Library (journalslibrary.com)",
+                badge: "Slide 1 of 22",
+                leftTitle: "Platform & Audit Scope",
+                leftBullets: [
+                    "Complete Technical & Architectural Audit Report.",
+                    "Enterprise-grade academic research & digital repository platform.",
+                    "Aggregates, validates, and serves peer-reviewed journals, articles, books, theses, case reports, and educational videos.",
+                    "Covers 29 canonical academic disciplines with structured search and full-text delivery."
+                ],
+                rightTitle: "Operating Entity & Statutory Stamp",
+                rightBullets: [
+                    "Operating Entity: IT BREAK COM PRIVATE LIMITED",
+                    "Registered Office: LGF, 40, National Park, Lajpat Nagar IV, New Delhi 110024",
+                    "Operations Office: A-118, 1st Floor, Sector 63, Noida, UP 201301",
+                    "GSTIN: 07AAACI8666D1ZI | PAN: AAACI8666D | CIN: U74899DL2001PTC109327"
+                ],
+                flow: "Audit Flow: Cover -> Architecture -> Roles -> Subscriptions -> Workflows -> Ingestion -> AI -> Security -> Risks -> Handover"
+            },
+            {
+                num: 2,
+                kicker: "Section A • Executive Summary",
+                title: "Executive Overview & Core Value Proposition",
+                badge: "Slide 2 of 22",
+                leftTitle: "Problem Solved & Business Purpose",
+                leftBullets: [
+                    "Solves prohibitive international publisher subscription costs and fragmented open-access indexing for Indian higher education.",
+                    "Centralized digital library for colleges, universities, research institutions, corporate R&D, and solo scholars.",
+                    "Provides NAAC/AICTE-ready department licensing, librarian controls, and student reading telemetry."
+                ],
+                rightTitle: "Key Architectural & Revenue Highlights",
+                rightBullets: [
+                    "Full-stack Node.js 22 / TypeScript monolith (React 19 SPA + Express 4 + PostgreSQL via Prisma ORM).",
+                    "B2B Institutional subscriptions (up to 1,000 users/institution) & B2C Solo learner annual subscriptions.",
+                    "Automated 60-second background ingestion engine harvesting 9 global open-access APIs."
+                ],
+                flow: "Global Open-Access Literature -> Automated Validation & 29-Dept Classification -> Institutional & Solo Subscriptions"
+            },
+            {
+                num: 3,
+                kicker: "Section B & C • System Architecture",
+                title: "Platform Map & Full-Stack Technology Matrix",
+                badge: "Slide 3 of 22",
+                leftTitle: "4-Tier Runtime Architecture",
+                leftBullets: [
+                    "Edge & Proxy Tier: Cloudflare (DNS/SSL/DDoS) -> Traefik / Coolify Reverse Proxy.",
+                    "Frontend SPA Tier: React 19, TypeScript 5.8, Vite 5, Tailwind CSS 4, React Router 7, TipTap 3, Three.js, jsPDF.",
+                    "Backend Server Tier (Port 3000): Express 4, Node 22 Alpine, JWT + Advisory Locks, SSR SEO Prerenderer.",
+                    "Data & Storage Tier: PostgreSQL (Prisma 6.19.3, 30+ models) + persistent /uploads volume."
+                ],
+                rightTitle: "External Service Integrations",
+                rightBullets: [
+                    "Payments: Razorpay Orders & HMAC-SHA256 Verification + Offline NEFT/RTGS.",
+                    "Transactional & Lifecycle Email: Amazon SESv2 (ap-south-1) + Nodemailer + node-cron.",
+                    "AI Engine: Google Gemini SDK (@google/genai, default gemini-3.5-flash-lite).",
+                    "Harvest APIs: DOAJ, Crossref, OpenAlex, Europe PMC, arXiv, DOAB, OAPEN, OTL, NCBI Bookshelf."
+                ],
+                flow: "Client Browser -> Cloudflare -> Traefik -> Express Middleware / SSR SEO -> React 19 SPA -> PostgreSQL & External APIs"
+            },
+            {
+                num: 4,
+                kicker: "Section E • Access Governance",
+                title: "User Roles & Access Control Model (8 Active Roles)",
+                badge: "Slide 4 of 22",
+                leftTitle: "Internal Staff & Governance Roles",
+                leftBullets: [
+                    "SuperAdmin (/admin): Full control over all 30 admin modules, users, AI/Email config, ingestion, and receipts.",
+                    "SubscriptionManager (/manager): Approves subscription requests, issues quotations, provisions accounts.",
+                    "SalesManager (/sales): Full CRM pipeline, lead assignment, team analytics, quote approvals.",
+                    "SalesExecutive (/sales): Manages assigned leads, logs call/meeting interactions, drafts quotations."
+                ],
+                rightTitle: "External Customer & Partner Roles",
+                rightBullets: [
+                    "Institution (/institution): College Librarians managing up to 1,000 students, licensed seats, and usage analytics.",
+                    "Publisher (/publisher): Academic partners uploading CSV manifests, e-signing agreements, viewing impact metrics.",
+                    "ContentManager (/studio): Editorial team authoring SEO blog articles via TipTap WYSIWYG editor.",
+                    "Subscriber / Student (/dashboard) & Public Visitor: Reading full-text PDFs, saving citations, or using Free Preview."
+                ],
+                flow: "JWT Role Claim + institutionId Check -> App.tsx Route Guard -> Dedicated Role Workspace (/admin, /sales, /institution, /dashboard)"
+            },
+            {
+                num: 5,
+                kicker: "Section F • Public Discovery Layer",
+                title: "Public Website Structure & Conversion Funnels",
+                badge: "Slide 5 of 22",
+                leftTitle: "Discovery & Catalogue Routes",
+                leftBullets: [
+                    "/ (HomePreview): Live database counters, 3D knowledge visualizers, institutional trust badges, subject explorer.",
+                    "/digital-library: Unified public search across 29 departments, publication years, authors, and content types.",
+                    "/institutions: Searchable public directory of registered universities, colleges, and medical hospitals.",
+                    "/library/journal/:id, /article/:id, /author/:id: Direct academic record landing pages."
+                ],
+                rightTitle: "Commercial, Editorial & Legal Routes",
+                rightBullets: [
+                    "/for-institutions & /for-students: Dedicated pitches with interactive rate calculators and demo request forms.",
+                    "/blog & /blog/:slug: Server-side pre-rendered academic blog posts with JSON-LD schema breadcrumbs.",
+                    "/content-sources & /content-removal: Open-access harvesting transparency and SLA copyright takedown portal.",
+                    "/privacy-policy, /terms-and-conditions, /legal-disclaimer, /returns-refunds-cancellation."
+                ],
+                flow: "Public Visitor -> /digital-library Search -> Free Preview / AI Assistant -> /for-institutions Quote or /signup Conversion"
+            },
+            {
+                num: 6,
+                kicker: "Section H • Revenue Model",
+                title: "Subscription Tiers & Department-Level Rate Cards",
+                badge: "Slide 6 of 22",
+                leftTitle: "Free Preview & Solo Learner Tiers",
+                leftBullets: [
+                    "Free Preview Allowance: 4 sessions/day x 30 mins (2 hours max daily). Mandatory 2-hour cooldown after each 30m session. Resets daily at 00:00:00 IST.",
+                    "Solo Premium (1 User Seat, 12-Month Term):",
+                    "  • 1 to 4 Departments: INR 4,990 / department / year",
+                    "  • 5 or More Departments: INR 3,990 / department / year (retroactive across all selected departments)."
+                ],
+                rightTitle: "Institutional Premium Tier (Up to 1,000 Users)",
+                rightBullets: [
+                    "1 Department: INR 9,990 / year",
+                    "2 Departments: INR 9,490 / dept / year (INR 18,980 base)",
+                    "3 Departments: INR 8,990 / dept / year (INR 26,970 base)",
+                    "4 Departments: INR 8,490 / dept / year (INR 33,960 base)",
+                    "5+ Departments: INR 7,990 / dept / year (e.g., 5 depts = INR 39,950 base)",
+                    "Taxation: +18% GST (9% CGST + 9% SGST for Delhi; 18% IGST for all other states). 9 Subject Groups are UI filters only."
+                ],
+                flow: "Select 1-29 Departments -> Apply Quantity Slab Discount -> Compute 18% GST -> Unlock Full-Text PDFs for 12 Months"
+            },
+            {
+                num: 7,
+                kicker: "Section N & X.1 • B2B Customer Journey",
+                title: "Institutional Workflow & Librarian Suite (/institution)",
+                badge: "Slide 7 of 22",
+                leftTitle: "Onboarding & Seat Provisioning",
+                leftBullets: [
+                    "Step 1: Librarian selects departments at /for-institutions and generates official GST Quotation (ITB/SDL/26-27/NNN).",
+                    "Step 2: Institution pays via NEFT/RTGS or Razorpay; Subscription activates with seatsIncluded: 1000.",
+                    "Step 3: Librarian logs into /institution/students and adds faculty/students via bulk CSV or form.",
+                    "Step 4: SuperAdmin can toggle userAdditionRestricted if capacity governance requires lock."
+                ],
+                rightTitle: "Access Control & Librarian Telemetry",
+                rightBullets: [
+                    "Licensed Seat Assignment (/institution/access): Librarian explicitly grants/revokes seats (InstitutionMemberAccess).",
+                    "Department Explorer (/institution/library): Direct browsing of subscribed department journals, articles, and books.",
+                    "Self-Serve Renewals (/institution/subscriptions): Calculate department upgrades or renewal quotes.",
+                    "Engagement Analytics (/institution/analytics): Tracks reader consumption and top publications."
+                ],
+                flow: "Quotation ITB/SDL/.. -> NEFT/Razorpay -> Subscription (1,000 Seats) -> CSV Student Upload -> First-Login Password Gate -> Full-Text Access"
+            },
+            {
+                num: 8,
+                kicker: "Section O & X.2 • B2C Customer Journey",
+                title: "Solo Learner Workflow: Free Preview to Pro Upgrade",
+                badge: "Slide 8 of 22",
+                leftTitle: "Time-Banked Free Preview State Machine",
+                leftBullets: [
+                    "Implemented in src/lib/freeAllowance.ts using strict IST day boundaries.",
+                    "Clock begins upon sign-in or opening the reader and pauses on explicit logout.",
+                    "At 30 minutes, the PDF viewer closes and enforces a 2-hour cooldown timer before Session #2.",
+                    "Free users can preview literature across all 29 canonical departments."
+                ],
+                rightTitle: "Self-Serve Solo Upgrade (/dashboard)",
+                rightBullets: [
+                    "Library Hub (/dashboard/library): Browse all indexed literature, view 'My Access' departments, manage 'Saved' citations.",
+                    "Department Checkout (/dashboard/subscribe): Select departments at INR 4,990 (1-4) or INR 3,990 (5+) with instant Razorpay payment.",
+                    "Pro Application (/dashboard/pro): Direct upgrade request when daily free sessions are exhausted.",
+                    "Invoices & History (/dashboard/invoices & /history): Official GST receipts and reading progress logs."
+                ],
+                flow: "Register Solo -> Start 30m Free Session -> Hit 2h Cooldown Gate -> /dashboard/subscribe Razorpay Checkout -> Instant 12-Month Access"
+            },
+            {
+                num: 9,
+                kicker: "Section J • Data Architecture",
+                title: "Dual Content Catalogue & Copyright Rights Governance",
+                badge: "Slide 9 of 22",
+                leftTitle: "Phase 3 Relational vs. Legacy Archived Models",
+                leftBullets: [
+                    "Phase 3 Structured Collection (Normalized):",
+                    "  • Publisher -> Journal (ISSN/eISSN, licence) -> Article (DOI, fingerprint, abstract, authors).",
+                    "  • Publisher -> Book (ISBN-10/13, rightsStatus) -> Chapter (chapterNumber, pdfUrl).",
+                    "Legacy Archived Collection (Content model): Periodicals, Magazines, Case Reports, Theses, Conference Proceedings, Videos, Newsletters, Books."
+                ],
+                rightTitle: "Access Statuses & Non-Commercial Guard",
+                rightBullets: [
+                    "ViewableHere: Full-text PDF is verified and rendered inside the embedded ProtectedContentViewer.",
+                    "LinkOnly: Open-access record hosted externally; reader is routed to the official publisher landing page.",
+                    "MetadataOnly: Citation, abstract, and bibliographic indexing only.",
+                    "Strict CC BY-NC Filter (licenceIsNC: true): Automatically blocks full-text hosting for Non-Commercial licenses to ensure legal compliance."
+                ],
+                flow: "Harvested Record -> License Parser -> If CC BY-NC (licenceIsNC=true) -> Restrict Commercial Hosting | Else -> ViewableHere / LinkOnly"
+            },
+            {
+                num: 10,
+                kicker: "Section K • Academic Taxonomy",
+                title: "29 Canonical Departments & Normalization Engine",
+                badge: "Slide 10 of 22",
+                leftTitle: "The 29 Canonical Disciplines (departmentRegistry.ts)",
+                leftBullets: [
+                    "Agriculture, Applied Mechanics, Applied Sciences, Architecture, Arts, Ayurveda, Bio Technology, Chemical Engineering.",
+                    "Chemistry, Civil / Construction Engineering, Commerce, Computer / IT, Dental, Education and Social Sciences.",
+                    "Electrical Engg, Electronics & Telecom Engg, Energy, Law, Life Sciences, Management, Material Science, Mechanical Engg.",
+                    "Medical Sciences, Multidisciplinary, Nano Technology, Nursing, Pharmacy, Physiotherapy, Science."
+                ],
+                rightTitle: "Deterministic Normalization Rules",
+                rightBullets: [
+                    "Single Source of Truth: src/lib/departmentRegistry.ts.",
+                    "resolveCanonicalDepartment(value) strips punctuation, collapses whitespace, maps '&' to 'and', and resolves spelling aliases.",
+                    "Maps BIC subject codes, Library of Congress (LCC) classifications, and provider keywords into the 29 buckets.",
+                    "Zero-Speculation Policy: Unrecognized strings are marked 'unresolved' and routed to admin review queues."
+                ],
+                flow: "Raw Provider Subject / User Input -> resolveCanonicalDepartment() -> Exact Match to 1 of 29 Departments OR 'unresolved' Review Queue"
+            },
+            {
+                num: 11,
+                kicker: "Section L • Automated Harvesting",
+                title: "Data Ingestion Engine ('Everything Mode' 60s Loop)",
+                badge: "Slide 11 of 22",
+                leftTitle: "Turn-by-Turn Provider Rotation (rotation.ts)",
+                leftBullets: [
+                    "60-Second Tick (ingestionWorker.ts): Rotates fairly across 3 content groups when IngestionState.enabled === true.",
+                    "Group 1 (Journals): DOAJ (Primary) -> ROAD/ISSN (Slot) -> Crossref Journals -> OpenAlex Sources.",
+                    "Group 2 (Articles): Crossref Polite Pool (150ms pause) -> OpenAlex (250ms pause) -> Europe PMC -> arXiv.",
+                    "Group 3 (Books): DOAB (OAI-PMH) -> OAPEN (OAI-PMH) -> Open Textbook Library -> NCBI Bookshelf (max 50 archives / 500MB daily)."
+                ],
+                rightTitle: "Deduplication & Self-Healing Circuit Breakers",
+                rightBullets: [
+                    "DOI Fingerprinting (dedup.ts): Strips URL prefixes, lowercases, and enforces unique fingerprint 'doi:<normalized_doi>'.",
+                    "ISBN Checksums (identifiers.ts): Validates mod-11 (ISBN-10) and mod-10 (ISBN-13) checksums and auto-converts 10 <-> 13.",
+                    "Circuit Breakers (policy.ts): 3 consecutive failures trigger source cooldown; HTTP 429 parses Retry-After header.",
+                    "Low-Yield Parking: 3 consecutive zero-yield batches park the provider for 6 hours (INGESTION_EXHAUSTED_HOURS=6)."
+                ],
+                flow: "60s Timer Tick -> Rotate (Journals / Articles / Books) -> Fetch Batch (100) -> DOI/ISBN Dedup -> Classify Dept -> Log IngestionRun"
+            },
+            {
+                num: 12,
+                kicker: "Section M • Platform Operations",
+                title: "SuperAdmin Control Center (30 Operational Views)",
+                badge: "Slide 12 of 22",
+                leftTitle: "Content, Users, CRM & Billing Modules",
+                leftBullets: [
+                    "Content Management: 8 Legacy Modules (/admin/books, etc.), Media Library, AI Extractor, System Validator, Drafts Cleanup.",
+                    "Users & CRM: User Directory, Create User, Lead Master, Sales Team & Pipeline, Marketing Campaigns, User Feedbacks.",
+                    "Subscriptions & Finance: All Subscriptions, Subscription Requests, Pricing Slabs, Quotations Builder, Receipts Manager, Payments Log, Coupons."
+                ],
+                rightTitle: "Infrastructure, AI, SEO & Legal Modules",
+                rightBullets: [
+                    "Ingestion & Publishers: Data Ingestion Engine control/dry-run, Publisher Tie-ups, Publisher Review Queue, Journals Directory.",
+                    "AI & Communications: AI Assistant Control switch & model config, Email & SESv2 Engine, Email Verifications.",
+                    "Analytics & Editorial: Traffic Analytics (/admin/analytics), Blog Manager (/admin/blog).",
+                    "Legal & Inquiries: Agency Inquiries, Contact Inquiries, Copyright Takedowns (/admin/takedown), Demo Requests."
+                ],
+                flow: "SuperAdmin (/admin) -> 5 Functional Pillars -> Complete Governance of Content, Revenue, Ingestion, AI, and Legal Takedowns"
+            },
+            {
+                num: 13,
+                kicker: "Section P & Q • Conversational AI & CRM",
+                title: "AI Research Assistant & Automated CRM Lead Pipeline",
+                badge: "Slide 13 of 22",
+                leftTitle: "Zero-Token Bypass, PII Masking & Grounding",
+                leftBullets: [
+                    "Powered by Google Gemini (gemini-3.5-flash-lite); API keys encrypted in DB via AES-256-GCM (aiSecrets.ts).",
+                    "Local Zero-Token Bypass: Greetings ('hi'), gratitude ('thanks'), and quote shortcuts return instant local responses at zero API cost.",
+                    "Privacy Filter: maskPII() redacts phone numbers and email addresses before calling the LLM.",
+                    "Deterministic Tools: searchContent, toolSubscriptionPricing (never invents prices), toolLibraryOverview, toolLegalAndPolicies."
+                ],
+                rightTitle: "Rolling Quotas & CRM Deduplication",
+                rightBullets: [
+                    "Concurrency Guard: inFlight lock allows 1 active request per session.",
+                    "Rolling Hourly Quotas (aiAssistantQuota.ts): 4 free answers/hour for anonymous visitors; upgrades to 12 answers/hour upon lead submission (60/hr IP cap).",
+                    "CRM Lead Deduplication (aiAssistant.ts): Normalizes email and phone digits, appends notes to existing Lead records without overwriting assigned Sales Executive."
+                ],
+                flow: "Visitor Chat -> Local Bypass Check -> Quota Check (4/hr) -> maskPII() -> Gemini + DB Tools -> Lead Capture (12/hr) -> Sales CRM"
+            },
+            {
+                num: 14,
+                kicker: "Section I • Financial Architecture",
+                title: "Quotation, GST Calculation & Payment Verification Engine",
+                badge: "Slide 14 of 22",
+                leftTitle: "Dynamic Quotations & Statutory Snapshots",
+                leftBullets: [
+                    "Numbering Format: ITB/SDL/${FY}/${SEQ} (e.g., ITB/SDL/26-27/042) with 30-day default validity.",
+                    "Immutable Issuer Snapshot: Every quotation embeds legalName, registeredAddress, GSTIN, CIN, PAN, and HDFC Bank details (Sector 62 Noida, IFSC: HDFC0002649).",
+                    "PDF Generation: Server/client rendering via quotationPdf.ts and receiptPdf.ts (RCP-YYYY-MM-NN)."
+                ],
+                rightTitle: "Server-Authoritative Checkout & Security",
+                rightBullets: [
+                    "Active Razorpay Endpoints: /api/me/subscribe/checkout(/verify) and /api/institution/checkout(/verify).",
+                    "Zero Client Trust: Order totals are computed strictly on the server from verified rate cards.",
+                    "Cryptographic Verification: Validates Razorpay signatures using HMAC-SHA256 (RAZORPAY_KEY_SECRET) inside atomic Prisma transactions.",
+                    "Retired Vulnerable Routes: Legacy /api/payment/order and /verify permanently return HTTP 410 Gone."
+                ],
+                flow: "Generate Quote (ITB/SDL/..) -> Online Razorpay (HMAC-SHA256) OR Offline NEFT/RTGS -> Issue Receipt (RCP-..) -> Atomic Subscription Activation"
+            },
+            {
+                num: 15,
+                kicker: "Section S & T • Data & API Layer",
+                title: "Database Schema (30+ Models) & REST API Architecture",
+                badge: "Slide 15 of 22",
+                leftTitle: "Core Prisma Schema Domains (schema.prisma)",
+                leftBullets: [
+                    "Identity & Institutions: User, UserSession, EmailVerification, Institution, InstitutionMemberAccess, SeatPurchase.",
+                    "Subscriptions & Finance: Subscription, SubscriptionRequest, Payment, Quotation, Receipt, Coupon, CouponUsage.",
+                    "Catalogue Models: Publisher (6 models), Journal, Article, Book, Chapter, Author, ArticleAuthor, Content, ReadEvent.",
+                    "Operations & Telemetry: IngestionState, IngestionRun, AIConversation, AIMessage, Lead, LeadInteraction, BlogPost, EmailEngine."
+                ],
+                rightTitle: "11 Partitioned REST API Route Groups",
+                rightBullets: [
+                    "/api/auth (Login, Signup, Me, Logout) & /api/public (Live counts, settings).",
+                    "/api/library (Catalogue search, journal/article detail, institutions directory).",
+                    "/api/institution (Librarian suite, checkout, students) & /api/me/subscribe (Solo checkout).",
+                    "/api/admin & /api/admin/ingest (30 admin modules, ingestion state/tick/dry-run).",
+                    "/api/sales (CRM leads, quotes), /api/studio (Blog authoring), /api/ai-assistant, /api/health."
+                ],
+                flow: "Express 4 Router -> JWT & Role Middleware -> Prisma ORM 6.19.3 Client -> PostgreSQL Relational Tables & Transactional Locks"
+            },
+            {
+                num: 16,
+                kicker: "Section G & V • Security Posture",
+                title: "Single-Session Authentication & Security Controls",
+                badge: "Slide 16 of 22",
+                leftTitle: "Single-Session PostgreSQL Advisory Lock Flow",
+                leftBullets: [
+                    "On POST /api/auth/login, server verifies bcrypt password hash (or MASTER_ADMIN recovery env).",
+                    "Acquires transaction-level lock: pg_advisory_xact_lock('user-session:' + userId).",
+                    "Checks active UserSession (revokedAt: null, expiresAt > NOW()).",
+                    "If active session exists & replaceExisting == false -> returns HTTP 409 Conflict (ACTIVE_SESSION_EXISTS).",
+                    "If replaceExisting == true -> revokes old session and mints new 24h JWT containing sid claim."
+                ],
+                rightTitle: "Application & Data Protection Layers",
+                rightBullets: [
+                    "First-Login Gate: Forces password update (<ForcePasswordChange />) when user.isFirstLogin === true.",
+                    "Secret Encryption: AI provider keys encrypted at rest in AppSetting using AES-256-GCM (AI_SECRET_ENCRYPTION_KEY).",
+                    "HTTP & HTML Hardening: Helmet security headers, compression, express-rate-limit, and sanitize-html for blog output."
+                ],
+                flow: "Login Request -> bcrypt Verify -> pg_advisory_xact_lock -> Check UserSession -> Revoke Previous Session -> Issue JWT with sid"
+            },
+            {
+                num: 17,
+                kicker: "Section R • Content Marketing & Crawlability",
+                title: "Publishing Studio (/studio) & Server-Side SEO Engine",
+                badge: "Slide 17 of 22",
+                leftTitle: "Editorial Publishing Studio (/studio)",
+                leftBullets: [
+                    "Dedicated workspace for ContentManager and SuperAdmin roles.",
+                    "Powered by TipTap v3 WYSIWYG editor supporting rich formatting, inline media, tables, and code blocks.",
+                    "Strict Draft vs. Published lifecycle with author attribution and social preview metadata."
+                ],
+                rightTitle: "SSR HTML Prerendering & Sitemap Network",
+                rightBullets: [
+                    "SSR Prerender Engine (src/server/seoPages.ts): Intercepts /blog and /blog/:slug on the Express server.",
+                    "Queries PostgreSQL and injects OpenGraph tags, Twitter cards, canonical URLs, and JSON-LD (BlogPosting + BreadcrumbList) directly into HTML before React hydration.",
+                    "Dynamic XML Sitemaps: /sitemap.xml index linking /sitemap-static.xml, /sitemap-departments.xml, /sitemap-blog.xml, and paginated /sitemap-content-:page.xml."
+                ],
+                flow: "Search Crawler Request -> Express seoPages.ts Intercept -> PostgreSQL Lookup -> Pre-Rendered Semantic HTML + JSON-LD Response"
+            },
+            {
+                num: 18,
+                kicker: "Section U & W • DevOps & Background Daemons",
+                title: "Docker Deployment Pipeline & 5 Background Schedulers",
+                badge: "Slide 18 of 22",
+                leftTitle: "Coolify Multi-Stage Docker Deployment",
+                leftBullets: [
+                    "Stage 1 (Builder - Node 22 Alpine): Runs npx prisma generate, vite build (frontend dist/), and esbuild (server_compiled.cjs).",
+                    "Stage 2 (Production Alpine): Minimal image packaging server_compiled.cjs and dist/.",
+                    "Boot Command (npm start): Executes prisma db push && node server_compiled.cjs on Port 3000 behind Traefik & Cloudflare."
+                ],
+                rightTitle: "5 Automated Cron & Interval Jobs (server.ts)",
+                rightBullets: [
+                    "1. Every 60 Seconds: Continuous Ingestion Engine pass across 29 departments.",
+                    "2. Every 15 Minutes: SESv2 Email Lifecycle Runner (restricted to 10:00-18:00 IST working window).",
+                    "3. Daily (00:00-05:00 UTC): Daily new student registration digest emailed to admins.",
+                    "4. Every 6 Hours: External journal/book cover image cache warmer to UPLOAD_DIR/covers.",
+                    "5. Monthly (1st at 00:00): System Content Validator scanning PDFs/videos and flagging broken links as Draft."
+                ],
+                flow: "Git Main Push -> Coolify Runner -> Docker 2-Stage Build -> Container Start (Port 3000) -> 5 Background Cron Jobs Active"
+            },
+            {
+                num: 19,
+                kicker: "Section X • Operational Traceability",
+                title: "End-to-End Platform Workflows (Top 20 Summary)",
+                badge: "Slide 19 of 22",
+                leftTitle: "Discovery, AI, Auth & Solo Workflows (1-7)",
+                leftBullets: [
+                    "1-3. Visitor searches 29 depts -> asks AI Assistant (4 free queries/hr) -> submits Lead form (12 queries/hr + CRM entry).",
+                    "4-5. User registers with OTP verification -> logs in with PostgreSQL single-session advisory lock.",
+                    "6-7. Free reader uses 4x30m IST sessions with 2h cooldown -> upgrades to Solo plan via Razorpay."
+                ],
+                rightTitle: "Institutional, Ingestion, Publisher & SEO Workflows (8-20)",
+                rightBullets: [
+                    "8-13. Librarian generates quote -> Sales/Admin verifies NEFT/Razorpay -> issues RCP receipt -> provisions 1,000 students -> logs LibraryEvent.",
+                    "14-16. 60s Ingestion rotates providers -> handles HTTP 429 cooldowns -> supports Admin Quick Import dry-runs.",
+                    "17-20. Publisher e-signs agreement -> Content Manager publishes SSR blog post -> Admin processes copyright takedowns."
+                ],
+                flow: "Unified Lifecycle: Open-Access Harvesting + Publisher Uploads -> Structured 29-Dept Catalogue -> Quotation/Checkout -> Verified Reader Telemetry"
+            },
+            {
+                num: 20,
+                kicker: "Section V & Y • Audit Risk Register",
+                title: "Current Architectural Risks & Known Open Items",
+                badge: "Slide 20 of 22",
+                leftTitle: "Critical & High Severity Risks",
+                leftBullets: [
+                    "CRITICAL — Database Sync via prisma db push (package.json:L10): Runs on every production startup instead of versioned prisma migrate deploy. Column renames or drops risk silent data loss.",
+                    "HIGH — In-Memory Concurrency Locks: Rate limiters, AI inFlight locks, and ingestion timers reside in Node process memory; multi-container scaling will bypass guards without Redis.",
+                    "HIGH — Local Disk Media Storage (UPLOAD_DIR): Covers and media save to local disk without automated S3 offloading."
+                ],
+                rightTitle: "Medium & Operational Risks",
+                rightBullets: [
+                    "MEDIUM — Mocked Librarian Timeline (server.ts:L12670): /api/institution/analytics uses Math.random() for daily timeline charts instead of querying LibraryEvent.",
+                    "MEDIUM — Student Privacy Leak (server.ts:L12648): starReader exposes individual student name/email to librarians.",
+                    "MEDIUM — Disconnected ROAD Adapter & Legacy Email Domain: ROAD lacks REST API; config.ts references legacy info@celnet.in.",
+                    "MEDIUM — Monolithic server.ts (~15,670 lines) & missing native Dockerfile HEALTHCHECK."
+                ],
+                flow: "Priority Risk Mitigation: 1. Replace prisma db push -> 2. Externalize Locks to Redis -> 3. Offload Uploads to S3 -> 4. Fix Librarian Analytics"
+            },
+            {
+                num: 21,
+                kicker: "Section Z & AB • Strategic Roadmap",
+                title: "Implementation Status & 90-Day Engineering Roadmap",
+                badge: "Slide 21 of 22",
+                leftTitle: "Phase 1 & 2 (Days 1 to 60): Safety & Data Integrity",
+                leftBullets: [
+                    "1. Database Migration Safety: Replace prisma db push in npm start with baseline versioned prisma migrate deploy.",
+                    "2. Analytics & Privacy Fix: Replace Math.random() timeline with real LibraryEvent SQL aggregations and anonymize starReader PII.",
+                    "3. Brand & Container Hygiene: Align outbound SES emails from info@celnet.in to @journalslibrary.com and add Dockerfile HEALTHCHECK."
+                ],
+                rightTitle: "Phase 3 (Days 60 to 90): Cloud Scale & Modularity",
+                rightBullets: [
+                    "4. Redis Distributed State: Migrate AI quota counters, inFlight locks, and rate limiters from Node Maps to Redis for multi-replica scaling.",
+                    "5. S3 Object Storage Offloading: Connect installed AWS S3 SDK to persist uploaded media and cover thumbnails off-disk.",
+                    "6. Backend Modularization: Refactor the 15,670-line server.ts monolith into domain-isolated Express routers.",
+                    "7. Institutional IP-Range Auth: Add campus IP-whitelist authentication alongside credential login."
+                ],
+                flow: "Phase 1: Schema & Brand Safety (30d) -> Phase 2: Real Telemetry & Privacy (60d) -> Phase 3: Redis + S3 + Modular Routers (90d)"
+            },
+            {
+                num: 22,
+                kicker: "Section AA & AC • Developer Handover",
+                title: "Technical Handover & Critical File Registry",
+                badge: "Slide 22 of 22",
+                leftTitle: "Core Backend, Database & Pricing Files",
+                leftBullets: [
+                    "server.ts (~15,670 lines): Main Express server, REST routes, advisory lock auth, cron jobs, and sitemap generators.",
+                    "prisma/schema.prisma (~1,959 lines): Complete PostgreSQL schema with 30+ models.",
+                    "src/config.ts & src/constants.ts: Statutory company identity (IT BREAK COM PVT LTD), GSTIN/PAN/CIN, HDFC bank details.",
+                    "src/lib/departmentRegistry.ts: Single source of truth for the 29 canonical departments and alias resolvers.",
+                    "src/lib/institutionPricing.ts & soloPricing.ts: Deterministic quantity rate cards and 18% GST calculators."
+                ],
+                rightTitle: "Engines, AI, SEO & Frontend Entry Points",
+                rightBullets: [
+                    "src/lib/freeAllowance.ts: 4 x 30-minute daily Free Preview state machine in IST.",
+                    "src/lib/quotation/quotationModel.ts, quotationPdf.ts, receiptPdf.ts: FY numbering and jsPDF generators.",
+                    "src/lib/ingestion/ (rotation.ts, providers.ts, policy.ts, dedup.ts): Everything Mode harvesting engine.",
+                    "src/server/ (aiAssistantService.ts, aiAssistantQuota.ts, aiSecrets.ts, seoPages.ts): Gemini grounding, AES-256-GCM, SSR SEO.",
+                    "src/App.tsx, AuthContext.tsx, DEPLOY_NOTES.md, Dockerfile: Frontend routing gates and production build specs."
+                ],
+                flow: "Handover Complete: Full Architecture, 8 Roles, 29 Departments, 20 Workflows, and 20 Audit Risks Documented."
+            }
+        ];
+
+        let currentSlide = 0;
+
+        function renderSlide(index) {
+            const s = SLIDES[index];
+            document.getElementById("slideCounter").textContent = `${s.num} / ${SLIDES.length}`;
+            const viewport = document.getElementById("slideViewport");
+            viewport.innerHTML = `
+        <div class="slide-header">
+          <div>
+            <div class="kicker">${s.kicker}</div>
+            <div class="title">${s.title}</div>
+          </div>
+          <div class="badge">${s.badge}</div>
+        </div>
+        <div class="slide-content">
+          <div class="panel">
+            <h3>${s.leftTitle}</h3>
+            <ul>${s.leftBullets.map(b => `<li>${b}</li>`).join("")}</ul>
+          </div>
+          <div class="panel">
+            <h3>${s.rightTitle}</h3>
+            <ul>${s.rightBullets.map(b => `<li>${b}</li>`).join("")}</ul>
+          </div>
+          <div class="workflow-bar">
+            <strong>System Flow</strong>
+            <span>${s.flow}</span>
+          </div>
+        </div>
+        <div class="slide-footer">
+          <span>STM Digital Library (journalslibrary.com) — IT BREAK COM PRIVATE LIMITED</span>
+          <span>Complete Technical & Architectural Audit Report • Page ${s.num} of 22</span>
+        </div>
+      `;
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % SLIDES.length;
+            renderSlide(currentSlide);
+        }
+
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + SLIDES.length) % SLIDES.length;
+            renderSlide(currentSlide);
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowRight") nextSlide();
+            if (e.key === "ArrowLeft") prevSlide();
+        });
+
+        // Direct Binary PDF File Generator using jsPDF (16:9 Widescreen Landscape: 297mm x 167mm)
+        function generateDirectPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: "landscape",
+                unit: "mm",
+                format: [297, 167]
+            });
+
+            const W = 297;
+            const H = 167;
+
+            SLIDES.forEach((s, idx) => {
+                if (idx > 0) doc.addPage([297, 167], "landscape");
+
+                // Dark Executive Slide Background
+                doc.setFillColor(11, 17, 32);
+                doc.rect(0, 0, W, H, "F");
+
+                // Top Accent Bar
+                doc.setFillColor(56, 189, 248);
+                doc.rect(0, 0, W, 2.2, "F");
+
+                // Kicker
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8.5);
+                doc.setTextColor(56, 189, 248);
+                doc.text(s.kicker.toUpperCase(), 14, 13);
+
+                // Slide Badge Pill
+                doc.setFillColor(21, 31, 50);
+                doc.setDrawColor(56, 189, 248);
+                doc.roundedRect(W - 38, 8, 24, 7, 2, 2, "FD");
+                doc.setFontSize(8);
+                doc.setTextColor(56, 189, 248);
+                doc.text(s.badge, W - 26, 12.7, { align: "center" });
+
+                // Slide Title
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(17);
+                doc.setTextColor(248, 250, 252);
+                doc.text(s.title, 14, 22);
+
+                // Header Divider Line
+                doc.setDrawColor(45, 58, 82);
+                doc.setLineWidth(0.3);
+                doc.line(14, 26, W - 14, 26);
+
+                // Left Card Box
+                const cardY = 31;
+                const cardH = 98;
+                const cardW = 131;
+                doc.setFillColor(21, 31, 50);
+                doc.setDrawColor(45, 58, 82);
+                doc.roundedRect(14, cardY, cardW, cardH, 3, 3, "FD");
+                doc.setFillColor(56, 189, 248);
+                doc.rect(14, cardY, cardW, 1.5, "F");
+
+                // Right Card Box
+                doc.setFillColor(21, 31, 50);
+                doc.setDrawColor(45, 58, 82);
+                doc.roundedRect(152, cardY, cardW, cardH, 3, 3, "FD");
+                doc.setFillColor(99, 102, 241);
+                doc.rect(152, cardY, cardW, 1.5, "F");
+
+                // Left Card Title
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(11);
+                doc.setTextColor(56, 189, 248);
+                doc.text(s.leftTitle, 19, cardY + 9);
+
+                // Left Card Bullets
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9.2);
+                doc.setTextColor(226, 232, 240);
+                let ly = cardY + 17;
+                s.leftBullets.forEach((b) => {
+                    const lines = doc.splitTextToSize("• " + b, cardW - 10);
+                    doc.text(lines, 19, ly);
+                    ly += lines.length * 4.7 + 2.2;
+                });
+
+                // Right Card Title
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(11);
+                doc.setTextColor(129, 140, 248);
+                doc.text(s.rightTitle, 157, cardY + 9);
+
+                // Right Card Bullets
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9.2);
+                doc.setTextColor(226, 232, 240);
+                let ry = cardY + 17;
+                s.rightBullets.forEach((b) => {
+                    const lines = doc.splitTextToSize("• " + b, cardW - 10);
+                    doc.text(lines, 157, ry);
+                    ry += lines.length * 4.7 + 2.2;
+                });
+
+                // Workflow Strip at Bottom
+                const flowY = 134;
+                doc.setFillColor(26, 38, 62);
+                doc.setDrawColor(56, 189, 248);
+                doc.roundedRect(14, flowY, W - 28, 13, 2, 2, "FD");
+
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8);
+                doc.setTextColor(56, 189, 248);
+                doc.text("WORKFLOW:", 18, flowY + 7.8);
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8.5);
+                doc.setTextColor(241, 245, 249);
+                const flowLines = doc.splitTextToSize(s.flow, W - 58);
+                doc.text(flowLines[0], 39, flowY + 7.8);
+
+                // Footer Divider & Metadata
+                doc.setDrawColor(45, 58, 82);
+                doc.line(14, 153, W - 14, 153);
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(148, 163, 184);
+                doc.text("STM Digital Library (https://journalslibrary.com/) | Operated by IT BREAK COM PRIVATE LIMITED", 14, 159);
+                doc.text(`Complete Technical & Architectural Audit Presentation  •  Slide ${s.num} of 22`, W - 14, 159, { align: "right" });
+            });
+
+            doc.save("STM_Digital_Library_Audit_Presentation.pdf");
+            const banner = document.getElementById("statusBanner");
+            banner.textContent = "✅ Downloaded 'STM_Digital_Library_Audit_Presentation.pdf' (22-Slide Widescreen PDF) to your Downloads folder!";
+        }
+
+        // Initialize interactive view and auto-trigger PDF download on open
+        window.addEventListener("DOMContentLoaded", () => {
+            renderSlide(0);
+            setTimeout(() => {
+                if (window.jspdf) {
+                    generateDirectPDF();
+                }
+            }, 600);
+        });
+    </script>
+</body>
+
+</html>

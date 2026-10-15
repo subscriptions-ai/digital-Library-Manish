@@ -24,7 +24,7 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
   const policy = INGESTION_POLICY.health;
   const rotating = rotationEnabled();
   let rot: RotationStatus | null = null;
-  if (rotating) { ensureProviders(); rot = await rotationStatus().catch(() => null); }
+  if (rotating) { ensureProviders(); rot = await rotationStatus({ state }).catch(() => null); }
 
   const [sources, staleClaims, cooling, claimed] = await Promise.all([
     db.ingestionSourceHealth.findMany(),
@@ -37,16 +37,19 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
   // What a person can act on: a source that cannot be asked for a reason that is a problem (not a daily quota, not a Quick Import on it,
   // not a source that is simply not connected). The engine has NOT stopped when there are some — the others carry on, and the screen says so.
   const problems = (rot?.providers || []).filter(p => p.availability.state === 'unavailable' && ['rate_limited', 'cooling', 'unavailable'].includes(p.availability.kind || ''))
-    .map(p => ({ id: p.id, label: p.label, group: p.group, kind: p.availability.kind as string, until: p.availability.until, text: `${p.label} — ${p.availability.kind === 'rate_limited' ? `rate limited until ${p.availability.until ? clock(p.availability.until) : 'later'}` : p.availability.kind === 'unavailable' ? 'unavailable, retry scheduled' : `cooling down${p.availability.until ? ` until ${clock(p.availability.until)}` : ''}`}` }));
+    .map(p => ({ id: p.id, label: p.label, group: p.group, kind: p.availability.kind as string, until: p.availability.until, text: `${p.label} — ${p.availability.kind === 'rate_limited' ? `rate limited until ${p.availability.until ? clock(p.availability.until) : 'later'}` : p.availability.kind === 'unavailable' ? `unavailable${p.availability.until ? `, retry ${clock(p.availability.until)}` : ', retry scheduled'}` : `cooling down${p.availability.until ? ` until ${clock(p.availability.until)}` : ''}`}${(rot?.providers.find(x => x.id === p.id)?.health.reason) ? ` (${rot!.providers.find(x => x.id === p.id)!.health.reason})` : ''}` }));
   const reasons: string[] = [];
+  const allWaiting = !!(rot && state.enabled && (['Journals', 'Articles', 'Books'] as const).every(g => rot!.groups[g].waiting));
   let health: Health;
   if (!state.enabled) {
     health = 'paused';
-  } else if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures || (rotating ? problems.length : pausedSources.length)) {
+  } else if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures || (rotating ? allWaiting : pausedSources.length)) {
+    // The ENGINE needs attention when it is failing itself, or when it has nothing at all it can do. One provider, or one whole family of them,
+    // being down is not that: the others carry on, and the screen says which source is resting and why, under "Worth knowing".
     health = 'attention';
     if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures) reasons.push(`${state.consecutiveFailures} passes in a row failed`);
-    if (rotating) { for (const p of problems) reasons.push(p.text); if (problems.length) reasons.push('Healthy providers continue running automatically.'); }
-    else for (const s of pausedSources) reasons.push(`${s.source} is paused after repeated failures and will be tried again by itself`);
+    if (rotating && allWaiting) reasons.push('Every content type is waiting for a source to recover; the engine resumes by itself.');
+    if (!rotating) for (const s of pausedSources) reasons.push(`${s.source} is paused after repeated failures and will be tried again by itself`);
   } else if (staleClaims > 0) {
     health = 'attention'; reasons.push(`${staleClaims} journal claim${staleClaims === 1 ? '' : 's'} abandoned by a worker that stopped`);
   } else if (state.lastSuccessAt && now - new Date(state.lastSuccessAt).getTime() > minutes(policy.delayedAfterMinutes)) {
@@ -55,7 +58,11 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
     health = 'running';
     if (!state.lastSuccessAt) reasons.push('waiting for the first pass');
   }
-  if (rot && state.enabled) for (const g of ['Journals', 'Articles', 'Books'] as const) if (rot.groups[g].waiting) reasons.push(`${g}: waiting for source recovery${rot.groups[g].retryAt ? ` (next try ${clock(rot.groups[g].retryAt!)})` : ''}`);
+  if (rot && state.enabled) {
+    for (const p of problems) reasons.push(p.text);
+    for (const g of ['Journals', 'Articles', 'Books'] as const) if (rot.groups[g].waiting) reasons.push(`${g}: waiting for source recovery${rot.groups[g].retryAt ? ` (next try ${clock(rot.groups[g].retryAt!)})` : ''}`);
+    if (problems.length || (['Journals', 'Articles', 'Books'] as const).some(g => rot!.groups[g].waiting)) reasons.push(allWaiting ? 'The engine will pick up each source as it recovers.' : 'Healthy providers continue running automatically.');
+  }
 
   const label = { running: 'Running normally', paused: 'Paused', delayed: 'Delayed', attention: 'Needs attention' }[health];
   const coolingCount = cooling._count._all as number;
@@ -80,6 +87,7 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
       source: s.source, healthy: !(s.pausedUntil && s.pausedUntil.getTime() > now) && (s.consecutiveFailures || 0) === 0,
       status: s.pausedUntil && s.pausedUntil.getTime() > now ? 'delayed' : (s.consecutiveFailures || 0) > 0 ? 'failing' : 'ok',
       pausedUntil: s.pausedUntil ?? null, lastError: s.lastError ?? null, lastOkAt: s.lastOkAt ?? null,
+      lastErrorKind: s.lastErrorKind ?? null, consecutiveFailures: s.consecutiveFailures ?? 0, lifetimeFailures: s.lifetimeFailures ?? 0,
     })),
     rotation: rot ? { enabled: true, ...rot, problems } : { enabled: false },
   };
