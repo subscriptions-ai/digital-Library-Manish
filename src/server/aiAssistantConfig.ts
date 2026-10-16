@@ -23,7 +23,12 @@ export function aiConfig() {
     leadQuestions: whole('AI_LEAD_QUESTIONS_PER_HOUR', 12, 1, 1000),
     /** Abuse backstop only, shared by everyone behind one address (an institution): model calls per IP per window. */
     ipQuestions: whole('AI_IP_QUESTIONS_PER_HOUR', 60, 1, 100000),
+    /** The primary provider's deadline for a whole answer, tool lookups included. */
     timeoutMs: whole('AI_ASSISTANT_TIMEOUT_MS', 8000, 1000, 120000),
+    /** The fallback provider's deadline. A little longer: it is only asked after the primary has already used its time. */
+    fallbackTimeoutMs: whole('AI_ASSISTANT_FALLBACK_TIMEOUT_MS', 10000, 1000, 120000),
+    /** Ceiling for primary and fallback together, so a visitor never waits on two long timeouts one after the other. */
+    totalTimeoutMs: whole('AI_ASSISTANT_TOTAL_TIMEOUT_MS', 18000, 2000, 240000),
     model: (process.env.AI_ASSISTANT_MODEL || '').trim() || DEFAULT_ASSISTANT_MODEL,
     maxOutputTokens: whole('AI_ASSISTANT_MAX_OUTPUT_TOKENS', 320, 64, 4096),
     /** Earlier chat messages sent with a question (the previous question and its answer is 2). */

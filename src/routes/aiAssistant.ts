@@ -4,7 +4,6 @@ import { generateAssistantResponse, maskPII, AssistantError } from '../server/ai
 import { aiConfig } from '../server/aiAssistantConfig.js';
 import { localReply } from '../server/aiAssistantLocal.js';
 import { readQuota, recordEvent } from '../server/aiAssistantQuota.js';
-import { noteProviderError } from '../server/aiProviderConfig.js';
 import { aiAssistantEnabled, DISABLED_BODY } from '../server/aiAssistantSwitch.js';
 
 const router = express.Router();
@@ -232,10 +231,13 @@ router.post('/chat', requireAssistantOn, rateLimit, async (req, res) => {
         void recordEvent(prisma, sessionId, 'model:timeout');
         return res.status(504).json({ code: 'timeout', error: 'That response is taking longer than expected.', quota });
       }
+      // Every provider that could be asked failed (provider health and the reason are already recorded by the service). Public wording only.
       void recordEvent(prisma, sessionId, 'model:error');
-      if (err instanceof AssistantError) void noteProviderError(prisma, err.category);
       return res.status(503).json({ code: 'unavailable', error: 'AI Assistant is temporarily unavailable.', quota });
     }
+
+    // A provider failed before another answered: internal bookkeeping only, never shown to the visitor and never a second question spent.
+    if (result.attempts.some(a => a.outcome === 'failed')) void recordEvent(prisma, sessionId, 'model:fallback');
 
     // 6. Answered: save the sanitised question and the answer. Saving the question is what spends the allowance.
     // Explicit, distinct times: rows written together would share one timestamp and could be read back in either order.

@@ -321,8 +321,13 @@ export async function fetchSourceJson(
   const attempts = probing ? 1 : Math.max(1, opts.attempts ?? 3);
   let last: SourceResult = { ok: false, status: null, json: null, transient: true, errorKind: 'unknown', error: 'no attempt made' };
   for (let i = 1; i <= attempts; i++) {
+    // Where a dropped connection dropped: before the provider sent anything (a refused or filtered connection — usually the network path or
+    // the provider turning this address away) or part-way through an answer it had begun (a slow or overloaded provider). Said in the error
+    // so the screen can tell an operator which, without anyone having to reproduce it.
+    let stage: 'before any response' | 'while reading the response' = 'before any response';
     try {
       const r = await httpFetch(url, { headers: opts.headers, signal: AbortSignal.timeout(opts.timeoutMs ?? 120_000) }, opts.connectTimeoutMs);
+      stage = 'while reading the response';
       if (r.ok) {
         let body: any = opts.encoding ? new TextDecoder(opts.encoding).decode(await r.arrayBuffer()) : opts.text ? await r.text() : await r.json();
         if (opts.parse) body = opts.parse(body);
@@ -347,7 +352,7 @@ export async function fetchSourceJson(
       if (i < attempts) await sleeper(1000 * 3 ** (i - 1));
     } catch (e: any) {
       const kind = classifyFailure(e);
-      last = { ok: false, status: null, json: null, transient: true, errorKind: kind, error: describeError(e) };
+      last = { ok: false, status: null, json: null, transient: true, errorKind: kind, error: describeError(e) + (kind === 'connection_reset' || kind === 'timeout' ? ` (${stage})` : '') };
       // A request that has already waited out its whole deadline is not worth repeating three times over, and a body that is not usable will not be better a second later.
       if (kind === 'timeout' || e instanceof SourceParseError) break;
       if (i < attempts) await sleeper(1000 * 3 ** (i - 1));

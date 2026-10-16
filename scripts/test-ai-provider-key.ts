@@ -76,8 +76,8 @@ const start = async (master: string | null, envKey = ENV_KEY) => {
   serverLog = '';
   const e: any = { ...process.env, DATABASE_URL: TEST_URL, PORT: String(PORT), NODE_ENV: 'development', GEMINI_API_KEY: envKey, MOCK_GEMINI_URL: MOCK_URL,
     AI_ASSISTANT_TIMEOUT_MS: '4000', AI_PROVIDER_TEST_TIMEOUT_MS: '700', AI_PROVIDER_TESTS_PER_MINUTE: '40' };
-  delete e.AI_SECRET_ENCRYPTION_KEY; delete e.AI_ASSISTANT_MODEL;
-  if (master) e.AI_SECRET_ENCRYPTION_KEY = master;
+  delete e.AI_ASSISTANT_MODEL;
+  e.AI_SECRET_ENCRYPTION_KEY = master || '';       // blank, not absent: the server loads .env, which has the developer's real master key
   child = spawn('npx', ['tsx', '--import', new URL('./test-ai-assistant-switch.preload.mjs', import.meta.url).pathname, 'server.ts'], {
     cwd: new URL('..', import.meta.url).pathname, detached: true, stdio: ['ignore', 'pipe', 'pipe'], env: e,
   });
@@ -141,7 +141,7 @@ try {
   const cats: [string, string, string][] = [
     ['BADKEY', 'AUTHENTICATION_FAILED', 'rejected this API key'], ['ECHOBADKEY', 'AUTHENTICATION_FAILED', 'rejected'],
     ['QUOTAKEY', 'QUOTA_EXCEEDED', 'quota'], ['RATEKEY', 'RATE_LIMITED', 'limiting'],
-    ['DENIEDKEY', 'PERMISSION_DENIED', 'not allowed'], ['DOWNKEY', 'PROVIDER_UNAVAILABLE', 'reached or is having'], ['SLOWKEY', 'TIMEOUT', 'did not answer in time'],
+    ['DENIEDKEY', 'PERMISSION_DENIED', 'not allowed'], ['DOWNKEY', 'PROVIDER_5XX', 'server error'], ['SLOWKEY', 'TIMEOUT', 'did not answer in time'],
   ];
   for (const [name, cat, words] of cats) {
     const r = await testKey(K(name));
@@ -162,7 +162,8 @@ try {
   const row1 = await db.appSetting.findUnique({ where: { key: CONFIG } });
   const rowText = JSON.stringify(row1);
   check('the database holds ciphertext: the key appears nowhere in the row', !rowText.includes(GOOD1) && !rowText.includes(Buffer.from(GOOD1).toString('base64')) && !rowText.includes(Buffer.from(GOOD1).toString('hex')), rowText);
-  check('the row has the encrypted shape (v, iv, tag, ct) and no plaintext field', !!(row1?.value as any)?.key?.ct && !!(row1?.value as any)?.key?.iv && !!(row1?.value as any)?.key?.tag && !('apiKey' in (row1?.value as any)));
+  const sealed1 = (row1?.value as any)?.providers?.gemini?.key;
+  check('the row has the encrypted shape (v, iv, tag, ct) and no plaintext field', !!sealed1?.ct && !!sealed1?.iv && !!sealed1?.tag && !('apiKey' in (row1?.value as any)) && !('apiKey' in (row1?.value as any).providers.gemini));
   const c1 = await chat();
   check('the NEXT chat request uses the new key, with no restart', c1.status === 200 && lastKey() === GOOD1, { status: c1.status, key: lastKey() });
   const added = await auditRows('AI_PROVIDER_KEY_ADDED');
@@ -173,7 +174,7 @@ try {
   const keys = Object.keys(g.data).sort();
   check('the config has only the expected fields', JSON.stringify(keys) === JSON.stringify(['adminKeyConfigured', 'adminKeyUnreadable', 'canStoreKey', 'credentialSource', 'keyConfigured', 'lastError', 'lastTest', 'model', 'provider', 'providerLabel', 'providers', 'updatedAt', 'updatedBy']), keys);
   check('key configured, source Admin configuration, with who and when', g.data.keyConfigured && g.data.credentialSource === 'admin' && g.data.updatedBy === admin.email && !!g.data.updatedAt);
-  check('no key, fragment, ciphertext, IV or tag in it', !ALL_KEYS.some(k => g.text.includes(k)) && !g.text.includes(String((row1?.value as any).key.ct)) && !g.text.includes(String((row1?.value as any).key.iv)) && !g.text.includes(String((row1?.value as any).key.tag)) && !g.text.includes(GOOD1.slice(-4)) , g.text);
+  check('no key, fragment, ciphertext, IV or tag in it', !ALL_KEYS.some(k => g.text.includes(k)) && !g.text.includes(String((row1?.value as any).providers.gemini.key.ct)) && !g.text.includes(String((row1?.value as any).providers.gemini.key.iv)) && !g.text.includes(String((row1?.value as any).providers.gemini.key.tag)) && !g.text.includes(GOOD1.slice(-4)) , g.text);
   check('the public status endpoint exposes only "enabled"', JSON.stringify(Object.keys((await call('/api/public/ai-assistant/status')).data || {})) === '["enabled"]');
 
   section('C. An invalid key never replaces a working one');
@@ -205,7 +206,7 @@ try {
   const rep = await activate(GOOD2, 'gemini-2.5-flash');
   check('replace accepted', rep.data?.ok === true && rep.data.changed.key === true, rep.data);
   const rowAfter = await db.appSetting.findUnique({ where: { key: CONFIG } });
-  check('new ciphertext (a fresh IV) replaced the old', (rowAfter?.value as any).key.iv !== (row1?.value as any).key.iv && (rowAfter?.value as any).key.ct !== (row1?.value as any).key.ct);
+  check('new ciphertext (a fresh IV) replaced the old', (rowAfter?.value as any).providers.gemini.key.iv !== (row1?.value as any).providers.gemini.key.iv && (rowAfter?.value as any).providers.gemini.key.ct !== (row1?.value as any).providers.gemini.key.ct);
   const seenBefore = seen.length;
   await chat(); await chat();
   check('requests now use the new key, never the old one', seen.slice(seenBefore).every(s => s.key === GOOD2), seen.slice(seenBefore));
@@ -268,7 +269,7 @@ try {
   const rm = await A(P + '/remove-key', 'POST', {});
   check('removed', rm.status === 200 && rm.data?.ok === true && rm.data.state?.credentialSource === 'environment' && rm.data.state?.adminKeyConfigured === false, rm.data);
   const rowRm = await db.appSetting.findUnique({ where: { key: CONFIG } });
-  check('the ciphertext is gone from the database', !(rowRm?.value as any)?.key);
+  check('the ciphertext is gone from the database', !(rowRm?.value as any)?.providers?.gemini?.key);
   await chat();
   check('the next chat uses the environment key', lastKey() === ENV_KEY, lastKey());
   const removed = await auditRows('AI_PROVIDER_KEY_REMOVED');

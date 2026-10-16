@@ -12,7 +12,15 @@ import { ensureProviders, rotationEnabled } from './engine.js';
  * null and the screen shows nothing rather than a guess.
  */
 
-export type Health = 'running' | 'paused' | 'delayed' | 'attention';
+/**
+ * The four things the engine can be said to be:
+ *   running   it is working, or about to
+ *   waiting   nothing can be asked right now — every source is resting, rate limited, over a quota, switched off or caught up — and it will resume by itself
+ *   paused    an administrator switched it off
+ *   attention a person has something to DO: the engine itself is failing, or has stopped doing anything with no source to blame
+ * A source being down is never, on its own, "attention".
+ */
+export type Health = 'running' | 'waiting' | 'paused' | 'attention';
 
 const SOURCE_FOR_PHASE: Record<string, string> = { Articles: 'OpenAlex', Journals: 'DOAJ', Books: 'DOAB' };
 
@@ -39,32 +47,42 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
   const problems = (rot?.providers || []).filter(p => p.availability.state === 'unavailable' && ['rate_limited', 'cooling', 'unavailable'].includes(p.availability.kind || ''))
     .map(p => ({ id: p.id, label: p.label, group: p.group, kind: p.availability.kind as string, until: p.availability.until, text: `${p.label} — ${p.availability.kind === 'rate_limited' ? `rate limited until ${p.availability.until ? clock(p.availability.until) : 'later'}` : p.availability.kind === 'unavailable' ? `unavailable${p.availability.until ? `, retry ${clock(p.availability.until)}` : ', retry scheduled'}` : `cooling down${p.availability.until ? ` until ${clock(p.availability.until)}` : ''}`}${(rot?.providers.find(x => x.id === p.id)?.health.reason) ? ` (${rot!.providers.find(x => x.id === p.id)!.health.reason})` : ''}` }));
   const reasons: string[] = [];
-  const allWaiting = !!(rot && state.enabled && (['Journals', 'Articles', 'Books'] as const).every(g => rot!.groups[g].waiting));
+  const GROUPS3 = ['Journals', 'Articles', 'Books'] as const;
+  const groupsWaiting = rot ? GROUPS3.filter(g => rot!.groups[g].waiting) : [];
+  const allWaiting = !!(rot && state.enabled && groupsWaiting.length === GROUPS3.length);
+  // The engine decided, on its last look, that nothing can be asked until a known time (or at all, until something changes).
+  const asleep = !!(rot && state.enabled && rot.idle);
+  const engineFailing = (state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures;
+  const silentFor = state.lastSuccessAt ? now - new Date(state.lastSuccessAt).getTime() : 0;
   let health: Health;
   if (!state.enabled) {
     health = 'paused';
-  } else if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures || (rotating ? allWaiting : pausedSources.length)) {
-    // The ENGINE needs attention when it is failing itself, or when it has nothing at all it can do. One provider, or one whole family of them,
-    // being down is not that: the others carry on, and the screen says which source is resting and why, under "Worth knowing".
-    health = 'attention';
-    if ((state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures) reasons.push(`${state.consecutiveFailures} passes in a row failed`);
-    if (rotating && allWaiting) reasons.push('Every content type is waiting for a source to recover; the engine resumes by itself.');
-    if (!rotating) for (const s of pausedSources) reasons.push(`${s.source} is paused after repeated failures and will be tried again by itself`);
+  } else if (engineFailing) {
+    health = 'attention'; reasons.push(`${state.consecutiveFailures} passes in a row failed`);
   } else if (staleClaims > 0) {
     health = 'attention'; reasons.push(`${staleClaims} journal claim${staleClaims === 1 ? '' : 's'} abandoned by a worker that stopped`);
-  } else if (state.lastSuccessAt && now - new Date(state.lastSuccessAt).getTime() > minutes(policy.delayedAfterMinutes)) {
-    health = 'delayed'; reasons.push(`no pass has finished without error for ${Math.round((now - new Date(state.lastSuccessAt).getTime()) / 60000)} minutes`);
+  } else if (rotating ? (allWaiting || asleep) : pausedSources.length > 0) {
+    // Every source resting is the sources' state, not a fault of the engine: it resumes by itself, and says when it will try again.
+    health = 'waiting';
+    if (!rotating) for (const s of pausedSources) reasons.push(`${s.source} is paused after repeated failures and will be tried again by itself`);
+  } else if (state.lastSuccessAt && silentFor > minutes(policy.delayedAfterMinutes) && !problems.length && !groupsWaiting.length) {
+    // Quiet for a long time with no source to blame: the one slow case that is the engine's own.
+    health = 'attention'; reasons.push(`no pass has finished without error for ${Math.round(silentFor / 60000)} minutes, and no source is resting to explain it`);
   } else {
     health = 'running';
     if (!state.lastSuccessAt) reasons.push('waiting for the first pass');
   }
   if (rot && state.enabled) {
     for (const p of problems) reasons.push(p.text);
-    for (const g of ['Journals', 'Articles', 'Books'] as const) if (rot.groups[g].waiting) reasons.push(`${g}: waiting for source recovery${rot.groups[g].retryAt ? ` (next try ${clock(rot.groups[g].retryAt!)})` : ''}`);
-    if (problems.length || (['Journals', 'Articles', 'Books'] as const).some(g => rot!.groups[g].waiting)) reasons.push(allWaiting ? 'The engine will pick up each source as it recovers.' : 'Healthy providers continue running automatically.');
+    for (const g of groupsWaiting) reasons.push(`${g}: waiting for source recovery${rot.groups[g].retryAt ? ` (next try ${clock(rot.groups[g].retryAt!)})` : ''}`);
+    if (rot.idle?.cause === 'caught-up' && health === 'waiting') reasons.push('Every source is up to date; the engine looks again when the first one is due.');
+    if (problems.length || groupsWaiting.length) reasons.push(health === 'waiting' ? 'The engine will pick up each source as it recovers.' : 'Healthy providers continue running automatically.');
   }
+  // When it will look again, and at whom: from the engine's own record while it sleeps, else worked out now.
+  const upNext = rot?.idle?.next ?? rot?.next ?? null;
+  const next = upNext ? { group: upNext.group, provider: upNext.provider, label: upNext.label, at: upNext.at, text: `${upNext.group} — ${clock(upNext.at)}` } : null;
 
-  const label = { running: 'Running normally', paused: 'Paused', delayed: 'Delayed', attention: 'Needs attention' }[health];
+  const label = { running: 'Running', waiting: 'Waiting for source recovery', paused: 'Paused', attention: 'Needs attention' }[health];
   const coolingCount = cooling._count._all as number;
 
   // The source working RIGHT NOW, or the one that last worked for what the engine was last doing — never a fixed guess from the phase.
@@ -75,6 +93,9 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
 
   return {
     health, label, reasons,
+    /** While waiting: the source that comes back first and when the engine will look at it. Null when nothing has a time (a source is held by something with no end). */
+    waiting: health === 'waiting' ? { since: rot?.idle?.since ?? null, cause: rot?.idle?.cause ?? 'recovery', next, nextAttemptAt: rot?.idle?.nextAt ?? upNext?.at ?? null } : null,
+    next,
     mode: state.focus || 'auto',
     currentSource,
     currentlyProcessing: claimed[0]?.title || (state.currentJournal || null),

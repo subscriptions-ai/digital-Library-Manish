@@ -3,7 +3,7 @@ import { Bot } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Badge, Button, Card, CardHeader, ConfirmDialog, ErrorState, PageHeader, Skeleton } from '../../ui';
 import { ago } from '../ingestion/format';
-import { AiProviderConfig } from './AiProviderConfig';
+import { AiProviders } from './AiProviders';
 
 /**
  * The master switch for the public AI assistant. The server holds the value and enforces it; this screen only shows it and
@@ -14,7 +14,7 @@ type SwitchState = {
   history: { at: string; action: string; by: string | null }[];
   provider: { name: string; model: string } | null;
   lastAnswerAt: string | null;
-  last24h: { answered: number; errors: number; timeouts: number } | null;
+  last24h: { answered: number; errors: number; timeouts: number; fallbacks?: number } | null;
 };
 
 /** "just now", "1 min ago", "3 h ago", "2 days ago". */
@@ -93,13 +93,14 @@ export function AdminAiAssistant() {
           </Card>
 
           <Card className="mt-4">
-            <CardHeader title="Provider" description="Status of the provider the assistant is using. Keys and credentials are never shown." />
-            <dl className="grid gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-4">
+            <CardHeader title="Assistant status" description="The primary provider and how the assistant has been doing. Keys are never shown here." />
+            <dl className="grid gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-3 lg:grid-cols-5">
               {([
                 ['Provider', data.provider ? `${data.provider.name} · ${data.provider.model}` : '—'],
                 ['Last answer', data.lastAnswerAt ? ago(data.lastAnswerAt) : 'None yet'],
                 ['Answered, 24 h', data.last24h ? String(data.last24h.answered) : '—'],
                 ['Provider errors, 24 h', data.last24h ? String(data.last24h.errors) : '—'],
+                ['Fallback used, 24 h', data.last24h?.fallbacks != null ? String(data.last24h.fallbacks) : '—'],
               ] as const).map(([l, v]) => (
                 <div key={l} className="bg-surface px-3.5 py-2.5">
                   <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted">{l}</dt>
@@ -115,7 +116,7 @@ export function AdminAiAssistant() {
             <p className="mt-3 text-xs text-muted">The assistant is never switched off or on automatically; only an admin changes it.</p>
           </Card>
 
-          <AiProviderConfig onChanged={load} />
+          <AiProviders onChanged={load} />
 
           {data.history.length > 0 && (
             <Card className="mt-4">

@@ -43,11 +43,34 @@ export type RotationState = {
   current: Partial<Record<Group, string>>;
   /** A content type none of whose sources could be asked, since when and why. Cleared when one works. */
   waiting: Partial<Record<Group, { since: string; reason: string; retryAt: string | null }>>;
+  /**
+   * The engine has nothing it can ask right now, and is sleeping until `nextAt`. One record for the whole stretch: the run log gets one row when it begins
+   * (and another only if the picture changes), not one per timer tick. Cleared the moment any source runs, or an administrator changes how the engine is set.
+   */
+  idle?: IdleState | null;
   updatedAt: string | null;
 };
 
+export type IdleState = {
+  since: string;
+  /** What the picture is (which sources, resting why, until when). The same signature again means nothing new to say. */
+  signature: string;
+  /** When the soonest source can be asked again; null when nothing has a time (then the engine looks again at every tick, cheaply, without logging). */
+  nextAt: string | null;
+  /** The source that comes back first. */
+  next: { group: Group; provider: string; label: string; at: string; reason: string | null } | null;
+  /** True when a source is blocked by something with no end time (a Quick Import on it, a review backlog): not a thing to sleep through. */
+  open: boolean;
+  /** The engine settings the picture was judged under; a different set wakes the engine at once. */
+  fingerprint: string;
+  /** Whether it is waiting on sources that are down/resting, or every source is simply up to date. */
+  cause: 'recovery' | 'caught-up';
+  /** What the run log said when this began; a sleeping tick answers with the same words. */
+  note: string;
+};
+
 const KEY = 'ingestion.rotation.v1';
-export const blankState = (): RotationState => ({ typeCursor: 0, cursors: {}, providers: {}, running: null, current: {}, waiting: {}, updatedAt: null });
+export const blankState = (): RotationState => ({ typeCursor: 0, cursors: {}, providers: {}, running: null, current: {}, waiting: {}, idle: null, updatedAt: null });
 
 export async function loadRotationState(): Promise<RotationState> {
   const row = await db.appSetting.findUnique({ where: { key: KEY } }).catch(() => null);

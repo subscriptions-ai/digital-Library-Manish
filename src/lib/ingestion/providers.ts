@@ -92,6 +92,9 @@ export const getRoadAdapter = () => roadAdapter;
 
 // ── Books ───────────────────────────────────────────────────────────────────
 
+/** How many of one review-first source's books may wait for review before it rests. `BOOKS_REVIEW_BACKLOG_LIMIT=0` removes the limit. */
+export const reviewBacklogLimit = () => { const n = Number(process.env.BOOKS_REVIEW_BACKLOG_LIMIT); return Number.isInteger(n) && n >= 0 && n <= 100_000 ? n : 250; };
+
 /**
  * `optIn`: a source that adds only books for a person to review (it carries no controlled classification code, so the classifier can never
  * place its books with confidence). Running it continuously would add a review Draft to the queue on every turn, so it is OFF in the rotation
@@ -112,6 +115,13 @@ function bookProvider(cfg: OaiProviderConfig, id: string, label: string, healthK
       if (used.archives >= lim.maxArchivesPerDay) return { until: nextUtcMidnight(), reason: `daily limit of ${lim.maxArchivesPerDay} archives reached — resumes after midnight UTC` };
       if (used.bytes >= lim.maxBytesPerDay) return { until: nextUtcMidnight(), reason: 'daily download limit reached — resumes after midnight UTC' };
       return null;
+    } : optIn ? async () => {
+      // A source that can only send books to review must not outrun the people who review them: once this many of its books are waiting, it rests
+      // until some are decided. (Crossref alone lists about 2.5 million books, a quarter of them close enough to a department to reach review.)
+      const limit = reviewBacklogLimit();
+      if (!limit) return null;
+      const r: any[] = await db.$queryRawUnsafe(`select count(*)::int n from (select 1 from "Book" where source = $1 and status = 'Draft' limit ${limit}) t`, cfg.provider).catch(() => [{ n: 0 }]);
+      return r[0].n >= limit ? { until: null, reason: `${limit} of its books are waiting for review — it resumes as they are reviewed` } : null;
     } : undefined,
     turn: async (ctx: TurnCtx): Promise<TurnOutcome> => {
       // With the OAI path off, DOAB goes back to its keyword sweeps (one department per page); the others are off with it.
