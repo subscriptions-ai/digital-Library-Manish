@@ -27,7 +27,8 @@ import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { setupAIAssistantRoutes } from "./src/routes/aiAssistant.js";
 import { usageSummary as aiAssistantUsage } from "./src/server/aiAssistantQuota.js";
-import { providerState as aiProviderState, testConnection as aiTestConnection, activateConfig as aiActivateConfig, removeAdminKey as aiRemoveAdminKey, resolveActiveAIConfig } from "./src/server/aiProviderConfig.js";
+import { providerState as aiProviderState, testConnection as aiTestConnection, activateConfig as aiActivateConfig, removeAdminKey as aiRemoveAdminKey, resolveProviders as aiResolveProviders, providersState as aiProvidersState, testProvider as aiTestProvider, activateProvider as aiActivateProvider, removeProviderKey as aiRemoveProviderKey, revealProviderKey as aiRevealProviderKey, saveFailover as aiSaveFailover, recentAiEvents as aiRecentEvents, isProvider as aiIsProvider } from "./src/server/aiProviderConfig.js";
+import { encryptionAvailable as aiEncryptionAvailable } from "./src/server/aiSecrets.js";
 import { loadBlogList, loadBlogPost } from "./src/server/blogData.js";
 import { installSeoPages } from "./src/server/seoPages.js";
 import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
@@ -42,7 +43,7 @@ import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, Q
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
   INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
 import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
-import { runEnginePass } from "./src/lib/ingestion/engine.js";
+import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
 import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
 import { validateSettings } from "./src/lib/ingestion/settings.js";
@@ -8646,6 +8647,8 @@ async function startServer() {
       const v: any = validateSettings(req.body, current, ALL_DEPARTMENTS);
       if (!v.ok) return res.status(v.status).json({ error: v.errors[0], errors: v.errors, needsConfirmation: v.needsConfirmation });
       if (Object.keys(v.data).length) await (prisma as any).ingestionState.update({ where: { id: 'singleton' }, data: v.data });
+      // A change to how the engine is set (or switching it on) ends any sleep it was in: it looks again at its next tick.
+      if (Object.keys(v.data).length) await wakeEngine().catch(() => {});
 
       const who = adminOf(req);
       if (v.enabledChange) await ingestionAudit(who, v.data.enabled ? 'ENGINE_RESUMED' : 'ENGINE_PAUSED', { engineWas: current.enabled });
@@ -15784,12 +15787,13 @@ async function startServer() {
       const [state, history] = await Promise.all([aiAssistantSwitchState(prisma as any), aiAssistantSwitchHistory(prisma as any)]);
       const lastAnswer: any = await (prisma as any).aIMessage.findFirst({ where: { role: 'assistant' }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } }).catch(() => null);
       const day: any = await aiAssistantUsage(prisma as any, 1).catch(() => null);
-      const active = await resolveActiveAIConfig(prisma as any);
+      const plan = await aiResolveProviders(prisma as any);
+      const primary = plan.byId[plan.primary];
       res.json({
         ...state, history,
-        provider: { name: 'Gemini', model: active.model },
+        provider: { name: plan.primary === 'gemini' ? 'Gemini' : 'Grok', model: primary.model },
         lastAnswerAt: lastAnswer?.createdAt ? lastAnswer.createdAt.toISOString() : null,
-        last24h: day ? { answered: day.modelAnsweredQuestions, errors: day.modelErrors, timeouts: day.modelTimeouts } : null,
+        last24h: day ? { answered: day.modelAnsweredQuestions, errors: day.modelErrors, timeouts: day.modelTimeouts, fallbacks: day.modelFallbacks } : null,
       });
     } catch (e: any) { console.error('GET ai-assistant/switch error:', e?.message); res.status(500).json({ error: "Could not read the AI Assistant setting" }); }
   });
@@ -15817,8 +15821,8 @@ async function startServer() {
     if (recent.length >= (Number(process.env.AI_PROVIDER_TESTS_PER_MINUTE) || 10)) { aiProviderTests.set(who, recent); return false; }
     recent.push(now); aiProviderTests.set(who, recent); return true;
   };
-  const sendAiFailure = (res: any, r: { status?: number; code?: string; category?: string; message?: string }) =>
-    res.status(r.status || 500).json({ ok: false, code: r.code, category: r.category ?? null, error: r.message });
+  const sendAiFailure = (res: any, r: { status?: number; code?: string; category?: string; message?: string; httpStatus?: number; endpoint?: string; model?: string }) =>
+    res.status(r.status || 500).json({ ok: false, code: r.code, category: r.category ?? null, error: r.message, httpStatus: r.httpStatus ?? null, endpoint: r.endpoint ?? null, model: r.model ?? null });
 
   app.get("/api/admin/ai-assistant/provider", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
     try { res.json(await aiProviderState(prisma as any)); }
@@ -15851,6 +15855,87 @@ async function startServer() {
       console.log(`AI provider Admin key removed by ${req.user?.email || req.user?.uid}`);
       res.json({ ok: true, state: await aiProviderState(prisma as any) });
     } catch (e: any) { console.error('POST ai-assistant/provider/remove-key error:', e?.name || 'error'); res.status(500).json({ ok: false, error: "The Admin key could not be removed" }); }
+  });
+
+  // ── Two providers: a primary and an optional fallback (Gemini and Grok) ──────────────────────────────────────────────────────────
+  // Every route is Super Admin only, enforced here. The normal state never carries a key. A saved key leaves the server only through
+  // reveal-key: POST (so it is never in a URL), no-store, rate-limited, audited on every call, and only ever an Admin-stored key.
+  if (process.env.NODE_ENV === 'production' && !aiEncryptionAvailable()) console.warn('AI_SECRET_ENCRYPTION_KEY is not set: AI provider API keys cannot be stored from the Admin panel until it is.');
+  const aiReveals = new Map<string, number[]>();
+  const aiRevealAllowed = (who: string) => {
+    const now = Date.now();
+    const recent = (aiReveals.get(who) || []).filter(t => now - t < 60_000);
+    if (recent.length >= (Number(process.env.AI_KEY_REVEALS_PER_MINUTE) || 10)) { aiReveals.set(who, recent); return false; }
+    recent.push(now); aiReveals.set(who, recent); return true;
+  };
+  const aiProviderParam = (req: any, res: any) => { if (aiIsProvider(req.params.provider)) return req.params.provider as 'gemini' | 'grok'; res.status(404).json({ ok: false, error: "Unknown provider" }); return null; };
+  const aiAdmin = (req: any) => ({ id: req.user?.uid, email: req.user?.email });
+
+  app.get("/api/admin/ai-assistant/providers", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const [state, events, day]: any = await Promise.all([aiProvidersState(prisma as any), aiRecentEvents(prisma as any), aiAssistantUsage(prisma as any, 1).catch(() => null)]);
+      res.json({ ...state, auditEvents: events, last24h: day ? { answered: day.modelAnsweredQuestions, errors: day.modelErrors, timeouts: day.modelTimeouts, fallbacks: day.modelFallbacks } : null });
+    } catch (e: any) { console.error('GET ai-assistant/providers error:', e?.name || 'error'); res.status(500).json({ error: "Could not read the AI provider settings" }); }
+  });
+
+  app.post("/api/admin/ai-assistant/providers/failover", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const r = await aiSaveFailover(prisma as any, aiAdmin(req), { primary: req.body?.primary, fallbackEnabled: req.body?.fallbackEnabled });
+      if (!r.ok) return sendAiFailure(res, r);
+      res.set('Cache-Control', 'no-store');
+      res.json({ ok: true, changed: r.changed, state: await aiProvidersState(prisma as any) });
+    } catch (e: any) { console.error('POST ai-assistant/providers/failover error:', e?.name || 'error'); res.status(500).json({ ok: false, error: "The failover settings could not be saved" }); }
+  });
+
+  app.post("/api/admin/ai-assistant/providers/:provider/test", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const provider = aiProviderParam(req, res); if (!provider) return;
+      if (!aiTestAllowed(req.user?.uid || 'x')) return res.status(429).json({ ok: false, code: 'TOO_MANY_TESTS', error: 'Too many connection tests. Wait a minute and try again.' });
+      const r = await aiTestProvider(prisma as any, aiAdmin(req), provider, req.body || {});
+      if (!r.ok && r.status !== 200) return sendAiFailure(res, r);
+      res.set('Cache-Control', 'no-store');
+      const at = new Date().toISOString();
+      // Status code and category are safe, plain facts about the provider's answer; the key and the Authorization header are never part of this.
+      res.json(r.ok ? { ok: true, latencyMs: r.latencyMs ?? null, at, endpoint: r.endpoint ?? null, model: r.model ?? null, message: 'Connection successful.' } : { ok: false, category: r.category, httpStatus: r.httpStatus ?? null, endpoint: r.endpoint ?? null, model: r.model ?? null, latencyMs: r.latencyMs ?? null, at, message: r.message, providerCode: r.providerCode ?? null, providerMessage: r.providerMessage ?? null });
+    } catch (e: any) { console.error('POST ai-assistant/providers/test error:', e?.name || 'error'); res.status(500).json({ ok: false, error: "The connection test could not be run" }); }
+  });
+
+  // Save: a BLANK or absent apiKey keeps the saved key. Only a non-empty new key replaces it.
+  app.post("/api/admin/ai-assistant/providers/:provider", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const provider = aiProviderParam(req, res); if (!provider) return;
+      if (!aiTestAllowed(req.user?.uid || 'x')) return res.status(429).json({ ok: false, code: 'TOO_MANY_TESTS', error: 'Too many attempts. Wait a minute and try again.' });
+      const r = await aiActivateProvider(prisma as any, aiAdmin(req), provider, req.body || {});
+      if (!r.ok) return sendAiFailure(res, r);
+      console.log(`AI provider ${provider} settings changed by ${req.user?.email || req.user?.uid} (key ${r.changed.key ? 'updated' : 'unchanged'}, model ${r.changed.model ? 'updated' : 'unchanged'})`);
+      res.set('Cache-Control', 'no-store');
+      res.json({ ok: true, changed: r.changed, state: await aiProvidersState(prisma as any) });
+    } catch (e: any) { console.error('POST ai-assistant/providers save error:', e?.name || 'error'); res.status(500).json({ ok: false, error: "The AI provider settings could not be saved" }); }
+  });
+
+  app.post("/api/admin/ai-assistant/providers/:provider/remove-key", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const provider = aiProviderParam(req, res); if (!provider) return;
+      const r = await aiRemoveProviderKey(prisma as any, aiAdmin(req), provider);
+      if (!r.ok) return sendAiFailure(res, r);
+      console.log(`AI provider ${provider} Admin key removed by ${req.user?.email || req.user?.uid}`);
+      res.set('Cache-Control', 'no-store');
+      res.json({ ok: true, state: await aiProvidersState(prisma as any) });
+    } catch (e: any) { console.error('POST ai-assistant/providers remove-key error:', e?.name || 'error'); res.status(500).json({ ok: false, error: "The Admin key could not be removed" }); }
+  });
+
+  app.post("/api/admin/ai-assistant/providers/:provider/reveal-key", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    // No-store before anything else, so not even a refusal is cached; the key is never put in a URL, a log line or an error.
+    res.set({ 'Cache-Control': 'no-store, no-cache, must-revalidate, private', Pragma: 'no-cache' });
+    try {
+      const provider = aiProviderParam(req, res); if (!provider) return;
+      if (!aiRevealAllowed(req.user?.uid || 'x')) return res.status(429).json({ ok: false, code: 'TOO_MANY_REVEALS', error: 'Too many requests. Wait a minute and try again.' });
+      const r = await aiRevealProviderKey(prisma as any, aiAdmin(req), provider);
+      if (!r.ok) return sendAiFailure(res, r);
+      console.log(`AI provider ${provider} credential revealed by ${req.user?.email || req.user?.uid}`);     // who and which — never the key
+      res.json({ ok: true, apiKey: r.apiKey, source: r.source });
+    } catch (e: any) { console.error('POST ai-assistant/providers reveal-key error:', e?.name || 'error'); res.status(500).json({ ok: false, error: "The key could not be shown" }); }
   });
 
   // The institutional brochure, sent as a download with its own name. It has to

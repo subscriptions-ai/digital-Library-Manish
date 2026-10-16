@@ -5,7 +5,8 @@ import { Badge, Button, type BadgeTone } from '../../ui';
 import { api } from './api';
 import { N, ago, clock, inFuture, scopeLabel } from './format';
 
-const HEALTH_TONE: Record<string, BadgeTone> = { running: 'success', paused: 'neutral', delayed: 'caution', attention: 'alarm' };
+const HEALTH_TONE: Record<string, BadgeTone> = { running: 'success', waiting: 'neutral', paused: 'neutral', attention: 'alarm' };
+const HEALTH_BADGE: Record<string, string> = { running: 'Healthy', waiting: 'Resumes by itself', paused: 'Switched off', attention: 'Action needed' };
 const MODE_LABEL: Record<string, string> = { auto: 'Everything', books: 'Books', journals: 'Journals', articles: 'Articles' };
 
 /** What the screen says after a manual pass: what actually happened, never a blanket "done". */
@@ -64,7 +65,9 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
   };
 
   const busy = pending !== null || !!st.passRunning;
-  const next = running ? (st.passRunning ? 'a pass is running now' : st.nextPassAt ? `~${clock(st.nextPassAt)}` : '—') : '—';
+  const waiting = running && st.health === 'waiting';
+  // While every source is resting the timer still ticks, but nothing happens at a tick: what matters is when a source comes back.
+  const next = running ? (st.passRunning ? 'a pass is running now' : waiting ? (st.next ? `${st.next.group} — ${clock(st.next.at)}` : 'when a source is free') : st.nextPassAt ? `~${clock(st.nextPassAt)}` : '—') : '—';
 
   return (
     <section className="card card-pad" aria-labelledby="engine-heading">
@@ -72,9 +75,9 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Continuous engine</p>
           <h2 id="engine-heading" className="mt-1.5 flex flex-wrap items-center gap-2.5 text-xl font-semibold text-ink">
-            <span aria-hidden="true" className={`inline-block h-2.5 w-2.5 rounded-full ${st.health === 'running' ? 'animate-pulse bg-success' : st.health === 'attention' ? 'bg-alarm' : st.health === 'delayed' ? 'bg-caution' : 'bg-faint'}`} />
+            <span aria-hidden="true" className={`inline-block h-2.5 w-2.5 rounded-full ${st.health === 'running' ? 'animate-pulse bg-success' : st.health === 'attention' ? 'bg-alarm' : st.health === 'waiting' ? 'bg-caution' : 'bg-faint'}`} />
             {st.label || (running ? 'Running' : 'Paused')}
-            <Badge tone={HEALTH_TONE[st.health] || 'neutral'}>{st.health === 'running' ? 'Healthy' : st.health === 'paused' ? 'Switched off' : st.health === 'delayed' ? 'Behind schedule' : 'Action needed'}</Badge>
+            <Badge tone={HEALTH_TONE[st.health] || 'neutral'}>{HEALTH_BADGE[st.health] || 'Action needed'}</Badge>
           </h2>
           <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted">
             {st.rotation?.enabled ? <EngineCopy rotation={st.rotation} /> : (
@@ -101,7 +104,7 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
           [Radio, 'Active scope', scope.short],
           [Clock, 'Currently processing', st.currentlyProcessing || '—'],
           [Clock, 'Last pass', state.lastRunAt ? `${clock(state.lastRunAt)} · ${ago(state.lastRunAt)}` : 'No pass yet'],
-          [Clock, 'Next pass', next],
+          [Clock, waiting ? 'Next attempt' : 'Next pass', next],
         ].map(([Icon, label, value]: any) => (
           <div key={label} className="flex items-start gap-3">
             <span aria-hidden="true" className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted"><Icon size={15} /></span>
@@ -112,6 +115,18 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
           </div>
         ))}
       </dl>
+
+      {waiting && (
+        <div role="status" className="mt-5 rounded-lg border border-rule bg-surface-2 px-3.5 py-3 text-[13px]">
+          <p className="font-semibold text-ink">Waiting for source recovery</p>
+          <dl className="mt-1.5 space-y-0.5 text-ink-2">
+            <div className="flex gap-2"><dt className="w-40 shrink-0 text-muted">Next eligible source</dt><dd className="font-medium text-ink">{st.waiting?.next ? `${st.waiting.next.group} · ${st.waiting.next.label}` : 'none has a time yet'}</dd></div>
+            <div className="flex gap-2"><dt className="w-40 shrink-0 text-muted">Next attempt</dt><dd className="font-medium tabular-nums text-ink">{st.waiting?.nextAttemptAt ? `${clock(st.waiting.nextAttemptAt)} · ${inFuture(st.waiting.nextAttemptAt)}` : 'checked again at every tick, until a source is free'}</dd></div>
+            {st.waiting?.since && <div className="flex gap-2"><dt className="w-40 shrink-0 text-muted">Waiting since</dt><dd className="tabular-nums text-ink">{clock(st.waiting.since)} · {ago(st.waiting.since)}</dd></div>}
+          </dl>
+          <p className="mt-1.5 text-[12px] text-muted">Nothing is wrong with the engine: each source is resting, rate limited or caught up, and the engine asks it again by itself. It does not log a row for every minute it waits.</p>
+        </div>
+      )}
 
       <p className="mt-5 text-[13px] text-ink-2">
         <span className="font-semibold text-ink">Last 24 hours:</span>{' '}
@@ -130,8 +145,8 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
       )}
 
       {(st.reasons?.length > 0 || st.sources?.some((s: any) => s.status !== 'ok')) && (
-        <div role="status" className={`mt-4 rounded-lg border px-3.5 py-3 text-[13px] ${st.health === 'attention' ? 'border-alarm/40 bg-alarm-soft text-ink' : 'border-caution/40 bg-caution-soft text-ink'}`}>
-          <p className="flex items-center gap-2 font-semibold"><AlertTriangle size={15} aria-hidden="true" className={st.health === 'attention' ? 'text-alarm' : 'text-caution'} /> {st.health === 'attention' ? 'Needs attention' : 'Worth knowing'}</p>
+        <div role="status" className={`mt-4 rounded-lg border px-3.5 py-3 text-[13px] ${st.health === 'attention' ? 'border-alarm/40 bg-alarm-soft text-ink' : st.health === 'waiting' ? 'border-rule bg-surface-2 text-ink' : 'border-caution/40 bg-caution-soft text-ink'}`}>
+          <p className="flex items-center gap-2 font-semibold"><AlertTriangle size={15} aria-hidden="true" className={st.health === 'attention' ? 'text-alarm' : st.health === 'waiting' ? 'text-muted' : 'text-caution'} /> {st.health === 'attention' ? 'Needs attention' : st.health === 'waiting' ? 'Which sources, and why' : 'Worth knowing'}</p>
           <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-ink-2">
             {st.reasons?.map((r: string) => <li key={r}>{r}</li>)}
             {!st.rotation?.enabled && st.sources?.filter((s: any) => s.status === 'delayed').map((s: any) => <li key={s.source}>{s.source}: source temporarily delayed{s.pausedUntil ? ` until ${clock(s.pausedUntil)}` : ''}. The rest of the engine carries on.</li>)}

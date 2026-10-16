@@ -42,7 +42,7 @@ export async function readQuota(prisma: PrismaClient, sessionId: string, now: Da
 }
 
 /** Event codes kept beside the messages, so usage can be read from the same tables. No text, no personal data. */
-export type AssistantEvent = 'local:greeting' | 'local:thanks' | 'local:quote' | 'model:timeout' | 'model:error' | 'quota:reached';
+export type AssistantEvent = 'local:greeting' | 'local:thanks' | 'local:quote' | 'model:timeout' | 'model:error' | 'model:fallback' | 'quota:reached';
 
 /** Best effort and never in the way of a reply. Stored as role "event", which the model history ignores. */
 export async function recordEvent(prisma: PrismaClient, sessionId: string, code: AssistantEvent): Promise<void> {
@@ -71,6 +71,8 @@ export async function usageSummary(prisma: PrismaClient, days = 7) {
     localZeroTokenReplies: by('event', 'local:greeting') + by('event', 'local:thanks') + by('event', 'local:quote'),
     modelTimeouts: by('event', 'model:timeout'),
     modelErrors: by('event', 'model:error'),
+    /** Questions a second provider answered after the first failed. Still one question each. */
+    modelFallbacks: by('event', 'model:fallback'),
     quotaReached: by('event', 'quota:reached'),
     conversations: conv[0]?.conversations ?? 0,
     conversationsWithLead: conv[0]?.with_lead ?? 0,

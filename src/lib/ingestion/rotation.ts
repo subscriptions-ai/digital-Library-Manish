@@ -4,7 +4,7 @@ import { sourceHealthState, recordSourceFailure, classifyFailure, type ErrorKind
 import { providerHolder, tryLockProvider, unlockProvider } from './providerLocks.js';
 import { createRunWithStats, runColumnsFromStats, type DeptStats } from './departmentStats.js';
 import {
-  GROUPS, loadRotationState, saveRotationState, runtimeOf, type Group, type RotationState, type BatchSummary,
+  GROUPS, loadRotationState, saveRotationState, runtimeOf, type Group, type RotationState, type BatchSummary, type IdleState,
 } from './rotationState.js';
 
 /**
@@ -387,18 +387,87 @@ async function applyLedger(group: Group, o: TurnRan) {
 
 // ── The pass ────────────────────────────────────────────────────────────────
 
-export type PassOptions = { only?: 'journals' | 'articles' | 'books'; wanted: string[]; narrowed: boolean; state: any };
+export type PassOptions = {
+  only?: 'journals' | 'articles' | 'books'; wanted: string[]; narrowed: boolean; state: any;
+  /** "Run extra pass now": look at once, whatever the engine is sleeping on. */
+  force?: boolean;
+  /** Counts the pass in the engine's own counter. Called only when the engine actually looked — a pass that slept through is not one. */
+  countPass?: () => Promise<unknown>;
+};
+
+/** Changes whenever something that could make a sleeping engine's picture wrong changes: how it is set, which sources are switched on, a restart. */
+const BOOT = Date.now();
+function fingerprintOf(opts: PassOptions): string {
+  const st = opts.state || {};
+  const wired = registry.map(p => `${p.id}:${p.configured?.() === true ? 1 : 0}${p.rotationOff?.() ? 0 : 1}`).join(',');
+  return JSON.stringify([opts.only ?? null, opts.wanted, opts.narrowed, st.journalsPerPass ?? null, st.articlesPerPass ?? null, st.booksPerPass ?? null, st.batchSize ?? null, st.bookMinYear ?? null, wired, BOOT]);
+}
+
+/**
+ * When the first source that cannot be asked now can be asked again, worked out the way a turn decides (availability), asking nothing.
+ *
+ *   `next`   the soonest known time, and whose it is. Sources that never come back by themselves (not connected, switched off, left out of the
+ *            rotation) and the targeted-coverage engine (not a source) are not candidates.
+ *   `open`   something blocks a source with no end time — a Quick Import is on it, its books are waiting for review — or a source is available
+ *            and simply had nothing: not a thing to sleep through; the engine looks again at the next tick.
+ */
+export function earliestRetry(list: ProviderDef[], avail: Map<string, Availability>): { next: NonNullable<IdleState['next']> | null; open: boolean } {
+  let next: NonNullable<IdleState['next']> | null = null;
+  let open = false;
+  for (const p of list) {
+    if (p.id === 'targeted') continue;
+    const a = avail.get(p.id);
+    if (!a) continue;
+    if (a.state === 'ok') { open = true; continue; }
+    if (a.kind === 'not-configured') continue;
+    if (!a.until) { open = true; continue; }
+    if (!next || a.until.getTime() < new Date(next.at).getTime()) next = { group: p.group, provider: p.id, label: p.label, at: a.until.toISOString(), reason: a.reason };
+  }
+  return { next, open };
+}
+
+const nextLine = (n: IdleState['next']) => (n ? `Next eligible source: ${n.group} · ${n.label} · Next attempt: ${fmtClock(new Date(n.at))}` : null);
+
+async function availabilityMap(s: RotationState): Promise<Map<string, Availability>> {
+  const m = new Map<string, Availability>();
+  for (const p of registry) m.set(p.id, await availability(p, s));
+  return m;
+}
+
+/** Forget that the engine was sleeping, so the next tick looks afresh. Called when an administrator changes how the engine is set or switches it on. */
+export async function wakeEngine(): Promise<void> {
+  const s = await loadRotationState();
+  if (!s.idle) return;
+  // Not forgotten, only made stale: the next tick looks afresh, and if the picture is the same as before it adds nothing to the run log.
+  s.idle.fingerprint = 'woken';
+  s.idle.nextAt = null;
+  await saveRotationState(s);
+}
 
 /**
  * One tick. Takes the next content type in turn; if none of its sources can be asked it moves to the next type in the same
  * tick, so a dead family costs no time. Returns what ran, or why nothing did.
+ *
+ * When NOTHING can be asked at all, the engine does not keep announcing it. The first such tick works out when the soonest source comes back
+ * and records it (one run-log row, one rotation-state record); the ticks after that, until then, do no work and write nothing — they
+ * answer from that record. It wakes at the time the soonest source can be asked, when an administrator changes the settings or switches the
+ * engine on, when a source is switched on, when the server restarts, or at once for "Run extra pass now".
  */
 export async function runRotationPass(opts: PassOptions) {
   const s = await loadRotationState();
+  const fp = fingerprintOf(opts);
+
+  // Sleeping: nothing to do before `nextAt`, and nothing about the engine has changed since that was worked out.
+  const idle = s.idle;
+  if (!opts.force && idle && idle.nextAt && !idle.open && idle.fingerprint === fp && Date.now() < Date.parse(idle.nextAt)) {
+    return { ran: false as const, phase: 'Idle', sleeping: true as const, note: idleNote(idle), waiting: [], idle: [], failed: [], nextAt: idle.nextAt, next: idle.next };
+  }
+  await opts.countPass?.();
+
   const groups = opts.only ? GROUPS.filter(g => g.toLowerCase() === opts.only) : GROUPS;
   const base = { state: opts.state, wanted: opts.wanted, narrowed: opts.narrowed };
   const waiting: { group: Group; reason: string }[] = [];
-  const idle: Group[] = [];
+  const idleGroups: Group[] = [];
   const failed: Group[] = [];
   const first = opts.only ? 0 : s.typeCursor % groups.length;
 
@@ -406,19 +475,39 @@ export async function runRotationPass(opts: PassOptions) {
     const g = groups[(first + i) % groups.length];
     const r = await runTypeTurn(g, s, base);
     if (!opts.only) s.typeCursor = (GROUPS.indexOf(g) + 1) % GROUPS.length;
-    if ('provider' in r) { await saveRotationState(s); return { ...r, phase: g, source: r.label, ...r.outcome }; }
-    if (r.failed) failed.push(g); else if (r.waiting) waiting.push({ group: g, reason: r.reason }); else idle.push(g);
+    if ('provider' in r) { s.idle = null; await saveRotationState(s); return { ...r, phase: g, source: r.label, ...r.outcome }; }
+    if (r.failed) failed.push(g); else if (r.waiting) waiting.push({ group: g, reason: r.reason }); else idleGroups.push(g);
   }
-  await saveRotationState(s);
-  // A pass that decided to do nothing is still a pass, and leaves the same trace as any other.
+
+  // Nothing ran. Say so once, with when it will be worth looking again.
+  const { next, open } = earliestRetry(registry, await availabilityMap(s));
+  // Groups are listed in a fixed order: which type takes the turn first moves round at every tick, and the same picture must not read as a new one for that.
+  const byGroup = (a: Group, b: Group) => GROUPS.indexOf(a) - GROUPS.indexOf(b);
+  const cause: IdleState['cause'] = waiting.length || failed.length ? 'recovery' : 'caught-up';
   const note = [
     failed.length ? `A source did not answer for ${failed.join(', ')}; it will be tried again` : null,
-    waiting.length ? `Waiting for source recovery: ${waiting.map(w => `${w.group} (${w.reason})`).join(' | ')}` : null,
+    waiting.length ? `Waiting for source recovery: ${[...waiting].sort((a, b) => byGroup(a.group, b.group)).map(w => `${w.group} (${w.reason})`).join(' | ')}` : null,
     !failed.length && !waiting.length ? 'Every source is up to date for now' : null,
+    nextLine(next),
   ].filter(Boolean).join(' · ');
-  await createRunWithStats({ phase: 'Idle', note: note.slice(0, 900) }, null);
-  await db.ingestionState.update({ where: { id: 'singleton' }, data: { phase: 'Idle', currentDepartment: null, currentJournal: null, lastRunAt: new Date(), lastError: null } }).catch(() => {});
-  return { ran: false as const, phase: 'Idle', note, waiting, idle, failed };
+  // What the picture IS, apart from the wording of the clock: the same sources resting for the same reasons until the same times is the same picture.
+  const signature = JSON.stringify([cause, [...failed].sort(byGroup), waiting.map(w => w.group).sort(byGroup), next ? [next.provider, next.at] : null, open]);
+  const changed = !s.idle || s.idle.signature !== signature;
+  s.idle = { since: s.idle?.since ?? new Date().toISOString(), signature, nextAt: !open && next ? next.at : null, next, open, fingerprint: fp, cause, note: note.slice(0, 900) };
+  if (changed) {
+    // One row for each distinct picture, not one per tick.
+    await createRunWithStats({ phase: 'Idle', note: note.slice(0, 900) }, null);
+    await db.ingestionState.update({ where: { id: 'singleton' }, data: { phase: 'Idle', currentDepartment: null, currentJournal: null, lastRunAt: new Date(), lastError: null } }).catch(() => {});
+    await saveRotationState(s);
+  } else if (idle?.fingerprint !== fp || idle?.nextAt !== s.idle.nextAt) {
+    await saveRotationState(s);       // same picture; remember only that the settings it was judged under, or its time, moved
+  }
+  return { ran: false as const, phase: 'Idle', sleeping: false as const, note, waiting, idle: idleGroups, failed, nextAt: s.idle.nextAt, next };
+}
+
+function idleNote(i: IdleState): string {
+  if (i.note) return i.note;
+  return [i.cause === 'recovery' ? 'Waiting for source recovery' : 'Every source is up to date for now', nextLine(i.next)].filter(Boolean).join(' · ');
 }
 
 // ── What the screen shows ───────────────────────────────────────────────────
@@ -449,6 +538,10 @@ export type RotationStatus = {
   groups: Record<Group, { current: string | null; next: string | null; waiting: boolean; waitingReason: string | null; retryAt: string | null; batchSize: number }>;
   providers: ProviderStatus[];
   running: { group: Group; provider: string; label: string; since: string } | null;
+  /** Set while the engine has nothing it can ask and is sleeping until `idle.nextAt`; null whenever any source is working. */
+  idle: IdleState | null;
+  /** The source that can be asked again soonest, worked out now, whatever the engine is doing. */
+  next: IdleState['next'];
   updatedAt: string | null;
 };
 
@@ -498,6 +591,8 @@ export async function rotationStatus(opts: { state?: any } = {}): Promise<Rotati
   return {
     batchSize: cfg.batchSize, failuresBeforeFallback: cfg.failuresBeforeFallback, zeroYieldBatches: cfg.zeroYieldBatches, groups, providers,
     running: s.running && run ? { group: s.running.group, provider: run.id, label: run.label, since: s.running.since } : null,
+    idle: s.idle ?? null,
+    next: earliestRetry(registry, avail).next,
     updatedAt: s.updatedAt,
   };
 }

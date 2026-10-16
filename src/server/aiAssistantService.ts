@@ -1,5 +1,3 @@
-import { Type } from '@google/genai';
-import type { Content, FunctionDeclaration } from '@google/genai';
 import dotenv from 'dotenv';
 import type { PrismaClient } from '@prisma/client';
 import { COMPANY_DETAILS } from '../config.js';
@@ -22,7 +20,10 @@ import {
 import { searchContent } from '../lib/catalogueSearch.js';
 import { contentTypeCounts } from '../lib/publicCounts.js';
 import { aiConfig } from './aiAssistantConfig.js';
-import { categorizeProviderError, resolveActiveAIConfig, type ErrorCategory } from './aiProviderConfig.js';
+import { resolveProviders } from './aiProviderConfig.js';
+import { ProviderError, categorizeProviderError, type ErrorCategory } from './ai/errors.js';
+import { canAttempt, loadRuntime, recordFailure, recordRoute, recordSuccess } from './ai/runtime.js';
+import type { AIProvider, ProviderId, StepRequest, ToolCall, ToolSpec, Turn } from './ai/types.js';
 
 dotenv.config();
 
@@ -230,23 +231,19 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: ToolCon
   }
 }
 
-const TOOL_DECLARATIONS: FunctionDeclaration[] = [
+/**
+ * The grounding tools, described once in plain JSON Schema. Gemini and Grok both receive exactly these, and both run through the same
+ * `runTool` below, so a fallback answer is grounded in the same catalogue, rate cards and company data as a primary one.
+ */
+const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'get_subscription_pricing',
     description: 'Subscription pricing in INR from the checkout rate cards. Plans: "institutional" (college or organisation, per-department yearly rate, volume tiers, GST) and "solo" (one learner, lower rate from 5 departments). Use for any cost, plan or quote question.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
-        plan: {
-          type: Type.STRING,
-          description: 'Omit for both plans.',
-          enum: ['institutional', 'solo'],
-        },
-        departments: {
-          type: Type.INTEGER,
-          description: 'Departments wanted, for a concrete quote.',
-          minimum: 1,
-        },
+        plan: { type: 'string', description: 'Omit for both plans.', enum: ['institutional', 'solo'] },
+        departments: { type: 'integer', description: 'Departments wanted, for a concrete quote.', minimum: 1 },
       },
     },
   },
@@ -254,31 +251,26 @@ const TOOL_DECLARATIONS: FunctionDeclaration[] = [
     name: 'search_catalogue',
     description: 'Search the published catalogue (journals, articles, e-books, theses, proceedings, videos, newsletters). Returns titles, authors, domain, type.',
     parameters: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
-        query: { type: Type.STRING, description: 'Title, author, subject or domain.', minLength: '2' },
-        domain: { type: Type.STRING, description: 'Department filter.' },
-        contentType: { type: Type.STRING, description: 'Type filter, e.g. "Journals" or "Books".' },
+        query: { type: 'string', description: 'Title, author, subject or domain.', minLength: 2 },
+        domain: { type: 'string', description: 'Department filter.' },
+        contentType: { type: 'string', description: 'Type filter, e.g. "Journals" or "Books".' },
       },
       required: ['query'],
     },
   },
-  {
-    name: 'get_library_overview',
-    description: 'Size of the collection by kind, and the departments covered.',
-    parameters: { type: Type.OBJECT, properties: {} },
-  },
-  {
-    name: 'get_company_info',
-    description: 'Public contact details: website, email, phone, WhatsApp, address.',
-    parameters: { type: Type.OBJECT, properties: {} },
-  },
+  { name: 'get_library_overview', description: 'Size of the collection by kind, and the departments covered.', parameters: { type: 'object', properties: {} } },
+  { name: 'get_company_info', description: 'Public contact details: website, email, phone, WhatsApp, address.', parameters: { type: 'object', properties: {} } },
 ];
+
+/** One provider's try at an answer, as the route and the admin metrics see it. Categories only: never text, never a key. */
+export type Attempt = { provider: ProviderId; outcome: 'answered' | 'failed' | 'skipped_circuit' | 'skipped_unconfigured'; category?: ErrorCategory; ms?: number };
 
 /** Why the assistant could not answer. Neither kind costs the visitor a question. */
 export class AssistantError extends Error {
-  /** `category` is the safe classification of a provider failure (never its text), for the admin status panel. */
-  constructor(public kind: 'timeout' | 'provider', message: string, public category?: ErrorCategory) { super(message); this.name = 'AssistantError'; }
+  /** `category` is the safe classification of the last provider failure (never its text); `attempts` is every provider tried or skipped. */
+  constructor(public kind: 'timeout' | 'provider', message: string, public category?: ErrorCategory, public attempts: Attempt[] = []) { super(message); this.name = 'AssistantError'; }
 }
 
 /** The earlier messages worth sending: the last few, masked and cut, starting at a visitor message. */
@@ -288,79 +280,119 @@ export function trimHistory(history: { role: string; content: string }[], max: n
   return recent.map(m => ({ role: m.role, content: maskPII(m.content).slice(0, HISTORY_MESSAGE_CHARS) }));
 }
 
+/**
+ * One provider's whole answer to one question: the shared conversation, the shared tools, the shared rounds. A provider only takes the
+ * steps; what is asked of it, and what is done with a tool request, is decided here and is the same for every provider.
+ */
+async function converse(
+  provider: AIProvider, base: Turn[], cfg: ReturnType<typeof aiConfig>, signal: AbortSignal,
+  lookup: (calls: ToolCall[]) => Promise<{ call: ToolCall; output: Record<string, unknown> }[]>,
+): Promise<string> {
+  const turns: Turn[] = [...base];               // a private copy: a fallback starts from the same question, not from this provider's tool rounds
+  const req = (allowTools: boolean): StepRequest => ({
+    system: SYSTEM_PROMPT, turns, tools: TOOL_SPECS, allowTools, temperature: 0.3, // keep it grounded
+    maxOutputTokens: cfg.maxOutputTokens, thinkingBudget: cfg.thinkingBudget, signal,
+  });
+  const answerTools = async (calls: ToolCall[], raw: unknown) => {
+    const used = calls.slice(0, MAX_CALLS_PER_ROUND);
+    turns.push({ role: 'assistant_calls', calls: used, raw });
+    turns.push({ role: 'tool_results', results: await lookup(used) });
+  };
+  let step = await provider.generate(req(true));
+  // Tool rounds, bounded: by default one lookup, then the answer.
+  for (let round = 0; round < cfg.maxToolRounds && step.calls.length; round++) {
+    await answerTools(step.calls, step.raw);
+    step = await provider.generate(req(true));
+  }
+  // A model still asking for tools has used its rounds: run those lookups and make it answer from them.
+  if (step.calls.length) {
+    await answerTools(step.calls, step.raw);
+    step = await provider.generate(req(false));
+  }
+  const text = step.text.trim();
+  if (!text) throw new ProviderError('UNKNOWN_PROVIDER_ERROR');
+  return text;
+}
+
 export async function generateAssistantResponse(
   conversationHistory: { role: string; content: string }[],
   userMessage: string,
   options: AssistantOptions
 ) {
   const cfg = aiConfig();
-  // The key and model in force right now (Admin configuration, else the server environment), resolved per request so a change
-  // made in the Admin panel applies to the next question with no restart.
-  const active = await resolveActiveAIConfig(options.prisma);
-  const ai = active.client();
-  if (!ai) throw new AssistantError('provider', 'No AI credential is configured.');
-  const model = active.model;
-  // 1. Mask PII before it goes anywhere near the model.
+  // The providers in force right now (Admin configuration, else the server environment), resolved per request so a change made in the
+  // Admin panel applies to the next question with no restart.
+  const plan = await resolveProviders(options.prisma);
+  await loadRuntime(options.prisma);
+  // 1. Mask PII before it goes anywhere near any model. Every provider receives this same privacy-controlled input.
   const sanitizedMessage = maskPII(userMessage);
 
-  // 2. Prepare the conversation: the question and, for continuity, only the last exchange. Never the transcript.
-  const contents: Content[] = trimHistory(conversationHistory, cfg.historyMessages).map(msg => ({
-    role: msg.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: msg.content }],
-  }));
-  contents.push({ role: 'user', parts: [{ text: sanitizedMessage }] });
+  // 2. Prepare the conversation once: the question and, for continuity, only the last exchange. Never the transcript.
+  const base: Turn[] = trimHistory(conversationHistory, cfg.historyMessages).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', text: m.content }) as Turn);
+  base.push({ role: 'user', text: sanitizedMessage });
 
-  // One deadline for the whole answer, tool lookups included; aborting it also cancels the call in flight.
-  const deadline = new AbortController();
-  const timer = setTimeout(() => deadline.abort(), cfg.timeoutMs);
-  const config = {
-    systemInstruction: SYSTEM_PROMPT,
-    temperature: 0.3, // keep it grounded
-    maxOutputTokens: cfg.maxOutputTokens,
-    abortSignal: deadline.signal,
-    ...(cfg.thinkingBudget !== null ? { thinkingConfig: { thinkingBudget: cfg.thinkingBudget } } : {}),
-    tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
-  };
-  const call = (c: typeof config | (Omit<typeof config, 'tools'> & { tools?: undefined; toolConfig?: unknown })) =>
-    ai.models.generateContent({ model, contents, config: c as any });
-  /** Run what the model asked for, server-side, and hand the results back as function responses. */
-  const answerTools = async (response: Awaited<ReturnType<typeof call>>) => {
-    contents.push({ role: 'model', parts: response.candidates?.[0]?.content?.parts ?? [] });
-    const toolResults = [];
-    for (const fc of (response.functionCalls ?? []).slice(0, MAX_CALLS_PER_ROUND)) {
-      const result = await runTool(fc.name ?? '', (fc.args ?? {}) as Record<string, unknown>, {
-        prisma: options.prisma,
-        pricingVisible: options.pricingVisible !== false,
-      });
-      toolResults.push({ functionResponse: { name: fc.name ?? '', response: { output: result } } });
+  // Tool results are remembered for this one question, so a fallback provider reuses the lookups the first one already made.
+  const memo = new Map<string, Record<string, unknown>>();
+  const lookup = async (calls: ToolCall[]) => {
+    const out: { call: ToolCall; output: Record<string, unknown> }[] = [];
+    for (const call of calls) {
+      const key = `${call.name}:${JSON.stringify(call.args)}`;
+      let output = memo.get(key);
+      if (!output) {
+        output = await runTool(call.name, call.args, { prisma: options.prisma, pricingVisible: options.pricingVisible !== false });
+        memo.set(key, output);
+      }
+      out.push({ call, output });
     }
-    contents.push({ role: 'user', parts: toolResults });
+    return out;
   };
 
-  try {
-    let response = await call(config);
-    // 3. Tool rounds, bounded: by default one lookup, then the answer.
-    for (let round = 0; round < cfg.maxToolRounds && response.functionCalls?.length; round++) {
-      await answerTools(response);
-      response = await call(config);
-    }
-    // A model still asking for tools has used its rounds: run those lookups and make it answer from them.
-    if (response.functionCalls?.length) {
-      await answerTools(response);
-      response = await call({ ...config, tools: undefined, toolConfig: { functionCallingConfig: { mode: 'NONE' } } } as any);
-    }
+  // 3. Primary first; the fallback only if the primary did not answer. Sequential: never both at once, so there is no double cost.
+  const order: ProviderId[] = [plan.primary, ...(plan.fallbackEnabled ? [plan.fallback] : [])];
+  const attempts: Attempt[] = [];
+  const started = Date.now();
+  let answer: { text: string; provider: ProviderId } | null = null;
+  let lastCategory: ErrorCategory | undefined;
 
-    const text = (response.text || '').trim();
-    if (!text) throw new AssistantError('provider', 'The model returned no text');
-    return { text, sanitizedInput: sanitizedMessage };
-  } catch (error) {
-    if (error instanceof AssistantError) throw error;
-    if (deadline.signal.aborted) throw new AssistantError('timeout', 'The assistant took too long to answer.');
-    // Only the category is logged: a provider's error text is not ours to repeat, and may echo request details.
-    const category = categorizeProviderError(error);
-    console.error('AI Assistant provider error:', category);
-    throw new AssistantError('provider', 'AI Assistant is temporarily unavailable.', category);
-  } finally {
-    clearTimeout(timer);
+  for (const id of order) {
+    const resolved = plan.byId[id];
+    const provider = resolved.provider();
+    if (!provider) { attempts.push({ provider: id, outcome: 'skipped_unconfigured' }); continue; }
+    // A provider that is resting is not asked: nobody waits on a provider already known to be failing. One request is let through as the probe.
+    if (!canAttempt(id).allow) { attempts.push({ provider: id, outcome: 'skipped_circuit', category: 'CIRCUIT_OPEN' }); lastCategory ??= 'CIRCUIT_OPEN'; continue; }
+    const left = cfg.totalTimeoutMs - (Date.now() - started);
+    if (left < 1500 && attempts.some(a => a.outcome === 'failed')) break;      // not worth starting another provider with no time left
+    const budget = Math.max(1000, Math.min(id === plan.primary ? cfg.timeoutMs : cfg.fallbackTimeoutMs, left));
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), budget);
+    const t0 = Date.now();
+    try {
+      const text = await converse(provider, base, cfg, deadline.signal, lookup);
+      const ms = Date.now() - t0;
+      recordSuccess(id, ms);
+      attempts.push({ provider: id, outcome: 'answered', ms });
+      answer = { text, provider: id };
+      break;
+    } catch (error) {
+      const category: ErrorCategory = error instanceof ProviderError ? error.category : categorizeProviderError(error, deadline.signal.aborted);
+      recordFailure(id, deadline.signal.aborted ? 'TIMEOUT' : category, Date.now(), error instanceof ProviderError ? error.status : undefined);
+      attempts.push({ provider: id, outcome: 'failed', category: deadline.signal.aborted ? 'TIMEOUT' : category, ms: Date.now() - t0 });
+      lastCategory = deadline.signal.aborted ? 'TIMEOUT' : category;
+      // Only the category is logged: a provider's error text is not ours to repeat, and may echo request details.
+      console.error(`AI Assistant provider error (${id}):`, lastCategory);
+    } finally {
+      clearTimeout(timer);
+    }
   }
+
+  const primaryAnswered = attempts.some(a => a.provider === plan.primary && a.outcome === 'answered');
+  const fallbackTried = order.length > 1 && attempts.some(a => a.provider === plan.fallback && (a.outcome === 'answered' || a.outcome === 'failed'));
+  recordRoute({ primaryOk: primaryAnswered, fallbackTried, fallbackOk: !!answer && answer.provider !== plan.primary });
+
+  if (answer) return { text: answer.text, sanitizedInput: sanitizedMessage, provider: answer.provider, attempts };
+
+  const failed = attempts.filter(a => a.outcome === 'failed');
+  // Every provider that was asked ran out of time: the visitor is told it is slow, not broken (as before there was a fallback).
+  if (failed.length && failed.every(a => a.category === 'TIMEOUT')) throw new AssistantError('timeout', 'The assistant took too long to answer.', 'TIMEOUT', attempts);
+  throw new AssistantError('provider', 'AI Assistant is temporarily unavailable.', lastCategory ?? 'UNKNOWN_PROVIDER_ERROR', attempts);
 }

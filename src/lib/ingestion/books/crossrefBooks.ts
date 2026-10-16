@@ -11,7 +11,7 @@ import type { NormalisedBook } from './normalise.js';
  *   · the department is decided by the same classifier as every other book — and Crossref carries no controlled classification code, so a
  *     Crossref book can at best be "review" (words alone never auto-publish). That ceiling is deliberate, not a gap to loosen.
  *
- * Only the book family is asked for (book, monograph, edited-book, reference-book, textbook). `book-chapter` records are not catalogued as
+ * Only the book family is asked for (book, monograph, edited-book, reference-book). `book-chapter` records are not catalogued as
  * books: a chapter is a part of a book we may hold under its own DOI, and listing each one as a title would inflate the catalogue and bury
  * the books. Chapter linking is a separate piece of work.
  *
@@ -19,8 +19,10 @@ import type { NormalisedBook } from './normalise.js';
  * health row as the article and journal sources governs it: if Crossref is resting, this rests too.
  */
 export const CROSSREF_WORKS = 'https://api.crossref.org/works';
-export const CROSSREF_BOOK_TYPES = ['book', 'monograph', 'edited-book', 'reference-book', 'textbook'] as const;
-const SELECT = 'DOI,title,subtitle,author,editor,publisher,issued,published,published-print,published-online,language,ISBN,subject,type,abstract,URL,indexed,license';
+export const CROSSREF_BOOK_TYPES = ['book', 'monograph', 'edited-book', 'reference-book'] as const;
+// `language` is not on Crossref's list of selectable fields for /works (asking for it is a 400 that names the valid ones), and `textbook` is not one of
+// its record types — both were found by running this against the live service. A book's language is therefore unknown here (null), never guessed.
+const SELECT = 'DOI,title,subtitle,author,editor,publisher,issued,published,published-print,published-online,ISBN,subject,type,abstract,URL,indexed,license';
 
 const contact = () => process.env.OPENALEX_CONTACT || 'info@celnet.in';
 const strip = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();

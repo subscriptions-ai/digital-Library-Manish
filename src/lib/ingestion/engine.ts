@@ -1,8 +1,8 @@
 import { ingestionDb as db } from './db.js';
 import { getState, runIngestionPass } from '../ingestionWorker.js';
-import { runRotationPass } from './rotation.js';
+import { runRotationPass, wakeEngine } from './rotation.js';
 import { installProviders, getRoadAdapter } from './providers.js';
-export { getRoadAdapter };
+export { getRoadAdapter, wakeEngine };
 import { createRunWithStats } from './departmentStats.js';
 
 /**
@@ -33,8 +33,10 @@ export async function runEnginePass(
     const wanted: string[] = opts.departments?.length ? opts.departments : stored.length ? stored : departments;
     const narrowed = Boolean(opts.departments?.length || stored.length);
     const only = opts.only ?? (state.focus && state.focus !== 'auto' ? (state.focus as 'journals' | 'articles' | 'books') : undefined);
-    await db.ingestionState.update({ where: { id: 'singleton' }, data: { passCount: { increment: 1 } } }).catch(() => {});
-    return await runRotationPass({ only, wanted, narrowed, state });
+    // The pass is counted once the engine has actually looked. A tick that finds the engine asleep (nothing can be asked until a known time)
+    // is not a pass, and writes nothing — see runRotationPass.
+    const countPass = () => db.ingestionState.update({ where: { id: 'singleton' }, data: { passCount: { increment: 1 } } }).catch(() => {});
+    return await runRotationPass({ only, wanted, narrowed, state, force: !!opts.force, countPass });
   } catch (e: any) {
     await db.ingestionState.update({ where: { id: 'singleton' }, data: { lastError: String(e?.message || e).slice(0, 1000), lastRunAt: new Date(), consecutiveFailures: { increment: 1 } } }).catch(() => {});
     // A pass that threw is the one most worth having a record of.
