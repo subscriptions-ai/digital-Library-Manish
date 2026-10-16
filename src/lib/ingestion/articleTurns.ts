@@ -1,4 +1,5 @@
 import { releaseClaim } from './claims.js';
+import { articleMinYear } from './yearPolicy.js';
 import { INGESTION_POLICY, days, schedulerV2 } from './policy.js';
 import { SourceError, fetchCrossrefForJournal } from './articleSources.js';
 import { judgeVerifyWrite } from './articlePipeline.js';
@@ -42,7 +43,7 @@ const sourceLabel = { openalex: 'OpenAlex', crossref: 'Crossref' } as const;
 
 /** Crossref, one journal: its articles by ISSN, judged and written by the shared pipeline, the journal's row kept as the engine keeps it. */
 export async function visitJournalCrossref(journal: any, state: any, cap: number, v2: boolean, recovered: boolean, rowsBudget: number): Promise<Visit> {
-  const fromYear = new Date().getFullYear() - (state.yearsBack - 1);
+  const fromYear = articleMinYear(state);                // the article policy year: Crossref is asked for nothing older
   const remaining = cap > 0 ? Math.max(0, cap - (journal.articleCount || 0)) : Number.POSITIVE_INFINITY;
   const rows = Math.max(10, Math.min(INGESTION_POLICY.articles.pageMax, cap > 0 ? Math.max(remaining, INGESTION_POLICY.articles.pageMin) : state.batchSize, rowsBudget));
   const offset = Number(readCursor(journal.fetchCursor, 'crossref')) || 0;

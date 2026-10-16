@@ -148,8 +148,33 @@ export type DepartmentVerdict = {
   families: string[];
 };
 
+/**
+ * National Library of Medicine classification → department. A controlled code like LCC, so it counts as one: "WY 100" is a nursing book
+ * because the National Library of Medicine shelved it under nursing, not because its title says so.
+ * Only the schedules that point at one of our departments without doubt are mapped; the rest return null and the classifier uses words.
+ */
+export function departmentFromNlm(call: string): string | null {
+  const m = /^\s*([A-Z]{1,2})\s*(\d+(?:\.\d+)?)?/.exec(String(call || '').toUpperCase());
+  if (!m) return null;
+  const cls = m[1], num = m[2] ? parseFloat(m[2]) : null;
+  switch (cls) {
+    case 'WY': return 'Nursing';
+    case 'WU': return 'Dental';
+    case 'QV': return 'Pharmacy';                                   // pharmacology and pharmacy
+    case 'QU': case 'QW': case 'QX': return 'Life Sciences';        // biochemistry, microbiology and immunology, parasitology
+    case 'QS': case 'QT': case 'QY': case 'QZ': return 'Medical Sciences';
+    case 'WB': return num !== null && num >= 460 && num <= 545 ? 'Physiotherapy' : 'Medical Sciences';   // WB 460–545: physical therapy
+    case 'W': case 'WA': case 'WC': case 'WD': case 'WE': case 'WF': case 'WG': case 'WH': case 'WI': case 'WJ': case 'WK': case 'WL':
+    case 'WM': case 'WN': case 'WO': case 'WP': case 'WQ': case 'WR': case 'WS': case 'WT': case 'WV': case 'WW': case 'WX': case 'WZ':
+      return 'Medical Sciences';
+  }
+  return null;
+}
+
 export type ClassifyInput = {
   classifications?: string[]; subjects?: string[]; title?: string | null; description?: string | null;
+  /** National Library of Medicine call numbers ("WY 100 W686f"), where the source gives them. */
+  nlm?: string[];
   /** Library of Congress call numbers, when the source gives them (Open Textbook Library does). */
   lcc?: string[];
 };
@@ -198,6 +223,14 @@ export function classifyDepartment(b: ClassifyInput): DepartmentVerdict {
     if (!dep || lccSeen.has(dep)) continue;
     lccSeen.add(dep);
     add(dep, W.lcc, `LCC ${call}`, 'code');
+  }
+
+  const nlmSeen = new Set<string>();
+  for (const call of b.nlm || []) {
+    const dep = departmentFromNlm(String(call));
+    if (!dep || nlmSeen.has(dep)) continue;
+    nlmSeen.add(dep);
+    add(dep, W.lcc, `NLM ${String(call).trim().slice(0, 24)}`, 'code');
   }
 
   const subjects = (b.subjects || []).join(' ; ');

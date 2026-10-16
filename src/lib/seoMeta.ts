@@ -47,7 +47,9 @@ const iso = (d?: string | Date | null) => (d ? new Date(d).toISOString() : undef
 /** "Search title" and "Search description" from the Studio, else the post's own title, excerpt, or opening words. */
 export function postSeo(p: PostSeoInput): SeoPage {
   const canonical = `${SITE_URL}/blog/${p.slug}`;
-  const image = absoluteUrl((isUsableCoverUrl(p.ogImage) && p.ogImage) || (isUsableCoverUrl(p.coverUrl) && p.coverUrl) || blogCoverFor(p.slug));
+  // The social image IS the cover (see resolveCover). A separate social-image value is only a fallback for a post that has no cover, so a stale
+  // one left on the row can never put an older picture on a shared link; and the cover is never swapped for artwork because its file is missing.
+  const image = absoluteUrl((isUsableCoverUrl(p.coverUrl) && p.coverUrl) || (isUsableCoverUrl(p.ogImage) && p.ogImage) || blogCoverFor(p.slug));
   const description = clip(plainText(p.seoDescription), 300)
     || clip(plainText(p.excerpt), 200)
     || clip(plainText(p.body), 158)

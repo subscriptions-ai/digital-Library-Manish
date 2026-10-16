@@ -64,6 +64,9 @@ export function PostEditor() {
   const [coverAlt, setCoverAlt] = useState('');
   // The address is set but the picture does not load: as good as no cover.
   const [coverBroken, setCoverBroken] = useState(false);
+  // True only when the writer pressed Remove. A cover is cleared by that, and by nothing else: a save that merely has no address in it
+  // (a post that had not finished loading) is told by the server to keep the one it has.
+  const [coverRemoved, setCoverRemoved] = useState(false);
   const [errors, setErrors] = useState<PublishProblems>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
   const coverPanel = useRef<CoverPanelHandle>(null);
@@ -119,8 +122,9 @@ export function PostEditor() {
 
   const payload = useCallback(() => ({
     title, excerpt, coverUrl: coverUrl || null, coverAlt: coverUrl ? cleanAlt(coverAlt) : null,
+    ...(coverRemoved && !coverUrl ? { removeCover: true } : {}),
     category: category || null, domains, seoTitle, seoDescription, body: editor?.getHTML() || '',
-  }), [title, excerpt, coverUrl, coverAlt, category, domains, seoTitle, seoDescription, editor]);
+  }), [title, excerpt, coverUrl, coverAlt, coverRemoved, category, domains, seoTitle, seoDescription, editor]);
 
   const published = post?.status === 'Published';
   const hasCover = !!coverUrl.trim() && !coverBroken;
@@ -403,9 +407,9 @@ export function PostEditor() {
         <div className="space-y-4 lg:sticky lg:top-[4.75rem] lg:max-h-[calc(100vh-6rem)] lg:-m-1 lg:overflow-y-auto lg:p-1">
           <CoverImagePanel ref={coverPanel}
             coverUrl={coverUrl} alt={coverAlt} postTitle={title}
-            legacy={published && !hasCover} error={errors.cover}
-            onUploaded={(url, alt) => { setCoverUrl(url); setCoverAlt(alt); setDirty(true); }}
-            onRemove={() => { setCoverUrl(''); setCoverAlt(''); setDirty(true); }}
+            legacy={published && !coverUrl.trim()} error={errors.cover}
+            onUploaded={(url, alt) => { setCoverUrl(url); setCoverAlt(alt); setCoverRemoved(false); setDirty(true); }}
+            onRemove={() => { setCoverUrl(''); setCoverAlt(''); setCoverRemoved(true); setDirty(true); }}
             onAlt={v => { setCoverAlt(v); setDirty(true); }}
             onBrokenChange={setCoverBroken} />
 

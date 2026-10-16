@@ -54,6 +54,14 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 # Cache buster to bypass BuildKit mount locks on Coolify
 ENV CACHE_BUSTER_2="2026-06-17T12-40-00-REDEPLOY"
 
+# Where uploaded pictures and files are written (blog covers, the Media Library, publisher uploads). This is INSIDE the container, and a
+# container is replaced on every deploy, so this directory must be a persistent volume mounted in Coolify at exactly this path
+# (Application → Persistent Storage → destination /app/uploads). Without that mount every upload is lost at the next deploy while its database
+# record survives. See docs/storage-persistence-2026-10.md. (No VOLUME instruction here on purpose: Docker would create a fresh anonymous
+# volume per container, which looks persistent and is not.)
+ENV UPLOAD_DIR=/app/uploads
+RUN mkdir -p /app/uploads
+
 # Expose the port (default 3000, overridable via PORT env var)
 EXPOSE 3000
 

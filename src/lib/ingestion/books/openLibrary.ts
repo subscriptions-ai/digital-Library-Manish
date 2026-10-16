@@ -78,8 +78,10 @@ export function normaliseOpenLibraryDoc(provider: string, d: any): NormalisedBoo
 }
 
 /** One page of a subject search. `page` counts from 1. */
-export async function fetchOpenLibraryPage(query: string, page: number, size = PAGE) {
-  const url = `${OPENLIBRARY_SEARCH}?q=${encodeURIComponent(`subject:"${query}"`)}&language=eng&limit=${size}&page=${page}&fields=${FIELDS}`;
+export async function fetchOpenLibraryPage(query: string, page: number, size = PAGE, minYear?: number) {
+  // The book policy year is asked for at the source where it can be (Open Library filters on first publication year); the harvester still checks every record.
+  const q = `subject:"${query}"${minYear ? ` first_publish_year:[${minYear} TO *]` : ''}`;
+  const url = `${OPENLIBRARY_SEARCH}?q=${encodeURIComponent(q)}&language=eng&limit=${size ?? PAGE}&page=${page}&fields=${FIELDS}`;
   const r = await fetchSourceJson(url, {
     source: 'OpenLibrary', timeoutMs: 45_000, attempts: 2, headers: openLibraryHeaders(), countClientErrors: true,
     parse: (body: any) => { if (!Array.isArray(body?.docs)) throw new SourceParseError('invalid_response', 'Open Library sent a response in a shape we do not recognise'); return body; },

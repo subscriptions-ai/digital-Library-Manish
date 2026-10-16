@@ -3,21 +3,24 @@ import { fetchSourceJson } from './sourceHealth.js';
 import { SourceError } from './articleSources.js';
 import { normaliseIssn } from '../ingestionWorker.js';
 import { canonicalDepartmentName } from '../departmentRegistry.js';
+import { journalDepartment } from './journalDepartment.js';
 
 /**
  * Journal discovery from sources that are NOT authorities on open access: Crossref's journal list and OpenAlex's source list.
  *
  * DOAJ declares a licence for every title, with an explicit non-commercial flag, and that is what lets a journal be Accepted
  * for full text. Crossref and OpenAlex say a journal EXISTS — its name, its ISSNs, its publisher — and nothing that can stand in
- * for that. So what comes from here is written the one safe way:
+ * for that. Two different questions, kept apart:
  *
- *   · status 'NeedsReview', rightsBasis naming the source and "OA unverified": not served, not fetched for articles
- *     (the engine's journal picker takes only Accepted journals with a DOAJ declaration), not counted as catalogue;
- *   · no licence, no commercial-use flag, openAccess false — nothing is claimed that no one has checked;
- *   · a journal already held is never changed in status, licence or rights — only its empty fields are filled.
+ *   CATALOGUE   Is this a real journal we can describe? A title, a valid ISSN, a publisher and a department the journal's own title and
+ *               subjects support are enough. Such a journal is catalogued — status MetadataOnly, listed publicly with its details.
+ *   ACCESS      Can anyone read it here? Not on this evidence. It is written openAccess = false, no licence, no commercial-use flag, and a
+ *               basis that says "OA unverified": the screen shows "Open Access not verified" and offers no read or open-access button.
  *
- * A person decides, later, with the evidence in front of them. OpenAlex's own `is_oa` / `is_in_doaj` flags are kept as
- * a pointer for that person; they are not a verification.
+ * A journal that fails the first test (no publisher, no ISSN, no department the evidence supports) is held for a person, as before. Either
+ * way: never Accepted, never fetched for articles (the engine's journal picker takes only Accepted journals with a DOAJ declaration), and a
+ * journal already held is never changed in status, licence or rights — only its empty fields are filled. OpenAlex's own `is_oa` /
+ * `is_in_doaj` flags are kept as a pointer; they are not a verification.
  */
 
 const CONTACT = process.env.OPENALEX_CONTACT || 'info@celnet.in';
@@ -86,7 +89,7 @@ function openAlexItems(results: any[]): { items: JournalCandidate[]; fetched: nu
     items.push({
       source: 'OpenAlex Sources', title, issn, eissn, issnL: normaliseIssn(it.issn_l) || null, publisherName: it.host_organization_name ? String(it.host_organization_name) : null,
       country: it.country_code ? String(it.country_code) : null, homepage: it.homepage_url ? String(it.homepage_url) : null,
-      subjects: (Array.isArray(it.topics) ? it.topics : []).slice(0, 5).map((x: any) => x?.display_name).filter(Boolean),
+      subjects: [...new Set([...(Array.isArray(it.topics) ? it.topics : []).slice(0, 5), ...(Array.isArray(it.x_concepts) ? it.x_concepts : []).filter((c: any) => (c?.level ?? 9) <= 1).slice(0, 4)].map((x: any) => String(x?.display_name || '').trim()).filter(Boolean))],
       hint: `OpenAlex flags it open access${it.is_in_doaj ? ' and lists it in DOAJ' : ''}; not verified here`,
     });
   }
@@ -117,16 +120,17 @@ export async function fetchOpenAlexSourcesCursor(cursor: string | null, perPage 
   return { ...page, total: Number.isFinite(r.json?.meta?.count) ? r.json.meta.count : null, next: typeof r.json?.meta?.next_cursor === 'string' && r.json.results.length ? r.json.meta.next_cursor : null };
 }
 
-export type WriteSummary = { checked: number; created: number; held: number; enriched: number; skipped: number; failed: number; firstError: string | null };
+export type WriteSummary = { checked: number; created: number; /** New and catalogued (MetadataOnly, OA unverified). */ catalogued: number; /** New and held for a person. */ review: number; held: number; enriched: number; skipped: number; failed: number; firstError: string | null };
 
 /**
  * Write what a source found, review-first. Held journals are matched by ISSN or eISSN only — a title is not an identity —
  * and are never changed beyond filling an empty field. New ones are created as NeedsReview.
  */
 export async function writeJournalCandidates(source: JournalCandidate['source'], department: string | null, cands: JournalCandidate[], fetchedCount = cands.length, skippedAtFetch = 0): Promise<WriteSummary> {
-  // A department a source sent is stored as the official name; one the registry does not know is left unassigned for review, never guessed.
-  department = department ? canonicalDepartmentName(department) : null;
-  const out: WriteSummary = { checked: fetchedCount, created: 0, held: 0, enriched: 0, skipped: skippedAtFetch, failed: 0, firstError: null };
+  // `department` is what the caller was searching for, and a search term is not evidence about a journal: it is ignored. The department comes
+  // from the journal's own title and subjects (journalDepartment), or it is left unassigned for review — never guessed.
+  void department;
+  const out: WriteSummary = { checked: fetchedCount, created: 0, catalogued: 0, review: 0, held: 0, enriched: 0, skipped: skippedAtFetch, failed: 0, firstError: null };
   // Identity, strongest first: the linking ISSN (ISSN-L), then the ISSN and eISSN, then — only when none of those is known here — the same
   // title from the same publisher. A journal is never counted twice because two sources spell its identifiers differently.
   const keysOf = (c: JournalCandidate) => [c.issnL, c.issn, c.eissn].filter(Boolean) as string[];
@@ -156,7 +160,7 @@ export async function writeJournalCandidates(source: JournalCandidate['source'],
       if (existing.rightsBasis !== 'our own') {
         const patch: Record<string, any> = {};
         for (const k of ['eissn', 'publisherName', 'country', 'homepage'] as const) if (!existing[k] && c[k]) patch[k] = c[k];
-        if (!existing.domain && department) patch.domain = department;
+        if (!existing.domain) { const mapped = canonicalDepartmentName(journalDepartment(c.title, c.subjects)); if (mapped) patch.domain = mapped; }
         const noSubjects = !Array.isArray(existing.subjects) || existing.subjects.length === 0;
         if (noSubjects && c.subjects.length) patch.subjects = c.subjects;
         // The status, licence and rights of a journal we hold are somebody's decision and are never touched from here.
@@ -167,18 +171,22 @@ export async function writeJournalCandidates(source: JournalCandidate['source'],
       }
       continue;
     }
+    // Catalogue test: a real, identifiable journal in a department its own title and subjects support. Access is a separate matter (see above).
+    const mappedDept = canonicalDepartmentName(journalDepartment(c.title, c.subjects));
+    const catalogue = !!(c.title && c.issn && c.publisherName && mappedDept);
     try {
       await db.journal.create({
         data: {
           title: c.title, issn: c.issn || undefined, eissn: c.eissn, publisherName: c.publisherName, country: c.country, homepage: c.homepage,
-          domain: department, subjects: c.subjects,
+          domain: mappedDept, subjects: c.subjects,
           // Nothing is claimed that has not been checked.
           openAccess: false, licence: null, licenceIsNC: null,
           rightsBasis: `${c.source === 'Crossref Journals' ? 'Crossref' : c.source === 'OpenAlex Sources' ? 'OpenAlex' : 'ROAD'} listing — OA unverified`,
           rightsVerifiedAt: null, rightsVerifiedBy: null,
-          status: 'NeedsReview',
+          status: catalogue ? 'MetadataOnly' : 'NeedsReview',
         },
       });
+      catalogue ? out.catalogued++ : out.review++;
       for (const k of keys) createdNow.add(k);
       if (tk) createdNow.add(`t:${tk}`);
       out.created++;

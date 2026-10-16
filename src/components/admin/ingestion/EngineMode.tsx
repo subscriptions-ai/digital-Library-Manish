@@ -5,7 +5,7 @@ import { N } from './format';
 
 const MODES = [
   ['auto', 'Everything', 'Journals, books and articles in rotation — right for keeping the catalogue up to date.'],
-  ['books', 'Books', 'Every pass reads from the DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf catalogue feeds, from where each last stopped.'],
+  ['books', 'Books', 'Every pass reads from the DOAB, OAPEN, Open Textbook Library, NCBI Bookshelf and NLM Catalog feeds, from where each last stopped.'],
   ['journals', 'Journals', 'Every pass takes a turn of journal sources, DOAJ first, with the others as fallbacks.'],
   ['articles', 'Articles', 'Every pass takes a turn of article sources, Crossref first.'],
 ] as const;

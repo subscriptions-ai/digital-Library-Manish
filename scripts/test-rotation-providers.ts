@@ -14,6 +14,8 @@ const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
 const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 if (!real) throw new Error('no DATABASE_URL in .env');
 process.env.DATABASE_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
+// These suites exercise the original Book providers. NLM Catalog (added later) is in the continuous rotation by default and would be asked too, so it is switched off here.
+process.env.BOOKS_NLM = '0';
 process.env.INGESTION_SOFT_BACKOFF_SECONDS = '0,0';
 process.env.INGESTION_ARTICLE_PAUSE_MS = '0';
 const { ingestionDb: db } = await import('../src/lib/ingestion/db.js');

@@ -184,26 +184,26 @@ section('Mass DOAJ import: check first, then import exactly what the check found
 // ═════════════════════════════════════════════════════════════════════════
 section('Settings are validated on the server; clearing a box can no longer change what is saved');
 {
-  const cur = { enabled: false, yearsBack: 7, batchSize: 200, articlesPerJournal: 30, discoverEvery: 5, focus: 'auto', departments: ['Law'] };
+  const cur = { enabled: false, articleMinYear: 2020, batchSize: 200, articlesPerJournal: 30, discoverEvery: 5, focus: 'auto', departments: ['Law'] };
   const D = ['Law', 'Dental', 'Nursing'];
   const bad = (body: any, c = cur) => validateSettings(body, c, D) as any;
-  check('NaN is refused', bad({ yearsBack: NaN }).ok === false);
-  check('an empty value is refused (it used to become 7)', bad({ yearsBack: '' }).ok === false && bad({ yearsBack: null }).ok === false);
+  check('NaN is refused', bad({ articleMinYear: NaN }).ok === false);
+  check('an empty value is refused (it used to become 7)', bad({ articleMinYear: '' }).ok === false && bad({ articleMinYear: null }).ok === false);
   check('a number as text is refused', bad({ batchSize: '50' }).ok === false);
   check('negative values are refused', bad({ articlesPerJournal: -1 }).ok === false && bad({ discoverEvery: 0 }).ok === false);
-  check('a decimal is refused', bad({ yearsBack: 3.5 }).ok === false);
-  check('out-of-range values are refused with the range', /between 1 and 50/.test(bad({ yearsBack: 99 }).errors[0]));
+  check('a decimal is refused', bad({ articleMinYear: 2020.5 }).ok === false);
+  check('out-of-range values are refused with the range', /between 1990 and \d{4}/.test(bad({ articleMinYear: 99 }).errors[0]));
   check('"no limit" must be asked for deliberately (0), never reached by clearing a box', bad({ articlesPerJournal: 0 }).ok === true);
   check('unknown focus / unknown department are refused', bad({ focus: 'everything' }).ok === false && bad({ departments: ['Nope'] }).ok === false);
   const run = { ...cur, enabled: true };
-  const blocked = bad({ yearsBack: 5 }, run);
+  const blocked = bad({ articleMinYear: 2021 }, run);
   check('tuning is read-only while the engine runs, with the instruction', blocked.ok === false && blocked.status === 409 && blocked.errors[0] === 'Pause the engine to edit ingestion settings.');
-  check('…but pausing and editing in one request is allowed', bad({ enabled: false, yearsBack: 5 }, run).ok === true);
+  check('…but pausing and editing in one request is allowed', bad({ enabled: false, articleMinYear: 2021 }, run).ok === true);
   const scope = bad({ departments: ['Law', 'Dental'] }, run);
   check('changing scope while running needs confirmation', scope.ok === false && scope.needsConfirmation === 'SCOPE_CHANGE');
   const ok = bad({ departments: ['Law', 'Dental'], confirmScopeChange: true }, run);
   check('…and is accepted once confirmed, with the change recorded', ok.ok === true && ok.scope.to.length === 2 && ok.changes.departments);
-  check('a request that changes nothing changes nothing', Object.keys(bad({ yearsBack: 7, focus: 'auto' }).data).length === 0);
+  check('a request that changes nothing changes nothing', Object.keys(bad({ articleMinYear: 2020, focus: 'auto' }).data).length === 0);
   check('"Use all departments" is an explicit empty scope, not a default', bad({ departments: [] }).ok === true && bad({ departments: [] }).data.departments.length === 0);
 }
 

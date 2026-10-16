@@ -32,7 +32,7 @@ function EngineCopy({ rotation }: { rotation: any }) {
     <>
       Journals are discovered through DOAJ, with {list(fallbacks)} available as fallbacks{connected('road') ? '' : ' (ROAD / ISSN is in the chain but not connected yet: it has no public data interface)'}.
       {' '}Articles are collected primarily through Crossref, with OpenAlex, Europe PMC and arXiv used where appropriate.
-      {' '}Books are collected through DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf; no book file is hosted here, so each book is catalogued with a link to its source.
+      {' '}Books are collected through DOAB, OAPEN, Open Textbook Library, NCBI Bookshelf and NLM Catalog; no book file is hosted here, so each book is catalogued with a link to its source, or as a record with no Read button when no licence is known.
     </>
   );
 }
@@ -78,7 +78,7 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
           </h2>
           <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted">
             {st.rotation?.enabled ? <EngineCopy rotation={st.rotation} /> : (
-              <>Journals come from DOAJ, where their licence is decided once per title. Articles follow from OpenAlex. Books come from DOAB, OAPEN, Open Textbook Library and NCBI Bookshelf;
+              <>Journals come from DOAJ, where their licence is decided once per title. Articles follow from OpenAlex. Books come from DOAB, OAPEN, Open Textbook Library, NCBI Bookshelf and NLM Catalog;
               no book file is hosted here, so each book is catalogued with a link to its source.</>
             )}
           </p>

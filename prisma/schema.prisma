@@ -1542,6 +1542,13 @@ model IngestionState {
   /// Only material published within this many years is worth holding — older
   /// runs have little value to a college library and cost the most to fetch.
   yearsBack          Int  @default(7)
+  /// No longer read (kept so a rollback still has it): one window for every kind of content was wrong. Articles and Books
+  /// now have their own minimum publication year, below. Journal titles have none — a journal founded in 1985 is still a journal.
+  /// The earliest publication year a NEW article may have. Older ones are outside the current article collection; one with no year waits for review.
+  articleMinYear     Int  @default(2020)
+  /// The earliest publication year a NEW book is published in the normal way. An older book, or one with no year, waits for review —
+  /// and a person may still approve an important older title. Books stay useful far longer than articles.
+  bookMinYear        Int  @default(2000)
   /// Departments to cover; empty means all of them.
   departments        Json @default("[]")
   /// How many articles to pull per journal per pass, so one big journal cannot
@@ -1690,6 +1697,20 @@ model IngestionRun {
   more       Boolean @default(false)
   note       String?
   error      String? @db.Text
+
+  /// Of the candidates a run examined, how many were different from each other (identifiers in the batch), and how many of those the
+  /// run before it had already examined. "Already held" cannot tell a source with nothing new from an engine asking for the same page again;
+  /// these can. `cursor` is where the run stopped (a page, offset or token), so a repeat can be seen, never inferred.
+  uniqueCandidates   Int     @default(0)
+  repeatedCandidates Int     @default(0)
+  cursor             String?
+
+  /// Book runs: how many candidates the run examined, and whether every one of them is accounted for in exactly one bucket
+  /// (added + already held + review + skipped + failed). `accounting` is 'OK' or 'ACCOUNTING_ERROR'; `unaccounted` is the gap
+  /// (positive: candidates that appear in no bucket; negative: more outcomes than candidates). Null on older runs and on other phases.
+  checked     Int     @default(0)
+  accounting  String?
+  unaccounted Int     @default(0)
 
   departmentStats IngestionRunDepartmentStat[]
 

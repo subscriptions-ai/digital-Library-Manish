@@ -68,8 +68,8 @@ export const INGESTION_POLICY = {
    * inside `ceiling` however it is set. NCBI is capped at 25 archives and is also bound by its daily limits.
    */
   quick: {
-    defaults: { doaj: 100, road: 100, crossrefjournals: 100, openalexsources: 100, crossref: 250, openalex: 200, europepmc: 100, arxiv: 100, doab: 100, oapen: 100, otl: 100, ncbi: 25 } as Record<string, number>,
-    ceiling: { doaj: 500, road: 500, crossrefjournals: 500, openalexsources: 500, crossref: 1000, openalex: 1000, europepmc: 500, arxiv: 300, doab: 500, oapen: 500, otl: 500, ncbi: 25 } as Record<string, number>,
+    defaults: { doaj: 100, road: 100, crossrefjournals: 100, openalexsources: 100, crossref: 250, openalex: 200, europepmc: 100, arxiv: 100, doab: 100, oapen: 100, otl: 100, ncbi: 25, nlm: 100, crossrefbooks: 100, pressbooks: 40 } as Record<string, number>,
+    ceiling: { doaj: 500, road: 500, crossrefjournals: 500, openalexsources: 500, crossref: 1000, openalex: 1000, europepmc: 500, arxiv: 300, doab: 500, oapen: 500, otl: 500, ncbi: 25, nlm: 300, crossrefbooks: 500, pressbooks: 200 } as Record<string, number>,
     /** One run is also bounded in time and in how many journals it visits, so a quiet source cannot hold it open for ever. */
     maxJournalsPerRun: 40,
     runBudgetMs: 4 * 60_000,
@@ -77,7 +77,11 @@ export const INGESTION_POLICY = {
 
   /** Server-side limits for what an administrator may set. The screen mirrors these; the server decides. */
   settings: {
-    yearsBack:          { min: 1, max: 50 },
+    yearsBack:          { min: 1, max: 50 },            // no longer used: see articleMinYear / bookMinYear
+    /** The earliest publication year for a NEW article (yearPolicy.ts). */
+    articleMinYear:     { min: 1990, max: new Date().getFullYear() },
+    /** The earliest publication year for a NEW book to be published the normal way; older ones wait for review. */
+    bookMinYear:        { min: 1900, max: new Date().getFullYear() },
     batchSize:          { min: 1, max: 200 },
     articlesPerJournal: { min: 1, max: 100 },
     discoverEvery:      { min: 1, max: 50 },

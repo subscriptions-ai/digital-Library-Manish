@@ -87,12 +87,12 @@ try {
   const s0 = await A('/api/admin/ingest/state');
   check('state loads with status, 24-hour figures and limits', s0.status === 200 && !!s0.data.status && !!s0.data.last24h && !!s0.data.limits, s0.data?.status?.label);
   const base = s0.data;
-  for (const [k, v, why] of [['batchSize', 'abc', 'text'], ['batchSize', 0, 'below range'], ['batchSize', 9999, 'above range'], ['yearsBack', 7.5, 'fraction'], ['articlesPerJournal', null, 'empty'], ['discoverEvery', -1, 'negative']] as const) {
+  for (const [k, v, why] of [['batchSize', 'abc', 'text'], ['batchSize', 0, 'below range'], ['batchSize', 9999, 'above range'], ['articleMinYear', 2020.5, 'fraction'], ['articlesPerJournal', null, 'empty'], ['discoverEvery', -1, 'negative']] as const) {
     const r = await A('/api/admin/ingest/state', 'POST', { [k]: v });
     check(`${k} = ${JSON.stringify(v)} (${why}) is refused with 400`, r.status === 400 && !!r.data?.error, r.data?.error);
   }
   const unchanged = await A('/api/admin/ingest/state');
-  check('refused values left every saved setting exactly as it was', ['yearsBack', 'batchSize', 'articlesPerJournal', 'discoverEvery'].every(k => unchanged.data[k] === base[k]));
+  check('refused values left every saved setting exactly as it was', ['articleMinYear', 'bookMinYear', 'batchSize', 'articlesPerJournal', 'discoverEvery'].every(k => unchanged.data[k] === base[k]));
   check('an unknown department is refused', (await A('/api/admin/ingest/state', 'POST', { departments: ['Not A Department'] })).status === 400);
   const set = await A('/api/admin/ingest/state', 'POST', { batchSize: base.batchSize === 150 ? 151 : 150 });
   check('a valid change while paused is saved', set.status === 200 && set.data.batchSize !== base.batchSize, `batchSize ${base.batchSize} → ${set.data.batchSize}`);

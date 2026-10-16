@@ -13,6 +13,12 @@ export function PostList() {
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  // Whether the pictures the database points at are still on disk. Shown only when something is wrong.
+  const [storage, setStorage] = useState<{ filesMissing: number; mediaRecords: number; storage: { resets: number }; persistent: boolean | string; blogCoversMissing: any[] } | null>(null);
+  useEffect(() => {
+    fetch('/api/admin/media/health', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      .then(r => (r.ok ? r.json() : null)).then(d => d && setStorage(d)).catch(() => {});
+  }, []);
 
   useEffect(() => { const t = setTimeout(() => setQ(search.trim()), 300); return () => clearTimeout(t); }, [search]);
 
@@ -42,6 +48,17 @@ export function PostList() {
           <PenLine size={16} aria-hidden="true" /> Write a post
         </Link>
       </div>
+
+      {storage && (storage.filesMissing > 0 || storage.blogCoversMissing.length > 0 || storage.storage.resets > 0) && (
+        <div role="alert" className="mt-4 rounded-lg border border-caution/40 bg-caution-soft px-4 py-3 text-[13px] leading-snug text-ink">
+          <b className="font-semibold">Uploaded images are missing from storage.</b>{' '}
+          {storage.blogCoversMissing.length > 0
+            ? `The cover image of ${storage.blogCoversMissing.length} post${storage.blogCoversMissing.length === 1 ? '' : 's'} can no longer be found${storage.filesMissing > 0 ? `, and ${storage.filesMissing} of ${storage.mediaRecords} uploaded files in all` : ''}. `
+            : storage.filesMissing > 0 ? `${storage.filesMissing} of ${storage.mediaRecords} uploaded files can no longer be found. ` : ''}
+          Your posts have not been changed — each keeps its saved cover address — but those covers will not show until the image is uploaded again.
+          {storage.storage.resets > 0 && ' The uploads folder was replaced since it was last checked: ask the administrator to put it on a persistent volume so this does not happen again.'}
+        </div>
+      )}
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
         <div className="relative min-w-0 basis-full sm:basis-auto sm:min-w-[220px] flex-1">
@@ -74,6 +91,9 @@ export function PostList() {
                   {p.status}
                 </span>
                 {p.category && <span className="text-xs text-muted">{p.category}</span>}
+                {p.coverUrl && p.coverMissing && (
+                  <span className="badge badge-caution"><ImageOff size={12} aria-hidden="true" /> Cover image unavailable — replace image</span>
+                )}
                 {!p.coverUrl && (
                   p.status === 'Published'
                     ? <span className="badge badge-caution"><ImageOff size={12} aria-hidden="true" /> Cover image required</span>

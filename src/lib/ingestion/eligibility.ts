@@ -1,5 +1,6 @@
 import type { Held } from './dedup.js';
 import { normaliseDoi } from './dedup.js';
+import { articleYearVerdict, ARTICLE_MIN_YEAR_DEFAULT } from './yearPolicy.js';
 
 /**
  * Is this record one we should take, and how? One set of rules for the continuous engine, the
@@ -49,6 +50,8 @@ export type JudgeContext = {
   possibleDuplicateOf?: string | null;
   /** Some sources serve files only from hosts we can fetch from. False means the file cannot open here. */
   fileOpensHere?: boolean;
+  /** The article policy year (yearPolicy.ts). Absent means the default; it is never "no rule". */
+  minYear?: number;
 };
 
 const DOI_SHAPE = /^10\.\d{4,9}\/\S+$/i;
@@ -66,6 +69,13 @@ export function judgeArticle(w: JudgeWork, ctx: JudgeContext = {}): Decision {
   if (w.year != null && (w.year > thisYear + 1 || w.year < 1500)) {
     return { outcome: 'NEEDS_REVIEW', status: 'Draft', access: 'LinkOnly', reasons: [`implausible publication year ${w.year}`] };
   }
+
+  // The article year policy, for NEW records only: older than the policy year is outside the current collection and is not written;
+  // no year at all waits for a person — it is never stamped with this year to get it through.
+  const yv = articleYearVerdict(w.year ?? null, ctx.minYear ?? ARTICLE_MIN_YEAR_DEFAULT);
+  if (!yv.ok) return yv.outcome === 'too-old'
+    ? { outcome: 'REJECTED', reasons: [yv.reason] }
+    : { outcome: 'NEEDS_REVIEW', status: 'Draft', access: 'LinkOnly', reasons: [yv.reason] };
 
   if (ctx.possibleDuplicateOf) {
     return { outcome: 'NEEDS_REVIEW', status: 'Draft', access: 'LinkOnly', reasons: [`possible duplicate of ${ctx.possibleDuplicateOf}`] };

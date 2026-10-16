@@ -1,4 +1,5 @@
 import { ingestionDb as db } from './db.js';
+import { articleMinYear } from './yearPolicy.js';
 import { audit } from './audit.js';
 import { INGESTION_POLICY, minutes } from './policy.js';
 import { judgeArticle, type Outcome } from './eligibility.js';
@@ -80,6 +81,8 @@ const toWork = (c: Candidate) => ({
 /** Judge every candidate, in a handful of queries. Used by both the dry run and the write step (with fresh facts). */
 export async function classifyCandidates(cands: Candidate[]): Promise<Classified[]> {
   const works = cands.map(toWork);
+  // The article policy year, read from the engine's saved settings: Quick Import, the one-off import and the engine all judge alike.
+  const minYear = articleMinYear(await db.ingestionState.findUnique({ where: { id: 'singleton' }, select: { articleMinYear: true } }).catch(() => null));
   const held = await findHeldArticles(works);
 
   // The journal each belongs to, if we already hold it (by either of its ISSNs).
@@ -113,6 +116,7 @@ export async function classifyCandidates(cands: Candidate[]): Promise<Classified
         held: held.get(i) ?? (duplicateInBatch ? { articleId: '(this import)', via: 'fingerprint', journalId: null } : null),
         possibleDuplicateOf: dupes.get(i) ?? null,
         fileOpensHere: c.fileOpensHere,
+        minYear,
       },
     );
     if (d.outcome === 'ADD') seen.add(key);

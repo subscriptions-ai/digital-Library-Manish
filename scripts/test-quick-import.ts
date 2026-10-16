@@ -214,12 +214,12 @@ section('Registry, limits and cards');
   process.env.QUICK_IMPORT_LIMIT_CROSSREF = 'abc'; check('nonsense falls back to the default', Q.quickLimit('crossref') === 250);
   delete process.env.QUICK_IMPORT_LIMIT_CROSSREF;
   const cards = await Q.listQuickSources();
-  check('all twelve approved sources are offered, grouped', cards.length === 12
+  check('all fifteen sources are offered, grouped (twelve approved, plus NLM Catalog, Crossref Books and Pressbooks Directory)', cards.length === 15
     && cards.filter((c: any) => c.group === 'Journals').map((c: any) => c.id).join() === 'doaj,road,crossrefjournals,openalexsources'
     && cards.filter((c: any) => c.group === 'Articles').map((c: any) => c.id).join() === 'crossref,openalex,europepmc,arxiv'
-    && cards.filter((c: any) => c.group === 'Books').map((c: any) => c.id).join() === 'doab,oapen,otl,ncbi');
+    && cards.filter((c: any) => c.group === 'Books').map((c: any) => c.id).join() === 'doab,oapen,otl,ncbi,nlm,crossrefbooks,pressbooks');
   check('Crossref is Recommended, OpenAlex is Fallback', cards.find((c: any) => c.id === 'crossref').badge === 'Recommended' && cards.find((c: any) => c.id === 'openalex').badge === 'Fallback');
-  check('each card carries its confirmation text, and every connected source is healthy and importable', cards.every((c: any) => /^(Import up to|Read up to) \d+ /.test(c.confirm)) && cards.filter((c: any) => c.id !== 'road').every((c: any) => c.state === 'healthy' && c.canQuickImport));
+  check('each card carries its confirmation text, and every connected source is healthy and importable', cards.every((c: any) => /^(Import up to|Read up to) \d+ /.test(c.confirm)) && cards.filter((c: any) => c.id !== 'road').every((c: any) => c.state === 'healthy' && c.canQuickImport), JSON.stringify(cards.filter((c: any) => !(/^(Import up to|Read up to) \d+ /.test(c.confirm) && (c.id === 'road' || (c.state === 'healthy' && c.canQuickImport)))).map((c: any) => [c.id, c.state, c.canQuickImport, c.confirm])));
   const roadCard = cards.find((c: any) => c.id === 'road');
   check('ROAD is shown honestly as not connected, and cannot be started', roadCard.state === 'not_connected' && roadCard.canQuickImport === false && /no public data interface/i.test(roadCard.detail || ''), JSON.stringify([roadCard.state, roadCard.detail]));
   check('the confirmation says existing records are not overwritten', cards.every((c: any) => /will not be overwritten/.test(c.confirm)));

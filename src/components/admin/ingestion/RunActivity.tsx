@@ -153,6 +153,7 @@ export function RunActivity({ refreshKey, department, onDepartment }: { refreshK
                 <span className={`badge ${failed ? 'badge-alarm' : provider ? 'badge-caution' : 'badge-neutral'}`}>{r.phase}</span>
                 {provider && <span className="badge badge-caution" title="The source did not answer. Nothing was lost; the engine moves to another source.">Source issue</span>}
                 {isManual(r) && <span className="badge badge-accent" title="Started by an administrator, not by the continuous engine">Manual</span>}
+                {r.accounting === 'ACCOUNTING_ERROR' && <span className="badge badge-alarm" title={`${N(r.checked)} candidates were checked but the outcomes add up to ${N(r.checked - r.unaccounted)}. ${r.unaccounted > 0 ? `${N(r.unaccounted)} appear in no bucket.` : `${N(-r.unaccounted)} more outcomes than candidates.`}`}>Accounting error</span>}
                 <span className="min-w-0 flex-1 text-ink-2">
                   <b className="font-semibold text-ink">{r.journalTitle || (r.hasBreakdown && r.dept ? r.dept : r.department ? r.department : r.source) || '—'}</b>
                   <span className="text-muted"> · </span>{rowText(r)}

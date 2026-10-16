@@ -13,6 +13,7 @@
  * There is no queue table. The journals are the queue: each pass takes whichever
  * accepted journal was refreshed longest ago.
  */
+import { articleMinYear, bookMinYear, bookYearVerdict } from './ingestion/yearPolicy.js';
 import { ingestionDb } from './ingestion/db.js';
 import { fetchSourceJson, type SourceResult } from './ingestion/sourceHealth.js';
 import { claimJournal, claimSweepRow, releaseClaim } from './ingestion/claims.js';
@@ -468,6 +469,8 @@ export async function discoverBooksPage(sweep: any) {
       commercialOk ? r.accepted++ : r.rejected++;
 
       const year = Number(String(f.one('dc.date.issued') || '').slice(0, 4)) || null;
+      // The book year policy applies here too: an older or undated book is written as a Draft for review, never published straight away.
+      const yearRule = bookYearVerdict(year, bookMinYear(await p.ingestionState.findUnique({ where: { id: 'singleton' }, select: { bookMinYear: true } }).catch(() => null)));
       const authors = [...f.all('dc.contributor.author'), ...f.all('dc.contributor.editor')]
         .filter(Boolean).join(', ') || null;
 
@@ -491,7 +494,7 @@ export async function discoverBooksPage(sweep: any) {
           // here to serve and a URL would only be a broken promise.
           pdfUrl: null,
           accessType: 'OpenAccess',
-          status: 'Published',
+          status: yearRule.ok ? 'Published' : 'Draft',
           licence,
           licenceIsNC: !commercialOk,
           // Named for what it is. `publisher.oalicense` is a sentence about a
@@ -654,7 +657,7 @@ async function fetchArticlesForOneJournal(state: any, departments?: string[]) {
 export async function visitJournal(journal: any, state: any, cap: number, v2: boolean, recovered: boolean, opts: { rowsBudget?: number } = {}) {
   const policy = INGESTION_POLICY;
   const now = () => new Date();
-  const fromYear = new Date().getFullYear() - (state.yearsBack - 1);
+  const fromYear = articleMinYear(state);                // the article policy year: OpenAlex is asked for nothing older
   const have = journal.articleCount || 0;
   const remaining = cap > 0 ? Math.max(0, cap - have) : Number.POSITIVE_INFINITY;
 
@@ -745,7 +748,7 @@ export async function visitJournal(journal: any, state: any, cap: number, v2: bo
     const fingerprint = canonicalFingerprint(w);
     // Two records on one page can share a key (the same work listed twice); the second is held, not a failure.
     const heldHere = held.get(i) ?? (seenThisPage.has(fingerprint) ? { articleId: '(this page)', via: 'fingerprint' as const, journalId: journal.id } : null);
-    const decision = judgeArticle(w, { journal, held: heldHere, possibleDuplicateOf: possibleDupes.get(i) ?? null });
+    const decision = judgeArticle(w, { journal, held: heldHere, possibleDuplicateOf: possibleDupes.get(i) ?? null, minYear: fromYear });
 
     if (decision.outcome === 'HELD') { skippedHeld++; continue; }
     if (decision.outcome === 'REJECTED') { skippedRejected++; continue; }

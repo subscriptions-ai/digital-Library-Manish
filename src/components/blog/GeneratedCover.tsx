@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ImageOff } from 'lucide-react';
 import { isUsableCoverUrl, blogCoverFor } from '../../lib/blogCover';
 
 /**
@@ -109,20 +110,40 @@ export function PostImage(props: PostImageProps) {
   return <PostImageLoader key={JSON.stringify([props.src, props.seed])} {...props} />;
 }
 
+/**
+ * What a reader sees where an editor's chosen cover cannot be loaded. Deliberately plain, and nothing like any cover: it must not look as
+ * though the post was given different artwork. It is drawn here and stored nowhere — the post keeps its cover address, and the picture is back
+ * as soon as the file is.
+ */
+function CoverUnavailable({ className = '' }: { className?: string }) {
+  return (
+    <div role="img" aria-label="Cover image unavailable"
+      className={`flex items-center justify-center bg-surface-2 text-faint ${className}`}>
+      <ImageOff size={28} aria-hidden="true" />
+    </div>
+  );
+}
+
 function PostImageLoader({ src, seed, className = '', loading = 'lazy', alt }: PostImageProps) {
-  // Anything that is not a plausible address goes straight to the fallback.
+  // A post that has a cover shows THAT cover. If its file cannot be loaded the reader sees a plain placeholder — never artwork chosen by topic,
+  // which would look as if the cover had been replaced. Only a post with no cover at all is given the site's own artwork.
   const cover = isUsableCoverUrl(src) ? src.trim() : undefined;
   const fallback = blogCoverFor(seed);
   const [failed, setFailed] = useState<string[]>([]);
-  const image = cover && !failed.includes(cover) ? cover : fallback;
+  if (cover) {
+    if (failed.includes(cover)) return <CoverUnavailable className={className} />;
+    const giveUp = () => setFailed(previous => (previous.includes(cover) ? previous : [...previous, cover]));
+    return <img key={cover} src={cover} alt={alt || ''} loading={loading} decoding="async"
+      onError={giveUp}
+      // Some failures (an empty or undecodable 200) fire load, not error.
+      onLoad={e => { if (!e.currentTarget.naturalWidth) giveUp(); }}
+      className={`object-cover ${className}`} />;
+  }
   // Preserve the inline artwork as a final fallback if even a local asset fails.
-  if (failed.includes(image)) return <GeneratedCover seed={seed} className={className} />;
-  const giveUp = () => setFailed(previous => (previous.includes(image) ? previous : [...previous, image]));
-  // The fallback's own words are not the cover's: only a real cover carries the writer's alt.
-  const isCover = image === cover;
-  return <img key={image} src={image} alt={isCover ? (alt || '') : ''} loading={loading} decoding="async"
-    onError={giveUp}
-    // Some failures (an empty or undecodable 200) fire load, not error.
-    onLoad={e => { if (!e.currentTarget.naturalWidth) giveUp(); }}
+  if (failed.includes(fallback)) return <GeneratedCover seed={seed} className={className} />;
+  const giveUpFallback = () => setFailed(previous => (previous.includes(fallback) ? previous : [...previous, fallback]));
+  return <img key={fallback} src={fallback} alt="" loading={loading} decoding="async"
+    onError={giveUpFallback}
+    onLoad={e => { if (!e.currentTarget.naturalWidth) giveUpFallback(); }}
     className={`object-cover ${className}`} />;
 }

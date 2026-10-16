@@ -1,4 +1,5 @@
 import { ingestionDb } from '../db.js';
+import { bookMinYear, bookYearVerdict } from '../yearPolicy.js';
 import { fetchSourceJson, SourceParseError } from '../sourceHealth.js';
 import { parseOaiPage, type OaiRecord } from './oaiXml.js';
 import { normaliseOtlBook, OTL_BASE } from './otl.js';
@@ -12,6 +13,12 @@ import { FileChecker, type FileVerdict } from './fileCheck.js';
 import { licenceAllowsCommercialUse } from '../eligibility.js';
 import { tryLockProvider, unlockProvider, providerHolder } from '../providerLocks.js';
 import { bump, type DeptStats } from '../departmentStats.js';
+import { reconcile, type Reconciliation } from '../accounting.js';
+import { extraBatch } from './extraKinds.js';
+import { CROSSREF_WORKS } from './crossrefBooks.js';
+import { NLM_EUTILS, NLM_PROVIDER, NLM_TARGET_DEPARTMENTS } from './nlmCatalog.js';
+import { PRESSBOOKS_OPDS, PRESSBOOKS_PROVIDER } from './pressbooks.js';
+import { OPENLIBRARY_DUMP_URL, OPENLIBRARY_DUMP_PROVIDER } from './openLibraryDump.js';
 
 /**
  * Incremental OAI-PMH harvest of one book provider.
@@ -34,7 +41,7 @@ export type OaiProviderConfig = {
   provider: string;
   baseUrl: string;
   /** How the provider is read. Default 'oai' (OAI-PMH); 'otl' is Open Textbook Library's paged JSON. */
-  kind?: 'oai' | 'otl' | 'ncbi' | 'openlibrary';
+  kind?: 'oai' | 'otl' | 'ncbi' | 'openlibrary' | 'crossrefbooks' | 'nlm' | 'pressbooks' | 'olbulk';
   /** A subject-searchable provider: the phrases to ask for, in turn. The cursor is "<phrase index>|<page>". Used by targeted runs only. */
   queries?: string[];
   /**
@@ -42,6 +49,11 @@ export type OaiProviderConfig = {
    * person. For a provider that lists books of every kind and says nothing about rights.
    */
   reviewFirst?: boolean;
+  /**
+   * Only a book the classifier places with confidence is kept; a plausible-but-unclear one is skipped (counted, with its reason) rather than queued
+   * for review. For a provider so large that its unclear books would bury the review queue (the Open Library dump).
+   */
+  strongOnly?: boolean;
   /** OAI set to harvest: the books, not the chapters, funders or publishers also in the repository. */
   set: string;
   metadataPrefix: string;
@@ -138,8 +150,44 @@ export const OPENLIBRARY_FEED: OaiProviderConfig = {
   reviewFirst: true,
 };
 
+/**
+ * Crossref Books: scholarly book metadata by DOI. Metadata Only, review-first (Crossref carries no controlled code, so the classifier can
+ * only say "review"). See crossrefBooks.ts.
+ */
+export const CROSSREF_BOOKS_FEED: OaiProviderConfig = {
+  provider: 'CrossrefBooks', kind: 'crossrefbooks', baseUrl: CROSSREF_WORKS, set: '', metadataPrefix: '',
+  label: 'Crossref Books (metadata)', handleBase: 'https://doi.org/', reviewFirst: true, resyncMinutes: 24 * 60,
+};
+
+/**
+ * NLM Catalog: bibliographic records for health books, with the NLM classification as a controlled code. Metadata Only. See nlmCatalog.ts.
+ * Not NCBI Bookshelf (open access texts, its own quota): a separate source with a separate health row.
+ */
+export const NLM_FEED: OaiProviderConfig = {
+  provider: NLM_PROVIDER, kind: 'nlm', baseUrl: NLM_EUTILS, set: '', metadataPrefix: '',
+  label: 'NLM Catalog (metadata)', handleBase: 'https://www.ncbi.nlm.nih.gov/nlmcatalog/', resyncMinutes: 7 * 24 * 60,
+  allowedDepartments: NLM_TARGET_DEPARTMENTS,
+};
+
+/** Pressbooks Directory: openly published textbooks; the licence is read from each book's own site. Review-first. See pressbooks.ts. */
+export const PRESSBOOKS_FEED: OaiProviderConfig = {
+  provider: PRESSBOOKS_PROVIDER, kind: 'pressbooks', baseUrl: PRESSBOOKS_OPDS, set: '', metadataPrefix: '',
+  label: 'Pressbooks Directory (OPDS)', handleBase: '', reviewFirst: true, resyncMinutes: 7 * 24 * 60,
+};
+
+/**
+ * Open Library's monthly data dump: the bulk source. BULK ONLY — never in the continuous rotation. Strong-only: an edition is catalogued
+ * (Metadata Only) when the classifier places it with confidence, and skipped with a counted reason otherwise. See openLibraryDump.ts.
+ */
+export const OPENLIBRARY_DUMP_FEED: OaiProviderConfig = {
+  provider: OPENLIBRARY_DUMP_PROVIDER, kind: 'olbulk', baseUrl: OPENLIBRARY_DUMP_URL, set: '', metadataPrefix: '',
+  label: 'Open Library data dump (bulk)', handleBase: 'https://openlibrary.org', strongOnly: true,
+};
+
 export type HarvestOptions = {
   dryRun?: boolean;
+  /** The book policy year (yearPolicy.ts). Absent: read from the engine's saved settings. */
+  bookMinYear?: number;
   /** Pages per call. The engine takes a few per pass and the checkpoint carries on from there. */
   maxPages?: number;
   /** Stop after this many records have been *written* (dry run: examined). For small local tests. */
@@ -174,8 +222,19 @@ export type HarvestOptions = {
 };
 
 export type HarvestReport = {
+  /** Clearly classified books held for review only because of the book year policy (older than it, or no year). Never refused for it. */
+  heldForYear: { older: number; noYear: number };
   provider: string; dryRun: boolean;
   pages: number; fetched: number; deleted: number; unusable: number;
+  /** Records the provider listed that it says have not changed since our last sync, so they were not judged again. Counted as skipped. */
+  unchanged: number;
+  /** Records read and rejected by the provider's own pre-filter (bulk dumps), and why. Counted as skipped. */
+  filtered: number;
+  filterReasons: Record<string, number>;
+  /** Books a strong-only provider read whose department was not clear enough; skipped, never queued. */
+  weakSkipped: number;
+  /** Books judged fit to write that a capped run (`maxWrites`) stopped short of. Counted as skipped, and re-read next time. */
+  notWritten: number;
   newCandidates: number;
   duplicates: { doi: number; isbn: number; sourceRecordId: number; fingerprint: number; title: number; inRun: number };
   enriched: number;
@@ -206,6 +265,10 @@ export type HarvestReport = {
   sourceError: string | null;
   /** Dry run: a sample of what was decided, for a person to read. */
   sample: any[];
+  /** How many DIFFERENT books the run examined, by identifier (DOI, else ISBN, else the provider's id, else the title). `fetched` counts a repeat each time it is seen. */
+  uniqueCandidates: number;
+  /** Whether every record fetched ended in exactly one bucket. Null for NCBI, whose "checked" counts archives read rather than records listed. */
+  accounting: Reconciliation | null;
 };
 
 const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -214,11 +277,11 @@ const SAMPLE = 40;
 
 export function emptyReport(provider: string, dryRun: boolean): HarvestReport {
   return {
-    provider, dryRun, pages: 0, fetched: 0, deleted: 0, unusable: 0, newCandidates: 0,
+    provider, dryRun, pages: 0, fetched: 0, deleted: 0, unusable: 0, unchanged: 0, filtered: 0, filterReasons: {}, weakSkipped: 0, notWritten: 0, uniqueCandidates: 0, accounting: null, newCandidates: 0,
     duplicates: { doi: 0, isbn: 0, sourceRecordId: 0, fingerprint: 0, title: 0, inRun: 0 }, enriched: 0,
     department: { strong: 0, review: 0, none: 0, byDepartment: {}, suggestions: {} },
     access: { FullText: 0, OpenExternal: 0, MetadataOnly: 0 }, licences: {},
-    added: 0, queuedForReview: 0, failed: 0, firstError: null, departmentStats: {}, completed: false, fullTextEligible: 0, licenceFilled: 0, licenceConflicts: 0, outsideScope: 0, deferred: null, ncbi: null,
+    added: 0, queuedForReview: 0, failed: 0, firstError: null, departmentStats: {}, completed: false, fullTextEligible: 0, licenceFilled: 0, licenceConflicts: 0, outsideScope: 0, deferred: null, ncbi: null, heldForYear: { older: 0, noYear: 0 },
     files: { checked: 0, opened: 0, refused: 0, reasons: {} }, resumedFrom: null, nextCursor: null,
     completeListSize: null, sourceError: null, sample: [],
   };
@@ -365,7 +428,7 @@ export async function judgeBooks(cfg: OaiProviderConfig, books: NormalisedBook[]
     judged.push({
       book,
       match: held.get(i) ?? null,
-      verdict: classifyDepartment({ classifications: book.classifications, subjects: book.subjects, title: book.title, description: book.description, lcc: book.lcc }),
+      verdict: classifyDepartment({ classifications: book.classifications, subjects: book.subjects, title: book.title, description: book.description, lcc: book.lcc, nlm: Array.isArray((book.extra as any)?.nlmClass) ? (book.extra as any).nlmClass : undefined }),
       access: judgeBookAccess(book, { verifiedFileUrl: file?.ok ? book.fileUrl : null }),
       file,
     });
@@ -438,6 +501,11 @@ export type Batch = {
   deferred?: string | null;
   /** A dry-run sample is complete. */
   stop?: string | null;
+  /** Records the provider lists as unchanged since the last sync: counted in `count`, not judged, accounted as skipped. */
+  unchanged?: number;
+  /** Records read and deliberately not taken as candidates (a bulk dump's non-academic lines), with the reason for each. Counted in `count`, accounted as skipped. */
+  filtered?: number;
+  filterReasons?: Record<string, number>;
 };
 
 /** Fetch and normalise one page for any provider kind. A string is the reason it could not be had. */
@@ -517,16 +585,17 @@ async function ncbiBatch(cfg: OaiProviderConfig, token: string | null, ctx: Batc
   return { books, count: i - start, deleted: 0, unusable: 0, next: more ? `${i}@${order.join('|')}` : null, total: seq.length, error: null, deferred, stop };
 }
 
-export type BatchContext = { db: any; report: HarvestReport; maxArchives?: number; archiveCap?: number; pauseMs?: number };
+export type BatchContext = { db: any; report: HarvestReport; /** The book policy year, for a provider that can be asked for nothing older. */ minYear?: number; maxArchives?: number; archiveCap?: number; pauseMs?: number };
 
 export async function fetchBatch(cfg: OaiProviderConfig, token: string | null, from: string | null, ctx?: BatchContext): Promise<Batch | { failed: string }> {
   if (cfg.kind === 'ncbi') return ncbiBatch(cfg, token, ctx!);
+  if (cfg.kind === 'crossrefbooks' || cfg.kind === 'nlm' || cfg.kind === 'pressbooks' || cfg.kind === 'olbulk') return (await extraBatch(cfg, token, from, ctx))!;
   if (cfg.kind === 'openlibrary') {
     const queries = cfg.queries ?? [];
     const [qi, pg] = (token || '0|1').split('|').map(Number);
     const qIndex = Number.isInteger(qi) && qi >= 0 ? qi : 0, page = Number.isInteger(pg) && pg >= 1 ? pg : 1;
     if (qIndex >= queries.length) return { books: [], count: 0, deleted: 0, unusable: 0, next: null, total: null, error: null };
-    const r = await fetchOpenLibraryPage(queries[qIndex], page);
+    const r = await fetchOpenLibraryPage(queries[qIndex], page, undefined, ctx?.minYear);
     if (!r.ok) return { failed: r.error || `HTTP ${r.status}` };
     const docs: any[] = r.json.docs;
     const books: NormalisedBook[] = [];
@@ -552,13 +621,15 @@ export async function fetchBatch(cfg: OaiProviderConfig, token: string | null, f
     // The library has no "changed since": a book last updated before our last sync was already judged then.
     const since = from ? Date.parse(from) : NaN;
     const books: NormalisedBook[] = [];
+    let unchanged = 0;
     for (const it of items) {
       const b = normaliseOtlBook(cfg.provider, it);
       if (!b) { unusable++; continue; }
-      if (Number.isFinite(since) && b.modified && Date.parse(b.modified) < since) continue;
+      // Counted, not dropped: this record WAS examined, so it must end in a bucket (skipped: unchanged since the last sync).
+      if (Number.isFinite(since) && b.modified && Date.parse(b.modified) < since) { unchanged++; continue; }
       books.push(b);
     }
-    return { books, count: items.length, deleted: 0, unusable, next: page < totalPages ? String(page + 1) : null, total: Number(r.json?.links?.total_count) || null, error: null };
+    return { books, count: items.length, deleted: 0, unusable, unchanged, next: page < totalPages ? String(page + 1) : null, total: Number(r.json?.links?.total_count) || null, error: null };
   }
   const got = await fetchPage(cfg, token, from);
   if ('error' in got) return { failed: got.error ?? 'request failed' };
@@ -584,8 +655,11 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
   const sleep = opts.sleep ?? defaultSleep;
   const now = opts.now ?? (() => new Date());
   const report = emptyReport(cfg.provider, dry);
+  // The book year policy: a new book from this year on is published the normal way; an older one, or one with no year, waits for review.
+  const minYear = opts.bookMinYear ?? bookMinYear(await db.ingestionState?.findUnique?.({ where: { id: 'singleton' }, select: { bookMinYear: true } }).catch(() => null));
   const seenInRun = new Set<string>();
   const seenDept = new Map<string, string>();
+  const uniqueKeys = new Set<string>();
   const checker = cfg.verifyFiles ? new FileChecker() : null;
 
   let cp = await readCheckpoint(db, cfg.provider);
@@ -612,7 +686,7 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
 
   const maxPages = opts.maxPages ?? 3;
   for (let n = 0; n < maxPages; n++) {
-    const got = await fetchBatch(cfg, token, from, { db, report, maxArchives: opts.maxArchives ?? (dry && cfg.kind === 'ncbi' && opts.archiveCap == null ? 25 : undefined), archiveCap: opts.archiveCap, pauseMs: opts.pageDelayMs });
+    const got = await fetchBatch(cfg, token, from, { db, report, minYear, maxArchives: opts.maxArchives ?? (dry && cfg.kind === 'ncbi' && opts.archiveCap == null ? 25 : undefined), archiveCap: opts.archiveCap, pauseMs: opts.pageDelayMs });
     if ('failed' in got) { report.sourceError = got.failed; break; }                          // stay put; resume later
     const page = got;
 
@@ -634,9 +708,11 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
     report.fetched += page.count;
 
     const judged = await judgeBooks(cfg, page.books, db, checker);
-    report.deleted += page.deleted; report.unusable += page.unusable;
-    // Records that were never books (deleted at the source, or unreadable) are skipped, with no department to put them in.
-    if (page.deleted + page.unusable) bump(report.departmentStats, '', 'skipped', page.deleted + page.unusable);
+    report.deleted += page.deleted; report.unusable += page.unusable; report.unchanged += page.unchanged ?? 0; report.filtered += page.filtered ?? 0;
+    for (const [k, v] of Object.entries(page.filterReasons ?? {})) report.filterReasons[k] = (report.filterReasons[k] || 0) + v;
+    // Records that were never books (deleted at the source, or unreadable) or that the source says are unchanged since our last sync
+    // are skipped, with no department to put them in. Every record fetched ends in a bucket; none is dropped.
+    if (page.deleted + page.unusable + (page.unchanged ?? 0) + (page.filtered ?? 0)) bump(report.departmentStats, '', 'skipped', page.deleted + page.unusable + (page.unchanged ?? 0) + (page.filtered ?? 0));
     const heldDept = await heldDepartments(db, judged);
     const stats: DeptStats = report.departmentStats;
 
@@ -644,6 +720,7 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
     // must not spend its whole allowance on new books before reaching the matches.
     for (const j of [...judged.filter(x => x.match), ...judged.filter(x => !x.match)]) {
       const b = j.book;
+      uniqueKeys.add(b.doi ? `doi:${b.doi}` : b.isbns[0] ? `isbn:${b.isbns[0]}` : b.sourceRecordId ? `id:${b.sourceRecordId}` : `t:${String(b.title).toLowerCase().replace(/\W+/g, ' ').trim().slice(0, 120)}`);
       // The same book twice in one run (e.g. two records sharing a DOI) is a duplicate of the first.
       const keys = [b.doi && `doi:${b.doi}`, ...b.isbns.map(i => `isbn:${i}`), b.sourceRecordId && `id:${b.sourceRecordId}`].filter(Boolean) as string[];
       // Where this book will count: the held book's department, or — for a new one — the department it would be published into.
@@ -676,7 +753,7 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
           if (lic?.metadata) { patch.metadata = lic.metadata; if (!lic.licence) report.licenceConflicts++; }
           const cap = opts.maxWrites;
           const writes = report.added + report.queuedForReview + report.enriched;
-          if (!dry && cap != null && writes >= cap) continue;       // a capped run caps every kind of write
+          if (!dry && cap != null && writes >= cap) continue;       // a capped run caps every kind of write (already counted held above)
           if (Object.keys(patch).length) {
             report.enriched++;
             if (!dry) await db.book.update({ where: { id: j.match.bookId }, data: patch }).catch((e: any) => { report.failed++; report.firstError ||= String(e?.message || e).slice(0, 300); });
@@ -707,12 +784,20 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
       // logged and nothing more: it is never given a department to make a number look better.
       if (cfg.allowedDepartments && j.verdict.band !== 'none' && !(j.verdict.suggested && cfg.allowedDepartments.includes(j.verdict.suggested))) { report.outsideScope++; bump(stats, here, 'skipped'); continue; }
       if (j.verdict.band === 'none') { bump(stats, '', 'skipped'); continue; }
+      // A strong-only provider keeps only what the classifier places with confidence; the rest is counted as skipped, never queued.
+      if (cfg.strongOnly && j.verdict.band !== 'strong') { report.weakSkipped++; bump(stats, '', 'skipped'); continue; }
       // A review-first provider publishes nothing by itself: a clearly classified book still waits for a person.
-      const publishes = j.verdict.band === 'strong' && !cfg.reviewFirst;
+      // The book year policy: a clearly classified book that is older than the policy year, or has no year, is NOT refused — it waits for a
+      // person, who may approve an important older title. Nothing is given a year it does not have.
+      const yv = bookYearVerdict(b.year, minYear);
+      const publishes = j.verdict.band === 'strong' && !cfg.reviewFirst && yv.ok;
+      if (j.verdict.band === 'strong' && !cfg.reviewFirst && !yv.ok) report.heldForYear[yv.outcome === 'older' ? 'older' : 'noYear']++;
       if (dry) { if (publishes) { report.added++; bump(stats, here, 'added'); } else { report.queuedForReview++; bump(stats, '', 'sentToReview'); } continue; }
-      if (opts.maxWrites != null && report.added + report.queuedForReview + report.enriched >= opts.maxWrites) continue;
+      if (opts.maxWrites != null && report.added + report.queuedForReview + report.enriched >= opts.maxWrites) { report.notWritten++; bump(stats, here, 'skipped'); continue; }
       try {
-        await db.book.create({ data: bookRow(j, cfg, publishes ? 'Published' : 'Draft') });
+        const row: any = bookRow(j, cfg, publishes ? 'Published' : 'Draft');
+        if (!yv.ok) row.metadata = { ...row.metadata, harvest: { ...(row.metadata?.harvest || {}), yearPolicy: { outcome: yv.outcome, reason: yv.reason, minYear } } };
+        await db.book.create({ data: row });
         // Published: counted in the department it was published into. Waiting for review: unassigned, whatever it suggests.
         if (publishes) { report.added++; bump(stats, here, 'added'); } else { report.queuedForReview++; bump(stats, '', 'sentToReview'); }
       } catch (e: any) {
@@ -732,6 +817,14 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
     if (opts.maxWrites != null && report.added + report.queuedForReview + report.enriched >= opts.maxWrites) break;
     if (opts.maxRecords != null && report.fetched >= opts.maxRecords) break;
     await (opts.pageDelayMs === 0 ? Promise.resolve() : sleep(opts.pageDelayMs ?? 1000));
+  }
+
+  report.uniqueCandidates = uniqueKeys.size;
+  // Every record fetched must have ended in exactly one bucket. (NCBI reports archives read as its "checked", a different unit.)
+  if (cfg.kind !== 'ncbi') {
+    const t = Object.values(report.departmentStats).reduce((a, c) => ({ added: a.added + c.added, held: a.held + c.held, review: a.review + c.sentToReview, skipped: a.skipped + c.skipped, failed: a.failed + c.failed }), { added: 0, held: 0, review: 0, skipped: 0, failed: 0 });
+    report.accounting = reconcile({ checked: report.fetched, added: t.added, alreadyHeld: t.held, review: t.review, skipped: t.skipped, failed: t.failed });
+    if (!report.accounting.ok) console.error(`[ingest] ${cfg.provider}: ${report.accounting.message}`);
   }
 
   if (report.completed && keepsCheckpoint && boundary) {
