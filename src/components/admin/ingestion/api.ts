@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type ApiResult<T = any> = { ok: boolean; status: number; data: T };
 
-export async function api<T = any>(path: string, opts: { method?: 'GET' | 'POST'; body?: any } = {}): Promise<ApiResult<T>> {
+export async function api<T = any>(path: string, opts: { method?: 'GET' | 'POST' | 'PUT'; body?: any } = {}): Promise<ApiResult<T>> {
   try {
     const r = await fetch(path, {
       method: opts.method || 'GET',

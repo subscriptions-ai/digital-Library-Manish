@@ -49,6 +49,8 @@ export type TurnRan = {
   recordFailures: number;
   /** Useful: new content, valid enrichment, or a Draft that is the expected workflow. A held duplicate alone is not. */
   useful: number;
+  /** Distinct candidate identifiers the turn examined (checked counts a repeat as many times as it was seen). */
+  uniqueCandidates?: number;
   /** Provider requests that failed during this turn (a source that stopped answering part-way). Not records, and not counted in any record figure. */
   requestFailures?: number;
   more: boolean;
@@ -85,6 +87,11 @@ export type ProviderDef = {
   healthKey: string; lock: string;
   /** True, or the reason this provider cannot run at all (not wired to a data source, switched off). */
   configured?: () => true | string;
+  /**
+   * Left out of the CONTINUOUS rotation, with the reason — while still available to Quick Import and Bulk expansion, which an administrator starts
+   * deliberately. (`configured` is for a source that cannot run at all.)
+   */
+  rotationOff?: () => string | null;
   /** A rest that is not a failure, e.g. a daily quota. */
   restingNow?: () => Promise<null | { until: Date | null; reason: string }>;
   turn: (ctx: TurnCtx) => Promise<TurnOutcome>;
@@ -114,6 +121,8 @@ const fmtClock = (d: Date) => d.toLocaleTimeString('en-IN', { hour: 'numeric', m
 export async function availability(p: ProviderDef, s: RotationState, now = Date.now()): Promise<Availability> {
   const cfg = p.configured?.();
   if (cfg !== undefined && cfg !== true) return { state: 'unavailable', kind: 'not-configured', until: null, reason: cfg };
+  const off = p.rotationOff?.();
+  if (off) return { state: 'unavailable', kind: 'not-configured', until: null, reason: off };
   if (providerHolder(p.lock)) return { state: 'unavailable', kind: 'busy', until: null, reason: 'being worked on right now' };
   const h = await sourceHealthState(p.healthKey);
   if (h.until) {
@@ -363,6 +372,7 @@ async function writeRan(group: Group, p: ProviderDef, o: TurnRan, durationMs: nu
   if (o.departmentStats) Object.assign(row, runColumnsFromStats(o.departmentStats));
   else Object.assign(row, { added: o.added, skippedHeld: o.held, skippedFailed: o.recordFailures, skippedRejected: o.skipped, needsReview: o.sentToReview });
   if (o.columns) Object.assign(row, o.columns);
+  if (group === 'Books') row.checked = o.checked;     // a Book run must account for every candidate it examined (accounting.ts)
   await createRunWithStats(row, o.departmentStats ?? null);
 }
 

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ingestionDb } from './db.js';
+import { reconcile, tallyOfRow } from './accounting.js';
 
 /**
  * The per-department breakdown of one run.
@@ -46,6 +47,16 @@ export function runColumnsFromStats(stats: DeptStats) {
  */
 export async function createRunWithStats(row: Record<string, any>, stats: DeptStats | null | undefined, contentType = 'Books', db: any = ingestionDb): Promise<string | null> {
   const id = randomUUID();
+  // A Book run that says how many candidates it examined must account for every one of them (see accounting.ts). The check is made
+  // here, on the row's own columns, so every writer of a Book run — continuous, Quick Import, bulk, targeted — is held to it once.
+  if (row.phase === 'Books' && typeof row.checked === 'number') {
+    const r = reconcile(tallyOfRow(row));
+    row.accounting = r.status; row.unaccounted = r.unaccounted;
+    if (!r.ok) {
+      row.error = [row.error, r.message].filter(Boolean).join(' — ').slice(0, 900);
+      console.error(`[ingest] ${row.source ?? 'Books'}: ${r.message}`);
+    }
+  }
   const rows = Object.entries(stats || {}).filter(([, c]) => Object.values(c).some(n => n > 0));
   try {
     await db.$transaction(async (tx: any) => {

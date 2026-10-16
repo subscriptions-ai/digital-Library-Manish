@@ -184,13 +184,15 @@ export const RUN_BY_DEPARTMENT = `(
   select r.id, r."at", r.phase, r.source, s.department as dept, r."journalId", r."journalTitle", r.department,
          s.added, s.held as "skippedHeld", s.failed as "skippedFailed", s.skipped as "skippedRejected", s."sentToReview" as "needsReview",
          0 as "journalsSeen", 0 as "journalsAccepted", 0 as "journalsRefused", r."durationMs", r.more, r.note, r.error,
-         true as "hasBreakdown", r.added as "runAdded", r."skippedHeld" as "runHeld", r."needsReview" as "runReview"
+         true as "hasBreakdown", r.added as "runAdded", r."skippedHeld" as "runHeld", r."needsReview" as "runReview",
+         r.checked, r.accounting, r.unaccounted
     from "IngestionRun" r join "IngestionRunDepartmentStat" s on s."runId" = r.id
   union all
   select r.id, r."at", r.phase, r.source, coalesce(r.department, j.domain) as dept, r."journalId", r."journalTitle", r.department,
          r.added, r."skippedHeld", r."skippedFailed", r."skippedRejected", r."needsReview",
          r."journalsSeen", r."journalsAccepted", r."journalsRefused", r."durationMs", r.more, r.note, r.error,
-         false as "hasBreakdown", r.added as "runAdded", r."skippedHeld" as "runHeld", r."needsReview" as "runReview"
+         false as "hasBreakdown", r.added as "runAdded", r."skippedHeld" as "runHeld", r."needsReview" as "runReview",
+         r.checked, r.accounting, r.unaccounted
     from "IngestionRun" r left join "Journal" j on j.id = r."journalId"
    where not exists (select 1 from "IngestionRunDepartmentStat" s where s."runId" = r.id)
 ) r`;

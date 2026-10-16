@@ -1,4 +1,5 @@
 import { ingestionDb as db } from './db.js';
+import { articleMinYear } from './yearPolicy.js';
 import { audit } from './audit.js';
 import { INGESTION_POLICY } from './policy.js';
 import { tryLockProvider, unlockProvider, providerHolder } from './providerLocks.js';
@@ -13,7 +14,7 @@ import { ensureProviders, getRoadAdapter } from './engine.js';
 import {
   SourceError, articlePause, checkFiles, fetchArxiv, fetchCrossrefForJournal, fetchEuropePmc, fetchOpenAlexForJournal, type RawCandidate,
 } from './articleSources.js';
-import { harvestFeed, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
+import { harvestFeed, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, CROSSREF_BOOKS_FEED, NLM_FEED, PRESSBOOKS_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
 import { ncbiLimits, usedToday } from './books/ncbi.js';
 import { checkDoajCatalogue, importCheckedJournals, DOAJ_CSV_URL } from '../doajCatalogue.js';
 import { getState } from '../ingestionWorker.js';
@@ -41,7 +42,7 @@ import { DOMAINS } from '../../constants.js';
  * engine, and a second click on the same source is refused rather than run in parallel.
  */
 
-export type QuickId = 'doaj' | 'road' | 'crossrefjournals' | 'openalexsources' | 'crossref' | 'openalex' | 'europepmc' | 'arxiv' | 'doab' | 'oapen' | 'otl' | 'ncbi';
+export type QuickId = 'doaj' | 'road' | 'crossrefjournals' | 'openalexsources' | 'crossref' | 'openalex' | 'europepmc' | 'arxiv' | 'doab' | 'oapen' | 'otl' | 'ncbi' | 'nlm' | 'crossrefbooks' | 'pressbooks';
 export type QuickGroup = 'Journals' | 'Articles' | 'Books';
 
 export type QuickCode = 'BUSY' | 'UNAVAILABLE' | 'RATE_LIMITED' | 'INVALID_RESPONSE' | 'QUOTA' | 'FAILED';
@@ -65,6 +66,10 @@ export function clock(d: Date) {
 export type QuickOutcome = {
   checked: number; added: number; alreadyHeld: number; needsReview: number; skipped: number; failed: number;
   enriched?: number;
+  /** Different books examined, by identifier (a book seen twice counts once). */
+  uniqueCandidates?: number;
+  /** Of `skipped`: records the provider says have not changed since our last sync, so they were not judged again. */
+  unchanged?: number;
   notes: string[];
   /** Where "Import more" starts. Null when the source has been read to its end. */
   nextPosition: any;
@@ -257,7 +262,7 @@ type Gathered = { items: (RawCandidate & { department: string | null })[]; fetch
 /** Journals the engine would fetch articles for, taken in id order from where the last manual run stopped. */
 async function gatherByJournal(ctx: Ctx, def: Def, fetchOne: (j: any, fromYear: number, rows: number) => Promise<{ items: RawCandidate[]; fetched: number; skipped: number }>, gapMs: number): Promise<Gathered> {
   const state = await getState();
-  const fromYear = thisYear() - (Math.max(1, state.yearsBack || 5) - 1);
+  const fromYear = articleMinYear(state);                // Quick Import uses the same article policy year as the engine
   const cap = Math.max(0, state.articlesPerJournal ?? 0);
   const rowsPer = Math.min(50, Math.max(10, Math.ceil(ctx.limit / 10)));
   const policy = INGESTION_POLICY.quick;
@@ -308,7 +313,7 @@ async function gatherByJournal(ctx: Ctx, def: Def, fetchOne: (j: any, fromYear: 
 /** Department-search sources (Europe PMC, arXiv): one page per department in turn, each with its own place. */
 async function gatherBySearch(ctx: Ctx, def: Def, departments: string[], fetchPage: (dept: string, size: number, at: number, fromYear: number) => Promise<{ items: RawCandidate[]; fetched: number; skipped: number }>, first: number, pageSize: number, gapMs: number): Promise<Gathered> {
   const state = await getState();
-  const fromYear = thisYear() - (Math.max(1, state.yearsBack || 5) - 1);
+  const fromYear = articleMinYear(state);                // Quick Import uses the same article policy year as the engine
   const policy = INGESTION_POLICY.quick;
   const started = Date.now();
   const places: Record<string, number> = { ...(ctx.position?.places || {}) };
@@ -385,7 +390,7 @@ export async function runSearchProvider(id: 'europepmc' | 'arxiv', limit: number
 /** Tests only: how long a manual book harvest waits between pages. Real runs use the harvester's own politeness delay. */
 let pageDelayOverride: number | undefined;
 export function __useQuickPageDelayForTests(ms: number | undefined) { pageDelayOverride = ms; }
-const BOOK_CFG = { doab: DOAB_OAI, oapen: OAPEN_OAI, otl: OTL_FEED, ncbi: NCBI_FEED } as const;
+const BOOK_CFG = { doab: DOAB_OAI, oapen: OAPEN_OAI, otl: OTL_FEED, ncbi: NCBI_FEED, nlm: NLM_FEED, crossrefbooks: CROSSREF_BOOKS_FEED, pressbooks: PRESSBOOKS_FEED } as const;
 const dupTotal = (r: HarvestReport) => Object.values(r.duplicates).reduce((a, b) => a + b, 0);
 
 /** Where a manual run of a provider begins: its own saved place, or — with none — where the engine's next sync would. */
@@ -438,6 +443,7 @@ function booksRunner(cfg: OaiProviderConfig, healthKey: string) {
     const notes: string[] = [];
     if (report.enriched) notes.push(`${report.enriched} books already held were enriched with details they were missing.`);
     if (report.licenceFilled) notes.push(`${report.licenceFilled} empty licences were filled from a title-level declaration.`);
+    if (report.unchanged) notes.push(`${report.unchanged} records are unchanged since the last sync, so they were not judged again (counted as skipped).`);
     if (report.deferred) notes.push(`Stopped early: ${report.deferred}.`);
     if (report.firstError) notes.push(`First write error: ${report.firstError}`);
     if (isNcbi && report.ncbi) notes.push(`${report.ncbi.archives} archives read (${Math.round(report.ncbi.bytes / 104857.6) / 10} MB); NCBI stays review-first, so nothing it found was published automatically.`);
@@ -446,7 +452,7 @@ function booksRunner(cfg: OaiProviderConfig, healthKey: string) {
     return {
       checked, added: report.added, alreadyHeld: dupTotal(report), needsReview: report.queuedForReview,
       skipped: totals(report.departmentStats).skipped, failed: report.failed,
-      enriched: report.enriched, byDepartment: report.departmentStats, notes,
+      enriched: report.enriched, unchanged: report.unchanged, uniqueCandidates: report.uniqueCandidates, byDepartment: report.departmentStats, notes,
       partial: report.sourceError ? `${cfg.label} stopped answering part-way (${report.sourceError}); what was read before that was still imported.` : null,
       // A finished set starts afresh from the last sync next time; an unfinished one carries on from here.
       nextPosition: report.completed ? null : { cursor: report.nextCursor },
@@ -462,7 +468,7 @@ function booksRunner(cfg: OaiProviderConfig, healthKey: string) {
 export async function previewManualBooks(id: QuickId, limit: number) {
   const def = DEFS[id];
   if (def.group !== 'Books') throw new QuickError('FAILED', `${def.label} is not a book source`, null, 400);
-  const cfg = BOOK_CFG[id as 'doab' | 'oapen' | 'otl' | 'ncbi'];
+  const cfg = BOOK_CFG[id as keyof typeof BOOK_CFG];
   const max = INGESTION_POLICY.quick.ceiling[id];
   const n = Math.max(1, Math.min(limit, max));
   if (runningInGroup('Books')) throw new QuickError('BUSY', 'A book import is already running. Wait for it to finish.');
@@ -541,13 +547,25 @@ const DEFS: Record<QuickId, Def> = {
     id: 'ncbi', label: 'NCBI Bookshelf', group: 'Books', healthKey: 'NCBI', lock: NCBI_FEED.provider, unitLabel: 'NCBI Bookshelf archives',
     description: 'Biomedical and health-science books from the official OA collection.', run: booksRunner(NCBI_FEED, 'NCBI'),
   },
+  nlm: {
+    id: 'nlm', label: 'NLM Catalog', group: 'Books', healthKey: 'NLMCatalog', lock: NLM_FEED.provider, unitLabel: 'new NLM Catalog book records',
+    description: 'Health-book catalogue records with the National Library of Medicine classification. Metadata only: no full text.', run: booksRunner(NLM_FEED, 'NLMCatalog'),
+  },
+  crossrefbooks: {
+    id: 'crossrefbooks', label: 'Crossref Books', group: 'Books', healthKey: 'Crossref', lock: CROSSREF_BOOKS_FEED.provider, unitLabel: 'new Crossref book records',
+    description: 'Scholarly books by DOI. Metadata only, and every new book waits for review: Crossref does not say a book can be read.', run: booksRunner(CROSSREF_BOOKS_FEED, 'Crossref'),
+  },
+  pressbooks: {
+    id: 'pressbooks', label: 'Pressbooks Directory', group: 'Books', healthKey: 'Pressbooks', lock: PRESSBOOKS_FEED.provider, unitLabel: 'new Pressbooks Directory books',
+    description: 'Openly published university textbooks. The licence is read from each book; every new book waits for review.', run: booksRunner(PRESSBOOKS_FEED, 'Pressbooks'),
+  },
 };
 export const QUICK_IDS = Object.keys(DEFS) as QuickId[];
 /** Which source-health row governs a source, by the id the wizard and Quick Import both use. */
 export const healthKeyFor = (source: string): string | undefined => ({
   crossref: 'Crossref', openalex: 'OpenAlex', europepmc: 'EuropePMC', arxiv: 'arXiv', doaj: 'DOAJ', 'doaj-journals': 'DOAJ',
   road: 'ROAD', crossrefjournals: 'Crossref', openalexsources: 'OpenAlex',
-  doab: 'DOAB', oapen: 'OAPEN', otl: 'open.umn.edu', ncbi: 'NCBI',
+  doab: 'DOAB', oapen: 'OAPEN', otl: 'open.umn.edu', ncbi: 'NCBI', nlm: 'NLMCatalog', crossrefbooks: 'Crossref', pressbooks: 'Pressbooks',
 } as Record<string, string>)[source];
 export const isQuickId = (x: any): x is QuickId => typeof x === 'string' && x in DEFS;
 export const quickDef = (id: QuickId) => DEFS[id];
@@ -732,7 +750,7 @@ async function record(def: Def, r: QuickResult, admin: any, how: string) {
   if (r.enriched) bits.push(`${r.enriched} enriched`);
   if (r.alreadyHeld) bits.push(`${r.alreadyHeld} already held`);
   if (r.needsReview) bits.push(`${r.needsReview} sent to review`);
-  if (r.skipped) bits.push(`${r.skipped} skipped`);
+  if (r.skipped) bits.push(`${r.skipped} skipped${r.unchanged ? ` (${r.unchanged} unchanged since the last sync)` : ''}`);
   if (r.failed) bits.push(`${r.failed} failed to write`);
   const note = `Manual · ${how} · ${bits.join(' · ')}${r.partial ? ` — ${r.partial}` : ''}`;
 
@@ -740,6 +758,7 @@ async function record(def: Def, r: QuickResult, admin: any, how: string) {
   if (def.group === 'Journals') Object.assign(row, { journalsSeen: r.counters?.seen ?? r.added, journalsAccepted: r.counters?.accepted ?? 0, journalsRefused: r.counters?.metadataOnly ?? 0, needsReview: r.needsReview || 0, skippedHeld: def.id === 'doaj' ? 0 : r.alreadyHeld });
   else if (r.byDepartment) Object.assign(row, runColumnsFromStats(r.byDepartment));      // the run's totals ARE the sums of its breakdown
   else Object.assign(row, { added: r.added, skippedHeld: r.alreadyHeld, skippedFailed: r.failed, skippedRejected: r.skipped, needsReview: r.needsReview });
+  if (def.group === 'Books') { row.checked = r.checked; if (r.uniqueCandidates != null) row.uniqueCandidates = r.uniqueCandidates; }   // a Book run must account for every candidate it examined (accounting.ts)
   // The same writer the continuous engine uses: the run and its department breakdown, together or not at all.
   await createRunWithStats(row, def.group === 'Journals' ? null : r.byDepartment, def.group === 'Books' ? 'Books' : 'Articles');
 

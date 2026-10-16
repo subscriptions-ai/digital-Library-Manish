@@ -105,7 +105,7 @@ try {
 
   section('Bulk Catalogue Expansion');
   const bulk = await A('/api/admin/ingest/bulk');
-  check('lists the five bulk sources with their own positions and counters', bulk.status === 200 && bulk.data.sources.length === 5 && bulk.data.sources.every((s: any) => 'position' in s && 'counters' in s && 'health' in s), bulk.data.sources?.map((s: any) => s.id).join(','));
+  check('lists the nine bulk sources (five books-and-journals originals plus NLM, Crossref Books, Pressbooks and the Open Library dump) with their own positions and counters', bulk.status === 200 && bulk.data.sources.length === 9 && bulk.data.sources.every((s: any) => 'position' in s && 'counters' in s && 'health' in s), bulk.data.sources?.map((s: any) => s.id).join(','));
   check('an unknown source → 400', (await A('/api/admin/ingest/bulk', 'POST', { source: 'nope', confirm: true })).status === 400);
   check('no confirmation → 400', (await A('/api/admin/ingest/bulk', 'POST', { source: 'doab' })).status === 400);
   check('records out of range → 400', (await A('/api/admin/ingest/bulk', 'POST', { source: 'doab', records: 5, confirm: true })).status === 400 && (await A('/api/admin/ingest/bulk', 'POST', { source: 'otl', records: 999999, confirm: true })).status === 400);

@@ -179,8 +179,8 @@ export const CoverImagePanel = forwardRef<CoverPanelHandle, Props>(function Cove
             {broken && (
               <div className="flex h-full flex-col items-center justify-center gap-1.5 px-4 text-center">
                 <ImageOff size={22} className="text-muted" aria-hidden="true" />
-                <p className="text-sm font-medium text-ink">This image can’t be loaded.</p>
-                <p className="text-[13px] text-muted">Replace it to publish.</p>
+                <p className="text-sm font-medium text-ink">Cover image unavailable — replace image</p>
+                <p className="text-[13px] text-muted">The saved address is kept until you replace it. Nothing was changed on the post.</p>
               </div>
             )}
             {uploading && (

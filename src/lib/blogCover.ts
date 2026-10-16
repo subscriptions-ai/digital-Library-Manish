@@ -164,6 +164,46 @@ export function isUsableCoverUrl(url: unknown): url is string {
   return (/^\/uploads\/[^\s?#]+$/.test(s) && !s.includes('..')) || /^https?:\/\/[^\s]+$/i.test(s);
 }
 
+// ── Which cover wins ────────────────────────────────────────────────────────
+
+/**
+ * ONE rule for which picture a post shows, used by the blog pages, the search and social metadata and the structured data alike:
+ *
+ *   MANUAL   the cover an editor chose (the address stored on the post)
+ *   >
+ *   FALLBACK the site's own artwork, only for a post that has no cover at all
+ *
+ * (There is no third, automatic source. Nothing in this application generates or rewrites a cover: the five pieces of artwork under
+ * /assets/blog were made once, by hand, and are shipped with the app. They are shown for a post with NO cover; they are never written
+ * onto a post and are never shown in place of a cover that was chosen and cannot be loaded.)
+ *
+ * What is stored is the editor's choice and is only ever changed by an editor. A picture that fails to load is a fault in storage, not an
+ * editorial decision, so it changes nothing that is stored: the address stays, for diagnosis and for the day the file is back.
+ */
+export type CoverSource = 'manual' | 'fallback';
+
+export function hasManualCover(post: { coverUrl?: unknown }): boolean {
+  return isUsableCoverUrl(post?.coverUrl);
+}
+
+export function resolveCover(post: { coverUrl?: unknown; slug: string }): { url: string; source: CoverSource } {
+  return hasManualCover(post)
+    ? { url: String(post.coverUrl).trim(), source: 'manual' }
+    : { url: blogCoverFor(post.slug), source: 'fallback' };
+}
+
+/**
+ * May a cover be produced for this post by something other than the editor's own upload? Only when there is no manual cover AND the editor
+ * asked for it. A manual cover is never replaced by anything automatic; replacing one even on request needs the editor's explicit
+ * confirmation, and nothing runs at start-up, on a redeploy, when a page is rendered or when a picture fails to load.
+ */
+export function mayAutoGenerateCover(post: { coverUrl?: unknown }, ask: { requestedByEditor: boolean; confirmedReplace?: boolean }): boolean {
+  if (!ask.requestedByEditor) return false;
+  return hasManualCover(post) ? ask.confirmedReplace === true : true;
+}
+
+export const COVER_UNAVAILABLE_MESSAGE = 'Cover image unavailable — replace image';
+
 /** Locally hosted artwork chosen by topic when a post has no usable cover. Shared by the page and by the search/social metadata. */
 export function blogCoverFor(seed: string) {
   const topic = seed.toLowerCase();

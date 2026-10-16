@@ -1,4 +1,5 @@
 import { safePercentage } from './src/lib/percent';
+import { articleMinYear, bookMinYear } from "./src/lib/ingestion/yearPolicy.js";
 import { installPublicTrustRoutes } from "./src/server/publicTrust";
 import { PUBLIC_PAGES } from "./src/lib/publicSeo";
 import express from "express";
@@ -55,13 +56,16 @@ import {
 } from "./src/lib/ingestion/quickImport.js";
 import { bookCoverageByDepartment, journalCoverageByDepartment } from "./src/lib/ingestion/bookCoverage.js";
 import { catalogueGrowth, providerCoverage, isGrowthPeriod } from "./src/lib/ingestion/catalogueGrowth.js";
-import { targetingStatus, savePriorityConfig, PriorityError, beginTargetedImport, getTargetedJob, TargetedError } from "./src/lib/ingestion/targetedBooks.js";
-import { bulkStatus, beginBulk, getBulkJob, runningBulkJob, isBulkSource, BulkError } from "./src/lib/ingestion/bulkCatalogue.js";
+import { targetingStatus, loadPriorityConfig, savePriorityConfig, PriorityError, beginTargetedImport, getTargetedJob, TargetedError } from "./src/lib/ingestion/targetedBooks.js";
+import { bulkStatus, beginBulk, getBulkJob, runningBulkJob, isBulkSource, pauseBulkJob, BulkError } from "./src/lib/ingestion/bulkCatalogue.js";
+import { providerMatrix } from "./src/lib/ingestion/providerMatrix.js";
+import { loadDumpSource, saveDumpSource } from "./src/lib/ingestion/books/extraKinds.js";
+import { enrichFromGoogleBooks } from "./src/lib/ingestion/books/googleBooks.js";
 import { sourceCooldown } from "./src/lib/ingestion/sourceHealth.js";
 import { departmentMetrics, departmentTable, departmentExists } from "./src/lib/ingestion/departmentMetrics.js";
 import { resolveRange } from "./src/lib/ingestion/runFilter.js";
 import sanitizeHtml from "sanitize-html";
-import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, publishProblems, COVER_MAX_BYTES, type PublishProblems } from "./src/lib/blogCover.js";
+import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, publishProblems, COVER_MAX_BYTES, COVER_UNAVAILABLE_MESSAGE, type PublishProblems } from "./src/lib/blogCover.js";
 import {
   TEMPLATES, TEMPLATE_LIST, renderTemplate, missingInstitutionFields,
   type TemplateKey, type MailContext,
@@ -1919,26 +1923,28 @@ async function startServer() {
   const postFromBody = async (b: any, existing?: any) => {
     const title = String(b.title || '').trim() || 'Untitled post';
     const body = cleanBody(b.body || '');
+    const sent = typeof b.coverUrl === 'string' ? b.coverUrl.trim() : '';
+    const coverUrl: string | null = sent || (b.removeCover === true ? null : (existing?.coverUrl ?? null));
     return {
       title,
       // Fixed once it has been published — see above.
       ...(existing?.publishedAt ? {} : { slug: await freeSlug(b.slug || title, existing?.id) }),
       excerpt: String(b.excerpt || '').trim().slice(0, 500) || null,
       body,
-      coverUrl: b.coverUrl || null,
-      // Alt text describes the picture, so it goes when the picture does.
-      coverAlt: b.coverUrl ? (cleanAlt(b.coverAlt) || null) : null,
+      // MANUAL COVER ALWAYS WINS. A cover an editor chose is changed by an editor and by nothing else: a save that does not carry a new
+      // address leaves the stored one exactly as it is (an editor tab that had not finished loading, an API client that only sent the
+      // title, a retry), and clearing one has to be asked for out loud (`removeCover: true`). A picture that fails to load changes nothing here.
+      coverUrl,
+      // Alt text describes the picture, so it goes when the picture does — and stays with it when the picture is kept.
+      coverAlt: !coverUrl ? null : sent ? (cleanAlt(b.coverAlt) || null) : (existing?.coverAlt ?? null),
       category: b.category || null,
       tags: Array.isArray(b.tags) ? b.tags.slice(0, 12) : [],
       domains: Array.isArray(b.domains) ? b.domains.slice(0, 6) : [],
       seoTitle: String(b.seoTitle || '').trim().slice(0, 120) || null,
       seoDescription: String(b.seoDescription || '').trim().slice(0, 300) || null,
-      // The cover is the social image unless someone set a different one on
-      // purpose. "On purpose" = it differs from the cover it was saved beside,
-      // so a social image chosen by hand survives a cover change.
-      ogImage: b.ogImage
-        || (existing?.ogImage && existing.ogImage !== existing.coverUrl ? existing.ogImage : null)
-        || b.coverUrl || null,
+      // The social image is the cover. The editor has no separate social-image field, so a value that differs from the cover can only be a
+      // leftover from an older cover; it is never kept alongside a new one, and the metadata the site writes ignores it while a cover exists.
+      ogImage: coverUrl,
       readMinutes: readingMinutes(body),
     };
   };
@@ -1948,16 +1954,28 @@ async function startServer() {
    * answered again here because the editor is not the only thing that can call
    * these endpoints. A cover that points into our own uploads must still exist.
    */
-  const publishBlockers = (p: { title: any; body: any; coverUrl: any }): PublishProblems => {
+  /** True when a cover points into our own uploads and the file is not there. Reads the disk; changes nothing. */
+  const coverFileMissing = (url: unknown): boolean => {
+    const u = typeof url === 'string' ? url.trim() : '';
+    if (!u.startsWith('/uploads/') || !isUsableCoverUrl(u)) return false;
+    const root = path.resolve(UPLOAD_DIR);
+    const onDisk = path.resolve(root, u.slice('/uploads/'.length));
+    return !(onDisk.startsWith(root + path.sep) && fs.existsSync(onDisk));
+  };
+
+  const publishBlockers = (p: { title: any; body: any; coverUrl: any }, opts: { unchanged?: boolean } = {}): PublishProblems => {
     const url = typeof p.coverUrl === 'string' ? p.coverUrl.trim() : '';
     let hasCover = isUsableCoverUrl(url);
-    if (hasCover && url.startsWith('/uploads/')) {
-      const root = path.resolve(UPLOAD_DIR);
-      const onDisk = path.resolve(root, url.slice('/uploads/'.length));
-      hasCover = onDisk.startsWith(root + path.sep) && fs.existsSync(onDisk);
-    }
-    return publishProblems({ title: String(p.title || ''), body: String(p.body || ''), hasCover });
+    const missing = hasCover && !opts.unchanged && coverFileMissing(url);
+    if (missing) hasCover = false;
+    const problems = publishProblems({ title: String(p.title || ''), body: String(p.body || ''), hasCover });
+    // A cover that was chosen but cannot be found is not "no cover": say what is actually wrong.
+    if (missing && problems.cover) problems.cover = COVER_UNAVAILABLE_MESSAGE;
+    return problems;
   };
+  /** A cover address the editor sent that we would not store; the stored cover is left alone and the editor is told. */
+  const badCoverAddress = (b: any): string | null =>
+    typeof b?.coverUrl === 'string' && b.coverUrl.trim() && !isUsableCoverUrl(b.coverUrl.trim()) ? 'That cover address is not one we can use. Upload the image again.' : null;
   const blockedResponse = (res: any, problems: PublishProblems) => {
     const n = Object.keys(problems).length;
     return res.status(422).json({
@@ -1986,7 +2004,7 @@ async function startServer() {
         }),
         (prisma as any).blogPost.groupBy({ by: ['status'], _count: { _all: true } }),
       ]);
-      res.json({ posts, counts: Object.fromEntries(counts.map((c: any) => [c.status, c._count._all])) });
+      res.json({ posts: posts.map((p: any) => ({ ...p, coverMissing: coverFileMissing(p.coverUrl) })), counts: Object.fromEntries(counts.map((c: any) => [c.status, c._count._all])) });
     } catch (e: any) {
       console.error('studio posts error', e?.message);
       res.status(500).json({ error: "Failed to read the posts" });
@@ -1997,7 +2015,7 @@ async function startServer() {
     try {
       const post = await (prisma as any).blogPost.findUnique({ where: { id: req.params.id } });
       if (!post) return res.status(404).json({ error: "No such post" });
-      res.json(post);
+      res.json({ ...post, coverMissing: coverFileMissing(post.coverUrl) });
     } catch {
       res.status(500).json({ error: "Failed to read that post" });
     }
@@ -2006,6 +2024,8 @@ async function startServer() {
   app.post("/api/studio/posts", authenticateJWT, requireEditor, async (req: any, res: any) => {
     try {
       const me = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { displayName: true, email: true } });
+      const bad = badCoverAddress(req.body);
+      if (bad) return res.status(400).json({ error: bad });
       const data = await postFromBody(req.body || {});
       const post = await (prisma as any).blogPost.create({
         data: { ...data, status: 'Draft', authorId: req.user.uid, authorName: me?.displayName || me?.email || 'STM Digital Library' },
@@ -2021,11 +2041,16 @@ async function startServer() {
     try {
       const existing = await (prisma as any).blogPost.findUnique({ where: { id: req.params.id } });
       if (!existing) return res.status(404).json({ error: "No such post" });
+      const bad = badCoverAddress(req.body);
+      if (bad) return res.status(400).json({ error: bad });
       const data = await postFromBody(req.body || {}, existing);
       // A draft may be saved half-finished. A live post may not lose what makes
-      // it fit to be live, so saving one asks what publishing asks.
+      // it fit to be live, so saving one asks what publishing asks. A cover that
+      // is the one already stored is not asked again whether its FILE is still
+      // there: a missing file is a storage fault, and it must not stop an editor
+      // correcting a typo (the Studio tells them the image needs replacing).
       if (existing.status === 'Published') {
-        const problems = publishBlockers({ title: req.body?.title, body: data.body, coverUrl: data.coverUrl });
+        const problems = publishBlockers({ title: req.body?.title, body: data.body, coverUrl: data.coverUrl }, { unchanged: !!existing.coverUrl && data.coverUrl === existing.coverUrl });
         if (Object.keys(problems).length) return blockedResponse(res, problems);
       }
       res.json(await (prisma as any).blogPost.update({ where: { id: existing.id }, data }));
@@ -7602,7 +7627,9 @@ async function startServer() {
         suggested: b.metadata?.harvest?.department?.suggested ?? null,
         runnerUp: b.metadata?.harvest?.department?.runnerUp ?? null,
         score: b.metadata?.harvest?.department?.score ?? null,
-        reasons: b.metadata?.harvest?.department?.reasons ?? [],
+        // The year policy reason, when that is why it waits: an older book may be approved here if it is an important title and its rights allow.
+        reasons: [...(b.metadata?.harvest?.department?.reasons ?? []), ...(b.metadata?.harvest?.yearPolicy?.reason ? [`Year policy: ${b.metadata.harvest.yearPolicy.reason}`] : [])],
+        yearPolicy: b.metadata?.harvest?.yearPolicy ?? null,
       })) });
     } catch (e: any) { res.status(500).json({ error: "Failed to fetch ingested books" }); }
   });
@@ -7709,7 +7736,14 @@ async function startServer() {
   // UPLOAD_DIR is env-overridable so a persistent volume can be mounted in Docker/Coolify
   // (the container filesystem is wiped on every redeploy — uploads must live on a volume).
   const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(APP_DIR, 'uploads');
-  app.use('/uploads', express.static(UPLOAD_DIR));
+  // Media files are never overwritten (every upload gets its own name), so a picture at a given address never changes: browsers and any CDN
+  // may keep it for a year. A missing file is a 404, which static serving never caches, so a restored file shows at once.
+  app.use('/uploads', express.static(UPLOAD_DIR, {
+    setHeaders: (res, filePath) => { if (filePath.includes(`${path.sep}media${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); },
+  }));
+  // A file that is not there is a 404 — not the app's home page with a 200, which is what the catch-all route would otherwise answer, and which a
+  // crawler, a CDN or a link preview would take for a picture that exists.
+  app.use('/uploads', (_req, res) => { res.status(404).type('text/plain').send('Not found'); });
   const saveDataUrl = async (dataUrl: string, filename: string) => {
     const m = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl || '');
     if (!m) throw new Error('Invalid file data');
@@ -7735,6 +7769,59 @@ async function startServer() {
   // Files: <UPLOAD_DIR>/media/<stored-name>  →  served at /uploads/media/<stored-name>
   // ==========================================
   const MEDIA_DIR = path.join(UPLOAD_DIR, 'media');
+
+  /**
+   * Is the uploads directory the same directory it was last time? The app keeps pictures on the filesystem and their records in the database.
+   * If the filesystem is part of a container that is replaced on every deploy, the records survive and the files do not — which looks like a
+   * cover that "reverted". Nothing here can see the host's volume settings, so it checks the result: a small file in the directory carries an
+   * id, and the same id is kept in the database. A directory that has the database's id is the one we left; one that has none (or a different
+   * one) while the database remembers one is a NEW directory, and that is said out loud in the log and on the Studio.
+   */
+  const STORAGE_KEY = 'uploads.storage.v1';
+  const SENTINEL = path.join(UPLOAD_DIR, '.storage-id');
+  const checkUploadStorage = async () => {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    let onDisk: string | null = null;
+    try { onDisk = fs.readFileSync(SENTINEL, 'utf8').trim() || null; } catch { /* a new directory */ }
+    const row = await (prisma as any).appSetting.findUnique({ where: { key: STORAGE_KEY } }).catch(() => null);
+    const remembered = (row?.value as any) || {};
+    const known: string | null = remembered.id ?? null;
+    const now = new Date().toISOString();
+    let id = onDisk, resetNow = false;
+    if (!onDisk) { id = crypto.randomUUID(); fs.writeFileSync(SENTINEL, id); resetNow = !!known; }
+    else if (known && known !== onDisk) resetNow = true;
+    const value = {
+      id, checkedAt: now, firstSeenAt: remembered.firstSeenAt ?? now,
+      lastResetAt: resetNow ? now : (remembered.lastResetAt ?? null),
+      resets: (remembered.resets ?? 0) + (resetNow ? 1 : 0),
+    };
+    await (prisma as any).appSetting.upsert({ where: { key: STORAGE_KEY }, create: { key: STORAGE_KEY, value, updatedBy: 'storage-check' }, update: { value, updatedBy: 'storage-check' } }).catch(() => {});
+    if (resetNow) console.error(`[uploads] The uploads directory (${UPLOAD_DIR}) is NEW: the database remembers an earlier one. Files uploaded before this start are gone unless they were restored. If this happens on every deploy, ${UPLOAD_DIR} is not on a persistent volume.`);
+    return value;
+  };
+  checkUploadStorage().catch((e: any) => console.error('[uploads] storage check failed:', e?.message));
+
+  // GET /api/admin/media/health — whether pictures the database points at are still on disk, and whether the directory has been replaced.
+  app.get("/api/admin/media/health", authenticateJWT, requireEditor, async (_req: any, res: any) => {
+    try {
+      const assets: any[] = await (prisma as any).mediaAsset.findMany({ select: { id: true, fileName: true, url: true, folder: true }, take: 5000 });
+      const missing = assets.filter(a => !fs.existsSync(path.join(MEDIA_DIR, path.basename(a.fileName))));
+      const posts: any[] = await (prisma as any).blogPost.findMany({ where: { coverUrl: { not: null } }, select: { id: true, title: true, slug: true, status: true, coverUrl: true } });
+      const coversMissing = posts.filter(p => coverFileMissing(p.coverUrl));
+      const state = ((await (prisma as any).appSetting.findUnique({ where: { key: STORAGE_KEY } }).catch(() => null))?.value as any) || {};
+      let separateMount: boolean | null = null;
+      try { separateMount = fs.statSync(UPLOAD_DIR).dev !== fs.statSync(path.dirname(UPLOAD_DIR)).dev; } catch { /* unknown */ }
+      res.json({
+        uploadDir: UPLOAD_DIR, fromEnvironment: !!process.env.UPLOAD_DIR,
+        // true: a different filesystem from its parent (a mounted volume, most likely). false: part of the container's own layer.
+        separateMount,
+        mediaRecords: assets.length, filesMissing: missing.length,
+        blogCoversMissing: coversMissing.map(p => ({ id: p.id, title: p.title, slug: p.slug, status: p.status })),
+        storage: { resets: state.resets ?? 0, lastResetAt: state.lastResetAt ?? null, firstSeenAt: state.firstSeenAt ?? null },
+        persistent: (state.resets ?? 0) === 0 && missing.length === 0 ? (separateMount === false ? 'unknown' : true) : false,
+      });
+    } catch (e: any) { console.error('media health:', e?.message); res.status(500).json({ error: "Could not check storage" }); }
+  });
 
   // Body arrives as a base64 data URL inside JSON, which inflates the payload ~33%.
   // express.json is capped at 50mb, so keep the real-file ceiling comfortably under that.
@@ -7978,6 +8065,18 @@ async function startServer() {
     try {
       const asset = await (prisma as any).mediaAsset.findUnique({ where: { id: req.params.id } });
       if (!asset) return res.status(404).json({ error: "Not found" });
+      // A picture a blog post still uses is not deleted: the cover, the social image and the body all point at this address, and removing
+      // the file would blank them. Replace it on the post first.
+      const users = await (prisma as any).blogPost.findMany({
+        where: { OR: [{ coverUrl: asset.url }, { ogImage: asset.url }, { body: { contains: asset.url } }] },
+        select: { id: true, title: true, slug: true, status: true }, take: 5,
+      });
+      if (users.length) {
+        return res.status(409).json({
+          error: `This image is in use by ${users.length === 1 ? 'a blog post' : `${users.length} blog posts`} (${users.map((u: any) => `“${u.title}”`).join(', ')}). Replace it there first; nothing was deleted.`,
+          posts: users,
+        });
+      }
       try {
         const fsm = await import('node:fs');
         // basename() guards against a crafted fileName escaping MEDIA_DIR
@@ -8755,7 +8854,7 @@ async function startServer() {
       const per = Number(perDept);
       const verifiable = accessPolicy !== 'any';
       const state = await getIngestionState();
-      const fromYear = new Date().getFullYear() - (Math.max(1, state.yearsBack || 5) - 1);
+      const fromYear = articleMinYear(state);
 
       if (isArticles) {
         if (!departments.length) return res.status(400).json({ error: "Select at least one department to continue." });
@@ -9003,6 +9102,11 @@ async function startServer() {
     } catch (e: any) { console.error('GET ingest/catalogue-growth error:', e?.message); res.status(500).json({ error: "Failed to read catalogue growth" }); }
   });
 
+  // The Books section of Engine settings reads the low-coverage switch and target from here, without the whole coverage report.
+  app.get("/api/admin/ingest/book-priority", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json({ config: await loadPriorityConfig() }); }
+    catch (e: any) { console.error('GET ingest/book-priority error:', e?.message); res.status(500).json({ error: "Could not read the setting" }); }
+  });
   app.post("/api/admin/ingest/book-priority", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const { enabled, share, target } = req.body || {};
@@ -9052,7 +9156,55 @@ async function startServer() {
   app.get("/api/admin/ingest/bulk/:jobId", authenticateJWT, requireSuperAdmin, (req: any, res: any) => {
     const j = getBulkJob(req.params.jobId);
     if (!j) return res.status(404).json({ error: "That bulk run is no longer tracked. Check the run activity for what it did." });
-    res.json({ jobId: j.id, source: j.source, status: j.status, startedAt: j.startedAt, finishedAt: j.finishedAt || null, result: j.result || null, error: j.error || null });
+    res.json({ jobId: j.id, source: j.source, status: j.status, startedAt: j.startedAt, finishedAt: j.finishedAt || null, progress: j.progress || null, pauseRequested: !!j.pauseRequested, result: j.result || null, error: j.error || null });
+  });
+  // Pause stops a bulk run after the batch it is on; the position is kept, and starting the same source again carries on from it.
+  app.post("/api/admin/ingest/bulk/:jobId/pause", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    if (!pauseBulkJob(req.params.jobId)) return res.status(409).json({ error: "That bulk run is not running." });
+    await ingestionAudit(adminOf(req), 'BULK_SYNC_PAUSE_REQUESTED', { jobId: req.params.jobId }).catch(() => {});
+    res.status(202).json({ ok: true, message: "Pausing after the current batch. Start the same source again to continue from where it stopped." });
+  });
+
+  // The Book provider matrix: what each source has done, how it is behaving, when it may be asked again, and what it holds in the catalogue.
+  app.get("/api/admin/ingest/provider-matrix", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const period = (['lifetime', '7d', '24h'] as const).find(p => p === req.query.period) ?? 'lifetime';
+      res.json(await providerMatrix(period));
+    } catch (e: any) { console.error('GET ingest/provider-matrix error:', e?.message); res.status(500).json({ error: "Failed to read the provider matrix" }); }
+  });
+
+  // Where the Open Library dump is read from: a file on this server (recommended — the dump is ~10 GB) or a download address.
+  app.get("/api/admin/ingest/openlibrary-dump", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json(await loadDumpSource(prisma)); } catch (e: any) { res.status(500).json({ error: "Failed to read the dump setting" }); }
+  });
+  app.put("/api/admin/ingest/openlibrary-dump", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { kind, location } = req.body || {};
+      if (kind !== 'file' && kind !== 'url') return res.status(400).json({ error: "The source must be a file on this server or a download address." });
+      const loc = String(location || '').trim();
+      if (kind === 'file') {
+        if (!path.isAbsolute(loc) || !/\.(txt|gz)$/i.test(loc)) return res.status(400).json({ error: "Give the full path of the dump file (a .txt or .txt.gz)." });
+        const st = await fs.promises.stat(loc).catch(() => null);
+        if (!st || !st.isFile()) return res.status(400).json({ error: "No file exists at that path on this server." });
+      } else {
+        let u: URL; try { u = new URL(loc); } catch { return res.status(400).json({ error: "That is not a web address." }); }
+        if (u.protocol !== 'https:' || !/(^|\.)(openlibrary\.org|archive\.org)$/i.test(u.hostname)) return res.status(400).json({ error: "Only https addresses on openlibrary.org or archive.org are accepted." });
+      }
+      await saveDumpSource(prisma, { kind, location: loc }, req.user?.email || 'admin');
+      await ingestionAudit(adminOf(req), 'OPENLIBRARY_DUMP_SOURCE_CHANGED', { kind, location: loc.slice(0, 200) }).catch(() => {});
+      res.json({ kind, location: loc });
+    } catch (e: any) { console.error('PUT ingest/openlibrary-dump error:', e?.message); res.status(500).json({ error: "Could not save the dump source" }); }
+  });
+
+  // Google Books enrichment: fills EMPTY fields of books already held. Never adds a book, never touches rights. Needs GOOGLE_BOOKS_API_KEY.
+  app.post("/api/admin/ingest/google-books/enrich", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const { limit, confirm } = req.body || {};
+      if (confirm !== true) return res.status(400).json({ error: "Confirmation is required to start enrichment." });
+      const r = await enrichFromGoogleBooks(prisma, { limit: limit === undefined ? 25 : Number(limit) });
+      await ingestionAudit(adminOf(req), 'GOOGLE_BOOKS_ENRICHMENT', { asked: r.asked, enriched: r.enriched, reason: r.reason }).catch(() => {});
+      res.json(r);
+    } catch (e: any) { console.error('POST ingest/google-books/enrich error:', e?.message); res.status(500).json({ error: "Enrichment could not run" }); }
   });
 
   /** Counters grow by what a journal import actually dealt with, and the run log says so. Nothing already counted is changed. */

@@ -10,6 +10,7 @@ import { DoajImport } from './ingestion/DoajImport';
 import { OneOffImport } from './ingestion/OneOffImport';
 import { Coverage } from './ingestion/Coverage';
 import { BookCoverage } from './ingestion/BookCoverage';
+import { ProviderMatrix } from './ingestion/ProviderMatrix';
 import { CatalogueGrowth } from './ingestion/CatalogueGrowth';
 import { BulkExpansion } from './ingestion/BulkExpansion';
 import { api, useEngineState } from './ingestion/api';
@@ -63,7 +64,10 @@ export function DataIngestion() {
       ) : tab === 'coverage' ? (
         <Coverage coverage={coverage} selected={department} onSelect={d => { setDepartment(d); setTab('log'); }} />
       ) : tab === 'books' ? (
-        <BookCoverage onChanged={changed} />
+        <div className="space-y-6">
+          <ProviderMatrix refreshKey={bump} />
+          <BookCoverage onChanged={changed} />
+        </div>
       ) : tab === 'growth' ? (
         <CatalogueGrowth />
       ) : (

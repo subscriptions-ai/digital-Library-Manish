@@ -294,7 +294,7 @@ export async function beginTargetedImport(department: string, limit: number, adm
       await createRunWithStats({
         phase: 'Books', source: `Targeted · ${name}`, durationMs: Date.now() - t0, more: false,
         note: `Manual targeted import · ${r.providers.map(p => `${p.label}: ${p.checked ? `${p.checked} checked, ${p.added} added, ${p.review} to review` : p.outcome}`).join(' | ')}`.slice(0, 900),
-        ...runColumnsFromStats(r.byDepartment), department: name,
+        ...runColumnsFromStats(r.byDepartment), checked: r.checked, department: name,
       }, r.byDepartment);
       await audit(admin ?? null, 'TARGETED_BOOKS_FINISHED', { department: name, checked: r.checked, added: r.added, addedToDepartment: r.addedToDepartment, sentToReview: r.sentToReview });
       Object.assign(job, { status: 'done', result: r, finishedAt: Date.now() });

@@ -2,7 +2,7 @@ import { ingestionDb as db } from './db.js';
 import { setProviders, setTargetedPolicy, type ProviderDef, type TurnCtx, type TurnOutcome } from './rotation.js';
 import { targetedTurn, loadPriorityConfig, nextBooksTurn, isTargetedTurn } from './targetedBooks.js';
 import { totals } from './departmentStats.js';
-import { harvestFeed, harvestDue, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
+import { harvestFeed, harvestDue, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, CROSSREF_BOOKS_FEED, NLM_FEED, PRESSBOOKS_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
 import { ncbiLimits, usedToday } from './books/ncbi.js';
 import { crossrefTurn, openAlexTurn, searchTurn } from './articleTurns.js';
 import { fetchCrossrefJournals, fetchOpenAlexSources, writeJournalCandidates, type JournalPage } from './journalSources.js';
@@ -65,13 +65,15 @@ async function journalSourceTurn(sweepSource: string, label: 'Crossref Journals'
   const w = await writeJournalCandidates(label, sweep.department, page.items, page.fetched, page.skipped);
   const full = page.fetched >= ctx.batch;
   await closeSweep(sweep, { seen: page.fetched, accepted: 0, rejected: 0 }, sweep.position + 1, full);
+  const keys = page.items.map(i => i.issnL || i.issn || i.eissn || `${i.title}|${i.publisherName}`);
   return {
-    kind: 'ran', checked: w.checked, added: 0, held: w.held, enriched: w.enriched,
-    // New journals from these sources are never accepted: they wait for a person, with their open-access status unverified.
-    sentToReview: w.created, skipped: w.skipped, recordFailures: w.failed,
+    // Valid journals are catalogued (metadata only, open access NOT verified); the rest wait for a person. Neither is accepted for full text.
+    kind: 'ran', checked: w.checked, added: w.catalogued, held: w.held, enriched: w.enriched,
+    sentToReview: w.review, skipped: w.skipped, recordFailures: w.failed,
     useful: w.created + w.enriched, more: full, error: w.firstError,
-    note: `"${sweep.term}" page ${sweep.position + 1}: ${w.created} new journals held for review (open access unverified)`,
-    columns: { journalsSeen: w.checked },
+    uniqueCandidates: new Set(keys).size,
+    note: `"${sweep.term}" page ${sweep.position + 1}: ${w.catalogued} catalogued (open access not verified), ${w.review} held for review`,
+    columns: { journalsSeen: w.checked, journalsRefused: w.catalogued, uniqueCandidates: new Set(keys).size, cursor: `${sweep.term}#${sweep.position + 1}` },
     ledger: { journalsSeen: w.checked },
     journal: { department: sweep.department },
   };
@@ -90,12 +92,20 @@ export const getRoadAdapter = () => roadAdapter;
 
 // ── Books ───────────────────────────────────────────────────────────────────
 
-function bookProvider(cfg: OaiProviderConfig, id: string, label: string, healthKey: string, envOff: string | null): ProviderDef {
+/**
+ * `optIn`: a source that adds only books for a person to review (it carries no controlled classification code, so the classifier can never
+ * place its books with confidence). Running it continuously would add a review Draft to the queue on every turn, so it is OFF in the rotation
+ * unless `envOff=1`, and stays available to Quick Import and Bulk expansion, which an administrator starts knowing what they add.
+ */
+function bookProvider(cfg: OaiProviderConfig, id: string, label: string, healthKey: string, envOff: string | null, optIn = false): ProviderDef {
   const isNcbi = cfg.kind === 'ncbi';
   return {
     id, label, group: 'Books', tier: 'supplementary', healthKey, lock: cfg.provider,
-    role: isNcbi ? 'Biomedical and health books, review-first' : id === 'doab' ? 'Scholarly open-access books' : id === 'oapen' ? 'Scholarly open-access books and enrichment' : 'Academic textbooks',
-    configured: () => (envOff && process.env[envOff] === '0' ? `switched off (${envOff}=0)` : id !== 'doab' && !booksOai() ? 'switched off (BOOKS_OAI=0)' : true),
+    role: isNcbi ? 'Biomedical and health books, review-first' : id === 'doab' ? 'Scholarly open-access books' : id === 'oapen' ? 'Scholarly open-access books and enrichment'
+      : id === 'crossrefbooks' ? 'Scholarly book metadata by DOI (Metadata Only, review-first)' : id === 'nlm' ? 'Health-book catalogue records with NLM classification (Metadata Only)'
+      : id === 'pressbooks' ? 'Openly published university textbooks (licence read from each book, review-first)' : 'Academic textbooks',
+    configured: () => (!optIn && envOff && process.env[envOff] === '0' ? `switched off (${envOff}=0)` : id !== 'doab' && !booksOai() ? 'switched off (BOOKS_OAI=0)' : true),
+    rotationOff: optIn && envOff ? () => (process.env[envOff] === '1' ? null : `not in the continuous rotation (set ${envOff}=1) — available to Quick Import and Bulk expansion`) : undefined,
     // A daily quota is an expected rest, not a failure: it is read from the download log, never recorded as a source failure.
     restingNow: isNcbi ? async () => {
       const lim = ncbiLimits(); const used = await usedToday(db);
@@ -137,6 +147,7 @@ function bookProvider(cfg: OaiProviderConfig, id: string, label: string, healthK
       const checked = isNcbi ? (h.ncbi?.archives ?? 0) : h.fetched;
       return {
         kind: 'ran', checked, added: t.added, held: t.held, enriched: h.enriched, sentToReview: t.sentToReview, skipped: t.skipped, recordFailures: t.failed,
+        uniqueCandidates: h.uniqueCandidates, columns: { uniqueCandidates: h.uniqueCandidates },
         useful: t.added + h.enriched + t.sentToReview, more: !h.completed, error: h.firstError, departmentStats: stats,
         // The source stopped answering part-way through: one failed REQUEST, reported apart from the records it did give us.
         requestFailures: h.sourceError && !/resumption token expired/.test(h.sourceError) ? 1 : 0,
@@ -196,6 +207,11 @@ export function buildProviders(): ProviderDef[] {
     bookProvider(OAPEN_OAI, 'oapen', 'OAPEN', 'OAPEN', 'BOOKS_OAPEN'),
     bookProvider(OTL_FEED, 'otl', 'Open Textbook Library', 'open.umn.edu', 'BOOKS_OTL'),
     bookProvider(NCBI_FEED, 'ncbi', 'NCBI Bookshelf', 'NCBI', 'BOOKS_NCBI'),
+    // Metadata sources. NLM Catalog can place a health book with confidence (the NLM classification is a controlled code) and runs by default;
+    // Crossref Books and Pressbooks can only ever send books to review, so they are opt-in for the continuous rotation.
+    bookProvider(NLM_FEED, 'nlm', 'NLM Catalog', 'NLMCatalog', 'BOOKS_NLM'),
+    bookProvider(CROSSREF_BOOKS_FEED, 'crossrefbooks', 'Crossref Books', 'Crossref', 'BOOKS_CROSSREF', true),
+    bookProvider(PRESSBOOKS_FEED, 'pressbooks', 'Pressbooks Directory', 'Pressbooks', 'BOOKS_PRESSBOOKS', true),
     // Not a source: the low-coverage engine. Each of the sources it reads keeps its own health row, so this one never has a failure of its own.
     {
       id: 'targeted', label: 'Targeted coverage', group: 'Books', tier: 'supplementary', role: 'Books for the departments that hold the fewest',

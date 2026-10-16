@@ -13,7 +13,8 @@ export type SettingsResult =
   | { ok: true; data: Record<string, any>; changes: Record<string, { from: any; to: any }>; scope?: { from: string[]; to: string[] }; enabledChange?: boolean }
   | { ok: false; status: number; errors: string[]; needsConfirmation?: 'SCOPE_CHANGE' };
 
-const TUNING = ['yearsBack', 'batchSize', 'articlesPerJournal', 'discoverEvery', 'journalsPerPass', 'articlesPerPass', 'booksPerPass'] as const;
+// "Years to collect" (yearsBack) is gone from here: one window for every kind of content was wrong. Articles and Books each have a minimum year.
+const TUNING = ['articleMinYear', 'bookMinYear', 'batchSize', 'articlesPerJournal', 'discoverEvery', 'journalsPerPass', 'articlesPerPass', 'booksPerPass'] as const;
 const FOCUS = ['auto', 'journals', 'books', 'articles'];
 
 const same = (a: any[], b: any[]) => a.length === b.length && [...a].sort().join('\u0000') === [...b].sort().join('\u0000');
@@ -42,7 +43,7 @@ export function validateSettings(body: any, current: any, allDepartments: string
   }
 
   const labels: Record<string, string> = {
-    yearsBack: 'Years to collect', batchSize: 'Articles per pass', articlesPerJournal: 'Articles per journal', discoverEvery: 'Look for more every',
+    articleMinYear: 'Minimum article publication year', bookMinYear: 'Minimum book publication year', batchSize: 'Articles per pass', articlesPerJournal: 'Articles per journal', discoverEvery: 'Look for more every',
     journalsPerPass: 'Journals per pass', articlesPerPass: 'Articles per pass', booksPerPass: 'Books per pass',
   };
   const touchingTuning: string[] = [];
