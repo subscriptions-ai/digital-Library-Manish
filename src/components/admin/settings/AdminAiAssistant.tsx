@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Bot } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Badge, Button, Card, CardHeader, ConfirmDialog, ErrorState, PageHeader, Skeleton } from '../../ui';
 import { ago } from '../ingestion/format';
 import { AiProviders } from './AiProviders';
+import { AiConversationsPanel, AiOverviewCards, AiVisitorsPanel } from './AiVisitors';
+
+const TABS = [
+  ['overview', 'Overview'],
+  ['visitors', 'Visitors / Leads'],
+  ['conversations', 'Conversations'],
+  ['providers', 'Provider Configuration'],
+] as const;
+type Tab = typeof TABS[number][0];
 
 /**
  * The master switch for the public AI assistant. The server holds the value and enforces it; this screen only shows it and
@@ -34,6 +44,10 @@ export function AdminAiAssistant() {
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmOff, setConfirmOff] = useState(false);
+  // The tab lives in the address, so a refresh or a shared link opens the same one.
+  const [params, setParams] = useSearchParams();
+  const tab: Tab = (TABS.find(([k]) => k === params.get('tab'))?.[0]) ?? 'overview';
+  const pickTab = (k: Tab) => setParams(k === 'overview' ? {} : { tab: k }, { replace: true });
 
   const load = useCallback(async () => {
     try {
@@ -58,13 +72,27 @@ export function AdminAiAssistant() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader title="Public AI Assistant" description="Control whether visitors can use the AI Assistant on the public website." />
+    <div className={`mx-auto ${tab === 'visitors' || tab === 'conversations' ? 'max-w-6xl' : 'max-w-3xl'}`}>
+      <PageHeader title="Public AI Assistant" description="Control the public AI Assistant, see who uses it and what they asked, and configure its providers." />
 
-      {failed && !data && <Card><ErrorState title="The setting could not be loaded" onRetry={load} /></Card>}
-      {!failed && !data && <Card><Skeleton className="h-6 w-40" /><Skeleton className="mt-4 h-9 w-56" /></Card>}
+      <div className="segmented mb-4" role="tablist" aria-label="AI Assistant sections">
+        {TABS.map(([k, label]) => (
+          <button key={k} type="button" role="tab" id={`ai-admin-tab-${k}`} aria-selected={tab === k} aria-pressed={tab === k}
+            aria-controls={`ai-admin-panel-${k}`} onClick={() => pickTab(k)}>
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {data && (
+      <div role="tabpanel" id={`ai-admin-panel-${tab}`} aria-labelledby={`ai-admin-tab-${tab}`}>
+      {tab === 'visitors' && <AiVisitorsPanel />}
+      {tab === 'conversations' && <AiConversationsPanel />}
+      {tab === 'providers' && <AiProviders onChanged={load} />}
+
+      {tab === 'overview' && failed && !data && <Card><ErrorState title="The setting could not be loaded" onRetry={load} /></Card>}
+      {tab === 'overview' && !failed && !data && <Card><Skeleton className="h-6 w-40" /><Skeleton className="mt-4 h-9 w-56" /></Card>}
+
+      {tab === 'overview' && data && (
         <>
           <Card>
             <CardHeader title={<span className="flex items-center gap-2"><Bot size={18} aria-hidden="true" /> AI Assistant</span>} description="Public AI chat for STM Digital Library." />
@@ -92,13 +120,15 @@ export function AdminAiAssistant() {
             )}
           </Card>
 
+          <AiOverviewCards />
+
           <Card className="mt-4">
-            <CardHeader title="Assistant status" description="The primary provider and how the assistant has been doing. Keys are never shown here." />
+            <CardHeader title="Assistant status" description="The primary provider and how it has been doing. These count provider calls, not visitor questions. Keys are never shown here." />
             <dl className="grid gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-3 lg:grid-cols-5">
               {([
                 ['Provider', data.provider ? `${data.provider.name} · ${data.provider.model}` : '—'],
                 ['Last answer', data.lastAnswerAt ? ago(data.lastAnswerAt) : 'None yet'],
-                ['Answered, 24 h', data.last24h ? String(data.last24h.answered) : '—'],
+                ['Model answers, 24 h', data.last24h ? String(data.last24h.answered) : '—'],
                 ['Provider errors, 24 h', data.last24h ? String(data.last24h.errors) : '—'],
                 ['Fallback used, 24 h', data.last24h?.fallbacks != null ? String(data.last24h.fallbacks) : '—'],
               ] as const).map(([l, v]) => (
@@ -116,8 +146,6 @@ export function AdminAiAssistant() {
             <p className="mt-3 text-xs text-muted">The assistant is never switched off or on automatically; only an admin changes it.</p>
           </Card>
 
-          <AiProviders onChanged={load} />
-
           {data.history.length > 0 && (
             <Card className="mt-4">
               <CardHeader title="Recent changes" />
@@ -133,6 +161,7 @@ export function AdminAiAssistant() {
           )}
         </>
       )}
+      </div>
 
       <ConfirmDialog
         open={confirmOff} onClose={() => !saving && setConfirmOff(false)} onConfirm={() => change(false)} danger loading={saving}

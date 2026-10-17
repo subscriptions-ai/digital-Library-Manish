@@ -10,8 +10,10 @@ import { useNavigate } from 'react-router-dom';
 import { UsersByInstitution } from './UsersByInstitution';
 import { LibrarianMembers } from './LibrarianMembers';
 import { REGISTRANT_TYPES, DOMAINS } from '../../constants';
+import { AccountSummary, ResetPasswordDialog, useReauth } from './AccountSecurity';
 
-const ROLES = ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'Institution', 'Student', 'Subscriber'];
+// The roles that exist on the server (STAFF_ROLES + reader roles). The server decides who may assign which.
+const ROLES = ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'SalesManager', 'SalesExecutive', 'Publisher', 'Institution', 'Student', 'Subscriber'];
 
 const ROLE_COLORS: Record<string, string> = {
   SuperAdmin: 'bg-red-100 text-red-700',
@@ -21,6 +23,7 @@ const ROLE_COLORS: Record<string, string> = {
   Student: 'bg-purple-100 text-purple-700',
   Subscriber: 'bg-blue-100 text-blue-700',
 };
+const ACCOUNT_LABEL: Record<string, string> = { blocked: 'Blocked', active: 'Active' };
 
 /** The filters, as the server's question. */
 function queryFor(f: Record<string, string>, search: string) {
@@ -43,7 +46,7 @@ export function UserManager() {
   // be answered by sifting the fifty rows already on screen, which reads as a
   // filter and behaves as a lie once there is more than one page.
   const [filters, setFilters] = useState({
-    role: 'all', registrantType: 'all', state: 'all', source: 'all',
+    role: 'all', accountStatus: 'all', registrantType: 'all', state: 'all', source: 'all',
     verified: 'all', active: 'all', domain: 'all', joinedFrom: '',
   });
   const [counts, setCounts] = useState<any>(null);
@@ -73,9 +76,11 @@ export function UserManager() {
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Reset password
+  // Reset password (the dialog owns its fields; nothing typed outlives it)
   const [resetTarget, setResetTarget] = useState<any | null>(null);
-  const [resetLoading, setResetLoading] = useState(false);
+  // Asks for the acting Super Admin's own password when the server requires it for another Super Admin.
+  const reauth = useReauth();
+  const [summaryKey, setSummaryKey] = useState(0);
 
   // A page at a time, counted on the server. The browser used to hold every
   // member at once and sift them here, which is a habit that ends the day the
@@ -132,17 +137,18 @@ export function UserManager() {
     if (!editUser) return;
     setEditSaving(true);
     try {
-      const res = await fetch(`/api/admin/users/${editUser.id}`, {
+      const out = await reauth.run(actorPassword => fetch(`/api/admin/users/${editUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify(editForm),
-      });
-      let data: any = {};
-      try { data = await res.json(); } catch {}
-      if (!res.ok) throw new Error(data?.error || 'Update failed');
-      toast.success('User updated');
+        body: JSON.stringify({ ...editForm, ...(actorPassword ? { actorPassword } : {}) }),
+      }));
+      if (!out) return;
+      if (!out.res.ok) throw new Error(out.body?.error || 'Update failed');
+      toast.success(editForm.email.trim().toLowerCase() !== String(editUser.email).toLowerCase() || editForm.role !== editUser.role
+        ? 'User updated. They will sign in again with the new details.' : 'User updated');
       setEditUser(null);
       fetchUsers();
+      setSummaryKey(k => k + 1);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -155,11 +161,14 @@ export function UserManager() {
     if (!deleteTarget) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/admin/users/${deleteTarget.id}`, {
+      const out = await reauth.run(actorPassword => fetch(`/api/admin/users/${deleteTarget.id}`, {
         method: 'DELETE',
-        headers: authHeader(),
-      });
-      if (!res.ok) throw new Error('Delete failed');
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify(actorPassword ? { actorPassword } : {}),
+      }));
+      if (!out) return;
+      if (!out.res.ok) throw new Error(out.body?.error || 'Delete failed');
+      setSummaryKey(k => k + 1);
       toast.success(`User "${deleteTarget.displayName || deleteTarget.email}" deleted`);
       setDeleteTarget(null);
       fetchUsers();
@@ -173,16 +182,18 @@ export function UserManager() {
   /* ── BLOCK / UNBLOCK ── */
   const handleToggleBlock = async (id: string, isBlocked: boolean) => {
     try {
-      const res = await fetch(`/api/admin/users/${id}/block`, {
+      const out = await reauth.run(actorPassword => fetch(`/api/admin/users/${id}/block`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ isBlocked }),
-      });
-      if (!res.ok) throw new Error();
-      toast.success(isBlocked ? 'User blocked' : 'User unblocked');
+        body: JSON.stringify({ isBlocked, ...(actorPassword ? { actorPassword } : {}) }),
+      }));
+      if (!out) return;
+      if (!out.res.ok) throw new Error(out.body?.error);
+      toast.success(isBlocked ? 'User blocked and signed out' : 'User unblocked');
       fetchUsers();
-    } catch {
-      toast.error('Failed to update status');
+      setSummaryKey(k => k + 1);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update status');
     }
   };
 
@@ -198,29 +209,6 @@ export function UserManager() {
       toast.error('Could not end the session');
     }
   };
-
-  /* ── RESET PASSWORD ── */
-  const handleResetPassword = async () => {
-    if (!resetTarget) return;
-    setResetLoading(true);
-    try {
-      const res = await fetch(`/api/admin/users/${resetTarget.id}/reset-password`, {
-        method: 'POST',
-        headers: authHeader(),
-      });
-      let data: any = {};
-      try { data = await res.json(); } catch {}
-      if (!res.ok) throw new Error(data?.error || 'Reset failed');
-      toast.success(`New password emailed to ${resetTarget.email}`);
-      setResetTarget(null);
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setResetLoading(false);
-    }
-  };
-
-
 
   /**
    * The whole answer, not the page of it.
@@ -285,6 +273,7 @@ export function UserManager() {
 
       {view === 'institution' && <UsersByInstitution />}
       {view === 'list' && (<>
+      <AccountSummary refreshKey={summaryKey} />
 
       {/* Filters — every one of them a question to the database */}
       <div className="space-y-3">
@@ -325,6 +314,7 @@ export function UserManager() {
         <div className="flex flex-wrap gap-2">
           {[
             { k: 'role', label: 'All roles', options: ROLES.map(r => [r, r]) },
+            { k: 'accountStatus', label: 'Any status', options: Object.entries(ACCOUNT_LABEL) },
             { k: 'registrantType', label: 'Registering as', options: REGISTRANT_TYPES.map((t: any) => [t.value, t.label]) },
             { k: 'active', label: 'Read anything?', options: [['read', 'Has read something'], ['never', 'Never opened anything']] },
             { k: 'verified', label: 'Email', options: [['yes', 'Verified'], ['no', 'Not verified']] },
@@ -358,7 +348,7 @@ export function UserManager() {
           />
           {(Object.values(filters).some(v => v && v !== 'all') || search) && (
             <button
-              onClick={() => { setSearch(''); setFilters({ role: 'all', registrantType: 'all', state: 'all', source: 'all', verified: 'all', active: 'all', domain: 'all', joinedFrom: '' }); }}
+              onClick={() => { setSearch(''); setFilters({ role: 'all', accountStatus: 'all', registrantType: 'all', state: 'all', source: 'all', verified: 'all', active: 'all', domain: 'all', joinedFrom: '' }); }}
               className="px-3 py-2 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-800"
             >
               Clear
@@ -498,6 +488,9 @@ export function UserManager() {
                         {user.createdAt && (
                           <p className="text-slate-400">joined {new Date(user.createdAt).toLocaleDateString()}</p>
                         )}
+                        <p className="text-slate-400">last sign-in {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : '—'}</p>
+                        {/* Whether a password exists, never what it is. */}
+                        <p className="text-slate-400">password {user.hasPassword ? 'configured' : <b className="text-amber-700">not configured</b>}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -804,6 +797,16 @@ export function UserManager() {
                       className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none" />
                   </div>
                 </div>
+                {/* The password is not an editable field: it cannot be shown, only replaced. */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                  <p><b>Password:</b> {editUser.hasPassword ? 'Configured' : 'Not configured'}</p>
+                  <p className="mt-0.5">Password cannot be displayed. Set a new password to replace it.</p>
+                  <button type="button" onClick={() => { const u = editUser; setEditUser(null); setResetTarget(u); }}
+                    className="mt-2 font-bold text-purple-700 hover:underline">Reset password…</button>
+                  {(editForm.email.trim().toLowerCase() !== String(editUser.email).toLowerCase() || editForm.role !== editUser.role) && (
+                    <p className="mt-2 text-amber-700">Changing the email or role signs this user out; they sign in again with the new details{editForm.email.trim().toLowerCase() !== String(editUser.email).toLowerCase() ? ', and the new address must be verified again' : ''}.</p>
+                  )}
+                </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button onClick={() => setEditUser(null)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
                   <button onClick={handleSaveEdit} disabled={editSaving}
@@ -850,36 +853,9 @@ export function UserManager() {
         )}
       </AnimatePresence>
 
-      {/* ── RESET PASSWORD CONFIRM ── */}
-      <AnimatePresence>
-        {resetTarget && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-full bg-purple-100 flex items-center justify-center"><RefreshCw className="text-purple-600" size={20} /></div>
-                <div>
-                  <h3 className="font-bold text-slate-900">Reset Password?</h3>
-                  <p className="text-sm text-slate-500">A new password will be emailed to the user.</p>
-                </div>
-              </div>
-              <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 text-sm font-bold text-purple-900">
-                {resetTarget.email}
-              </div>
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setResetTarget(null)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Cancel</button>
-                <button onClick={handleResetPassword} disabled={resetLoading}
-                  className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">
-                  {resetLoading ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-                  {resetLoading ? 'Sending…' : 'Send Reset'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* ── RESET PASSWORD ── */}
+      <ResetPasswordDialog user={resetTarget} onClose={() => { setResetTarget(null); fetchUsers(); }} run={reauth.run} />
+      {reauth.dialog}
     </div>
   );
 }

@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Save, User, Lock, ShieldAlert, Download, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Save, User, ShieldAlert, Download, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Button, Card, Field, PageHeader, friendlyError } from '../ui';
+import { SecuritySettings } from '../SecuritySettings';
 
 export function ProfileSettings() {
   const { profile } = useAuth();
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const { logout } = useAuth();
@@ -58,12 +57,11 @@ export function ProfileSettings() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ displayName, password })
+        body: JSON.stringify({ displayName })
       });
 
       if (!res.ok) throw new Error('Failed to update profile');
       toast.success('Profile updated successfully!');
-      setPassword(''); // Clear password field
     } catch (error) {
       toast.error(friendlyError(error, 'Failed to update profile'));
     } finally {
@@ -81,7 +79,7 @@ export function ProfileSettings() {
 
       <Card>
         <form onSubmit={handleUpdate} className="space-y-6">
-          <fieldset className="space-y-4 border-b border-rule pb-6">
+          <fieldset className="space-y-4">
             <legend className="mb-4 flex items-center gap-2 type-card-title text-ink">
               <User size={18} className="text-muted" aria-hidden="true" /> Personal Information
             </legend>
@@ -108,36 +106,6 @@ export function ProfileSettings() {
             </Field>
           </fieldset>
 
-          <fieldset className="space-y-4">
-            <legend className="mb-4 flex items-center gap-2 type-card-title text-ink">
-              <Lock size={18} className="text-muted" aria-hidden="true" /> Security
-            </legend>
-            <div className="field">
-              <label htmlFor="profile-new-password" className="field-label">New Password (optional)</label>
-              <div className="relative">
-                <input
-                  id="profile-new-password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Leave blank to keep current password"
-                  className="input pr-11"
-                  autoComplete="new-password"
-                  aria-describedby="profile-new-password-help"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  aria-pressed={showPassword}
-                  className="btn btn-ghost btn-icon btn-sm absolute right-1 top-1/2 -translate-y-1/2 text-muted"
-                >
-                  {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
-                </button>
-              </div>
-              <p id="profile-new-password-help" className="field-help">Leave blank to keep your current password.</p>
-            </div>
-          </fieldset>
 
           <div className="flex justify-end pt-2">
             <Button type="submit" loading={loading} className="w-full sm:w-auto">
@@ -147,6 +115,9 @@ export function ProfileSettings() {
           </div>
         </form>
       </Card>
+
+      {/* Password: needs the current one; never shown. */}
+      <SecuritySettings />
 
       {/* Privacy & Data Settings (GDPR / DPDP) */}
       <Card>

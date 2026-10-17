@@ -133,6 +133,7 @@ function KeepQuery({ to }: { to: string }) {
 import { MySubscriptions } from "./components/dashboard/MySubscriptions";
 import { InvoicesPayments } from "./components/dashboard/InvoicesPayments";
 import { ProfileSettings } from "./components/dashboard/ProfileSettings";
+import { MyAccount } from "./components/admin/MyAccount";
 import MyFavorites from "./components/dashboard/MyFavorites";
 import { ProtectedContentViewer } from "./components/dashboard/ProtectedContentViewer";
 import { VideoLibrary } from "./components/dashboard/VideoLibrary";
@@ -220,6 +221,7 @@ export default function App() {
                 {/* Admin Routes */}
                 <Route path="/admin" element={<AdminLayout><AdminDashboardHome /></AdminLayout>} />
                 <Route path="/admin/users" element={<AdminLayout><UserManager /></AdminLayout>} />
+                <Route path="/admin/account" element={<AdminLayout><MyAccount /></AdminLayout>} />
                 <Route path="/admin/subscriptions" element={<AdminLayout><SubscriptionListPage /></AdminLayout>} />
                 <Route path="/admin/subscription-requests" element={<AdminLayout><SubscriptionRequestsPage /></AdminLayout>} />
                 <Route path="/admin/analytics" element={<AdminLayout><DetailedAnalyticsPage /></AdminLayout>} />

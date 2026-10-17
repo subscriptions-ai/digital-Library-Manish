@@ -42,7 +42,7 @@ export async function readQuota(prisma: PrismaClient, sessionId: string, now: Da
 }
 
 /** Event codes kept beside the messages, so usage can be read from the same tables. No text, no personal data. */
-export type AssistantEvent = 'local:greeting' | 'local:thanks' | 'local:quote' | 'model:timeout' | 'model:error' | 'model:fallback' | 'quota:reached';
+export type AssistantEvent = 'local:greeting' | 'local:thanks' | 'local:quote' | 'model:timeout' | 'model:error' | 'model:fallback' | 'quota:reached' | 'quote:requested';
 
 /** Best effort and never in the way of a reply. Stored as role "event", which the model history ignores. */
 export async function recordEvent(prisma: PrismaClient, sessionId: string, code: AssistantEvent): Promise<void> {

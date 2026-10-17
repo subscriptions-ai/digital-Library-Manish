@@ -1,8 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, MessageCircle, SendHorizonal, X, Loader2 } from 'lucide-react';
+import { BookOpen, Building2, CreditCard, FileText, Minus, SendHorizonal, X } from 'lucide-react';
 import { COMPANY_DETAILS } from '../config';
 import { markAiAssistantDisabled, useAiAssistantEnabled } from '../lib/useAiAssistantEnabled';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  VISITOR_LIMITS, firstName, isValidEmail, isValidIndianMobile, normaliseEmail, normalisePhone, validateVisitor,
+  type VisitorErrors,
+} from '../lib/visitorDetails';
 
 /** Staff tools. A visitor-facing assistant has no place inside them. */
 const HIDDEN_PREFIXES = ['/admin', '/manager', '/sales', '/studio'];
@@ -11,26 +16,24 @@ const startsWithSegment = (path: string, prefix: string) =>
   path === prefix || path.startsWith(`${prefix}/`);
 
 const SESSION_KEY = 'ai-assistant-session';
+/** The greeting bubble is shown once per browser session. */
+const GREETING_KEY = 'ai-assistant-greeted';
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; text: string; action?: 'quote' };
 
 /** Where the visitor stands. The server decides; this is only what it last said, for display. */
 type Quota = { tier: 'anonymous' | 'lead'; limit: number; used: number; remaining: number };
 
-/** Why the last question got no answer. Neither costs the visitor a question. */
-type Failure = { kind: 'timeout' | 'unavailable'; text: string };
+/** Why the last question got no answer. None of them costs the visitor a question. */
+type Failure = { kind: 'timeout' | 'unavailable' | 'busy'; text: string; message?: string };
 
 /** Longer than the server's own deadline, so the server's answer is normally the one that arrives. */
 const CLIENT_TIMEOUT_MS = 20_000;
 /** Long enough to see the last answer land, short enough not to make the visitor wait for the form. */
 const HANDOFF_DELAY_MS = 900;
+/** The greeting waits a moment, so it is not the first thing that moves on a page that is still loading. */
+const GREETING_DELAY_MS = 1500;
 const WHATSAPP_HREF = `https://wa.me/${COMPANY_DETAILS.whatsapp.replace(/\D/g, '')}`;
-
-const WELCOME: ChatMessage = {
-  id: 'welcome',
-  role: 'assistant',
-  text: "Hello! I'm the STM Digital Library assistant. I can help you explore the catalogue, explain institutional subscriptions and pricing, or point you to the right page.",
-};
 
 const PURPOSES = [
   'Request a subscription quote',
@@ -41,6 +44,32 @@ const PURPOSES = [
 ] as const;
 
 const EMPTY_LEAD = { name: '', email: '', phone: '', organization: '', purpose: PURPOSES[0] as string, message: '' };
+
+/** Quick actions that ask the assistant. Each is an ordinary question, so it counts against the allowance like any other. */
+const QUICK_QUESTIONS = [
+  { label: 'Find resources', icon: BookOpen, question: 'How can I find journals, articles and books in the library?' },
+  { label: 'Subscription plans', icon: CreditCard, question: 'What subscription plans are available?' },
+  { label: 'Institutional access', icon: Building2, question: 'How does institutional access work for my library?' },
+] as const;
+
+const EMPTY_VISITOR = { name: '', email: '', phone: '' };
+const START_FAILED = "We couldn't start the assistant. Please try again.";
+
+/**
+ * A signed-in member's own name, email and number, for the pre-chat form — each only when it already passes the form's
+ * rules, so one tap is enough and a stale number never blocks them. Read from their own profile in this browser.
+ */
+function profileDefaults(profile: any): typeof EMPTY_VISITOR | null {
+  if (!profile) return null;
+  const name = typeof profile.displayName === 'string' ? profile.displayName.trim() : '';
+  const email = normaliseEmail(profile.email);
+  const phone = normalisePhone(profile.contact || profile.whatsapp || '');
+  return {
+    name: name.slice(0, VISITOR_LIMITS.name),
+    email: isValidEmail(email) ? email : '',
+    phone: isValidIndianMobile(phone) ? phone : '',
+  };
+}
 
 /** One session per visitor, so a conversation keeps its thread. */
 function getSessionId(): string {
@@ -59,21 +88,72 @@ function getSessionId(): string {
   }
 }
 
+function greetedThisSession(): boolean {
+  try { return sessionStorage.getItem(GREETING_KEY) === '1'; } catch { return true; }
+}
+function markGreeted() {
+  try { sessionStorage.setItem(GREETING_KEY, '1'); } catch { /* the bubble just shows again next page load */ }
+}
+
+/** The assistant's face: a white robot with a navy visor. Decorative; the control around it carries the name. */
+function RobotIcon({ className, visor = 'var(--stm-navy)' }: { className?: string; visor?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className={className} aria-hidden="true" focusable="false">
+      <circle cx="16" cy="4.6" r="1.9" fill="#fff" />
+      <path d="M16 6.4v3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+      <rect x="2.6" y="14.6" width="2.6" height="6" rx="1.3" fill="#fff" />
+      <rect x="26.8" y="14.6" width="2.6" height="6" rx="1.3" fill="#fff" />
+      <rect x="5.6" y="9.4" width="20.8" height="16.6" rx="6" fill="#fff" />
+      <rect x="8.6" y="12.6" width="14.8" height="10.2" rx="4.2" fill={visor} />
+      <circle cx="12.9" cy="17.1" r="1.75" fill="#fff" />
+      <circle cx="19.1" cy="17.1" r="1.75" fill="#fff" />
+      <path d="M13.6 20.2c1.35.9 3.45.9 4.8 0" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** The robot in a blue disc: header, launcher and beside each assistant message. */
+function RobotAvatar({ size }: { size: 'sm' | 'md' }) {
+  const box = size === 'sm' ? 'h-7 w-7' : 'h-9 w-9 sm:h-10 sm:w-10';
+  const icon = size === 'sm' ? 'h-[18px] w-[18px]' : 'h-[22px] w-[22px] sm:h-6 sm:w-6';
+  return (
+    <span className={`flex ${box} shrink-0 items-center justify-center rounded-full bg-[var(--stm-blue)]`} aria-hidden="true">
+      <RobotIcon className={icon} />
+    </span>
+  );
+}
+
 export function AIAssistantChat() {
   const { pathname } = useLocation();
   // The master switch, as the server says it: null until the first answer (nothing is drawn), then true or false. Off, the
   // widget is the quote form alone — no assistant tab, transcript, greeting, allowance or notice, and no mention of AI.
   const aiState = useAiAssistantEnabled();
+  const { profile } = useAuth();
   const aiOn = aiState === true;
+  const hidden = HIDDEN_PREFIXES.some(p => startsWithSegment(pathname, p));
   const [open, setOpen] = useState(false);
+  /** Minimised keeps the conversation and marks a reply that lands meanwhile; closed is the same, without the mark. */
+  const [unread, setUnread] = useState(false);
   const [tab, setTab] = useState<'chat' | 'quote'>('chat');
   const activeTab = aiOn ? tab : 'quote';
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
+  const [greeting, setGreeting] = useState(false);
+
+  // The pre-chat gate. The server decides whether this session has given its details; until it has said, nothing is
+  // assumed either way. Only the first name ever comes back from it.
+  const [statusLoaded, setStatusLoaded] = useState(false);
+  const [visitor, setVisitor] = useState<{ firstName: string } | null>(null);
+  const [details, setDetails] = useState(EMPTY_VISITOR);
+  const [detailsTouched, setDetailsTouched] = useState<Record<string, boolean>>({});
+  const [detailsTried, setDetailsTried] = useState(false);
+  const [detailsSending, setDetailsSending] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [serverErrors, setServerErrors] = useState<VisitorErrors>({});
+  const prefilled = useRef(false);
 
   const [lead, setLead] = useState(EMPTY_LEAD);
   const [consent, setConsent] = useState(false);
@@ -81,35 +161,35 @@ export function AIAssistantChat() {
   const [leadError, setLeadError] = useState<string | null>(null);
   const [leadSent, setLeadSent] = useState(false);
 
+  const panelRef = useRef<HTMLDivElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const quoteBodyRef = useRef<HTMLDivElement>(null);
   const handoffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const gateNameRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
+  const openRef = useRef(open);
+  openRef.current = open;
   const sid = useRef(getSessionId());
   // A state update lands after the click that caused it, so a fast second click would still see "not sending".
   const inFlight = useRef(false);
 
-  // Public site only — the same staff areas the WhatsApp button skips.
-  if (HIDDEN_PREFIXES.some(p => startsWithSegment(pathname, p))) return null;
-
-  // Keep the newest message in view.
+  // Keep the newest message in view. The welcome screen, with no messages yet, starts at its top.
   useEffect(() => {
     const el = logRef.current;
-    if (el && open) el.scrollTop = el.scrollHeight;
-  }, [messages, open, sending]);
+    if (el && open && messages.length) el.scrollTop = el.scrollHeight;
+  }, [messages, open, sending, failure]);
 
-  // Focus the input when the panel opens; hand focus back to the
-  // trigger when it closes.
+  // Focus the input when the panel opens; hand focus back to the launcher when it closes.
   useEffect(() => {
     const was = wasOpen.current;
     wasOpen.current = open;
     if (open) {
-      const t = setTimeout(() => inputRef.current?.focus(), 60);
+      const t = setTimeout(() => (inputRef.current ?? panelRef.current)?.focus({ preventScroll: true }), 60);
       return () => clearTimeout(t);
     }
-    if (was) triggerRef.current?.focus();
+    if (was) setTimeout(() => triggerRef.current?.focus(), 0);
   }, [open]);
 
   // The details form always starts at its top, on its first field — never halfway down a scrolled panel.
@@ -123,17 +203,58 @@ export function AIAssistantChat() {
     return () => clearTimeout(t);
   }, [open, activeTab]);
 
-  // While the panel is open the page tells the floating helpers to step aside (see index.css).
+  // While the panel is open the page tells the floating helpers to step aside (see index.css), and Escape closes it
+  // from anywhere on the page, not only from inside the panel.
   useEffect(() => {
     if (!open) return;
     const root = document.documentElement;
     root.setAttribute('data-ai-open', '');
-    return () => root.removeAttribute('data-ai-open');
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => { root.removeAttribute('data-ai-open'); document.removeEventListener('keydown', onKey); };
   }, [open]);
+
+  // On a phone the panel follows the visible viewport, so an open keyboard never covers the message box.
+  useLayoutEffect(() => {
+    const vv = window.visualViewport;
+    const el = panelRef.current;
+    if (!open || !vv || !el) return;
+    const sync = () => {
+      el.style.setProperty('--ai-vv-h', `${vv.height}px`);
+      // Where a keyboard that does not resize the page (iOS) covers the bottom; 0 where the page itself shrinks.
+      el.style.setProperty('--ai-kb', `${Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))}px`);
+    };
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => { vv.removeEventListener('resize', sync); vv.removeEventListener('scroll', sync); };
+  }, [open]);
+
+  // The greeting: once per browser session, only while the assistant is on, gone the moment the chat opens.
+  useEffect(() => {
+    if (!aiOn || hidden || greetedThisSession()) return;
+    const t = setTimeout(() => {
+      if (openRef.current) return;
+      markGreeted();
+      setGreeting(true);
+    }, GREETING_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [aiOn, hidden]);
+  useEffect(() => { if (open) setGreeting(false); }, [open]);
 
   useEffect(() => () => { if (handoffTimer.current) clearTimeout(handoffTimer.current); }, []);
 
-  const close = () => setOpen(false);
+  // The textarea grows with what is typed, up to a few lines, then scrolls.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+  }, [draft, open, activeTab]);
+
+  const openPanel = () => { markGreeted(); setGreeting(false); setUnread(false); setOpen(true); };
+  const close = () => { setUnread(false); setOpen(false); };
+  const minimise = () => setOpen(false);
 
   /** The free questions were just used up: let the answer land, then move the visitor to the form. */
   function handOffToDetails() {
@@ -141,27 +262,110 @@ export function AIAssistantChat() {
     handoffTimer.current = setTimeout(() => { handoffTimer.current = null; setTab('quote'); }, HANDOFF_DELAY_MS);
   }
 
+  function openQuote() {
+    setLead(l => (l.name || l.email || l.phone || l.message ? l : { ...l, purpose: PURPOSES[0] }));
+    setTab('quote');
+  }
+
   // The free questions are spent and the visitor has not shared details yet.
   const quotaSpent = aiOn && !!quota && quota.tier === 'anonymous' && quota.remaining <= 0 && !leadSent;
+  const outOfQuestions = !!quota && quota.remaining <= 0;
 
   // The allowance lives on the server; ask it, so a refresh or a cleared browser store changes nothing.
-  async function loadQuota() {
+  async function loadStatus() {
     try {
-      const res = await fetch(`/api/ai-assistant/status?sessionId=${encodeURIComponent(sid.current)}`);
+      const res = await fetch(`/api/ai-assistant/status?sessionId=${encodeURIComponent(sid.current)}`, { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.quota) setQuota(data.quota);
-    } catch { /* the page works without it; the server still enforces */ }
+      if (res.ok) setVisitor(data.visitor?.firstName !== undefined ? { firstName: String(data.visitor.firstName) } : null);
+    } catch { /* unknown: the form shows, and the server still enforces */ }
+    finally { setStatusLoaded(true); }
   }
-  useEffect(() => { if (aiOn && open && !quota) loadQuota(); }, [open, aiOn]);
+  useEffect(() => { if (aiOn && open && !statusLoaded) loadStatus(); }, [open, aiOn]);
+
+  const showGate = aiOn && statusLoaded && !visitor;
+
+  // A signed-in member finds the form already filled from their own profile; they only press Continue.
+  useEffect(() => {
+    if (!showGate || prefilled.current) return;
+    const d = profileDefaults(profile);
+    if (!d) return;
+    prefilled.current = true;
+    setDetails(cur => (cur.name || cur.email || cur.phone ? cur : d));
+  }, [showGate, profile]);
+
+  // The form's first field takes focus when it appears — on a wide screen. On a phone that would throw up the keyboard
+  // over a form the visitor has not read yet.
+  useEffect(() => {
+    if (!open || !showGate || activeTab !== 'chat') return;
+    if (!window.matchMedia('(min-width: 640px)').matches) return;
+    const t = setTimeout(() => gateNameRef.current?.focus({ preventScroll: true }), 60);
+    return () => clearTimeout(t);
+  }, [open, showGate, activeTab]);
+
+  /** The same rules the server applies. Errors show for a field once it has been left, and for all after a submit. */
+  const detailsCheck = validateVisitor(details);
+  const detailsErrors: VisitorErrors = 'errors' in detailsCheck ? detailsCheck.errors : {};
+  const shownError = (field: keyof VisitorErrors) =>
+    serverErrors[field] ?? (detailsTried || detailsTouched[field] ? detailsErrors[field] : undefined);
+  const contactError = detailsTried || (detailsTouched.email && detailsTouched.phone) ? (serverErrors.contact ?? detailsErrors.contact) : serverErrors.contact;
+
+  async function submitDetails(e: React.FormEvent) {
+    e.preventDefault();
+    if (detailsSending) return;
+    setDetailsTried(true);
+    setServerErrors({});
+    setDetailsError(null);
+    if ('errors' in detailsCheck) {
+      const first = (['name', 'email', 'phone'] as const).find(f => detailsCheck.errors[f]) ?? (detailsCheck.errors.contact ? 'email' : null);
+      if (first) document.getElementById(`visitor-${first}`)?.focus();
+      return;
+    }
+    setDetailsSending(true);
+    try {
+      const res = await fetch('/api/ai-assistant/visitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {}) },
+        body: JSON.stringify({ sessionId: sid.current, ...detailsCheck.value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.code === 'AI_ASSISTANT_DISABLED') { markAiAssistantDisabled(); return; }
+      if (!res.ok) {
+        // A field the server refused is shown on that field. Anything else — a missing route, a server error — gets one
+        // plain sentence; the page never shows what went wrong inside.
+        if (res.status === 400 && data.errors && typeof data.errors === 'object') {
+          setServerErrors(data.errors);
+          throw new Error('Please check the highlighted fields.');
+        }
+        throw new Error(START_FAILED);
+      }
+      if (data.quota) setQuota(data.quota);
+      const v = { ...detailsCheck.value, ...(data.contact ? { name: data.contact.name || detailsCheck.value.name, email: data.contact.email || detailsCheck.value.email, phone: data.contact.mobile || detailsCheck.value.phone } : {}) };
+      setVisitor({ firstName: typeof data.visitor?.firstName === 'string' ? data.visitor.firstName : firstName(v.name) });
+      // Get a quote starts from what was just given, so nobody types it twice.
+      setLead(l => ({ ...l, name: l.name || v.name, email: l.email || v.email, phone: l.phone || v.phone }));
+      setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 60);
+    } catch (err) {
+      setDetailsError(err instanceof Error && err.message === 'Please check the highlighted fields.' ? err.message : START_FAILED);
+    } finally {
+      setDetailsSending(false);
+    }
+  }
+
+  function addAssistant(text: string, action?: 'quote') {
+    setMessages(prev => [...prev, { id: `a-${Date.now()}`, role: 'assistant', text, ...(action ? { action } : {}) }]);
+    if (!openRef.current) setUnread(true);
+  }
 
   async function sendMessage(text: string, retry = false) {
     const clean = text.trim();
     if (!clean || sending || inFlight.current) return;
     inFlight.current = true;
-    setError(null);
     setFailure(null);
-    setDraft('');
-    if (!retry) setMessages(prev => [...prev, { id: `u-${Date.now()}`, role: 'user', text: clean }]);
+    if (!retry) {
+      setDraft('');
+      setMessages(prev => [...prev, { id: `u-${Date.now()}`, role: 'user', text: clean }]);
+    }
     setSending(true);
     try {
       const res = await fetch('/api/ai-assistant/chat', {
@@ -172,8 +376,14 @@ export function AIAssistantChat() {
       });
       const data = await res.json().catch(() => ({}));
       if (data.code === 'AI_ASSISTANT_DISABLED') {
-        // Switched off while this panel was open. Nothing is retried; the panel says so and offers the other ways to reach us.
+        // Switched off while this panel was open. Nothing is retried; the panel turns into the quote form.
         markAiAssistantDisabled();
+        return;
+      }
+      if (res.status === 403 && data.code === 'details_required') {
+        // The server does not know this visitor (a new session, or the details were removed): back to the form, question kept.
+        if (!retry) { setMessages(prev => prev.slice(0, -1)); setDraft(clean); }
+        setVisitor(null);
         return;
       }
       if (data.quota) setQuota(data.quota);
@@ -184,18 +394,19 @@ export function AIAssistantChat() {
           typeof data.text === 'string' && data.text.trim()
             ? data.text
             : "I'm sorry, I couldn't generate a response.";
-        setMessages(prev => [...prev, { id: `a-${Date.now()}`, role: 'assistant', text: reply, ...(data.action === 'quote' ? { action: 'quote' as const } : {}) }]);
+        addAssistant(reply, data.action === 'quote' ? 'quote' : undefined);
         if (spent) handOffToDetails();
       } else if (res.status === 429 && data.code === 'quota_reached') {
         // The allowance is spent: the server said so without calling the model. The details form takes over.
-        setMessages(prev => [...prev, { id: `a-${Date.now()}`, role: 'assistant', text: typeof data.text === 'string' ? data.text : 'You have used your complimentary questions.' }]);
+        addAssistant(typeof data.text === 'string' ? data.text : 'You have used your complimentary questions.');
         handOffToDetails();
       } else if (res.status === 409) {
         // Another question of this session is still being answered; this one was not taken.
+        setFailure({ kind: 'busy', text: clean, message: 'Your previous question is still being answered. Please try again in a moment.' });
       } else if (res.status === 504 || data.code === 'timeout') {
         setFailure({ kind: 'timeout', text: clean });
       } else if (res.status === 429) {
-        setError(typeof data.error === 'string' ? data.error : 'Too many messages right now. Please wait a minute and try again.');
+        setFailure({ kind: 'busy', text: clean, message: typeof data.error === 'string' ? data.error : 'Too many messages right now. Please wait a minute and try again.' });
       } else {
         setFailure({ kind: 'unavailable', text: clean });
       }
@@ -336,7 +547,7 @@ export function AIAssistantChat() {
 
       <p className="text-sm leading-relaxed text-ink-2">
         We&rsquo;ll use these details only to respond to your enquiry or requested follow-up. See our{' '}
-        <Link to="/privacy-policy" className="font-semibold text-accent hover:underline">
+        <Link to="/privacy-policy" className="font-semibold text-[var(--stm-blue-ink)] hover:underline">
           Privacy Policy
         </Link>.
       </p>
@@ -353,63 +564,111 @@ export function AIAssistantChat() {
     </>
   );
 
-  // Phones get the whole screen; from sm up it is a card anchored above the chat button, wide enough for a form.
-  const panelShell =
-    'fixed inset-0 z-[110] flex h-[100dvh] w-full flex-col overflow-hidden bg-surface ' +
-    'sm:inset-auto sm:z-40 sm:h-auto sm:max-h-[min(720px,calc(100dvh-var(--fab-bottom)-48px-var(--fab-gap)-max(var(--pwa-offset,0px),var(--cookie-offset,0px))-5rem))] sm:w-[min(480px,calc(100vw-2rem))] ' +
-    'sm:right-[var(--fab-right)] sm:mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))] ' +
-    'sm:rounded-2xl sm:border sm:border-rule sm:shadow-[var(--shadow-pop)]';
-  const fabStack = `${pathname === '/signup' ? 'fab-avoid-form ' : ''}fixed right-[var(--fab-right)] mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))] z-40`;
-  const triggerBottom = 'bottom-[calc(var(--fab-bottom)+48px+var(--fab-gap))]';
-
   // Not known yet: draw nothing, so the widget never appears as one thing and then turns into the other.
-  if (aiState === null) return null;
+  if (hidden || aiState === null) return null;
+
+  const offsets = 'mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))]';
+  const avoidForm = pathname === '/signup' ? 'fab-avoid-form ' : '';
+  const focusRing = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--stm-blue)] focus-visible:ring-offset-2';
+  const headerBtn =
+    'flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white ' +
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-white';
+  // A phone gets a card 8px in from the right and the bottom (and above the keyboard), as tall as its content up to about
+  // three quarters of the screen; from sm up a 400px card above the launcher's spot, as before.
+  const panelShell =
+    `${avoidForm}ai-pop fixed z-[110] flex flex-col overflow-hidden rounded-2xl border border-rule bg-surface shadow-[var(--shadow-modal)] ` +
+    'left-auto right-2 w-[min(calc(100vw-16px),480px)] bottom-[calc(max(8px,env(safe-area-inset-bottom))+var(--ai-kb,0px))] ' +
+    'max-h-[min(76dvh,640px,calc(var(--ai-vv-h,100dvh)-24px))] ' +
+    `sm:z-40 sm:max-h-none sm:right-[var(--fab-right)] sm:bottom-[var(--ai-launcher-bottom)] sm:mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))] sm:w-[min(400px,calc(100vw-2rem))] ` +
+    'sm:h-[min(640px,calc(100dvh-var(--ai-launcher-bottom)-max(var(--pwa-offset,0px),var(--cookie-offset,0px))-5.5rem))] sm:min-h-[360px]';
+  const hasConversation = messages.length > 0;
+
+  const quickButton =
+    `flex w-full min-w-0 items-center gap-2 rounded-xl border border-rule bg-surface px-2.5 py-2.5 text-left text-[13px] font-semibold leading-snug text-ink ` +
+    `sm:flex-col sm:items-start sm:p-3 sm:text-sm ` +
+    `transition-colors hover:border-[var(--stm-blue)] hover:bg-[var(--stm-blue-soft)] disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
   return (
     <>
       {!open && (
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label={aiOn ? 'Open AI assistant' : 'Get a quote'}
-          className={`${fabStack} ${triggerBottom} flex h-12 w-12 items-center justify-center rounded-full bg-navy text-white shadow-[var(--shadow-pop)] transition-colors duration-200 hover:bg-navy-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:h-14 sm:w-14`}
-        >
-          {aiOn ? <MessageCircle size={22} aria-hidden="true" /> : <FileText size={22} aria-hidden="true" />}
-        </button>
+        <div className={`${avoidForm}fixed right-[var(--fab-right)] bottom-[var(--ai-launcher-bottom)] ${offsets} z-40 flex flex-col items-end gap-2`}>
+          {greeting && (
+            <div
+              role="status"
+              className="ai-pop relative flex max-w-[calc(100vw-2rem)] items-center gap-1 rounded-2xl rounded-br-md border border-rule bg-surface py-2 pl-3.5 pr-1.5 text-sm font-medium text-ink shadow-[var(--shadow-pop)]"
+            >
+              <button type="button" onClick={openPanel} className={`rounded-md text-left ${focusRing}`}>
+                Hi! How can I help you?
+              </button>
+              <button
+                type="button"
+                onClick={() => setGreeting(false)}
+                aria-label="Dismiss greeting"
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-ink ${focusRing}`}
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+            </div>
+          )}
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={openPanel}
+            aria-label={aiOn ? `Ask AI — open the STM AI Assistant${unread ? ' (new reply)' : ''}` : 'Get a quote'}
+            aria-expanded={false}
+            aria-controls="ai-assistant-panel"
+            className={`group flex items-center gap-2.5 rounded-full ${focusRing}`}
+          >
+            <span className="rounded-full bg-[var(--stm-navy)] px-3 py-1.5 text-sm font-semibold text-white shadow-[var(--shadow-pop)] transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">
+              {aiOn ? 'Ask AI' : 'Get a quote'}
+            </span>
+            <span className="relative flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[var(--stm-blue)] shadow-[0_6px_20px_rgba(27,93,252,0.35),0_1px_3px_rgba(15,23,43,0.2)] transition-[transform,background-color,box-shadow] duration-200 group-hover:-translate-y-0.5 group-hover:bg-[var(--stm-blue-hover)] group-hover:shadow-[0_10px_26px_rgba(27,93,252,0.42),0_2px_4px_rgba(15,23,43,0.2)] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 sm:h-[60px] sm:w-[60px]">
+              {aiOn
+                ? <RobotIcon className="h-8 w-8 sm:h-9 sm:w-9" visor="var(--stm-navy)" />
+                : <FileText size={24} className="text-white" aria-hidden="true" />}
+              {unread && <span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#f59e0b]" aria-hidden="true" />}
+            </span>
+          </button>
+        </div>
       )}
 
       {open && (
         <div
           id="ai-assistant-panel"
+          ref={panelRef}
           role="dialog"
-          aria-label={aiOn ? 'STM Digital Library assistant' : 'STM Digital Library, get a quote'}
-          onKeyDown={(e) => { if (e.key === 'Escape') close(); }}
-          className={`${panelShell} sm:bottom-[calc(var(--fab-bottom)+48px+var(--fab-gap))]`}
+          aria-labelledby="ai-assistant-title"
+          aria-describedby="ai-assistant-subtitle"
+          tabIndex={-1}
+          // Focus lands on the panel only so keyboard users start inside it; it is not a control, so no ring around the card.
+          style={{ outline: 'none' }}
+          className={panelShell}
         >
           {/* Header — fixed; only the body below scrolls */}
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-rule px-4 py-3">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent" aria-hidden="true">
-                {aiOn ? <MessageCircle size={16} /> : <FileText size={16} />}
+          <div className="flex shrink-0 items-center gap-2.5 bg-[var(--stm-navy)] px-3 py-2 text-white sm:gap-3 sm:px-4 sm:py-3">
+            {aiOn ? <RobotAvatar size="md" /> : (
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--stm-blue)] sm:h-10 sm:w-10" aria-hidden="true">
+                <FileText size={20} />
               </span>
-              <div>
-                <p className="text-sm font-semibold text-ink">STM Digital Library</p>
-                <p className="text-xs text-muted">{aiOn ? 'AI Assistant' : 'Get a quote'}</p>
-              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h2 id="ai-assistant-title" className="truncate text-[15px] font-semibold leading-tight text-white">
+                {aiOn ? 'STM AI Assistant' : 'STM Digital Library'}
+              </h2>
+              <p id="ai-assistant-subtitle" className="truncate text-xs text-white/75">
+                {aiOn ? 'Your digital library guide' : 'Get a quote'}
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={close}
-              aria-label={aiOn ? 'Close assistant' : 'Close form'}
-              className="btn btn-ghost btn-sm btn-icon"
-            >
-              <X size={16} aria-hidden="true" />
+            <button type="button" onClick={minimise} aria-label={aiOn ? 'Minimize assistant' : 'Minimize form'} className={headerBtn}>
+              <Minus size={18} aria-hidden="true" />
+            </button>
+            <button type="button" onClick={close} aria-label={aiOn ? 'Close assistant' : 'Close form'} className={headerBtn}>
+              <X size={18} aria-hidden="true" />
             </button>
           </div>
 
           {/* Tabs — only while the assistant is on. Off, there is nothing to switch between. */}
-          {aiOn && <div role="tablist" aria-label="Assistant panels" className="flex shrink-0 border-b border-rule">
+          {aiOn && <div role="tablist" aria-label="Assistant panels" className="flex shrink-0 border-b border-rule bg-surface">
             {([
               ['chat', 'Assistant'],
               ['quote', 'Get a quote'],
@@ -421,11 +680,11 @@ export function AIAssistantChat() {
                 id={`ai-assistant-tab-${key}`}
                 aria-selected={tab === key}
                 aria-controls={`ai-assistant-panel-${key}`}
-                onClick={() => setTab(key)}
-                className={`flex-1 px-3 py-2.5 text-sm font-semibold transition-colors ${
+                onClick={() => (key === 'quote' ? openQuote() : setTab('chat'))}
+                className={`flex-1 border-b-2 px-3 py-2 text-sm font-semibold sm:py-2.5 transition-colors focus:outline-none focus-visible:bg-[var(--stm-blue-soft)] ${
                   tab === key
-                    ? 'border-b-2 border-accent text-ink'
-                    : 'text-muted hover:text-ink'
+                    ? 'border-[var(--stm-blue)] text-ink'
+                    : 'border-transparent text-muted hover:text-ink'
                 }`}
               >
                 {label}
@@ -433,64 +692,214 @@ export function AIAssistantChat() {
             ))}
           </div>}
 
-          {activeTab === 'chat' ? (
+          {activeTab === 'chat' && !statusLoaded ? (
+            <div
+              role="tabpanel"
+              id="ai-assistant-panel-chat"
+              aria-labelledby="ai-assistant-tab-chat"
+              aria-busy="true"
+              className="flex min-h-[200px] flex-1 items-center justify-center px-4 py-8 text-sm text-muted"
+            >
+              Loading…
+            </div>
+          ) : activeTab === 'chat' && showGate ? (
+            /* The pre-chat gate: a name, and an email or a mobile number. The assistant does not answer before it. */
+            <form
+              role="tabpanel"
+              id="ai-assistant-panel-chat"
+              aria-labelledby="ai-assistant-tab-chat"
+              onSubmit={submitDetails}
+              noValidate
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div
+                className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-4 py-3 sm:space-y-3 sm:py-4"
+                onFocus={(e) => {
+                  // Keep the field being typed into in view when a phone keyboard takes half the screen.
+                  const t = e.target as HTMLElement;
+                  setTimeout(() => t.scrollIntoView?.({ block: 'nearest' }), 300);
+                }}
+              >
+                <div>
+                  <h3 className="text-base font-semibold text-ink">Before we begin</h3>
+                  <p className="mt-0.5 text-sm leading-snug text-ink-2">
+                    Please share your name and either your email address or mobile number to start the assistant.
+                  </p>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="visitor-name" className="field-label">
+                    Full Name <span className="req" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    id="visitor-name"
+                    ref={gateNameRef}
+                    className="input"
+                    value={details.name}
+                    onChange={(e) => { setDetails({ ...details, name: e.target.value }); setServerErrors(({ name: _, ...rest }) => rest); }}
+                    onBlur={() => setDetailsTouched(t => ({ ...t, name: true }))}
+                    maxLength={VISITOR_LIMITS.name}
+                    required
+                    aria-required="true"
+                    autoComplete="name"
+                    aria-invalid={!!shownError('name')}
+                    aria-describedby={shownError('name') ? 'visitor-name-error' : undefined}
+                  />
+                  {shownError('name') && <p id="visitor-name-error" className="field-error">{shownError('name')}</p>}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="visitor-email" className="field-label">Email Address</label>
+                  <input
+                    id="visitor-email"
+                    type="email"
+                    inputMode="email"
+                    className="input"
+                    value={details.email}
+                    onChange={(e) => { setDetails({ ...details, email: e.target.value }); setServerErrors(({ email: _, contact: __, ...rest }) => rest); }}
+                    onBlur={() => setDetailsTouched(t => ({ ...t, email: true }))}
+                    maxLength={VISITOR_LIMITS.email}
+                    autoComplete="email"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    aria-invalid={!!(shownError('email') || contactError)}
+                    aria-describedby={`visitor-contact-help${shownError('email') ? ' visitor-email-error' : ''}`}
+                  />
+                  {shownError('email') && <p id="visitor-email-error" className="field-error">{shownError('email')}</p>}
+                </div>
+
+                <div className="-my-0.5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted" aria-hidden="true">
+                  <span className="h-px flex-1 bg-rule" />or<span className="h-px flex-1 bg-rule" />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="visitor-phone" className="field-label">Mobile Number</label>
+                  <input
+                    id="visitor-phone"
+                    type="tel"
+                    inputMode="tel"
+                    className="input"
+                    value={details.phone}
+                    onChange={(e) => { setDetails({ ...details, phone: e.target.value }); setServerErrors(({ phone: _, contact: __, ...rest }) => rest); }}
+                    onBlur={() => setDetailsTouched(t => ({ ...t, phone: true }))}
+                    maxLength={VISITOR_LIMITS.phoneRaw}
+                    autoComplete="tel-national"
+                    placeholder="98100 78958"
+                    aria-invalid={!!(shownError('phone') || contactError)}
+                    aria-describedby={`visitor-contact-help${shownError('phone') ? ' visitor-phone-error' : ''}`}
+                  />
+                  {shownError('phone') && <p id="visitor-phone-error" className="field-error">{shownError('phone')}</p>}
+                  {contactError
+                    ? <p id="visitor-contact-help" className="field-error">{contactError}</p>
+                    : <p id="visitor-contact-help" className="field-help">Provide either email or mobile number.</p>}
+                </div>
+              </div>
+
+              {/* Continue stays in reach, above the keyboard, however the form scrolls. */}
+              <div className="shrink-0 space-y-2 border-t border-rule bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                {detailsError && <p role="alert" className="field-error">{detailsError}</p>}
+                <button
+                  type="submit"
+                  className={`btn btn-block ai-btn ${focusRing}`}
+                  disabled={detailsSending}
+                  aria-busy={detailsSending}
+                >
+                  {detailsSending ? 'Please wait…' : 'Continue to Assistant'}
+                </button>
+              </div>
+            </form>
+          ) : activeTab === 'chat' ? (
             <div
               role="tabpanel"
               id="ai-assistant-panel-chat"
               aria-labelledby="ai-assistant-tab-chat"
               className="flex min-h-0 flex-1 flex-col"
             >
-              {/* Messages */}
+              {/* Conversation — the only part that scrolls */}
               <div
                 ref={logRef}
                 role="log"
                 aria-live="polite"
                 aria-label="Conversation"
-                className="min-h-[12rem] flex-1 space-y-3 overflow-y-auto px-4 py-4"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4"
               >
-                {messages.map(m => (
-                  <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                        m.role === 'user'
-                          ? 'rounded-br-md bg-navy text-white'
-                          : 'rounded-bl-md border border-rule bg-surface-2 text-ink'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{m.text}</p>
-                      {m.action === 'quote' && (
-                        <button type="button" onClick={() => setTab('quote')} className="btn btn-brand btn-sm mt-2">
-                          Open Get a quote
+                {!hasConversation ? (
+                  <div className="flex flex-col items-center text-center sm:pt-2">
+                    <span className="hidden sm:block"><RobotAvatar size="md" /></span>
+                    {visitor?.firstName ? (
+                      <p className="text-base font-semibold text-ink sm:mt-3">
+                        Hello, {visitor.firstName}!<br />How can I help you today?
+                      </p>
+                    ) : (
+                      <p className="text-base font-semibold text-ink sm:mt-3">Hello! How can I help you today?</p>
+                    )}
+                    <p className="mt-1 text-sm leading-snug text-ink-2 sm:leading-relaxed">Explore resources, subscriptions and institutional access.</p>
+                    <div className="mt-3 grid w-full grid-cols-2 gap-2 sm:mt-5">
+                      {QUICK_QUESTIONS.map(q => (
+                        <button
+                          key={q.label}
+                          type="button"
+                          className={quickButton}
+                          onClick={() => sendMessage(q.question)}
+                          disabled={sending || outOfQuestions}
+                        >
+                          <q.icon size={18} className="shrink-0 text-[var(--stm-blue-ink)]" aria-hidden="true" />
+                          {q.label}
                         </button>
-                      )}
+                      ))}
+                      <button type="button" className={quickButton} onClick={openQuote}>
+                        <FileText size={18} className="shrink-0 text-[var(--stm-blue-ink)]" aria-hidden="true" />
+                        Get a quotation
+                      </button>
                     </div>
                   </div>
-                ))}
-                {sending && (
-                  <div className="flex justify-start" aria-label="Assistant is typing">
-                    <div className="rounded-2xl rounded-bl-md border border-rule bg-surface-2 px-3.5 py-2.5">
-                      <Loader2 size={14} className="animate-spin text-muted" aria-hidden="true" />
-                    </div>
-                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {messages.map(m => (
+                      <li key={m.id} className={`flex items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {m.role === 'assistant' && <RobotAvatar size="sm" />}
+                        <div
+                          className={`min-w-0 max-w-[82%] break-words rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                            m.role === 'user'
+                              ? 'rounded-br-md bg-[var(--stm-blue)] text-white'
+                              : 'rounded-bl-md border border-rule bg-surface-2 text-ink'
+                          }`}
+                        >
+                          <span className="sr-only">{m.role === 'user' ? 'You said: ' : 'Assistant: '}</span>
+                          <p className="whitespace-pre-wrap">{m.text}</p>
+                          {m.action === 'quote' && (
+                            <button type="button" onClick={openQuote} className={`btn btn-sm ai-btn mt-2 ${focusRing}`}>
+                              Open Get a quote
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                    {sending && (
+                      <li className="flex items-end gap-2" role="status">
+                        <RobotAvatar size="sm" />
+                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-rule bg-surface-2 px-3.5 py-3.5">
+                          <span className="sr-only">The assistant is typing</span>
+                          <span className="ai-typing-dot h-1.5 w-1.5 rounded-full bg-muted" aria-hidden="true" />
+                          <span className="ai-typing-dot h-1.5 w-1.5 rounded-full bg-muted" aria-hidden="true" />
+                          <span className="ai-typing-dot h-1.5 w-1.5 rounded-full bg-muted" aria-hidden="true" />
+                        </div>
+                      </li>
+                    )}
+                  </ul>
                 )}
               </div>
 
-              {error && (
-                <p role="alert" className="shrink-0 border-t border-rule bg-surface px-4 py-2 text-xs font-medium text-alarm">
-                  {error}
-                </p>
-              )}
-
               {failure && (
-                <div role="alert" className="shrink-0 space-y-2 border-t border-rule bg-surface px-4 py-3">
-                  <p className="text-sm font-medium text-ink">
-                    {failure.kind === 'timeout' ? 'That response is taking longer than expected.' : 'The assistant is temporarily unavailable.'}
+                <div role="alert" className="shrink-0 space-y-2 border-t border-rule bg-[var(--alarm-soft)] px-4 py-3">
+                  <p className="text-sm font-semibold text-ink">
+                    {failure.message ?? (failure.kind === 'timeout' ? 'That response is taking longer than expected.' : 'The assistant is temporarily unavailable.')}
                   </p>
-                  <p className="text-xs text-muted">This did not use one of your questions.</p>
+                  <p className="text-xs text-ink-2">This did not use one of your questions.</p>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" className="btn btn-primary btn-sm" onClick={() => sendMessage(failure.text, true)} disabled={sending}>Retry</button>
-                    <Link to="/search" className="btn btn-ghost btn-sm" onClick={close}>Search Library</Link>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setTab('quote')}>Get a quote</button>
+                    <button type="button" className={`btn btn-sm ai-btn ${focusRing}`} onClick={() => sendMessage(failure.text, true)} disabled={sending}>Retry</button>
+                    <Link to="/search" className="btn btn-ghost btn-sm" onClick={minimise}>Search Library</Link>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={openQuote}>Get a quote</button>
                     <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">WhatsApp</a>
                   </div>
                 </div>
@@ -503,17 +912,17 @@ export function AIAssistantChat() {
                     <span className="font-semibold">You&rsquo;ve used your {quota.limit} complimentary AI questions.</span>{' '}
                     Share your details to continue, request a quotation, or speak with our team.
                   </p>
-                  <button type="button" className="btn btn-brand btn-block" onClick={() => setTab('quote')}>
+                  <button type="button" className={`btn btn-block ai-btn ${focusRing}`} onClick={openQuote}>
                     Continue with your details
                   </button>
                 </div>
               ) : quota && quota.remaining <= 0 ? (
                 <p className="shrink-0 border-t border-rule px-4 py-3 text-sm text-ink-2">
                   You have reached the hourly limit for questions. You can still use Get a quote or reach our team on{' '}
-                  <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:underline">WhatsApp</a>.
+                  <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="font-semibold text-[var(--stm-blue-ink)] hover:underline">WhatsApp</a>.
                 </p>
               ) : (
-                <div className="shrink-0 pb-[env(safe-area-inset-bottom)]">
+                <div className="shrink-0 border-t border-rule bg-surface pb-[env(safe-area-inset-bottom)]">
                   {quota && quota.tier === 'anonymous' && (
                     <p className="px-4 pt-2 text-xs text-muted" aria-live="polite">
                       {quota.remaining === 1 ? '1 complimentary question remaining' : `${quota.remaining} of ${quota.limit} complimentary questions remaining`}
@@ -521,38 +930,46 @@ export function AIAssistantChat() {
                   )}
                   <form
                     onSubmit={(e) => { e.preventDefault(); sendMessage(draft); }}
-                    className="flex items-center gap-2 p-3"
+                    className="flex items-end gap-2 px-3 pb-1 pt-2.5"
                   >
                     <label htmlFor="ai-assistant-input" className="sr-only">
-                      Message the assistant
+                      Type your question
                     </label>
-                    <input
+                    <textarea
                       id="ai-assistant-input"
                       ref={inputRef}
-                      className="input flex-1"
+                      rows={1}
+                      className="input max-h-32 min-h-[42px] flex-1 resize-none py-2.5 leading-snug"
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        // Enter sends; Shift+Enter is a new line; Enter that finishes an IME composition is not a send.
+                        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                          e.preventDefault();
+                          sendMessage(draft);
+                        }
+                      }}
                       onFocus={() => {
-                        // Best-effort against mobile keyboards: browsers that
-                        // shrink the viewport when the keyboard opens reflow
-                        // the fixed panel; scrolling the input into view
-                        // helps the ones that do not.
+                        // Best-effort against mobile keyboards that do not resize the visual viewport.
                         setTimeout(() => inputRef.current?.scrollIntoView({ block: 'nearest' }), 300);
                       }}
-                      placeholder="Ask about content, access or pricing…"
+                      placeholder="Type your question..."
                       maxLength={1000}
-                      disabled={sending}
                       autoComplete="off"
+                      aria-describedby="ai-assistant-disclaimer"
                     />
                     <button
                       type="submit"
-                      className="btn btn-primary btn-icon"
+                      className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl ai-btn transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
                       disabled={sending || !draft.trim()}
                       aria-label="Send message"
                     >
-                      <SendHorizonal size={16} aria-hidden="true" />
+                      <SendHorizonal size={18} aria-hidden="true" />
                     </button>
                   </form>
+                  <p id="ai-assistant-disclaimer" className="px-4 pb-2.5 pt-1 text-center text-[11px] text-muted">
+                    AI responses may need verification.
+                  </p>
                 </div>
               )}
             </div>
@@ -575,25 +992,25 @@ export function AIAssistantChat() {
                   <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <button
                       type="button"
-                      className="btn btn-brand"
+                      className={`btn ai-btn ${focusRing}`}
                       onClick={() => { setTab('chat'); setTimeout(() => inputRef.current?.focus(), 60); }}
                     >
                       Return to assistant
                     </button>
-                    <Link to="/search" className="btn btn-ghost" onClick={close}>Search the library</Link>
+                    <Link to="/search" className="btn btn-ghost" onClick={minimise}>Search the library</Link>
                     <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">WhatsApp</a>
                   </div>
                   <button
                     type="button"
                     onClick={() => setLeadSent(false)}
-                    className="mt-4 text-sm font-semibold text-accent hover:underline"
+                    className="mt-4 text-sm font-semibold text-[var(--stm-blue-ink)] hover:underline"
                   >
                     Send another request
                   </button>
                 </>
               ) : (
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                  <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="btn btn-brand">WhatsApp</a>
+                  <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className={`btn ai-btn ${focusRing}`}>WhatsApp</a>
                   {/* Closing also clears the thank-you and what was typed, so the next time the form opens it is a fresh one. */}
                   <button type="button" className="btn btn-ghost" onClick={() => { setLeadSent(false); setLead(EMPTY_LEAD); setConsent(false); close(); }}>Close</button>
                 </div>
@@ -609,18 +1026,18 @@ export function AIAssistantChat() {
               aria-label="Continue with our team"
               className="flex min-h-0 flex-1 flex-col"
             >
-              <div ref={quoteBodyRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+              <div ref={quoteBodyRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4">
                 {quotaSpent && quota ? (
                   /* Arrived here because the free questions ran out: say so, briefly. */
                   <div className="rounded-xl border border-rule bg-surface-2 p-3.5">
-                    <h2 className="text-sm font-semibold text-ink">Continue with our team</h2>
+                    <h3 className="text-sm font-semibold text-ink">Continue with our team</h3>
                     <p className="mt-1 text-sm leading-relaxed text-ink-2">
                       You&rsquo;ve used your {quota.limit} complimentary AI questions. Share your details and we&rsquo;ll help with subscriptions, demonstrations, quotations, or academic content access.
                     </p>
                   </div>
                 ) : (
                   <div>
-                    <h2 className="text-base font-semibold text-ink">Continue with our team</h2>
+                    <h3 className="text-base font-semibold text-ink">Continue with our team</h3>
                     <p className="mt-1 text-sm leading-relaxed text-ink-2">
                       Share your details and we&rsquo;ll help with subscriptions, demonstrations, quotations, or academic content access.
                     </p>
@@ -634,7 +1051,7 @@ export function AIAssistantChat() {
                 {leadError && <p role="alert" className="field-error">{leadError}</p>}
                 <button
                   type="submit"
-                  className="btn btn-brand btn-block"
+                  className={`btn btn-block ai-btn ${focusRing}`}
                   disabled={leadSending}
                   aria-busy={leadSending}
                 >

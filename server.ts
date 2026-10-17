@@ -21,11 +21,16 @@ import helmet from "helmet";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import compression from "compression";
 import bcrypt from "bcryptjs";
+import { normalizeEmail, isValidEmail, findUserByEmail, emailTaken, passwordProblem, hashPassword, passwordMatches, revokeSessions, removesLastSuperAdmin, LAST_SUPER_ADMIN, REAUTH_REQUIRED, REAUTH_FAILED, withPasswordCredential, auditAccount } from "./src/server/accountSecurity.js";
 import jwt from "jsonwebtoken";
 import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
 import { setupExtractionRoutes } from "./src/routes/extraction.js";
 import { setupAIAssistantRoutes } from "./src/routes/aiAssistant.js";
+import {
+  visitorOverview as aiVisitorOverview, listVisitors as aiListVisitors, visitorDetail as aiVisitorDetail,
+  listConversations as aiListConversations, conversationDetail as aiConversationDetail,
+} from "./src/server/aiAssistantVisitors.js";
 import { usageSummary as aiAssistantUsage } from "./src/server/aiAssistantQuota.js";
 import { providerState as aiProviderState, testConnection as aiTestConnection, activateConfig as aiActivateConfig, removeAdminKey as aiRemoveAdminKey, resolveProviders as aiResolveProviders, providersState as aiProvidersState, testProvider as aiTestProvider, activateProvider as aiActivateProvider, removeProviderKey as aiRemoveProviderKey, revealProviderKey as aiRevealProviderKey, saveFailover as aiSaveFailover, recentAiEvents as aiRecentEvents, isProvider as aiIsProvider } from "./src/server/aiProviderConfig.js";
 import { encryptionAvailable as aiEncryptionAvailable } from "./src/server/aiSecrets.js";
@@ -890,8 +895,9 @@ async function startServer() {
               registrantType, state, country, whatsapp, attribution } = req.body;
       
       // Check if user already exists in PostgreSQL
-      const existingUser = await prisma.user.findUnique({ where: { email } });
-      
+      // Compared case-insensitively: Admin@x.com and admin@x.com are one address and may hold one account.
+      const existingUser = typeof email === 'string' && email.trim() ? await emailTaken(prisma, email.trim()) : false;
+
       if (existingUser) {
         return res.status(400).json({ error: "User already exists" });
       }
@@ -937,7 +943,9 @@ async function startServer() {
       // somebody else's students and somebody else's analytics. Two people from
       // one college therefore make two records, and merging them is an
       // administrator's job rather than a guess made at the moment of signing up.
-      let accountRole = email === "info@celnet.in" ? "SuperAdmin" : "Subscriber";
+      // Signing up never grants a staff role. (An address used to be hard-coded here as an automatic Super Admin, which made the role
+      // available to whoever registered that address once its account was renamed or removed.) Super Admins are created in Admin.
+      let accountRole: string = "Subscriber";
       let newInstitutionId: string | null = null;
       if (accountRole !== 'SuperAdmin' && opensInstitutionDashboard(type, role) && String(organization || '').trim()) {
         const created = await prisma.institution.create({
@@ -1080,36 +1088,35 @@ async function startServer() {
   // Auth: Login
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { email, password } = req.body;
-      
-      // -- Master Admin Env Fallback (Recovery Mode) --
-      if (
-        process.env.MASTER_ADMIN_EMAIL && 
-        process.env.MASTER_ADMIN_PASSWORD &&
-        email === process.env.MASTER_ADMIN_EMAIL && 
-        password === process.env.MASTER_ADMIN_PASSWORD
-      ) {
-        let adminUser = await prisma.user.findUnique({ where: { email } });
-        if (!adminUser) {
-          adminUser = await prisma.user.create({
-            data: {
-              email,
-              password: await bcrypt.hash(password, 10),
-              role: 'SuperAdmin',
-              displayName: 'Super Admin',
-            }
-          });
-        }
-        
-        const started = await startSession({ id: adminUser.id, email, role: 'SuperAdmin' }, req, { replaceExisting: !!req.body?.replaceExisting });
-        if (!started) return sendActiveSessionExists(res);
+      const { password } = req.body;
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+      if (!email || typeof password !== 'string' || !password) return res.status(401).json({ error: "Invalid credentials" });
 
-        const { password: _, ...profile } = adminUser;
-        return res.json({ token: started.token, user: profile });
+      // -- MASTER_ADMIN_EMAIL / MASTER_ADMIN_PASSWORD: first-boot bootstrap only --
+      // They create the first Super Admin only while the database has NO Super Admin at all (and no account with that address). From then on
+      // the database is the only authority: every account signs in with its own stored password and these variables are ignored, so changing
+      // them never creates a second Super Admin, never resets anyone's password, and is never a second way in.
+      // (The previous code signed in with them directly and created a new Super Admin for every new MASTER_ADMIN_EMAIL.)
+      const masterEmail = normalizeEmail(process.env.MASTER_ADMIN_EMAIL);
+      const masterPassword = process.env.MASTER_ADMIN_PASSWORD || '';
+      if (masterEmail && masterPassword && normalizeEmail(email) === masterEmail
+        && (await prisma.user.count({ where: { role: 'SuperAdmin' } })) === 0 && !(await findUserByEmail(prisma, masterEmail))) {
+        const digest = (v: string) => crypto.createHash('sha256').update(v).digest();
+        if (crypto.timingSafeEqual(digest(password), digest(masterPassword)) && !passwordProblem(password)) {
+          const adminUser = await prisma.user.create({
+            data: { email: masterEmail, password: await hashPassword(password), role: 'SuperAdmin', displayName: 'Super Admin', status: 'Active' },
+          });
+          await auditAccount(prisma, { uid: adminUser.id, email: adminUser.email, role: 'SuperAdmin' }, 'SUPER_ADMIN_CREATED', { targetUserId: adminUser.id, source: 'environment-bootstrap' });
+          const started = await startSession({ id: adminUser.id, email: adminUser.email, role: 'SuperAdmin' }, req, { replaceExisting: !!req.body?.replaceExisting });
+          if (!started) return sendActiveSessionExists(res);
+          prisma.user.update({ where: { id: adminUser.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+          const { password: _, ...profile } = adminUser;
+          return res.json({ token: started.token, user: profile });
+        }
       }
       // -----------------------------------------------
 
-      const userObj = await prisma.user.findUnique({ where: { email } });
+      const userObj = await findUserByEmail(prisma, email);
       
       if (!userObj) {
         return res.status(401).json({ error: "Invalid credentials" });
@@ -1123,8 +1130,8 @@ async function startServer() {
         return res.status(403).json({ error: "Your demo account has expired. Please upgrade to continue." });
       }
 
-      const isPasswordValid = await bcrypt.compare(password, userObj.password);
-      
+      const isPasswordValid = await passwordMatches(prisma, userObj.id, password);
+
       if (!isPasswordValid) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
@@ -1133,7 +1140,7 @@ async function startServer() {
       // sessions. `replaceExisting` is the member choosing to end the other one,
       // and is honoured only because the password above has just been checked.
       const started = await startSession(
-        { id: userObj.id, email, role: userObj.role, institutionId: userObj.institutionId },
+        { id: userObj.id, email: userObj.email, role: userObj.role, institutionId: userObj.institutionId },
         req,
         { replaceExisting: req.body?.replaceExisting === true },
       );
@@ -1586,17 +1593,18 @@ async function startServer() {
   // Auth: Forgot Password - Send OTP
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
-      const { email } = req.body;
-      if (!email) return res.status(400).json({ error: "Email is required" });
+      if (!req.body?.email) return res.status(400).json({ error: "Email is required" });
 
-      const userObj = await prisma.user.findUnique({ where: { email } });
+      const userObj = await findUserByEmail(prisma, req.body.email);
       if (!userObj) {
         // Return success even if user not found to prevent email enumeration attacks
         return res.json({ message: "If your email is registered, an OTP has been sent." });
       }
+      // The account's own stored address: the OTP record and the mail both follow it, however the address was typed.
+      const email = userObj.email;
 
-      // Generate 6 digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      // Generate 6 digit OTP (from the CSPRNG, not Math.random)
+      const otp = crypto.randomInt(100000, 1000000).toString();
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
       const record = await (prisma as any).emailVerification.findUnique({ where: { email } });
@@ -1635,15 +1643,16 @@ async function startServer() {
   // Auth: Reset Password - Verify OTP and update password
   app.post("/api/auth/reset-password", async (req, res) => {
     try {
-      const { email, otp, newPassword } = req.body;
-      if (!email || !otp || !newPassword) {
+      const { otp, newPassword } = req.body;
+      if (!req.body?.email || !otp || !newPassword) {
         return res.status(400).json({ error: "Email, OTP, and new password are required" });
       }
 
-      if (newPassword.length < 8) {
-        return res.status(400).json({ error: "Password must be at least 8 characters long" });
-      }
+      const weak = passwordProblem(newPassword);
+      if (weak) return res.status(400).json({ error: weak });
 
+      const owner = await findUserByEmail(prisma, req.body.email, { email: true });
+      const email = owner?.email ?? String(req.body.email).trim();
       const record = await (prisma as any).emailVerification.findUnique({ where: { email } });
       if (!record) {
         return res.status(400).json({ error: "Invalid request" });
@@ -1658,7 +1667,7 @@ async function startServer() {
         return res.status(404).json({ error: "User not found" });
       }
 
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const hashedPassword = await hashPassword(newPassword);
       await prisma.user.update({
         where: { email },
         data: { password: hashedPassword }
@@ -1669,6 +1678,10 @@ async function startServer() {
         where: { email },
         data: { otp: null, otpExpiry: null }
       });
+
+      // Whoever held the old password is signed out everywhere.
+      await revokeSessions(prisma, userObj.id);
+      await auditAccount(prisma, { uid: userObj.id, email: userObj.email, role: userObj.role }, 'PASSWORD_RESET', { targetUserId: userObj.id, via: 'email-otp' });
 
       res.json({ success: true, message: "Password has been successfully reset" });
     } catch (error) {
@@ -5022,11 +5035,19 @@ async function startServer() {
   // Self-update: name, password, clears isFirstLogin
   app.put("/api/user/profile", authenticateJWT, async (req: any, res) => {
     try {
-      const { displayName, password, clearFirstLogin } = req.body;
+      const { displayName, password, confirmPassword, currentPassword, clearFirstLogin } = req.body;
       const dataToUpdate: any = {};
       if (displayName) dataToUpdate.displayName = displayName;
       if (password) {
-        dataToUpdate.password = await bcrypt.hash(password, 10);
+        const weak = passwordProblem(password, confirmPassword);
+        if (weak) return res.status(400).json({ error: weak });
+        // Changing your own password needs the current one, so an unattended signed-in browser cannot be used to take the account. The one
+        // exception is the forced first-login change, whose temporary password was just used to sign in.
+        const me = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { isFirstLogin: true } });
+        if (!me?.isFirstLogin && !(await passwordMatches(prisma, req.user.uid, currentPassword))) {
+          return res.status(403).json({ code: 'CURRENT_PASSWORD_WRONG', error: "Your current password is not correct." });
+        }
+        dataToUpdate.password = await hashPassword(password);
       }
       if (clearFirstLogin || password) {
         dataToUpdate.isFirstLogin = false;
@@ -5035,6 +5056,11 @@ async function startServer() {
         where: { id: req.user.uid },
         data: dataToUpdate
       });
+      if (password) {
+        // Every other browser signed in as this account is signed out; this one stays.
+        await revokeSessions(prisma, req.user.uid, req.user.sid);
+        await auditAccount(prisma, req.user, 'PASSWORD_CHANGED', { targetUserId: req.user.uid, self: true });
+      }
       const { password: _, ...profile } = updatedUser;
       res.json({ message: "Profile updated successfully", user: profile });
     } catch (error) {
@@ -5043,8 +5069,36 @@ async function startServer() {
   });
 
   // DPDP / GDPR Right to Erasure
+  /**
+   * Changing your own sign-in email. Needs the current password; the new address must be unused (compared case-insensitively). The address
+   * is unproved until verified again. The session is re-issued, because the token carries the email, and other browsers are signed out.
+   */
+  app.put("/api/user/email", authenticateJWT, async (req: any, res) => {
+    try {
+      const email = normalizeEmail(req.body?.email);
+      if (!isValidEmail(email)) return res.status(400).json({ error: "Enter a valid email address." });
+      if (!(await passwordMatches(prisma, req.user.uid, req.body?.currentPassword))) {
+        return res.status(403).json({ code: 'CURRENT_PASSWORD_WRONG', error: "Your current password is not correct." });
+      }
+      const me = await prisma.user.findUnique({ where: { id: req.user.uid } });
+      if (!me) return res.status(404).json({ error: "Account not found" });
+      if (normalizeEmail(me.email) === email) return res.status(400).json({ error: "That is already your email address." });
+      if (await emailTaken(prisma, email, me.id)) return res.status(409).json({ code: 'EMAIL_TAKEN', error: "Another account already uses this email address." });
+      const updated = await prisma.user.update({ where: { id: me.id }, data: { email, emailVerifiedAt: null } });
+      await auditAccount(prisma, req.user, 'EMAIL_CHANGED', { targetUserId: me.id, self: true, fromDomain: me.email.split('@')[1] ?? null, toDomain: email.split('@')[1] ?? null });
+      const started = await startSession({ id: updated.id, email: updated.email, role: updated.role, institutionId: updated.institutionId }, req, { replaceExisting: true });
+      const { password: _, ...profile } = updated;
+      res.json({ ok: true, token: started?.token ?? null, user: profile });
+    } catch (error) {
+      console.error("PUT /api/user/email error:", (error as any)?.name || 'error');
+      res.status(500).json({ error: "Failed to change email" });
+    }
+  });
+
   app.delete("/api/user/account", authenticateJWT, async (req: any, res) => {
     try {
+      const self = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { id: true, role: true, isBlocked: true, status: true } });
+      if (self && await removesLastSuperAdmin(prisma, self, { deleted: true })) return res.status(409).json(LAST_SUPER_ADMIN);
       // Note: In Prisma, depending on cascade settings, this deletes the user and associated data.
       await prisma.user.delete({
         where: { id: req.user.uid }
@@ -5460,6 +5514,36 @@ async function startServer() {
    * Every filter here is a question to the database, the counts beside them
    * are counted the same way, and the export streams the whole answer.
    */
+  /**
+   * Account and credential summary for the Super Admin: counts only. "Password configured" means the stored value is a bcrypt hash; the hash
+   * itself never leaves the database.
+   */
+  app.get("/api/admin/accounts/summary", authenticateJWT, requireSuperAdmin, async (_req: any, res) => {
+    try {
+      const [total, blocked, verified, byRole, cred] = await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { isBlocked: true } }),
+        prisma.user.count({ where: { emailVerifiedAt: { not: null } } }),
+        prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
+        prisma.$queryRaw<{ configured: number }[]>`SELECT count(*) FILTER (WHERE password ~ '^\\$2[aby]\\$[0-9]{2}\\$')::int AS configured FROM "User"`,
+      ]);
+      const roles = Object.fromEntries(byRole.map(r => [r.role, r._count._all]));
+      const superAdmins = roles.SuperAdmin || 0;
+      const activeSuperAdmins = await prisma.user.count({ where: { role: 'SuperAdmin', isBlocked: false, status: 'Active' } });
+      const otherStaff = STAFF_ROLES.filter(r => r !== 'SuperAdmin' && r !== 'Admin').reduce((n, r) => n + (roles[r] || 0), 0);
+      res.set('Cache-Control', 'no-store');
+      res.json({
+        users: { total, active: total - blocked, blocked, verified, unverified: total - verified },
+        admins: { superAdmins, activeSuperAdmins, admins: roles.Admin || 0, otherStaff },
+        roles,
+        passwords: { configured: cred[0]?.configured ?? 0, notConfigured: total - (cred[0]?.configured ?? 0) },
+      });
+    } catch (e) {
+      console.error('accounts summary error:', (e as any)?.name || 'error');
+      res.status(500).json({ error: "Could not load the account summary" });
+    }
+  });
+
   app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const q = req.query;
@@ -5467,6 +5551,9 @@ async function startServer() {
 
       const where: any = {};
       const role = str(q.role); if (role) where.role = role;
+      const accountStatus = str(q.accountStatus);
+      if (accountStatus === 'blocked') where.isBlocked = true;
+      if (accountStatus === 'active') where.isBlocked = false;
       const type = str(q.registrantType); if (type) where.registrantType = type;
       const designation = str(q.designation); if (designation) where.designation = designation;
       const state = str(q.state); if (state) where.state = state;
@@ -5518,7 +5605,7 @@ async function startServer() {
       const columns = {
         id: true, email: true, displayName: true, organization: true, contact: true,
         whatsapp: true, designation: true, registrantType: true, state: true, country: true,
-        role: true, status: true, isBlocked: true, interestedDomains: true,
+        role: true, status: true, isBlocked: true, interestedDomains: true, lastLoginAt: true,
         signupSource: true, emailVerifiedAt: true, lastReadAt: true, createdAt: true,
         institutionId: true, isDemoAccount: true, demoExpiresAt: true, institutionProfile: true,
       };
@@ -5611,9 +5698,13 @@ async function startServer() {
         loginAt: r.createdAt, lastActivity: r.lastSeenAt, expiresAt: r.expiresAt, device: r.deviceLabel,
       }]));
 
+      // Whether each account has a password it can sign in with: a yes/no decided in the database, so no hash is ever read out.
+      const withPassword = await withPasswordCredential(prisma, users.map((u: any) => u.id));
+
       res.json({
         data: users.map(u => ({
           ...u,
+          hasPassword: withPassword.has(u.id),
           activeSession: liveBy.get(u.id) || null,
           isEmailVerified: !!u.emailVerifiedAt,
           campaign: u.signupSource ? byCode.get(u.signupSource) || null : null,
@@ -6227,21 +6318,31 @@ async function startServer() {
   // POST /api/admin/users/create — create user + send email
   app.post("/api/admin/users/create", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
-      const { name, email, role, institutionId, institutionName, sendEmail, customPassword, isDemoAccount } = req.body;
+      const { name, role, institutionId, institutionName, sendEmail, customPassword, isDemoAccount } = req.body;
+      const email = normalizeEmail(req.body.email);
 
       if (!name || !email || !role) {
         return res.status(400).json({ error: "Name, email and role are required" });
       }
+      if (!isValidEmail(email)) return res.status(400).json({ error: "Enter a valid email address." });
+      if (![...STAFF_ROLES, 'Institution', 'Student', 'Subscriber'].includes(role)) return res.status(400).json({ error: "Invalid role value" });
+      // Staff accounts, Super Admins above all, are created by a Super Admin only.
+      if (STAFF_ROLES.includes(role) && req.user.role !== 'SuperAdmin') {
+        return res.status(403).json({ code: 'SUPER_ADMIN_ONLY', error: "Only a Super Admin can create a staff account." });
+      }
       if (role === 'Institution' && !institutionName) {
         return res.status(400).json({ error: "Institution Name is required for Institution role" });
       }
+      if (customPassword) {
+        const weak = passwordProblem(customPassword);
+        if (weak) return res.status(400).json({ error: weak });
+      }
 
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) return res.status(409).json({ error: "A user with this email already exists" });
+      if (await emailTaken(prisma, email)) return res.status(409).json({ error: "A user with this email already exists" });
 
       // Generate or use provided password
       const plainPassword = customPassword || generatePassword();
-      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+      const hashedPassword = await hashPassword(plainPassword);
 
       // Create new Institution object in DB if role is Institution
       let newInstId = null;
@@ -6271,6 +6372,8 @@ async function startServer() {
       });
 
 
+      if (role === 'SuperAdmin') await auditAccount(prisma, req.user, 'SUPER_ADMIN_CREATED', { targetUserId: newUser.id, source: 'admin' });
+
       // Log the creation action
       await prisma.usageLog.create({
         data: {
@@ -6296,24 +6399,49 @@ async function startServer() {
     }
   });
 
-  // PUT /api/admin/users/:id — full update (name, email, role, organization)
+  /**
+   * Who may change an account's sign-in or standing (email, password, role, block, delete).
+   *
+   * A Subscription Manager manages readers; staff accounts (any role in STAFF_ROLES) are a Super Admin's alone, and no one but a Super Admin
+   * hands out a staff role. Changing ANOTHER Super Admin's sign-in or standing also needs the acting Super Admin's own password again
+   * (`actorPassword`), so a session left open is not enough to take over the other administrator. Returns the response already sent, or null.
+   */
+  const guardAccountChange = async (req: any, res: any, target: { id: string; role: string }, opts: { newRole?: string; sensitive?: boolean } = {}) => {
+    const actorIsSuper = req.user?.role === 'SuperAdmin';
+    if (!actorIsSuper && (STAFF_ROLES.includes(target.role) || (opts.newRole && STAFF_ROLES.includes(opts.newRole)))) {
+      res.status(403).json({ code: 'SUPER_ADMIN_ONLY', error: "Only a Super Admin can change a staff account or assign a staff role." });
+      return res;
+    }
+    if (opts.sensitive && target.role === 'SuperAdmin' && target.id !== req.user.uid) {
+      if (!req.body?.actorPassword) { res.status(403).json(REAUTH_REQUIRED); return res; }
+      if (!(await passwordMatches(prisma, req.user.uid, req.body.actorPassword))) { res.status(403).json(REAUTH_FAILED); return res; }
+    }
+    return null;
+  };
+
+  /** The roles that exist in this product (see STAFF_ROLES and the reader roles). Anything else is refused. */
+  const ASSIGNABLE_ROLES = [...STAFF_ROLES, 'Institution', 'Student', 'Subscriber'];
+
+  // PUT /api/admin/users/:id — full update (name, email, role, organization). Never the password: see reset-password.
   app.put("/api/admin/users/:id", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { displayName, email, role, organization, contact, designation, branch, department } = req.body;
-
-      if (role === 'SuperAdmin' && req.user.role !== 'SuperAdmin') {
-        return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
-      }
+      const { displayName, role, organization, contact, designation, branch, department } = req.body;
 
       const existing = await prisma.user.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: "User not found" });
 
-      // Check email uniqueness if changing
-      if (email && email !== existing.email) {
-        const taken = await prisma.user.findUnique({ where: { email } });
-        if (taken) return res.status(409).json({ error: "Email already in use" });
-      }
+      const email = req.body.email === undefined || req.body.email === '' ? null : normalizeEmail(req.body.email);
+      const emailChanged = !!email && email !== normalizeEmail(existing.email);
+      const roleChanged = !!role && role !== existing.role;
+      if (role && !ASSIGNABLE_ROLES.includes(role)) return res.status(400).json({ error: "Invalid role value" });
+      if (email && !isValidEmail(email)) return res.status(400).json({ error: "Enter a valid email address." });
+
+      if (await guardAccountChange(req, res, existing, { newRole: roleChanged ? role : undefined, sensitive: emailChanged || roleChanged })) return;
+      if (roleChanged && await removesLastSuperAdmin(prisma, existing, { role })) return res.status(409).json(LAST_SUPER_ADMIN);
+
+      // One address, one account: compared case-insensitively, so Admin@x.com and admin@x.com cannot both exist.
+      if (emailChanged && await emailTaken(prisma, email!, id)) return res.status(409).json({ code: 'EMAIL_TAKEN', error: "Email already in use" });
 
       let newInstitutionProfile = (existing.institutionProfile as any) || {};
       if (branch !== undefined) newInstitutionProfile.branch = branch;
@@ -6323,18 +6451,23 @@ async function startServer() {
         where: { id },
         data: {
           ...(displayName ? { displayName } : {}),
-          ...(email ? { email } : {}),
-          ...(role ? { role } : {}),
+          // A new address has not been proved, so the old proof does not carry over.
+          ...(emailChanged ? { email: email!, emailVerifiedAt: null } : {}),
+          ...(roleChanged ? { role } : {}),
           ...(organization !== undefined ? { organization } : {}),
           ...(contact !== undefined ? { contact } : {}),
           ...(designation !== undefined ? { designation } : {}),
           institutionProfile: newInstitutionProfile
         }
       });
+      // The token carries the email and the role, so the account signs in again to pick the new ones up.
+      if (emailChanged || roleChanged) await revokeSessions(prisma, id, id === req.user.uid ? req.user.sid : null);
+      if (emailChanged) await auditAccount(prisma, req.user, 'EMAIL_CHANGED', { targetUserId: id, targetRole: existing.role, fromDomain: existing.email.split('@')[1] ?? null, toDomain: email!.split('@')[1] ?? null });
+      if (roleChanged) await auditAccount(prisma, req.user, existing.role === 'SuperAdmin' ? 'SUPER_ADMIN_REMOVED' : role === 'SuperAdmin' ? 'SUPER_ADMIN_CREATED' : 'ROLE_CHANGED', { targetUserId: id, from: existing.role, to: role });
       const { password: _, ...profile } = updated;
       res.json({ user: profile });
     } catch (err) {
-      console.error('PUT /api/admin/users/:id error:', err);
+      console.error('PUT /api/admin/users/:id error:', (err as any)?.name || 'error');
       res.status(500).json({ error: "Failed to update user" });
     }
   });
@@ -6345,20 +6478,20 @@ async function startServer() {
       const { role } = req.body;
       const { id } = req.params;
 
-      const allowedRoles = ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'Institution', 'Student', 'Subscriber'];
-      if (!allowedRoles.includes(role)) {
+      if (!ASSIGNABLE_ROLES.includes(role)) {
         return res.status(400).json({ error: "Invalid role value" });
-      }
-
-      // Only SuperAdmin can create another SuperAdmin
-      if (role === 'SuperAdmin' && req.user.role !== 'SuperAdmin') {
-        return res.status(403).json({ error: "Only SuperAdmins can assign the SuperAdmin role" });
       }
 
       const prevUser = await prisma.user.findUnique({ where: { id } });
       if (!prevUser) return res.status(404).json({ error: "User not found" });
+      if (await guardAccountChange(req, res, prevUser, { newRole: role, sensitive: role !== prevUser.role })) return;
+      if (await removesLastSuperAdmin(prisma, prevUser, { role })) return res.status(409).json(LAST_SUPER_ADMIN);
 
       const updated = await prisma.user.update({ where: { id }, data: { role } });
+      if (role !== prevUser.role) {
+        await revokeSessions(prisma, id, id === req.user.uid ? req.user.sid : null);
+        await auditAccount(prisma, req.user, prevUser.role === 'SuperAdmin' ? 'SUPER_ADMIN_REMOVED' : role === 'SuperAdmin' ? 'SUPER_ADMIN_CREATED' : 'ROLE_CHANGED', { targetUserId: id, from: prevUser.role, to: role });
+      }
 
       // Audit log
       await prisma.usageLog.create({
@@ -6376,22 +6509,37 @@ async function startServer() {
     }
   });
 
-  // POST /api/admin/users/:id/reset-password — generate + email new password
+  /**
+   * POST /api/admin/users/:id/reset-password — an administrative reset. The old password is never asked for and never shown (it cannot be:
+   * only its hash is stored).
+   *   { newPassword, confirmPassword }  sets the password the admin typed; it is not sent back.
+   *   {}                                generates a temporary one, emails it to the user and asks them to change it at next sign-in.
+   * `signOutEverywhere` (default true) ends the user's existing sessions. Resetting your own password keeps your current session.
+   */
   app.post("/api/admin/users/:id/reset-password", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { id } = req.params;
       const targetUser = await prisma.user.findUnique({ where: { id } });
       if (!targetUser) return res.status(404).json({ error: "User not found" });
+      if (await guardAccountChange(req, res, targetUser, { sensitive: true })) return;
 
-      const newPlain = generatePassword();
-      const hashed = await bcrypt.hash(newPlain, 10);
+      const typed = req.body?.newPassword !== undefined && req.body?.newPassword !== '';
+      if (typed) {
+        const weak = passwordProblem(req.body.newPassword, req.body.confirmPassword);
+        if (weak) return res.status(400).json({ error: weak });
+      }
+      const newPlain = typed ? String(req.body.newPassword) : generatePassword();
 
       await prisma.user.update({
         where: { id },
-        data: { password: hashed, isFirstLogin: true }
+        // A generated password is temporary: the user is asked to choose their own at next sign-in.
+        data: { password: await hashPassword(newPlain), isFirstLogin: !typed }
       });
 
-      await sendCredentialsEmail(targetUser.email, targetUser.displayName || 'User', newPlain);
+      const signOut = req.body?.signOutEverywhere !== false;
+      const ended = signOut ? await revokeSessions(prisma, id, id === req.user.uid ? req.user.sid : null) : 0;
+
+      if (!typed) await sendCredentialsEmail(targetUser.email, targetUser.displayName || 'User', newPlain);
 
       await prisma.usageLog.create({
         data: {
@@ -6400,8 +6548,9 @@ async function startServer() {
           userId: req.user.uid
         }
       });
+      await auditAccount(prisma, req.user, 'PASSWORD_RESET', { targetUserId: id, targetRole: targetUser.role, mode: typed ? 'set-by-admin' : 'temporary-emailed', sessionsEnded: ended });
 
-      res.json({ message: "Password reset and emailed successfully", password: newPlain });
+      res.json({ ok: true, message: typed ? "Password updated successfully." : "A temporary password was emailed to the user.", sessionsEnded: ended });
     } catch (err) {
       res.status(500).json({ error: "Failed to reset password" });
     }
@@ -6412,7 +6561,11 @@ async function startServer() {
     try {
       const { id } = req.params;
       if (id === req.user.uid) return res.status(400).json({ error: "Cannot delete your own account" });
-      
+      const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true, isBlocked: true, status: true } });
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (await guardAccountChange(req, res, target, { sensitive: true })) return;
+      if (await removesLastSuperAdmin(prisma, target, { deleted: true })) return res.status(409).json(LAST_SUPER_ADMIN);
+
       // Delete user and all related records to avoid foreign key constraints
       await prisma.$transaction([
         (prisma as any).payment.deleteMany({ where: { userId: id } }),
@@ -6426,7 +6579,8 @@ async function startServer() {
         (prisma as any).favorite.deleteMany({ where: { userId: id } }),
         prisma.user.delete({ where: { id } })
       ]);
-      
+      await auditAccount(prisma, req.user, target.role === 'SuperAdmin' ? 'SUPER_ADMIN_REMOVED' : 'ACCOUNT_DELETED', { targetUserId: id, targetRole: target.role });
+
       res.json({ message: "User deleted" });
     } catch (err) {
       console.error("Delete user error:", err);
@@ -11289,11 +11443,22 @@ async function startServer() {
   app.post("/api/admin/users/:id/block", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { isBlocked } = req.body;
+      const isBlocked = !!req.body?.isBlocked;
+      if (isBlocked && id === req.user.uid) return res.status(400).json({ error: "You cannot block your own account." });
+      const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true, isBlocked: true, status: true } });
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (await guardAccountChange(req, res, target, { sensitive: isBlocked })) return;
+      if (isBlocked && await removesLastSuperAdmin(prisma, target, { isBlocked: true })) return res.status(409).json(LAST_SUPER_ADMIN);
+      // Never the whole row: it would carry the password hash.
       const user = await prisma.user.update({
         where: { id },
-        data: { isBlocked: !!isBlocked }
+        data: { isBlocked },
+        select: { id: true, email: true, displayName: true, role: true, status: true, isBlocked: true },
       });
+      if (isBlocked !== target.isBlocked) {
+        const ended = isBlocked ? await revokeSessions(prisma, id) : 0;
+        await auditAccount(prisma, req.user, isBlocked ? 'ACCOUNT_DISABLED' : 'ACCOUNT_ENABLED', { targetUserId: id, targetRole: target.role, sessionsEnded: ended });
+      }
       res.json(user);
     } catch (error) {
       res.status(500).json({ error: "Failed to block/unblock user" });
@@ -15767,7 +15932,18 @@ async function startServer() {
   setupExtractionRoutes(app, authenticateJWT, requireSuperAdmin);
   // The assistant is public-site only; when the admin hides commercial
   // UI on the public site, it stops quoting prices too.
-  setupAIAssistantRoutes(app, { isPricingVisible: () => !getSystemSettings().hidePricing });
+  setupAIAssistantRoutes(app, {
+    isPricingVisible: () => !getSystemSettings().hidePricing,
+    // The signed-in member behind a request, or null. A bad or ended token is simply "not signed in" here.
+    identifyUser: async (req: any) => {
+      const h = req.headers?.authorization;
+      if (typeof h !== 'string' || !h.startsWith('Bearer ')) return null;
+      try {
+        const claims: any = jwt.verify(h.slice(7), JWT_SECRET);
+        return claims?.uid && claims.uid !== '__validator__' && (await sessionIsLive(claims)) ? String(claims.uid) : null;
+      } catch { return null; }
+    },
+  });
 
   // How the public assistant is being used, read from the conversation tables: model-answered questions, replies
   // that needed no model, timeouts and errors, how often the allowance ran out, and how many of those visitors left
@@ -15777,6 +15953,47 @@ async function startServer() {
       const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 90);
       res.json(await aiAssistantUsage(prisma as any, days));
     } catch (e: any) { console.error('GET ai-assistant/usage error:', e?.message); res.status(500).json({ error: "Failed to load assistant usage" }); }
+  });
+
+  // AI visitors (who filled in the pre-chat form), their conversations and the 24-hour cards. Contact details are CRM data:
+  // super admin only, like the rest of this screen. Nothing here is a key, a header, a prompt or provider configuration.
+  const aiRange = (v: unknown) => (['today', '7d', '30d', 'all'].includes(String(v)) ? String(v) : 'all') as any;
+  const aiPage = (v: unknown) => Math.min(Math.max(parseInt(String(v)) || 1, 1), 10_000);
+  app.get("/api/admin/ai-assistant/overview", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.set('Cache-Control', 'no-store'); res.json(await aiVisitorOverview(prisma as any)); }
+    catch (e: any) { console.error('GET ai-assistant/overview error:', e?.code || e?.name || 'error'); res.status(500).json({ error: "Could not load the assistant overview" }); }
+  });
+  app.get("/api/admin/ai-assistant/visitors", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const q = req.query;
+      res.set('Cache-Control', 'no-store');
+      res.json(await aiListVisitors(prisma as any, {
+        q: typeof q.q === 'string' ? q.q : '', range: aiRange(q.range),
+        type: q.type === 'member' || q.type === 'guest' ? q.type : undefined,
+        quote: q.quote === 'yes' || q.quote === 'no' ? q.quote : undefined,
+        page: aiPage(q.page), pageSize: parseInt(q.pageSize) || 25,
+      }));
+    } catch (e: any) { console.error('GET ai-assistant/visitors error:', e?.code || e?.name || 'error'); res.status(500).json({ error: "Could not load AI visitors" }); }
+  });
+  app.get("/api/admin/ai-assistant/visitors/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const v = await aiVisitorDetail(prisma as any, String(req.params.id));
+      if (!v) return res.status(404).json({ error: "Visitor not found" });
+      res.set('Cache-Control', 'no-store'); res.json(v);
+    } catch (e: any) { console.error('GET ai-assistant/visitor error:', e?.code || e?.name || 'error'); res.status(500).json({ error: "Could not load the visitor" }); }
+  });
+  app.get("/api/admin/ai-assistant/conversations", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      res.json(await aiListConversations(prisma as any, { range: aiRange(req.query.range), page: aiPage(req.query.page), pageSize: parseInt(req.query.pageSize) || 25 }));
+    } catch (e: any) { console.error('GET ai-assistant/conversations error:', e?.code || e?.name || 'error'); res.status(500).json({ error: "Could not load conversations" }); }
+  });
+  app.get("/api/admin/ai-assistant/conversations/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const c = await aiConversationDetail(prisma as any, String(req.params.id));
+      if (!c) return res.status(404).json({ error: "Conversation not found" });
+      res.set('Cache-Control', 'no-store'); res.json(c);
+    } catch (e: any) { console.error('GET ai-assistant/conversation error:', e?.code || e?.name || 'error'); res.status(500).json({ error: "Could not load the conversation" }); }
   });
 
   // The master switch for the public assistant. Super admin only, to read as well as to change. The state lives in the

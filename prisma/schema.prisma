@@ -617,6 +617,9 @@ model UserSession {
   userAgent   String?
   ipAddress   String?
   deviceLabel String?
+  /// Until when THIS session may change the account's password again without typing the current one. Set for five minutes by
+  /// each successful password change made from this session; never set on any other session, and gone with the session at logout.
+  passwordGraceUntil DateTime?
 
   @@index([userId, revokedAt, expiresAt])
 }
@@ -1928,23 +1931,72 @@ model AIConversation {
   sourcePage      String?
   status          String       @default("Active")
   retentionDate   DateTime?
-  
+
+  /// The AI visitor who passed the pre-chat details form for this session. Null = not yet, and the assistant does not
+  /// answer. Not the same as leadId: a visitor is a contact, a lead is a quote request (and leadId raises the allowance).
+  visitorId         String?
+  visitor           AIVisitor?   @relation(fields: [visitorId], references: [id], onDelete: SetNull)
+  /// Every question the assistant took on (model, local reply, or failed), each one also a stored message row.
+  questionsAsked    Int          @default(0)
+  /// Questions that got a final answer — from Gemini, Grok or a local reply. A fallback answer is still one.
+  successfulAnswers Int          @default(0)
+  /// Questions every provider failed or timed out on. They cost the visitor nothing.
+  failedAnswers     Int          @default(0)
+
   messages        AIMessage[]
   
   @@index([sessionId])
   @@index([sessionId, status])
   @@index([lastActivityAt])
+  @@index([visitorId])
+}
+
+/// A person who used the public AI assistant: who they said they were at the pre-chat form. A contact, not a sales lead —
+/// the CRM gets a Lead only from Get a quote, and then leadId points at it. Matched across sessions by account, then
+/// email, then mobile, so a refresh or a second visit does not make a second visitor. Never sent to a model.
+model AIVisitor {
+  id               String    @id @default(uuid())
+  /// The signed-in member who gave these details, if any.
+  userId           String?
+  name             String
+  /// Lower-case.
+  email            String?
+  /// Ten digits, Indian mobile.
+  phone            String?
+  firstSeenAt      DateTime  @default(now())
+  lastActiveAt     DateTime  @default(now())
+  /// A lead the CRM already held for this email or mobile when the visitor first gave them. Reference only.
+  matchedLeadId    String?
+  /// The lead their own Get a quote request created or matched.
+  leadId           String?
+  quoteRequestedAt DateTime?
+
+  conversations    AIConversation[]
+
+  @@index([userId])
+  @@index([email])
+  @@index([phone])
+  @@index([lastActiveAt])
+  @@index([firstSeenAt])
 }
 
 model AIMessage {
   id             String         @id @default(uuid())
   conversationId String
   conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// user / assistant: a model-answered exchange (the only rows the allowance counts and the model's history reads).
+  /// local_user / local_assistant: a question answered without a model. failed_user: a question nobody answered.
+  /// event: an analytics code, no text.
   role           String
   content        String         @db.Text
+  /// On answers: which provider gave it (gemini, grok, local). Operational detail for staff; never a key or a prompt.
+  provider       String?
+  /// On failed questions: timeout or unavailable.
+  outcome        String?
   createdAt      DateTime       @default(now())
   
   @@index([conversationId, createdAt])
+  @@index([role, createdAt])
 }
 
 /// Where an OAI-PMH book harvest got to, one row per provider.
