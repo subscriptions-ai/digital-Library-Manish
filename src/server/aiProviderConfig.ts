@@ -103,8 +103,22 @@ async function readStatus(prisma: PrismaClient): Promise<StoredStatus> {
   return ((row?.value as StoredStatus | null) ?? {}) || {};
 }
 
+/**
+ * The xAI console shows a UUID next to each key (api_key_id), and the Usage page filters by the same IDs; none of them is the secret the
+ * Console shows once at creation. Such a value is refused before xAI is called, whether typed in Admin or found in the environment.
+ */
+export const isXaiKeyId = (k: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k.trim());
+export const XAI_KEY_ID_MESSAGE = 'This appears to be an xAI API Key ID, not the API secret. Create/copy the full API secret from xAI Console.';
+let warnedEnvKeyId = false;
 const envKey = (provider: ProviderId): string | null => {
-  for (const name of PROVIDERS[provider].envKeys) { const v = (process.env[name] || '').trim(); if (v) return v; }
+  for (const name of PROVIDERS[provider].envKeys) {
+    const v = (process.env[name] || '').trim();
+    if (v && provider === 'grok' && isXaiKeyId(v)) {
+      if (!warnedEnvKeyId) { warnedEnvKeyId = true; console.warn(`${name} holds an xAI API Key ID, not the API secret; it is ignored. Put the full secret from xAI Console there.`); }
+      continue;
+    }
+    if (v) return v;
+  }
   return null;
 };
 const lastFourOf = (k: string | null) => (k && k.length >= 8 ? k.slice(-4) : null);
@@ -308,8 +322,7 @@ export function validateInput(provider: ProviderId, input: Input): Outcome<{ mod
     if (typeof input.apiKey !== 'string') return { ok: false, status: 400, code: 'BAD_KEY', message: 'The API key is not valid.' };
     const k = input.apiKey.trim();
     if (k !== '' && (k.length < 8 || k.length > 512 || /[\s\u0000-\u001f"'\\]/.test(k))) return { ok: false, status: 400, code: 'BAD_KEY', message: 'That does not look like an API key.' };
-    // The xAI console shows each key's ID (a UUID) next to it, and the team ID is one too; neither is the secret, which starts with "xai-".
-    if (provider === 'grok' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k)) return { ok: false, status: 400, code: 'KEY_ID_NOT_SECRET', message: 'That is an xAI key ID or team ID, not the API key itself. Create a key in the xAI console (API Keys) and paste the secret, which starts with "xai-".' };
+    if (provider === 'grok' && isXaiKeyId(k)) return { ok: false, status: 400, code: 'KEY_ID_NOT_SECRET', message: XAI_KEY_ID_MESSAGE };
     apiKey = k === '' ? null : k;
   }
   return { ok: true, model: input.model, apiKey };
