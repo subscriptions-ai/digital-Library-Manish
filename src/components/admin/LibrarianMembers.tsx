@@ -39,27 +39,27 @@ export function LibrarianMembers({ librarianId, institutionId, institutionName }
   }, [institutionId, librarianId]);
 
   return (
-    <div className="mt-6 border-t border-slate-200 pt-6">
-      <h4 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-600">
+    <div className="mt-6 border-t border-rule pt-6">
+      <h4 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-ink-2">
         <Users size={13} /> Users they added
-        {members && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-700">{members.length}</span>}
+        {members && <span className="rounded-full bg-rule px-2 py-0.5 text-[10px] text-ink-2">{members.length}</span>}
       </h4>
 
       {!members && !failed && (
-        <p className="flex items-center gap-2 text-sm text-slate-400"><Loader2 size={14} className="animate-spin" /> Loading…</p>
+        <p className="flex items-center gap-2 text-sm text-muted"><Loader2 size={14} className="animate-spin" /> Loading…</p>
       )}
-      {failed && <p className="text-sm text-slate-400 italic">Could not load.</p>}
+      {failed && <p className="text-sm text-muted italic">Could not load.</p>}
 
       {members && members.length === 0 && (
-        <p className="text-sm text-slate-400 italic">
+        <p className="text-sm text-muted italic">
           No one added yet{institutionName ? ` — this is the only account at ${institutionName}` : ''}.
         </p>
       )}
 
       {members && members.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-xl border border-rule bg-surface">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <thead className="bg-surface-2 text-[10px] font-bold uppercase tracking-wider text-muted">
               <tr>
                 <th className="px-4 py-2.5 text-left">Member</th>
                 <th className="px-4 py-2.5 text-left">Role</th>
@@ -70,30 +70,30 @@ export function LibrarianMembers({ librarianId, institutionId, institutionName }
             </thead>
             <tbody>
               {members.map(m => (
-                <tr key={m.id} className="border-t border-slate-100">
+                <tr key={m.id} className="border-t border-rule-subtle">
                   <td className="px-4 py-2.5">
-                    <p className="font-semibold text-slate-800">{m.displayName || '—'}</p>
-                    <p className="flex items-center gap-1 text-[11.5px] text-slate-500">
+                    <p className="font-semibold text-ink">{m.displayName || '—'}</p>
+                    <p className="flex items-center gap-1 text-[11.5px] text-muted">
                       <Mail size={11} /> {m.email}
-                      {m.emailVerifiedAt && <UserCheck size={11} className="text-emerald-600" />}
+                      {m.emailVerifiedAt && <UserCheck size={11} className="text-success" />}
                     </p>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{m.role}</span>
+                    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-semibold text-ink-2">{m.role}</span>
                   </td>
-                  <td className="px-4 py-2.5 text-[12.5px] text-slate-600">{m.designation || '—'}</td>
-                  <td className="px-4 py-2.5 text-right text-[12px] text-slate-500">{date(m.createdAt)}</td>
+                  <td className="px-4 py-2.5 text-[12.5px] text-ink-2">{m.designation || '—'}</td>
+                  <td className="px-4 py-2.5 text-right text-[12px] text-muted">{date(m.createdAt)}</td>
                   <td className="px-4 py-2.5 text-right text-[12px]">
                     {m.lastReadAt
-                      ? <span className="text-emerald-600">{date(m.lastReadAt)}</span>
-                      : <span className="text-slate-400">Never</span>}
+                      ? <span className="text-success">{date(m.lastReadAt)}</span>
+                      : <span className="text-muted">Never</span>}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           {members.length === 200 && (
-            <p className="border-t border-slate-100 px-4 py-2 text-[11.5px] text-slate-400">Showing the first 200.</p>
+            <p className="border-t border-rule-subtle px-4 py-2 text-[11.5px] text-muted">Showing the first 200.</p>
           )}
         </div>
       )}
