@@ -5,6 +5,10 @@ import { aiConfig } from '../server/aiAssistantConfig.js';
 import { localReply } from '../server/aiAssistantLocal.js';
 import { readQuota, recordEvent } from '../server/aiAssistantQuota.js';
 import { aiAssistantEnabled, DISABLED_BODY } from '../server/aiAssistantSwitch.js';
+import { validateVisitor, firstName } from '../lib/visitorDetails.js';
+import {
+  resolveVisitor, gatedConversation, recordModelAnswer, recordLocalAnswer, recordFailedQuestion, linkVisitorToLead,
+} from '../server/aiAssistantVisitors.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -160,12 +164,20 @@ async function findExistingLead(email: string, phone: string) {
   return null;
 }
 
-/** Where the visitor stands, without spending anything. Lets the page show the allowance after a refresh. */
+// ── The pre-chat gate ─────────────────────────────────────────────────────
+// The assistant answers only a session whose conversation has an AI visitor (see aiAssistantVisitors.ts), so a refresh
+// (same ai_sid cookie) does not ask again. After a refresh the page is told the first name and nothing else; email and
+// phone are never part of a model prompt.
+const DETAILS_REQUIRED = { code: 'details_required', error: 'Please share your details to start the assistant.' } as const;
+
+/** Where the visitor stands, without spending anything. Lets the page show the allowance — and skip the gate — after a refresh. */
 router.get('/status', statusRateLimit, async (req, res) => {
   try {
     const sessionId = resolveSession(req, res, req.query.sessionId);
     if (!sessionId) return res.status(400).json({ error: 'Valid sessionId required' });
-    res.json({ quota: await readQuota(prisma, sessionId) });
+    const [quota, gated] = await Promise.all([readQuota(prisma, sessionId), gatedConversation(prisma as any, sessionId)]);
+    res.set('Cache-Control', 'no-store');
+    res.json({ quota, visitor: gated ? { firstName: firstName(gated.visitor?.name || '') } : null });
   } catch (error) {
     console.error('AI Status Error:', error);
     res.status(500).json({ error: 'Could not read the allowance' });
@@ -174,6 +186,8 @@ router.get('/status', statusRateLimit, async (req, res) => {
 
 router.post('/chat', requireAssistantOn, rateLimit, async (req, res) => {
   let lockedSession: string | null = null;
+  /** Set once the model is asked; cleared when the outcome is recorded. Still set in the catch = record it as a failure. */
+  let takenOn: { conversation: { id: string; visitorId: string | null }; message: string } | null = null;
   try {
     const { message } = req.body;
     const sessionId = resolveSession(req, res, req.body.sessionId);
@@ -183,10 +197,16 @@ router.post('/chat', requireAssistantOn, rateLimit, async (req, res) => {
       return res.status(400).json({ error: 'Message must be between 1 and 1000 characters' });
     }
 
-    // 1. A greeting, a thank-you or "get a quote" needs no model, no allowance and no wait.
+    // 0. No details, no assistant: nothing is answered — not even locally — and no model is called.
+    const conversation = await gatedConversation(prisma as any, sessionId);
+    if (!conversation) return res.status(403).json(DETAILS_REQUIRED);
+
+    // 1. A greeting, a thank-you or "get a quote" needs no model, no allowance and no wait. Still a question answered.
     const local = localReply(message);
     if (local) {
       void recordEvent(prisma, sessionId, `local:${local.kind}`);
+      await recordLocalAnswer(prisma as any, conversation, maskPII(message.trim()), local.text)
+        .catch(e => console.error('AI question record failed:', e?.code || e?.name || 'error'));
       return res.json({ text: local.text, local: true, ...(local.action ? { action: local.action } : {}) });
     }
 
@@ -209,10 +229,9 @@ router.post('/chat', requireAssistantOn, rateLimit, async (req, res) => {
       return res.status(429).json({ code: 'rate_limited', error: 'Too many questions from this network right now. Please try again later or use Get a quote.' });
     }
 
-    // 4. Only the last exchange is context.
+    // 4. Only the last exchange is context. From here the question is taken on: it ends as one answer or one failure.
     const cfg = aiConfig();
-    let conversation = await prisma.aIConversation.findFirst({ where: { sessionId } });
-    if (!conversation) conversation = await prisma.aIConversation.create({ data: { sessionId } });
+    takenOn = { conversation, message };
     const recent = cfg.historyMessages > 0
       ? (await prisma.aIMessage.findMany({
           where: { conversationId: conversation.id, role: { in: ['user', 'assistant'] } },
@@ -229,34 +248,69 @@ router.post('/chat', requireAssistantOn, rateLimit, async (req, res) => {
       // No answer, no question used: nothing is saved for a timeout or a provider failure.
       if (err instanceof AssistantError && err.kind === 'timeout') {
         void recordEvent(prisma, sessionId, 'model:timeout');
+        takenOn = null;
+        await recordFailedQuestion(prisma as any, conversation, maskPII(message.trim()), 'timeout').catch(e => console.error('AI question record failed:', e?.code || e?.name || 'error'));
         return res.status(504).json({ code: 'timeout', error: 'That response is taking longer than expected.', quota });
       }
       // Every provider that could be asked failed (provider health and the reason are already recorded by the service). Public wording only.
       void recordEvent(prisma, sessionId, 'model:error');
+      takenOn = null;
+      await recordFailedQuestion(prisma as any, conversation, maskPII(message.trim()), 'unavailable').catch(e => console.error('AI question record failed:', e?.code || e?.name || 'error'));
       return res.status(503).json({ code: 'unavailable', error: 'AI Assistant is temporarily unavailable.', quota });
     }
 
     // A provider failed before another answered: internal bookkeeping only, never shown to the visitor and never a second question spent.
     if (result.attempts.some(a => a.outcome === 'failed')) void recordEvent(prisma, sessionId, 'model:fallback');
 
-    // 6. Answered: save the sanitised question and the answer. Saving the question is what spends the allowance.
-    // Explicit, distinct times: rows written together would share one timestamp and could be read back in either order.
-    const askedAt = new Date();
-    await prisma.aIMessage.createMany({
-      data: [
-        { conversationId: conversation.id, role: 'user', content: result.sanitizedInput, createdAt: askedAt },
-        { conversationId: conversation.id, role: 'assistant', content: result.text, createdAt: new Date(askedAt.getTime() + 1) },
-      ],
-    });
-    await prisma.aIConversation.update({ where: { id: conversation.id }, data: { lastActivityAt: new Date() } });
+    // 6. Answered: save the sanitised question and the answer. Saving the question is what spends the allowance. One
+    //    question and one answer, whichever provider gave it.
+    takenOn = null;
+    await recordModelAnswer(prisma as any, conversation, result.sanitizedInput, result.text, result.provider);
 
     const used = quota.used + 1;
     res.json({ text: result.text, quota: { ...quota, used, remaining: Math.max(0, quota.limit - used) } });
   } catch (error) {
-    console.error('AI Chat Error:', error);
-    res.status(503).json({ code: 'unavailable', error: 'AI Assistant is temporarily unavailable.' });
+    console.error('AI Chat Error:', (error as any)?.code || (error as any)?.name || 'error');
+    if (takenOn) await recordFailedQuestion(prisma as any, takenOn.conversation, maskPII(takenOn.message.trim()), 'unavailable').catch(() => {});
+    if (!res.headersSent) res.status(503).json({ code: 'unavailable', error: 'AI Assistant is temporarily unavailable.' });
   } finally {
     if (lockedSession) inFlight.delete(lockedSession);
+  }
+});
+
+/**
+ * The gate. Validates and normalises exactly as the form does (the browser's check is a convenience, not a guarantee),
+ * then finds or makes the AI visitor and attaches it to this session. It creates no Lead and sets no leadId — that would
+ * make every visitor a sales lead and raise their allowance. An existing lead with the same email or mobile is noted.
+ */
+router.post('/visitor', requireAssistantOn, rateLimit, async (req, res) => {
+  try {
+    const sessionId = resolveSession(req, res, req.body?.sessionId);
+    if (!sessionId) return res.status(400).json({ error: 'Valid sessionId required' });
+    const checked = validateVisitor({ name: req.body?.name, email: req.body?.email, phone: req.body?.phone });
+    if ('errors' in checked) return res.status(400).json({ code: 'invalid_details', errors: checked.errors, error: 'Please check the highlighted fields.' });
+    const { name, email, phone } = checked.value;
+
+    const identify = req.app.get('aiIdentifyUser') as ((r: express.Request) => Promise<string | null>) | undefined;
+    const [userId, matched] = await Promise.all([
+      identify ? identify(req).catch(() => null) : Promise.resolve(null),
+      findExistingLead(email, phone),
+    ]);
+    const { visitor } = await resolveVisitor(prisma as any, { sessionId, userId, name, email, phone, matchedLeadId: matched?.id ?? null });
+
+    // The submitter's own details back, as stored (normalised). Nothing else about the visitor record is returned.
+    res.json({
+      success: true,
+      visitorId: visitor.id,
+      sessionId,
+      contact: { name: visitor.name, email: visitor.email, mobile: visitor.phone },
+      visitor: { firstName: firstName(visitor.name) },
+      quota: await readQuota(prisma, sessionId),
+    });
+  } catch (error) {
+    // Logged without the request or the database's message, which could carry the visitor's details.
+    console.error('AI Visitor Error:', (error as any)?.code || (error as any)?.name || 'error');
+    res.status(500).json({ error: "We couldn't start the assistant. Please try again." });
   }
 });
 
@@ -366,6 +420,9 @@ router.post('/lead', rateLimit, async (req, res) => {
     } else {
       await prisma.aIConversation.create({ data: { sessionId, status: 'Converted', leadId } });
     }
+    // The AI visitor behind this session, if any, now points at the lead: the same contact, never a second one.
+    await linkVisitorToLead(prisma as any, sessionId, leadId);
+    void recordEvent(prisma, sessionId, 'quote:requested');
 
     res.json({ success: true, quota: await readQuota(prisma, sessionId) });
   } catch (error) {
@@ -376,11 +433,13 @@ router.post('/lead', rateLimit, async (req, res) => {
 
 export function setupAIAssistantRoutes(
   app: express.Express,
-  options: { isPricingVisible?: () => boolean } = {}
+  options: { isPricingVisible?: () => boolean; identifyUser?: (req: express.Request) => Promise<string | null> } = {}
 ) {
   // The getter is read per request, not once at boot: the admin
   // can hide public pricing while the server keeps running.
   app.set('aiPricingVisible', options.isPricingVisible ?? (() => true));
+  // Who is signed in, if anyone — only to note the member against the details they gave. Never required.
+  app.set('aiIdentifyUser', options.identifyUser);
   // Whether the public assistant is on — and nothing else. No provider, key, quota or billing detail is ever in here.
   // Cached for a short while by the browser too, so the page can ask it once a minute without cost.
   app.get('/api/public/ai-assistant/status', switchRateLimit, async (_req, res) => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import {
-  LayoutGrid, Users, LogOut, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
+  LayoutGrid, Users, LogOut, KeyRound, ChevronLeft, Menu, CreditCard, Bell, Briefcase, Globe,
   Book, BookOpen, Newspaper, FileText, GraduationCap, Users2, Video, Mail,
   ChevronDown, ChevronRight, UserPlus, ShieldCheck, PenLine, Handshake, MessageSquare, MessageSquareHeart, Tag, PlayCircle, Receipt, ReceiptText, Trash2, Database, Activity, Building2, ClipboardCheck, Image as ImageIcon, ShieldAlert, Megaphone, Bot
 } from 'lucide-react';
@@ -482,6 +482,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Footer */}
         <div className="pt-4 pb-5 px-3 border-t border-white/10 space-y-0.5">
+          <NavButton icon={<KeyRound size={17} />} label="My Account" active={location.pathname === '/admin/account'} collapsed={!isSidebarOpen}
+            onClick={() => navigate('/admin/account')} />
           <NavButton icon={<LogOut size={17} />} label="Sign Out" active={false} collapsed={!isSidebarOpen}
             onClick={handleSignOut} danger />
           <div className={`flex items-center gap-3 px-3 py-2 ${!isSidebarOpen && 'justify-center'}`}>
@@ -516,6 +518,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               : location.pathname === '/admin/email-verifications' ? 'Email Verifications'
               : location.pathname === '/admin/email-settings' ? 'SMTP & Email Configuration'
               : location.pathname === '/admin/ai-assistant' ? 'AI Assistant'
+              : location.pathname === '/admin/account' ? 'My Account'
               : location.pathname === '/admin/payments' ? 'Payments'
               : location.pathname.startsWith('/admin/extraction') ? 'AI Extraction Engine'
               : location.pathname.startsWith('/admin/coupons') ? 'Coupons'

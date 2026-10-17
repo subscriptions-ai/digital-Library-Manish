@@ -876,6 +876,30 @@ body:has(#signup-form :is(input, select, textarea, button):focus) .fab-avoid-for
 /* On a phone the AI assistant takes the whole screen; the WhatsApp button must not float over its form. It comes back when the panel closes. */
 @media (max-width: 639px) { html[data-ai-open] .fab-whatsapp { display: none; } }
 
+/* The AI assistant: STM blue and navy, its own pair. Blue carries white text (5.2:1). On a dark surface blue
+   text would fall under 4.5:1, so its text form lightens there. The launcher sits 16px above the WhatsApp
+   button (48px on a phone, 56px from sm up). */
+:root {
+  --stm-blue: #1b5dfc; --stm-blue-hover: #1449d1; --stm-navy: #0f172b;
+  --stm-blue-ink: #1b5dfc; --stm-blue-soft: #eef3ff;
+  --fab-wa-size: 56px;
+  --ai-launcher-bottom: calc(var(--fab-bottom) + var(--fab-wa-size) + 16px);
+}
+@media (max-width: 639px) { :root { --fab-wa-size: 48px; } }
+.dark { --stm-blue-ink: #9db8ff; --stm-blue-soft: #1a2a52; }
+.ai-btn { background: var(--stm-blue); color: #fff; }
+.ai-btn:not(:disabled):hover { background: var(--stm-blue-hover); }
+@keyframes ai-dot { 0%, 80%, 100% { opacity: .35; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.ai-typing-dot { animation: ai-dot 1.2s ease-in-out infinite; }
+.ai-typing-dot:nth-child(2) { animation-delay: .15s; }
+.ai-typing-dot:nth-child(3) { animation-delay: .3s; }
+@keyframes ai-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+.ai-pop { animation: ai-pop .2s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .ai-typing-dot { animation: none; opacity: .7; }
+  .ai-pop { animation: none; }
+}
+
 /* Dark: a solid accent fill carrying the accent's own dark ink (selected chips, small primary buttons,
    avatar discs) is the loudest thing on a navy screen. Keep the brand colour and the edge, but let the
    fill be the deeper solid with white text — the same treatment the shared primary button gets. */
