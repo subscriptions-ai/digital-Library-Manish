@@ -8149,7 +8149,7 @@ async function startServer() {
   });
 
   // POST /api/studio/cover — a blog cover, held to a stricter standard than a general upload.
-  // Images go to S3 when configured; in production S3 is required (fail-closed).
+  // Images go through the media storage layer (S3 or persistent volume); production requires a declared driver (fail-closed).
   app.post("/api/studio/cover", authenticateJWT, requireEditor, async (req: any, res: any) => {
     try {
       // Refuse at once, before reading the image, if there is nowhere persistent to put it.
