@@ -116,6 +116,18 @@ export function rotationConfig() {
     softBackoffSeconds: ((process.env.INGESTION_SOFT_BACKOFF_SECONDS || '').split(',').map(x => Number(x.trim())).filter(x => Number.isFinite(x) && x >= 0).length
       ? (process.env.INGESTION_SOFT_BACKOFF_SECONDS || '').split(',').map(x => Number(x.trim())).filter(x => Number.isFinite(x) && x >= 0)
       : [30, 90]) as number[],
+    /**
+     * How often each content type takes the FIRST turn of a tick, as relative weights (INGESTION_WEIGHT_BOOKS / _JOURNALS / _ARTICLES).
+     * 3 / 2 / 1 gives Books, Journals, Books, Articles, Books, Journals … A weight is a priority, not a quota: when the type whose turn it is
+     * cannot work, the same tick goes on to the others, so a type with weight 0 still runs whenever nothing ahead of it can.
+     */
+    weights: {
+      Books: envInt('INGESTION_WEIGHT_BOOKS', 3, 0, 20),
+      Journals: envInt('INGESTION_WEIGHT_JOURNALS', 2, 0, 20),
+      Articles: envInt('INGESTION_WEIGHT_ARTICLES', 1, 0, 20),
+    },
+    /** How many records one local backlog job (re-judging held books, filling departments) looks at in one tick. */
+    localBatch: envInt('INGESTION_LOCAL_BATCH', 200, 10, 2000),
   };
 }
 

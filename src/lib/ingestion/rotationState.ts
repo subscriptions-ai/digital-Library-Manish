@@ -48,7 +48,17 @@ export type RotationState = {
    * (and another only if the picture changes), not one per timer tick. Cleared the moment any source runs, or an administrator changes how the engine is set.
    */
   idle?: IdleState | null;
+  /** Why the engine chose its last job: content priority, coverage, source health, what was skipped. Shown collapsed on the screen. */
+  lastDecision?: Decision | null;
+  /** A local backlog job working right now (re-judging held books, filling departments). Null when none is. */
+  localRunning?: { job: string; label: string; group: Group; since: string } | null;
   updatedAt: string | null;
+};
+
+export type Decision = {
+  at: string; group: Group; label: string;
+  kind: 'source' | 'coverage' | 'local';
+  reasons: string[];
 };
 
 export type IdleState = {

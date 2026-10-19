@@ -37,14 +37,36 @@ Things to know before enabling:
 ## Pressbooks Directory — live staging result
 Works as built: 3,507 books at 20 per page; pagination follows `next`; resumes at its own page checkpoint; duplicates are held (fingerprint); no department placement is automatic (review only). Licences are read from each book's own site (up to `PRESSBOOKS_LICENCE_CHECKS`, default 20 per batch = a full page). In the sample of 40: 1 declared CC BY-NC-SA (recorded, `LinkOnly`, never offered as open), the rest declared nothing or were not checked → `MetadataOnly`, no licence recorded.
 
-## Turning them on (needs approval; not done)
-Set in the production environment and restart:
+## In the rotation by default (since 2026-10-19)
+Approved on 2026-10-19 once working and validated; re-validated live that day with `scripts/staging-book-feeds.ts` (all checks pass: nothing
+published automatically, nothing assumed open, no licence invented, dedupe and checkpoints hold). Both rotate by default and stay review-only:
 
-    BOOKS_CROSSREF=1
-    BOOKS_PRESSBOOKS=1
-    BOOKS_REVIEW_BACKLOG_LIMIT=250     # optional; 250 is the default
+    BOOKS_CROSSREF=0                    # take Crossref Books out of the continuous rotation
+    BOOKS_PRESSBOOKS=0                  # take Pressbooks out
+    BOOKS_REVIEW_BACKLOG_LIMIT=250      # optional; each rests once this many of its books wait for review
 
-Each stays out of the rotation, and Quick Import / Bulk expansion still work, without the flags. Watch the review queue for the first day; a source at its limit shows "250 of its books are waiting for review" on its card and resumes as books are reviewed.
+Watch the review queue for the first day; a source at its limit shows "250 of its books are waiting for review" on its card and resumes as
+books are reviewed.
+
+## Always-productive scheduling (2026-10-19)
+The engine no longer waits while there is useful work. Each tick:
+
+1. **Weighted content priority.** One slot of the order from `INGESTION_WEIGHT_BOOKS / _JOURNALS / _ARTICLES` (default 3 / 2 / 1: Books, Journals,
+   Books, Articles, Journals, Books). The type whose slot it is goes first; if it cannot work, the same tick tries the others. A weight of 0 never
+   leads but still runs when nothing ahead of it can. Equal weights are the original Journals → Articles → Books rotation.
+2. **Live fallback inside a type**, as before: a resting, rate-limited, busy or exhausted source is stepped over at once; only that source sleeps.
+3. **Coverage engines** (not sources): *Targeted coverage* (books for the departments with the fewest) and *Journal coverage* (the departments with
+   the fewest distinct journal TITLES, `INGESTION_JOURNAL_COVERAGE_TARGET`, default 100; `INGESTION_JOURNAL_COVERAGE=0` switches it off). They use the
+   sources' own health, locks and sweeps.
+4. **Local backlog** (`src/lib/ingestion/localWork.ts`, `INGESTION_LOCAL_WORK=0` switches it off, `INGESTION_LOCAL_BATCH` default 200), only when
+   no source of any type could work: held books re-judged under the current rules (published only if strong, self-publishing source, in scope, in
+   the year policy, not a duplicate — once per `CLASSIFIER_RULES_VERSION`); departments for unplaced Crossref/OpenAlex journals; a licence another
+   provider already declared at title level; canonical licence spelling where it changes nothing else.
+5. Only when all of that is empty: **Waiting for source recovery**, logged once, asleep until the first source is due.
+
+Run log: backlog runs carry the content type as phase and the job as source ("Held candidate review", "Department classification", "Licence
+completion", "Licence spelling"), with new columns `promoted` and `enriched` (never counted as `added`). The admin card shows Currently processing,
+Next job / Then, the local backlog, and a collapsible "Why the engine chose …".
 
 ## DOAB / OAPEN "connection reset"
 Not reproducible from the dev machine: both hosts answer every request (DNS, TCP, TLS, `Identify`, and the first `ListRecords` page of ~0.7–1 MB). Both resolve to the same three CERN addresses (188.185.10.165, 188.185.16.62, 188.185.39.50), so both failing together points to one thing in front of both rather than two outages — **an inference, not a finding**.
@@ -56,6 +78,8 @@ To learn where it breaks from the production host, run once (one DNS lookup, one
 The output says which step fails. Failed requests now also record "(before any response)" or "(while reading the response)" in the source's last error. While a source rests no request is made; at its retry time exactly one request is made (tested).
 
 ## Tests
+- `scripts/test-always-productive.ts` (59): weights, cross-type fallback, coverage, local backlog, true idle, 429, zero-yield, rule-bound
+  promotion, enrichment never counted as added, restart.
 - `npx tsx scripts/test-engine-idle.ts` — 49 checks (stand-in providers, fake network, throwaway DB).
 - `npx tsx scripts/staging-book-feeds.ts` — 33 checks against the live services.
 - `scripts/test-quick-import-api.ts` expected twelve sources; there are now fifteen. Expectation updated.

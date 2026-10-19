@@ -1,5 +1,5 @@
 /**
- * Staging run of the two Book feeds that are not yet in the continuous rotation — Crossref Books and Pressbooks Directory — against the REAL
+ * Staging run of the two review-only Book feeds — Crossref Books and Pressbooks Directory (in the continuous rotation since 2026-10-19) — against the REAL
  * services, writing only to the throwaway database `stm_ingestion_test` (refuses anything else).
  *
  *   npx tsx scripts/staging-book-feeds.ts
@@ -140,9 +140,10 @@ check('re-reading page 1 adds nothing (duplicates held)', pAgain.added === 0 && 
 section('ROTATION FLAGS');
 const list = buildProviders();
 const cr = list.find((p: any) => p.id === 'crossrefbooks'), pb = list.find((p: any) => p.id === 'pressbooks');
-check('without the flags neither is in the continuous rotation', !!cr?.rotationOff?.() && !!pb?.rotationOff?.());
-process.env.BOOKS_CROSSREF = '1'; process.env.BOOKS_PRESSBOOKS = '1';
-check('with BOOKS_CROSSREF=1 / BOOKS_PRESSBOOKS=1 both are', cr?.rotationOff?.() === null && pb?.rotationOff?.() === null);
+// Since 2026-10-19 both rotate by default (validated by this script against the live services); the review-backlog limit keeps them in check.
+check('by default both are in the continuous rotation', cr?.rotationOff?.() === null && pb?.rotationOff?.() === null);
+process.env.BOOKS_CROSSREF = '0'; process.env.BOOKS_PRESSBOOKS = '0';
+check('BOOKS_CROSSREF=0 / BOOKS_PRESSBOOKS=0 take them out', !!cr?.rotationOff?.() && !!pb?.rotationOff?.());
 
 console.log(`\n${pass} passed, ${fail} failed`);
 await dev.$disconnect(); await db.$disconnect();

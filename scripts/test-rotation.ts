@@ -14,6 +14,10 @@ const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 if (!real) throw new Error('no DATABASE_URL in .env');
 const TEST_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
 process.env.DATABASE_URL = TEST_URL;
+
+// This suite tests the rotation rules under the ORIGINAL fair rotation (Journals → Articles → Books, no coverage engine, no local backlog). Weighted
+// priority, journal coverage, review-only Book sources in the rotation and the local backlog are covered by scripts/test-always-productive.ts.
+Object.assign(process.env, { INGESTION_WEIGHT_BOOKS: '1', INGESTION_WEIGHT_JOURNALS: '1', INGESTION_WEIGHT_ARTICLES: '1', INGESTION_LOCAL_WORK: '0', INGESTION_JOURNAL_COVERAGE: '0', BOOKS_CROSSREF: '0', BOOKS_PRESSBOOKS: '0' });
 process.env.INGESTION_SOFT_BACKOFF_SECONDS = '0,0';           // no waiting between failures in a test
 delete process.env.INGESTION_BATCH_SIZE;
 const { ingestionDb: db } = await import('../src/lib/ingestion/db.js');

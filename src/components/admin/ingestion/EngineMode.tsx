@@ -41,7 +41,13 @@ export function EngineMode({ state, coverage, onChanged }: { state: any; coverag
       <p className="mt-3 text-[13px] leading-relaxed text-muted">
         {focus === 'auto'
           ? (state.status?.rotation?.enabled
-            ? `One turn a minute, taken fairly: Journals, then Articles, then Books, and round again. Each turn checks up to ${N(state.status.rotation.batchSize)} candidates from one source; a source that cannot be asked is stepped over, never waited for.`
+            ? (() => {
+                const w = state.status.rotation.weights;
+                const order = w && !(w.Books === w.Journals && w.Journals === w.Articles)
+                  ? `by priority — Books ${w.Books}, Journals ${w.Journals}, Articles ${w.Articles} of every ${w.Books + w.Journals + w.Articles} turns`
+                  : 'taken fairly: Journals, then Articles, then Books, and round again';
+                return `One turn a minute, ${order}. A source or content type that cannot be asked is stepped over at once, never waited for; when every source is resting, the engine works on its local backlog instead.`;
+              })()
             : 'One pass a minute, shared out: one in five looks for new titles, the rest fetch articles.')
           : `Every pass will do ${MODES.find(m => m[0] === focus)?.[1].toLowerCase()} and nothing else, one a minute, for as long as the engine is running. It keeps going with this screen closed. Set it back to Everything when you are done.`}
       </p>

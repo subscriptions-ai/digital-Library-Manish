@@ -158,10 +158,15 @@ export function cleanAlt(raw: unknown): string {
   return s;
 }
 
-/** A cover address we are willing to store and show: ours, or an https/http one. */
+/** A cover address we are willing to store and show: a local /uploads path, or an https/http URL (including S3). */
 export function isUsableCoverUrl(url: unknown): url is string {
   const s = typeof url === 'string' ? url.trim() : '';
   return (/^\/uploads\/[^\s?#]+$/.test(s) && !s.includes('..')) || /^https?:\/\/[^\s]+$/i.test(s);
+}
+
+/** True when the URL points at an S3 / CDN host rather than local /uploads. */
+export function isExternalMediaUrl(url: unknown): boolean {
+  return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
 }
 
 // ── Which cover wins ────────────────────────────────────────────────────────

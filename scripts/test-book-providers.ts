@@ -273,9 +273,10 @@ try {
   section('8. Routing, Quick Import and the provider matrix');
   const bp = new Map(buildProviders().map(p => [p.id, p]));
   check('NLM Catalog is in the continuous rotation', bp.get('nlm')?.configured?.() === true);
-  check('Crossref Books and Pressbooks are NOT in the rotation (review-only sources would flood the queue); the reason says how to turn them on', /BOOKS_CROSSREF=1/.test(String(bp.get('crossrefbooks')!.rotationOff?.())) && /BOOKS_PRESSBOOKS=1/.test(String(bp.get('pressbooks')!.rotationOff?.())));
+  // Since 2026-10-19 the review-only sources rotate by default; the review-backlog limit (BOOKS_REVIEW_BACKLOG_LIMIT) keeps them from flooding the queue.
+  check('Crossref Books and Pressbooks are in the continuous rotation by default', bp.get('crossrefbooks')!.rotationOff?.() === null && bp.get('pressbooks')!.rotationOff?.() === null);
   check('…but they are still CONNECTED, so Quick Import and Bulk can use them', bp.get('crossrefbooks')!.configured?.() === true && bp.get('pressbooks')!.configured?.() === true);
-  process.env.BOOKS_CROSSREF = '1'; check('BOOKS_CROSSREF=1 puts Crossref Books in the continuous rotation', bp.get('crossrefbooks')!.rotationOff?.() === null); delete process.env.BOOKS_CROSSREF;
+  process.env.BOOKS_CROSSREF = '0'; check('BOOKS_CROSSREF=0 takes Crossref Books out of the rotation, and says how', /BOOKS_CROSSREF=0/.test(String(bp.get('crossrefbooks')!.rotationOff?.()))); delete process.env.BOOKS_CROSSREF;
   const cards = await Q.listQuickSources(); const ids = cards.map((c: any) => c.id);
   check('Quick Import offers all three', ['nlm', 'crossrefbooks', 'pressbooks'].every(i => ids.includes(i)));
   check('Quick Import limits are bounded per source (Pressbooks 40 by default, because each book is a licence check)', Q.quickLimit('pressbooks') === 40 && Q.quickLimit('nlm') === 100 && Q.quickLimit('crossrefbooks') === 100);
@@ -284,7 +285,7 @@ try {
   const m = await providerMatrix('lifetime', db);
   const row = (id: string) => m.rows.find(r => r.id === id)!;
   check('the matrix lists every Book source, with its class, mode and availability', m.rows.length === 10 && ['doab', 'oapen', 'otl', 'ncbi', 'nlm', 'crossrefbooks', 'pressbooks', 'openlibrary', 'openlibrary-dump', 'googlebooks'].every(i => !!row(i)) && row('doab').cls === 'Open / strong rights' && row('nlm').cls === 'Metadata / discovery');
-  check('Google Books reads "needs an API key"; Crossref Books explains it is not in the rotation', /API key/.test(row('googlebooks').availability) && /BOOKS_CROSSREF=1/.test(row('crossrefbooks').availability), `${row('googlebooks').availability} | ${row('crossrefbooks').availability}`);
+  check('Google Books reads "needs an API key"; Crossref Books is available in the rotation', /API key/.test(row('googlebooks').availability) && !/not in the (continuous )?rotation/.test(row('crossrefbooks').availability), `${row('googlebooks').availability} | ${row('crossrefbooks').availability}`);
   check('the Open Library dump run is attributed to it: checked, added, and skipped reasons all counted', row('openlibrary-dump').checked > 0 && row('openlibrary-dump').added > 0 && row('openlibrary-dump').runs >= 3, JSON.stringify({ c: row('openlibrary-dump').checked, a: row('openlibrary-dump').added, r: row('openlibrary-dump').runs }));
   check('the matrix holds failures as two numbers (consecutive, lifetime) plus failed writes', typeof row('doab').failures.consecutive === 'number' && typeof row('doab').failures.lifetime === 'number' && typeof row('doab').failures.failedWrites === 'number');
   check('no ACCOUNTING_ERROR anywhere in these runs', m.accounting.errors === 0 && m.accounting.runsChecked > 0, JSON.stringify(m.accounting));
