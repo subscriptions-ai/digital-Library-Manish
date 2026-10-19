@@ -6,7 +6,8 @@ import { createRunWithStats, runColumnsFromStats, type DeptStats } from './depar
 import {
   GROUPS, loadRotationState, saveRotationState, runtimeOf, type Group, type RotationState, type BatchSummary, type IdleState, type Decision,
 } from './rotationState.js';
-import type { LocalJob } from './localWork.js';
+import type { LocalJob, LocalOutcome } from './localWork.js';
+import { localOutcomeIsUseful, recordLocalOutcome } from './localWork.js';
 
 /**
  * The fair, self-healing scheduler for Everything mode.
@@ -557,7 +558,7 @@ export async function runRotationPass(opts: PassOptions) {
         r.outcome.checked ? `Batch: ${r.outcome.checked} candidates checked` : null,
       ].filter(Boolean) as string[];
       s.lastDecision = { at: new Date().toISOString(), group: g, label: r.label, kind: r.virtual ? 'coverage' : 'source', reasons };
-      s.idle = null; await saveRotationState(s);
+      s.idle = null; s.localZeroYield = 0; await saveRotationState(s);
       return { ...r, phase: g, source: r.label, ...r.outcome };
     }
     passedTypes.push(`${g} passed over: ${r.waiting ? `every source resting (${r.reason})` : r.failed ? 'a source did not answer and will be retried' : r.reason}`);
@@ -565,16 +566,31 @@ export async function runRotationPass(opts: PassOptions) {
   }
 
   // No source of any type could work this tick. Before waiting, the local backlog: work on records already held, under the current rules.
-  const local = localPicker ? await localPicker(localJobs, g => groups.includes(g)).catch(() => null) : null;
+  // Guard: after MAX_CONSECUTIVE_LOCAL zero-useful-change local ticks, skip local jobs and let the engine idle/sleep so external sources
+  // get their next chance promptly. This prevents maintenance from dominating when it has a large backlog of records that all "still need a person".
+  const MAX_CONSECUTIVE_LOCAL = 2;
+  const localAllowed = (s.localZeroYield ?? 0) < MAX_CONSECUTIVE_LOCAL;
+  const local = localAllowed && localPicker ? await localPicker(localJobs, g => groups.includes(g)).catch(() => null) : null;
   if (local) {
     const { job, pending } = local;
     s.localRunning = { job: job.id, label: job.label, group: job.group, since: new Date().toISOString() };
     s.running = null;
     await saveRotationState(s);
     const t0 = Date.now();
-    let o: Awaited<ReturnType<LocalJob['run']>> | null = null; let err: string | null = null;
+    let o: LocalOutcome | null = null; let err: string | null = null;
     try { o = await job.run(cfg.localBatch); } catch (e: any) { err = String(e?.message || e).slice(0, 300); }
     s.localRunning = null;
+
+    // Record zero-yield status for this individual job (its own cooldown).
+    if (o) await recordLocalOutcome(job.id, o).catch(() => {});
+
+    const useful = o ? localOutcomeIsUseful(o) : false;
+    if (useful) {
+      s.localZeroYield = 0;
+    } else {
+      s.localZeroYield = (s.localZeroYield ?? 0) + 1;
+    }
+
     if (o) {
       await createRunWithStats({
         phase: job.group, source: job.label, more: pending > o.checked, durationMs: Date.now() - t0,
@@ -589,7 +605,8 @@ export async function runRotationPass(opts: PassOptions) {
       at: new Date().toISOString(), group: job.group, label: job.label, kind: 'local',
       reasons: [`No external source of any content type could work this tick`, ...passedTypes, `${job.label}: ${pending} record${pending === 1 ? '' : 's'} to look at under the current rules`],
     };
-    s.idle = null;
+    // Only clear idle when the local job was useful. Zero-useful-change maintenance must not prevent the engine from recognising it should sleep.
+    if (useful) s.idle = null;
     await saveRotationState(s);
     return {
       ran: true as const, local: true as const, group: job.group, phase: job.group, provider: job.id, source: job.label, label: job.label,
@@ -668,6 +685,8 @@ export type RotationStatus = {
   lastDecision: Decision | null;
   /** The local backlog: records each job still has to look at under the current rules. */
   backlog: { id: string; label: string; group: Group; pending: number }[];
+  /** Consecutive ticks where only a local/maintenance job ran with zero useful changes. Resets on any external run or useful local job. */
+  localZeroYield: number;
   updatedAt: string | null;
 };
 
@@ -742,7 +761,7 @@ export async function rotationStatus(opts: { state?: any } = {}): Promise<Rotati
     ? { group: s.running.group, label: run.label, kind: run.virtual ? 'coverage' : 'source', since: s.running.since }
     : s.localRunning ? { group: s.localRunning.group, label: s.localRunning.label, kind: 'local', since: s.localRunning.since } : null;
   return {
-    currentJob, nextJobs, weights: cfg.weights, lastDecision: s.lastDecision ?? null, backlog,
+    currentJob, nextJobs, weights: cfg.weights, lastDecision: s.lastDecision ?? null, backlog, localZeroYield: s.localZeroYield ?? 0,
     batchSize: cfg.batchSize, failuresBeforeFallback: cfg.failuresBeforeFallback, zeroYieldBatches: cfg.zeroYieldBatches, groups, providers,
     running: s.running && run ? { group: s.running.group, provider: run.id, label: run.label, since: s.running.since } : null,
     idle: s.idle ?? null,

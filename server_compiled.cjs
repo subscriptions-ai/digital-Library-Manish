@@ -8752,22 +8752,22 @@ var init_from = __esm({
     init_file();
     init_fetch_blob();
     ({ stat } = import_node_fs.promises);
-    blobFromSync = (path4, type) => fromBlob((0, import_node_fs.statSync)(path4), path4, type);
-    blobFrom = (path4, type) => stat(path4).then((stat4) => fromBlob(stat4, path4, type));
-    fileFrom = (path4, type) => stat(path4).then((stat4) => fromFile(stat4, path4, type));
-    fileFromSync = (path4, type) => fromFile((0, import_node_fs.statSync)(path4), path4, type);
-    fromBlob = (stat4, path4, type = "") => new fetch_blob_default([new BlobDataItem({
-      path: path4,
+    blobFromSync = (path5, type) => fromBlob((0, import_node_fs.statSync)(path5), path5, type);
+    blobFrom = (path5, type) => stat(path5).then((stat4) => fromBlob(stat4, path5, type));
+    fileFrom = (path5, type) => stat(path5).then((stat4) => fromFile(stat4, path5, type));
+    fileFromSync = (path5, type) => fromFile((0, import_node_fs.statSync)(path5), path5, type);
+    fromBlob = (stat4, path5, type = "") => new fetch_blob_default([new BlobDataItem({
+      path: path5,
       size: stat4.size,
       lastModified: stat4.mtimeMs,
       start: 0
     })], { type });
-    fromFile = (stat4, path4, type = "") => new file_default([new BlobDataItem({
-      path: path4,
+    fromFile = (stat4, path5, type = "") => new file_default([new BlobDataItem({
+      path: path5,
       size: stat4.size,
       lastModified: stat4.mtimeMs,
       start: 0
-    })], (0, import_node_path.basename)(path4), { type, lastModified: stat4.mtimeMs });
+    })], (0, import_node_path.basename)(path5), { type, lastModified: stat4.mtimeMs });
     BlobDataItem = class _BlobDataItem {
       #path;
       #start;
@@ -13612,22 +13612,22 @@ var require_crypto2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NodeCrypto = void 0;
-    var crypto5 = require("crypto");
+    var crypto6 = require("crypto");
     var NodeCrypto = class {
       async sha256DigestBase64(str2) {
-        return crypto5.createHash("sha256").update(str2).digest("base64");
+        return crypto6.createHash("sha256").update(str2).digest("base64");
       }
       randomBytesBase64(count) {
-        return crypto5.randomBytes(count).toString("base64");
+        return crypto6.randomBytes(count).toString("base64");
       }
       async verify(pubkey, data, signature) {
-        const verifier = crypto5.createVerify("RSA-SHA256");
+        const verifier = crypto6.createVerify("RSA-SHA256");
         verifier.update(data);
         verifier.end();
         return verifier.verify(pubkey, signature, "base64");
       }
       async sign(privateKey, data) {
-        const signer = crypto5.createSign("RSA-SHA256");
+        const signer = crypto6.createSign("RSA-SHA256");
         signer.update(data);
         signer.end();
         return signer.sign(privateKey, "base64");
@@ -13645,7 +13645,7 @@ var require_crypto2 = __commonJS({
        *   string in hexadecimal encoding.
        */
       async sha256DigestHex(str2) {
-        return crypto5.createHash("sha256").update(str2).digest("hex");
+        return crypto6.createHash("sha256").update(str2).digest("hex");
       }
       /**
        * Computes the HMAC hash of a message using the provided crypto key and the
@@ -13657,7 +13657,7 @@ var require_crypto2 = __commonJS({
        */
       async signWithHmacSha256(key, msg) {
         const cryptoKey = typeof key === "string" ? key : toBuffer(key);
-        return toArrayBuffer(crypto5.createHmac("sha256", cryptoKey).update(msg).digest());
+        return toArrayBuffer(crypto6.createHmac("sha256", cryptoKey).update(msg).digest());
       }
     };
     exports2.NodeCrypto = NodeCrypto;
@@ -13946,9 +13946,9 @@ var require_util2 = __commonJS({
     exports2.removeUndefinedValuesInObject = removeUndefinedValuesInObject;
     exports2.isValidFile = isValidFile;
     exports2.getWellKnownCertificateConfigFileLocation = getWellKnownCertificateConfigFileLocation;
-    var fs5 = require("fs");
+    var fs6 = require("fs");
     var os2 = require("os");
-    var path4 = require("path");
+    var path5 = require("path");
     var WELL_KNOWN_CERTIFICATE_CONFIG_FILE = "certificate_config.json";
     var CLOUDSDK_CONFIG_DIRECTORY = "gcloud";
     function snakeToCamel(str2) {
@@ -14034,15 +14034,15 @@ var require_util2 = __commonJS({
     }
     async function isValidFile(filePath) {
       try {
-        const stats = await fs5.promises.lstat(filePath);
+        const stats = await fs6.promises.lstat(filePath);
         return stats.isFile();
       } catch (e2) {
         return false;
       }
     }
     function getWellKnownCertificateConfigFileLocation() {
-      const configDir = process.env.CLOUDSDK_CONFIG || (_isWindows() ? path4.join(process.env.APPDATA || "", CLOUDSDK_CONFIG_DIRECTORY) : path4.join(process.env.HOME || "", ".config", CLOUDSDK_CONFIG_DIRECTORY));
-      return path4.join(configDir, WELL_KNOWN_CERTIFICATE_CONFIG_FILE);
+      const configDir = process.env.CLOUDSDK_CONFIG || (_isWindows() ? path5.join(process.env.APPDATA || "", CLOUDSDK_CONFIG_DIRECTORY) : path5.join(process.env.HOME || "", ".config", CLOUDSDK_CONFIG_DIRECTORY));
+      return path5.join(configDir, WELL_KNOWN_CERTIFICATE_CONFIG_FILE);
     }
     function _isWindows() {
       return os2.platform().startsWith("win");
@@ -14572,10 +14572,10 @@ var require_oauth2client = __commonJS({
        * https://github.com/googleapis/google-auth-library-nodejs/blob/main/samples/oauth2-codeVerifier.js
        */
       async generateCodeVerifierAsync() {
-        const crypto5 = (0, crypto_1.createCrypto)();
-        const randomString = crypto5.randomBytesBase64(96);
+        const crypto6 = (0, crypto_1.createCrypto)();
+        const randomString = crypto6.randomBytesBase64(96);
         const codeVerifier = randomString.replace(/\+/g, "~").replace(/=/g, "_").replace(/\//g, "-");
-        const unencodedCodeChallenge = await crypto5.sha256DigestBase64(codeVerifier);
+        const unencodedCodeChallenge = await crypto6.sha256DigestBase64(codeVerifier);
         const codeChallenge = unencodedCodeChallenge.split("=")[0].replace(/\+/g, "-").replace(/\//g, "_");
         return { codeVerifier, codeChallenge };
       }
@@ -15016,7 +15016,7 @@ var require_oauth2client = __commonJS({
        * @return Returns a promise resolving to LoginTicket on verification.
        */
       async verifySignedJwtWithCertsAsync(jwt2, certs, requiredAudience, issuers, maxExpiry) {
-        const crypto5 = (0, crypto_1.createCrypto)();
+        const crypto6 = (0, crypto_1.createCrypto)();
         if (!maxExpiry) {
           maxExpiry = _OAuth2Client.DEFAULT_MAX_TOKEN_LIFETIME_SECS_;
         }
@@ -15029,7 +15029,7 @@ var require_oauth2client = __commonJS({
         let envelope;
         let payload;
         try {
-          envelope = JSON.parse(crypto5.decodeBase64StringUtf8(segments[0]));
+          envelope = JSON.parse(crypto6.decodeBase64StringUtf8(segments[0]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token envelope: ${segments[0]}': ${err.message}`;
@@ -15040,7 +15040,7 @@ var require_oauth2client = __commonJS({
           throw new Error("Can't parse token envelope: " + segments[0]);
         }
         try {
-          payload = JSON.parse(crypto5.decodeBase64StringUtf8(segments[1]));
+          payload = JSON.parse(crypto6.decodeBase64StringUtf8(segments[1]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token payload '${segments[0]}`;
@@ -15057,7 +15057,7 @@ var require_oauth2client = __commonJS({
         if (envelope.alg === "ES256") {
           signature = formatEcdsa.joseToDer(signature, "ES256").toString("base64");
         }
-        const verified = await crypto5.verify(cert, signed, signature);
+        const verified = await crypto6.verify(cert, signed, signature);
         if (!verified) {
           throw new Error("Invalid token signature: " + jwt2);
         }
@@ -15432,14 +15432,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports2, module2) {
     var Buffer5 = require_safe_buffer().Buffer;
-    var crypto5 = require("crypto");
+    var crypto6 = require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util = require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto5.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto6.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -15529,17 +15529,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto5.createHmac("sha" + bits, secret);
+        var hmac = crypto6.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto5 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto6 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto5.timingSafeEqual(a, b);
+      return crypto6.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -15556,7 +15556,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto5.createSign("RSA-SHA" + bits);
+        var signer = crypto6.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -15566,7 +15566,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto5.createVerify("RSA-SHA" + bits);
+        var verifier = crypto6.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -15575,11 +15575,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto5.createSign("RSA-SHA" + bits);
+        var signer = crypto6.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -15589,12 +15589,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto5.createVerify("RSA-SHA" + bits);
+        var verifier = crypto6.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -15990,11 +15990,11 @@ var require_getCredentials = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.getCredentials = getCredentials;
-    var path4 = require("path");
-    var fs5 = require("fs");
+    var path5 = require("path");
+    var fs6 = require("fs");
     var util_1 = require("util");
     var errorWithCode_1 = require_errorWithCode();
-    var readFile = fs5.readFile ? (0, util_1.promisify)(fs5.readFile) : async () => {
+    var readFile = fs6.readFile ? (0, util_1.promisify)(fs6.readFile) : async () => {
       throw new errorWithCode_1.ErrorWithCode("use key rather than keyFile.", "MISSING_CREDENTIALS");
     };
     var ExtensionFiles;
@@ -16062,7 +16062,7 @@ var require_getCredentials = __commonJS({
        * @returns An instance of a class that implements ICredentialsProvider.
        */
       static create(keyFilePath) {
-        const keyFileExtension = path4.extname(keyFilePath);
+        const keyFileExtension = path5.extname(keyFilePath);
         switch (keyFileExtension) {
           case ExtensionFiles.JSON:
             return new JsonCredentialsProvider(keyFilePath);
@@ -17671,12 +17671,12 @@ var require_filesubjecttokensupplier = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.FileSubjectTokenSupplier = void 0;
     var util_1 = require("util");
-    var fs5 = require("fs");
-    var readFile = (0, util_1.promisify)(fs5.readFile ?? (() => {
+    var fs6 = require("fs");
+    var readFile = (0, util_1.promisify)(fs6.readFile ?? (() => {
     }));
-    var realpath = (0, util_1.promisify)(fs5.realpath ?? (() => {
+    var realpath = (0, util_1.promisify)(fs6.realpath ?? (() => {
     }));
-    var lstat = (0, util_1.promisify)(fs5.lstat ?? (() => {
+    var lstat = (0, util_1.promisify)(fs6.lstat ?? (() => {
     }));
     var FileSubjectTokenSupplier = class {
       filePath;
@@ -17794,7 +17794,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.CertificateSubjectTokenSupplier = exports2.InvalidConfigurationError = exports2.CertificateSourceUnavailableError = exports2.CERTIFICATE_CONFIGURATION_ENV_VARIABLE = void 0;
     var util_1 = require_util2();
-    var fs5 = require("fs");
+    var fs6 = require("fs");
     var crypto_1 = require("crypto");
     var https3 = require("https");
     exports2.CERTIFICATE_CONFIGURATION_ENV_VARIABLE = "GOOGLE_API_CERTIFICATE_CONFIG";
@@ -17888,7 +17888,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
         const configPath = this.certificateConfigPath;
         let fileContents;
         try {
-          fileContents = await fs5.promises.readFile(configPath, "utf8");
+          fileContents = await fs6.promises.readFile(configPath, "utf8");
         } catch (err) {
           throw new CertificateSourceUnavailableError(`Failed to read certificate config file at: ${configPath}`);
         }
@@ -17913,14 +17913,14 @@ var require_certificatesubjecttokensupplier = __commonJS({
       async #getKeyAndCert(certPath, keyPath) {
         let cert, key;
         try {
-          cert = await fs5.promises.readFile(certPath);
+          cert = await fs6.promises.readFile(certPath);
           new crypto_1.X509Certificate(cert);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           throw new CertificateSourceUnavailableError(`Failed to read certificate file at ${certPath}: ${message}`);
         }
         try {
-          key = await fs5.promises.readFile(keyPath);
+          key = await fs6.promises.readFile(keyPath);
           (0, crypto_1.createPrivateKey)(key);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -17939,7 +17939,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
           return JSON.stringify([leafCert.raw.toString("base64")]);
         }
         try {
-          const chainPems = await fs5.promises.readFile(this.trustChainPath, "utf8");
+          const chainPems = await fs6.promises.readFile(this.trustChainPath, "utf8");
           const pemBlocks = chainPems.match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g) ?? [];
           const chainCerts = pemBlocks.map((pem, index) => {
             try {
@@ -18170,14 +18170,14 @@ var require_awsrequestsigner = __commonJS({
       }
     };
     exports2.AwsRequestSigner = AwsRequestSigner;
-    async function sign(crypto5, key, msg) {
-      return await crypto5.signWithHmacSha256(key, msg);
+    async function sign(crypto6, key, msg) {
+      return await crypto6.signWithHmacSha256(key, msg);
     }
-    async function getSigningKey(crypto5, key, dateStamp, region2, serviceName) {
-      const kDate = await sign(crypto5, `AWS4${key}`, dateStamp);
-      const kRegion = await sign(crypto5, kDate, region2);
-      const kService = await sign(crypto5, kRegion, serviceName);
-      const kSigning = await sign(crypto5, kService, "aws4_request");
+    async function getSigningKey(crypto6, key, dateStamp, region2, serviceName) {
+      const kDate = await sign(crypto6, `AWS4${key}`, dateStamp);
+      const kRegion = await sign(crypto6, kDate, region2);
+      const kService = await sign(crypto6, kRegion, serviceName);
+      const kSigning = await sign(crypto6, kService, "aws4_request");
       return kSigning;
     }
     async function generateAuthenticationHeaderMap(options) {
@@ -18641,7 +18641,7 @@ var require_pluggable_auth_handler = __commonJS({
     exports2.PluggableAuthHandler = exports2.ExecutableError = void 0;
     var executable_response_1 = require_executable_response();
     var childProcess = require("child_process");
-    var fs5 = require("fs");
+    var fs6 = require("fs");
     var ExecutableError = class extends Error {
       /**
        * The exit code returned by the executable.
@@ -18726,14 +18726,14 @@ var require_pluggable_auth_handler = __commonJS({
         }
         let filePath;
         try {
-          filePath = await fs5.promises.realpath(this.outputFile);
+          filePath = await fs6.promises.realpath(this.outputFile);
         } catch {
           return void 0;
         }
-        if (!(await fs5.promises.lstat(filePath)).isFile()) {
+        if (!(await fs6.promises.lstat(filePath)).isFile()) {
           return void 0;
         }
-        const responseString = await fs5.promises.readFile(filePath, {
+        const responseString = await fs6.promises.readFile(filePath, {
           encoding: "utf8"
         });
         if (responseString === "") {
@@ -19144,11 +19144,11 @@ var require_googleauth = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.GoogleAuth = exports2.GoogleAuthExceptionMessages = void 0;
     var child_process_1 = require("child_process");
-    var fs5 = require("fs");
+    var fs6 = require("fs");
     var gaxios_1 = require_src2();
     var gcpMetadata = require_src4();
     var os2 = require("os");
-    var path4 = require("path");
+    var path5 = require("path");
     var crypto_1 = require_crypto3();
     var computeclient_1 = require_computeclient();
     var idtokenclient_1 = require_idtokenclient();
@@ -19434,12 +19434,12 @@ var require_googleauth = __commonJS({
         } else {
           const home = process.env["HOME"];
           if (home) {
-            location = path4.join(home, ".config");
+            location = path5.join(home, ".config");
           }
         }
         if (location) {
-          location = path4.join(location, "gcloud", "application_default_credentials.json");
-          if (!fs5.existsSync(location)) {
+          location = path5.join(location, "gcloud", "application_default_credentials.json");
+          if (!fs6.existsSync(location)) {
             location = null;
           }
         }
@@ -19460,8 +19460,8 @@ var require_googleauth = __commonJS({
           throw new Error("The file path is invalid.");
         }
         try {
-          filePath = fs5.realpathSync(filePath);
-          if (!fs5.lstatSync(filePath).isFile()) {
+          filePath = fs6.realpathSync(filePath);
+          if (!fs6.lstatSync(filePath).isFile()) {
             throw new Error();
           }
         } catch (err) {
@@ -19470,7 +19470,7 @@ var require_googleauth = __commonJS({
           }
           throw err;
         }
-        const readStream = fs5.createReadStream(filePath);
+        const readStream = fs6.createReadStream(filePath);
         return this.fromStream(readStream, options);
       }
       /**
@@ -19782,8 +19782,8 @@ var require_googleauth = __commonJS({
         if (this.jsonContent) {
           return this._cacheClientFromJSON(this.jsonContent, this.clientOptions);
         } else if (this.keyFilename) {
-          const filePath = path4.resolve(this.keyFilename);
-          const stream = fs5.createReadStream(filePath);
+          const filePath = path5.resolve(this.keyFilename);
+          const stream = fs6.createReadStream(filePath);
           return await this.fromStreamAsync(stream, this.clientOptions);
         } else if (this.apiKey) {
           const client2 = await this.fromAPIKey(this.apiKey, this.clientOptions);
@@ -19896,24 +19896,24 @@ var require_googleauth = __commonJS({
           const signed = await client2.sign(data);
           return signed.signedBlob;
         }
-        const crypto5 = (0, crypto_1.createCrypto)();
+        const crypto6 = (0, crypto_1.createCrypto)();
         if (client2 instanceof jwtclient_1.JWT && client2.key) {
-          const sign = await crypto5.sign(client2.key, data);
+          const sign = await crypto6.sign(client2.key, data);
           return sign;
         }
         const creds = await this.getCredentials();
         if (!creds.client_email) {
           throw new Error("Cannot sign data without `client_email`.");
         }
-        return this.signBlob(crypto5, creds.client_email, data, endpoint);
+        return this.signBlob(crypto6, creds.client_email, data, endpoint);
       }
-      async signBlob(crypto5, emailOrUniqueId, data, endpoint) {
+      async signBlob(crypto6, emailOrUniqueId, data, endpoint) {
         const url = new URL(endpoint + `${emailOrUniqueId}:signBlob`);
         const res = await this.request({
           method: "POST",
           url: url.href,
           data: {
-            payload: crypto5.encodeBase64StringUtf8(data)
+            payload: crypto6.encodeBase64StringUtf8(data)
           },
           retry: true,
           retryConfig: {
@@ -31728,27 +31728,27 @@ var require_util3 = __commonJS({
       };
     }
     var normalize = lruMemoize(function normalize2(aPath) {
-      var path4 = aPath;
+      var path5 = aPath;
       var url = urlParse(aPath);
       if (url) {
         if (!url.path) {
           return aPath;
         }
-        path4 = url.path;
+        path5 = url.path;
       }
-      var isAbsolute = exports2.isAbsolute(path4);
+      var isAbsolute = exports2.isAbsolute(path5);
       var parts = [];
       var start = 0;
       var i2 = 0;
       while (true) {
         start = i2;
-        i2 = path4.indexOf("/", start);
+        i2 = path5.indexOf("/", start);
         if (i2 === -1) {
-          parts.push(path4.slice(start));
+          parts.push(path5.slice(start));
           break;
         } else {
-          parts.push(path4.slice(start, i2));
-          while (i2 < path4.length && path4[i2] === "/") {
+          parts.push(path5.slice(start, i2));
+          while (i2 < path5.length && path5[i2] === "/") {
             i2++;
           }
         }
@@ -31769,15 +31769,15 @@ var require_util3 = __commonJS({
           }
         }
       }
-      path4 = parts.join("/");
-      if (path4 === "") {
-        path4 = isAbsolute ? "/" : ".";
+      path5 = parts.join("/");
+      if (path5 === "") {
+        path5 = isAbsolute ? "/" : ".";
       }
       if (url) {
-        url.path = path4;
+        url.path = path5;
         return urlGenerate(url);
       }
-      return path4;
+      return path5;
     });
     exports2.normalize = normalize;
     function join(aRoot, aPath) {
@@ -33529,16 +33529,16 @@ var require_previous_map = __commonJS({
           this.annotation = this.getAnnotationURL(css.substring(start, end));
         }
       }
-      loadFile(path4, cssFile, trusted) {
+      loadFile(path5, cssFile, trusted) {
         if (!trusted && !this.unsafeMap) {
-          if (!/\.map$/i.test(path4)) {
+          if (!/\.map$/i.test(path5)) {
             return void 0;
           }
         }
-        this.root = dirname(path4);
-        if (existsSync(path4)) {
-          this.mapFile = path4;
-          return readFileSync(path4, "utf-8").toString().trim();
+        this.root = dirname(path5);
+        if (existsSync(path5)) {
+          this.mapFile = path5;
+          return readFileSync(path5, "utf-8").toString().trim();
         }
       }
       loadMap(file, prev) {
@@ -34260,9 +34260,9 @@ var require_map_generator = __commonJS({
         if (typeof this.mapOpts.annotation === "string") {
           from = dirname(resolve(from, this.mapOpts.annotation));
         }
-        let path4 = relative(from, file);
-        this.memoizedPaths.set(file, path4);
-        return path4;
+        let path5 = relative(from, file);
+        this.memoizedPaths.set(file, path5);
+        return path5;
       }
       previous() {
         if (!this.previousMaps) {
@@ -34317,12 +34317,12 @@ var require_map_generator = __commonJS({
           return window.btoa(unescape(encodeURIComponent(str2)));
         }
       }
-      toFileUrl(path4) {
-        let cached2 = this.memoizedFileURLs.get(path4);
+      toFileUrl(path5) {
+        let cached2 = this.memoizedFileURLs.get(path5);
         if (cached2) return cached2;
         if (pathToFileURL) {
-          let fileURL = pathToFileURL(path4).toString();
-          this.memoizedFileURLs.set(path4, fileURL);
+          let fileURL = pathToFileURL(path5).toString();
+          this.memoizedFileURLs.set(path5, fileURL);
           return fileURL;
         } else {
           throw new Error(
@@ -34330,14 +34330,14 @@ var require_map_generator = __commonJS({
           );
         }
       }
-      toUrl(path4) {
-        let cached2 = this.memoizedURLs.get(path4);
+      toUrl(path5) {
+        let cached2 = this.memoizedURLs.get(path5);
         if (cached2) return cached2;
         if (sep === "\\") {
-          path4 = path4.replace(/\\/g, "/");
+          path5 = path5.replace(/\\/g, "/");
         }
-        let url = encodeURI(path4).replace(/[#?]/g, encodeURIComponent);
-        this.memoizedURLs.set(path4, url);
+        let url = encodeURI(path5).replace(/[#?]/g, encodeURIComponent);
+        this.memoizedURLs.set(path5, url);
         return url;
       }
     };
@@ -37458,8 +37458,8 @@ var PUBLIC_PAGES = {
   "/legal-disclaimer": ["Legal Disclaimer", "Read the limitations and third-party content disclaimer for STM Digital Library."],
   "/content-removal": ["Content Removal", "Report rights or content concerns through the STM Digital Library review process."]
 };
-function isPrivatePage(path4) {
-  return /^\/(admin|sales|institution|dashboard|manager|publisher|studio|validator|login|signup|unsubscribe|payment|payments)(\/|$)/.test(path4);
+function isPrivatePage(path5) {
+  return /^\/(admin|sales|institution|dashboard|manager|publisher|studio|validator|login|signup|unsubscribe|payment|payments)(\/|$)/.test(path5);
 }
 
 // src/server/publicTrust.ts
@@ -37468,8 +37468,8 @@ function installPublicTrustRoutes(app) {
     const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim().toLowerCase().replace(/:\d+$/, "");
     if (host === "www.journalslibrary.com") return res.redirect(301, `https://journalslibrary.com${req.originalUrl}`);
     if (isPrivatePage(req.path)) res.setHeader("X-Robots-Tag", "noindex, nofollow");
-    const path4 = req.path.replace(/\/$/, "") || "/";
-    const target = PUBLIC_REDIRECTS[path4];
+    const path5 = req.path.replace(/\/$/, "") || "/";
+    const target = PUBLIC_REDIRECTS[path5];
     if ((req.method === "GET" || req.method === "HEAD") && target) {
       const [destination, hash] = target.split("#");
       const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
@@ -43546,7 +43546,7 @@ var Batches = class extends BaseModule {
       params
     );
     const urlParams = body["_url"];
-    const path4 = formatMap("{model}:batchGenerateContent", urlParams);
+    const path5 = formatMap("{model}:batchGenerateContent", urlParams);
     const batch = body["batch"];
     const inputConfig = batch["inputConfig"];
     const requestsWrapper = inputConfig["requests"];
@@ -43567,7 +43567,7 @@ var Batches = class extends BaseModule {
     delete body["config"];
     delete body["_url"];
     delete body["_query"];
-    return { path: path4, body };
+    return { path: path5, body };
   }
   // Helper function to get the first GCS URI
   getGcsUri(src) {
@@ -43623,16 +43623,16 @@ var Batches = class extends BaseModule {
   async createInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = createBatchJobParametersToVertex(this.apiClient, params);
-      path4 = formatMap("batchPredictionJobs", body["_url"]);
+      path5 = formatMap("batchPredictionJobs", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -43647,12 +43647,12 @@ var Batches = class extends BaseModule {
       });
     } else {
       const body = createBatchJobParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{model}:batchGenerateContent", body["_url"]);
+      path5 = formatMap("{model}:batchGenerateContent", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -43677,18 +43677,18 @@ var Batches = class extends BaseModule {
   async createEmbeddingsInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = createEmbeddingsBatchJobParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{model}:asyncBatchEmbedContent", body["_url"]);
+      path5 = formatMap("{model}:asyncBatchEmbedContent", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -43717,16 +43717,16 @@ var Batches = class extends BaseModule {
   async get(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = getBatchJobParametersToVertex(this.apiClient, params);
-      path4 = formatMap("batchPredictionJobs/{name}", body["_url"]);
+      path5 = formatMap("batchPredictionJobs/{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -43741,12 +43741,12 @@ var Batches = class extends BaseModule {
       });
     } else {
       const body = getBatchJobParametersToMldev(this.apiClient, params);
-      path4 = formatMap("batches/{name}", body["_url"]);
+      path5 = formatMap("batches/{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -43774,16 +43774,16 @@ var Batches = class extends BaseModule {
    */
   async cancel(params) {
     var _a2, _b, _c, _d;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = cancelBatchJobParametersToVertex(this.apiClient, params);
-      path4 = formatMap("batchPredictionJobs/{name}:cancel", body["_url"]);
+      path5 = formatMap("batchPredictionJobs/{name}:cancel", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       await this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -43792,12 +43792,12 @@ var Batches = class extends BaseModule {
       });
     } else {
       const body = cancelBatchJobParametersToMldev(this.apiClient, params);
-      path4 = formatMap("batches/{name}:cancel", body["_url"]);
+      path5 = formatMap("batches/{name}:cancel", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       await this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -43809,16 +43809,16 @@ var Batches = class extends BaseModule {
   async listInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = listBatchJobsParametersToVertex(params);
-      path4 = formatMap("batchPredictionJobs", body["_url"]);
+      path5 = formatMap("batchPredictionJobs", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -43841,12 +43841,12 @@ var Batches = class extends BaseModule {
       });
     } else {
       const body = listBatchJobsParametersToMldev(params);
-      path4 = formatMap("batches", body["_url"]);
+      path5 = formatMap("batches", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -43883,16 +43883,16 @@ var Batches = class extends BaseModule {
   async delete(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = deleteBatchJobParametersToVertex(this.apiClient, params);
-      path4 = formatMap("batchPredictionJobs/{name}", body["_url"]);
+      path5 = formatMap("batchPredictionJobs/{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "DELETE",
@@ -43913,12 +43913,12 @@ var Batches = class extends BaseModule {
       });
     } else {
       const body = deleteBatchJobParametersToMldev(this.apiClient, params);
-      path4 = formatMap("batches/{name}", body["_url"]);
+      path5 = formatMap("batches/{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "DELETE",
@@ -44807,16 +44807,16 @@ var Caches = class extends BaseModule {
   async create(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = createCachedContentParametersToVertex(this.apiClient, params);
-      path4 = formatMap("cachedContents", body["_url"]);
+      path5 = formatMap("cachedContents", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -44830,12 +44830,12 @@ var Caches = class extends BaseModule {
       });
     } else {
       const body = createCachedContentParametersToMldev(this.apiClient, params);
-      path4 = formatMap("cachedContents", body["_url"]);
+      path5 = formatMap("cachedContents", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -44863,16 +44863,16 @@ var Caches = class extends BaseModule {
   async get(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = getCachedContentParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -44886,12 +44886,12 @@ var Caches = class extends BaseModule {
       });
     } else {
       const body = getCachedContentParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -44919,16 +44919,16 @@ var Caches = class extends BaseModule {
   async delete(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = deleteCachedContentParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "DELETE",
@@ -44951,12 +44951,12 @@ var Caches = class extends BaseModule {
       });
     } else {
       const body = deleteCachedContentParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "DELETE",
@@ -44996,16 +44996,16 @@ var Caches = class extends BaseModule {
   async update(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = updateCachedContentParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "PATCH",
@@ -45019,12 +45019,12 @@ var Caches = class extends BaseModule {
       });
     } else {
       const body = updateCachedContentParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "PATCH",
@@ -45041,16 +45041,16 @@ var Caches = class extends BaseModule {
   async listInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = listCachedContentsParametersToVertex(params);
-      path4 = formatMap("cachedContents", body["_url"]);
+      path5 = formatMap("cachedContents", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -45073,12 +45073,12 @@ var Caches = class extends BaseModule {
       });
     } else {
       const body = listCachedContentsParametersToMldev(params);
-      path4 = formatMap("cachedContents", body["_url"]);
+      path5 = formatMap("cachedContents", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -45674,18 +45674,18 @@ var Files = class extends BaseModule {
   async listInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = listFilesParametersToMldev(params);
-      path4 = formatMap("files", body["_url"]);
+      path5 = formatMap("files", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -45711,18 +45711,18 @@ var Files = class extends BaseModule {
   async createInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = createFileParametersToMldev(params);
-      path4 = formatMap("upload/v1beta/files", body["_url"]);
+      path5 = formatMap("upload/v1beta/files", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -45757,18 +45757,18 @@ var Files = class extends BaseModule {
   async get(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = getFileParametersToMldev(params);
-      path4 = formatMap("files/{file}", body["_url"]);
+      path5 = formatMap("files/{file}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -45798,18 +45798,18 @@ var Files = class extends BaseModule {
   async delete(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = deleteFileParametersToMldev(params);
-      path4 = formatMap("files/{file}", body["_url"]);
+      path5 = formatMap("files/{file}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "DELETE",
@@ -45835,18 +45835,18 @@ var Files = class extends BaseModule {
   async registerFilesInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = internalRegisterFilesParametersToMldev(params);
-      path4 = formatMap("files:register", body["_url"]);
+      path5 = formatMap("files:register", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -51001,13 +51001,13 @@ var ApiClient = class {
       throw new Error("HTTP options are not correctly set.");
     }
   }
-  constructUrl(path4, httpOptions, prependProjectLocation) {
+  constructUrl(path5, httpOptions, prependProjectLocation) {
     const urlElement = [this.getRequestUrlInternal(httpOptions)];
     if (prependProjectLocation) {
       urlElement.push(this.getBaseResourcePath());
     }
-    if (path4 !== "") {
-      urlElement.push(path4);
+    if (path5 !== "") {
+      urlElement.push(path5);
     }
     const url = new URL(`${urlElement.join("/")}`);
     return url;
@@ -51292,8 +51292,8 @@ var ApiClient = class {
       file: fileToUpload
     };
     const fileName = this.getFileName(file);
-    const path4 = formatMap("upload/v1beta/files", body["_url"]);
-    const uploadUrl = await this.fetchUploadUrl(path4, fileToUpload.sizeBytes, fileToUpload.mimeType, fileName, body, config === null || config === void 0 ? void 0 : config.httpOptions);
+    const path5 = formatMap("upload/v1beta/files", body["_url"]);
+    const uploadUrl = await this.fetchUploadUrl(path5, fileToUpload.sizeBytes, fileToUpload.mimeType, fileName, body, config === null || config === void 0 ? void 0 : config.httpOptions);
     return uploader.upload(file, uploadUrl, this);
   }
   /**
@@ -51317,13 +51317,13 @@ var ApiClient = class {
     if (mimeType === void 0 || mimeType === "") {
       throw new Error("Can not determine mimeType. Please provide mimeType in the config.");
     }
-    const path4 = `upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`;
+    const path5 = `upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`;
     const fileName = this.getFileName(file);
     const body = {};
     if (config != null) {
       uploadToFileSearchStoreConfigToMldev(config, body);
     }
-    const uploadUrl = await this.fetchUploadUrl(path4, sizeBytes, mimeType, fileName, body, config === null || config === void 0 ? void 0 : config.httpOptions);
+    const uploadUrl = await this.fetchUploadUrl(path5, sizeBytes, mimeType, fileName, body, config === null || config === void 0 ? void 0 : config.httpOptions);
     return uploader.uploadToFileSearchStore(file, uploadUrl, this);
   }
   /**
@@ -51336,7 +51336,7 @@ var ApiClient = class {
     const downloader = this.clientOptions.downloader;
     await downloader.download(params, this);
   }
-  async fetchUploadUrl(path4, sizeBytes, mimeType, fileName, body, configHttpOptions) {
+  async fetchUploadUrl(path5, sizeBytes, mimeType, fileName, body, configHttpOptions) {
     var _a2;
     let httpOptions = {};
     if (configHttpOptions) {
@@ -51349,7 +51349,7 @@ var ApiClient = class {
       };
     }
     const httpResponse = await this.request({
-      path: path4,
+      path: path5,
       body: JSON.stringify(body),
       httpMethod: "POST",
       httpOptions
@@ -52545,16 +52545,16 @@ var Models = class extends BaseModule {
   async generateContentInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = generateContentParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:generateContent", body["_url"]);
+      path5 = formatMap("{model}:generateContent", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52577,12 +52577,12 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = generateContentParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{model}:generateContent", body["_url"]);
+      path5 = formatMap("{model}:generateContent", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52608,17 +52608,17 @@ var Models = class extends BaseModule {
   async generateContentStreamInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = generateContentParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:streamGenerateContent?alt=sse", body["_url"]);
+      path5 = formatMap("{model}:streamGenerateContent?alt=sse", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       const apiClient = this.apiClient;
       response = apiClient.requestStream({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52654,13 +52654,13 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = generateContentParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{model}:streamGenerateContent?alt=sse", body["_url"]);
+      path5 = formatMap("{model}:streamGenerateContent?alt=sse", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       const apiClient = this.apiClient;
       response = apiClient.requestStream({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52720,17 +52720,17 @@ var Models = class extends BaseModule {
   async embedContentInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = embedContentParametersPrivateToVertex(this.apiClient, params, params);
       const endpointUrl = tIsVertexEmbedContentModel(params.model) ? "{model}:embedContent" : "{model}:predict";
-      path4 = formatMap(endpointUrl, body["_url"]);
+      path5 = formatMap(endpointUrl, body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52753,12 +52753,12 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = embedContentParametersPrivateToMldev(this.apiClient, params);
-      path4 = formatMap("{model}:batchEmbedContents", body["_url"]);
+      path5 = formatMap("{model}:batchEmbedContents", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52787,16 +52787,16 @@ var Models = class extends BaseModule {
   async generateImagesInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = generateImagesParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:predict", body["_url"]);
+      path5 = formatMap("{model}:predict", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52819,12 +52819,12 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = generateImagesParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{model}:predict", body["_url"]);
+      path5 = formatMap("{model}:predict", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52853,16 +52853,16 @@ var Models = class extends BaseModule {
   async editImageInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = editImageParametersInternalToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:predict", body["_url"]);
+      path5 = formatMap("{model}:predict", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52893,16 +52893,16 @@ var Models = class extends BaseModule {
   async upscaleImageInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = upscaleImageAPIParametersInternalToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:predict", body["_url"]);
+      path5 = formatMap("{model}:predict", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -52954,16 +52954,16 @@ var Models = class extends BaseModule {
   async recontextImage(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = recontextImageParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:predict", body["_url"]);
+      path5 = formatMap("{model}:predict", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -53005,16 +53005,16 @@ var Models = class extends BaseModule {
   async segmentImage(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = segmentImageParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:predict", body["_url"]);
+      path5 = formatMap("{model}:predict", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -53044,16 +53044,16 @@ var Models = class extends BaseModule {
   async get(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = getModelParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -53068,12 +53068,12 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = getModelParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -53091,16 +53091,16 @@ var Models = class extends BaseModule {
   async listInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = listModelsParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{models_url}", body["_url"]);
+      path5 = formatMap("{models_url}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -53123,12 +53123,12 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = listModelsParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{models_url}", body["_url"]);
+      path5 = formatMap("{models_url}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -53171,16 +53171,16 @@ var Models = class extends BaseModule {
   async update(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = updateModelParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{model}", body["_url"]);
+      path5 = formatMap("{model}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "PATCH",
@@ -53195,12 +53195,12 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = updateModelParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "PATCH",
@@ -53229,16 +53229,16 @@ var Models = class extends BaseModule {
   async delete(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = deleteModelParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "DELETE",
@@ -53261,12 +53261,12 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = deleteModelParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "DELETE",
@@ -53308,16 +53308,16 @@ var Models = class extends BaseModule {
   async countTokens(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = countTokensParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:countTokens", body["_url"]);
+      path5 = formatMap("{model}:countTokens", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -53340,12 +53340,12 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = countTokensParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{model}:countTokens", body["_url"]);
+      path5 = formatMap("{model}:countTokens", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -53389,16 +53389,16 @@ var Models = class extends BaseModule {
   async computeTokens(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = computeTokensParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:computeTokens", body["_url"]);
+      path5 = formatMap("{model}:computeTokens", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -53429,16 +53429,16 @@ var Models = class extends BaseModule {
   async generateVideosInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = generateVideosParametersToVertex(this.apiClient, params);
-      path4 = formatMap("{model}:predictLongRunning", body["_url"]);
+      path5 = formatMap("{model}:predictLongRunning", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -53455,12 +53455,12 @@ var Models = class extends BaseModule {
       });
     } else {
       const body = generateVideosParametersToMldev(this.apiClient, params);
-      path4 = formatMap("{model}:predictLongRunning", body["_url"]);
+      path5 = formatMap("{model}:predictLongRunning", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -53562,16 +53562,16 @@ var Operations = class extends BaseModule {
   async getVideosOperationInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = getOperationParametersToVertex(params);
-      path4 = formatMap("{operationName}", body["_url"]);
+      path5 = formatMap("{operationName}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -53583,12 +53583,12 @@ var Operations = class extends BaseModule {
       return response;
     } else {
       const body = getOperationParametersToMldev(params);
-      path4 = formatMap("{operationName}", body["_url"]);
+      path5 = formatMap("{operationName}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -53603,16 +53603,16 @@ var Operations = class extends BaseModule {
   async fetchPredictVideosOperationInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = fetchPredictOperationParametersToVertex(params);
-      path4 = formatMap("{resourceName}:fetchPredictOperation", body["_url"]);
+      path5 = formatMap("{resourceName}:fetchPredictOperation", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -54278,20 +54278,20 @@ var Tokens = class extends BaseModule {
   async create(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("The client.tokens.create method is only supported by the Gemini Developer API.");
     } else {
       const body = createAuthTokenParametersToMldev(this.apiClient, params);
-      path4 = formatMap("auth_tokens", body["_url"]);
+      path5 = formatMap("auth_tokens", body["_url"]);
       queryParams = body["_query"];
       delete body["config"];
       delete body["_url"];
       delete body["_query"];
       const transformedBody = convertBidiSetupToTokenSetup(body, params.config);
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(transformedBody),
         httpMethod: "POST",
@@ -54401,18 +54401,18 @@ var Documents = class extends BaseModule {
   async get(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = getDocumentParametersToMldev(params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -54433,18 +54433,18 @@ var Documents = class extends BaseModule {
    */
   async delete(params) {
     var _a2, _b;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = deleteDocumentParametersToMldev(params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       await this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "DELETE",
@@ -54456,18 +54456,18 @@ var Documents = class extends BaseModule {
   async listInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = listDocumentsParametersToMldev(params);
-      path4 = formatMap("{parent}/documents", body["_url"]);
+      path5 = formatMap("{parent}/documents", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -54584,18 +54584,18 @@ var FileSearchStores = class extends BaseModule {
   async create(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = createFileSearchStoreParametersToMldev(this.apiClient, params);
-      path4 = formatMap("fileSearchStores", body["_url"]);
+      path5 = formatMap("fileSearchStores", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -54618,18 +54618,18 @@ var FileSearchStores = class extends BaseModule {
   async get(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = getFileSearchStoreParametersToMldev(params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -54650,18 +54650,18 @@ var FileSearchStores = class extends BaseModule {
    */
   async delete(params) {
     var _a2, _b;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = deleteFileSearchStoreParametersToMldev(params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       await this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "DELETE",
@@ -54673,18 +54673,18 @@ var FileSearchStores = class extends BaseModule {
   async listInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = listFileSearchStoresParametersToMldev(params);
-      path4 = formatMap("fileSearchStores", body["_url"]);
+      path5 = formatMap("fileSearchStores", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -54704,18 +54704,18 @@ var FileSearchStores = class extends BaseModule {
   async uploadToFileSearchStoreInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = uploadToFileSearchStoreParametersToMldev(params);
-      path4 = formatMap("upload/v1beta/{file_search_store_name}:uploadToFileSearchStore", body["_url"]);
+      path5 = formatMap("upload/v1beta/{file_search_store_name}:uploadToFileSearchStore", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -54743,18 +54743,18 @@ var FileSearchStores = class extends BaseModule {
   async importFile(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = importFileParametersToMldev(params);
-      path4 = formatMap("{file_search_store_name}:importFile", body["_url"]);
+      path5 = formatMap("{file_search_store_name}:importFile", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -54773,13 +54773,13 @@ var FileSearchStores = class extends BaseModule {
   }
 };
 var uuid4Internal = function() {
-  const { crypto: crypto5 } = globalThis;
-  if (crypto5 === null || crypto5 === void 0 ? void 0 : crypto5.randomUUID) {
-    uuid4Internal = crypto5.randomUUID.bind(crypto5);
-    return crypto5.randomUUID();
+  const { crypto: crypto6 } = globalThis;
+  if (crypto6 === null || crypto6 === void 0 ? void 0 : crypto6.randomUUID) {
+    uuid4Internal = crypto6.randomUUID.bind(crypto6);
+    return crypto6.randomUUID();
   }
   const u8 = new Uint8Array(1);
-  const randomByte = crypto5 ? () => crypto5.getRandomValues(u8)[0] : () => Math.random() * 255 & 255;
+  const randomByte = crypto6 ? () => crypto6.getRandomValues(u8)[0] : () => Math.random() * 255 & 255;
   return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (+c ^ randomByte() & 15 >> +c / 4).toString(16));
 };
 var uuid4 = () => uuid4Internal();
@@ -55117,12 +55117,12 @@ function encodeURIPath(str2) {
   return str2.replace(/[^A-Za-z0-9\-._~!$&'()*+,;=:@]+/g, encodeURIComponent);
 }
 var EMPTY = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.create(null));
-var createPathTagFunction = (pathEncoder = encodeURIPath) => (function path4(statics, ...params) {
+var createPathTagFunction = (pathEncoder = encodeURIPath) => (function path5(statics, ...params) {
   if (statics.length === 1)
     return statics[0];
   let postPath = false;
   const invalidSegments = [];
-  const path5 = statics.reduce((previousValue, currentValue, index) => {
+  const path6 = statics.reduce((previousValue, currentValue, index) => {
     var _a2, _b, _c;
     if (/[?#]/.test(currentValue)) {
       postPath = true;
@@ -55140,7 +55140,7 @@ var createPathTagFunction = (pathEncoder = encodeURIPath) => (function path4(sta
     }
     return previousValue + currentValue + (index === params.length ? "" : encoded);
   }, "");
-  const pathOnly = path5.split(/[?#]/, 1)[0];
+  const pathOnly = path6.split(/[?#]/, 1)[0];
   const invalidSegmentPattern = /(^|\/)(?:\.|%2e){1,2}(?=\/|$)/gi;
   let match;
   while ((match = invalidSegmentPattern.exec(pathOnly)) !== null) {
@@ -55164,10 +55164,10 @@ var createPathTagFunction = (pathEncoder = encodeURIPath) => (function path4(sta
     }, "");
     throw new GeminiNextGenAPIClientError(`Path parameters result in path with invalid segments:
 ${invalidSegments.map((e2) => e2.error).join("\n")}
-${path5}
+${path6}
 ${underline}`);
   }
-  return path5;
+  return path6;
 });
 var path2 = /* @__PURE__ */ createPathTagFunction(encodeURIPath);
 var BaseInteractions = class extends APIResource {
@@ -55999,9 +55999,9 @@ var BaseGeminiNextGenAPIClient = class _BaseGeminiNextGenAPIClient {
   makeStatusError(status, error, message, headers) {
     return APIError.generate(status, error, message, headers);
   }
-  buildURL(path4, query, defaultBaseURL) {
+  buildURL(path5, query, defaultBaseURL) {
     const baseURL = !this.baseURLOverridden() && defaultBaseURL || this.baseURL;
-    const url = isAbsoluteURL(path4) ? new URL(path4) : new URL(baseURL + (baseURL.endsWith("/") && path4.startsWith("/") ? path4.slice(1) : path4));
+    const url = isAbsoluteURL(path5) ? new URL(path5) : new URL(baseURL + (baseURL.endsWith("/") && path5.startsWith("/") ? path5.slice(1) : path5));
     const defaultQuery = this.defaultQuery();
     const pathQuery = Object.fromEntries(url.searchParams);
     if (!isEmptyObj(defaultQuery) || !isEmptyObj(pathQuery)) {
@@ -56030,24 +56030,24 @@ var BaseGeminiNextGenAPIClient = class _BaseGeminiNextGenAPIClient {
    */
   async prepareRequest(request, { url, options }) {
   }
-  get(path4, opts) {
-    return this.methodRequest("get", path4, opts);
+  get(path5, opts) {
+    return this.methodRequest("get", path5, opts);
   }
-  post(path4, opts) {
-    return this.methodRequest("post", path4, opts);
+  post(path5, opts) {
+    return this.methodRequest("post", path5, opts);
   }
-  patch(path4, opts) {
-    return this.methodRequest("patch", path4, opts);
+  patch(path5, opts) {
+    return this.methodRequest("patch", path5, opts);
   }
-  put(path4, opts) {
-    return this.methodRequest("put", path4, opts);
+  put(path5, opts) {
+    return this.methodRequest("put", path5, opts);
   }
-  delete(path4, opts) {
-    return this.methodRequest("delete", path4, opts);
+  delete(path5, opts) {
+    return this.methodRequest("delete", path5, opts);
   }
-  methodRequest(method, path4, opts) {
+  methodRequest(method, path5, opts) {
     return this.request(Promise.resolve(opts).then((opts2) => {
-      return Object.assign({ method, path: path4 }, opts2);
+      return Object.assign({ method, path: path5 }, opts2);
     }));
   }
   request(options, remainingRetries = null) {
@@ -56221,8 +56221,8 @@ var BaseGeminiNextGenAPIClient = class _BaseGeminiNextGenAPIClient {
   async buildRequest(inputOptions, { retryCount = 0 } = {}) {
     var _b, _c, _d;
     const options = Object.assign({}, inputOptions);
-    const { method, path: path4, query, defaultBaseURL } = options;
-    const url = this.buildURL(path4, query, defaultBaseURL);
+    const { method, path: path5, query, defaultBaseURL } = options;
+    const url = this.buildURL(path5, query, defaultBaseURL);
     if ("timeout" in options)
       validatePositiveInteger("timeout", options.timeout);
     options.timeout = (_b = options.timeout) !== null && _b !== void 0 ? _b : this.timeout;
@@ -57316,16 +57316,16 @@ var Tunings = class extends BaseModule {
   async getInternal(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = getTuningJobParametersToVertex(params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -57346,12 +57346,12 @@ var Tunings = class extends BaseModule {
       });
     } else {
       const body = getTuningJobParametersToMldev(params);
-      path4 = formatMap("{name}", body["_url"]);
+      path5 = formatMap("{name}", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -57375,16 +57375,16 @@ var Tunings = class extends BaseModule {
   async listInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = listTuningJobsParametersToVertex(params);
-      path4 = formatMap("tuningJobs", body["_url"]);
+      path5 = formatMap("tuningJobs", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "GET",
@@ -57423,16 +57423,16 @@ var Tunings = class extends BaseModule {
   async cancel(params) {
     var _a2, _b, _c, _d;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = cancelTuningJobParametersToVertex(params);
-      path4 = formatMap("{name}:cancel", body["_url"]);
+      path5 = formatMap("{name}:cancel", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -57455,12 +57455,12 @@ var Tunings = class extends BaseModule {
       });
     } else {
       const body = cancelTuningJobParametersToMldev(params);
-      path4 = formatMap("{name}:cancel", body["_url"]);
+      path5 = formatMap("{name}:cancel", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -57486,16 +57486,16 @@ var Tunings = class extends BaseModule {
   async tuneInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       const body = createTuningJobParametersPrivateToVertex(params, params);
-      path4 = formatMap("tuningJobs", body["_url"]);
+      path5 = formatMap("tuningJobs", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -57521,18 +57521,18 @@ var Tunings = class extends BaseModule {
   async tuneMldevInternal(params) {
     var _a2, _b;
     let response;
-    let path4 = "";
+    let path5 = "";
     let queryParams = {};
     if (this.apiClient.isVertexAI()) {
       throw new Error("This method is only supported by the Gemini Developer API.");
     } else {
       const body = createTuningJobParametersPrivateToMldev(params);
-      path4 = formatMap("tunedModels", body["_url"]);
+      path5 = formatMap("tunedModels", body["_url"]);
       queryParams = body["_query"];
       delete body["_url"];
       delete body["_query"];
       response = this.apiClient.request({
-        path: path4,
+        path: path5,
         queryParams,
         body: JSON.stringify(body),
         httpMethod: "POST",
@@ -60142,10 +60142,10 @@ function departmentSeo(d) {
     ]
   };
 }
-function staticPageSeo(path4) {
-  const page = PUBLIC_PAGES[path4];
+function staticPageSeo(path5) {
+  const page = PUBLIC_PAGES[path5];
   if (!page) return null;
-  return { title: `${page[0]} | ${SITE_NAME}`, description: page[1], canonical: path4 === "/" ? `${SITE_URL}/` : `${SITE_URL}${path4}` };
+  return { title: `${page[0]} | ${SITE_NAME}`, description: page[1], canonical: path5 === "/" ? `${SITE_URL}/` : `${SITE_URL}${path5}` };
 }
 
 // src/server/seoPages.ts
@@ -60248,8 +60248,8 @@ var NOT_FOUND = (what) => ({
   canonical: `${SITE_URL}/blog`,
   robots: "noindex, follow"
 });
-async function renderPublicPage(prisma4, path4, query, o) {
-  if (path4 === "/blog") {
+async function renderPublicPage(prisma4, path5, query, o) {
+  if (path5 === "/blog") {
     const page = Math.max(1, parseInt(String(query.page || "1")) || 1);
     const category = typeof query.category === "string" ? query.category : "";
     const q = typeof query.q === "string" ? query.q.trim() : "";
@@ -60260,7 +60260,7 @@ async function renderPublicPage(prisma4, path4, query, o) {
     if (page > last) return { status: 200, seo: { ...seo2, canonical: `${SITE_URL}/blog`, robots: "noindex, follow" } };
     return { status: 200, seo: seo2, body: listBody(list, page), data: { kind: "list", key: String(page), list } };
   }
-  const post = /^\/blog\/([^/]+)$/.exec(path4);
+  const post = /^\/blog\/([^/]+)$/.exec(path5);
   if (post) {
     const slug = decodeURIComponent(post[1]);
     if (/\.\w+$/.test(slug)) return null;
@@ -60270,28 +60270,28 @@ async function renderPublicPage(prisma4, path4, query, o) {
     const seo2 = postSeo(found.post);
     return { status: 200, seo: seo2, body: postBody(found), data: { kind: "post", key: slug, ...found, post: { ...found.post, views: void 0 } } };
   }
-  if (path4 === "/departments") {
-    const seo2 = staticPageSeo(path4);
+  if (path5 === "/departments") {
+    const seo2 = staticPageSeo(path5);
     if (seo2) return { status: 200, seo: seo2, body: departmentsBody() };
   }
-  const dept = /^\/domain\/([^/]+)$/.exec(path4);
+  const dept = /^\/domain\/([^/]+)$/.exec(path5);
   if (dept) {
     const d = DOMAINS.find((x2) => x2.id === dept[1]);
     if (!d) return { status: 404, seo: { ...NOT_FOUND("Department"), canonical: `${SITE_URL}/digital-library` } };
     return { status: 200, seo: departmentSeo(d), body: departmentBody(d) };
   }
-  const seo = staticPageSeo(path4);
+  const seo = staticPageSeo(path5);
   return seo ? { status: 200, seo } : null;
 }
 var BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit/i;
 function installSeoPages(app, prisma4, shell) {
   app.use(async (req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") return next();
-    const path4 = req.path.replace(/\/+$/, "") || "/";
-    if (path4.startsWith("/api/")) return next();
+    const path5 = req.path.replace(/\/+$/, "") || "/";
+    if (path5.startsWith("/api/")) return next();
     let r2;
     try {
-      r2 = await renderPublicPage(prisma4, path4, req.query, { countView: req.method === "GET" && !BOT.test(String(req.headers["user-agent"] || "")) });
+      r2 = await renderPublicPage(prisma4, path5, req.query, { countView: req.method === "GET" && !BOT.test(String(req.headers["user-agent"] || "")) });
     } catch (e2) {
       console.error("SEO page error:", e2?.message);
       return next();
@@ -60376,6 +60376,103 @@ function keyFromUrl(url) {
   if (url.startsWith(pattern2)) return url.slice(pattern2.length);
   return null;
 }
+
+// src/server/storage/mediaStorage.ts
+var import_node_fs2 = __toESM(require("node:fs"), 1);
+var import_node_path2 = __toESM(require("node:path"), 1);
+var import_node_crypto4 = __toESM(require("node:crypto"), 1);
+var APP_DIR = process.cwd();
+var mediaStorageRoot = () => import_node_path2.default.resolve(process.env.MEDIA_STORAGE_ROOT || process.env.UPLOAD_DIR || import_node_path2.default.join(APP_DIR, "uploads"));
+var mediaDir = () => import_node_path2.default.join(mediaStorageRoot(), "media");
+function mediaDriver() {
+  const set = (process.env.MEDIA_STORAGE_DRIVER || "").trim().toLowerCase();
+  if (set === "s3") return s3Configured() ? { driver: "s3", problem: null } : { driver: "unconfigured", problem: "MEDIA_STORAGE_DRIVER is s3, but AWS_S3_BUCKET and its credentials are not all set." };
+  if (set === "local-persistent") return { driver: "local-persistent", problem: null };
+  if (set) return { driver: "unconfigured", problem: `MEDIA_STORAGE_DRIVER "${set}" is not one of: local-persistent, s3.` };
+  if (s3Configured()) return { driver: "s3", problem: null };
+  if (!isProduction()) return { driver: "local-dev", problem: null };
+  return { driver: "unconfigured", problem: "Media storage is not configured. Set MEDIA_STORAGE_DRIVER=local-persistent with a persistent volume mounted at MEDIA_STORAGE_ROOT (/app/uploads), or configure S3." };
+}
+var DRIVER_LABEL = {
+  s3: "AWS S3",
+  "local-persistent": "Persistent volume",
+  "local-dev": "Local folder (development)",
+  unconfigured: "Not configured"
+};
+var writableDir = (dir) => {
+  try {
+    import_node_fs2.default.accessSync(dir, import_node_fs2.default.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+};
+function ensureMediaDirs() {
+  const root = mediaStorageRoot();
+  import_node_fs2.default.mkdirSync(root, { recursive: true, mode: 493 });
+  import_node_fs2.default.mkdirSync(import_node_path2.default.join(root, "media"), { recursive: true, mode: 493 });
+}
+function mediaStorageStatus() {
+  const { driver, problem } = mediaDriver();
+  if (driver === "s3" || driver === "unconfigured") {
+    return { driver, label: DRIVER_LABEL[driver], healthy: driver === "s3", problem, root: null, mediaDir: null, rootExists: null, writable: null, mediaDirExists: null, separateMount: null };
+  }
+  const root = mediaStorageRoot(), md = mediaDir();
+  const rootExists = import_node_fs2.default.existsSync(root), mediaDirExists = import_node_fs2.default.existsSync(md);
+  const writable = rootExists && writableDir(root) && (!mediaDirExists || writableDir(md));
+  let separateMount = null;
+  try {
+    separateMount = import_node_fs2.default.statSync(root).dev !== import_node_fs2.default.statSync(import_node_path2.default.dirname(root)).dev;
+  } catch {
+  }
+  const healthy = rootExists && writable;
+  const why = !rootExists ? `The media directory ${root} does not exist.` : !writable ? `The media directory ${root} is not writable by the app.` : null;
+  return { driver, label: DRIVER_LABEL[driver], healthy, problem: why, root, mediaDir: md, rootExists, writable, mediaDirExists, separateMount };
+}
+var MediaStorageError = class extends Error {
+  constructor(message, status = 503) {
+    super(message);
+    this.status = status;
+  }
+};
+function assertUploadsPossible() {
+  const { driver, problem } = mediaDriver();
+  if (driver === "unconfigured") throw new MediaStorageError(problem);
+  if (driver === "local-persistent" || driver === "local-dev") {
+    try {
+      ensureMediaDirs();
+    } catch (e2) {
+      throw new MediaStorageError(`The media directory ${mediaStorageRoot()} could not be created (${e2?.code || e2?.message}). Nothing was saved.`);
+    }
+    const st = mediaStorageStatus();
+    if (!st.writable) throw new MediaStorageError(`The persistent media volume at ${st.root} is not writable by the app. Nothing was saved; check the volume mount and its permissions.`);
+  }
+  return driver;
+}
+async function uploadMedia(opts) {
+  const driver = assertUploadsPossible();
+  const ext = opts.ext.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) || "bin";
+  if (driver === "s3") {
+    const key = opts.kind === "cover" ? coverKey(ext) : mediaKey(ext);
+    await uploadObject(key, opts.body, opts.mime);
+    return { storedName: key, url: getPublicMediaUrl(key), driver };
+  }
+  const storedName = `${import_node_crypto4.default.randomUUID()}.${ext}`;
+  const target = import_node_path2.default.join(mediaDir(), storedName);
+  try {
+    import_node_fs2.default.writeFileSync(target, opts.body, { flag: "wx", mode: 420 });
+    const size = import_node_fs2.default.statSync(target).size;
+    if (size !== opts.body.length) throw new Error(`wrote ${size} of ${opts.body.length} bytes`);
+  } catch (e2) {
+    try {
+      import_node_fs2.default.rmSync(target, { force: true });
+    } catch {
+    }
+    throw new MediaStorageError(`The file could not be saved to ${mediaDir()} (${e2?.code || e2?.message}). Nothing was changed.`);
+  }
+  return { storedName, url: getMediaUrl(storedName), driver };
+}
+var getMediaUrl = (storedName) => `/uploads/media/${storedName}`;
 
 // src/server/departmentSpellings.ts
 var SOURCES = [
@@ -61181,8 +61278,8 @@ async function fetchSourceJson(url, opts = {}) {
 
 // src/lib/ingestion/claims.ts
 var import_node_os = __toESM(require("node:os"), 1);
-var import_node_crypto4 = require("node:crypto");
-var WORKER_ID = `${import_node_os.default.hostname()}:${process.pid}:${(0, import_node_crypto4.randomBytes)(3).toString("hex")}`;
+var import_node_crypto5 = require("node:crypto");
+var WORKER_ID = `${import_node_os.default.hostname()}:${process.pid}:${(0, import_node_crypto5.randomBytes)(3).toString("hex")}`;
 var staleCutoff = () => new Date(Date.now() - minutes(INGESTION_POLICY.claim.staleAfterMinutes));
 var claimable = (cutoff) => ({ OR: [{ claimedAt: null }, { claimedAt: { lt: cutoff } }] });
 async function claimOne(model, where, orderBy, label) {
@@ -61422,16 +61519,16 @@ var findAllNamed = (n3, name, out = []) => {
   for (const c of n3.children) findAllNamed(c, name, out);
   return out;
 };
-function flattenMeta(node, path4, into) {
+function flattenMeta(node, path5, into) {
   for (const f3 of node.fields) {
     if (f3.name !== "value" || !f3.value.trim()) continue;
-    const key = path4.slice(0, -1).join(".");
+    const key = path5.slice(0, -1).join(".");
     if (!key) continue;
     const list = into.get(key) || [];
     list.push(f3.value.trim());
     into.set(key, list);
   }
-  for (const c of node.children) if (c.name === "element") flattenMeta(c, [...path4, c.attrs.name || ""], into);
+  for (const c of node.children) if (c.name === "element") flattenMeta(c, [...path5, c.attrs.name || ""], into);
 }
 function parseOaiPage(xml) {
   const tree = parseTree(xml);
@@ -62677,7 +62774,7 @@ function providerHolder(provider) {
 }
 
 // src/lib/ingestion/departmentStats.ts
-var import_node_crypto5 = require("node:crypto");
+var import_node_crypto6 = require("node:crypto");
 
 // src/lib/ingestion/accounting.ts
 var n = (v) => Number.isFinite(v) ? Math.trunc(v) : 0;
@@ -62718,7 +62815,7 @@ function runColumnsFromStats(stats) {
   return { added: t2.added, skippedHeld: t2.held, needsReview: t2.sentToReview, skippedRejected: t2.skipped, skippedFailed: t2.failed };
 }
 async function createRunWithStats(row, stats, contentType = "Books", db2 = ingestionDb) {
-  const id = (0, import_node_crypto5.randomUUID)();
+  const id = (0, import_node_crypto6.randomUUID)();
   if (row.phase === "Books" && typeof row.checked === "number") {
     const r2 = reconcile(tallyOfRow(row));
     row.accounting = r2.status;
@@ -63017,7 +63114,7 @@ async function fetchPressbooksPage(page) {
 }
 
 // src/lib/ingestion/books/openLibraryDump.ts
-var import_node_fs2 = require("node:fs");
+var import_node_fs3 = require("node:fs");
 var import_promises3 = require("node:fs/promises");
 var import_node_zlib3 = require("node:zlib");
 var import_node_readline = require("node:readline");
@@ -63102,7 +63199,7 @@ async function openLines(src) {
   if (src.kind === "file") {
     const st = await (0, import_promises3.stat)(src.location);
     identity = `file:${src.location}:${st.size}`;
-    input = (0, import_node_fs2.createReadStream)(src.location);
+    input = (0, import_node_fs3.createReadStream)(src.location);
     close = () => input.destroy();
   } else {
     const ac = new AbortController();
@@ -64963,6 +65060,479 @@ async function saveRotationState(s2) {
 }
 var runtimeOf = (s2, id) => s2.providers[id] ||= { zeroYield: 0 };
 
+// src/lib/doajCatalogue.ts
+var import_papaparse2 = __toESM(require_papaparse(), 1);
+var DOAJ_CSV_URL = "https://doaj.org/csv";
+var BY_TITLE_OR_KEYWORD = [
+  [/\bnano/, "Nano Technology"],
+  [/biotechnolog/, "Bio Technology"],
+  [/ayurved|\bunani\b|\bsiddha\b|homoeopath|homeopath|traditional (chinese |indian )?medicine|herbal medicine|pharmacognosy|ethnopharmacolog/, "Ayurveda"]
+];
+var BY_TITLE = [
+  [/physiotherap|physical therapy|rehabilitat/, "Physiotherapy"],
+  [/nursing|midwifery/, "Nursing"],
+  [/\bdental|dentistry|\boral (health|surgery|medicine|science)|orthodont|periodont|endodont/, "Dental"],
+  [/renewable|solar|\benergy\b|\bfuels?\b|petroleum|power systems?/, "Energy"],
+  [/materials? science|metallurg|polymer|ceramic|composite materials/, "Material Science"],
+  [/(?<!quantum )(?<!fluid )\bmechanics\b/, "Applied Mechanics"],
+  [/\bmanagement\b|marketing|human resource|business administration|entrepreneur|tourism|hospitality/, "Management"]
+];
+function departmentForDoajRow(row) {
+  const title = (row["Journal title"] || "").toLowerCase();
+  const keywords = (row["Keywords"] || "").toLowerCase();
+  for (const [re, dep] of BY_TITLE_OR_KEYWORD) if (re.test(title) || re.test(keywords)) return dep;
+  for (const [re, dep] of BY_TITLE) if (re.test(title)) return dep;
+  for (const code of (row["LCC Codes"] || "").split("|")) {
+    const lcc = parseLcc(code);
+    const dep = lcc && departmentFromLcc(lcc.cls, lcc.num);
+    if (dep) return dep;
+  }
+  return null;
+}
+function doajRowToJournal(row) {
+  const pissn = normaliseIssn(row["Journal ISSN (print version)"]);
+  const eissn = normaliseIssn(row["Journal EISSN (online version)"]);
+  const issn = pissn || eissn;
+  const title = (row["Journal title"] || "").trim();
+  if (!issn || !title) return null;
+  const licences = (row["Journal license"] || "").split(",").map((s2) => s2.trim()).filter(Boolean);
+  const ncAttr = /no commercial/i.test(row["License attributes"] || "");
+  const ok = licences.length > 0 && !ncAttr && licences.every((l) => licenceAllowsCommercialUse(l, false));
+  return {
+    title,
+    issn,
+    eissn: eissn && eissn !== issn ? eissn : pissn ? eissn : null,
+    publisherName: (row["Publisher"] || "").trim() || null,
+    country: (row["Country of publisher"] || "").trim() || null,
+    language: (row["Languages in which the journal accepts manuscripts"] || "").trim() || null,
+    domain: canonicalDepartmentName(departmentForDoajRow(row)),
+    subject: (row["Subjects"] || "").split("|")[0]?.trim() || null,
+    subjects: (row["Subjects"] || "").split("|").map((s2) => s2.trim()).filter(Boolean),
+    homepage: (row["Journal URL"] || "").trim() || null,
+    licence: licences.join(", ") || null,
+    licenceIsNC: !ok,
+    rightsBasis: "DOAJ declaration",
+    rightsVerifiedAt: /* @__PURE__ */ new Date(),
+    rightsVerifiedBy: "ingestion",
+    status: ok ? "Accepted" : "MetadataOnly"
+  };
+}
+async function readCsv(csvText) {
+  const text = csvText ?? await (async () => {
+    const r2 = await fetch(DOAJ_CSV_URL, { headers: { "User-Agent": "STM Digital Library (mailto:info@celnet.in)" } });
+    if (!r2.ok) throw new Error(`DOAJ answered HTTP ${r2.status} for the journal list`);
+    return r2.text();
+  })();
+  return import_papaparse2.default.parse(text, { header: true, skipEmptyLines: true }).data;
+}
+async function readHeld() {
+  const issns = /* @__PURE__ */ new Set();
+  const titles = /* @__PURE__ */ new Map();
+  for (const j of await ingestionDb.journal.findMany({ select: { issn: true, eissn: true, title: true } })) {
+    if (j.issn) issns.add(j.issn);
+    if (j.eissn) issns.add(j.eissn);
+    titles.set(j.title.trim().toLowerCase(), j.issn || "");
+  }
+  return { issns, titles };
+}
+async function checkDoajCatalogue(opts = {}) {
+  const rows = await readCsv(opts.csvText);
+  const { issns: held2, titles: heldTitles } = await readHeld();
+  const out = {
+    summary: { inFile: rows.length, alreadyHeld: 0, new: 0, fullTextEligible: 0, metadataOnly: 0, rejected: 0, needsReview: 0, noDepartment: 0, byDepartment: {} },
+    newIssns: [],
+    reviewSample: []
+  };
+  const s2 = out.summary;
+  for (const row of rows) {
+    const j = doajRowToJournal(row);
+    if (!j) {
+      s2.rejected++;
+      continue;
+    }
+    if (held2.has(j.issn) || j.eissn && held2.has(j.eissn)) {
+      s2.alreadyHeld++;
+      continue;
+    }
+    const sameTitle = heldTitles.get(j.title.toLowerCase());
+    if (sameTitle !== void 0) {
+      s2.needsReview++;
+      if (out.reviewSample.length < 20) out.reviewSample.push({ title: j.title, issn: j.issn });
+      continue;
+    }
+    if (opts.departments?.length && !opts.departments.includes(j.domain)) {
+      s2.outsideScope = (s2.outsideScope || 0) + 1;
+      continue;
+    }
+    if (opts.limit != null && out.newIssns.length >= opts.limit) {
+      s2.beyondLimit = (s2.beyondLimit || 0) + 1;
+      continue;
+    }
+    held2.add(j.issn);
+    if (j.eissn) held2.add(j.eissn);
+    heldTitles.set(j.title.toLowerCase(), j.issn);
+    out.newIssns.push(j.issn);
+    s2.new++;
+    j.status === "Accepted" ? s2.fullTextEligible++ : s2.metadataOnly++;
+    if (!j.domain) s2.noDepartment++;
+    const k = j.domain || "(none)";
+    s2.byDepartment[k] = (s2.byDepartment[k] || 0) + 1;
+  }
+  return out;
+}
+async function importCheckedJournals(allowedIssns, opts = {}) {
+  const allowed = new Set(allowedIssns);
+  const rows = await readCsv(opts.csvText);
+  const { issns: held2 } = await readHeld();
+  const fresh = [];
+  let alreadyHeldNow = 0, accepted = 0, metadataOnly = 0;
+  const seen = /* @__PURE__ */ new Set();
+  for (const row of rows) {
+    const j = doajRowToJournal(row);
+    if (!j || !allowed.has(j.issn)) continue;
+    if (seen.has(j.issn)) continue;
+    seen.add(j.issn);
+    if (held2.has(j.issn) || j.eissn && held2.has(j.eissn)) {
+      alreadyHeldNow++;
+      continue;
+    }
+    fresh.push(j);
+    j.status === "Accepted" ? accepted++ : metadataOnly++;
+  }
+  let added = 0;
+  for (let i2 = 0; i2 < fresh.length; i2 += 500) {
+    const r2 = await ingestionDb.journal.createMany({ data: fresh.slice(i2, i2 + 500), skipDuplicates: true });
+    added += r2.count;
+  }
+  return { added, alreadyHeldNow, accepted, metadataOnly, requested: allowed.size };
+}
+
+// src/lib/ingestion/journalDepartment.ts
+var BROAD = /* @__PURE__ */ new Set(["Applied Sciences", "Science", "Multidisciplinary"]);
+function journalDepartment(title, subjects) {
+  const subs = (subjects || []).map((s2) => String(s2 || "").trim()).filter(Boolean);
+  const specific = departmentForDoajRow({ "Journal title": title || "", Keywords: subs.join(" | "), "LCC Codes": "" });
+  if (specific && !BROAD.has(specific)) return specific;
+  const score = /* @__PURE__ */ new Map();
+  for (const dep of CANONICAL_NAMES) {
+    const res = departmentKeywords(dep);
+    if (!res.length) continue;
+    const inTitle = res.some((re) => re.test(title || ""));
+    const hits = subs.filter((s2) => res.some((re) => re.test(s2))).length;
+    if (BROAD.has(dep) && !(inTitle && hits >= 1)) continue;
+    if (inTitle && hits >= 1) score.set(dep, 2 + hits);
+    else if (hits >= 2) score.set(dep, hits);
+  }
+  const ranked = [...score.entries()].sort((a, b) => b[1] - a[1]);
+  if (!ranked.length) return null;
+  if (ranked[1] && ranked[0][1] - ranked[1][1] < 1) return null;
+  return ranked[0][0];
+}
+
+// src/lib/ingestion/localWork.ts
+var KEY2 = "ingestion.localwork.v1";
+var LOCAL_EXHAUSTED_MINUTES = 30;
+var LOCAL_ZERO_YIELD_THRESHOLD = 3;
+async function loadLocal() {
+  const row = await ingestionDb.appSetting.findUnique({ where: { key: KEY2 } }).catch(() => null);
+  const v = row?.value;
+  return v && typeof v === "object" && !Array.isArray(v) ? { jobs: { ...v.jobs || {} }, cursor: Number(v.cursor) || 0 } : { jobs: {}, cursor: 0 };
+}
+async function saveLocal(s2) {
+  await ingestionDb.appSetting.upsert({ where: { key: KEY2 }, create: { key: KEY2, value: s2, updatedBy: "engine" }, update: { value: s2, updatedBy: "engine" } }).catch(() => {
+  });
+}
+function jobState(s2, id, fingerprint) {
+  const cur = s2.jobs[id];
+  if (cur && cur.fingerprint === fingerprint) return cur;
+  return s2.jobs[id] = { fingerprint, cursor: null, lastRunAt: null, totals: cur?.totals ?? { checked: 0, promoted: 0, enriched: 0 } };
+}
+var after = (c) => c ? { OR: [{ createdAt: { gt: new Date(c.at) } }, { createdAt: new Date(c.at), id: { gt: c.id } }] } : {};
+var ORDER = [{ createdAt: "asc" }, { id: "asc" }];
+var blank3 = () => ({ checked: 0, promoted: 0, enriched: 0, stillHeld: 0, duplicates: 0, refused: 0, failed: 0, note: "" });
+var obj = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : {};
+var FEEDS = [DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, NLM_FEED, CROSSREF_BOOKS_FEED, PRESSBOOKS_FEED, OPENLIBRARY_FEED, OPENLIBRARY_DUMP_FEED];
+var feedOf = (source) => FEEDS.find((f3) => f3.provider === source) ?? null;
+var SELF_PUBLISHING_SOURCES = FEEDS.filter((f3) => !f3.reviewFirst).map((f3) => f3.provider);
+var heldBookWhere = () => ({ status: "Draft", ownershipSource: "Ingested", rejectionNote: null, source: { in: SELF_PUBLISHING_SOURCES } });
+async function heldBooksFingerprint() {
+  const st = await ingestionDb.ingestionState.findUnique({ where: { id: "singleton" }, select: { bookMinYear: true } }).catch(() => null);
+  return JSON.stringify(["held-books", CLASSIFIER_RULES_VERSION, STRONG_MIN, STRONG_MARGIN, bookMinYear(st), SELF_PUBLISHING_SOURCES]);
+}
+async function publishedTwin(b) {
+  const or = [];
+  if (b.doi) or.push({ doi: b.doi });
+  if (b.isbn) or.push({ isbn: b.isbn });
+  if (b.fingerprint) or.push({ fingerprint: b.fingerprint });
+  if (!or.length) return null;
+  return ingestionDb.book.findFirst({ where: { status: "Published", id: { not: b.id }, OR: or }, select: { id: true } });
+}
+var heldBooksJob = {
+  id: "held-books",
+  label: "Held candidate review",
+  group: "Books",
+  pending: async () => {
+    const s2 = await loadLocal();
+    const fp = await heldBooksFingerprint();
+    const js = s2.jobs["held-books"];
+    const cursor = js?.fingerprint === fp ? js.cursor : null;
+    return ingestionDb.book.count({ where: { ...heldBookWhere(), ...after(cursor) } });
+  },
+  run: async (limit) => {
+    const s2 = await loadLocal();
+    const fp = await heldBooksFingerprint();
+    const js = jobState(s2, "held-books", fp);
+    const minYear = bookMinYear(await ingestionDb.ingestionState.findUnique({ where: { id: "singleton" }, select: { bookMinYear: true } }).catch(() => null));
+    const rows = await ingestionDb.book.findMany({
+      where: { ...heldBookWhere(), ...after(js.cursor) },
+      orderBy: ORDER,
+      take: limit,
+      select: { id: true, title: true, description: true, year: true, doi: true, isbn: true, fingerprint: true, source: true, metadata: true, createdAt: true }
+    });
+    const o = blank3();
+    const byDept = {};
+    for (const b of rows) {
+      o.checked++;
+      js.cursor = { at: b.createdAt.toISOString(), id: b.id };
+      const meta = obj(b.metadata);
+      const h2 = obj(meta.harvest);
+      const p3 = obj(h2.provider);
+      const verdict = classifyDepartment({
+        classifications: Array.isArray(h2.classifications) ? h2.classifications : [],
+        subjects: Array.isArray(h2.keywords) ? h2.keywords : [],
+        title: b.title,
+        description: b.description,
+        lcc: Array.isArray(p3.lcc) ? p3.lcc : void 0,
+        nlm: Array.isArray(p3.nlmClass) ? p3.nlmClass : void 0
+      });
+      const cfg = feedOf(b.source);
+      const yv = bookYearVerdict(b.year, minYear);
+      if (verdict.band !== "strong" || !verdict.department || !cfg || cfg.reviewFirst || !yv.ok) {
+        o.stillHeld++;
+        continue;
+      }
+      if (cfg.allowedDepartments && !cfg.allowedDepartments.includes(verdict.department)) {
+        o.refused++;
+        continue;
+      }
+      if (await publishedTwin(b)) {
+        o.duplicates++;
+        continue;
+      }
+      try {
+        const harvest = {
+          ...h2,
+          department: { band: verdict.band, score: verdict.score, reasons: verdict.reasons, suggested: verdict.suggested, runnerUp: verdict.runnerUp },
+          promoted: { at: (/* @__PURE__ */ new Date()).toISOString(), from: "review", rules: CLASSIFIER_RULES_VERSION, minYear }
+        };
+        const r2 = await ingestionDb.book.updateMany({ where: { id: b.id, status: "Draft", rejectionNote: null }, data: { status: "Published", domain: verdict.department, metadata: { ...meta, harvest } } });
+        if (r2.count) {
+          o.promoted++;
+          byDept[verdict.department] = (byDept[verdict.department] || 0) + 1;
+        } else o.stillHeld++;
+      } catch {
+        o.failed++;
+      }
+    }
+    js.lastRunAt = (/* @__PURE__ */ new Date()).toISOString();
+    js.totals.checked += o.checked;
+    js.totals.promoted += o.promoted;
+    await saveLocal(s2);
+    o.note = `${o.checked} held books judged under rules v${CLASSIFIER_RULES_VERSION} (books from ${minYear}): ${o.promoted} now meet every rule and were published${Object.keys(byDept).length ? ` (${Object.entries(byDept).map(([d, n3]) => `${d} ${n3}`).join(", ")})` : ""}, ${o.stillHeld} still need a person${o.duplicates ? `, ${o.duplicates} already published under another record` : ""}${o.refused ? `, ${o.refused} outside the source's departments` : ""}`;
+    return o;
+  }
+};
+var unplacedJournalWhere = () => ({ domain: null, rightsBasis: { contains: "OA unverified" } });
+var journalFingerprint = () => JSON.stringify(["journal-departments", CLASSIFIER_RULES_VERSION]);
+var journalDepartmentsJob = {
+  id: "journal-departments",
+  label: "Department classification",
+  group: "Journals",
+  pending: async () => {
+    const s2 = await loadLocal();
+    const js = s2.jobs["journal-departments"];
+    const cursor = js?.fingerprint === journalFingerprint() ? js.cursor : null;
+    return ingestionDb.journal.count({ where: { ...unplacedJournalWhere(), ...after(cursor) } });
+  },
+  run: async (limit) => {
+    const s2 = await loadLocal();
+    const js = jobState(s2, "journal-departments", journalFingerprint());
+    const rows = await ingestionDb.journal.findMany({ where: { ...unplacedJournalWhere(), ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, title: true, subjects: true, createdAt: true } });
+    const o = blank3();
+    for (const j of rows) {
+      o.checked++;
+      js.cursor = { at: j.createdAt.toISOString(), id: j.id };
+      const dep = journalDepartment(j.title, Array.isArray(j.subjects) ? j.subjects.map((x2) => String(x2)) : []);
+      if (!dep) {
+        o.stillHeld++;
+        continue;
+      }
+      try {
+        const r2 = await ingestionDb.journal.updateMany({ where: { id: j.id, domain: null }, data: { domain: dep } });
+        r2.count ? o.enriched++ : o.stillHeld++;
+      } catch {
+        o.failed++;
+      }
+    }
+    js.lastRunAt = (/* @__PURE__ */ new Date()).toISOString();
+    js.totals.checked += o.checked;
+    js.totals.enriched += o.enriched;
+    await saveLocal(s2);
+    o.note = `${o.checked} unplaced journals offered to the department rule (v${CLASSIFIER_RULES_VERSION}): ${o.enriched} placed, ${o.stillHeld} still unclear`;
+    return o;
+  }
+};
+var licenceFillWhere = () => ({ OR: [{ licence: null }, { licence: "" }] });
+function agreedSightingLicence(meta) {
+  const seen = Object.entries(obj(meta.sources)).map(([provider, v]) => ({ provider, licence: canonicalLicence(v?.licence) || null, basis: v?.licenceBasis, handle: v?.handle ?? null })).filter((x2) => x2.basis === "title" && x2.licence);
+  const distinct = [...new Set(seen.map((x2) => x2.licence))];
+  return distinct.length === 1 ? { licence: distinct[0], provider: seen[0].provider, handle: seen[0].handle } : null;
+}
+var licenceFillJob = {
+  id: "licence-fill",
+  label: "Licence completion",
+  group: "Books",
+  pending: async () => {
+    const s2 = await loadLocal();
+    const js = s2.jobs["licence-fill"];
+    const cursor = js?.fingerprint === "licence-fill:1" ? js.cursor : null;
+    const r2 = await ingestionDb.$queryRawUnsafe(
+      `select count(*)::int n from "Book" b where (b.licence is null or b.licence = '') and b.metadata ? 'sources'
+         ${cursor ? `and (b."createdAt", b.id) > ($1::timestamptz at time zone 'UTC', $2)` : ""}`,
+      ...cursor ? [cursor.at, cursor.id] : []
+    );
+    return r2[0]?.n ?? 0;
+  },
+  run: async (limit) => {
+    const s2 = await loadLocal();
+    const js = jobState(s2, "licence-fill", "licence-fill:1");
+    const rows = await ingestionDb.book.findMany({ where: { ...licenceFillWhere(), ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, metadata: true, createdAt: true } });
+    const o = blank3();
+    for (const b of rows) {
+      js.cursor = { at: b.createdAt.toISOString(), id: b.id };
+      const meta = obj(b.metadata);
+      if (!meta.sources) continue;
+      o.checked++;
+      const got = agreedSightingLicence(meta);
+      if (!got) {
+        o.stillHeld++;
+        continue;
+      }
+      try {
+        const r2 = await ingestionDb.book.updateMany({ where: { id: b.id, OR: [{ licence: null }, { licence: "" }] }, data: {
+          licence: got.licence,
+          licenceIsNC: !licenceAllowsCommercialUse(got.licence),
+          metadata: { ...meta, licenceFill: { ...obj(meta.licenceFill), [got.provider]: { licence: got.licence, basis: "title", handle: got.handle, filledAt: (/* @__PURE__ */ new Date()).toISOString(), by: "backlog" } } }
+        } });
+        r2.count ? o.enriched++ : o.stillHeld++;
+      } catch {
+        o.failed++;
+      }
+    }
+    js.lastRunAt = (/* @__PURE__ */ new Date()).toISOString();
+    js.totals.checked += o.checked;
+    js.totals.enriched += o.enriched;
+    await saveLocal(s2);
+    o.note = `${o.checked} books with no licence and a recorded sighting: ${o.enriched} filled from a title-level licence another provider declared, ${o.stillHeld} left (none declared, or sources disagree)`;
+    return o;
+  }
+};
+async function nonCanonicalLicences() {
+  const rows = await ingestionDb.$queryRawUnsafe(`select distinct licence from "Book" where licence is not null and licence <> ''`);
+  return rows.map((r2) => r2.licence).filter((l) => {
+    const c = canonicalLicence(l);
+    return !!c && c !== l;
+  });
+}
+var licenceSpellingJob = {
+  id: "licence-spelling",
+  label: "Licence spelling",
+  group: "Books",
+  pending: async () => {
+    const s2 = await loadLocal();
+    const js = s2.jobs["licence-spelling"];
+    const cursor = js?.fingerprint === "licence-spelling:1" ? js.cursor : null;
+    const odd = await nonCanonicalLicences();
+    return odd.length ? ingestionDb.book.count({ where: { licence: { in: odd }, ...after(cursor) } }) : 0;
+  },
+  run: async (limit) => {
+    const s2 = await loadLocal();
+    const js = jobState(s2, "licence-spelling", "licence-spelling:1");
+    const odd = await nonCanonicalLicences();
+    const rows = odd.length ? await ingestionDb.book.findMany({ where: { licence: { in: odd }, ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, licence: true, licenceIsNC: true, createdAt: true } }) : [];
+    const o = blank3();
+    for (const b of rows) {
+      js.cursor = { at: b.createdAt.toISOString(), id: b.id };
+      const canon = canonicalLicence(b.licence);
+      o.checked++;
+      const same2 = licenceAllowsCommercialUse(canon) === licenceAllowsCommercialUse(b.licence) && (b.licenceIsNC == null || b.licenceIsNC === !licenceAllowsCommercialUse(canon));
+      if (!same2) {
+        o.refused++;
+        continue;
+      }
+      try {
+        const r2 = await ingestionDb.book.updateMany({ where: { id: b.id, licence: b.licence }, data: { licence: canon } });
+        r2.count ? o.enriched++ : o.stillHeld++;
+      } catch {
+        o.failed++;
+      }
+    }
+    js.lastRunAt = (/* @__PURE__ */ new Date()).toISOString();
+    js.totals.checked += o.checked;
+    js.totals.enriched += o.enriched;
+    await saveLocal(s2);
+    o.note = `${o.checked} licences in a non-canonical spelling: ${o.enriched} rewritten in canonical form${o.refused ? `, ${o.refused} left because the rewrite would change what the book may be offered as (a person should look)` : ""}`;
+    return o;
+  }
+};
+var LOCAL_JOBS = [heldBooksJob, journalDepartmentsJob, licenceFillJob, licenceSpellingJob];
+function localOutcomeIsUseful(o) {
+  return o.promoted > 0 || o.enriched > 0;
+}
+async function recordLocalOutcome(jobId, o) {
+  const s2 = await loadLocal();
+  const js = s2.jobs[jobId];
+  if (!js) return { exhausted: false, count: 0 };
+  if (!js.zeroYield) js.zeroYield = { count: 0, exhaustedUntil: null };
+  if (localOutcomeIsUseful(o)) {
+    js.zeroYield = { count: 0, exhaustedUntil: null };
+    await saveLocal(s2);
+    return { exhausted: false, count: 0 };
+  }
+  if (o.checked === 0) {
+    await saveLocal(s2);
+    return { exhausted: false, count: js.zeroYield.count };
+  }
+  js.zeroYield.count++;
+  if (js.zeroYield.count >= LOCAL_ZERO_YIELD_THRESHOLD) {
+    js.zeroYield.exhaustedUntil = new Date(Date.now() + LOCAL_EXHAUSTED_MINUTES * 6e4).toISOString();
+    js.zeroYield.count = LOCAL_ZERO_YIELD_THRESHOLD - 1;
+  }
+  await saveLocal(s2);
+  return { exhausted: js.zeroYield.count >= LOCAL_ZERO_YIELD_THRESHOLD - 1 && !!js.zeroYield.exhaustedUntil, count: js.zeroYield.count };
+}
+function jobExhausted(s2, jobId) {
+  const js = s2.jobs[jobId];
+  if (!js?.zeroYield?.exhaustedUntil) return false;
+  return Date.now() < Date.parse(js.zeroYield.exhaustedUntil);
+}
+async function nextLocalJob(jobs4, allow) {
+  if (!jobs4.length) return null;
+  const s2 = await loadLocal();
+  for (let i2 = 0; i2 < jobs4.length; i2++) {
+    const job = jobs4[(s2.cursor + i2) % jobs4.length];
+    if (!allow(job.group)) continue;
+    if (jobExhausted(s2, job.id)) continue;
+    const pending = await job.pending().catch(() => 0);
+    if (pending > 0) {
+      s2.cursor = (jobs4.indexOf(job) + 1) % jobs4.length;
+      await saveLocal(s2);
+      return { job, pending };
+    }
+  }
+  return null;
+}
+
 // src/lib/ingestion/rotation.ts
 var registry = [];
 var setProviders = (list) => {
@@ -65336,6 +65906,7 @@ async function runRotationPass(opts) {
       ].filter(Boolean);
       s2.lastDecision = { at: (/* @__PURE__ */ new Date()).toISOString(), group: g, label: r2.label, kind: r2.virtual ? "coverage" : "source", reasons };
       s2.idle = null;
+      s2.localZeroYield = 0;
       await saveRotationState(s2);
       return { ...r2, phase: g, source: r2.label, ...r2.outcome };
     }
@@ -65344,7 +65915,9 @@ async function runRotationPass(opts) {
     else if (r2.waiting) waiting.push({ group: g, reason: r2.reason });
     else idleGroups.push(g);
   }
-  const local = localPicker ? await localPicker(localJobs, (g) => groups.includes(g)).catch(() => null) : null;
+  const MAX_CONSECUTIVE_LOCAL = 2;
+  const localAllowed = (s2.localZeroYield ?? 0) < MAX_CONSECUTIVE_LOCAL;
+  const local = localAllowed && localPicker ? await localPicker(localJobs, (g) => groups.includes(g)).catch(() => null) : null;
   if (local) {
     const { job, pending } = local;
     s2.localRunning = { job: job.id, label: job.label, group: job.group, since: (/* @__PURE__ */ new Date()).toISOString() };
@@ -65359,6 +65932,14 @@ async function runRotationPass(opts) {
       err = String(e2?.message || e2).slice(0, 300);
     }
     s2.localRunning = null;
+    if (o) await recordLocalOutcome(job.id, o).catch(() => {
+    });
+    const useful = o ? localOutcomeIsUseful(o) : false;
+    if (useful) {
+      s2.localZeroYield = 0;
+    } else {
+      s2.localZeroYield = (s2.localZeroYield ?? 0) + 1;
+    }
     if (o) {
       await createRunWithStats({
         phase: job.group,
@@ -65385,7 +65966,7 @@ async function runRotationPass(opts) {
       kind: "local",
       reasons: [`No external source of any content type could work this tick`, ...passedTypes, `${job.label}: ${pending} record${pending === 1 ? "" : "s"} to look at under the current rules`]
     };
-    s2.idle = null;
+    if (useful) s2.idle = null;
     await saveRotationState(s2);
     return {
       ran: true,
@@ -65519,6 +66100,7 @@ async function rotationStatus(opts = {}) {
     weights: cfg.weights,
     lastDecision: s2.lastDecision ?? null,
     backlog,
+    localZeroYield: s2.localZeroYield ?? 0,
     batchSize: cfg.batchSize,
     failuresBeforeFallback: cfg.failuresBeforeFallback,
     zeroYieldBatches: cfg.zeroYieldBatches,
@@ -65540,7 +66122,7 @@ function coverageState(published) {
 }
 var COVERAGE_LABEL = { critical: "Critical", low: "Low", building: "Building", "target-met": "Initial target met" };
 var TARGETS = { phase1: 100, phase2: 250 };
-var blank3 = (department) => ({
+var blank4 = (department) => ({
   department,
   total: 0,
   published: 0,
@@ -65565,7 +66147,7 @@ async function bookCoverageByDepartment(db2 = ingestionDb) {
     select coalesce(metadata->'harvest'->'department'->>'suggested', '') s, count(*)::int n
       from "Book" where status = 'Draft' group by 1`);
   const totalsRow = (await db2.$queryRawUnsafe(`select (count(*) filter (where status = 'Published'))::int published, (count(*) filter (where status = 'Draft'))::int review from "Book"`))[0] || { published: 0, review: 0 };
-  const by = new Map(CANONICAL_NAMES.map((n3) => [n3, blank3(n3)]));
+  const by = new Map(CANONICAL_NAMES.map((n3) => [n3, blank4(n3)]));
   const other = /* @__PURE__ */ new Map();
   const strayOf = (label) => other.get(label) ?? other.set(label, { label, published: 0, review: 0 }).get(label);
   for (const r2 of rows) {
@@ -65627,19 +66209,19 @@ async function journalCoverageByDepartment(db2 = ingestionDb) {
 }
 
 // src/lib/ingestion/journalCoverage.ts
-var KEY2 = "ingestion.journals.coverage.v1";
+var KEY3 = "ingestion.journals.coverage.v1";
 var journalTarget = () => {
   const n3 = Number(process.env.INGESTION_JOURNAL_COVERAGE_TARGET);
   return Number.isInteger(n3) && n3 > 0 ? n3 : LOW_JOURNALS;
 };
 var restHours = (zeroRuns) => Math.min(24 * 7, 6 * 2 ** Math.max(0, zeroRuns - 1));
 async function load() {
-  const row = await ingestionDb.appSetting.findUnique({ where: { key: KEY2 } }).catch(() => null);
+  const row = await ingestionDb.appSetting.findUnique({ where: { key: KEY3 } }).catch(() => null);
   const v = row?.value;
   return v && typeof v === "object" && !Array.isArray(v) ? { depts: { ...v.depts || {} } } : { depts: {} };
 }
 async function save(s2) {
-  await ingestionDb.appSetting.upsert({ where: { key: KEY2 }, create: { key: KEY2, value: s2, updatedBy: "engine" }, update: { value: s2, updatedBy: "engine" } }).catch(() => {
+  await ingestionDb.appSetting.upsert({ where: { key: KEY3 }, create: { key: KEY3, value: s2, updatedBy: "engine" }, update: { value: s2, updatedBy: "engine" } }).catch(() => {
   });
 }
 function pickJournalDepartment(departments, state, scope, target, now = Date.now()) {
@@ -65709,448 +66291,8 @@ function journalCoverageTurn(sources) {
   };
 }
 
-// src/lib/doajCatalogue.ts
-var import_papaparse2 = __toESM(require_papaparse(), 1);
-var DOAJ_CSV_URL = "https://doaj.org/csv";
-var BY_TITLE_OR_KEYWORD = [
-  [/\bnano/, "Nano Technology"],
-  [/biotechnolog/, "Bio Technology"],
-  [/ayurved|\bunani\b|\bsiddha\b|homoeopath|homeopath|traditional (chinese |indian )?medicine|herbal medicine|pharmacognosy|ethnopharmacolog/, "Ayurveda"]
-];
-var BY_TITLE = [
-  [/physiotherap|physical therapy|rehabilitat/, "Physiotherapy"],
-  [/nursing|midwifery/, "Nursing"],
-  [/\bdental|dentistry|\boral (health|surgery|medicine|science)|orthodont|periodont|endodont/, "Dental"],
-  [/renewable|solar|\benergy\b|\bfuels?\b|petroleum|power systems?/, "Energy"],
-  [/materials? science|metallurg|polymer|ceramic|composite materials/, "Material Science"],
-  [/(?<!quantum )(?<!fluid )\bmechanics\b/, "Applied Mechanics"],
-  [/\bmanagement\b|marketing|human resource|business administration|entrepreneur|tourism|hospitality/, "Management"]
-];
-function departmentForDoajRow(row) {
-  const title = (row["Journal title"] || "").toLowerCase();
-  const keywords = (row["Keywords"] || "").toLowerCase();
-  for (const [re, dep] of BY_TITLE_OR_KEYWORD) if (re.test(title) || re.test(keywords)) return dep;
-  for (const [re, dep] of BY_TITLE) if (re.test(title)) return dep;
-  for (const code of (row["LCC Codes"] || "").split("|")) {
-    const lcc = parseLcc(code);
-    const dep = lcc && departmentFromLcc(lcc.cls, lcc.num);
-    if (dep) return dep;
-  }
-  return null;
-}
-function doajRowToJournal(row) {
-  const pissn = normaliseIssn(row["Journal ISSN (print version)"]);
-  const eissn = normaliseIssn(row["Journal EISSN (online version)"]);
-  const issn = pissn || eissn;
-  const title = (row["Journal title"] || "").trim();
-  if (!issn || !title) return null;
-  const licences = (row["Journal license"] || "").split(",").map((s2) => s2.trim()).filter(Boolean);
-  const ncAttr = /no commercial/i.test(row["License attributes"] || "");
-  const ok = licences.length > 0 && !ncAttr && licences.every((l) => licenceAllowsCommercialUse(l, false));
-  return {
-    title,
-    issn,
-    eissn: eissn && eissn !== issn ? eissn : pissn ? eissn : null,
-    publisherName: (row["Publisher"] || "").trim() || null,
-    country: (row["Country of publisher"] || "").trim() || null,
-    language: (row["Languages in which the journal accepts manuscripts"] || "").trim() || null,
-    domain: canonicalDepartmentName(departmentForDoajRow(row)),
-    subject: (row["Subjects"] || "").split("|")[0]?.trim() || null,
-    subjects: (row["Subjects"] || "").split("|").map((s2) => s2.trim()).filter(Boolean),
-    homepage: (row["Journal URL"] || "").trim() || null,
-    licence: licences.join(", ") || null,
-    licenceIsNC: !ok,
-    rightsBasis: "DOAJ declaration",
-    rightsVerifiedAt: /* @__PURE__ */ new Date(),
-    rightsVerifiedBy: "ingestion",
-    status: ok ? "Accepted" : "MetadataOnly"
-  };
-}
-async function readCsv(csvText) {
-  const text = csvText ?? await (async () => {
-    const r2 = await fetch(DOAJ_CSV_URL, { headers: { "User-Agent": "STM Digital Library (mailto:info@celnet.in)" } });
-    if (!r2.ok) throw new Error(`DOAJ answered HTTP ${r2.status} for the journal list`);
-    return r2.text();
-  })();
-  return import_papaparse2.default.parse(text, { header: true, skipEmptyLines: true }).data;
-}
-async function readHeld() {
-  const issns = /* @__PURE__ */ new Set();
-  const titles = /* @__PURE__ */ new Map();
-  for (const j of await ingestionDb.journal.findMany({ select: { issn: true, eissn: true, title: true } })) {
-    if (j.issn) issns.add(j.issn);
-    if (j.eissn) issns.add(j.eissn);
-    titles.set(j.title.trim().toLowerCase(), j.issn || "");
-  }
-  return { issns, titles };
-}
-async function checkDoajCatalogue(opts = {}) {
-  const rows = await readCsv(opts.csvText);
-  const { issns: held2, titles: heldTitles } = await readHeld();
-  const out = {
-    summary: { inFile: rows.length, alreadyHeld: 0, new: 0, fullTextEligible: 0, metadataOnly: 0, rejected: 0, needsReview: 0, noDepartment: 0, byDepartment: {} },
-    newIssns: [],
-    reviewSample: []
-  };
-  const s2 = out.summary;
-  for (const row of rows) {
-    const j = doajRowToJournal(row);
-    if (!j) {
-      s2.rejected++;
-      continue;
-    }
-    if (held2.has(j.issn) || j.eissn && held2.has(j.eissn)) {
-      s2.alreadyHeld++;
-      continue;
-    }
-    const sameTitle = heldTitles.get(j.title.toLowerCase());
-    if (sameTitle !== void 0) {
-      s2.needsReview++;
-      if (out.reviewSample.length < 20) out.reviewSample.push({ title: j.title, issn: j.issn });
-      continue;
-    }
-    if (opts.departments?.length && !opts.departments.includes(j.domain)) {
-      s2.outsideScope = (s2.outsideScope || 0) + 1;
-      continue;
-    }
-    if (opts.limit != null && out.newIssns.length >= opts.limit) {
-      s2.beyondLimit = (s2.beyondLimit || 0) + 1;
-      continue;
-    }
-    held2.add(j.issn);
-    if (j.eissn) held2.add(j.eissn);
-    heldTitles.set(j.title.toLowerCase(), j.issn);
-    out.newIssns.push(j.issn);
-    s2.new++;
-    j.status === "Accepted" ? s2.fullTextEligible++ : s2.metadataOnly++;
-    if (!j.domain) s2.noDepartment++;
-    const k = j.domain || "(none)";
-    s2.byDepartment[k] = (s2.byDepartment[k] || 0) + 1;
-  }
-  return out;
-}
-async function importCheckedJournals(allowedIssns, opts = {}) {
-  const allowed = new Set(allowedIssns);
-  const rows = await readCsv(opts.csvText);
-  const { issns: held2 } = await readHeld();
-  const fresh = [];
-  let alreadyHeldNow = 0, accepted = 0, metadataOnly = 0;
-  const seen = /* @__PURE__ */ new Set();
-  for (const row of rows) {
-    const j = doajRowToJournal(row);
-    if (!j || !allowed.has(j.issn)) continue;
-    if (seen.has(j.issn)) continue;
-    seen.add(j.issn);
-    if (held2.has(j.issn) || j.eissn && held2.has(j.eissn)) {
-      alreadyHeldNow++;
-      continue;
-    }
-    fresh.push(j);
-    j.status === "Accepted" ? accepted++ : metadataOnly++;
-  }
-  let added = 0;
-  for (let i2 = 0; i2 < fresh.length; i2 += 500) {
-    const r2 = await ingestionDb.journal.createMany({ data: fresh.slice(i2, i2 + 500), skipDuplicates: true });
-    added += r2.count;
-  }
-  return { added, alreadyHeldNow, accepted, metadataOnly, requested: allowed.size };
-}
-
-// src/lib/ingestion/journalDepartment.ts
-var BROAD = /* @__PURE__ */ new Set(["Applied Sciences", "Science", "Multidisciplinary"]);
-function journalDepartment(title, subjects) {
-  const subs = (subjects || []).map((s2) => String(s2 || "").trim()).filter(Boolean);
-  const specific = departmentForDoajRow({ "Journal title": title || "", Keywords: subs.join(" | "), "LCC Codes": "" });
-  if (specific && !BROAD.has(specific)) return specific;
-  const score = /* @__PURE__ */ new Map();
-  for (const dep of CANONICAL_NAMES) {
-    const res = departmentKeywords(dep);
-    if (!res.length) continue;
-    const inTitle = res.some((re) => re.test(title || ""));
-    const hits = subs.filter((s2) => res.some((re) => re.test(s2))).length;
-    if (BROAD.has(dep) && !(inTitle && hits >= 1)) continue;
-    if (inTitle && hits >= 1) score.set(dep, 2 + hits);
-    else if (hits >= 2) score.set(dep, hits);
-  }
-  const ranked = [...score.entries()].sort((a, b) => b[1] - a[1]);
-  if (!ranked.length) return null;
-  if (ranked[1] && ranked[0][1] - ranked[1][1] < 1) return null;
-  return ranked[0][0];
-}
-
-// src/lib/ingestion/localWork.ts
-var KEY3 = "ingestion.localwork.v1";
-async function loadLocal() {
-  const row = await ingestionDb.appSetting.findUnique({ where: { key: KEY3 } }).catch(() => null);
-  const v = row?.value;
-  return v && typeof v === "object" && !Array.isArray(v) ? { jobs: { ...v.jobs || {} }, cursor: Number(v.cursor) || 0 } : { jobs: {}, cursor: 0 };
-}
-async function saveLocal(s2) {
-  await ingestionDb.appSetting.upsert({ where: { key: KEY3 }, create: { key: KEY3, value: s2, updatedBy: "engine" }, update: { value: s2, updatedBy: "engine" } }).catch(() => {
-  });
-}
-function jobState(s2, id, fingerprint) {
-  const cur = s2.jobs[id];
-  if (cur && cur.fingerprint === fingerprint) return cur;
-  return s2.jobs[id] = { fingerprint, cursor: null, lastRunAt: null, totals: cur?.totals ?? { checked: 0, promoted: 0, enriched: 0 } };
-}
-var after = (c) => c ? { OR: [{ createdAt: { gt: new Date(c.at) } }, { createdAt: new Date(c.at), id: { gt: c.id } }] } : {};
-var ORDER = [{ createdAt: "asc" }, { id: "asc" }];
-var blank4 = () => ({ checked: 0, promoted: 0, enriched: 0, stillHeld: 0, duplicates: 0, refused: 0, failed: 0, note: "" });
-var obj = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : {};
-var FEEDS = [DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, NLM_FEED, CROSSREF_BOOKS_FEED, PRESSBOOKS_FEED, OPENLIBRARY_FEED, OPENLIBRARY_DUMP_FEED];
-var feedOf = (source) => FEEDS.find((f3) => f3.provider === source) ?? null;
-var SELF_PUBLISHING_SOURCES = FEEDS.filter((f3) => !f3.reviewFirst).map((f3) => f3.provider);
-var heldBookWhere = () => ({ status: "Draft", ownershipSource: "Ingested", rejectionNote: null, source: { in: SELF_PUBLISHING_SOURCES } });
-async function heldBooksFingerprint() {
-  const st = await ingestionDb.ingestionState.findUnique({ where: { id: "singleton" }, select: { bookMinYear: true } }).catch(() => null);
-  return JSON.stringify(["held-books", CLASSIFIER_RULES_VERSION, STRONG_MIN, STRONG_MARGIN, bookMinYear(st), SELF_PUBLISHING_SOURCES]);
-}
-async function publishedTwin(b) {
-  const or = [];
-  if (b.doi) or.push({ doi: b.doi });
-  if (b.isbn) or.push({ isbn: b.isbn });
-  if (b.fingerprint) or.push({ fingerprint: b.fingerprint });
-  if (!or.length) return null;
-  return ingestionDb.book.findFirst({ where: { status: "Published", id: { not: b.id }, OR: or }, select: { id: true } });
-}
-var heldBooksJob = {
-  id: "held-books",
-  label: "Held candidate review",
-  group: "Books",
-  pending: async () => {
-    const s2 = await loadLocal();
-    const fp = await heldBooksFingerprint();
-    const js = s2.jobs["held-books"];
-    const cursor = js?.fingerprint === fp ? js.cursor : null;
-    return ingestionDb.book.count({ where: { ...heldBookWhere(), ...after(cursor) } });
-  },
-  run: async (limit) => {
-    const s2 = await loadLocal();
-    const fp = await heldBooksFingerprint();
-    const js = jobState(s2, "held-books", fp);
-    const minYear = bookMinYear(await ingestionDb.ingestionState.findUnique({ where: { id: "singleton" }, select: { bookMinYear: true } }).catch(() => null));
-    const rows = await ingestionDb.book.findMany({
-      where: { ...heldBookWhere(), ...after(js.cursor) },
-      orderBy: ORDER,
-      take: limit,
-      select: { id: true, title: true, description: true, year: true, doi: true, isbn: true, fingerprint: true, source: true, metadata: true, createdAt: true }
-    });
-    const o = blank4();
-    const byDept = {};
-    for (const b of rows) {
-      o.checked++;
-      js.cursor = { at: b.createdAt.toISOString(), id: b.id };
-      const meta = obj(b.metadata);
-      const h2 = obj(meta.harvest);
-      const p3 = obj(h2.provider);
-      const verdict = classifyDepartment({
-        classifications: Array.isArray(h2.classifications) ? h2.classifications : [],
-        subjects: Array.isArray(h2.keywords) ? h2.keywords : [],
-        title: b.title,
-        description: b.description,
-        lcc: Array.isArray(p3.lcc) ? p3.lcc : void 0,
-        nlm: Array.isArray(p3.nlmClass) ? p3.nlmClass : void 0
-      });
-      const cfg = feedOf(b.source);
-      const yv = bookYearVerdict(b.year, minYear);
-      if (verdict.band !== "strong" || !verdict.department || !cfg || cfg.reviewFirst || !yv.ok) {
-        o.stillHeld++;
-        continue;
-      }
-      if (cfg.allowedDepartments && !cfg.allowedDepartments.includes(verdict.department)) {
-        o.refused++;
-        continue;
-      }
-      if (await publishedTwin(b)) {
-        o.duplicates++;
-        continue;
-      }
-      try {
-        const harvest = {
-          ...h2,
-          department: { band: verdict.band, score: verdict.score, reasons: verdict.reasons, suggested: verdict.suggested, runnerUp: verdict.runnerUp },
-          promoted: { at: (/* @__PURE__ */ new Date()).toISOString(), from: "review", rules: CLASSIFIER_RULES_VERSION, minYear }
-        };
-        const r2 = await ingestionDb.book.updateMany({ where: { id: b.id, status: "Draft", rejectionNote: null }, data: { status: "Published", domain: verdict.department, metadata: { ...meta, harvest } } });
-        if (r2.count) {
-          o.promoted++;
-          byDept[verdict.department] = (byDept[verdict.department] || 0) + 1;
-        } else o.stillHeld++;
-      } catch {
-        o.failed++;
-      }
-    }
-    js.lastRunAt = (/* @__PURE__ */ new Date()).toISOString();
-    js.totals.checked += o.checked;
-    js.totals.promoted += o.promoted;
-    await saveLocal(s2);
-    o.note = `${o.checked} held books judged under rules v${CLASSIFIER_RULES_VERSION} (books from ${minYear}): ${o.promoted} now meet every rule and were published${Object.keys(byDept).length ? ` (${Object.entries(byDept).map(([d, n3]) => `${d} ${n3}`).join(", ")})` : ""}, ${o.stillHeld} still need a person${o.duplicates ? `, ${o.duplicates} already published under another record` : ""}${o.refused ? `, ${o.refused} outside the source's departments` : ""}`;
-    return o;
-  }
-};
-var unplacedJournalWhere = () => ({ domain: null, rightsBasis: { contains: "OA unverified" } });
-var journalFingerprint = () => JSON.stringify(["journal-departments", CLASSIFIER_RULES_VERSION]);
-var journalDepartmentsJob = {
-  id: "journal-departments",
-  label: "Department classification",
-  group: "Journals",
-  pending: async () => {
-    const s2 = await loadLocal();
-    const js = s2.jobs["journal-departments"];
-    const cursor = js?.fingerprint === journalFingerprint() ? js.cursor : null;
-    return ingestionDb.journal.count({ where: { ...unplacedJournalWhere(), ...after(cursor) } });
-  },
-  run: async (limit) => {
-    const s2 = await loadLocal();
-    const js = jobState(s2, "journal-departments", journalFingerprint());
-    const rows = await ingestionDb.journal.findMany({ where: { ...unplacedJournalWhere(), ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, title: true, subjects: true, createdAt: true } });
-    const o = blank4();
-    for (const j of rows) {
-      o.checked++;
-      js.cursor = { at: j.createdAt.toISOString(), id: j.id };
-      const dep = journalDepartment(j.title, Array.isArray(j.subjects) ? j.subjects.map((x2) => String(x2)) : []);
-      if (!dep) {
-        o.stillHeld++;
-        continue;
-      }
-      try {
-        const r2 = await ingestionDb.journal.updateMany({ where: { id: j.id, domain: null }, data: { domain: dep } });
-        r2.count ? o.enriched++ : o.stillHeld++;
-      } catch {
-        o.failed++;
-      }
-    }
-    js.lastRunAt = (/* @__PURE__ */ new Date()).toISOString();
-    js.totals.checked += o.checked;
-    js.totals.enriched += o.enriched;
-    await saveLocal(s2);
-    o.note = `${o.checked} unplaced journals offered to the department rule (v${CLASSIFIER_RULES_VERSION}): ${o.enriched} placed, ${o.stillHeld} still unclear`;
-    return o;
-  }
-};
-var licenceFillWhere = () => ({ OR: [{ licence: null }, { licence: "" }] });
-function agreedSightingLicence(meta) {
-  const seen = Object.entries(obj(meta.sources)).map(([provider, v]) => ({ provider, licence: canonicalLicence(v?.licence) || null, basis: v?.licenceBasis, handle: v?.handle ?? null })).filter((x2) => x2.basis === "title" && x2.licence);
-  const distinct = [...new Set(seen.map((x2) => x2.licence))];
-  return distinct.length === 1 ? { licence: distinct[0], provider: seen[0].provider, handle: seen[0].handle } : null;
-}
-var licenceFillJob = {
-  id: "licence-fill",
-  label: "Licence completion",
-  group: "Books",
-  pending: async () => {
-    const s2 = await loadLocal();
-    const js = s2.jobs["licence-fill"];
-    const cursor = js?.fingerprint === "licence-fill:1" ? js.cursor : null;
-    const r2 = await ingestionDb.$queryRawUnsafe(
-      `select count(*)::int n from "Book" b where (b.licence is null or b.licence = '') and b.metadata ? 'sources'
-         ${cursor ? `and (b."createdAt", b.id) > ($1::timestamptz at time zone 'UTC', $2)` : ""}`,
-      ...cursor ? [cursor.at, cursor.id] : []
-    );
-    return r2[0]?.n ?? 0;
-  },
-  run: async (limit) => {
-    const s2 = await loadLocal();
-    const js = jobState(s2, "licence-fill", "licence-fill:1");
-    const rows = await ingestionDb.book.findMany({ where: { ...licenceFillWhere(), ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, metadata: true, createdAt: true } });
-    const o = blank4();
-    for (const b of rows) {
-      js.cursor = { at: b.createdAt.toISOString(), id: b.id };
-      const meta = obj(b.metadata);
-      if (!meta.sources) continue;
-      o.checked++;
-      const got = agreedSightingLicence(meta);
-      if (!got) {
-        o.stillHeld++;
-        continue;
-      }
-      try {
-        const r2 = await ingestionDb.book.updateMany({ where: { id: b.id, OR: [{ licence: null }, { licence: "" }] }, data: {
-          licence: got.licence,
-          licenceIsNC: !licenceAllowsCommercialUse(got.licence),
-          metadata: { ...meta, licenceFill: { ...obj(meta.licenceFill), [got.provider]: { licence: got.licence, basis: "title", handle: got.handle, filledAt: (/* @__PURE__ */ new Date()).toISOString(), by: "backlog" } } }
-        } });
-        r2.count ? o.enriched++ : o.stillHeld++;
-      } catch {
-        o.failed++;
-      }
-    }
-    js.lastRunAt = (/* @__PURE__ */ new Date()).toISOString();
-    js.totals.checked += o.checked;
-    js.totals.enriched += o.enriched;
-    await saveLocal(s2);
-    o.note = `${o.checked} books with no licence and a recorded sighting: ${o.enriched} filled from a title-level licence another provider declared, ${o.stillHeld} left (none declared, or sources disagree)`;
-    return o;
-  }
-};
-async function nonCanonicalLicences() {
-  const rows = await ingestionDb.$queryRawUnsafe(`select distinct licence from "Book" where licence is not null and licence <> ''`);
-  return rows.map((r2) => r2.licence).filter((l) => {
-    const c = canonicalLicence(l);
-    return !!c && c !== l;
-  });
-}
-var licenceSpellingJob = {
-  id: "licence-spelling",
-  label: "Licence spelling",
-  group: "Books",
-  pending: async () => {
-    const s2 = await loadLocal();
-    const js = s2.jobs["licence-spelling"];
-    const cursor = js?.fingerprint === "licence-spelling:1" ? js.cursor : null;
-    const odd = await nonCanonicalLicences();
-    return odd.length ? ingestionDb.book.count({ where: { licence: { in: odd }, ...after(cursor) } }) : 0;
-  },
-  run: async (limit) => {
-    const s2 = await loadLocal();
-    const js = jobState(s2, "licence-spelling", "licence-spelling:1");
-    const odd = await nonCanonicalLicences();
-    const rows = odd.length ? await ingestionDb.book.findMany({ where: { licence: { in: odd }, ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, licence: true, licenceIsNC: true, createdAt: true } }) : [];
-    const o = blank4();
-    for (const b of rows) {
-      js.cursor = { at: b.createdAt.toISOString(), id: b.id };
-      const canon = canonicalLicence(b.licence);
-      o.checked++;
-      const same2 = licenceAllowsCommercialUse(canon) === licenceAllowsCommercialUse(b.licence) && (b.licenceIsNC == null || b.licenceIsNC === !licenceAllowsCommercialUse(canon));
-      if (!same2) {
-        o.refused++;
-        continue;
-      }
-      try {
-        const r2 = await ingestionDb.book.updateMany({ where: { id: b.id, licence: b.licence }, data: { licence: canon } });
-        r2.count ? o.enriched++ : o.stillHeld++;
-      } catch {
-        o.failed++;
-      }
-    }
-    js.lastRunAt = (/* @__PURE__ */ new Date()).toISOString();
-    js.totals.checked += o.checked;
-    js.totals.enriched += o.enriched;
-    await saveLocal(s2);
-    o.note = `${o.checked} licences in a non-canonical spelling: ${o.enriched} rewritten in canonical form${o.refused ? `, ${o.refused} left because the rewrite would change what the book may be offered as (a person should look)` : ""}`;
-    return o;
-  }
-};
-var LOCAL_JOBS = [heldBooksJob, journalDepartmentsJob, licenceFillJob, licenceSpellingJob];
-async function nextLocalJob(jobs4, allow) {
-  if (!jobs4.length) return null;
-  const s2 = await loadLocal();
-  for (let i2 = 0; i2 < jobs4.length; i2++) {
-    const job = jobs4[(s2.cursor + i2) % jobs4.length];
-    if (!allow(job.group)) continue;
-    const pending = await job.pending().catch(() => 0);
-    if (pending > 0) {
-      s2.cursor = (jobs4.indexOf(job) + 1) % jobs4.length;
-      await saveLocal(s2);
-      return { job, pending };
-    }
-  }
-  return null;
-}
-
 // src/lib/ingestion/targetedBooks.ts
-var import_node_crypto6 = require("node:crypto");
+var import_node_crypto7 = require("node:crypto");
 
 // src/lib/ingestion/books/departmentProfiles.ts
 var DEPARTMENT_PROFILES = {
@@ -66411,7 +66553,7 @@ async function beginTargetedImport(department, limit, admin) {
   if (!name) throw new TargetedError("That is not a canonical department.");
   if (!Number.isInteger(limit) || limit < 10 || limit > 500) throw new TargetedError("The limit must be a whole number between 10 and 500.");
   if (runningTargetedJob()) throw new TargetedError("A targeted import is already running. Wait for it to finish.", 409);
-  const job = { id: (0, import_node_crypto6.randomUUID)(), department: name, status: "running", startedAt: Date.now(), limit, progress: {} };
+  const job = { id: (0, import_node_crypto7.randomUUID)(), department: name, status: "running", startedAt: Date.now(), limit, progress: {} };
   jobs.set(job.id, job);
   await audit2(admin ?? null, "TARGETED_BOOKS_STARTED", { department: name, limit });
   const t0 = Date.now();
@@ -69036,7 +69178,7 @@ async function providerCoverage(db2 = ingestionDb) {
 }
 
 // src/lib/ingestion/bulkCatalogue.ts
-var import_node_crypto7 = require("node:crypto");
+var import_node_crypto8 = require("node:crypto");
 var BULK_SOURCES = [
   { id: "doab", kind: "books", label: "DOAB \u2014 all books", healthKey: "DOAB", lock: DOAB_OAI.provider, cfg: DOAB_OAI, defaultRecords: 2e3, maxRecords: 1e4, note: "Reads the whole DOAB book set, in order, with a position of its own." },
   { id: "oapen", kind: "books", label: "OAPEN \u2014 all books", healthKey: "OAPEN", lock: OAPEN_OAI.provider, cfg: OAPEN_OAI, defaultRecords: 2e3, maxRecords: 1e4, note: "Matches what DOAB gave and adds titles nothing else holds." },
@@ -69262,7 +69404,7 @@ async function beginBulk(source, records, admin) {
   if (runningBulkJob()) throw new BulkError("A bulk run is already in progress. Wait for it to finish.", 409);
   const def = BULK_SOURCES.find((s2) => s2.id === source);
   if (records !== void 0 && (!Number.isInteger(records) || records < 10 || records > def.maxRecords)) throw new BulkError(`Records must be a whole number between 10 and ${def.maxRecords}.`);
-  const job = { id: (0, import_node_crypto7.randomUUID)(), source, status: "running", startedAt: Date.now() };
+  const job = { id: (0, import_node_crypto8.randomUUID)(), source, status: "running", startedAt: Date.now() };
   jobs3.set(job.id, job);
   await audit2(admin ?? null, "BULK_SYNC_STARTED", { source, records: records ?? def.defaultRecords });
   (async () => {
@@ -69684,8 +69826,8 @@ var eQuote = (author, text) => `<table width="100%" cellpadding="0" cellspacing=
 // src/lib/marketingEmails.ts
 var n2 = (x2) => typeof x2 === "number" ? x2.toLocaleString("en-IN") : "";
 var firstName2 = (c) => esc2((c.user.displayName || "").trim().split(/\s+/)[0] || "there");
-var link = (path4, c) => {
-  const url = `${MAIL_BASE}${path4}`;
+var link = (path5, c) => {
+  const url = `${MAIL_BASE}${path5}`;
   if (!c.ref) return url;
   return url + (url.includes("?") ? "&" : "?") + `ref=${encodeURIComponent(c.ref)}`;
 };
@@ -70088,8 +70230,8 @@ if (!import_crypto2.default.hash) {
 }
 var prisma3 = new import_client4.PrismaClient();
 var deptSpellings = createDepartmentSpellings(prisma3);
-var APP_DIR = typeof __dirname !== "undefined" ? __dirname : import_path2.default.dirname((0, import_url.fileURLToPath)(import_meta.url));
-var SETTINGS_FILE = import_path2.default.join(APP_DIR, "settings.json");
+var APP_DIR2 = typeof __dirname !== "undefined" ? __dirname : import_path2.default.dirname((0, import_url.fileURLToPath)(import_meta.url));
+var SETTINGS_FILE = import_path2.default.join(APP_DIR2, "settings.json");
 function getSystemSettings() {
   if (import_fs3.default.existsSync(SETTINGS_FILE)) {
     try {
@@ -76638,7 +76780,18 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       res.status(500).json({ error: "Failed to update book" });
     }
   });
-  const UPLOAD_DIR = process.env.UPLOAD_DIR || import_path2.default.join(APP_DIR, "uploads");
+  const UPLOAD_DIR = mediaStorageRoot();
+  {
+    const st = mediaStorageStatus();
+    try {
+      if (st.driver === "local-persistent" || st.driver === "local-dev") ensureMediaDirs();
+    } catch (e2) {
+      console.error(`[uploads] could not create ${UPLOAD_DIR}:`, e2?.code || e2?.message);
+    }
+    const after2 = mediaStorageStatus();
+    console.log(`[uploads] media storage: ${after2.label}${after2.root ? ` at ${after2.root}` : ""} \u2014 ${after2.healthy ? "healthy" : `NOT healthy: ${after2.problem}`}`);
+    if (isProduction() && !after2.healthy) console.error(`[uploads] Uploads will be REFUSED until this is fixed: ${after2.problem}`);
+  }
   app.use("/uploads", import_express2.default.static(UPLOAD_DIR, {
     setHeaders: (res, filePath) => {
       if (filePath.includes(`${import_path2.default.sep}media${import_path2.default.sep}`)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
@@ -76651,24 +76804,26 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     const m2 = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl || "");
     if (!m2) throw new Error("Invalid file data");
     const buf = Buffer.from(m2[2], "base64");
-    const fs5 = await import("node:fs");
-    fs5.mkdirSync(UPLOAD_DIR, { recursive: true });
+    const fs6 = await import("node:fs");
+    fs6.mkdirSync(UPLOAD_DIR, { recursive: true });
     const safe = (filename || "file").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
     const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
-    fs5.writeFileSync(import_path2.default.join(UPLOAD_DIR, name), buf);
+    fs6.writeFileSync(import_path2.default.join(UPLOAD_DIR, name), buf);
     return `/uploads/${name}`;
   };
   app.post("/api/upload", authenticateJWT, async (req, res) => {
     try {
       const { dataUrl, filename } = req.body;
       if (!dataUrl) return res.status(400).json({ error: "No file provided" });
+      if (mediaDriver().driver !== "s3") assertUploadsPossible();
       res.json({ url: await saveDataUrl(dataUrl, filename || "upload") });
     } catch (e2) {
+      if (e2 instanceof MediaStorageError) return res.status(e2.status).json({ error: e2.message, code: "MEDIA_STORAGE" });
       console.error("upload:", e2);
       res.status(500).json({ error: "Upload failed" });
     }
   });
-  const MEDIA_DIR = import_path2.default.join(UPLOAD_DIR, "media");
+  const MEDIA_DIR = mediaDir();
   const STORAGE_KEY = "uploads.storage.v1";
   const SENTINEL = import_path2.default.join(UPLOAD_DIR, ".storage-id");
   const checkUploadStorage = async () => {
@@ -76682,19 +76837,25 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
     const remembered = row?.value || {};
     const known = remembered.id ?? null;
     const now = (/* @__PURE__ */ new Date()).toISOString();
+    const driver = mediaDriver().driver;
     let id = onDisk, resetNow = false;
     if (!onDisk) {
       id = import_crypto2.default.randomUUID();
       import_fs3.default.writeFileSync(SENTINEL, id);
       resetNow = !!known;
     } else if (known && known !== onDisk) resetNow = true;
+    const movedToVolume = resetNow && driver === "local-persistent" && remembered.driver !== "local-persistent";
+    if (movedToVolume) resetNow = false;
     const value = {
       id,
       checkedAt: now,
-      firstSeenAt: remembered.firstSeenAt ?? now,
-      lastResetAt: resetNow ? now : remembered.lastResetAt ?? null,
-      resets: (remembered.resets ?? 0) + (resetNow ? 1 : 0)
+      firstSeenAt: movedToVolume ? now : remembered.firstSeenAt ?? now,
+      driver,
+      movedToVolumeAt: movedToVolume ? now : remembered.movedToVolumeAt ?? null,
+      lastResetAt: movedToVolume ? null : resetNow ? now : remembered.lastResetAt ?? null,
+      resets: movedToVolume ? 0 : (remembered.resets ?? 0) + (resetNow ? 1 : 0)
     };
+    if (movedToVolume) console.log(`[uploads] First start on the declared persistent volume ${UPLOAD_DIR}. Files from the previous (temporary) directory must be copied in from the backup if they are wanted.`);
     await prisma3.appSetting.upsert({ where: { key: STORAGE_KEY }, create: { key: STORAGE_KEY, value, updatedBy: "storage-check" }, update: { value, updatedBy: "storage-check" } }).catch(() => {
     });
     if (resetNow) console.error(`[uploads] The uploads directory (${UPLOAD_DIR}) is NEW: the database remembers an earlier one. Files uploaded before this start are gone unless they were restored. If this happens on every deploy, ${UPLOAD_DIR} is not on a persistent volume.`);
@@ -76715,10 +76876,13 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
         separateMount = import_fs3.default.statSync(UPLOAD_DIR).dev !== import_fs3.default.statSync(import_path2.default.dirname(UPLOAD_DIR)).dev;
       } catch {
       }
+      const ms = mediaStorageStatus();
       res.json({
         uploadDir: UPLOAD_DIR,
-        fromEnvironment: !!process.env.UPLOAD_DIR,
+        fromEnvironment: !!(process.env.MEDIA_STORAGE_ROOT || process.env.UPLOAD_DIR),
         separateMount,
+        // The configured storage, checked now: driver, label ("Persistent volume", "AWS S3"), directory exists / writable. Writes nothing.
+        mediaStorage: ms,
         s3Configured: s3Configured(),
         mediaRecords: assets.length,
         s3Records: s3Assets.length,
@@ -76726,7 +76890,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
         filesMissing: missing.length,
         blogCoversMissing: coversMissing.map((p3) => ({ id: p3.id, title: p3.title, slug: p3.slug, status: p3.status })),
         storage: { resets: state.resets ?? 0, lastResetAt: state.lastResetAt ?? null, firstSeenAt: state.firstSeenAt ?? null },
-        persistent: s3Configured() || ((state.resets ?? 0) === 0 && missing.length === 0 ? separateMount === false ? "unknown" : true : false)
+        persistent: ms.driver === "s3" ? ms.healthy : ms.driver === "local-persistent" ? ms.healthy && (state.resets ?? 0) === 0 ? true : false : (state.resets ?? 0) === 0 && missing.length === 0 ? separateMount === false ? "unknown" : true : false
       });
     } catch (e2) {
       console.error("media health:", e2?.message);
@@ -76809,26 +76973,20 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       if (buf.length > MEDIA_MAX_BYTES) {
         return res.status(413).json({ error: `File is too large (${(buf.length / 1048576).toFixed(1)} MB). Maximum is 25 MB.` });
       }
-      const useS3 = s3Configured();
       const isImage = type.kind === "image";
-      if (!useS3 && isProduction() && isImage) {
-        return res.status(503).json({ error: "Persistent media storage is not configured. Set AWS_S3_BUCKET in the server environment." });
-      }
+      const driver = assertUploadsPossible();
       let storedName;
       let publicUrl;
-      if (useS3 && isImage) {
-        const key = mediaKey(ext);
-        await uploadObject(key, buf, type.mime);
-        storedName = key;
-        publicUrl = getPublicMediaUrl(key);
-        console.log(`[s3] media uploaded: ${key} (${buf.length} bytes, ${type.mime})`);
-      } else {
-        const fsm = await import("node:fs");
-        fsm.mkdirSync(MEDIA_DIR, { recursive: true });
-        const base = original.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-").slice(0, 60) || "file";
-        storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${ext}`;
-        fsm.writeFileSync(import_path2.default.join(MEDIA_DIR, storedName), buf);
+      if (driver === "s3" && !isImage) {
+        ensureMediaDirs();
+        storedName = `${import_crypto2.default.randomUUID()}.${ext}`;
+        import_fs3.default.writeFileSync(import_path2.default.join(MEDIA_DIR, storedName), buf, { flag: "wx" });
         publicUrl = `/uploads/media/${storedName}`;
+      } else {
+        const up = await uploadMedia({ body: buf, ext, mime: type.mime, kind: "media" });
+        storedName = up.storedName;
+        publicUrl = up.url;
+        if (up.driver === "s3") console.log(`[s3] media uploaded: ${storedName} (${buf.length} bytes, ${type.mime})`);
       }
       const dims = type.kind === "image" ? readImageSize(buf, ext) : {};
       const asset = await prisma3.mediaAsset.create({
@@ -76852,16 +77010,14 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       });
       res.json(withAbsolute(req, asset));
     } catch (e2) {
+      if (e2 instanceof MediaStorageError) return res.status(e2.status).json({ error: e2.message, code: "MEDIA_STORAGE" });
       console.error("media upload:", e2);
       res.status(500).json({ error: "Upload failed" });
     }
   });
   app.post("/api/studio/cover", authenticateJWT, requireEditor, async (req, res) => {
     try {
-      const useS3 = s3Configured();
-      if (!useS3 && isProduction()) {
-        return res.status(503).json({ error: "Persistent media storage is not configured. Set AWS_S3_BUCKET in the server environment." });
-      }
+      assertUploadsPossible();
       const { dataUrl, filename, altText } = req.body || {};
       if (typeof dataUrl !== "string" || !dataUrl) return res.status(400).json({ error: "Choose an image to upload." });
       const comma = dataUrl.indexOf(",");
@@ -76877,21 +77033,9 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       if (failed(check)) return res.status(check.code === "too-big" ? 413 : 400).json({ error: check.message });
       const { info } = check;
       const original = String(filename || `cover.${info.ext}`).slice(0, 120);
-      let storedName;
-      let publicUrl;
-      if (useS3) {
-        const key = coverKey(info.ext);
-        await uploadObject(key, buf, info.mime);
-        storedName = key;
-        publicUrl = getPublicMediaUrl(key);
-        console.log(`[s3] cover uploaded: ${key} (${buf.length} bytes, ${info.mime})`);
-      } else {
-        const fsm = await import("node:fs");
-        fsm.mkdirSync(MEDIA_DIR, { recursive: true });
-        storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-cover.${info.ext}`;
-        fsm.writeFileSync(import_path2.default.join(MEDIA_DIR, storedName), buf);
-        publicUrl = `/uploads/media/${storedName}`;
-      }
+      const up = await uploadMedia({ body: buf, ext: info.ext, mime: info.mime, kind: "cover" });
+      const storedName = up.storedName, publicUrl = up.url;
+      if (up.driver === "s3") console.log(`[s3] cover uploaded: ${storedName} (${buf.length} bytes, ${info.mime})`);
       const asset = await prisma3.mediaAsset.create({
         data: {
           fileName: storedName,
@@ -76912,6 +77056,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       });
       res.json({ ...withAbsolute(req, asset), soft: check.soft, offRatio: check.offRatio });
     } catch (e2) {
+      if (e2 instanceof MediaStorageError) return res.status(e2.status).json({ error: e2.message, code: "MEDIA_STORAGE" });
       console.error("cover upload:", e2);
       res.status(500).json({ error: "Upload failed. Please try again." });
     }
@@ -82903,7 +83048,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   });
   app.post("/api/analytics/track", async (req, res) => {
     try {
-      const { path: path4, userRole, userId, sessionId } = req.body;
+      const { path: path5, userRole, userId, sessionId } = req.body;
       const xForwardedFor = req.headers["x-forwarded-for"];
       const cfIp = req.headers["cf-connecting-ip"];
       let ipAddress = cfIp || (xForwardedFor ? xForwardedFor.split(",")[0].trim() : req.socket.remoteAddress);
@@ -82915,7 +83060,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       const userAgent = req.headers["user-agent"];
       await prisma3.pageVisit.create({
         data: {
-          path: path4,
+          path: path5,
           userId,
           userRole,
           sessionId,

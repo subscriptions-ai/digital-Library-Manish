@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ImageOff } from 'lucide-react';
 import { isUsableCoverUrl, blogCoverFor } from '../../lib/blogCover';
 
 /**
@@ -111,15 +110,17 @@ export function PostImage(props: PostImageProps) {
 }
 
 /**
- * What a reader sees where an editor's chosen cover cannot be loaded. Deliberately plain, and nothing like any cover: it must not look as
- * though the post was given different artwork. It is drawn here and stored nowhere — the post keeps its cover address, and the picture is back
- * as soon as the file is.
+ * What a reader sees where an editor's chosen cover cannot be loaded: the library's own mark on the brand navy, the same for every post. It is
+ * branded (never the browser's broken-image icon) but deliberately carries no topic artwork, so it cannot look as though the post was given a
+ * different cover. It is drawn here and stored nowhere — the post keeps its cover address, and the picture is back as soon as the file is.
  */
 function CoverUnavailable({ className = '' }: { className?: string }) {
   return (
     <div role="img" aria-label="Cover image unavailable"
-      className={`flex items-center justify-center bg-surface-2 text-faint ${className}`}>
-      <ImageOff size={28} aria-hidden="true" />
+      className={`keep-light flex flex-col items-center justify-center gap-2 bg-navy text-white/80 ${className}`}>
+      <img src="/logo.png" alt="" aria-hidden="true" className="h-10 w-10 object-contain opacity-90" loading="lazy" decoding="async"
+        onError={e => { e.currentTarget.style.display = 'none'; }} />
+      <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">STM Digital Library</span>
     </div>
   );
 }

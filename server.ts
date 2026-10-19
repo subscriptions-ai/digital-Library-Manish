@@ -37,7 +37,8 @@ import { encryptionAvailable as aiEncryptionAvailable } from "./src/server/aiSec
 import { loadBlogList, loadBlogPost } from "./src/server/blogData.js";
 import { installSeoPages } from "./src/server/seoPages.js";
 import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
-import { s3Configured, isProduction, coverKey, mediaKey, getPublicMediaUrl, uploadObject, objectExists, deleteObject, keyFromUrl, isS3Url } from "./src/server/storage/s3Storage.js";
+import { s3Configured, isProduction, deleteObject, keyFromUrl } from "./src/server/storage/s3Storage.js";
+import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageStatus, ensureMediaDirs, assertUploadsPossible, uploadMedia, MediaStorageError } from "./src/server/storage/mediaStorage.js";
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
@@ -7890,10 +7891,18 @@ async function startServer() {
   // agreements + in-app e-signature, file uploads, bulk data-sharing.
   // ==========================================
 
-  // --- File upload (base64 -> disk, served at /uploads). Swap for S3 when a bucket is provisioned. ---
-  // UPLOAD_DIR is env-overridable so a persistent volume can be mounted in Docker/Coolify
-  // (the container filesystem is wiped on every redeploy — uploads must live on a volume).
-  const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(APP_DIR, 'uploads');
+  // --- File upload (base64 -> disk, served at /uploads). ---
+  // Where files live is decided by src/server/storage/mediaStorage.ts: MEDIA_STORAGE_DRIVER=local-persistent stores them under
+  // MEDIA_STORAGE_ROOT (else UPLOAD_DIR, else ./uploads), which in production MUST be a persistent volume (Coolify: /app/uploads), because the
+  // container filesystem is replaced on every redeploy. Production with no declared storage refuses uploads instead of writing somewhere temporary.
+  const UPLOAD_DIR = mediaStorageRoot();
+  {
+    const st = mediaStorageStatus();
+    try { if (st.driver === 'local-persistent' || st.driver === 'local-dev') ensureMediaDirs(); } catch (e: any) { console.error(`[uploads] could not create ${UPLOAD_DIR}:`, e?.code || e?.message); }
+    const after = mediaStorageStatus();
+    console.log(`[uploads] media storage: ${after.label}${after.root ? ` at ${after.root}` : ''} — ${after.healthy ? 'healthy' : `NOT healthy: ${after.problem}`}`);
+    if (isProduction() && !after.healthy) console.error(`[uploads] Uploads will be REFUSED until this is fixed: ${after.problem}`);
+  }
   // Media files are never overwritten (every upload gets its own name), so a picture at a given address never changes: browsers and any CDN
   // may keep it for a year. A missing file is a 404, which static serving never caches, so a restored file shows at once.
   app.use('/uploads', express.static(UPLOAD_DIR, {
@@ -7917,8 +7926,13 @@ async function startServer() {
     try {
       const { dataUrl, filename } = req.body;
       if (!dataUrl) return res.status(400).json({ error: "No file provided" });
+      // Never into a directory nobody declared persistent. (These files are written locally even with the S3 driver, as before: S3 for them is later work.)
+      if (mediaDriver().driver !== 's3') assertUploadsPossible();
       res.json({ url: await saveDataUrl(dataUrl, filename || 'upload') });
-    } catch (e: any) { console.error("upload:", e); res.status(500).json({ error: "Upload failed" }); }
+    } catch (e: any) {
+      if (e instanceof MediaStorageError) return res.status(e.status).json({ error: e.message, code: 'MEDIA_STORAGE' });
+      console.error("upload:", e); res.status(500).json({ error: "Upload failed" });
+    }
   });
 
   // ==========================================
@@ -7926,7 +7940,7 @@ async function startServer() {
   // Upload once, get a permanent public URL, reuse it anywhere.
   // Files: <UPLOAD_DIR>/media/<stored-name>  →  served at /uploads/media/<stored-name>
   // ==========================================
-  const MEDIA_DIR = path.join(UPLOAD_DIR, 'media');
+  const MEDIA_DIR = mediaDirPath();
 
   /**
    * Is the uploads directory the same directory it was last time? The app keeps pictures on the filesystem and their records in the database.
@@ -7945,14 +7959,21 @@ async function startServer() {
     const remembered = (row?.value as any) || {};
     const known: string | null = remembered.id ?? null;
     const now = new Date().toISOString();
+    const driver = mediaDriver().driver;
     let id = onDisk, resetNow = false;
     if (!onDisk) { id = crypto.randomUUID(); fs.writeFileSync(SENTINEL, id); resetNow = !!known; }
     else if (known && known !== onDisk) resetNow = true;
+    // The first start on a newly DECLARED persistent volume is the move onto it, not a loss: the directory it replaces was never declared
+    // persistent. Recorded as the move (and the history starts again from it), so the Studio does not go on warning about the old directory.
+    const movedToVolume = resetNow && driver === 'local-persistent' && remembered.driver !== 'local-persistent';
+    if (movedToVolume) resetNow = false;
     const value = {
-      id, checkedAt: now, firstSeenAt: remembered.firstSeenAt ?? now,
-      lastResetAt: resetNow ? now : (remembered.lastResetAt ?? null),
-      resets: (remembered.resets ?? 0) + (resetNow ? 1 : 0),
+      id, checkedAt: now, firstSeenAt: movedToVolume ? now : (remembered.firstSeenAt ?? now), driver,
+      movedToVolumeAt: movedToVolume ? now : (remembered.movedToVolumeAt ?? null),
+      lastResetAt: movedToVolume ? null : resetNow ? now : (remembered.lastResetAt ?? null),
+      resets: movedToVolume ? 0 : (remembered.resets ?? 0) + (resetNow ? 1 : 0),
     };
+    if (movedToVolume) console.log(`[uploads] First start on the declared persistent volume ${UPLOAD_DIR}. Files from the previous (temporary) directory must be copied in from the backup if they are wanted.`);
     await (prisma as any).appSetting.upsert({ where: { key: STORAGE_KEY }, create: { key: STORAGE_KEY, value, updatedBy: 'storage-check' }, update: { value, updatedBy: 'storage-check' } }).catch(() => {});
     if (resetNow) console.error(`[uploads] The uploads directory (${UPLOAD_DIR}) is NEW: the database remembers an earlier one. Files uploaded before this start are gone unless they were restored. If this happens on every deploy, ${UPLOAD_DIR} is not on a persistent volume.`);
     return value;
@@ -7971,9 +7992,12 @@ async function startServer() {
       const state = ((await (prisma as any).appSetting.findUnique({ where: { key: STORAGE_KEY } }).catch(() => null))?.value as any) || {};
       let separateMount: boolean | null = null;
       try { separateMount = fs.statSync(UPLOAD_DIR).dev !== fs.statSync(path.dirname(UPLOAD_DIR)).dev; } catch { /* unknown */ }
+      const ms = mediaStorageStatus();
       res.json({
-        uploadDir: UPLOAD_DIR, fromEnvironment: !!process.env.UPLOAD_DIR,
+        uploadDir: UPLOAD_DIR, fromEnvironment: !!(process.env.MEDIA_STORAGE_ROOT || process.env.UPLOAD_DIR),
         separateMount,
+        // The configured storage, checked now: driver, label ("Persistent volume", "AWS S3"), directory exists / writable. Writes nothing.
+        mediaStorage: ms,
         s3Configured: s3Configured(),
         mediaRecords: assets.length,
         s3Records: s3Assets.length,
@@ -7981,7 +8005,9 @@ async function startServer() {
         filesMissing: missing.length,
         blogCoversMissing: coversMissing.map(p => ({ id: p.id, title: p.title, slug: p.slug, status: p.status })),
         storage: { resets: state.resets ?? 0, lastResetAt: state.lastResetAt ?? null, firstSeenAt: state.firstSeenAt ?? null },
-        persistent: s3Configured() || ((state.resets ?? 0) === 0 && missing.length === 0 ? (separateMount === false ? 'unknown' : true) : false),
+        persistent: ms.driver === 's3' ? ms.healthy
+          : ms.driver === 'local-persistent' ? (ms.healthy && (state.resets ?? 0) === 0 ? true : false)
+          : ((state.resets ?? 0) === 0 && missing.length === 0 ? (separateMount === false ? 'unknown' : true) : false),
       });
     } catch (e: any) { console.error('media health:', e?.message); res.status(500).json({ error: "Could not check storage" }); }
   });
@@ -8077,28 +8103,21 @@ async function startServer() {
         return res.status(413).json({ error: `File is too large (${(buf.length / 1048576).toFixed(1)} MB). Maximum is 25 MB.` });
       }
 
-      const useS3 = s3Configured();
       const isImage = type.kind === 'image';
-      if (!useS3 && isProduction() && isImage) {
-        return res.status(503).json({ error: "Persistent media storage is not configured. Set AWS_S3_BUCKET in the server environment." });
-      }
-
+      // Stored through the media storage layer: a new <uuid>.<ext> name every time, written and verified BEFORE the record is created.
+      // (With the S3 driver, non-image files still go to local disk as before; moving them is later S3 work.)
+      const driver = assertUploadsPossible();
       let storedName: string;
       let publicUrl: string;
-
-      if (useS3 && isImage) {
-        const key = mediaKey(ext);
-        await uploadObject(key, buf, type.mime);
-        storedName = key;
-        publicUrl = getPublicMediaUrl(key);
-        console.log(`[s3] media uploaded: ${key} (${buf.length} bytes, ${type.mime})`);
-      } else {
-        const fsm = await import('node:fs');
-        fsm.mkdirSync(MEDIA_DIR, { recursive: true });
-        const base = original.replace(/\.[^.]*$/, '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-').slice(0, 60) || 'file';
-        storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${ext}`;
-        fsm.writeFileSync(path.join(MEDIA_DIR, storedName), buf);
+      if (driver === 's3' && !isImage) {
+        ensureMediaDirs();
+        storedName = `${crypto.randomUUID()}.${ext}`;
+        fs.writeFileSync(path.join(MEDIA_DIR, storedName), buf, { flag: 'wx' });
         publicUrl = `/uploads/media/${storedName}`;
+      } else {
+        const up = await uploadMedia({ body: buf, ext, mime: type.mime, kind: 'media' });
+        storedName = up.storedName; publicUrl = up.url;
+        if (up.driver === 's3') console.log(`[s3] media uploaded: ${storedName} (${buf.length} bytes, ${type.mime})`);
       }
 
       const dims = type.kind === 'image' ? readImageSize(buf, ext) : {};
@@ -8123,19 +8142,18 @@ async function startServer() {
       });
       res.json(withAbsolute(req, asset));
     } catch (e: any) {
+      if (e instanceof MediaStorageError) return res.status(e.status).json({ error: e.message, code: 'MEDIA_STORAGE' });
       console.error("media upload:", e);
       res.status(500).json({ error: "Upload failed" });
     }
   });
 
   // POST /api/studio/cover — a blog cover, held to a stricter standard than a general upload.
-  // Images go to S3 when configured; in production S3 is required (fail-closed).
+  // Images go through the media storage layer (S3 or persistent volume); production requires a declared driver (fail-closed).
   app.post("/api/studio/cover", authenticateJWT, requireEditor, async (req: any, res: any) => {
     try {
-      const useS3 = s3Configured();
-      if (!useS3 && isProduction()) {
-        return res.status(503).json({ error: "Persistent media storage is not configured. Set AWS_S3_BUCKET in the server environment." });
-      }
+      // Refuse at once, before reading the image, if there is nowhere persistent to put it.
+      assertUploadsPossible();
 
       const { dataUrl, filename, altText } = req.body || {};
       if (typeof dataUrl !== 'string' || !dataUrl) return res.status(400).json({ error: "Choose an image to upload." });
@@ -8156,22 +8174,10 @@ async function startServer() {
       const { info } = check;
       const original = String(filename || `cover.${info.ext}`).slice(0, 120);
 
-      let storedName: string;
-      let publicUrl: string;
-
-      if (useS3) {
-        const key = coverKey(info.ext);
-        await uploadObject(key, buf, info.mime);
-        storedName = key;
-        publicUrl = getPublicMediaUrl(key);
-        console.log(`[s3] cover uploaded: ${key} (${buf.length} bytes, ${info.mime})`);
-      } else {
-        const fsm = await import('node:fs');
-        fsm.mkdirSync(MEDIA_DIR, { recursive: true });
-        storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-cover.${info.ext}`;
-        fsm.writeFileSync(path.join(MEDIA_DIR, storedName), buf);
-        publicUrl = `/uploads/media/${storedName}`;
-      }
+      // A new <uuid>.<ext> every time (a replaced cover never reuses an address), written and verified before anything points at it.
+      const up = await uploadMedia({ body: buf, ext: info.ext, mime: info.mime, kind: 'cover' });
+      const storedName = up.storedName, publicUrl = up.url;
+      if (up.driver === 's3') console.log(`[s3] cover uploaded: ${storedName} (${buf.length} bytes, ${info.mime})`);
 
       const asset = await (prisma as any).mediaAsset.create({
         data: {
@@ -8193,6 +8199,7 @@ async function startServer() {
       });
       res.json({ ...withAbsolute(req, asset), soft: check.soft, offRatio: check.offRatio });
     } catch (e: any) {
+      if (e instanceof MediaStorageError) return res.status(e.status).json({ error: e.message, code: 'MEDIA_STORAGE' });
       console.error("cover upload:", e);
       res.status(500).json({ error: "Upload failed. Please try again." });
     }

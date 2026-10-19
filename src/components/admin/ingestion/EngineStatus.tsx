@@ -127,7 +127,7 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
             <p><span className="font-semibold text-ink">Then:</span> {st.nextJobs.slice(1).map(jobLine).join(' → ')}</p>
           )}
           {pendingBacklog.length > 0 && (
-            <p><span className="font-semibold text-ink">Local backlog:</span> {pendingBacklog.map((b: any) => `${b.label} · ${N(b.pending)} to look at`).join(' · ')} <span className="text-muted">(runs when every source is resting)</span></p>
+            <p><span className="font-semibold text-ink">Local backlog:</span> {pendingBacklog.map((b: any) => `${b.label} · ${N(b.pending)} to look at`).join(' · ')} <span className="text-muted">(runs when every source is resting){st.localZeroYield > 0 ? ` · paused after ${st.localZeroYield} zero-change pass${st.localZeroYield === 1 ? '' : 'es'} — external sources go next` : ''}</span></p>
           )}
           {st.lastDecision && (
             <details className="group">
