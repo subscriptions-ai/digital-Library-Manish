@@ -52,6 +52,8 @@ export type RotationState = {
   lastDecision?: Decision | null;
   /** A local backlog job working right now (re-judging held books, filling departments). Null when none is. */
   localRunning?: { job: string; label: string; group: Group; since: string } | null;
+  /** Consecutive rotation ticks where only a local/maintenance job ran and produced zero useful changes. Reset by any external source run or useful local job. */
+  localZeroYield?: number;
   updatedAt: string | null;
 };
 

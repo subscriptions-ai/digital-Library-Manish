@@ -102,7 +102,7 @@ try {
   const id = created.data.id, slug = created.data.slug; slugs.push(slug);
   check('a draft is created without a cover', created.status === 201 && !created.data.coverUrl);
   const a = await upload(PNG_A, 'cover-a.png');
-  check('the cover is stored under a unique name in the uploads directory', /^\/uploads\/media\/\d+-[a-z0-9]+-cover\.png$/.test(a?.url || '') && existsSync(join(D1, 'media', a.url.split('/').pop())), a?.url);
+  check('the cover is stored under a unique name in the uploads directory', /^\/uploads\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.png$/.test(a?.url || '') && existsSync(join(D1, 'media', a.url.split('/').pop())), a?.url);
   const saved = await E(`/api/studio/posts/${id}`, 'PUT', { title: `Cover test ${RUN}`, body: '<p>A post written for the cover test, with a few words in it.</p>', coverUrl: a.url, coverAlt: 'Cover A' });
   check('TEST A: saving stores the address on the post', saved.status === 200 && saved.data.coverUrl === a.url && saved.data.ogImage === a.url, saved.data);
   const reload = await E(`/api/studio/posts/${id}`);

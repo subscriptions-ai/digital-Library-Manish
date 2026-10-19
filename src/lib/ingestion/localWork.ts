@@ -55,9 +55,13 @@ export type LocalJob = {
 };
 
 type Cursor = { at: string; id: string } | null;
-type JobState = { fingerprint: string; cursor: Cursor; lastRunAt: string | null; totals: { checked: number; promoted: number; enriched: number } };
+type JobZeroYield = { count: number; exhaustedUntil: string | null };
+type JobState = { fingerprint: string; cursor: Cursor; lastRunAt: string | null; totals: { checked: number; promoted: number; enriched: number }; zeroYield?: JobZeroYield };
 type LocalState = { jobs: Record<string, JobState>; cursor: number };
 const KEY = 'ingestion.localwork.v1';
+
+const LOCAL_EXHAUSTED_MINUTES = 30;
+const LOCAL_ZERO_YIELD_THRESHOLD = 3;
 
 async function loadLocal(): Promise<LocalState> {
   const row = await db.appSetting.findUnique({ where: { key: KEY } }).catch(() => null);
@@ -285,13 +289,52 @@ export async function localBacklog(jobs: LocalJob[] = LOCAL_JOBS): Promise<{ id:
   return out;
 }
 
-/** The local job to run next: round robin among those with work, so one long job cannot hold the others back. */
+/** True when a local job produced useful changes (something was promoted or enriched). */
+export function localOutcomeIsUseful(o: LocalOutcome): boolean {
+  return o.promoted > 0 || o.enriched > 0;
+}
+
+/** Record the outcome of a local job run: reset or increment its zero-yield counter, and mark it exhausted after enough consecutive zero-yield batches. */
+export async function recordLocalOutcome(jobId: string, o: LocalOutcome): Promise<{ exhausted: boolean; count: number }> {
+  const s = await loadLocal();
+  const js = s.jobs[jobId];
+  if (!js) return { exhausted: false, count: 0 };
+  if (!js.zeroYield) js.zeroYield = { count: 0, exhaustedUntil: null };
+  if (localOutcomeIsUseful(o)) {
+    js.zeroYield = { count: 0, exhaustedUntil: null };
+    await saveLocal(s);
+    return { exhausted: false, count: 0 };
+  }
+  if (o.checked === 0) {
+    // Nothing to check at all — the cursor has passed everything. Not a zero-yield: the job is simply done.
+    await saveLocal(s);
+    return { exhausted: false, count: js.zeroYield.count };
+  }
+  js.zeroYield.count++;
+  if (js.zeroYield.count >= LOCAL_ZERO_YIELD_THRESHOLD) {
+    js.zeroYield.exhaustedUntil = new Date(Date.now() + LOCAL_EXHAUSTED_MINUTES * 60_000).toISOString();
+    // After rest, the next zero-yield batch exhausts again immediately (same pattern as external providers).
+    js.zeroYield.count = LOCAL_ZERO_YIELD_THRESHOLD - 1;
+  }
+  await saveLocal(s);
+  return { exhausted: js.zeroYield.count >= LOCAL_ZERO_YIELD_THRESHOLD - 1 && !!js.zeroYield.exhaustedUntil, count: js.zeroYield.count };
+}
+
+/** True when the job is in zero-yield cooldown. */
+function jobExhausted(s: LocalState, jobId: string): boolean {
+  const js = s.jobs[jobId];
+  if (!js?.zeroYield?.exhaustedUntil) return false;
+  return Date.now() < Date.parse(js.zeroYield.exhaustedUntil);
+}
+
+/** The local job to run next: round robin among those with work, skipping exhausted (zero-yield cooldown) jobs. */
 export async function nextLocalJob(jobs: LocalJob[], allow: (g: Group) => boolean): Promise<{ job: LocalJob; pending: number } | null> {
   if (!jobs.length) return null;
   const s = await loadLocal();
   for (let i = 0; i < jobs.length; i++) {
     const job = jobs[(s.cursor + i) % jobs.length];
     if (!allow(job.group)) continue;
+    if (jobExhausted(s, job.id)) continue;
     const pending = await job.pending().catch(() => 0);
     if (pending > 0) { s.cursor = (jobs.indexOf(job) + 1) % jobs.length; await saveLocal(s); return { job, pending }; }
   }

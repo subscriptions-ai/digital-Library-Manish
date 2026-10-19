@@ -14,7 +14,8 @@ export function PostList() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   // Whether the pictures the database points at are still on disk. Shown only when something is wrong.
-  const [storage, setStorage] = useState<{ filesMissing: number; mediaRecords: number; storage: { resets: number }; persistent: boolean | string; blogCoversMissing: any[] } | null>(null);
+  const [storage, setStorage] = useState<{ filesMissing: number; mediaRecords: number; storage: { resets: number }; persistent: boolean | string; blogCoversMissing: any[];
+    mediaStorage?: { driver: string; label: string; healthy: boolean; problem: string | null } } | null>(null);
   useEffect(() => {
     fetch('/api/admin/media/health', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
       .then(r => (r.ok ? r.json() : null)).then(d => d && setStorage(d)).catch(() => {});
@@ -48,6 +49,18 @@ export function PostList() {
           <PenLine size={16} aria-hidden="true" /> Write a post
         </Link>
       </div>
+
+      {/* Where new uploads go, checked now. A problem here means uploads are refused until it is fixed — nothing is saved somewhere temporary. */}
+      {storage?.mediaStorage && (storage.mediaStorage.healthy ? (
+        <p className="mt-3 text-[12.5px] text-muted">
+          Media storage: <b className="font-semibold text-ink-2">{storage.mediaStorage.label}</b> · <span className="text-success">Healthy</span>
+        </p>
+      ) : (
+        <div role="alert" className="mt-4 rounded-lg border border-alarm/40 bg-alarm-soft px-4 py-3 text-[13px] leading-snug text-ink">
+          <b className="font-semibold">Media storage: {storage.mediaStorage.label} — uploads are paused.</b>{' '}
+          {storage.mediaStorage.problem} Ask the administrator to fix this; existing posts are not affected.
+        </div>
+      ))}
 
       {storage && (storage.filesMissing > 0 || storage.blogCoversMissing.length > 0 || storage.storage.resets > 0) && (
         <div role="alert" className="mt-4 rounded-lg border border-caution/40 bg-caution-soft px-4 py-3 text-[13px] leading-snug text-ink">
