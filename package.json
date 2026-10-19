@@ -18,6 +18,7 @@
     "lint": "tsc --noEmit && node scripts/check-english.cjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1152.0",
     "@aws-sdk/client-ses": "^3.967.0",
     "@aws-sdk/client-sesv2": "^3.967.0",
     "@google/genai": "^1.29.0",

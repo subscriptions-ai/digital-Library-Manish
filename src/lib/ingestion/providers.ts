@@ -1,5 +1,7 @@
 import { ingestionDb as db } from './db.js';
-import { setProviders, setTargetedPolicy, type ProviderDef, type TurnCtx, type TurnOutcome } from './rotation.js';
+import { setProviders, setTargetedPolicy, setLocalJobs, type ProviderDef, type TurnCtx, type TurnOutcome } from './rotation.js';
+import { journalCoverageTurn } from './journalCoverage.js';
+import { LOCAL_JOBS, nextLocalJob } from './localWork.js';
 import { targetedTurn, loadPriorityConfig, nextBooksTurn, isTargetedTurn } from './targetedBooks.js';
 import { totals } from './departmentStats.js';
 import { harvestFeed, harvestDue, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, CROSSREF_BOOKS_FEED, NLM_FEED, PRESSBOOKS_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
@@ -18,8 +20,11 @@ import { releaseClaim } from './claims.js';
  *
  * Roles (the approved architecture):
  *   JOURNALS  DOAJ (primary) → ROAD/ISSN → Crossref Journals → OpenAlex Sources   (the last three are fallbacks)
+ *             + Journal coverage: the lowest-covered departments' searches, on whichever journal source can be asked
  *   ARTICLES  Crossref (primary) → OpenAlex (fallback) → Europe PMC → arXiv
- *   BOOKS     DOAB → OAPEN → Open Textbook Library → NCBI Bookshelf                (all rotate; NCBI review-first and quota-bound)
+ *   BOOKS     DOAB → OAPEN → Open Textbook Library → NCBI Bookshelf → NLM Catalog → Crossref Books → Pressbooks
+ *             (all rotate; NCBI quota-bound; Crossref Books and Pressbooks review-first and capped by the review backlog)
+ *             + Targeted coverage: the lowest-covered departments' books
  */
 
 const nextUtcMidnight = () => { const d = new Date(); d.setUTCHours(24, 0, 0, 0); return d; };
@@ -96,26 +101,27 @@ export const getRoadAdapter = () => roadAdapter;
 export const reviewBacklogLimit = () => { const n = Number(process.env.BOOKS_REVIEW_BACKLOG_LIMIT); return Number.isInteger(n) && n >= 0 && n <= 100_000 ? n : 250; };
 
 /**
- * `optIn`: a source that adds only books for a person to review (it carries no controlled classification code, so the classifier can never
- * place its books with confidence). Running it continuously would add a review Draft to the queue on every turn, so it is OFF in the rotation
- * unless `envOff=1`, and stays available to Quick Import and Bulk expansion, which an administrator starts knowing what they add.
+ * `reviewOnly`: a source that adds only books for a person to review (Crossref Books, Pressbooks: no controlled classification code, rights not
+ * declared by the listing). It runs in the continuous rotation — `envOff=0` takes it out — but never publishes on its own, and it RESTS once
+ * BOOKS_REVIEW_BACKLOG_LIMIT of its books are waiting for review, so it cannot bury the review queue. Its books are Metadata Only unless the book
+ * itself declares an open licence (Pressbooks reads each book's own licence); nothing is assumed open because a listing mentions it.
  */
-function bookProvider(cfg: OaiProviderConfig, id: string, label: string, healthKey: string, envOff: string | null, optIn = false): ProviderDef {
+function bookProvider(cfg: OaiProviderConfig, id: string, label: string, healthKey: string, envOff: string | null, reviewOnly = false): ProviderDef {
   const isNcbi = cfg.kind === 'ncbi';
   return {
     id, label, group: 'Books', tier: 'supplementary', healthKey, lock: cfg.provider,
     role: isNcbi ? 'Biomedical and health books, review-first' : id === 'doab' ? 'Scholarly open-access books' : id === 'oapen' ? 'Scholarly open-access books and enrichment'
       : id === 'crossrefbooks' ? 'Scholarly book metadata by DOI (Metadata Only, review-first)' : id === 'nlm' ? 'Health-book catalogue records with NLM classification (Metadata Only)'
       : id === 'pressbooks' ? 'Openly published university textbooks (licence read from each book, review-first)' : 'Academic textbooks',
-    configured: () => (!optIn && envOff && process.env[envOff] === '0' ? `switched off (${envOff}=0)` : id !== 'doab' && !booksOai() ? 'switched off (BOOKS_OAI=0)' : true),
-    rotationOff: optIn && envOff ? () => (process.env[envOff] === '1' ? null : `not in the continuous rotation (set ${envOff}=1) — available to Quick Import and Bulk expansion`) : undefined,
+    configured: () => (!reviewOnly && envOff && process.env[envOff] === '0' ? `switched off (${envOff}=0)` : id !== 'doab' && !booksOai() ? 'switched off (BOOKS_OAI=0)' : true),
+    rotationOff: reviewOnly && envOff ? () => (process.env[envOff] === '0' ? `not in the continuous rotation (${envOff}=0) — available to Quick Import and Bulk expansion` : null) : undefined,
     // A daily quota is an expected rest, not a failure: it is read from the download log, never recorded as a source failure.
     restingNow: isNcbi ? async () => {
       const lim = ncbiLimits(); const used = await usedToday(db);
       if (used.archives >= lim.maxArchivesPerDay) return { until: nextUtcMidnight(), reason: `daily limit of ${lim.maxArchivesPerDay} archives reached — resumes after midnight UTC` };
       if (used.bytes >= lim.maxBytesPerDay) return { until: nextUtcMidnight(), reason: 'daily download limit reached — resumes after midnight UTC' };
       return null;
-    } : optIn ? async () => {
+    } : reviewOnly ? async () => {
       // A source that can only send books to review must not outrun the people who review them: once this many of its books are waiting, it rests
       // until some are decided. (Crossref alone lists about 2.5 million books, a quarter of them close enough to a department to reach review.)
       const limit = reviewBacklogLimit();
@@ -207,6 +213,18 @@ export function buildProviders(): ProviderDef[] {
       id: 'openalexsources', label: 'OpenAlex Sources', group: 'Journals', tier: 'fallback', fallbackFor: ['doaj', 'road', 'crossrefjournals'], role: 'Supplementary journal fallback (open access unverified)', healthKey: 'OpenAlex', lock: 'OpenAlexSources',
       turn: ctx => journalSourceTurn('OpenAlexSources', 'OpenAlex Sources', 'OpenAlex', (t, pos, n) => fetchOpenAlexSources(t, pos + 1, n), ctx),
     },
+    // Not a source: the departments with the fewest journal TITLES go first, through whichever of these can be asked (each keeps its own health,
+    // lock and sweep rows). DOAJ verifies open access; the other two catalogue metadata only or hold for review, exactly as they do as fallbacks.
+    {
+      id: 'journalcoverage', label: 'Journal coverage', group: 'Journals', tier: 'supplementary', role: 'Journal titles for the departments that hold the fewest',
+      healthKey: 'JournalCoverage', lock: 'JournalCoverage', virtual: true,
+      configured: () => (process.env.INGESTION_JOURNAL_COVERAGE === '0' ? 'switched off (INGESTION_JOURNAL_COVERAGE=0)' : true),
+      turn: journalCoverageTurn([
+        { id: 'doaj', label: 'DOAJ', healthKey: 'DOAJ', lock: 'DOAJ', sweepSource: 'DOAJ', turn: doajTurn },
+        { id: 'crossrefjournals', label: 'Crossref Journals', healthKey: 'Crossref', lock: 'CrossrefJournals', sweepSource: 'CrossrefJournals', turn: ctx => journalSourceTurn('CrossrefJournals', 'Crossref Journals', 'Crossref', (t, pos, n) => fetchCrossrefJournals(t, pos * n, n), ctx) },
+        { id: 'openalexsources', label: 'OpenAlex Sources', healthKey: 'OpenAlex', lock: 'OpenAlexSources', sweepSource: 'OpenAlexSources', turn: ctx => journalSourceTurn('OpenAlexSources', 'OpenAlex Sources', 'OpenAlex', (t, pos, n) => fetchOpenAlexSources(t, pos + 1, n), ctx) },
+      ]),
+    },
     // Articles
     { id: 'crossref', label: 'Crossref', group: 'Articles', tier: 'primary', role: 'Primary article source', healthKey: 'Crossref', lock: 'Crossref', turn: crossrefTurn },
     { id: 'openalex', label: 'OpenAlex', group: 'Articles', tier: 'fallback', fallbackFor: ['crossref'], role: 'Article fallback', healthKey: 'OpenAlex', lock: 'OpenAlex', turn: openAlexTurn },
@@ -217,15 +235,15 @@ export function buildProviders(): ProviderDef[] {
     bookProvider(OAPEN_OAI, 'oapen', 'OAPEN', 'OAPEN', 'BOOKS_OAPEN'),
     bookProvider(OTL_FEED, 'otl', 'Open Textbook Library', 'open.umn.edu', 'BOOKS_OTL'),
     bookProvider(NCBI_FEED, 'ncbi', 'NCBI Bookshelf', 'NCBI', 'BOOKS_NCBI'),
-    // Metadata sources. NLM Catalog can place a health book with confidence (the NLM classification is a controlled code) and runs by default;
-    // Crossref Books and Pressbooks can only ever send books to review, so they are opt-in for the continuous rotation.
+    // Metadata sources. NLM Catalog can place a health book with confidence (the NLM classification is a controlled code). Crossref Books and
+    // Pressbooks can only ever send books to review: they rotate too, and rest whenever their review backlog is full.
     bookProvider(NLM_FEED, 'nlm', 'NLM Catalog', 'NLMCatalog', 'BOOKS_NLM'),
     bookProvider(CROSSREF_BOOKS_FEED, 'crossrefbooks', 'Crossref Books', 'Crossref', 'BOOKS_CROSSREF', true),
     bookProvider(PRESSBOOKS_FEED, 'pressbooks', 'Pressbooks Directory', 'Pressbooks', 'BOOKS_PRESSBOOKS', true),
     // Not a source: the low-coverage engine. Each of the sources it reads keeps its own health row, so this one never has a failure of its own.
     {
       id: 'targeted', label: 'Targeted coverage', group: 'Books', tier: 'supplementary', role: 'Books for the departments that hold the fewest',
-      healthKey: 'Targeted', lock: 'Targeted', turn: targetedTurn,
+      healthKey: 'Targeted', lock: 'Targeted', turn: targetedTurn, virtual: true,
     },
   ];
 }
@@ -235,4 +253,6 @@ export function installProviders() {
   setProviders(buildProviders());
   // Of every ten Books turns, the configured share go to the lowest-covered department first (see targetedBooks.ts).
   setTargetedPolicy(async () => { const c = await loadPriorityConfig(); return c.enabled && isTargetedTurn(await nextBooksTurn(), c.share); });
+  // When no source of any type can work, the local backlog (localWork.ts) runs before the engine waits. INGESTION_LOCAL_WORK=0 switches it off.
+  setLocalJobs(process.env.INGESTION_LOCAL_WORK === '0' ? [] : LOCAL_JOBS, nextLocalJob);
 }

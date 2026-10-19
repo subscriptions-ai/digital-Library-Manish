@@ -61,7 +61,9 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
     health = 'attention'; reasons.push(`${state.consecutiveFailures} passes in a row failed`);
   } else if (staleClaims > 0) {
     health = 'attention'; reasons.push(`${staleClaims} journal claim${staleClaims === 1 ? '' : 's'} abandoned by a worker that stopped`);
-  } else if (rotating ? (allWaiting || asleep) : pausedSources.length > 0) {
+  } else if (rotating ? asleep : pausedSources.length > 0) {
+    // Waiting means the engine looked and found NOTHING to do — no source of any type, no coverage work, no local backlog. Every content type
+    // resting is not enough: the engine then works through its backlog, and is running. (`allWaiting` is kept for the reasons below.)
     // Every source resting is the sources' state, not a fault of the engine: it resumes by itself, and says when it will try again.
     health = 'waiting';
     if (!rotating) for (const s of pausedSources) reasons.push(`${s.source} is paused after repeated failures and will be tried again by itself`);
@@ -76,6 +78,7 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
     for (const p of problems) reasons.push(p.text);
     for (const g of groupsWaiting) reasons.push(`${g}: waiting for source recovery${rot.groups[g].retryAt ? ` (next try ${clock(rot.groups[g].retryAt!)})` : ''}`);
     if (rot.idle?.cause === 'caught-up' && health === 'waiting') reasons.push('Every source is up to date; the engine looks again when the first one is due.');
+    if (allWaiting && health === 'running' && rot.currentJob?.kind !== 'source') reasons.push('Every external source is resting; the engine is working through its local backlog meanwhile.');
     if (problems.length || groupsWaiting.length) reasons.push(health === 'waiting' ? 'The engine will pick up each source as it recovers.' : 'Healthy providers continue running automatically.');
   }
   // When it will look again, and at whom: from the engine's own record while it sleeps, else worked out now.
@@ -87,9 +90,13 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
 
   // The source working RIGHT NOW, or the one that last worked for what the engine was last doing — never a fixed guess from the phase.
   const group = GROUP_FOR_PHASE[state.phase];
+  // The job working now (a source, a coverage engine or a backlog job), else the one the engine last chose — never blank while work runs.
   const currentSource = rot
-    ? (rot.running?.label ?? (group ? rot.groups[group].current : null))
+    ? (rot.currentJob?.label ?? rot.running?.label ?? rot.lastDecision?.label ?? (group ? rot.groups[group].current : null))
     : (SOURCE_FOR_PHASE[state.phase] || null);
+  const activity = rot?.currentJob
+    ? `${rot.currentJob.kind === 'local' ? 'Backlog' : rot.currentJob.group} · ${rot.currentJob.label}`
+    : rot?.lastDecision && health === 'running' ? `${rot.lastDecision.kind === 'local' ? 'Backlog' : rot.lastDecision.group} · ${rot.lastDecision.label}` : null;
 
   return {
     health, label, reasons,
@@ -98,6 +105,12 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
     next,
     mode: state.focus || 'auto',
     currentSource,
+    /** "Books · Crossref Books", "Backlog · Held candidate review": what the engine is doing now, or last chose to do. */
+    activity,
+    nextJobs: rot?.nextJobs ?? [],
+    lastDecision: rot?.lastDecision ?? null,
+    backlog: rot?.backlog ?? [],
+    weights: rot?.weights ?? null,
     currentlyProcessing: claimed[0]?.title || (state.currentJournal || null),
     lastPassAt: state.lastRunAt ?? null,
     // The timer's real rhythm. Known only while the engine is on and the server has ticked since it started.
@@ -126,10 +139,11 @@ export async function last24Hours() {
   const [r]: any[] = await db.$queryRawUnsafe(
     `select count(*)::int passes, coalesce(sum(r.added), 0)::int added, coalesce(sum(r."skippedHeld"), 0)::int held,
             coalesce(sum(r."skippedFailed"), 0)::int failed, coalesce(sum(r."skippedRejected"), 0)::int rejected, coalesce(sum(r."needsReview"), 0)::int "needsReview",
+            coalesce(sum(r.enriched), 0)::int enriched, coalesce(sum(r.promoted), 0)::int promoted,
             (count(*) filter (where ${PROVIDER_FAILURE_SQL}))::int "providerFailures",
             (count(*) filter (where r.error is not null and not ${PROVIDER_FAILURE_SQL}))::int errors
        from "IngestionRun" r where r."at" >= ((($1)::text)::timestamptz at time zone 'UTC')`, since);
-  return { passes: r.passes, added: r.added, held: r.held, failed: r.failed, errors: r.errors, providerFailures: r.providerFailures, rejected: r.rejected, needsReview: r.needsReview };
+  return { passes: r.passes, added: r.added, held: r.held, failed: r.failed, errors: r.errors, providerFailures: r.providerFailures, rejected: r.rejected, needsReview: r.needsReview, enriched: r.enriched, promoted: r.promoted };
 }
 
 /**

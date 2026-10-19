@@ -33,7 +33,8 @@ function EngineCopy({ rotation }: { rotation: any }) {
     <>
       Journals are discovered through DOAJ, with {list(fallbacks)} available as fallbacks{connected('road') ? '' : ' (ROAD / ISSN is in the chain but not connected yet: it has no public data interface)'}.
       {' '}Articles are collected primarily through Crossref, with OpenAlex, Europe PMC and arXiv used where appropriate.
-      {' '}Books are collected through DOAB, OAPEN, Open Textbook Library, NCBI Bookshelf and NLM Catalog; no book file is hosted here, so each book is catalogued with a link to its source, or as a record with no Read button when no licence is known.
+      {' '}Books are collected through DOAB, OAPEN, Open Textbook Library, NCBI Bookshelf and NLM Catalog, with Crossref Books and Pressbooks adding books for review only; no book file is hosted here, so each book is catalogued with a link to its source, or as a record with no Read button when no licence is known.
+      {' '}Content types take turns by priority ({rotation.weights ? `Books ${rotation.weights.Books} · Journals ${rotation.weights.Journals} · Articles ${rotation.weights.Articles}` : 'Books first'}); when every source is resting, the engine works through its local backlog before it waits.
     </>
   );
 }
@@ -68,6 +69,10 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
   const waiting = running && st.health === 'waiting';
   // While every source is resting the timer still ticks, but nothing happens at a tick: what matters is when a source comes back.
   const next = running ? (st.passRunning ? 'a pass is running now' : waiting ? (st.next ? `${st.next.group} — ${clock(st.next.at)}` : 'when a source is free') : st.nextPassAt ? `~${clock(st.nextPassAt)}` : '—') : '—';
+  // What runs next, in the weighted order, worked out the way a tick decides. While waiting, the time the first source comes back matters more.
+  const jobLine = (j: any) => `${j.kind === 'local' ? 'Backlog' : j.group} · ${j.label}`;
+  const nextJob = running && !waiting && st.nextJobs?.length ? jobLine(st.nextJobs[0]) : null;
+  const pendingBacklog = (st.backlog || []).filter((b: any) => b.pending > 0);
 
   return (
     <section className="card card-pad" aria-labelledby="engine-heading">
@@ -102,9 +107,9 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
           [Layers, 'Mode', MODE_LABEL[st.mode || state.focus] || '—'],
           [Database, 'Current source', st.currentSource || '—'],
           [Radio, 'Active scope', scope.short],
-          [Clock, 'Currently processing', st.currentlyProcessing || '—'],
+          [Clock, 'Currently processing', (running && st.activity) || st.currentlyProcessing || '—'],
           [Clock, 'Last pass', state.lastRunAt ? `${clock(state.lastRunAt)} · ${ago(state.lastRunAt)}` : 'No pass yet'],
-          [Clock, waiting ? 'Next attempt' : 'Next pass', next],
+          nextJob ? [Clock, 'Next job', `${nextJob}${st.nextPassAt && !st.passRunning ? ` · ~${clock(st.nextPassAt)}` : ''}`] : [Clock, waiting ? 'Next attempt' : 'Next pass', next],
         ].map(([Icon, label, value]: any) => (
           <div key={label} className="flex items-start gap-3">
             <span aria-hidden="true" className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted"><Icon size={15} /></span>
@@ -116,6 +121,27 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
         ))}
       </dl>
 
+      {running && !waiting && (st.nextJobs?.length > 1 || st.lastDecision || pendingBacklog.length > 0) && (
+        <div className="mt-4 space-y-1.5 text-[13px] text-ink-2">
+          {st.nextJobs?.length > 1 && (
+            <p><span className="font-semibold text-ink">Then:</span> {st.nextJobs.slice(1).map(jobLine).join(' → ')}</p>
+          )}
+          {pendingBacklog.length > 0 && (
+            <p><span className="font-semibold text-ink">Local backlog:</span> {pendingBacklog.map((b: any) => `${b.label} · ${N(b.pending)} to look at`).join(' · ')} <span className="text-muted">(runs when every source is resting)</span></p>
+          )}
+          {st.lastDecision && (
+            <details className="group">
+              <summary className="cursor-pointer select-none font-semibold text-ink hover:text-accent">
+                Why the engine chose {st.lastDecision.kind === 'local' ? 'Backlog' : st.lastDecision.group} · {st.lastDecision.label} <span className="font-normal text-muted">· {ago(st.lastDecision.at)}</span>
+              </summary>
+              <ul className="mt-1.5 list-disc space-y-0.5 pl-5">
+                {st.lastDecision.reasons.map((r: string, i: number) => <li key={i}>{r}</li>)}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+
       {waiting && (
         <div role="status" className="mt-5 rounded-lg border border-rule bg-surface-2 px-3.5 py-3 text-[13px]">
           <p className="font-semibold text-ink">Waiting for source recovery</p>
@@ -124,13 +150,16 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
             <div className="flex gap-2"><dt className="w-40 shrink-0 text-muted">Next attempt</dt><dd className="font-medium tabular-nums text-ink">{st.waiting?.nextAttemptAt ? `${clock(st.waiting.nextAttemptAt)} · ${inFuture(st.waiting.nextAttemptAt)}` : 'checked again at every tick, until a source is free'}</dd></div>
             {st.waiting?.since && <div className="flex gap-2"><dt className="w-40 shrink-0 text-muted">Waiting since</dt><dd className="tabular-nums text-ink">{clock(st.waiting.since)} · {ago(st.waiting.since)}</dd></div>}
           </dl>
-          <p className="mt-1.5 text-[12px] text-muted">Nothing is wrong with the engine: each source is resting, rate limited or caught up, and the engine asks it again by itself. It does not log a row for every minute it waits.</p>
+          <p className="mt-1.5 text-[12px] text-muted">Nothing is wrong with the engine: each source is resting, rate limited or caught up, and its local backlog is empty, so there is nothing useful to do until a source comes back. It asks each one again by itself, and does not log a row for every minute it waits.</p>
         </div>
       )}
 
       <p className="mt-5 text-[13px] text-ink-2">
         <span className="font-semibold text-ink">Last 24 hours:</span>{' '}
-        <b className="tabular-nums text-ink">{N(day.added)}</b> added · <b className="tabular-nums text-ink">{N(day.held)}</b> held ·{' '}
+        <b className="tabular-nums text-ink">{N(day.added)}</b> new records added ·{' '}
+        {day.promoted ? <><b className="tabular-nums text-ink">{N(day.promoted)}</b> held candidates promoted · </> : null}
+        {day.enriched ? <><b className="tabular-nums text-ink">{N(day.enriched)}</b> enriched · </> : null}
+        <b className="tabular-nums text-ink">{N(day.held)}</b> duplicates skipped ·{' '}
         <b className={`tabular-nums ${day.failed || day.errors ? 'text-alarm' : 'text-ink'}`}>{N((day.failed || 0) + (day.errors || 0))}</b> failed to write
         {day.providerFailures ? <> · <b className="tabular-nums text-ink">{N(day.providerFailures)}</b> source request{day.providerFailures === 1 ? '' : 's'} did not get an answer</> : null}
         {day.needsReview ? <> · <b className="tabular-nums text-ink">{N(day.needsReview)}</b> sent to review</> : null}
@@ -144,7 +173,7 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
         </p>
       )}
 
-      {(st.reasons?.length > 0 || st.sources?.some((s: any) => s.status !== 'ok')) && (
+      {(st.reasons?.length > 0 || (!st.rotation?.enabled && st.sources?.some((s: any) => s.status !== 'ok'))) && (
         <div role="status" className={`mt-4 rounded-lg border px-3.5 py-3 text-[13px] ${st.health === 'attention' ? 'border-alarm/40 bg-alarm-soft text-ink' : st.health === 'waiting' ? 'border-rule bg-surface-2 text-ink' : 'border-caution/40 bg-caution-soft text-ink'}`}>
           <p className="flex items-center gap-2 font-semibold"><AlertTriangle size={15} aria-hidden="true" className={st.health === 'attention' ? 'text-alarm' : st.health === 'waiting' ? 'text-muted' : 'text-caution'} /> {st.health === 'attention' ? 'Needs attention' : st.health === 'waiting' ? 'Which sources, and why' : 'Worth knowing'}</p>
           <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-ink-2">

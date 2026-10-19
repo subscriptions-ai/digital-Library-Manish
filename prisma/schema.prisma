@@ -1689,6 +1689,10 @@ model IngestionRun {
   /// person to look at. Historical rows carry zero for both.
   skippedRejected Int @default(0)
   needsReview     Int @default(0)
+  /// Records already held whose metadata was completed or corrected (licence filled, department placed). Never counted as added.
+  enriched        Int @default(0)
+  /// Held books published by the backlog after meeting every rule under the current rules. Already in the catalogue as Drafts, so not "added".
+  promoted        Int @default(0)
 
   // Discovery passes report on titles rather than articles.
   journalsSeen     Int @default(0)

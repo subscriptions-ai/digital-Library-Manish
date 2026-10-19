@@ -41,6 +41,13 @@ export const STRONG_MARGIN = 3;
 /** Below STRONG but at least this much: worth a person's look. */
 export const REVIEW_MIN = 4;
 
+/**
+ * Bump this whenever the department rules change in a way that could place a book or journal differently (a weight, a keyword, a code
+ * table, the thresholds above). The engine's backlog jobs (localWork.ts) re-judge the books and journals held for review once under each
+ * version, so a better rule can promote what an older one could not place — and nothing is re-judged again until the rules change.
+ */
+export const CLASSIFIER_RULES_VERSION = 1;
+
 /** BIC subject codes → department. Longest matching prefix wins, per code. */
 const BIC: [string, string][] = [
   // computing

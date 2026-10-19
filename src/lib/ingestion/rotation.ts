@@ -4,8 +4,9 @@ import { sourceHealthState, recordSourceFailure, classifyFailure, type ErrorKind
 import { providerHolder, tryLockProvider, unlockProvider } from './providerLocks.js';
 import { createRunWithStats, runColumnsFromStats, type DeptStats } from './departmentStats.js';
 import {
-  GROUPS, loadRotationState, saveRotationState, runtimeOf, type Group, type RotationState, type BatchSummary, type IdleState,
+  GROUPS, loadRotationState, saveRotationState, runtimeOf, type Group, type RotationState, type BatchSummary, type IdleState, type Decision,
 } from './rotationState.js';
+import type { LocalJob } from './localWork.js';
 
 /**
  * The fair, self-healing scheduler for Everything mode.
@@ -25,6 +26,12 @@ import {
  * If no provider of a content type can be asked — every one is down, rate limited, over its quota, busy, switched off or resting as
  * exhausted — that type WAITS FOR SOURCE RECOVERY and the turn goes to the next type in the same tick. One dead source family never
  * pauses Everything, and a source is never asked before its rest is over (an exhausted one included).
+ *
+ * Which content type takes a tick's FIRST turn follows weights (rotationConfig().weights; Books 3, Journals 2, Articles 1 by default: Books,
+ * Journals, Books, Articles, Books, Journals …). A weight is priority, never a quota — the tick still falls through to every other type.
+ *
+ * Only when no source of ANY type could work does the engine turn to its LOCAL backlog (localWork.ts: held books judged again under the
+ * current rules, departments for unplaced journals, licences already declared elsewhere). Only when that is empty too does it wait.
  *
  * Providers are plugged in (see providers.ts), so this file knows nothing about any one of them and the rules above can be
  * exercised with stand-ins.
@@ -88,6 +95,11 @@ export type ProviderDef = {
   /** True, or the reason this provider cannot run at all (not wired to a data source, switched off). */
   configured?: () => true | string;
   /**
+   * Not a source but a coverage engine (targeted Books, journal coverage): it chooses which department goes first and reads sources that have their
+   * own health rows. It never makes the engine "wait for source recovery" and never sets when the engine next looks.
+   */
+  virtual?: boolean;
+  /**
    * Left out of the CONTINUOUS rotation, with the reason — while still available to Quick Import and Bulk expansion, which an administrator starts
    * deliberately. (`configured` is for a source that cannot run at all.)
    */
@@ -111,6 +123,45 @@ export const providersOf = (g: Group) => registry.filter(p => p.group === g);
  */
 let targetedPolicy: (() => Promise<boolean>) | null = null;
 export const setTargetedPolicy = (f: (() => Promise<boolean>) | null) => { targetedPolicy = f; };
+
+/** The local backlog jobs (localWork.ts), plugged in like the providers so the scheduler can be tested with stand-ins. */
+let localJobs: LocalJob[] = [];
+let localPicker: ((jobs: LocalJob[], allow: (g: Group) => boolean) => Promise<{ job: LocalJob; pending: number } | null>) | null = null;
+export const setLocalJobs = (jobs: LocalJob[], picker: typeof localPicker) => { localJobs = jobs; localPicker = picker; };
+export const getLocalJobs = () => localJobs;
+
+/**
+ * The order content types take the first turn of a tick, from their weights: a smooth weighted round robin, so 3 / 2 / 1 interleaves as
+ * Books, Journals, Books, Articles, Books, Journals rather than three Books in a row. A type with weight 0 never leads, but still runs whenever
+ * the types ahead of it cannot (see orderForTick).
+ */
+const allEqual = (w: Record<Group, number>) => GROUPS.every(g => (w[g] ?? 0) === (w[GROUPS[0]] ?? 0));
+
+export function typeSequence(weights: Record<Group, number>): Group[] {
+  // Equal weights are the original fair rotation, in its original order. Otherwise ties go to Books, then Journals, then Articles.
+  const order: Group[] = allEqual(weights) ? [...GROUPS] : ['Books', 'Journals', 'Articles'];
+  const live = order.filter(g => (weights[g] ?? 0) > 0);
+  if (!live.length) return [...GROUPS];
+  const total = live.reduce((a, g) => a + weights[g], 0);
+  const cur: Record<string, number> = Object.fromEntries(live.map(g => [g, 0]));
+  const seq: Group[] = [];
+  for (let i = 0; i < total; i++) {
+    for (const g of live) cur[g] += weights[g];
+    const pick = live.reduce((best, g) => (cur[g] > cur[best] ? g : best), live[0]);
+    cur[pick] -= total;
+    seq.push(pick);
+  }
+  return seq;
+}
+
+/** This tick's content types: the one whose slot it is first, then the rest by weight (heaviest first), so a dead type costs no time. */
+export function orderForTick(seq: Group[], slot: number, weights: Record<Group, number>): Group[] {
+  const lead = seq[((slot % seq.length) + seq.length) % seq.length];
+  // Equal weights: the rest follow round from the lead, as the original rotation did. Otherwise the heaviest go next.
+  if (allEqual(weights)) { const i = GROUPS.indexOf(lead); return GROUPS.map((_, k) => GROUPS[(i + k) % GROUPS.length]); }
+  const rest = (['Books', 'Journals', 'Articles'] as Group[]).filter(g => g !== lead).sort((a, b) => (weights[b] ?? 0) - (weights[a] ?? 0));
+  return [lead, ...rest];
+}
 
 // ── Availability ────────────────────────────────────────────────────────────
 
@@ -156,7 +207,9 @@ type AttemptEvent = {
 };
 
 export type TurnResult =
-  | { ran: true; group: Group; provider: string; label: string; outcome: TurnRan; attempts: { provider: string; result: string }[]; switchedFrom: string[] }
+  | { ran: true; group: Group; provider: string; label: string; outcome: TurnRan; attempts: { provider: string; result: string }[]; switchedFrom: string[];
+      /** For the "why this job" note: the provider's standing, and every one passed over before it with its reason. */
+      why: string[]; virtual: boolean }
   | { ran: false; group: Group; waiting: boolean; failed: boolean; reason: string; retryAt: Date | null; attempts: { provider: string; result: string }[] };
 
 const rotate = <T,>(a: T[], from: number) => a.map((_, i) => a[(from + i) % a.length]);
@@ -289,8 +342,8 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
     // Nothing worked. Either the sources are down, or they are all caught up — and those are different things to say.
     // Waiting for source recovery = at the start of this turn not one source could be asked: each was down, rate limited, over its quota,
     // busy, switched off, or resting as exhausted. (A source that WAS asked and found nothing to do is not waiting — it is caught up.)
-    // The targeted provider is the low-coverage engine, not a source: it is always "available" and says nothing about whether any source is.
-    const sources = ordered.filter(p => p !== targeted);
+    // A coverage engine (targeted Books, journal coverage) is not a source: it is always "available" and says nothing about whether any source is.
+    const sources = ordered.filter(p => !p.virtual);
     const waiting = sources.length > 0 && sources.every(p => before.get(p.id)!.state !== 'ok');
     const untils = sources.map(p => avail.get(p.id)!.until).filter(Boolean) as Date[];
     const retryAt = untils.length ? new Date(Math.min(...untils.map(d => d.getTime()))) : null;
@@ -328,7 +381,19 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
   await applyLedger(group, outcome);
   await saveRotationState(s);
   attempts.push({ provider: provider.id, result: 'ran' });
-  return { ran: true, group, provider: provider.id, label: provider.label, outcome, attempts, switchedFrom: events.map(e => e.provider.id) };
+  const why: string[] = [];
+  const h = await sourceHealthState(provider.healthKey).catch(() => null);
+  why.push(provider.virtual ? `${provider.label}: ${outcome.journal?.department ? `${outcome.journal.department} has the lowest coverage among eligible departments` : 'coverage work available'}`
+    : `${provider.label}: ${provider.tier} source, ${h?.health === 'healthy' ? 'healthy' : h?.health || 'answering'}, eligible now${rt.lastProductiveBatch ? `, last productive batch added ${rt.lastProductiveBatch.added}` : ''}`);
+  for (const p of ordered) {
+    if (p === provider) break;
+    const a = before.get(p.id);
+    const e = events.find(x => x.provider === p);
+    if (e) why.push(`${p.label} passed over: ${e.note.join(', ') || e.outcome.kind}`);
+    else if (a && a.state !== 'ok') why.push(`${p.label} passed over: ${a.reason || a.state}`);
+    else if (p.fallbackFor && !fallbackEligible(p)) why.push(`${p.label} passed over: fallback, only used when ${p.fallbackFor.join('/')} cannot work`);
+  }
+  return { ran: true, group, provider: provider.id, label: provider.label, outcome, attempts, switchedFrom: events.map(e => e.provider.id), why, virtual: !!provider.virtual };
 }
 
 /** Count a batch (or a pass) that gave nothing useful, and set the source aside once it has done so enough times in a row. */
@@ -371,6 +436,8 @@ async function writeRan(group: Group, p: ProviderDef, o: TurnRan, durationMs: nu
   };
   if (o.departmentStats) Object.assign(row, runColumnsFromStats(o.departmentStats));
   else Object.assign(row, { added: o.added, skippedHeld: o.held, skippedFailed: o.recordFailures, skippedRejected: o.skipped, needsReview: o.sentToReview });
+  // Enrichment is counted on its own: completing a record already held is never a "new record added".
+  if (o.enriched) row.enriched = o.enriched;
   if (o.columns) Object.assign(row, o.columns);
   if (group === 'Books') row.checked = o.checked;     // a Book run must account for every candidate it examined (accounting.ts)
   await createRunWithStats(row, o.departmentStats ?? null);
@@ -415,7 +482,7 @@ export function earliestRetry(list: ProviderDef[], avail: Map<string, Availabili
   let next: NonNullable<IdleState['next']> | null = null;
   let open = false;
   for (const p of list) {
-    if (p.id === 'targeted') continue;
+    if (p.virtual) continue;
     const a = avail.get(p.id);
     if (!a) continue;
     if (a.state === 'ok') { open = true; continue; }
@@ -464,19 +531,71 @@ export async function runRotationPass(opts: PassOptions) {
   }
   await opts.countPass?.();
 
-  const groups = opts.only ? GROUPS.filter(g => g.toLowerCase() === opts.only) : GROUPS;
+  const cfg = rotationConfig();
+  const seq = typeSequence(cfg.weights);
+  const slot = s.typeCursor;
+  const groups = opts.only ? GROUPS.filter(g => g.toLowerCase() === opts.only) : orderForTick(seq, slot, cfg.weights);
   const base = { state: opts.state, wanted: opts.wanted, narrowed: opts.narrowed };
   const waiting: { group: Group; reason: string }[] = [];
   const idleGroups: Group[] = [];
   const failed: Group[] = [];
-  const first = opts.only ? 0 : s.typeCursor % groups.length;
+  const passedTypes: string[] = [];
+  // Each tick uses one slot of the weighted order, whichever type ends up working, so the priorities hold over time. (Equal weights keep the
+  // original rule — the next tick starts after the type that last took a turn — set inside the loop below.)
+  const equal = allEqual(cfg.weights);
+  if (!opts.only && !equal) s.typeCursor = (slot + 1) % seq.length;
 
-  for (let i = 0; i < groups.length; i++) {
-    const g = groups[(first + i) % groups.length];
+  for (const g of groups) {
     const r = await runTypeTurn(g, s, base);
-    if (!opts.only) s.typeCursor = (GROUPS.indexOf(g) + 1) % GROUPS.length;
-    if ('provider' in r) { s.idle = null; await saveRotationState(s); return { ...r, phase: g, source: r.label, ...r.outcome }; }
+    if (!opts.only && equal) s.typeCursor = (GROUPS.indexOf(g) + 1) % GROUPS.length;
+    if ('provider' in r) {
+      const lead = groups[0];
+      const reasons = [
+        opts.only ? `Mode: ${g} only` : g === lead ? `${g} has the turn (priority ${cfg.weights[g]} of ${cfg.weights.Books}/${cfg.weights.Journals}/${cfg.weights.Articles} Books/Journals/Articles)` : `${lead} had the turn but could not work; ${g} took it`,
+        ...passedTypes,
+        ...r.why,
+        r.outcome.checked ? `Batch: ${r.outcome.checked} candidates checked` : null,
+      ].filter(Boolean) as string[];
+      s.lastDecision = { at: new Date().toISOString(), group: g, label: r.label, kind: r.virtual ? 'coverage' : 'source', reasons };
+      s.idle = null; await saveRotationState(s);
+      return { ...r, phase: g, source: r.label, ...r.outcome };
+    }
+    passedTypes.push(`${g} passed over: ${r.waiting ? `every source resting (${r.reason})` : r.failed ? 'a source did not answer and will be retried' : r.reason}`);
     if (r.failed) failed.push(g); else if (r.waiting) waiting.push({ group: g, reason: r.reason }); else idleGroups.push(g);
+  }
+
+  // No source of any type could work this tick. Before waiting, the local backlog: work on records already held, under the current rules.
+  const local = localPicker ? await localPicker(localJobs, g => groups.includes(g)).catch(() => null) : null;
+  if (local) {
+    const { job, pending } = local;
+    s.localRunning = { job: job.id, label: job.label, group: job.group, since: new Date().toISOString() };
+    s.running = null;
+    await saveRotationState(s);
+    const t0 = Date.now();
+    let o: Awaited<ReturnType<LocalJob['run']>> | null = null; let err: string | null = null;
+    try { o = await job.run(cfg.localBatch); } catch (e: any) { err = String(e?.message || e).slice(0, 300); }
+    s.localRunning = null;
+    if (o) {
+      await createRunWithStats({
+        phase: job.group, source: job.label, more: pending > o.checked, durationMs: Date.now() - t0,
+        added: 0, promoted: o.promoted, enriched: o.enriched, skippedHeld: o.duplicates, skippedRejected: o.refused, skippedFailed: o.failed,
+        note: `Backlog · ${o.note}`.slice(0, 900),
+      }, null);
+      await db.ingestionState.update({ where: { id: 'singleton' }, data: { phase: job.group, lastRunAt: new Date(), lastError: null, lastSuccessAt: new Date(), consecutiveFailures: 0 } }).catch(() => {});
+    } else {
+      await createRunWithStats({ phase: 'Error', source: job.label, error: `Backlog job failed — ${err}`.slice(0, 500) }, null);
+    }
+    s.lastDecision = {
+      at: new Date().toISOString(), group: job.group, label: job.label, kind: 'local',
+      reasons: [`No external source of any content type could work this tick`, ...passedTypes, `${job.label}: ${pending} record${pending === 1 ? '' : 's'} to look at under the current rules`],
+    };
+    s.idle = null;
+    await saveRotationState(s);
+    return {
+      ran: true as const, local: true as const, group: job.group, phase: job.group, provider: job.id, source: job.label, label: job.label,
+      checked: o?.checked ?? 0, added: 0, promoted: o?.promoted ?? 0, enriched: o?.enriched ?? 0, held: o?.duplicates ?? 0, sentToReview: 0,
+      note: o?.note ?? err, error: err, attempts: [], switchedFrom: [],
+    };
   }
 
   // Nothing ran. Say so once, with when it will be worth looking again.
@@ -542,6 +661,13 @@ export type RotationStatus = {
   idle: IdleState | null;
   /** The source that can be asked again soonest, worked out now, whatever the engine is doing. */
   next: IdleState['next'];
+  /** What is running now — a source, a coverage engine or a backlog job — and what would run next, in the weighted order. */
+  currentJob: { group: Group; label: string; kind: 'source' | 'coverage' | 'local'; since: string } | null;
+  nextJobs: { group: Group; label: string; kind: 'source' | 'coverage' | 'local' }[];
+  weights: Record<Group, number>;
+  lastDecision: Decision | null;
+  /** The local backlog: records each job still has to look at under the current rules. */
+  backlog: { id: string; label: string; group: Group; pending: number }[];
   updatedAt: string | null;
 };
 
@@ -588,7 +714,35 @@ export async function rotationStatus(opts: { state?: any } = {}): Promise<Rotati
     groups[g] = { current: cur?.label ?? null, next: next?.label ?? null, waiting: !!w, waitingReason: w?.reason ?? null, retryAt: w?.retryAt ?? null, batchSize: batchSizeForGroup };
   }
   const run = s.running ? registry.find(p => p.id === s.running!.provider) : null;
+  // Next jobs: walk the coming slots of the weighted order the way a tick would (first type with an eligible provider), without running anything.
+  const seq = typeSequence(cfg.weights);
+  const backlog = localJobs.length ? await Promise.all(localJobs.map(async j => ({ id: j.id, label: j.label, group: j.group, pending: await j.pending().catch(() => 0) }))) : [];
+  const nextJobs: RotationStatus['nextJobs'] = [];
+  const cursorsPeek: Partial<Record<Group, number>> = { ...s.cursors };
+  for (let k = 0; k < seq.length * 2 && nextJobs.length < 3; k++) {
+    let found: RotationStatus['nextJobs'][number] | null = null;
+    for (const g of orderForTick(seq, s.typeCursor + k, cfg.weights)) {
+      // A coverage engine reads this type's sources; it is a likely next job only while one of them can be asked.
+      const sourceOk = providersOf(g).some(x => !x.virtual && avail.get(x.id)?.state === 'ok');
+      const chain = providersOf(g).filter(x => !x.virtual || sourceOk);
+      const pk = peekNext(chain, cursorsPeek[g] ?? 0, avail);
+      if (pk && avail.get(pk.id)?.state === 'ok') {
+        found = { group: g, label: pk.label, kind: pk.virtual ? 'coverage' : 'source' };
+        cursorsPeek[g] = (chain.indexOf(pk) + 1) % Math.max(1, chain.length);
+        break;
+      }
+    }
+    if (!found) { const b = backlog.find(x => x.pending > 0); if (b) found = { group: b.group, label: `${b.label} (${b.pending} to look at)`, kind: 'local' }; }
+    if (!found) break;
+    const last = nextJobs[nextJobs.length - 1];
+    if (!last || last.label !== found.label || last.group !== found.group) nextJobs.push(found);
+    if (found.kind === 'local') break;
+  }
+  const currentJob: RotationStatus['currentJob'] = s.running && run
+    ? { group: s.running.group, label: run.label, kind: run.virtual ? 'coverage' : 'source', since: s.running.since }
+    : s.localRunning ? { group: s.localRunning.group, label: s.localRunning.label, kind: 'local', since: s.localRunning.since } : null;
   return {
+    currentJob, nextJobs, weights: cfg.weights, lastDecision: s.lastDecision ?? null, backlog,
     batchSize: cfg.batchSize, failuresBeforeFallback: cfg.failuresBeforeFallback, zeroYieldBatches: cfg.zeroYieldBatches, groups, providers,
     running: s.running && run ? { group: s.running.group, provider: run.id, label: run.label, since: s.running.since } : null,
     idle: s.idle ?? null,

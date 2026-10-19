@@ -37,6 +37,7 @@ import { encryptionAvailable as aiEncryptionAvailable } from "./src/server/aiSec
 import { loadBlogList, loadBlogPost } from "./src/server/blogData.js";
 import { installSeoPages } from "./src/server/seoPages.js";
 import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
+import { s3Configured, isProduction, coverKey, mediaKey, getPublicMediaUrl, uploadObject, objectExists, deleteObject, keyFromUrl, isS3Url } from "./src/server/storage/s3Storage.js";
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
@@ -71,7 +72,7 @@ import { sourceCooldown } from "./src/lib/ingestion/sourceHealth.js";
 import { departmentMetrics, departmentTable, departmentExists } from "./src/lib/ingestion/departmentMetrics.js";
 import { resolveRange } from "./src/lib/ingestion/runFilter.js";
 import sanitizeHtml from "sanitize-html";
-import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, publishProblems, COVER_MAX_BYTES, COVER_UNAVAILABLE_MESSAGE, type PublishProblems } from "./src/lib/blogCover.js";
+import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, isExternalMediaUrl, publishProblems, COVER_MAX_BYTES, COVER_UNAVAILABLE_MESSAGE, type PublishProblems } from "./src/lib/blogCover.js";
 import {
   TEMPLATES, TEMPLATE_LIST, renderTemplate, missingInstitutionFields,
   type TemplateKey, type MailContext,
@@ -1968,10 +1969,12 @@ async function startServer() {
    * answered again here because the editor is not the only thing that can call
    * these endpoints. A cover that points into our own uploads must still exist.
    */
-  /** True when a cover points into our own uploads and the file is not there. Reads the disk; changes nothing. */
+  /** True when a cover points into our own uploads and the file is not there. S3/external URLs are assumed reachable. */
   const coverFileMissing = (url: unknown): boolean => {
     const u = typeof url === 'string' ? url.trim() : '';
-    if (!u.startsWith('/uploads/') || !isUsableCoverUrl(u)) return false;
+    if (!u || !isUsableCoverUrl(u)) return false;
+    if (isExternalMediaUrl(u)) return false;
+    if (!u.startsWith('/uploads/')) return false;
     const root = path.resolve(UPLOAD_DIR);
     const onDisk = path.resolve(root, u.slice('/uploads/'.length));
     return !(onDisk.startsWith(root + path.sep) && fs.existsSync(onDisk));
@@ -7956,11 +7959,13 @@ async function startServer() {
   };
   checkUploadStorage().catch((e: any) => console.error('[uploads] storage check failed:', e?.message));
 
-  // GET /api/admin/media/health — whether pictures the database points at are still on disk, and whether the directory has been replaced.
+  // GET /api/admin/media/health — whether pictures the database points at are still reachable (disk or S3), and storage backend status.
   app.get("/api/admin/media/health", authenticateJWT, requireEditor, async (_req: any, res: any) => {
     try {
       const assets: any[] = await (prisma as any).mediaAsset.findMany({ select: { id: true, fileName: true, url: true, folder: true }, take: 5000 });
-      const missing = assets.filter(a => !fs.existsSync(path.join(MEDIA_DIR, path.basename(a.fileName))));
+      const localAssets = assets.filter(a => !isExternalMediaUrl(a.url));
+      const s3Assets = assets.filter(a => isExternalMediaUrl(a.url));
+      const missing = localAssets.filter(a => !fs.existsSync(path.join(MEDIA_DIR, path.basename(a.fileName))));
       const posts: any[] = await (prisma as any).blogPost.findMany({ where: { coverUrl: { not: null } }, select: { id: true, title: true, slug: true, status: true, coverUrl: true } });
       const coversMissing = posts.filter(p => coverFileMissing(p.coverUrl));
       const state = ((await (prisma as any).appSetting.findUnique({ where: { key: STORAGE_KEY } }).catch(() => null))?.value as any) || {};
@@ -7968,12 +7973,15 @@ async function startServer() {
       try { separateMount = fs.statSync(UPLOAD_DIR).dev !== fs.statSync(path.dirname(UPLOAD_DIR)).dev; } catch { /* unknown */ }
       res.json({
         uploadDir: UPLOAD_DIR, fromEnvironment: !!process.env.UPLOAD_DIR,
-        // true: a different filesystem from its parent (a mounted volume, most likely). false: part of the container's own layer.
         separateMount,
-        mediaRecords: assets.length, filesMissing: missing.length,
+        s3Configured: s3Configured(),
+        mediaRecords: assets.length,
+        s3Records: s3Assets.length,
+        localRecords: localAssets.length,
+        filesMissing: missing.length,
         blogCoversMissing: coversMissing.map(p => ({ id: p.id, title: p.title, slug: p.slug, status: p.status })),
         storage: { resets: state.resets ?? 0, lastResetAt: state.lastResetAt ?? null, firstSeenAt: state.firstSeenAt ?? null },
-        persistent: (state.resets ?? 0) === 0 && missing.length === 0 ? (separateMount === false ? 'unknown' : true) : false,
+        persistent: s3Configured() || ((state.resets ?? 0) === 0 && missing.length === 0 ? (separateMount === false ? 'unknown' : true) : false),
       });
     } catch (e: any) { console.error('media health:', e?.message); res.status(500).json({ error: "Could not check storage" }); }
   });
@@ -8046,7 +8054,8 @@ async function startServer() {
     return {};
   };
 
-  // POST /api/admin/media — upload one file (base64 data URL) and get its public link back
+  // POST /api/admin/media — upload one file (base64 data URL) and get its public link back.
+  // Images go to S3 when configured; in production S3 is required for image uploads (fail-closed).
   app.post("/api/admin/media", authenticateJWT, requireEditor, async (req: any, res: any) => {
     try {
       const { dataUrl, filename, title, altText, caption, folder } = req.body || {};
@@ -8068,20 +8077,36 @@ async function startServer() {
         return res.status(413).json({ error: `File is too large (${(buf.length / 1048576).toFixed(1)} MB). Maximum is 25 MB.` });
       }
 
-      const fsm = await import('node:fs');
-      fsm.mkdirSync(MEDIA_DIR, { recursive: true });
-      // Sanitise + uniquify: the stored name never contains path separators, and a
-      // re-upload of "logo.png" can never overwrite the existing one.
-      const base = original.replace(/\.[^.]*$/, '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-').slice(0, 60) || 'file';
-      const stored = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${ext}`;
-      fsm.writeFileSync(path.join(MEDIA_DIR, stored), buf);
+      const useS3 = s3Configured();
+      const isImage = type.kind === 'image';
+      if (!useS3 && isProduction() && isImage) {
+        return res.status(503).json({ error: "Persistent media storage is not configured. Set AWS_S3_BUCKET in the server environment." });
+      }
+
+      let storedName: string;
+      let publicUrl: string;
+
+      if (useS3 && isImage) {
+        const key = mediaKey(ext);
+        await uploadObject(key, buf, type.mime);
+        storedName = key;
+        publicUrl = getPublicMediaUrl(key);
+        console.log(`[s3] media uploaded: ${key} (${buf.length} bytes, ${type.mime})`);
+      } else {
+        const fsm = await import('node:fs');
+        fsm.mkdirSync(MEDIA_DIR, { recursive: true });
+        const base = original.replace(/\.[^.]*$/, '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-').slice(0, 60) || 'file';
+        storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${base}.${ext}`;
+        fsm.writeFileSync(path.join(MEDIA_DIR, storedName), buf);
+        publicUrl = `/uploads/media/${storedName}`;
+      }
 
       const dims = type.kind === 'image' ? readImageSize(buf, ext) : {};
       const asset = await (prisma as any).mediaAsset.create({
         data: {
-          fileName: stored,
+          fileName: storedName,
           originalName: original,
-          url: `/uploads/media/${stored}`,
+          url: publicUrl,
           mimeType: type.mime,
           ext,
           kind: type.kind,
@@ -8104,10 +8129,14 @@ async function startServer() {
   });
 
   // POST /api/studio/cover — a blog cover, held to a stricter standard than a general upload.
-  // Same storage as every other picture (MEDIA_DIR + a MediaAsset row); what differs is
-  // that the type comes from the file's own bytes, never from its name.
+  // Images go to S3 when configured; in production S3 is required (fail-closed).
   app.post("/api/studio/cover", authenticateJWT, requireEditor, async (req: any, res: any) => {
     try {
+      const useS3 = s3Configured();
+      if (!useS3 && isProduction()) {
+        return res.status(503).json({ error: "Persistent media storage is not configured. Set AWS_S3_BUCKET in the server environment." });
+      }
+
       const { dataUrl, filename, altText } = req.body || {};
       if (typeof dataUrl !== 'string' || !dataUrl) return res.status(400).json({ error: "Choose an image to upload." });
 
@@ -8117,7 +8146,6 @@ async function startServer() {
       if (!hm) return res.status(400).json({ error: "That file could not be read as an image." });
 
       const b64 = dataUrl.slice(comma + 1);
-      // Refuse on the encoded length first, so an oversized body is never decoded.
       if (b64.length > Math.ceil(COVER_MAX_BYTES * 4 / 3) + 8) {
         return res.status(413).json({ error: `That image is over the ${COVER_MAX_BYTES / 1048576} MB limit.` });
       }
@@ -8127,17 +8155,29 @@ async function startServer() {
 
       const { info } = check;
       const original = String(filename || `cover.${info.ext}`).slice(0, 120);
-      const fsm = await import('node:fs');
-      fsm.mkdirSync(MEDIA_DIR, { recursive: true });
-      // The extension is the sniffed one: a PNG called "x.html" is stored as a PNG.
-      const stored = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-cover.${info.ext}`;
-      fsm.writeFileSync(path.join(MEDIA_DIR, stored), buf);
+
+      let storedName: string;
+      let publicUrl: string;
+
+      if (useS3) {
+        const key = coverKey(info.ext);
+        await uploadObject(key, buf, info.mime);
+        storedName = key;
+        publicUrl = getPublicMediaUrl(key);
+        console.log(`[s3] cover uploaded: ${key} (${buf.length} bytes, ${info.mime})`);
+      } else {
+        const fsm = await import('node:fs');
+        fsm.mkdirSync(MEDIA_DIR, { recursive: true });
+        storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-cover.${info.ext}`;
+        fsm.writeFileSync(path.join(MEDIA_DIR, storedName), buf);
+        publicUrl = `/uploads/media/${storedName}`;
+      }
 
       const asset = await (prisma as any).mediaAsset.create({
         data: {
-          fileName: stored,
+          fileName: storedName,
           originalName: original,
-          url: `/uploads/media/${stored}`,
+          url: publicUrl,
           mimeType: info.mime,
           ext: info.ext,
           kind: 'image',
@@ -8232,13 +8272,18 @@ async function startServer() {
           posts: users,
         });
       }
+      // Remove the physical file — S3 object or local disk.
       try {
-        const fsm = await import('node:fs');
-        // basename() guards against a crafted fileName escaping MEDIA_DIR
-        const onDisk = path.join(MEDIA_DIR, path.basename(asset.fileName));
-        if (fsm.existsSync(onDisk)) fsm.unlinkSync(onDisk);
+        const s3Key = keyFromUrl(asset.url);
+        if (s3Key) {
+          await deleteObject(s3Key);
+          console.log(`[s3] deleted: ${s3Key}`);
+        } else {
+          const fsm = await import('node:fs');
+          const onDisk = path.join(MEDIA_DIR, path.basename(asset.fileName));
+          if (fsm.existsSync(onDisk)) fsm.unlinkSync(onDisk);
+        }
       } catch (fileErr) {
-        // A missing file shouldn't block removing the record it points at.
         console.error("media delete (file):", fileErr);
       }
       await (prisma as any).mediaAsset.delete({ where: { id: req.params.id } });
