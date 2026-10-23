@@ -1,12 +1,14 @@
 /**
- * Google Identity Services, loaded on demand.
+ * Google Identity Services: ONE place that knows the client ID, loads the script, and initializes it.
  *
- * Only the sign-in pages need it, so it is not part of the bundle and not fetched until one of them asks. If the script is blocked
- * (an ad blocker, a firewall, no route to Google) the promise rejects and the page says so; nothing else about the page depends on it.
- * The client ID is public by design (it is how Google knows which site is asking); there is no secret in the browser.
+ * The client ID is not baked into the bundle. The server hands it over at runtime (GET /api/public/google-config): it is the very value the
+ * server verifies credentials against, so the page and the server cannot disagree, and changing it needs a restart, not a rebuild. (It used
+ * to be a VITE_ build variable; a build kept an old, mistyped copy through three deploys.) The ID is public by design: it only says which
+ * site is asking. There is no secret in the browser.
+ *
+ * `google.accounts.id.initialize` runs once per page load, whichever page asks (sign-in, sign-up, React's double effect in development).
+ * Pages only register who should hear about a credential.
  */
-
-export const GOOGLE_CLIENT_ID: string = ((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || '';
 
 type GoogleId = {
   initialize: (config: Record<string, unknown>) => void;
@@ -14,6 +16,20 @@ type GoogleId = {
   cancel?: () => void;
 };
 declare global { interface Window { google?: { accounts?: { id?: GoogleId } } } }
+
+export type GoogleConfig = { enabled: boolean; clientId: string };
+const OFF: GoogleConfig = { enabled: false, clientId: '' };
+
+let configPromise: Promise<GoogleConfig> | null = null;
+
+/** Asks the server which Google client to use. Once per page load; any failure means Google is simply off and email carries on. */
+export function loadGoogleConfig(): Promise<GoogleConfig> {
+  configPromise ||= fetch('/api/public/google-config', { headers: { Accept: 'application/json' } })
+    .then(r => (r.ok ? r.json() : OFF))
+    .then(d => (d?.enabled && typeof d.clientId === 'string' && d.clientId.trim() ? { enabled: true, clientId: d.clientId.trim() } : OFF))
+    .catch(() => { configPromise = null; return OFF; });
+  return configPromise;
+}
 
 const SRC = 'https://accounts.google.com/gsi/client';
 let loading: Promise<GoogleId> | null = null;
@@ -36,4 +52,27 @@ export function loadGoogleIdentity(timeoutMs = 8000): Promise<GoogleId> {
     document.head.appendChild(s);
   });
   return loading;
+}
+
+// Who hears about a credential. Replaced by whichever page is showing the button; GIS itself is initialized only once.
+let listener: ((credential: string) => void) | null = null;
+let initializedFor: string | null = null;
+
+/**
+ * Initializes GIS for `clientId` once and points credentials at `onCredential`. Calling it again (another page, a second effect run) only
+ * changes the listener. Returns a function that stops listening, for the page that registered it.
+ */
+export function initializeGoogleOnce(gsi: GoogleId, clientId: string, onCredential: (credential: string) => void): () => void {
+  listener = onCredential;
+  if (initializedFor !== clientId) {
+    gsi.initialize({
+      client_id: clientId,
+      callback: (r: { credential?: string }) => { if (r?.credential) listener?.(r.credential); },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      ux_mode: 'popup',
+    });
+    initializedFor = clientId;
+  }
+  return () => { if (listener === onCredential) listener = null; };
 }

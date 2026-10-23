@@ -14,7 +14,8 @@ import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { signGoogleToken, readGoogleToken } from '../src/server/googleAuth';
+import { signGoogleToken, readGoogleToken, googleClientIdProblem } from '../src/server/googleAuth';
+import { initializeGoogleOnce } from '../src/lib/google';
 
 let pass = 0, fail = 0;
 const check = (name: string, ok: boolean, detail: unknown = '') => { ok ? pass++ : fail++; console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${!ok && detail !== '' ? '  — ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 400) : ''}`); };
@@ -35,6 +36,36 @@ section('Part 1 — the tokens the server hands out');
   check('a session token (no purpose) is not an onboarding token', readGoogleToken('secret', 'onboarding', jwt.sign({ uid: 'u1', sid: 'x' }, 'secret')) === null);
 }
 
+section('Part 1b — the client ID, GIS initialization and the service worker');
+{
+  const good = '111111111111-k3j9x0q2m5n8p1r4t7v0w3y6z9a2c5e8.apps.googleusercontent.com';
+  check('the real-looking ID is accepted', googleClientIdProblem(good) === null);
+  const typo = good.replace('x0q2', 'xOq2');
+  check('the capital-O-for-zero typo that broke production is caught, and named', /character a Google client ID never has/.test(googleClientIdProblem(typo) || ''), googleClientIdProblem(typo));
+  check('a missing ID is reported', googleClientIdProblem('') === 'GOOGLE_CLIENT_ID is not set');
+  check('whitespace, a wrong suffix and a missing project number are caught', !!googleClientIdProblem(good + ' ') && !!googleClientIdProblem(good.replace('.apps.googleusercontent.com', '.example.com')) && !!googleClientIdProblem('4q0oiqabika4b5m34870osftvjtg3vtj.apps.googleusercontent.com'));
+  // GIS: initialize runs once however many times pages mount (sign-in, sign-up, React's double effect).
+  const calls: any[] = [];
+  const gsi = { initialize: (c: any) => calls.push(c), renderButton: () => {} };
+  const heard: string[] = [];
+  const stop1 = initializeGoogleOnce(gsi as any, good, c => heard.push('first:' + c));
+  const stop2 = initializeGoogleOnce(gsi as any, good, c => heard.push('second:' + c));
+  check('GIS initialize() ran exactly once for two mounts with the same ID', calls.length === 1 && calls[0].client_id === good, calls.length);
+  calls[0].callback({ credential: 'abc' });
+  check('a credential reaches only the page that is showing the button now', heard.length === 1 && heard[0] === 'second:abc', heard);
+  stop1(); calls[0].callback({ credential: 'def' });
+  check('an older page stopping does not silence the current one', heard[1] === 'second:def');
+  stop2(); calls[0].callback({ credential: 'ghi' });
+  check('once nobody is listening a credential is ignored, not thrown', heard.length === 2);
+  check('no client secret is ever configured in the browser code (no GOCSPX in src)', !/GOCSPX/.test(readFileSync(new URL('../src/lib/google.ts', import.meta.url), 'utf8')));
+  // The service worker must never answer anything but a plain GET of a static asset or a page load.
+  const sw = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
+  check('service worker: non-GET (every sign-in, sign-up and Google POST) is never intercepted', /if \(req\.method !== 'GET'\) return;/.test(sw));
+  check('service worker: /api/ is never intercepted or cached', /startsWith\('\/api\/'\) \|\| url\.pathname\.startsWith\('\/uploads\/'\)\) return;/.test(sw));
+  check('service worker: anything sent with credentials is never intercepted', /headers\.has\('authorization'\)\) return;/.test(sw));
+  check('service worker: third parties (accounts.google.com) are not ours to touch', /url\.origin !== self\.location\.origin\) return;/.test(sw));
+}
+
 section('Part 2 — seeding the throwaway database');
 const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
 const envVal = (k: string) => new RegExp(`^${k}=(.*)$`, 'm').exec(env)?.[1]?.replace(/^["']|["']$/g, '');
@@ -49,7 +80,8 @@ if (!tbl.length) { console.log('\nSKIPPED Part 2: stm_ingestion_test has no Auth
 const PORT = 3111, BASE = `http://127.0.0.1:${PORT}`;
 const RUN = Date.now().toString(36);
 const SECRET = envVal('JWT_SECRET') || 'your-fallback-secret-for-dev-only';
-const AUD = `test-client-${RUN}.apps.googleusercontent.com`;
+// Shaped like a real client ID (the server refuses anything that could not be one): project number, then 32 lower-case letters and digits.
+const AUD = `123456789012-${crypto.randomBytes(16).toString('hex')}.apps.googleusercontent.com`;
 const PASSWORD = 'Goog1e-Test-Pass!';
 const HASH = await bcrypt.hash(PASSWORD, 10);
 const FOUR = ['Law', 'Nursing', 'Management', 'Agriculture'];
@@ -87,17 +119,17 @@ const liveCount = (userId: string) => db.userSession.count({ where: { userId, re
 const countByEmail = (email: string) => db.user.count({ where: { email: { equals: email, mode: 'insensitive' } } });
 
 type Srv = { child: any; log: string };
-const start = async (): Promise<Srv> => {
+const start = async (port = PORT, clientId = AUD, extraEnv: Record<string, string> = {}): Promise<Srv> => {
   const child = spawn('npx', ['tsx', '--import', new URL('./test-google-auth.preload.mjs', import.meta.url).pathname, 'server.ts'], {
     cwd: new URL('..', import.meta.url).pathname, detached: true, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, DATABASE_URL: TEST_URL, PORT: String(PORT), NODE_ENV: 'development', MEDIA_STORAGE_DRIVER: 'local-persistent', DISABLE_HMR: 'true',
-      GOOGLE_CLIENT_ID: AUD, GOOGLE_TEST_CERT_FILE: certFile, API_TEST_BLOCK_DELAY_MS: '50',
-      AWS_S3_BUCKET: '', AWS_ACCESS_KEY_ID: '', AWS_SECRET_ACCESS_KEY: '' },
+    env: { ...process.env, DATABASE_URL: TEST_URL, PORT: String(port), NODE_ENV: 'development', MEDIA_STORAGE_DRIVER: 'local-persistent', DISABLE_HMR: 'true',
+      GOOGLE_CLIENT_ID: clientId, GOOGLE_TEST_CERT_FILE: certFile, API_TEST_BLOCK_DELAY_MS: '50',
+      AWS_S3_BUCKET: '', AWS_ACCESS_KEY_ID: '', AWS_SECRET_ACCESS_KEY: '', ...extraEnv },
   });
   const srv: Srv = { child, log: '' };
   child.stdout.on('data', (d: any) => (srv.log += d)); child.stderr.on('data', (d: any) => (srv.log += d));
   const t0 = Date.now();
-  for (;;) { try { const r = await fetch(`${BASE}/api/studio/posts`); if (r.status === 401) break; } catch {} if (Date.now() - t0 > 120_000) throw new Error('server did not start\n' + srv.log.slice(-1500)); await sleep(700); }
+  for (;;) { try { const r = await fetch(`http://127.0.0.1:${port}/api/studio/posts`); if (r.status === 401) break; } catch {} if (Date.now() - t0 > 120_000) throw new Error('server did not start\n' + srv.log.slice(-1500)); await sleep(700); }
   await sleep(800);
   return srv;
 };
@@ -314,6 +346,35 @@ try {
     check('a member who already has a (different) Google account cannot be linked to another', g2.status === 409 && g2.data?.code === 'GOOGLE_ALREADY_LINKED_TO_OTHER', g2);
     const dup = await db.authIdentity.create({ data: { userId: y.id, provider: 'GOOGLE', providerSubject: `g-${RUN}-shared` } }).then(() => 'created', (e: any) => e?.code);
     check('the database itself refuses one Google account on two members', dup === 'P2002', dup);
+  }
+
+  section('Runtime configuration: one client ID, from the server');
+  {
+    const r = await fetch(`${BASE}/api/public/google-config`);
+    const body = await r.json();
+    check('the page is told the server\'s client ID, and that sign-in is on', r.status === 200 && body.enabled === true && body.clientId === AUD, body);
+    check('the answer carries only those two fields (no secret, nothing else)', JSON.stringify(Object.keys(body).sort()) === JSON.stringify(['clientId', 'enabled']));
+    check('and it is never cached', /no-store/.test(r.headers.get('cache-control') || ''));
+    check('it does not spend the sign-in rate limit (a hundred page loads still leave room to sign in)',
+      (await Promise.all(Array.from({ length: 70 }, () => fetch(`${BASE}/api/public/google-config`).then(x => x.status)))).every(c => c === 200)
+      && (await google(cred({ email: `ratelimit-${RUN}@google-test.invalid` }))).status === 200);
+    const plain = await mkUser('plainuser');
+    const plainTok = await sessionFor(plain);
+    check('the Super Admin diagnostic is refused to anyone else (403)', (await api('GET', '/api/admin/auth/google-status', { token: plainTok })).status === 403 && (await api('GET', '/api/admin/auth/google-status')).status === 401);
+    const st = await api('GET', '/api/admin/auth/google-status', { token: adminTok });
+    check('the Super Admin sees: enabled, no problem, a masked ID, and no full ID or secret',
+      st.status === 200 && st.data?.enabled === true && st.data?.problem === null && /…/.test(st.data?.clientIdMasked) && !JSON.stringify(st.data).includes(AUD) && !/GOCSPX|secret/i.test(JSON.stringify(st.data)), st.data);
+
+    // A server started with the classic typo (capital O for zero) refuses to hand a browser an ID that cannot exist.
+    const BAD_PORT = 3113;
+    const bad = await start(BAD_PORT, `111111111111-k3j9xOq2m5n8p1r4t7v0w3y6z9a2c5e8.apps.googleusercontent.com`, { VITE_GOOGLE_CLIENT_ID: AUD });
+    try {
+      const cfg = await (await fetch(`http://127.0.0.1:${BAD_PORT}/api/public/google-config`)).json();
+      check('with a mistyped ID Google is OFF for the page (no broken button), and no ID is offered', cfg.enabled === false && cfg.clientId === null, cfg);
+      const attempt = await fetch(`http://127.0.0.1:${BAD_PORT}/api/auth/google`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: cred({ email: `x-${RUN}@google-test.invalid` }) }) });
+      check('and the server answers 503 "unavailable, use email", not a verification failure', attempt.status === 503 && (await attempt.json()).code === 'GOOGLE_UNAVAILABLE');
+      check('the start-up log names the cause and the differing build variable', /DISABLED/.test(bad.log) && /character a Google client ID never has/.test(bad.log) && /VITE_GOOGLE_CLIENT_ID is set but is no longer read/.test(bad.log) && /DIFFER/.test(bad.log), bad.log.split('\n').filter(l => /Google|VITE_/.test(l)).join(' | '));
+    } finally { await stop(bad); }
   }
 
   section('Admin view');

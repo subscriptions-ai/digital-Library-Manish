@@ -126,7 +126,7 @@ export function DigitalLibrary() {
   }
 
   const OFFERINGS: { name: string; count: number | undefined; icon: React.ReactNode; desc?: string }[] = [
-    { name: "Journal Titles", count: counts["Journals"], icon: <BookOpen size={24} aria-hidden="true" />, desc: "Distinct journal publications available in the catalogue." },
+    { name: "Available Journal Titles", count: counts["Journals"], icon: <BookOpen size={24} aria-hidden="true" />, desc: "Distinct journal publications available in the catalogue." },
     { name: "Research Articles", count: counts["Articles"], icon: <FileText size={24} aria-hidden="true" />, desc: "Individual research papers available across journal titles and sources." },
     { name: "Academic E-Books", count: counts["Books"], icon: <Book size={24} aria-hidden="true" /> },
     { name: "Research Theses", count: counts["Theses"], icon: <GraduationCap size={24} aria-hidden="true" /> },

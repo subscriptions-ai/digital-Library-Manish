@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { publicJournalCount } from './publicJournals';
 
 /**
  * Counts by content kind, for the library's headline row and the AI
@@ -7,10 +8,10 @@ import type { PrismaClient } from '@prisma/client';
  * Articles — it named a storage category, not anything a librarian
  * recognises. Journals are counted as distinct titles, never added to
  * the article count: one title holds many articles, and adding both
- * would count every article twice.
+ * would count every article twice. What makes a journal public is defined once, in publicJournals.ts.
  */
 export async function contentTypeCounts(prisma: PrismaClient): Promise<Record<string, number>> {
-  const [legacy, articles, newBooks, journalRows] = await Promise.all([
+  const [legacy, articles, newBooks, journals] = await Promise.all([
     prisma.content.groupBy({
       by: ['contentType'],
       where: { status: { not: 'Draft' } },
@@ -18,9 +19,7 @@ export async function contentTypeCounts(prisma: PrismaClient): Promise<Record<st
     }),
     (prisma as any).article.count({ where: { status: 'Published' } }),
     (prisma as any).book.count({ where: { status: 'Published' } }),
-    (prisma as any).$queryRawUnsafe(
-      `select count(distinct "journalId")::int as n from "Article"
-       where status = 'Published' and "journalId" is not null`),
+    publicJournalCount(prisma),
   ]);
 
   const countsMap: Record<string, number> = {};
@@ -28,7 +27,7 @@ export async function contentTypeCounts(prisma: PrismaClient): Promise<Record<st
     if (g.contentType) countsMap[g.contentType] = g._count.id;
   }
 
-  countsMap['Journals'] = Number(journalRows?.[0]?.n || 0);
+  countsMap['Journals'] = journals;
   countsMap['Articles'] = articles + (countsMap['Periodicals'] || 0);
   countsMap['Books'] = (countsMap['Books'] || 0) + newBooks;
   delete countsMap['Periodicals'];
