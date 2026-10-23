@@ -13,6 +13,11 @@ ENV CACHE_BUSTER_STAGE1="2026-06-17T12-40-00"
 # Copy source code
 COPY . .
 
+# Vite reads VITE_* variables while it builds, so the Google client ID has to be a build argument (Coolify: mark it "Build Variable").
+# It is a public identifier, not a secret. Empty is fine: the Google button is then simply not shown.
+ARG VITE_GOOGLE_CLIENT_ID=""
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+
 # Build the Vite frontend with memory limits to prevent OOM kills on small VPS
 ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN npm run build

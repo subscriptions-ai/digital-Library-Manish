@@ -92,6 +92,8 @@ try {
   await db.user.update({ where: { id: readded.id }, data: { status: 'Active', institutionId: mohan.id, deletionScheduledAt: null } });
   await removeFromInstitution(db, { userId: purged.id, institutionId: mohan.id, actor });
   await db.user.update({ where: { id: purged.id }, data: { deletionScheduledAt: new Date(Date.now() - 1000) } });
+  // Its 48 hours are up and the purge runs now: from here on it is an anonymised account, not a pending one.
+  const early = await purgeDueAccounts(db, {});
   const accessBefore = await db.institutionMemberAccess.count({ where: { userId: pending.id, revokedAt: null } });
   srv = await start();
 
@@ -158,8 +160,7 @@ try {
     const board = await get('/api/admin/users/by-institution', adminTok);
     const g = board.data?.groups?.find((x: any) => x.id === mohan.id);
     check('Mohan: no longer pending; the person is now a former member; active members unchanged', g?.pendingDeletion === 0 && g?.former === 2 && g?.members === 3, g);
-    const res = await purgeDueAccounts(db, {});
-    check('the purge anonymises only what is due', res.deleted >= 1, res);
+    check('the purge had anonymised the account whose 48 hours were up', early.deleted >= 1, early);
     const afterPurge = await get(`/api/admin/users?formerOf=${mohan.id}&limit=200`, adminTok);
     check('the purged account has left the removed list', !(afterPurge.data?.data || []).some((x: any) => x.id === purged.id));
   }

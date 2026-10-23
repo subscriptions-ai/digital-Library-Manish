@@ -53,6 +53,7 @@ import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, open
 import { ASSIGNABLE_MEMBER_ROLES, PRO_ONLY_ACCESS_ROLES, assignableRole, roleFromDesignation, resolveImportRole,
   cleanDesignation, effectiveAccessRole } from "./src/lib/memberRoles.js";
 import { effectiveSessionLimit, parseSessionLimit, decideSignIn, LIMIT_REACHED } from "./src/lib/sessionLimits.js";
+import { GOOGLE, googleConfigured, verifyGoogleCredential, GoogleAuthError, signGoogleToken, readGoogleToken, type LinkClaims, type OnboardingClaims } from "./src/server/googleAuth.js";
 import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
@@ -138,6 +139,9 @@ async function startServer() {
   // Production Middleware
   app.use(helmet({
     contentSecurityPolicy: false, // Disable CSP if it interferes with Vite/External resources, or configure properly
+    // Helmet's default (same-origin) cuts a popup off from the page that opened it, which is how Sign in with Google hands its
+    // credential back. Popups this site opens may talk to it; every other window still may not.
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
   }));
   app.use(compression());
   
@@ -205,6 +209,27 @@ async function startServer() {
   const signInBody = express.json({ limit: "10kb" });
   app.use("/api/auth/login", signInBody, loginLimiter);
   app.use("/api/auth/admin-login", signInBody, loginLimiter);
+
+  /**
+   * Google sign-in: counted by address (nobody is signed in yet), and the link step, which asks for a password, also counts by the
+   * account it is trying to link, so it is no easier a place to guess one than the sign-in page is.
+   */
+  const googleJson = express.json({ limit: "20kb" });
+  const googleLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false,
+    keyGenerator: (req: any, res: any) => ipKeyGenerator(req, res),
+    message: { error: "Too many sign-in attempts. Please try again in a few minutes." },
+  });
+  const googleLinkLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false,
+    keyGenerator: (req: any, res: any) => {
+      const lk = readGoogleToken<LinkClaims>(process.env.JWT_SECRET || "your-fallback-secret-for-dev-only", 'link', req.body?.linkToken);
+      return lk ? `google-link:${lk.uid}` : ipKeyGenerator(req, res);
+    },
+    message: { error: "Too many attempts. Please try again in 15 minutes." },
+  });
+  app.use("/api/auth/google", googleJson, googleLimiter);
+  app.use("/api/auth/google/link", googleLinkLimiter);
 
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -917,6 +942,188 @@ async function startServer() {
   cron.schedule('0,30 0-5 * * *', () => { sendDailyUserDigest().catch((e) => console.error('daily user digest:', e?.message)); },
     { timezone: 'Asia/Kolkata' });
 
+  class MemberExistsError extends Error { constructor() { super('A member with this email or sign-in already exists'); } }
+
+  /**
+   * Makes a member and signs them in. The ONE place an account is created from a registration, whether the person came by email and
+   * a password or by Google, so what a new account is given (its departments, its institution, its lead, its free preview, its welcome)
+   * is the same either way. How they proved who they are is the only difference: `passwordHash` (null for a Google-only account),
+   * whether the address is verified, and the Google identity to link.
+   */
+  const registerMember = async (req: any, m: {
+    email: string; passwordHash: string | null; emailVerified: boolean;
+    name: any; organization: any; contact: any; designation: any; interestedDomains: any; registrantType: any;
+    state: any; country: any; whatsapp: any; attribution: any;
+    identity?: { provider: string; subject: string; emailAtLink: string | null };
+  }) => {
+    const { email, name, organization, contact, designation, interestedDomains, registrantType, state, country, whatsapp, attribution } = m;
+    // The departments this account opens on the free preview (and the institution's, until it subscribes): src/server/entitlements.ts.
+    // Kept to the departments we actually hold, and capped so it cannot be used as somewhere to write whatever one likes.
+    const departmentNames = new Set(DOMAINS.map((d: any) => d.name));
+    const interests: string[] = Array.isArray(interestedDomains)
+      ? [...new Set(interestedDomains.map((d: any) => canonicalDepartmentName(d)).filter((d: any) => d && departmentNames.has(d)))].slice(0, 40) as string[]
+      : [];
+
+    // Kept to the lists the form offers. A designation that is not one of
+    // ours cannot be counted, and counting them is the only reason the field
+    // stopped being a text box.
+    const type = REGISTRANT_TYPES.some(t => t.id === registrantType) ? registrantType : null;
+    const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
+
+    // Whoever runs a library, or runs the place, is given the librarian's
+    // view — and that view is about an institution, so there has to be one.
+    //
+    // A fresh one every time, deliberately. Attaching a stranger to an
+    // existing record by the name they happened to type would hand them
+    // somebody else's students and somebody else's analytics. Two people from
+    // one college therefore make two records, and merging them is an
+    // administrator's job rather than a guess made at the moment of signing up.
+    // Signing up never grants a staff role. (An address used to be hard-coded here as an automatic Super Admin, which made the role
+    // available to whoever registered that address once its account was renamed or removed.) Super Admins are created in Admin.
+    let accountRole: string = "Subscriber";
+    const makesInstitution = opensInstitutionDashboard(type, role) && !!String(organization || '').trim();
+    if (makesInstitution) accountRole = 'Institution';
+
+    /**
+     * Where they came from.
+     *
+     * Whatever the mailing tool puts on the link — `ref`, or the utm_* set —
+     * is carried from the landing page to here by the client. One short
+     * string is the campaign; the rest is kept whole because the question
+     * worth asking six months from now is not the one being asked today.
+     *
+     * Trimmed and capped: this is a query string, which is to say it is
+     * whatever a stranger chose to type.
+     */
+    const clean = (v: any, max = 120) => {
+      const t = String(v ?? '').trim();
+      return t ? t.slice(0, max) : null;
+    };
+    const tags: Record<string, string> = {};
+    if (attribution && typeof attribution === 'object') {
+      for (const k of ['ref', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'landing']) {
+        const v = clean((attribution as any)[k], k === 'landing' ? 300 : 120);
+        if (v) tags[k] = v;
+      }
+    }
+    const signupSource = tags.ref || tags.utm_campaign || tags.utm_source || null;
+
+    // The institution, the member and (for Google) the link between them are made together or not at all, so a failure part-way leaves no
+    // orphan institution, and two requests for the same person cannot each make a member: the unique indexes decide, and the loser is told so.
+    let userObj: any;
+    try {
+      userObj = await prisma.$transaction(async (tx: any) => {
+    let newInstitutionId: string | null = null;
+    if (makesInstitution) {
+      newInstitutionId = (await tx.institution.create({ data: { name: String(organization).trim(), status: 'Active' } })).id;
+    }
+    const created = await tx.user.create({
+      data: {
+        email,
+        password: m.passwordHash,
+        displayName: name,
+        organization: organization || "",
+        contact: contact || "",
+        // Only a designation from the list. Falling back to whatever was sent
+        // would put the free-text mess straight back into the field that
+        // exists to be counted — and counting is the whole reason it stopped
+        // being a text box. Anything else still reaches sales in the lead's
+        // notes, so nothing is lost, only kept out of the column.
+        designation: role || "",
+        registrantType: type,
+        state: state ? String(state).slice(0, 80) : null,
+        country: country ? String(country).slice(0, 80) : null,
+        // Only what they opted in to. The form sends the contact number
+        // itself when they tick "use this number for WhatsApp", so nothing
+        // downstream has to know the rule — and a member who did not tick it
+        // is not given a WhatsApp number by falling back to the phone one.
+        whatsapp: whatsapp ? String(whatsapp).slice(0, 40) : null,
+        role: accountRole,
+        institutionId: newInstitutionId,
+        status: "Active",
+        interestedDomains: interests,
+        signupSource,
+        signupTags: Object.keys(tags).length ? tags : undefined,
+        emailVerifiedAt: m.emailVerified ? new Date() : null,
+        // Signing up signs them in: the token below is a session.
+        lastLoginAt: new Date(),
+      }
+    });
+    if (m.identity) {
+      await tx.authIdentity.create({ data: { userId: created.id, provider: m.identity.provider, providerSubject: m.identity.subject, emailAtLink: m.identity.emailAtLink } });
+    }
+    return created;
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') throw new MemberExistsError();
+      throw e;
+    }
+
+    // Every free member is someone who might want Pro, and the subjects they
+    // named are the opening line of that conversation. Not awaited — a lead
+    // that fails to file must never cost somebody their account.
+    // Everyone who signs up themselves, not only readers. A librarian or a
+    // dean registering is the most valuable lead there is, and gating this on
+    // the reader's role dropped exactly those.
+    if (!STAFF_ROLES.includes(userObj.role)) {
+      prisma.lead.create({
+        data: {
+          name, email,
+          phone: contact || null,
+          organization: organization || null,
+          // Sales reads leads by where they came from. Every free signup
+          // used to arrive under one word, so a mailing of four thousand
+          // colleges and a stray visitor were the same row.
+          source: signupSource ? `Free signup · ${signupSource}` : 'Free signup',
+          status: 'All',
+          state: state || null,
+          notes: [
+            type ? `Registering as: ${type}${accountRole === 'Institution' ? ' — has the institution dashboard' : ''}` : null,
+            role ? `Designation: ${role}` : (designation ? `Designation as given: ${designation}` : null),
+            [state, country].filter(Boolean).length ? `Where: ${[state, country].filter(Boolean).join(', ')}` : null,
+            whatsapp && whatsapp !== contact ? `WhatsApp: ${whatsapp}` : null,
+            interests.length ? `Departments: ${interests.join(', ')}` : 'No departments chosen',
+          ].filter(Boolean).join('\n'),
+        },
+      }).catch((e: any) => console.error('signup: could not file the lead', e?.message));
+    }
+
+    // A brand-new account has no other session, so this cannot be refused.
+    // A new account has no session to count, so this cannot be refused.
+    const token = ((await startSession({ id: userObj.id, email: userObj.email, role: userObj.role }, req)) as { token: string }).token;
+    
+    const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+
+    // No admin alert here: new registrations are reported once a day by
+    // sendDailyUserDigest, read from the members table.
+
+    const userMailOptions = {
+      from: `"STM Digital Library" <${emailFrom}>`,
+      to: email,
+      subject: `🎉 Welcome to STM Digital Library, ${name}!`,
+      html: buildEmail(
+        `<tr><td style="padding:28px 40px 24px;">` +
+        `<h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome, ${name} 🎓</h3>` +
+        `<p style="margin:0 0 18px;font-size:13px;color:#475569;line-height:1.7;">Your free membership is ready, and it opens the departments you chose when you registered — journals, books and articles alike. A free membership is limited in time, in half-hour sessions; more departments can be added at any time.</p>` +
+        `<div style="background:#f0f9ff;border-left:4px solid #0369a1;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:18px;">` +
+        `<p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0369a1;">How your reading time works</p>` +
+        `<p style="margin:5px 0;font-size:13px;color:#334155;">You read in <strong>30-minute sessions</strong>, with a two-hour gap after each — <strong>four sessions, two hours, every day</strong>.</p>` +
+        `<p style="margin:5px 0;font-size:13px;color:#334155;">The clock starts when you sign in and stops when you sign out. Closing the tab does not stop it, so <strong>sign out when you are finished</strong> and the rest of the session is kept for you.</p>` +
+        `</div>` +
+        `<div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;">` +
+        `<p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">🚀 Getting started</p>` +
+        `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Sign in at <strong>journalslibrary.com</strong></p>` +
+        `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Search or browse — the catalogue is open to you in full</p>` +
+        `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Want unlimited reading? Apply for Pro from your dashboard</p>` +
+        `</div>` +
+        `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p>` +
+        `</td></tr>`)
+    };
+
+    await sendMail(userMailOptions);
+    return { userObj, token };
+  };
+
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, name, organization, contact, designation, interestedDomains,
@@ -949,169 +1156,60 @@ async function startServer() {
         }
       }
 
-      // The departments this account opens on the free preview (and the institution's, until it subscribes): src/server/entitlements.ts.
-      // Kept to the departments we actually hold, and capped so it cannot be used as somewhere to write whatever one likes.
-      const departmentNames = new Set(DOMAINS.map((d: any) => d.name));
-      const interests: string[] = Array.isArray(interestedDomains)
-        ? [...new Set(interestedDomains.map((d: any) => canonicalDepartmentName(d)).filter((d: any) => d && departmentNames.has(d)))].slice(0, 40) as string[]
-        : [];
-
-      // Kept to the lists the form offers. A designation that is not one of
-      // ours cannot be counted, and counting them is the only reason the field
-      // stopped being a text box.
-      const type = REGISTRANT_TYPES.some(t => t.id === registrantType) ? registrantType : null;
-      const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
-
-      // Whoever runs a library, or runs the place, is given the librarian's
-      // view — and that view is about an institution, so there has to be one.
-      //
-      // A fresh one every time, deliberately. Attaching a stranger to an
-      // existing record by the name they happened to type would hand them
-      // somebody else's students and somebody else's analytics. Two people from
-      // one college therefore make two records, and merging them is an
-      // administrator's job rather than a guess made at the moment of signing up.
-      // Signing up never grants a staff role. (An address used to be hard-coded here as an automatic Super Admin, which made the role
-      // available to whoever registered that address once its account was renamed or removed.) Super Admins are created in Admin.
-      let accountRole: string = "Subscriber";
-      let newInstitutionId: string | null = null;
-      if (accountRole !== 'SuperAdmin' && opensInstitutionDashboard(type, role) && String(organization || '').trim()) {
-        const created = await prisma.institution.create({
-          data: { name: String(organization).trim(), status: 'Active' },
-        });
-        newInstitutionId = created.id;
-        accountRole = 'Institution';
-      }
-
-      /**
-       * Where they came from.
-       *
-       * Whatever the mailing tool puts on the link — `ref`, or the utm_* set —
-       * is carried from the landing page to here by the client. One short
-       * string is the campaign; the rest is kept whole because the question
-       * worth asking six months from now is not the one being asked today.
-       *
-       * Trimmed and capped: this is a query string, which is to say it is
-       * whatever a stranger chose to type.
-       */
-      const clean = (v: any, max = 120) => {
-        const t = String(v ?? '').trim();
-        return t ? t.slice(0, max) : null;
-      };
-      const tags: Record<string, string> = {};
-      if (attribution && typeof attribution === 'object') {
-        for (const k of ['ref', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'landing']) {
-          const v = clean((attribution as any)[k], k === 'landing' ? 300 : 120);
-          if (v) tags[k] = v;
-        }
-      }
-      const signupSource = tags.ref || tags.utm_campaign || tags.utm_source || null;
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      
-      const userObj = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          displayName: name,
-          organization: organization || "",
-          contact: contact || "",
-          // Only a designation from the list. Falling back to whatever was sent
-          // would put the free-text mess straight back into the field that
-          // exists to be counted — and counting is the whole reason it stopped
-          // being a text box. Anything else still reaches sales in the lead's
-          // notes, so nothing is lost, only kept out of the column.
-          designation: role || "",
-          registrantType: type,
-          state: state ? String(state).slice(0, 80) : null,
-          country: country ? String(country).slice(0, 80) : null,
-          // Only what they opted in to. The form sends the contact number
-          // itself when they tick "use this number for WhatsApp", so nothing
-          // downstream has to know the rule — and a member who did not tick it
-          // is not given a WhatsApp number by falling back to the phone one.
-          whatsapp: whatsapp ? String(whatsapp).slice(0, 40) : null,
-          role: accountRole,
-          institutionId: newInstitutionId,
-          status: "Active",
-          interestedDomains: interests,
-          signupSource,
-          signupTags: Object.keys(tags).length ? tags : undefined,
-          emailVerifiedAt: proof?.isVerified ? new Date() : null,
-          // Signing up signs them in: the token below is a session.
-          lastLoginAt: new Date(),
-        }
+      const { userObj, token } = await registerMember(req, {
+        email, passwordHash: await bcrypt.hash(password, 10), emailVerified: !!proof?.isVerified,
+        name, organization, contact, designation, interestedDomains, registrantType, state, country, whatsapp, attribution,
       });
-
-      // Every free member is someone who might want Pro, and the subjects they
-      // named are the opening line of that conversation. Not awaited — a lead
-      // that fails to file must never cost somebody their account.
-      // Everyone who signs up themselves, not only readers. A librarian or a
-      // dean registering is the most valuable lead there is, and gating this on
-      // the reader's role dropped exactly those.
-      if (!STAFF_ROLES.includes(userObj.role)) {
-        prisma.lead.create({
-          data: {
-            name, email,
-            phone: contact || null,
-            organization: organization || null,
-            // Sales reads leads by where they came from. Every free signup
-            // used to arrive under one word, so a mailing of four thousand
-            // colleges and a stray visitor were the same row.
-            source: signupSource ? `Free signup · ${signupSource}` : 'Free signup',
-            status: 'All',
-            state: state || null,
-            notes: [
-              type ? `Registering as: ${type}${accountRole === 'Institution' ? ' — has the institution dashboard' : ''}` : null,
-              role ? `Designation: ${role}` : (designation ? `Designation as given: ${designation}` : null),
-              [state, country].filter(Boolean).length ? `Where: ${[state, country].filter(Boolean).join(', ')}` : null,
-              whatsapp && whatsapp !== contact ? `WhatsApp: ${whatsapp}` : null,
-              interests.length ? `Departments: ${interests.join(', ')}` : 'No departments chosen',
-            ].filter(Boolean).join('\n'),
-          },
-        }).catch((e: any) => console.error('signup: could not file the lead', e?.message));
-      }
-
-      // A brand-new account has no other session, so this cannot be refused.
-      // A new account has no session to count, so this cannot be refused.
-      const token = ((await startSession({ id: userObj.id, email, role: userObj.role }, req)) as { token: string }).token;
-      
-      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-
-      // No admin alert here: new registrations are reported once a day by
-      // sendDailyUserDigest, read from the members table.
-
-      const userMailOptions = {
-        from: `"STM Digital Library" <${emailFrom}>`,
-        to: email,
-        subject: `🎉 Welcome to STM Digital Library, ${name}!`,
-        html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;">` +
-          `<h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome, ${name} 🎓</h3>` +
-          `<p style="margin:0 0 18px;font-size:13px;color:#475569;line-height:1.7;">Your free membership is ready, and it opens the departments you chose when you registered — journals, books and articles alike. A free membership is limited in time, in half-hour sessions; more departments can be added at any time.</p>` +
-          `<div style="background:#f0f9ff;border-left:4px solid #0369a1;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:18px;">` +
-          `<p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0369a1;">How your reading time works</p>` +
-          `<p style="margin:5px 0;font-size:13px;color:#334155;">You read in <strong>30-minute sessions</strong>, with a two-hour gap after each — <strong>four sessions, two hours, every day</strong>.</p>` +
-          `<p style="margin:5px 0;font-size:13px;color:#334155;">The clock starts when you sign in and stops when you sign out. Closing the tab does not stop it, so <strong>sign out when you are finished</strong> and the rest of the session is kept for you.</p>` +
-          `</div>` +
-          `<div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;">` +
-          `<p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">🚀 Getting started</p>` +
-          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Sign in at <strong>journalslibrary.com</strong></p>` +
-          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Search or browse — the catalogue is open to you in full</p>` +
-          `<p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Want unlimited reading? Apply for Pro from your dashboard</p>` +
-          `</div>` +
-          `<p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p>` +
-          `</td></tr>`)
-      };
-
-      await sendMail(userMailOptions);
 
       // Don't send password back
       const { password: _, ...profile } = userObj;
       res.json({ token, user: profile });
     } catch (error) {
+      // Two requests for one address at once: the unique index let one through.
+      if (error instanceof MemberExistsError) return res.status(400).json({ error: "User already exists" });
       console.error("Signup Error:", error);
       res.status(500).json({ error: "Failed to create account" });
     }
   });
+
+  /** Why an account may not sign in at all, whatever proved who they are (password or Google). Null when it may. */
+  const accountLoginBlock = (u: any): { status: number; body: any } | null => {
+    if (u.isBlocked) return { status: 403, body: { error: "Your account has been blocked. Please contact support." } };
+    if (isRemovedStatus(u.status)) return { status: 403, body: { error: "This account is no longer active. If you think this is a mistake, please contact support.", code: "ACCOUNT_REMOVED" } };
+    if (u.isDemoAccount && u.demoExpiresAt && new Date() > u.demoExpiresAt) return { status: 403, body: { error: "Your demo account has expired. Please upgrade to continue." } };
+    return null;
+  };
+
+  /**
+   * Signs an account in once it has proved who it is, by whatever means. The session is the ordinary one, so the simultaneous-login
+   * limit applies the same way to a password and to Google, and both count toward the one total. `replaceExisting` is passed only by a
+   * sign-in whose proof (the password, or the Google credential) has just been verified.
+   */
+  const finishSignIn = async (userObj: any, req: any, res: any, opts: { replaceExisting?: boolean; extra?: Record<string, any>; onStarted?: () => void } = {}) => {
+    const started = await startSession(
+      { id: userObj.id, email: userObj.email, role: userObj.role, institutionId: userObj.institutionId },
+      req,
+      { replaceExisting: opts.replaceExisting === true },
+    );
+    if ('refused' in started) return sendSessionRefused(res, started);
+    opts.onStarted?.();
+
+    // Recorded for the lifecycle mail rules. Not awaited, and its failure is
+    // nobody's business at the door.
+    prisma.user.update({ where: { id: userObj.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+
+    // The clock starts when they sign in. Not awaited: a member must never be
+    // kept waiting at the door by the bookkeeping, and if it fails the next
+    // thing they open starts it anyway.
+    if (!STAFF_ROLES.includes(userObj.role)) {
+      getUserActiveSubscriptions(userObj.id, userObj.role, userObj.institutionId)
+        .then(subs => (subs.length === 0 ? allowanceFor(prisma, userObj.id, { start: true }) : null))
+        .catch(() => {});
+    }
+
+    const { password: _, ...profile } = userObj;
+    return res.json({ ...(opts.extra || {}), token: started.token, user: profile });
+  };
 
   // Auth: Login
   app.post("/api/auth/login", async (req, res) => {
@@ -1150,17 +1248,8 @@ async function startServer() {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      if (userObj.isBlocked) {
-        return res.status(403).json({ error: "Your account has been blocked. Please contact support." });
-      }
-
-      if (isRemovedStatus((userObj as any).status)) {
-        return res.status(403).json({ error: "This account is no longer active. If you think this is a mistake, please contact support.", code: "ACCOUNT_REMOVED" });
-      }
-
-      if (userObj.isDemoAccount && userObj.demoExpiresAt && new Date() > userObj.demoExpiresAt) {
-        return res.status(403).json({ error: "Your demo account has expired. Please upgrade to continue." });
-      }
+      const blocked = accountLoginBlock(userObj);
+      if (blocked) return res.status(blocked.status).json(blocked.body);
 
       const isPasswordValid = await passwordMatches(prisma, userObj.id, password);
 
@@ -1171,34 +1260,198 @@ async function startServer() {
       // Only now — password verified — is it safe to say anything about other
       // sessions. `replaceExisting` is the member choosing to end the other one,
       // and is honoured only because the password above has just been checked.
-      const started = await startSession(
-        { id: userObj.id, email: userObj.email, role: userObj.role, institutionId: userObj.institutionId },
-        req,
-        { replaceExisting: req.body?.replaceExisting === true },
-      );
-      if ('refused' in started) return sendSessionRefused(res, started);
-      const token = started.token;
-
-      // Recorded for the lifecycle mail rules. Not awaited, and its failure is
-      // nobody's business at the door.
-      prisma.user.update({ where: { id: userObj.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
-
-      // The clock starts when they sign in. Not awaited: a member must never be
-      // kept waiting at the door by the bookkeeping, and if it fails the next
-      // thing they open starts it anyway.
-      if (!STAFF_ROLES.includes(userObj.role)) {
-        getUserActiveSubscriptions(userObj.id, userObj.role, userObj.institutionId)
-          .then(subs => (subs.length === 0 ? allowanceFor(prisma, userObj.id, { start: true }) : null))
-          .catch(() => {});
-      }
-
-      const { password: _, ...profile } = userObj;
-      res.json({ token, user: profile });
+      return await finishSignIn(userObj, req, res, { replaceExisting: req.body?.replaceExisting === true });
     } catch (error) {
       console.error("Login Error:", error);
       res.status(500).json({ error: "Failed to login" });
     }
   });
+
+  // ── Sign in with Google ────────────────────────────────────────────────────
+  //
+  // Google proves who someone is; it grants nothing. The browser sends the credential Google gave it, this server verifies it, and the
+  // result is one of three things: a member already linked to that Google account (signed in), a newcomer (asked the rest of the
+  // registration, with nothing created yet), or an existing STM account on the same address (asked to prove it is theirs before Google is
+  // connected to it). Whatever happens next goes through the same session, the same account checks and, for a newcomer, the same
+  // registration as a password does. See src/server/googleAuth.ts.
+
+  const googleUnavailable = (res: any) => res.status(503).json({ code: 'GOOGLE_UNAVAILABLE', error: 'Google sign-in is unavailable right now. You can continue with email.' });
+  const googleActor = (u: any) => ({ uid: u.id, email: u.email, role: u.role });
+  /** Staff sign in with their own email and password: an address match never reaches a privileged account. */
+  const GOOGLE_NOT_FOR_STAFF = { code: 'GOOGLE_NOT_ALLOWED_FOR_STAFF', error: 'Staff accounts sign in with email and password.' };
+  class GoogleLinkConflict extends Error {}
+
+  /** A credential, verified; or the response already sent. */
+  const verifiedGoogle = async (req: any, res: any) => {
+    try { return await verifyGoogleCredential(req.body?.credential); }
+    catch (e: any) {
+      if (!(e instanceof GoogleAuthError)) throw e;
+      if (e.code === 'GOOGLE_UNAVAILABLE') { googleUnavailable(res); return null; }
+      if (e.code === 'GOOGLE_EMAIL_NOT_VERIFIED') { res.status(403).json({ code: e.code, error: 'Google has not verified this email address, so it cannot be used to sign in.' }); return null; }
+      console.warn('google sign-in: a credential was refused');
+      res.status(401).json({ code: 'INVALID_GOOGLE_TOKEN', error: 'Google sign-in could not be verified. Please try again.' });
+      return null;
+    }
+  };
+
+  app.post("/api/auth/google", async (req, res) => {
+    try {
+      if (!googleConfigured()) return googleUnavailable(res);
+      const g = await verifiedGoogle(req, res);
+      if (!g) return;
+
+      // CASE A — this Google account is already linked to a member. Found by Google's subject, never by address.
+      const identity = await prisma.authIdentity.findUnique({
+        where: { provider_providerSubject: { provider: GOOGLE, providerSubject: g.sub } }, include: { user: true },
+      });
+      if (identity) {
+        const u: any = identity.user;
+        const blocked = accountLoginBlock(u);
+        if (blocked) {
+          await auditAccount(prisma, googleActor(u), 'GOOGLE_AUTH_FAILED', { userId: u.id, provider: GOOGLE, reason: 'account-not-allowed' });
+          return res.status(blocked.status).json(blocked.body);
+        }
+        if (STAFF_ROLES.includes(u.role)) return res.status(403).json(GOOGLE_NOT_FOR_STAFF);
+        // Google has just confirmed the address; an account that never confirmed it now has.
+        if (!u.emailVerifiedAt && normalizeEmail(u.email) === g.email) {
+          u.emailVerifiedAt = new Date();
+          await prisma.user.update({ where: { id: u.id }, data: { emailVerifiedAt: u.emailVerifiedAt } }).catch(() => {});
+        }
+        return await finishSignIn(u, req, res, {
+          replaceExisting: req.body?.replaceExisting === true,
+          extra: { status: 'AUTHENTICATED' },
+          onStarted: () => { auditAccount(prisma, googleActor(u), 'GOOGLE_AUTH_SUCCESS', { userId: u.id, provider: GOOGLE }); },
+        });
+      }
+
+      // CASE C — no link yet, but an STM account already uses this address. Not duplicated, and not merged on the address alone:
+      // the person must show they control that account first.
+      const existing: any = await findUserByEmail(prisma, g.email);
+      if (existing) {
+        const blocked = accountLoginBlock(existing);
+        if (blocked) return res.status(blocked.status).json(blocked.body);
+        if (STAFF_ROLES.includes(existing.role)) return res.status(403).json(GOOGLE_NOT_FOR_STAFF);
+        const other = await prisma.authIdentity.findUnique({ where: { userId_provider: { userId: existing.id, provider: GOOGLE } } });
+        if (other) return res.status(409).json({ code: 'GOOGLE_ALREADY_LINKED_TO_OTHER', error: 'This account is already connected to a different Google account. Sign in with that one, or with your password.' });
+        return res.json({
+          status: 'ACCOUNT_LINK_REQUIRED',
+          linkToken: signGoogleToken(JWT_SECRET, 'link', { uid: existing.id, sub: g.sub, email: g.email, name: g.name, picture: g.picture }),
+          email: g.email,
+          // Linking is proved with the account's password. An account that has none cannot be proved this way.
+          hasPassword: typeof existing.password === 'string' && /^\$2[aby]\$\d\d\$/.test(existing.password),
+          google: { name: g.name, picture: g.picture },
+        });
+      }
+
+      // CASE B — nobody yet. Nothing is created: the person is asked the rest, and this token is the proof the server verified Google.
+      return res.json({
+        status: 'PROFILE_REQUIRED',
+        onboardingToken: signGoogleToken(JWT_SECRET, 'onboarding', { sub: g.sub, email: g.email, name: g.name, picture: g.picture }),
+        google: { email: g.email, name: g.name, picture: g.picture },
+      });
+    } catch (e: any) {
+      console.error('POST /api/auth/google:', e?.message);
+      res.status(500).json({ error: 'Failed to sign in with Google' });
+    }
+  });
+
+  app.post("/api/auth/google/complete-signup", async (req, res) => {
+    try {
+      if (!googleConfigured()) return googleUnavailable(res);
+      const ob = readGoogleToken<OnboardingClaims>(JWT_SECRET, 'onboarding', req.body?.onboardingToken);
+      if (!ob) return res.status(401).json({ code: 'ONBOARDING_EXPIRED', error: 'Your Google sign-up has expired. Please continue with Google again.' });
+
+      // Looked at again here, not only when the credential was verified: time has passed.
+      const alreadyLinked = await prisma.authIdentity.findUnique({ where: { provider_providerSubject: { provider: GOOGLE, providerSubject: ob.sub } } });
+      if (alreadyLinked) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: 'This Google account is already registered. Continue with Google to sign in.' });
+      if (await emailTaken(prisma, ob.email)) return res.status(409).json({ code: 'ACCOUNT_EXISTS', error: 'An STM Digital Library account already exists with this email. Continue with Google again to connect it.' });
+
+      // The browser's say is only the answers to the registration questions. The address, and who Google says they are, come from the token.
+      const b = req.body || {};
+      const name = String(b.name ?? ob.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      const type = REGISTRANT_TYPES.find(t => t.id === b.registrantType);
+      const interestedDomains = Array.isArray(b.interestedDomains) ? b.interestedDomains : [];
+      const bad = (error: string) => res.status(400).json({ code: 'INVALID_PROFILE', error });
+      if (!name) return bad('Please enter your full name.');
+      if (!type) return bad('Please tell us what you are registering as.');
+      if (!String(b.contact || '').trim()) return bad('Please enter your mobile number.');
+      if (!String(b.state || '').trim()) return bad('Please enter your state.');
+      if (!String(b.country || '').trim()) return bad('Please select your country.');
+      if ((type.id === 'Institute' || type.id === 'Corporate') && !String(b.organization || '').trim()) return bad(type.id === 'Institute' ? 'Please enter your institution name.' : 'Please enter your company name.');
+      if (!interestedDomains.length) return bad('Please select at least one department.');
+
+      let made;
+      try {
+        made = await registerMember(req, {
+          email: ob.email, passwordHash: null, emailVerified: true,
+          name, organization: b.organization, contact: b.contact, designation: b.designation, interestedDomains, registrantType: b.registrantType,
+          state: b.state, country: b.country, whatsapp: b.whatsapp, attribution: b.attribution,
+          identity: { provider: GOOGLE, subject: ob.sub, emailAtLink: ob.email },
+        });
+      } catch (e: any) {
+        if (e instanceof MemberExistsError) return res.status(409).json({ code: 'ALREADY_REGISTERED', error: 'This Google account or email is already registered. Continue with Google to sign in.' });
+        throw e;
+      }
+      await auditAccount(prisma, googleActor(made.userObj), 'GOOGLE_SIGNUP_COMPLETED', { userId: made.userObj.id, provider: GOOGLE });
+      const { password: _pw, ...profile } = made.userObj;
+      res.json({ status: 'AUTHENTICATED', token: made.token, user: profile });
+    } catch (e: any) {
+      console.error('POST /api/auth/google/complete-signup:', e?.message);
+      res.status(500).json({ error: 'Failed to create your account' });
+    }
+  });
+
+  app.post("/api/auth/google/link", async (req, res) => {
+    try {
+      if (!googleConfigured()) return googleUnavailable(res);
+      const lk = readGoogleToken<LinkClaims>(JWT_SECRET, 'link', req.body?.linkToken);
+      const expired = () => res.status(401).json({ code: 'LINK_EXPIRED', error: 'This step has expired. Please continue with Google again.' });
+      if (!lk || !lk.uid) return expired();
+      const user: any = await prisma.user.findUnique({ where: { id: lk.uid } });
+      if (!user) return expired();
+      const blocked = accountLoginBlock(user);
+      if (blocked) return res.status(blocked.status).json(blocked.body);
+      if (STAFF_ROLES.includes(user.role)) return res.status(403).json(GOOGLE_NOT_FOR_STAFF);
+
+      // The proof that this person controls the existing account. Without it nothing is connected.
+      if (!(await passwordMatches(prisma, user.id, req.body?.password))) {
+        await auditAccount(prisma, googleActor(user), 'GOOGLE_AUTH_FAILED', { userId: user.id, provider: GOOGLE, reason: 'link-password-wrong' });
+        return res.status(401).json({ code: 'INVALID_CREDENTIALS', error: 'That password is not correct.' });
+      }
+
+      // Checked again inside the transaction that writes the link: one Google account is never two members, and one member never two Google accounts.
+      let newlyLinked = false;
+      try {
+        await prisma.$transaction(async (tx: any) => {
+          const owner = await tx.authIdentity.findUnique({ where: { provider_providerSubject: { provider: GOOGLE, providerSubject: lk.sub } } });
+          if (owner && owner.userId !== user.id) throw new GoogleLinkConflict();
+          const mine = await tx.authIdentity.findUnique({ where: { userId_provider: { userId: user.id, provider: GOOGLE } } });
+          if (mine) { if (mine.providerSubject !== lk.sub) throw new GoogleLinkConflict(); return; }
+          await tx.authIdentity.create({ data: { userId: user.id, provider: GOOGLE, providerSubject: lk.sub, emailAtLink: lk.email } });
+          newlyLinked = true;
+          if (!user.emailVerifiedAt && normalizeEmail(user.email) === lk.email) {
+            user.emailVerifiedAt = new Date();
+            await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: user.emailVerifiedAt } });
+          }
+        });
+      } catch (e: any) {
+        if (e instanceof GoogleLinkConflict || e?.code === 'P2002') {
+          return res.status(409).json({ code: 'GOOGLE_ALREADY_LINKED', error: 'This Google account is already connected to a different STM Digital Library account.' });
+        }
+        throw e;
+      }
+      if (newlyLinked) await auditAccount(prisma, googleActor(user), 'GOOGLE_ACCOUNT_LINKED', { userId: user.id, provider: GOOGLE });
+      return await finishSignIn(user, req, res, {
+        replaceExisting: req.body?.replaceExisting === true,
+        extra: { status: 'AUTHENTICATED', linked: true },
+        onStarted: () => { auditAccount(prisma, googleActor(user), 'GOOGLE_AUTH_SUCCESS', { userId: user.id, provider: GOOGLE }); },
+      });
+    } catch (e: any) {
+      console.error('POST /api/auth/google/link:', e?.message);
+      res.status(500).json({ error: 'Failed to connect Google' });
+    }
+  });
+
 
   /**
    * Signing out — which the server has never been told about until now.
@@ -5719,6 +5972,10 @@ async function startServer() {
       }]));
       const liveCount = new Map<string, number>();
       for (const r of liveRows) liveCount.set(r.userId, (liveCount.get(r.userId) || 0) + 1);
+      // Which providers each account has linked. The provider's own identifier never leaves the server.
+      const providerRows = await prisma.authIdentity.findMany({ where: { userId: { in: users.map(u => u.id) } }, select: { userId: true, provider: true } });
+      const providersBy = new Map<string, string[]>();
+      for (const r of providerRows) providersBy.set(r.userId, [...(providersBy.get(r.userId) || []), r.provider]);
 
       // Whether each account has a password it can sign in with: a yes/no decided in the database, so no hash is ever read out.
       const withPassword = await withPasswordCredential(prisma, users.map((u: any) => u.id));
@@ -5733,6 +5990,8 @@ async function startServer() {
           ...u,
           ...withAccessRole(u),
           hasPassword: withPassword.has(u.id),
+          // How they can sign in: "Password", "Google", or both. A Google-only account having no password is not a fault.
+          signInMethods: [...(withPassword.has(u.id) ? ['Password'] : []), ...(providersBy.get(u.id) || []).map(p => (p === GOOGLE ? 'Google' : p))],
           activeSession: liveBy.get(u.id) || null,
           activeSessionCount: liveCount.get(u.id) || 0,
           sessionLimit: effectiveSessionLimit((u as any).maxConcurrentSessions),
@@ -16390,6 +16649,9 @@ async function startServer() {
     console.error("Unhandled Error:", err);
     res.status(500).json({ error: "Internal server error" });
   });
+
+  // One line at start-up, so a missing client ID is noticed here rather than as a button that does nothing. Nothing else depends on it.
+  console.log(googleConfigured() ? 'Google sign-in: enabled' : 'Google sign-in: disabled (GOOGLE_CLIENT_ID is not set); email sign-in is unaffected');
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || 'development'})`);

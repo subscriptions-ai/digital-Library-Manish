@@ -561,7 +561,8 @@ export function UserManager() {
                         )}
                         <p className="text-muted">last sign-in {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : '—'}</p>
                         {/* Whether a password exists, never what it is. */}
-                        <p className="text-muted">password {user.hasPassword ? 'configured' : <b className="text-caution">not configured</b>}</p>
+                        <p className="text-muted">password {user.hasPassword ? 'configured' : (user.signInMethods || []).includes('Google') ? 'not set (signs in with Google)' : <b className="text-caution">not configured</b>}</p>
+                        {(user.signInMethods || []).length > 0 && <p className="text-muted">sign-in {(user.signInMethods as string[]).join(' + ')}</p>}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">

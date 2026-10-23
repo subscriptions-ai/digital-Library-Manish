@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile } from '../types';
-import { authApi } from '../lib/authApi';
+import { authApi, type GoogleResult } from '../lib/authApi';
 
 interface AuthContextType {
   user: any | null; // Profile from backend
@@ -13,6 +13,10 @@ interface AuthContextType {
   isInstitutionAdmin: boolean;
   login: (email: string, password: string, replaceExisting?: boolean) => Promise<void>;
   signup: (email: string, password: string, name: string, organization?: string, contact?: string, designation?: string, interestedDomains?: string[], extra?: { registrantType?: string; state?: string; country?: string; whatsapp?: string }) => Promise<void>;
+  /** Google: the three calls return what the server decided; only an AUTHENTICATED result signs anyone in. */
+  loginWithGoogle: (credential: string, replaceExisting?: boolean) => Promise<GoogleResult>;
+  completeGoogleSignup: (payload: Record<string, unknown>) => Promise<GoogleResult>;
+  linkGoogle: (linkToken: string, password: string, replaceExisting?: boolean) => Promise<GoogleResult>;
   logout: () => Promise<void>;
   fetchProfile: () => Promise<void>;
 }
@@ -54,6 +58,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(response.user as UserProfile);
   };
 
+  const accept = (result: GoogleResult) => {
+    if (result.status === 'AUTHENTICATED') {
+      setUser(result.user);
+      setProfile(result.user as UserProfile);
+    }
+    return result;
+  };
+  const loginWithGoogle = async (credential: string, replaceExisting = false) => accept(await authApi.google(credential, replaceExisting));
+  const completeGoogleSignup = async (payload: Record<string, unknown>) => accept(await authApi.googleCompleteSignup(payload));
+  const linkGoogle = async (linkToken: string, password: string, replaceExisting = false) => accept(await authApi.googleLink(linkToken, password, replaceExisting));
+
   const logout = async () => {
     // Signing out is the one action that stops a free member's clock, and until
     // now it happened entirely in the browser — the side that keeps the clock
@@ -81,6 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isInstitutionAdmin: profile?.role === 'Institution' || ((profile?.role === 'College' || profile?.role === 'University' || profile?.role === 'Corporate') && !!profile?.institutionId),
     login,
     signup,
+    loginWithGoogle,
+    completeGoogleSignup,
+    linkGoogle,
     logout,
     fetchProfile,
   };

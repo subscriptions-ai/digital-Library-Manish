@@ -13612,22 +13612,22 @@ var require_crypto2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NodeCrypto = void 0;
-    var crypto6 = require("crypto");
+    var crypto7 = require("crypto");
     var NodeCrypto = class {
       async sha256DigestBase64(str2) {
-        return crypto6.createHash("sha256").update(str2).digest("base64");
+        return crypto7.createHash("sha256").update(str2).digest("base64");
       }
       randomBytesBase64(count) {
-        return crypto6.randomBytes(count).toString("base64");
+        return crypto7.randomBytes(count).toString("base64");
       }
       async verify(pubkey, data, signature) {
-        const verifier = crypto6.createVerify("RSA-SHA256");
+        const verifier = crypto7.createVerify("RSA-SHA256");
         verifier.update(data);
         verifier.end();
         return verifier.verify(pubkey, signature, "base64");
       }
       async sign(privateKey, data) {
-        const signer = crypto6.createSign("RSA-SHA256");
+        const signer = crypto7.createSign("RSA-SHA256");
         signer.update(data);
         signer.end();
         return signer.sign(privateKey, "base64");
@@ -13645,7 +13645,7 @@ var require_crypto2 = __commonJS({
        *   string in hexadecimal encoding.
        */
       async sha256DigestHex(str2) {
-        return crypto6.createHash("sha256").update(str2).digest("hex");
+        return crypto7.createHash("sha256").update(str2).digest("hex");
       }
       /**
        * Computes the HMAC hash of a message using the provided crypto key and the
@@ -13657,7 +13657,7 @@ var require_crypto2 = __commonJS({
        */
       async signWithHmacSha256(key, msg) {
         const cryptoKey = typeof key === "string" ? key : toBuffer(key);
-        return toArrayBuffer(crypto6.createHmac("sha256", cryptoKey).update(msg).digest());
+        return toArrayBuffer(crypto7.createHmac("sha256", cryptoKey).update(msg).digest());
       }
     };
     exports2.NodeCrypto = NodeCrypto;
@@ -14480,7 +14480,7 @@ var require_oauth2client = __commonJS({
       ClientAuthentication2["ClientSecretBasic"] = "ClientSecretBasic";
       ClientAuthentication2["None"] = "None";
     })(ClientAuthentication || (exports2.ClientAuthentication = ClientAuthentication = {}));
-    var OAuth2Client = class _OAuth2Client extends authclient_1.AuthClient {
+    var OAuth2Client2 = class _OAuth2Client extends authclient_1.AuthClient {
       redirectUri;
       certificateCache = {};
       certificateExpiry = null;
@@ -14572,10 +14572,10 @@ var require_oauth2client = __commonJS({
        * https://github.com/googleapis/google-auth-library-nodejs/blob/main/samples/oauth2-codeVerifier.js
        */
       async generateCodeVerifierAsync() {
-        const crypto6 = (0, crypto_1.createCrypto)();
-        const randomString = crypto6.randomBytesBase64(96);
+        const crypto7 = (0, crypto_1.createCrypto)();
+        const randomString = crypto7.randomBytesBase64(96);
         const codeVerifier = randomString.replace(/\+/g, "~").replace(/=/g, "_").replace(/\//g, "-");
-        const unencodedCodeChallenge = await crypto6.sha256DigestBase64(codeVerifier);
+        const unencodedCodeChallenge = await crypto7.sha256DigestBase64(codeVerifier);
         const codeChallenge = unencodedCodeChallenge.split("=")[0].replace(/\+/g, "-").replace(/\//g, "_");
         return { codeVerifier, codeChallenge };
       }
@@ -15015,21 +15015,21 @@ var require_oauth2client = __commonJS({
        * @param maxExpiry The max expiry the certificate can be (Optional).
        * @return Returns a promise resolving to LoginTicket on verification.
        */
-      async verifySignedJwtWithCertsAsync(jwt2, certs, requiredAudience, issuers, maxExpiry) {
-        const crypto6 = (0, crypto_1.createCrypto)();
+      async verifySignedJwtWithCertsAsync(jwt3, certs, requiredAudience, issuers, maxExpiry) {
+        const crypto7 = (0, crypto_1.createCrypto)();
         if (!maxExpiry) {
           maxExpiry = _OAuth2Client.DEFAULT_MAX_TOKEN_LIFETIME_SECS_;
         }
-        const segments = jwt2.split(".");
+        const segments = jwt3.split(".");
         if (segments.length !== 3) {
-          throw new Error("Wrong number of segments in token: " + jwt2);
+          throw new Error("Wrong number of segments in token: " + jwt3);
         }
         const signed = segments[0] + "." + segments[1];
         let signature = segments[2];
         let envelope;
         let payload;
         try {
-          envelope = JSON.parse(crypto6.decodeBase64StringUtf8(segments[0]));
+          envelope = JSON.parse(crypto7.decodeBase64StringUtf8(segments[0]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token envelope: ${segments[0]}': ${err.message}`;
@@ -15040,7 +15040,7 @@ var require_oauth2client = __commonJS({
           throw new Error("Can't parse token envelope: " + segments[0]);
         }
         try {
-          payload = JSON.parse(crypto6.decodeBase64StringUtf8(segments[1]));
+          payload = JSON.parse(crypto7.decodeBase64StringUtf8(segments[1]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token payload '${segments[0]}`;
@@ -15057,9 +15057,9 @@ var require_oauth2client = __commonJS({
         if (envelope.alg === "ES256") {
           signature = formatEcdsa.joseToDer(signature, "ES256").toString("base64");
         }
-        const verified = await crypto6.verify(cert, signed, signature);
+        const verified = await crypto7.verify(cert, signed, signature);
         if (!verified) {
-          throw new Error("Invalid token signature: " + jwt2);
+          throw new Error("Invalid token signature: " + jwt3);
         }
         if (!payload.iat) {
           throw new Error("No issue time in token: " + JSON.stringify(payload));
@@ -15127,7 +15127,7 @@ var require_oauth2client = __commonJS({
         return expiryDate ? expiryDate <= (/* @__PURE__ */ new Date()).getTime() + this.eagerRefreshThresholdMillis : false;
       }
     };
-    exports2.OAuth2Client = OAuth2Client;
+    exports2.OAuth2Client = OAuth2Client2;
   }
 });
 
@@ -15432,14 +15432,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports2, module2) {
     var Buffer5 = require_safe_buffer().Buffer;
-    var crypto6 = require("crypto");
+    var crypto7 = require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util = require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto6.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto7.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -15529,17 +15529,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto6.createHmac("sha" + bits, secret);
+        var hmac = crypto7.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto6 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto7 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto6.timingSafeEqual(a, b);
+      return crypto7.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -15556,7 +15556,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto6.createSign("RSA-SHA" + bits);
+        var signer = crypto7.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -15566,7 +15566,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto6.createVerify("RSA-SHA" + bits);
+        var verifier = crypto7.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -15575,11 +15575,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto6.createSign("RSA-SHA" + bits);
+        var signer = crypto7.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto7.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto7.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -15589,12 +15589,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto6.createVerify("RSA-SHA" + bits);
+        var verifier = crypto7.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto7.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto7.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -16519,9 +16519,9 @@ var require_jwtclient = __commonJS({
        * @return The cloned instance.
        */
       createScoped(scopes) {
-        const jwt2 = new _JWT(this);
-        jwt2.scopes = scopes;
-        return jwt2;
+        const jwt3 = new _JWT(this);
+        jwt3.scopes = scopes;
+        return jwt3;
       }
       /**
        * Obtains the metadata to be sent with the request.
@@ -16861,9 +16861,9 @@ var require_refreshclient = __commonJS({
        * @param json The input object.
        */
       static fromJSON(json) {
-        const client2 = new _UserRefreshClient();
-        client2.fromJSON(json);
-        return client2;
+        const client3 = new _UserRefreshClient();
+        client3.fromJSON(json);
+        return client3;
       }
     };
     exports2.UserRefreshClient = UserRefreshClient;
@@ -17590,8 +17590,8 @@ var require_baseexternalclient = __commonJS({
        *   this can be determined from the STS audience field. Otherwise, null is
        *   returned.
        */
-      getProjectNumber(audience) {
-        const match = audience.match(/\/projects\/([^/]+)/);
+      getProjectNumber(audience2) {
+        const match = audience2.match(/\/projects\/([^/]+)/);
         if (!match) {
           return null;
         }
@@ -18170,14 +18170,14 @@ var require_awsrequestsigner = __commonJS({
       }
     };
     exports2.AwsRequestSigner = AwsRequestSigner;
-    async function sign(crypto6, key, msg) {
-      return await crypto6.signWithHmacSha256(key, msg);
+    async function sign(crypto7, key, msg) {
+      return await crypto7.signWithHmacSha256(key, msg);
     }
-    async function getSigningKey(crypto6, key, dateStamp, region2, serviceName) {
-      const kDate = await sign(crypto6, `AWS4${key}`, dateStamp);
-      const kRegion = await sign(crypto6, kDate, region2);
-      const kService = await sign(crypto6, kRegion, serviceName);
-      const kSigning = await sign(crypto6, kService, "aws4_request");
+    async function getSigningKey(crypto7, key, dateStamp, region2, serviceName) {
+      const kDate = await sign(crypto7, `AWS4${key}`, dateStamp);
+      const kRegion = await sign(crypto7, kDate, region2);
+      const kService = await sign(crypto7, kRegion, serviceName);
+      const kSigning = await sign(crypto7, kService, "aws4_request");
       return kSigning;
     }
     async function generateAuthenticationHeaderMap(options) {
@@ -19229,10 +19229,10 @@ var require_googleauth = __commonJS({
       // GAPIC client libraries should always use self-signed JWTs. The following
       // variables are set on the JWT client in order to indicate the type of library,
       // and sign the JWT with the correct audience and scopes (if not supplied).
-      setGapicJWTValues(client2) {
-        client2.defaultServicePath = this.defaultServicePath;
-        client2.useJWTAccessWithScope = this.useJWTAccessWithScope;
-        client2.defaultScopes = this.defaultScopes;
+      setGapicJWTValues(client3) {
+        client3.defaultServicePath = this.defaultServicePath;
+        client3.useJWTAccessWithScope = this.useJWTAccessWithScope;
+        client3.defaultScopes = this.defaultScopes;
       }
       getProjectId(callback) {
         if (callback) {
@@ -19446,8 +19446,8 @@ var require_googleauth = __commonJS({
         if (!location) {
           return null;
         }
-        const client2 = await this._getApplicationCredentialsFromFilePath(location, options);
-        return client2;
+        const client3 = await this._getApplicationCredentialsFromFilePath(location, options);
+        return client3;
       }
       /**
        * Attempts to load default credentials from a file at the given path..
@@ -19550,34 +19550,34 @@ var require_googleauth = __commonJS({
        * @returns JWT or UserRefresh Client with data
        */
       fromJSON(json, options = {}) {
-        let client2;
+        let client3;
         const preferredUniverseDomain = (0, util_1.originalOrCamelOptions)(options).get("universe_domain");
         if (json.type === refreshclient_1.USER_REFRESH_ACCOUNT_TYPE) {
-          client2 = new refreshclient_1.UserRefreshClient(options);
-          client2.fromJSON(json);
+          client3 = new refreshclient_1.UserRefreshClient(options);
+          client3.fromJSON(json);
         } else if (json.type === impersonated_1.IMPERSONATED_ACCOUNT_TYPE) {
-          client2 = this.fromImpersonatedJSON(json);
+          client3 = this.fromImpersonatedJSON(json);
         } else if (json.type === baseexternalclient_1.EXTERNAL_ACCOUNT_TYPE) {
-          client2 = externalclient_1.ExternalAccountClient.fromJSON({
+          client3 = externalclient_1.ExternalAccountClient.fromJSON({
             ...json,
             ...options
           });
-          client2.scopes = this.getAnyScopes();
+          client3.scopes = this.getAnyScopes();
         } else if (json.type === externalAccountAuthorizedUserClient_1.EXTERNAL_ACCOUNT_AUTHORIZED_USER_TYPE) {
-          client2 = new externalAccountAuthorizedUserClient_1.ExternalAccountAuthorizedUserClient({
+          client3 = new externalAccountAuthorizedUserClient_1.ExternalAccountAuthorizedUserClient({
             ...json,
             ...options
           });
         } else {
           options.scopes = this.scopes;
-          client2 = new jwtclient_1.JWT(options);
-          this.setGapicJWTValues(client2);
-          client2.fromJSON(json);
+          client3 = new jwtclient_1.JWT(options);
+          this.setGapicJWTValues(client3);
+          client3.fromJSON(json);
         }
         if (preferredUniverseDomain) {
-          client2.universeDomain = preferredUniverseDomain;
+          client3.universeDomain = preferredUniverseDomain;
         }
-        return client2;
+        return client3;
       }
       /**
        * Return a JWT or UserRefreshClient from JavaScript object, caching both the
@@ -19587,10 +19587,10 @@ var require_googleauth = __commonJS({
        * @returns JWT or UserRefresh Client with data
        */
       _cacheClientFromJSON(json, options) {
-        const client2 = this.fromJSON(json, options);
+        const client3 = this.fromJSON(json, options);
         this.jsonContent = json;
-        this.cachedCredential = client2;
-        return client2;
+        this.cachedCredential = client3;
+        return client3;
       }
       fromStream(inputStream, optionsOrCallback = {}, callback) {
         let options = {};
@@ -19620,13 +19620,13 @@ var require_googleauth = __commonJS({
               } catch (err) {
                 if (!this.keyFilename)
                   throw err;
-                const client2 = new jwtclient_1.JWT({
+                const client3 = new jwtclient_1.JWT({
                   ...this.clientOptions,
                   keyFile: this.keyFilename
                 });
-                this.cachedCredential = client2;
-                this.setGapicJWTValues(client2);
-                return resolve(client2);
+                this.cachedCredential = client3;
+                this.setGapicJWTValues(client3);
+                return resolve(client3);
               }
             } catch (err) {
               return reject(err);
@@ -19733,16 +19733,16 @@ var require_googleauth = __commonJS({
         }
       }
       async getCredentialsAsync() {
-        const client2 = await this.getClient();
-        if (client2 instanceof impersonated_1.Impersonated) {
-          return { client_email: client2.getTargetPrincipal() };
+        const client3 = await this.getClient();
+        if (client3 instanceof impersonated_1.Impersonated) {
+          return { client_email: client3.getTargetPrincipal() };
         }
-        if (client2 instanceof baseexternalclient_1.BaseExternalAccountClient) {
-          const serviceAccountEmail = client2.getServiceAccountEmail();
+        if (client3 instanceof baseexternalclient_1.BaseExternalAccountClient) {
+          const serviceAccountEmail = client3.getServiceAccountEmail();
           if (serviceAccountEmail) {
             return {
               client_email: serviceAccountEmail,
-              universe_domain: client2.universeDomain
+              universe_domain: client3.universeDomain
             };
           }
         }
@@ -19786,9 +19786,9 @@ var require_googleauth = __commonJS({
           const stream = fs6.createReadStream(filePath);
           return await this.fromStreamAsync(stream, this.clientOptions);
         } else if (this.apiKey) {
-          const client2 = await this.fromAPIKey(this.apiKey, this.clientOptions);
-          client2.scopes = this.scopes;
-          const { credential } = await this.#prepareAndCacheClient(client2);
+          const client3 = await this.fromAPIKey(this.apiKey, this.clientOptions);
+          client3.scopes = this.scopes;
+          const { credential } = await this.#prepareAndCacheClient(client3);
           return credential;
         } else {
           const { credential } = await this.getApplicationDefaultAsync(this.clientOptions);
@@ -19801,27 +19801,27 @@ var require_googleauth = __commonJS({
        * @returns IdTokenClient for making HTTP calls authenticated with ID tokens.
        */
       async getIdTokenClient(targetAudience) {
-        const client2 = await this.getClient();
-        if (!("fetchIdToken" in client2)) {
+        const client3 = await this.getClient();
+        if (!("fetchIdToken" in client3)) {
           throw new Error("Cannot fetch ID token in this environment, use GCE or set the GOOGLE_APPLICATION_CREDENTIALS environment variable to a service account credentials JSON file.");
         }
-        return new idtokenclient_1.IdTokenClient({ targetAudience, idTokenProvider: client2 });
+        return new idtokenclient_1.IdTokenClient({ targetAudience, idTokenProvider: client3 });
       }
       /**
        * Automatically obtain application default credentials, and return
        * an access token for making requests.
        */
       async getAccessToken() {
-        const client2 = await this.getClient();
-        return (await client2.getAccessToken()).token;
+        const client3 = await this.getClient();
+        return (await client3.getAccessToken()).token;
       }
       /**
        * Obtain the HTTP headers that will provide authorization for a given
        * request.
        */
       async getRequestHeaders(url) {
-        const client2 = await this.getClient();
-        return client2.getRequestHeaders(url);
+        const client3 = await this.getClient();
+        return client3.getRequestHeaders(url);
       }
       /**
        * Obtain credentials for a request, then attach the appropriate headers to
@@ -19830,8 +19830,8 @@ var require_googleauth = __commonJS({
        */
       async authorizeRequest(opts = {}) {
         const url = opts.url;
-        const client2 = await this.getClient();
-        const headers = await client2.getRequestHeaders(url);
+        const client3 = await this.getClient();
+        const headers = await client3.getRequestHeaders(url);
         opts.headers = gaxios_1.Gaxios.mergeHeaders(opts.headers, headers);
         return opts;
       }
@@ -19856,8 +19856,8 @@ var require_googleauth = __commonJS({
        * @returns the {@link GaxiosResponse} with Gaxios-added properties
        */
       async fetch(...args) {
-        const client2 = await this.getClient();
-        return client2.fetch(...args);
+        const client3 = await this.getClient();
+        return client3.fetch(...args);
       }
       /**
        * Automatically obtain application default credentials, and make an
@@ -19868,8 +19868,8 @@ var require_googleauth = __commonJS({
        * @param opts Axios request options for the HTTP request.
        */
       async request(opts) {
-        const client2 = await this.getClient();
-        return client2.request(opts);
+        const client3 = await this.getClient();
+        return client3.request(opts);
       }
       /**
        * Determine the compute environment in which the code is running.
@@ -19889,31 +19889,31 @@ var require_googleauth = __commonJS({
        * ```
        */
       async sign(data, endpoint) {
-        const client2 = await this.getClient();
+        const client3 = await this.getClient();
         const universe = await this.getUniverseDomain();
         endpoint = endpoint || `https://iamcredentials.${universe}/v1/projects/-/serviceAccounts/`;
-        if (client2 instanceof impersonated_1.Impersonated) {
-          const signed = await client2.sign(data);
+        if (client3 instanceof impersonated_1.Impersonated) {
+          const signed = await client3.sign(data);
           return signed.signedBlob;
         }
-        const crypto6 = (0, crypto_1.createCrypto)();
-        if (client2 instanceof jwtclient_1.JWT && client2.key) {
-          const sign = await crypto6.sign(client2.key, data);
+        const crypto7 = (0, crypto_1.createCrypto)();
+        if (client3 instanceof jwtclient_1.JWT && client3.key) {
+          const sign = await crypto7.sign(client3.key, data);
           return sign;
         }
         const creds = await this.getCredentials();
         if (!creds.client_email) {
           throw new Error("Cannot sign data without `client_email`.");
         }
-        return this.signBlob(crypto6, creds.client_email, data, endpoint);
+        return this.signBlob(crypto7, creds.client_email, data, endpoint);
       }
-      async signBlob(crypto6, emailOrUniqueId, data, endpoint) {
+      async signBlob(crypto7, emailOrUniqueId, data, endpoint) {
         const url = new URL(endpoint + `${emailOrUniqueId}:signBlob`);
         const res = await this.request({
           method: "POST",
           url: url.href,
           data: {
-            payload: crypto6.encodeBase64StringUtf8(data)
+            payload: crypto7.encodeBase64StringUtf8(data)
           },
           retry: true,
           retryConfig: {
@@ -37552,13 +37552,13 @@ var MemoryStore = class {
    * @public
    */
   async increment(key) {
-    const client2 = this.getClient(key);
+    const client3 = this.getClient(key);
     const now = Date.now();
-    if (client2.resetTime.getTime() <= now) {
-      this.resetClient(client2, now);
+    if (client3.resetTime.getTime() <= now) {
+      this.resetClient(client3, now);
     }
-    client2.totalHits++;
-    return client2;
+    client3.totalHits++;
+    return client3;
   }
   /**
    * Method to decrement a client's hit counter.
@@ -37568,8 +37568,8 @@ var MemoryStore = class {
    * @public
    */
   async decrement(key) {
-    const client2 = this.getClient(key);
-    if (client2.totalHits > 0) client2.totalHits--;
+    const client3 = this.getClient(key);
+    if (client3.totalHits > 0) client3.totalHits--;
   }
   /**
    * Method to reset a client's hit counter.
@@ -37613,10 +37613,10 @@ var MemoryStore = class {
    *
    * @return {Client} - The modified client that was passed in, to allow for chaining.
    */
-  resetClient(client2, now = Date.now()) {
-    client2.totalHits = 0;
-    client2.resetTime.setTime(now + this.windowMs);
-    return client2;
+  resetClient(client3, now = Date.now()) {
+    client3.totalHits = 0;
+    client3.resetTime.setTime(now + this.windowMs);
+    return client3;
   }
   /**
    * Retrieves or creates a client, given a key. Also ensures that the client being
@@ -37628,16 +37628,16 @@ var MemoryStore = class {
    */
   getClient(key) {
     if (this.current.has(key)) return this.current.get(key);
-    let client2;
+    let client3;
     if (this.previous.has(key)) {
-      client2 = this.previous.get(key);
+      client3 = this.previous.get(key);
       this.previous.delete(key);
     } else {
-      client2 = { totalHits: 0, resetTime: /* @__PURE__ */ new Date() };
-      this.resetClient(client2);
+      client3 = { totalHits: 0, resetTime: /* @__PURE__ */ new Date() };
+      this.resetClient(client3);
     }
-    this.current.set(key, client2);
-    return client2;
+    this.current.set(key, client3);
+    return client3;
   }
   /**
    * Move current clients to previous, create a new map for current.
@@ -38516,7 +38516,7 @@ async function auditAccount(prisma4, actor, action, meta) {
 }
 
 // server.ts
-var import_jsonwebtoken = __toESM(require("jsonwebtoken"), 1);
+var import_jsonwebtoken2 = __toESM(require("jsonwebtoken"), 1);
 var import_node_cron = __toESM(require("node-cron"), 1);
 var import_client4 = require("@prisma/client");
 
@@ -41717,17 +41717,17 @@ function tTools(tools) {
   }
   return result;
 }
-function resourceName(client2, resourceName2, resourcePrefix, splitsAfterPrefix = 1) {
+function resourceName(client3, resourceName2, resourcePrefix, splitsAfterPrefix = 1) {
   const shouldAppendPrefix = !resourceName2.startsWith(`${resourcePrefix}/`) && resourceName2.split("/").length === splitsAfterPrefix;
-  if (client2.isVertexAI()) {
+  if (client3.isVertexAI()) {
     if (resourceName2.startsWith("projects/")) {
       return resourceName2;
     } else if (resourceName2.startsWith("locations/")) {
-      return `projects/${client2.getProject()}/${resourceName2}`;
+      return `projects/${client3.getProject()}/${resourceName2}`;
     } else if (resourceName2.startsWith(`${resourcePrefix}/`)) {
-      return `projects/${client2.getProject()}/locations/${client2.getLocation()}/${resourceName2}`;
+      return `projects/${client3.getProject()}/locations/${client3.getLocation()}/${resourceName2}`;
     } else if (shouldAppendPrefix) {
-      return `projects/${client2.getProject()}/locations/${client2.getLocation()}/${resourcePrefix}/${resourceName2}`;
+      return `projects/${client3.getProject()}/locations/${client3.getLocation()}/${resourcePrefix}/${resourceName2}`;
     } else {
       return resourceName2;
     }
@@ -41861,10 +41861,10 @@ function mcpToolsToGeminiTool(mcpTools, config = {}) {
   }
   return { functionDeclarations };
 }
-function tBatchJobSource(client2, src) {
+function tBatchJobSource(client3, src) {
   let sourceObj;
   if (typeof src === "string") {
-    if (client2.isVertexAI()) {
+    if (client3.isVertexAI()) {
       if (src.startsWith("gs://")) {
         sourceObj = { format: "jsonl", gcsUri: [src] };
       } else if (src.startsWith("bq://")) {
@@ -41882,7 +41882,7 @@ function tBatchJobSource(client2, src) {
       }
     }
   } else if (Array.isArray(src)) {
-    if (client2.isVertexAI()) {
+    if (client3.isVertexAI()) {
       throw new Error("InlinedRequest[] is not supported in Vertex AI.");
     }
     sourceObj = { inlinedRequests: src };
@@ -41898,7 +41898,7 @@ function tBatchJobSource(client2, src) {
     sourceObj.inlinedRequests,
     sourceObj.fileName
   ].filter(Boolean).length;
-  if (client2.isVertexAI()) {
+  if (client3.isVertexAI()) {
     if (mldevSourcesCount > 0 || vertexSourcesCount !== 1) {
       throw new Error("Exactly one of `gcsUri`, `bigqueryUri`, or `vertexDatasetName` must be set for Vertex AI.");
     }
@@ -54763,13 +54763,13 @@ var FileSearchStores = class extends BaseModule {
   }
 };
 var uuid4Internal = function() {
-  const { crypto: crypto6 } = globalThis;
-  if (crypto6 === null || crypto6 === void 0 ? void 0 : crypto6.randomUUID) {
-    uuid4Internal = crypto6.randomUUID.bind(crypto6);
-    return crypto6.randomUUID();
+  const { crypto: crypto7 } = globalThis;
+  if (crypto7 === null || crypto7 === void 0 ? void 0 : crypto7.randomUUID) {
+    uuid4Internal = crypto7.randomUUID.bind(crypto7);
+    return crypto7.randomUUID();
   }
   const u8 = new Uint8Array(1);
-  const randomByte = crypto6 ? () => crypto6.getRandomValues(u8)[0] : () => Math.random() * 255 & 255;
+  const randomByte = crypto7 ? () => crypto7.getRandomValues(u8)[0] : () => Math.random() * 255 & 255;
   return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (+c ^ randomByte() & 15 >> +c / 4).toString(16));
 };
 var uuid4 = () => uuid4Internal();
@@ -55098,8 +55098,8 @@ function propsForError(value) {
   return `; props: [${props.map((p3) => `"${p3}"`).join(", ")}]`;
 }
 var APIResource = class {
-  constructor(client2) {
-    this._client = client2;
+  constructor(client3) {
+    this._client = client3;
   }
 };
 APIResource._key = [];
@@ -55360,14 +55360,14 @@ var levelNumbers = {
   info: 400,
   debug: 500
 };
-var parseLogLevel = (maybeLevel, sourceName, client2) => {
+var parseLogLevel = (maybeLevel, sourceName, client3) => {
   if (!maybeLevel) {
     return void 0;
   }
   if (hasOwn(levelNumbers, maybeLevel)) {
     return maybeLevel;
   }
-  loggerFor(client2).warn(`${sourceName} was set to ${JSON.stringify(maybeLevel)}, expected one of ${JSON.stringify(Object.keys(levelNumbers))}`);
+  loggerFor(client3).warn(`${sourceName} was set to ${JSON.stringify(maybeLevel)}, expected one of ${JSON.stringify(Object.keys(levelNumbers))}`);
   return void 0;
 };
 function noop2() {
@@ -55386,10 +55386,10 @@ var noopLogger = {
   debug: noop2
 };
 var cachedLoggers = /* @__PURE__ */ new WeakMap();
-function loggerFor(client2) {
+function loggerFor(client3) {
   var _a2;
-  const logger = client2.logger;
-  const logLevel = (_a2 = client2.logLevel) !== null && _a2 !== void 0 ? _a2 : "off";
+  const logger = client3.logger;
+  const logLevel = (_a2 = client3.logLevel) !== null && _a2 !== void 0 ? _a2 : "off";
   if (!logger) {
     return noopLogger;
   }
@@ -55426,14 +55426,14 @@ var formatRequestDetails = (details) => {
   return details;
 };
 var Stream3 = class _Stream {
-  constructor(iterator, controller, client2) {
+  constructor(iterator, controller, client3) {
     this.iterator = iterator;
     this.controller = controller;
-    this.client = client2;
+    this.client = client3;
   }
-  static fromSSEResponse(response, controller, client2) {
+  static fromSSEResponse(response, controller, client3) {
     let consumed = false;
-    const logger = client2 ? loggerFor(client2) : console;
+    const logger = client3 ? loggerFor(client3) : console;
     function iterator() {
       return __asyncGenerator(this, arguments, function* iterator_1() {
         var _a2, e_1, _b, _c;
@@ -55483,13 +55483,13 @@ var Stream3 = class _Stream {
         }
       });
     }
-    return new _Stream(iterator, controller, client2);
+    return new _Stream(iterator, controller, client3);
   }
   /**
    * Generates a Stream from a newline-separated ReadableStream
    * where each item is a JSON value.
    */
-  static fromReadableStream(readableStream, controller, client2) {
+  static fromReadableStream(readableStream, controller, client3) {
     let consumed = false;
     function iterLines() {
       return __asyncGenerator(this, arguments, function* iterLines_1() {
@@ -55558,7 +55558,7 @@ var Stream3 = class _Stream {
         }
       });
     }
-    return new _Stream(iterator, controller, client2);
+    return new _Stream(iterator, controller, client3);
   }
   [Symbol.asyncIterator]() {
     return this.iterator();
@@ -55729,16 +55729,16 @@ function partition(str2, delimiter) {
   }
   return [str2, "", ""];
 }
-async function defaultParseResponse(client2, props) {
+async function defaultParseResponse(client3, props) {
   const { response, requestLogID, retryOfRequestLogID, startTime } = props;
   const body = await (async () => {
     var _a2;
     if (props.options.stream) {
-      loggerFor(client2).debug("response", response.status, response.url, response.headers, response.body);
+      loggerFor(client3).debug("response", response.status, response.url, response.headers, response.body);
       if (props.options.__streamClass) {
-        return props.options.__streamClass.fromSSEResponse(response, props.controller, client2);
+        return props.options.__streamClass.fromSSEResponse(response, props.controller, client3);
       }
-      return Stream3.fromSSEResponse(response, props.controller, client2);
+      return Stream3.fromSSEResponse(response, props.controller, client3);
     }
     if (response.status === 204) {
       return null;
@@ -55760,7 +55760,7 @@ async function defaultParseResponse(client2, props) {
     const text = await response.text();
     return text;
   })();
-  loggerFor(client2).debug(`[${requestLogID}] response parsed`, formatRequestDetails({
+  loggerFor(client3).debug(`[${requestLogID}] response parsed`, formatRequestDetails({
     retryOfRequestLogID,
     url: response.url,
     status: response.status,
@@ -55770,16 +55770,16 @@ async function defaultParseResponse(client2, props) {
   return body;
 }
 var APIPromise = class _APIPromise extends Promise {
-  constructor(client2, responsePromise, parseResponse = defaultParseResponse) {
+  constructor(client3, responsePromise, parseResponse = defaultParseResponse) {
     super((resolve) => {
       resolve(null);
     });
     this.responsePromise = responsePromise;
     this.parseResponse = parseResponse;
-    this.client = client2;
+    this.client = client3;
   }
   _thenUnwrap(transform) {
-    return new _APIPromise(this.client, this.responsePromise, async (client2, props) => transform(await this.parseResponse(client2, props), props));
+    return new _APIPromise(this.client, this.responsePromise, async (client3, props) => transform(await this.parseResponse(client3, props), props));
   }
   /**
    * Gets the raw `Response` instance instead of parsing the response
@@ -55937,8 +55937,8 @@ var BaseGeminiNextGenAPIClient = class _BaseGeminiNextGenAPIClient {
    * Create a new client instance re-using the same options given to the current client with optional overriding.
    */
   withOptions(options) {
-    const client2 = new this.constructor(Object.assign(Object.assign(Object.assign({}, this._options), { baseURL: this.baseURL, maxRetries: this.maxRetries, timeout: this.timeout, logger: this.logger, logLevel: this.logLevel, fetch: this.fetch, fetchOptions: this.fetchOptions, apiKey: this.apiKey, apiVersion: this.apiVersion }), options));
-    return client2;
+    const client3 = new this.constructor(Object.assign(Object.assign(Object.assign({}, this._options), { baseURL: this.baseURL, maxRetries: this.maxRetries, timeout: this.timeout, logger: this.logger, logLevel: this.logLevel, fetch: this.fetch, fetchOptions: this.fetchOptions, apiKey: this.apiKey, apiVersion: this.apiVersion }), options));
+    return client3;
   }
   /**
    * Check whether the base URL is set to its default.
@@ -61255,6 +61255,63 @@ var LIMIT_REACHED = {
   error: "This account is already signed in on the maximum number of allowed devices. Please sign out from another device or contact the administrator."
 };
 
+// src/server/googleAuth.ts
+var import_node_crypto5 = __toESM(require("node:crypto"), 1);
+var import_jsonwebtoken = __toESM(require("jsonwebtoken"), 1);
+var import_google_auth_library2 = __toESM(require_src5(), 1);
+var GOOGLE = "GOOGLE";
+var GoogleAuthError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+};
+var audience = () => (process.env.GOOGLE_CLIENT_ID || "").trim();
+var googleConfigured = () => !!audience();
+var client2 = null;
+var testCerts = null;
+var ISSUERS = ["accounts.google.com", "https://accounts.google.com"];
+async function verifyGoogleCredential(credential) {
+  const aud = audience();
+  if (!aud) throw new GoogleAuthError("GOOGLE_UNAVAILABLE", "Google sign-in is not configured on this server.");
+  if (typeof credential !== "string" || credential.length < 20 || credential.length > 8192) {
+    throw new GoogleAuthError("INVALID_GOOGLE_TOKEN", "The Google credential is not valid.");
+  }
+  client2 ||= new import_google_auth_library2.OAuth2Client();
+  let payload;
+  try {
+    const ticket = testCerts ? await client2.verifySignedJwtWithCertsAsync(credential, testCerts, aud, ISSUERS) : await client2.verifyIdToken({ idToken: credential, audience: aud });
+    payload = ticket.getPayload();
+  } catch {
+    throw new GoogleAuthError("INVALID_GOOGLE_TOKEN", "The Google credential is not valid.");
+  }
+  if (!payload || typeof payload.sub !== "string" || !payload.sub || typeof payload.email !== "string" || !payload.email) {
+    throw new GoogleAuthError("INVALID_GOOGLE_TOKEN", "The Google credential is not valid.");
+  }
+  if (payload.email_verified !== true) {
+    throw new GoogleAuthError("GOOGLE_EMAIL_NOT_VERIFIED", "Google has not verified this email address.");
+  }
+  return {
+    sub: payload.sub,
+    email: payload.email.trim().toLowerCase(),
+    name: typeof payload.name === "string" && payload.name.trim() ? payload.name.trim().slice(0, 120) : null,
+    picture: typeof payload.picture === "string" && /^https:\/\//.test(payload.picture) ? payload.picture.slice(0, 500) : null
+  };
+}
+var keyFor = (secret, purpose) => import_node_crypto5.default.createHmac("sha256", secret).update(`stm-google-${purpose}`).digest("hex");
+var LIFETIME = { onboarding: "15m", link: "10m" };
+var signGoogleToken = (secret, purpose, claims) => import_jsonwebtoken.default.sign({ typ: `google-${purpose}`, ...claims }, keyFor(secret, purpose), { expiresIn: LIFETIME[purpose], algorithm: "HS256" });
+function readGoogleToken(secret, purpose, token) {
+  if (typeof token !== "string" || token.length > 4096) return null;
+  try {
+    const d = import_jsonwebtoken.default.verify(token, keyFor(secret, purpose), { algorithms: ["HS256"] });
+    if (d?.typ !== `google-${purpose}` || typeof d.sub !== "string" || typeof d.email !== "string") return null;
+    return d;
+  } catch {
+    return null;
+  }
+}
+
 // src/lib/ingestion/db.ts
 var import_client3 = require("@prisma/client");
 var ingestionDb = new import_client3.PrismaClient();
@@ -61657,8 +61714,8 @@ async function fetchSourceJson(url, opts = {}) {
 
 // src/lib/ingestion/claims.ts
 var import_node_os = __toESM(require("node:os"), 1);
-var import_node_crypto5 = require("node:crypto");
-var WORKER_ID = `${import_node_os.default.hostname()}:${process.pid}:${(0, import_node_crypto5.randomBytes)(3).toString("hex")}`;
+var import_node_crypto6 = require("node:crypto");
+var WORKER_ID = `${import_node_os.default.hostname()}:${process.pid}:${(0, import_node_crypto6.randomBytes)(3).toString("hex")}`;
 var staleCutoff = () => new Date(Date.now() - minutes(INGESTION_POLICY.claim.staleAfterMinutes));
 var claimable = (cutoff) => ({ OR: [{ claimedAt: null }, { claimedAt: { lt: cutoff } }] });
 async function claimOne(model, where, orderBy, label) {
@@ -61777,10 +61834,10 @@ async function findPossibleDuplicates(journalId, works) {
   }
   return out;
 }
-async function findJournalByAnyIssn(issns, client2 = ingestionDb) {
+async function findJournalByAnyIssn(issns, client3 = ingestionDb) {
   const list = [...new Set(issns.filter(Boolean))];
   if (!list.length) return null;
-  return client2.journal.findFirst({ where: { OR: [{ issn: { in: list } }, { eissn: { in: list } }] } });
+  return client3.journal.findFirst({ where: { OR: [{ issn: { in: list } }, { eissn: { in: list } }] } });
 }
 
 // src/lib/ingestion/eligibility.ts
@@ -63153,7 +63210,7 @@ function providerHolder(provider) {
 }
 
 // src/lib/ingestion/departmentStats.ts
-var import_node_crypto6 = require("node:crypto");
+var import_node_crypto7 = require("node:crypto");
 
 // src/lib/ingestion/accounting.ts
 var n = (v) => Number.isFinite(v) ? Math.trunc(v) : 0;
@@ -63194,7 +63251,7 @@ function runColumnsFromStats(stats) {
   return { added: t2.added, skippedHeld: t2.held, needsReview: t2.sentToReview, skippedRejected: t2.skipped, skippedFailed: t2.failed };
 }
 async function createRunWithStats(row, stats, contentType = "Books", db2 = ingestionDb) {
-  const id = (0, import_node_crypto6.randomUUID)();
+  const id = (0, import_node_crypto7.randomUUID)();
   if (row.phase === "Books" && typeof row.checked === "number") {
     const r2 = reconcile(tallyOfRow(row));
     row.accounting = r2.status;
@@ -66671,7 +66728,7 @@ function journalCoverageTurn(sources) {
 }
 
 // src/lib/ingestion/targetedBooks.ts
-var import_node_crypto7 = require("node:crypto");
+var import_node_crypto8 = require("node:crypto");
 
 // src/lib/ingestion/books/departmentProfiles.ts
 var DEPARTMENT_PROFILES = {
@@ -66932,7 +66989,7 @@ async function beginTargetedImport(department, limit, admin) {
   if (!name) throw new TargetedError("That is not a canonical department.");
   if (!Number.isInteger(limit) || limit < 10 || limit > 500) throw new TargetedError("The limit must be a whole number between 10 and 500.");
   if (runningTargetedJob()) throw new TargetedError("A targeted import is already running. Wait for it to finish.", 409);
-  const job = { id: (0, import_node_crypto7.randomUUID)(), department: name, status: "running", startedAt: Date.now(), limit, progress: {} };
+  const job = { id: (0, import_node_crypto8.randomUUID)(), department: name, status: "running", startedAt: Date.now(), limit, progress: {} };
   jobs.set(job.id, job);
   await audit2(admin ?? null, "TARGETED_BOOKS_STARTED", { department: name, limit });
   const t0 = Date.now();
@@ -69557,7 +69614,7 @@ async function providerCoverage(db2 = ingestionDb) {
 }
 
 // src/lib/ingestion/bulkCatalogue.ts
-var import_node_crypto8 = require("node:crypto");
+var import_node_crypto9 = require("node:crypto");
 var BULK_SOURCES = [
   { id: "doab", kind: "books", label: "DOAB \u2014 all books", healthKey: "DOAB", lock: DOAB_OAI.provider, cfg: DOAB_OAI, defaultRecords: 2e3, maxRecords: 1e4, note: "Reads the whole DOAB book set, in order, with a position of its own." },
   { id: "oapen", kind: "books", label: "OAPEN \u2014 all books", healthKey: "OAPEN", lock: OAPEN_OAI.provider, cfg: OAPEN_OAI, defaultRecords: 2e3, maxRecords: 1e4, note: "Matches what DOAB gave and adds titles nothing else holds." },
@@ -69783,7 +69840,7 @@ async function beginBulk(source, records, admin) {
   if (runningBulkJob()) throw new BulkError("A bulk run is already in progress. Wait for it to finish.", 409);
   const def = BULK_SOURCES.find((s2) => s2.id === source);
   if (records !== void 0 && (!Number.isInteger(records) || records < 10 || records > def.maxRecords)) throw new BulkError(`Records must be a whole number between 10 and ${def.maxRecords}.`);
-  const job = { id: (0, import_node_crypto8.randomUUID)(), source, status: "running", startedAt: Date.now() };
+  const job = { id: (0, import_node_crypto9.randomUUID)(), source, status: "running", startedAt: Date.now() };
   jobs3.set(job.id, job);
   await audit2(admin ?? null, "BULK_SYNC_STARTED", { source, records: records ?? def.defaultRecords });
   (async () => {
@@ -70636,15 +70693,18 @@ async function startServer() {
   app.set("trust proxy", 1);
   const PORT = Number(process.env.PORT) || 3e3;
   app.use((0, import_helmet.default)({
-    contentSecurityPolicy: false
+    contentSecurityPolicy: false,
     // Disable CSP if it interferes with Vite/External resources, or configure properly
+    // Helmet's default (same-origin) cuts a popup off from the page that opened it, which is how Sign in with Google hands its
+    // credential back. Popups this site opens may talk to it; every other window still may not.
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
   }));
   app.use((0, import_compression.default)());
   const perMemberKey = (req, res) => {
     const auth = req.headers?.authorization;
     if (auth?.startsWith("Bearer ")) {
       try {
-        const ud = import_jsonwebtoken.default.verify(auth.slice(7), JWT_SECRET);
+        const ud = import_jsonwebtoken2.default.verify(auth.slice(7), JWT_SECRET);
         if (ud?.uid) return `u:${ud.uid}`;
       } catch {
       }
@@ -70674,6 +70734,28 @@ async function startServer() {
   const signInBody = import_express2.default.json({ limit: "10kb" });
   app.use("/api/auth/login", signInBody, loginLimiter);
   app.use("/api/auth/admin-login", signInBody, loginLimiter);
+  const googleJson = import_express2.default.json({ limit: "20kb" });
+  const googleLimiter = rate_limit_default({
+    windowMs: 15 * 60 * 1e3,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req, res) => ipKeyGenerator(req, res),
+    message: { error: "Too many sign-in attempts. Please try again in a few minutes." }
+  });
+  const googleLinkLimiter = rate_limit_default({
+    windowMs: 15 * 60 * 1e3,
+    max: 8,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req, res) => {
+      const lk = readGoogleToken(process.env.JWT_SECRET || "your-fallback-secret-for-dev-only", "link", req.body?.linkToken);
+      return lk ? `google-link:${lk.uid}` : ipKeyGenerator(req, res);
+    },
+    message: { error: "Too many attempts. Please try again in 15 minutes." }
+  });
+  app.use("/api/auth/google", googleJson, googleLimiter);
+  app.use("/api/auth/google/link", googleLinkLimiter);
   app.use(import_express2.default.json({ limit: "50mb" }));
   app.use(import_express2.default.urlencoded({ limit: "50mb", extended: true }));
   const JWT_SECRET = process.env.JWT_SECRET || "your-fallback-secret-for-dev-only";
@@ -70718,7 +70800,7 @@ async function startServer() {
       return "created";
     });
     if (created !== "created") return { refused: created };
-    const token = import_jsonwebtoken.default.sign(
+    const token = import_jsonwebtoken2.default.sign(
       {
         uid: userObj.id,
         email: userObj.email,
@@ -70765,7 +70847,7 @@ async function startServer() {
       token = req.query.token;
     }
     if (token) {
-      import_jsonwebtoken.default.verify(token, JWT_SECRET, async (err, user) => {
+      import_jsonwebtoken2.default.verify(token, JWT_SECRET, async (err, user) => {
         if (err) {
           return res.status(403).json({ error: "Forbidden: Invalid or expired token" });
         }
@@ -71229,6 +71311,116 @@ async function startServer() {
     },
     { timezone: "Asia/Kolkata" }
   );
+  class MemberExistsError extends Error {
+    constructor() {
+      super("A member with this email or sign-in already exists");
+    }
+  }
+  const registerMember = async (req, m2) => {
+    const { email, name, organization, contact: contact5, designation, interestedDomains, registrantType, state, country, whatsapp, attribution } = m2;
+    const departmentNames2 = new Set(DOMAINS.map((d) => d.name));
+    const interests = Array.isArray(interestedDomains) ? [...new Set(interestedDomains.map((d) => canonicalDepartmentName(d)).filter((d) => d && departmentNames2.has(d)))].slice(0, 40) : [];
+    const type = REGISTRANT_TYPES.some((t2) => t2.id === registrantType) ? registrantType : null;
+    const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
+    let accountRole = "Subscriber";
+    const makesInstitution = opensInstitutionDashboard(type, role) && !!String(organization || "").trim();
+    if (makesInstitution) accountRole = "Institution";
+    const clean3 = (v, max = 120) => {
+      const t2 = String(v ?? "").trim();
+      return t2 ? t2.slice(0, max) : null;
+    };
+    const tags = {};
+    if (attribution && typeof attribution === "object") {
+      for (const k of ["ref", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "landing"]) {
+        const v = clean3(attribution[k], k === "landing" ? 300 : 120);
+        if (v) tags[k] = v;
+      }
+    }
+    const signupSource = tags.ref || tags.utm_campaign || tags.utm_source || null;
+    let userObj;
+    try {
+      userObj = await prisma3.$transaction(async (tx) => {
+        let newInstitutionId = null;
+        if (makesInstitution) {
+          newInstitutionId = (await tx.institution.create({ data: { name: String(organization).trim(), status: "Active" } })).id;
+        }
+        const created = await tx.user.create({
+          data: {
+            email,
+            password: m2.passwordHash,
+            displayName: name,
+            organization: organization || "",
+            contact: contact5 || "",
+            // Only a designation from the list. Falling back to whatever was sent
+            // would put the free-text mess straight back into the field that
+            // exists to be counted — and counting is the whole reason it stopped
+            // being a text box. Anything else still reaches sales in the lead's
+            // notes, so nothing is lost, only kept out of the column.
+            designation: role || "",
+            registrantType: type,
+            state: state ? String(state).slice(0, 80) : null,
+            country: country ? String(country).slice(0, 80) : null,
+            // Only what they opted in to. The form sends the contact number
+            // itself when they tick "use this number for WhatsApp", so nothing
+            // downstream has to know the rule — and a member who did not tick it
+            // is not given a WhatsApp number by falling back to the phone one.
+            whatsapp: whatsapp ? String(whatsapp).slice(0, 40) : null,
+            role: accountRole,
+            institutionId: newInstitutionId,
+            status: "Active",
+            interestedDomains: interests,
+            signupSource,
+            signupTags: Object.keys(tags).length ? tags : void 0,
+            emailVerifiedAt: m2.emailVerified ? /* @__PURE__ */ new Date() : null,
+            // Signing up signs them in: the token below is a session.
+            lastLoginAt: /* @__PURE__ */ new Date()
+          }
+        });
+        if (m2.identity) {
+          await tx.authIdentity.create({ data: { userId: created.id, provider: m2.identity.provider, providerSubject: m2.identity.subject, emailAtLink: m2.identity.emailAtLink } });
+        }
+        return created;
+      });
+    } catch (e2) {
+      if (e2?.code === "P2002") throw new MemberExistsError();
+      throw e2;
+    }
+    if (!STAFF_ROLES.includes(userObj.role)) {
+      prisma3.lead.create({
+        data: {
+          name,
+          email,
+          phone: contact5 || null,
+          organization: organization || null,
+          // Sales reads leads by where they came from. Every free signup
+          // used to arrive under one word, so a mailing of four thousand
+          // colleges and a stray visitor were the same row.
+          source: signupSource ? `Free signup \xB7 ${signupSource}` : "Free signup",
+          status: "All",
+          state: state || null,
+          notes: [
+            type ? `Registering as: ${type}${accountRole === "Institution" ? " \u2014 has the institution dashboard" : ""}` : null,
+            role ? `Designation: ${role}` : designation ? `Designation as given: ${designation}` : null,
+            [state, country].filter(Boolean).length ? `Where: ${[state, country].filter(Boolean).join(", ")}` : null,
+            whatsapp && whatsapp !== contact5 ? `WhatsApp: ${whatsapp}` : null,
+            interests.length ? `Departments: ${interests.join(", ")}` : "No departments chosen"
+          ].filter(Boolean).join("\n")
+        }
+      }).catch((e2) => console.error("signup: could not file the lead", e2?.message));
+    }
+    const token = (await startSession({ id: userObj.id, email: userObj.email, role: userObj.role }, req)).token;
+    const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
+    const userMailOptions = {
+      from: `"STM Digital Library" <${emailFrom}>`,
+      to: email,
+      subject: `\u{1F389} Welcome to STM Digital Library, ${name}!`,
+      html: buildEmail(
+        `<tr><td style="padding:28px 40px 24px;"><h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome, ${name} \u{1F393}</h3><p style="margin:0 0 18px;font-size:13px;color:#475569;line-height:1.7;">Your free membership is ready, and it opens the departments you chose when you registered \u2014 journals, books and articles alike. A free membership is limited in time, in half-hour sessions; more departments can be added at any time.</p><div style="background:#f0f9ff;border-left:4px solid #0369a1;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:18px;"><p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0369a1;">How your reading time works</p><p style="margin:5px 0;font-size:13px;color:#334155;">You read in <strong>30-minute sessions</strong>, with a two-hour gap after each \u2014 <strong>four sessions, two hours, every day</strong>.</p><p style="margin:5px 0;font-size:13px;color:#334155;">The clock starts when you sign in and stops when you sign out. Closing the tab does not stop it, so <strong>sign out when you are finished</strong> and the rest of the session is kept for you.</p></div><div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;"><p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F680} Getting started</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Sign in at <strong>journalslibrary.com</strong></p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Search or browse \u2014 the catalogue is open to you in full</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Want unlimited reading? Apply for Pro from your dashboard</p></div><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
+      )
+    };
+    await sendMail(userMailOptions);
+    return { userObj, token };
+  };
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const {
@@ -71255,105 +71447,52 @@ async function startServer() {
           return res.status(400).json({ error: "Please verify your email address before creating an account." });
         }
       }
-      const departmentNames2 = new Set(DOMAINS.map((d) => d.name));
-      const interests = Array.isArray(interestedDomains) ? [...new Set(interestedDomains.map((d) => canonicalDepartmentName(d)).filter((d) => d && departmentNames2.has(d)))].slice(0, 40) : [];
-      const type = REGISTRANT_TYPES.some((t2) => t2.id === registrantType) ? registrantType : null;
-      const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
-      let accountRole = "Subscriber";
-      let newInstitutionId = null;
-      if (accountRole !== "SuperAdmin" && opensInstitutionDashboard(type, role) && String(organization || "").trim()) {
-        const created = await prisma3.institution.create({
-          data: { name: String(organization).trim(), status: "Active" }
-        });
-        newInstitutionId = created.id;
-        accountRole = "Institution";
-      }
-      const clean3 = (v, max = 120) => {
-        const t2 = String(v ?? "").trim();
-        return t2 ? t2.slice(0, max) : null;
-      };
-      const tags = {};
-      if (attribution && typeof attribution === "object") {
-        for (const k of ["ref", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "landing"]) {
-          const v = clean3(attribution[k], k === "landing" ? 300 : 120);
-          if (v) tags[k] = v;
-        }
-      }
-      const signupSource = tags.ref || tags.utm_campaign || tags.utm_source || null;
-      const hashedPassword = await import_bcryptjs2.default.hash(password, 10);
-      const userObj = await prisma3.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          displayName: name,
-          organization: organization || "",
-          contact: contact5 || "",
-          // Only a designation from the list. Falling back to whatever was sent
-          // would put the free-text mess straight back into the field that
-          // exists to be counted — and counting is the whole reason it stopped
-          // being a text box. Anything else still reaches sales in the lead's
-          // notes, so nothing is lost, only kept out of the column.
-          designation: role || "",
-          registrantType: type,
-          state: state ? String(state).slice(0, 80) : null,
-          country: country ? String(country).slice(0, 80) : null,
-          // Only what they opted in to. The form sends the contact number
-          // itself when they tick "use this number for WhatsApp", so nothing
-          // downstream has to know the rule — and a member who did not tick it
-          // is not given a WhatsApp number by falling back to the phone one.
-          whatsapp: whatsapp ? String(whatsapp).slice(0, 40) : null,
-          role: accountRole,
-          institutionId: newInstitutionId,
-          status: "Active",
-          interestedDomains: interests,
-          signupSource,
-          signupTags: Object.keys(tags).length ? tags : void 0,
-          emailVerifiedAt: proof?.isVerified ? /* @__PURE__ */ new Date() : null,
-          // Signing up signs them in: the token below is a session.
-          lastLoginAt: /* @__PURE__ */ new Date()
-        }
+      const { userObj, token } = await registerMember(req, {
+        email,
+        passwordHash: await import_bcryptjs2.default.hash(password, 10),
+        emailVerified: !!proof?.isVerified,
+        name,
+        organization,
+        contact: contact5,
+        designation,
+        interestedDomains,
+        registrantType,
+        state,
+        country,
+        whatsapp,
+        attribution
       });
-      if (!STAFF_ROLES.includes(userObj.role)) {
-        prisma3.lead.create({
-          data: {
-            name,
-            email,
-            phone: contact5 || null,
-            organization: organization || null,
-            // Sales reads leads by where they came from. Every free signup
-            // used to arrive under one word, so a mailing of four thousand
-            // colleges and a stray visitor were the same row.
-            source: signupSource ? `Free signup \xB7 ${signupSource}` : "Free signup",
-            status: "All",
-            state: state || null,
-            notes: [
-              type ? `Registering as: ${type}${accountRole === "Institution" ? " \u2014 has the institution dashboard" : ""}` : null,
-              role ? `Designation: ${role}` : designation ? `Designation as given: ${designation}` : null,
-              [state, country].filter(Boolean).length ? `Where: ${[state, country].filter(Boolean).join(", ")}` : null,
-              whatsapp && whatsapp !== contact5 ? `WhatsApp: ${whatsapp}` : null,
-              interests.length ? `Departments: ${interests.join(", ")}` : "No departments chosen"
-            ].filter(Boolean).join("\n")
-          }
-        }).catch((e2) => console.error("signup: could not file the lead", e2?.message));
-      }
-      const token = (await startSession({ id: userObj.id, email, role: userObj.role }, req)).token;
-      const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
-      const userMailOptions = {
-        from: `"STM Digital Library" <${emailFrom}>`,
-        to: email,
-        subject: `\u{1F389} Welcome to STM Digital Library, ${name}!`,
-        html: buildEmail(
-          `<tr><td style="padding:28px 40px 24px;"><h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome, ${name} \u{1F393}</h3><p style="margin:0 0 18px;font-size:13px;color:#475569;line-height:1.7;">Your free membership is ready, and it opens the departments you chose when you registered \u2014 journals, books and articles alike. A free membership is limited in time, in half-hour sessions; more departments can be added at any time.</p><div style="background:#f0f9ff;border-left:4px solid #0369a1;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:18px;"><p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0369a1;">How your reading time works</p><p style="margin:5px 0;font-size:13px;color:#334155;">You read in <strong>30-minute sessions</strong>, with a two-hour gap after each \u2014 <strong>four sessions, two hours, every day</strong>.</p><p style="margin:5px 0;font-size:13px;color:#334155;">The clock starts when you sign in and stops when you sign out. Closing the tab does not stop it, so <strong>sign out when you are finished</strong> and the rest of the session is kept for you.</p></div><div style="background:#1e3a6e;border-radius:10px;padding:18px 22px;margin-bottom:18px;"><p style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">\u{1F680} Getting started</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">01.</span> Sign in at <strong>journalslibrary.com</strong></p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">02.</span> Search or browse \u2014 the catalogue is open to you in full</p><p style="margin:4px 0;font-size:13px;color:#e2e8f0;"><span style="color:#86efac;font-weight:700;">03.</span> Want unlimited reading? Apply for Pro from your dashboard</p></div><p style="font-size:12px;color:#64748b;margin:0;">Questions? Email <a href="mailto:${COMPANY_DETAILS.email}" style="color:#1e3a6e;font-weight:600;">${COMPANY_DETAILS.email}</a> or call <strong>+91-120-4781200</strong></p></td></tr>`
-        )
-      };
-      await sendMail(userMailOptions);
       const { password: _, ...profile } = userObj;
       res.json({ token, user: profile });
     } catch (error) {
+      if (error instanceof MemberExistsError) return res.status(400).json({ error: "User already exists" });
       console.error("Signup Error:", error);
       res.status(500).json({ error: "Failed to create account" });
     }
   });
+  const accountLoginBlock = (u) => {
+    if (u.isBlocked) return { status: 403, body: { error: "Your account has been blocked. Please contact support." } };
+    if (isRemovedStatus(u.status)) return { status: 403, body: { error: "This account is no longer active. If you think this is a mistake, please contact support.", code: "ACCOUNT_REMOVED" } };
+    if (u.isDemoAccount && u.demoExpiresAt && /* @__PURE__ */ new Date() > u.demoExpiresAt) return { status: 403, body: { error: "Your demo account has expired. Please upgrade to continue." } };
+    return null;
+  };
+  const finishSignIn = async (userObj, req, res, opts = {}) => {
+    const started = await startSession(
+      { id: userObj.id, email: userObj.email, role: userObj.role, institutionId: userObj.institutionId },
+      req,
+      { replaceExisting: opts.replaceExisting === true }
+    );
+    if ("refused" in started) return sendSessionRefused(res, started);
+    opts.onStarted?.();
+    prisma3.user.update({ where: { id: userObj.id }, data: { lastLoginAt: /* @__PURE__ */ new Date() } }).catch(() => {
+    });
+    if (!STAFF_ROLES.includes(userObj.role)) {
+      getUserActiveSubscriptions(userObj.id, userObj.role, userObj.institutionId).then((subs) => subs.length === 0 ? allowanceFor(prisma3, userObj.id, { start: true }) : null).catch(() => {
+      });
+    }
+    const { password: _, ...profile } = userObj;
+    return res.json({ ...opts.extra || {}, token: started.token, user: profile });
+  };
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { password } = req.body;
@@ -71368,49 +71507,208 @@ async function startServer() {
             data: { email: masterEmail, password: await hashPassword(password), role: "SuperAdmin", displayName: "Super Admin", status: "Active" }
           });
           await auditAccount(prisma3, { uid: adminUser.id, email: adminUser.email, role: "SuperAdmin" }, "SUPER_ADMIN_CREATED", { targetUserId: adminUser.id, source: "environment-bootstrap" });
-          const started2 = await startSession({ id: adminUser.id, email: adminUser.email, role: "SuperAdmin" }, req, { replaceExisting: !!req.body?.replaceExisting });
-          if ("refused" in started2) return sendSessionRefused(res, started2);
+          const started = await startSession({ id: adminUser.id, email: adminUser.email, role: "SuperAdmin" }, req, { replaceExisting: !!req.body?.replaceExisting });
+          if ("refused" in started) return sendSessionRefused(res, started);
           prisma3.user.update({ where: { id: adminUser.id }, data: { lastLoginAt: /* @__PURE__ */ new Date() } }).catch(() => {
           });
-          const { password: _2, ...profile2 } = adminUser;
-          return res.json({ token: started2.token, user: profile2 });
+          const { password: _, ...profile } = adminUser;
+          return res.json({ token: started.token, user: profile });
         }
       }
       const userObj = await findUserByEmail(prisma3, email);
       if (!userObj) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
-      if (userObj.isBlocked) {
-        return res.status(403).json({ error: "Your account has been blocked. Please contact support." });
-      }
-      if (isRemovedStatus(userObj.status)) {
-        return res.status(403).json({ error: "This account is no longer active. If you think this is a mistake, please contact support.", code: "ACCOUNT_REMOVED" });
-      }
-      if (userObj.isDemoAccount && userObj.demoExpiresAt && /* @__PURE__ */ new Date() > userObj.demoExpiresAt) {
-        return res.status(403).json({ error: "Your demo account has expired. Please upgrade to continue." });
-      }
+      const blocked = accountLoginBlock(userObj);
+      if (blocked) return res.status(blocked.status).json(blocked.body);
       const isPasswordValid = await passwordMatches(prisma3, userObj.id, password);
       if (!isPasswordValid) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
-      const started = await startSession(
-        { id: userObj.id, email: userObj.email, role: userObj.role, institutionId: userObj.institutionId },
-        req,
-        { replaceExisting: req.body?.replaceExisting === true }
-      );
-      if ("refused" in started) return sendSessionRefused(res, started);
-      const token = started.token;
-      prisma3.user.update({ where: { id: userObj.id }, data: { lastLoginAt: /* @__PURE__ */ new Date() } }).catch(() => {
-      });
-      if (!STAFF_ROLES.includes(userObj.role)) {
-        getUserActiveSubscriptions(userObj.id, userObj.role, userObj.institutionId).then((subs) => subs.length === 0 ? allowanceFor(prisma3, userObj.id, { start: true }) : null).catch(() => {
-        });
-      }
-      const { password: _, ...profile } = userObj;
-      res.json({ token, user: profile });
+      return await finishSignIn(userObj, req, res, { replaceExisting: req.body?.replaceExisting === true });
     } catch (error) {
       console.error("Login Error:", error);
       res.status(500).json({ error: "Failed to login" });
+    }
+  });
+  const googleUnavailable = (res) => res.status(503).json({ code: "GOOGLE_UNAVAILABLE", error: "Google sign-in is unavailable right now. You can continue with email." });
+  const googleActor = (u) => ({ uid: u.id, email: u.email, role: u.role });
+  const GOOGLE_NOT_FOR_STAFF = { code: "GOOGLE_NOT_ALLOWED_FOR_STAFF", error: "Staff accounts sign in with email and password." };
+  class GoogleLinkConflict extends Error {
+  }
+  const verifiedGoogle = async (req, res) => {
+    try {
+      return await verifyGoogleCredential(req.body?.credential);
+    } catch (e2) {
+      if (!(e2 instanceof GoogleAuthError)) throw e2;
+      if (e2.code === "GOOGLE_UNAVAILABLE") {
+        googleUnavailable(res);
+        return null;
+      }
+      if (e2.code === "GOOGLE_EMAIL_NOT_VERIFIED") {
+        res.status(403).json({ code: e2.code, error: "Google has not verified this email address, so it cannot be used to sign in." });
+        return null;
+      }
+      console.warn("google sign-in: a credential was refused");
+      res.status(401).json({ code: "INVALID_GOOGLE_TOKEN", error: "Google sign-in could not be verified. Please try again." });
+      return null;
+    }
+  };
+  app.post("/api/auth/google", async (req, res) => {
+    try {
+      if (!googleConfigured()) return googleUnavailable(res);
+      const g = await verifiedGoogle(req, res);
+      if (!g) return;
+      const identity = await prisma3.authIdentity.findUnique({
+        where: { provider_providerSubject: { provider: GOOGLE, providerSubject: g.sub } },
+        include: { user: true }
+      });
+      if (identity) {
+        const u = identity.user;
+        const blocked = accountLoginBlock(u);
+        if (blocked) {
+          await auditAccount(prisma3, googleActor(u), "GOOGLE_AUTH_FAILED", { userId: u.id, provider: GOOGLE, reason: "account-not-allowed" });
+          return res.status(blocked.status).json(blocked.body);
+        }
+        if (STAFF_ROLES.includes(u.role)) return res.status(403).json(GOOGLE_NOT_FOR_STAFF);
+        if (!u.emailVerifiedAt && normalizeEmail(u.email) === g.email) {
+          u.emailVerifiedAt = /* @__PURE__ */ new Date();
+          await prisma3.user.update({ where: { id: u.id }, data: { emailVerifiedAt: u.emailVerifiedAt } }).catch(() => {
+          });
+        }
+        return await finishSignIn(u, req, res, {
+          replaceExisting: req.body?.replaceExisting === true,
+          extra: { status: "AUTHENTICATED" },
+          onStarted: () => {
+            auditAccount(prisma3, googleActor(u), "GOOGLE_AUTH_SUCCESS", { userId: u.id, provider: GOOGLE });
+          }
+        });
+      }
+      const existing = await findUserByEmail(prisma3, g.email);
+      if (existing) {
+        const blocked = accountLoginBlock(existing);
+        if (blocked) return res.status(blocked.status).json(blocked.body);
+        if (STAFF_ROLES.includes(existing.role)) return res.status(403).json(GOOGLE_NOT_FOR_STAFF);
+        const other = await prisma3.authIdentity.findUnique({ where: { userId_provider: { userId: existing.id, provider: GOOGLE } } });
+        if (other) return res.status(409).json({ code: "GOOGLE_ALREADY_LINKED_TO_OTHER", error: "This account is already connected to a different Google account. Sign in with that one, or with your password." });
+        return res.json({
+          status: "ACCOUNT_LINK_REQUIRED",
+          linkToken: signGoogleToken(JWT_SECRET, "link", { uid: existing.id, sub: g.sub, email: g.email, name: g.name, picture: g.picture }),
+          email: g.email,
+          // Linking is proved with the account's password. An account that has none cannot be proved this way.
+          hasPassword: typeof existing.password === "string" && /^\$2[aby]\$\d\d\$/.test(existing.password),
+          google: { name: g.name, picture: g.picture }
+        });
+      }
+      return res.json({
+        status: "PROFILE_REQUIRED",
+        onboardingToken: signGoogleToken(JWT_SECRET, "onboarding", { sub: g.sub, email: g.email, name: g.name, picture: g.picture }),
+        google: { email: g.email, name: g.name, picture: g.picture }
+      });
+    } catch (e2) {
+      console.error("POST /api/auth/google:", e2?.message);
+      res.status(500).json({ error: "Failed to sign in with Google" });
+    }
+  });
+  app.post("/api/auth/google/complete-signup", async (req, res) => {
+    try {
+      if (!googleConfigured()) return googleUnavailable(res);
+      const ob = readGoogleToken(JWT_SECRET, "onboarding", req.body?.onboardingToken);
+      if (!ob) return res.status(401).json({ code: "ONBOARDING_EXPIRED", error: "Your Google sign-up has expired. Please continue with Google again." });
+      const alreadyLinked = await prisma3.authIdentity.findUnique({ where: { provider_providerSubject: { provider: GOOGLE, providerSubject: ob.sub } } });
+      if (alreadyLinked) return res.status(409).json({ code: "ALREADY_REGISTERED", error: "This Google account is already registered. Continue with Google to sign in." });
+      if (await emailTaken(prisma3, ob.email)) return res.status(409).json({ code: "ACCOUNT_EXISTS", error: "An STM Digital Library account already exists with this email. Continue with Google again to connect it." });
+      const b = req.body || {};
+      const name = String(b.name ?? ob.name ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+      const type = REGISTRANT_TYPES.find((t2) => t2.id === b.registrantType);
+      const interestedDomains = Array.isArray(b.interestedDomains) ? b.interestedDomains : [];
+      const bad2 = (error) => res.status(400).json({ code: "INVALID_PROFILE", error });
+      if (!name) return bad2("Please enter your full name.");
+      if (!type) return bad2("Please tell us what you are registering as.");
+      if (!String(b.contact || "").trim()) return bad2("Please enter your mobile number.");
+      if (!String(b.state || "").trim()) return bad2("Please enter your state.");
+      if (!String(b.country || "").trim()) return bad2("Please select your country.");
+      if ((type.id === "Institute" || type.id === "Corporate") && !String(b.organization || "").trim()) return bad2(type.id === "Institute" ? "Please enter your institution name." : "Please enter your company name.");
+      if (!interestedDomains.length) return bad2("Please select at least one department.");
+      let made;
+      try {
+        made = await registerMember(req, {
+          email: ob.email,
+          passwordHash: null,
+          emailVerified: true,
+          name,
+          organization: b.organization,
+          contact: b.contact,
+          designation: b.designation,
+          interestedDomains,
+          registrantType: b.registrantType,
+          state: b.state,
+          country: b.country,
+          whatsapp: b.whatsapp,
+          attribution: b.attribution,
+          identity: { provider: GOOGLE, subject: ob.sub, emailAtLink: ob.email }
+        });
+      } catch (e2) {
+        if (e2 instanceof MemberExistsError) return res.status(409).json({ code: "ALREADY_REGISTERED", error: "This Google account or email is already registered. Continue with Google to sign in." });
+        throw e2;
+      }
+      await auditAccount(prisma3, googleActor(made.userObj), "GOOGLE_SIGNUP_COMPLETED", { userId: made.userObj.id, provider: GOOGLE });
+      const { password: _pw, ...profile } = made.userObj;
+      res.json({ status: "AUTHENTICATED", token: made.token, user: profile });
+    } catch (e2) {
+      console.error("POST /api/auth/google/complete-signup:", e2?.message);
+      res.status(500).json({ error: "Failed to create your account" });
+    }
+  });
+  app.post("/api/auth/google/link", async (req, res) => {
+    try {
+      if (!googleConfigured()) return googleUnavailable(res);
+      const lk = readGoogleToken(JWT_SECRET, "link", req.body?.linkToken);
+      const expired = () => res.status(401).json({ code: "LINK_EXPIRED", error: "This step has expired. Please continue with Google again." });
+      if (!lk || !lk.uid) return expired();
+      const user = await prisma3.user.findUnique({ where: { id: lk.uid } });
+      if (!user) return expired();
+      const blocked = accountLoginBlock(user);
+      if (blocked) return res.status(blocked.status).json(blocked.body);
+      if (STAFF_ROLES.includes(user.role)) return res.status(403).json(GOOGLE_NOT_FOR_STAFF);
+      if (!await passwordMatches(prisma3, user.id, req.body?.password)) {
+        await auditAccount(prisma3, googleActor(user), "GOOGLE_AUTH_FAILED", { userId: user.id, provider: GOOGLE, reason: "link-password-wrong" });
+        return res.status(401).json({ code: "INVALID_CREDENTIALS", error: "That password is not correct." });
+      }
+      let newlyLinked = false;
+      try {
+        await prisma3.$transaction(async (tx) => {
+          const owner = await tx.authIdentity.findUnique({ where: { provider_providerSubject: { provider: GOOGLE, providerSubject: lk.sub } } });
+          if (owner && owner.userId !== user.id) throw new GoogleLinkConflict();
+          const mine = await tx.authIdentity.findUnique({ where: { userId_provider: { userId: user.id, provider: GOOGLE } } });
+          if (mine) {
+            if (mine.providerSubject !== lk.sub) throw new GoogleLinkConflict();
+            return;
+          }
+          await tx.authIdentity.create({ data: { userId: user.id, provider: GOOGLE, providerSubject: lk.sub, emailAtLink: lk.email } });
+          newlyLinked = true;
+          if (!user.emailVerifiedAt && normalizeEmail(user.email) === lk.email) {
+            user.emailVerifiedAt = /* @__PURE__ */ new Date();
+            await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: user.emailVerifiedAt } });
+          }
+        });
+      } catch (e2) {
+        if (e2 instanceof GoogleLinkConflict || e2?.code === "P2002") {
+          return res.status(409).json({ code: "GOOGLE_ALREADY_LINKED", error: "This Google account is already connected to a different STM Digital Library account." });
+        }
+        throw e2;
+      }
+      if (newlyLinked) await auditAccount(prisma3, googleActor(user), "GOOGLE_ACCOUNT_LINKED", { userId: user.id, provider: GOOGLE });
+      return await finishSignIn(user, req, res, {
+        replaceExisting: req.body?.replaceExisting === true,
+        extra: { status: "AUTHENTICATED", linked: true },
+        onStarted: () => {
+          auditAccount(prisma3, googleActor(user), "GOOGLE_AUTH_SUCCESS", { userId: user.id, provider: GOOGLE });
+        }
+      });
+    } catch (e2) {
+      console.error("POST /api/auth/google/link:", e2?.message);
+      res.status(500).json({ error: "Failed to connect Google" });
     }
   });
   app.post("/api/auth/logout", authenticateJWT, async (req, res) => {
@@ -73844,7 +74142,7 @@ async function startServer() {
     const h2 = req.headers.authorization;
     if (!h2) return null;
     try {
-      return import_jsonwebtoken.default.verify(h2.split(" ")[1], JWT_SECRET);
+      return import_jsonwebtoken2.default.verify(h2.split(" ")[1], JWT_SECRET);
     } catch {
       return null;
     }
@@ -74231,7 +74529,7 @@ async function startServer() {
     const h2 = req?.headers?.authorization;
     if (!h2) return null;
     try {
-      return import_jsonwebtoken.default.verify(h2.split(" ")[1], JWT_SECRET);
+      return import_jsonwebtoken2.default.verify(h2.split(" ")[1], JWT_SECRET);
     } catch {
       return null;
     }
@@ -75224,6 +75522,9 @@ async function startServer() {
       }]));
       const liveCount = /* @__PURE__ */ new Map();
       for (const r2 of liveRows) liveCount.set(r2.userId, (liveCount.get(r2.userId) || 0) + 1);
+      const providerRows = await prisma3.authIdentity.findMany({ where: { userId: { in: users.map((u) => u.id) } }, select: { userId: true, provider: true } });
+      const providersBy = /* @__PURE__ */ new Map();
+      for (const r2 of providerRows) providersBy.set(r2.userId, [...providersBy.get(r2.userId) || [], r2.provider]);
       const withPassword = await withPasswordCredential(prisma3, users.map((u) => u.id));
       const removedRows = users.filter((u) => u.removedAt);
       const removalInst = new Map((await prisma3.institution.findMany({ where: { id: { in: [...new Set(removedRows.map((u) => u.removedByInstitutionId).filter(Boolean))] } }, select: { id: true, name: true } })).map((i2) => [i2.id, i2.name]));
@@ -75233,6 +75534,8 @@ async function startServer() {
           ...u,
           ...withAccessRole(u),
           hasPassword: withPassword.has(u.id),
+          // How they can sign in: "Password", "Google", or both. A Google-only account having no password is not a fault.
+          signInMethods: [...withPassword.has(u.id) ? ["Password"] : [], ...(providersBy.get(u.id) || []).map((p3) => p3 === GOOGLE ? "Google" : p3)],
           activeSession: liveBy.get(u.id) || null,
           activeSessionCount: liveCount.get(u.id) || 0,
           sessionLimit: effectiveSessionLimit(u.maxConcurrentSessions),
@@ -82937,7 +83240,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     flaggedCount: 0,
     currentTask: "Idle"
   };
-  const makeValidatorToken = () => import_jsonwebtoken.default.sign({ uid: "__validator__", role: "SuperAdmin" }, JWT_SECRET, { expiresIn: "10m" });
+  const makeValidatorToken = () => import_jsonwebtoken2.default.sign({ uid: "__validator__", role: "SuperAdmin" }, JWT_SECRET, { expiresIn: "10m" });
   const validateFileViewability = async (contentId, url, contentType) => {
     if (!url || url.trim().length === 0) {
       return { isViewable: false, viewerStatus: "No File", flaggedReason: "No file URL is set for this content item." };
@@ -84384,7 +84687,7 @@ ${posts[0] ? `    <lastmod>${new Date(posts[0].updatedAt).toISOString()}</lastmo
       const h2 = req.headers?.authorization;
       if (typeof h2 !== "string" || !h2.startsWith("Bearer ")) return null;
       try {
-        const claims = import_jsonwebtoken.default.verify(h2.slice(7), JWT_SECRET);
+        const claims = import_jsonwebtoken2.default.verify(h2.slice(7), JWT_SECRET);
         return claims?.uid && claims.uid !== "__validator__" && await sessionIsLive(claims) ? String(claims.uid) : null;
       } catch {
         return null;
@@ -84673,6 +84976,7 @@ ${posts[0] ? `    <lastmod>${new Date(posts[0].updatedAt).toISOString()}</lastmo
     console.error("Unhandled Error:", err);
     res.status(500).json({ error: "Internal server error" });
   });
+  console.log(googleConfigured() ? "Google sign-in: enabled" : "Google sign-in: disabled (GOOGLE_CLIENT_ID is not set); email sign-in is unaffected");
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || "development"})`);
   });
