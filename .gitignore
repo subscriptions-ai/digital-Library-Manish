@@ -19,3 +19,6 @@ backups/
 # brochure build: downloaded fonts and print scratch
 scripts/brochure/fonts/
 scripts/brochure/.build/
+
+# Written by scripts/correct-member-roles.ts --apply (member emails inside): keep out of git
+member-roles-applied-*.json

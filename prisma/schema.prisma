@@ -466,6 +466,12 @@ model User {
   organization   String?
   contact        String?
   designation    String?
+  /// What the person is to the library: Faculty | Researcher | Student | Librarian | Institution Admin
+  /// (src/lib/memberRoles.ts). Separate from `designation` (a job title, grants nothing) and from `role`
+  /// (the technical access class every authorisation reads, and not touched by this). Null on every
+  /// member added before it existed; those are shown from their designation where it settles the
+  /// question, and flagged for review where it does not.
+  memberRole     String?
   state          String?
   country        String?
   /// A number that can be reached on WhatsApp. Equal to `contact` when the

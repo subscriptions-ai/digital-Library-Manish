@@ -48,8 +48,9 @@ import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveC
 import { createDepartmentSpellings } from "./src/server/departmentSpellings.js";
 import { requireOfficialDepartments, requireOfficialDepartmentsOnEdit } from "./src/server/departmentInput.js";
 import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, buildInstitutionPlanSnapshot, buildSoloPlanSnapshot, planSnapshotToRow, type QuoteDoc, type PlanSnapshot } from "./src/lib/quotation/quotationModel.js";
-import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
-  INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
+import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard } from "./src/constants.js";
+import { ASSIGNABLE_MEMBER_ROLES, PRO_ONLY_ACCESS_ROLES, assignableRole, roleFromDesignation, resolveImportRole,
+  cleanDesignation, effectiveAccessRole } from "./src/lib/memberRoles.js";
 import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
@@ -90,6 +91,12 @@ import {
 } from "./src/lib/emailTemplates.js";
 
 const prisma = new PrismaClient();
+
+/** What a person is to the library, as people say it (Faculty, Student…), and how it was settled. Display only; see src/lib/memberRoles.ts. */
+const withAccessRole = (u: { role?: string | null; memberRole?: string | null; designation?: string | null }) => {
+  const r = effectiveAccessRole(u);
+  return { accessRole: r.role, accessRoleSource: r.source };
+};
 // Which spellings of each department the stored records use, so a filter for "Medical Sciences" also finds rows kept as "Medical sciences".
 const deptSpellings = createDepartmentSpellings(prisma as any);
 
@@ -5573,7 +5580,7 @@ async function startServer() {
       const columns = {
         id: true, email: true, displayName: true, organization: true, contact: true,
         whatsapp: true, designation: true, registrantType: true, state: true, country: true,
-        role: true, status: true, isBlocked: true, interestedDomains: true, lastLoginAt: true,
+        role: true, memberRole: true, maxConcurrentSessions: true, status: true, isBlocked: true, interestedDomains: true, lastLoginAt: true,
         signupSource: true, emailVerifiedAt: true, lastReadAt: true, createdAt: true,
         institutionId: true, isDemoAccount: true, demoExpiresAt: true, institutionProfile: true,
       };
@@ -5583,7 +5590,7 @@ async function startServer() {
       if (str(q.format) === 'csv') {
         const cols = ['Name', 'Email', 'Phone', 'WhatsApp', 'Organisation', 'Registering as',
           'Designation', 'State', 'Country', 'Departments', 'Came from', 'Verified',
-          'Last read', 'Role', 'Status', 'Joined'];
+          'Last read', 'Role', 'Access role', 'Status', 'Joined'];
         const cell = (v: any) => {
           const t = v === null || v === undefined ? '' : String(v);
           return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
@@ -5605,7 +5612,7 @@ async function startServer() {
               u.designation, u.state, u.country,
               Array.isArray(u.interestedDomains) ? (u.interestedDomains as string[]).join('; ') : '',
               u.signupSource || '', u.emailVerifiedAt ? 'yes' : 'no', date(u.lastReadAt),
-              u.role, u.isBlocked ? 'Blocked' : u.status, date(u.createdAt),
+              u.role, withAccessRole(u).accessRole || 'Needs review', u.isBlocked ? 'Blocked' : u.status, date(u.createdAt),
             ].map(cell).join(',') + '\n');
           }
           cursor = batch[batch.length - 1].id;
@@ -5672,6 +5679,7 @@ async function startServer() {
       res.json({
         data: users.map(u => ({
           ...u,
+          ...withAccessRole(u),
           hasPassword: withPassword.has(u.id),
           activeSession: liveBy.get(u.id) || null,
           isEmailVerified: !!u.emailVerifiedAt,
@@ -13268,20 +13276,28 @@ async function startServer() {
   /**
    * What a librarian may add.
    *
-   * A closed list of roles, checked here rather than trusted from the form,
-   * because the form is not the only way in. No cap on how many. Students are
-   * the one exception: they belong to Pro, and a free institution is refused
-   * them here — in the single add, the import and an edit alike.
+   * The person's ROLE (Faculty, Researcher, Student) is chosen, never defaulted, and checked
+   * here rather than trusted from the form, because the form is not the only way in. Their
+   * DESIGNATION is a separate, free job title and grants nothing. Students belong to Pro, and
+   * a free institution is refused them here — in the single add, the import and an edit alike.
+   *
+   * `User.role` is a different thing: the technical access class every authorisation reads.
+   * Everyone a librarian adds shares one value of it ('Student'), which is why lists and
+   * entitlement look for it. It says nothing about who the person is, and is not touched here.
    */
   const institutionOnPro = async (req: any, institutionId: string) =>
     (await getUserActiveSubscriptions(req.user.uid, req.user.role, institutionId)).length > 0;
 
   const STUDENT_NEEDS_PRO = 'Students are not allowed to be added on this plan. Upgrade to Pro to add students.';
 
-  const memberRole = (given: any) => {
-    const wanted = String(given || '').trim();
-    return (INSTITUTION_MEMBER_ROLES as readonly string[]).includes(wanted) ? wanted : null;
+  const MEMBER_ROLE_ERROR = {
+    error: `Choose a role: ${ASSIGNABLE_MEMBER_ROLES.join(', ')}.`,
+    code: 'MEMBER_ROLE', allowed: ASSIGNABLE_MEMBER_ROLES,
   };
+
+  /** The role in a request: the one chosen, or, from an older client, the one its designation settles. Never a default. */
+  const requestedMemberRole = (body: any) =>
+    assignableRole(body?.memberRole) ?? (body?.memberRole ? null : assignableRole(roleFromDesignation(body?.designation)));
 
   /**
    * How many users an institution may have, and how many it has.
@@ -13635,7 +13651,8 @@ async function startServer() {
         include: { subscriptions: true, activities: { include: { content: true } } },
         orderBy: { createdAt: 'desc' }
       });
-      res.json(students);
+      // Never the password hash, and the role as the person would say it.
+      res.json(students.map(({ password: _pw, ...s }: any) => ({ ...s, ...withAccessRole(s) })));
     } catch(err) {
       res.status(500).json({ error: "Failed to fetch students" });
     }
@@ -13662,14 +13679,9 @@ async function startServer() {
       const targetInstitutionId = target.id;
       if (!(await assertInstitutionCanAddUsers(req, res, targetInstitutionId))) return;
 
-      const role = memberRole(designation);
-      if (!role) {
-        return res.status(400).json({
-          error: `Choose a role from the list: ${INSTITUTION_MEMBER_ROLES.join(', ')}.`,
-          code: 'MEMBER_ROLE', allowed: INSTITUTION_MEMBER_ROLES,
-        });
-      }
-      if (PRO_ONLY_MEMBER_ROLES.includes(role) && !(await institutionOnPro(req, targetInstitutionId!))) {
+      const memberRole = requestedMemberRole(req.body);
+      if (!memberRole) return res.status(400).json(MEMBER_ROLE_ERROR);
+      if (PRO_ONLY_ACCESS_ROLES.includes(memberRole) && !(await institutionOnPro(req, targetInstitutionId!))) {
         return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
       }
       if (req.user.role === 'Institution') {
@@ -13682,9 +13694,10 @@ async function startServer() {
           email,
           password: hashed,
           displayName: name,
-          role: 'Student', // Preserve existing logic
+          role: 'Student', // the technical access class of an institution's member; see the note above memberRole
+          memberRole,
           contact: mobile || null,
-          designation: role,
+          designation: cleanDesignation(designation),
           organization: institutionName,
           institutionId: targetInstitutionId,
           institutionProfile: {
@@ -13729,7 +13742,10 @@ async function startServer() {
       let errorCount = 0;
       const errors = [];
 
-      for (const u of users) {
+      for (const raw of users) {
+        // Header spelling and case are the file's, not ours: "Role" and "role" are one column.
+        const row: any = Object.fromEntries(Object.entries(raw || {}).map(([k, v]) => [String(k).trim().toLowerCase(), v]));
+        const u = { ...row, email: row.email, name: row.name, password: row.password };
         try {
           if (!u.email || !u.name || !u.password) {
             errorCount++;
@@ -13744,13 +13760,16 @@ async function startServer() {
             continue;
           }
 
-          const uRole = memberRole(u.designation);
-          if (!uRole) {
+          // A Role column wins; without one the designation must settle it. Otherwise the row is
+          // refused and says why. It is never given a role nobody chose.
+          const resolved = resolveImportRole(row);
+          if ('error' in resolved) {
             errorCount++;
-            errors.push({ email: u.email, error: `Role must be one of: ${INSTITUTION_MEMBER_ROLES.join(', ')}` });
+            errors.push({ email: u.email, error: resolved.error });
             continue;
           }
-          if (PRO_ONLY_MEMBER_ROLES.includes(uRole) && !onPro) {
+          const uRole = resolved.role;
+          if (PRO_ONLY_ACCESS_ROLES.includes(uRole) && !onPro) {
             errorCount++;
             errors.push({ email: u.email, error: STUDENT_NEEDS_PRO });
             continue;
@@ -13758,7 +13777,7 @@ async function startServer() {
 
           if (seatsLeft !== null && seatsLeft < 1) {
             errorCount++;
-            errors.push({ email: u.email, error: 'No user seats left. Your institution has reached its user limit; contact us to add more.' });
+            errors.push({ email: u.email, error: 'Your institution cannot add more users at this time. Please contact STM Digital Library support.' });
             continue;
           }
 
@@ -13768,9 +13787,10 @@ async function startServer() {
               email: u.email,
               password: hashed,
               displayName: u.name,
-              role: 'Student', // Preserve existing logic
+              role: 'Student', // the technical access class of an institution's member; see the note above memberRole
+              memberRole: uRole,
               contact: u.mobile || null,
-              designation: uRole,
+              designation: cleanDesignation(row.designation),
               organization: institutionName,
               institutionId: targetInstitutionId,
               institutionProfile: {
@@ -13834,6 +13854,7 @@ async function startServer() {
       }
       const { id } = req.params;
       const { displayName, email, contact, designation, branch, department, password } = req.body;
+      const memberRoleGiven = req.body.memberRole !== undefined;
 
       if (email) {
         const taken = await prisma.user.findFirst({ where: { email, id: { not: id } } });
@@ -13852,16 +13873,19 @@ async function startServer() {
         }
       }
 
-      // Only a real change of role is checked, so a member added before the
-      // list existed keeps whatever they were called when their record is saved.
-      if (designation !== undefined && designation !== existing.designation) {
-        const next = memberRole(designation);
-        if (!next) {
-          return res.status(400).json({ error: `Choose a role from the list: ${INSTITUTION_MEMBER_ROLES.join(', ')}.`, code: 'MEMBER_ROLE' });
-        }
-        if (PRO_ONLY_MEMBER_ROLES.includes(next) && existing.institutionId
-            && !(await institutionOnPro(req, existing.institutionId))) {
-          return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
+      // Only a real change of role is checked, so a member added before the role existed keeps
+      // what they have when their record is saved. The designation is free text and is never
+      // checked against a list. An account that runs the institution has no role to change here.
+      let nextMemberRole: string | undefined;
+      if (memberRoleGiven && existing.role !== 'Institution') {
+        const next = assignableRole(req.body.memberRole);
+        if (!next) return res.status(400).json(MEMBER_ROLE_ERROR);
+        if (next !== (existing as any).memberRole) {
+          if (PRO_ONLY_ACCESS_ROLES.includes(next) && existing.institutionId
+              && !(await institutionOnPro(req, existing.institutionId))) {
+            return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
+          }
+          nextMemberRole = next;
         }
       }
 
@@ -13873,7 +13897,8 @@ async function startServer() {
         ...(displayName ? { displayName } : {}),
         ...(email ? { email } : {}),
         ...(contact !== undefined ? { contact } : {}),
-        ...(designation !== undefined ? { designation } : {}),
+        ...(designation !== undefined ? { designation: cleanDesignation(designation) } : {}),
+        ...(nextMemberRole ? { memberRole: nextMemberRole } : {}),
         institutionProfile: newInstitutionProfile
       };
 

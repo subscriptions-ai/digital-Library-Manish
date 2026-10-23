@@ -461,6 +461,9 @@ export function contentEditPath(contentType?: string | null, id?: string): strin
   return m && id ? `/admin/${m.slug}/${id}` : null;
 }
 
+// The roles a librarian may give the people they add (Faculty, Researcher, Student), and the Pro-only one, live in
+// src/lib/memberRoles.ts, beside the designation-to-role mapping the bulk import uses.
+
 /**
  * Who is registering, and what such a person is called.
  *

@@ -446,9 +446,22 @@ export function UserManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${ROLE_COLORS[user.role] || 'bg-surface-2 text-ink-2'}`}>
-                        {user.role}
-                      </span>
+                      {/* An institution's people are shown by what they are to the library (Faculty, Student…),
+                          not by the technical access class they all share. Staff and individuals keep theirs. */}
+                      {user.institutionId && user.role !== 'Institution' ? (
+                        <span title={user.accessRoleSource === 'designation' ? 'Settled from the designation; not yet saved on the account' : user.accessRole ? undefined : 'No role has been chosen, and the designation does not settle one'}
+                          className={`text-xs font-bold px-2.5 py-1 rounded-full ${user.accessRole ? 'bg-surface-2 text-ink-2' : 'bg-caution-soft text-caution'}`}>
+                          {user.accessRole || 'Needs review'}
+                        </span>
+                      ) : (
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${ROLE_COLORS[user.role] || 'bg-surface-2 text-ink-2'}`}>
+                          {user.role === 'Institution' ? 'Institution Admin' : user.role}
+                        </span>
+                      )}
+                      {user.sessionLimit > 1 && (
+                        <span title={`Allowed ${user.sessionLimit} simultaneous logins (${user.activeSessionCount ?? 0} now)`}
+                          className="ml-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-info-soft text-info whitespace-nowrap">{user.sessionLimit} logins</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-xs">

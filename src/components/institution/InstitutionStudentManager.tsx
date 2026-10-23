@@ -6,7 +6,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from '../../constants';
+import { ASSIGNABLE_MEMBER_ROLES, DESIGNATION_SUGGESTIONS, MAX_DESIGNATION_LENGTH, PRO_ONLY_ACCESS_ROLES } from '../../lib/memberRoles';
 import { usePricing } from './pricing/PricingContext';
 import { seatsLabel } from './pricing/PlanWidgets';
 import { LicensedAccessPanel } from '../LicensedAccessPanel';
@@ -32,8 +32,8 @@ function RolePicker({ value, onChange, onFree }: {
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
-      {INSTITUTION_MEMBER_ROLES.map(r => {
-        const locked = onFree && PRO_ONLY_MEMBER_ROLES.includes(r);
+      {ASSIGNABLE_MEMBER_ROLES.map(r => {
+        const locked = onFree && PRO_ONLY_ACCESS_ROLES.includes(r);
         const on = value === r;
         return (
           <span key={r} className="role-chip relative">
@@ -96,7 +96,7 @@ export function InstitutionStudentManager() {
 
   // Add modal
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newStudent, setNewStudent] = useState({ name: '', email: '', password: '', mobile: '', designation: '', branch: '', department: '' });
+  const [newStudent, setNewStudent] = useState({ name: '', email: '', password: '', mobile: '', memberRole: '', designation: '', branch: '', department: '' });
   const [addLoading, setAddLoading] = useState(false);
 
   // Bulk import
@@ -107,7 +107,7 @@ export function InstitutionStudentManager() {
 
   // Edit modal
   const [editStudent, setEditStudent] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '', contact: '', designation: '', branch: '', department: '', password: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', contact: '', memberRole: '', designation: '', branch: '', department: '', password: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete confirm
@@ -195,7 +195,7 @@ export function InstitutionStudentManager() {
   /* ── ADD STUDENT ── */
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudent.designation) { toast.error('Choose a role'); return; }
+    if (!newStudent.memberRole) { toast.error('Choose a role'); return; }
     setAddLoading(true);
     try {
       const res = await fetch('/api/institution/students', {
@@ -212,7 +212,7 @@ export function InstitutionStudentManager() {
       }
       toast.success('User added');
       setShowAddModal(false);
-      setNewStudent({ name: '', email: '', password: '', mobile: '', designation: '', branch: '', department: '' });
+      setNewStudent({ name: '', email: '', password: '', mobile: '', memberRole: '', designation: '', branch: '', department: '' });
       fetchStudents();
       pricing?.reload();
     } catch (err: any) {
@@ -229,6 +229,7 @@ export function InstitutionStudentManager() {
       displayName: student.displayName || '', 
       email: student.email || '',
       contact: student.contact || '',
+      memberRole: (ASSIGNABLE_MEMBER_ROLES as readonly string[]).includes(student.accessRole) ? student.accessRole : '',
       designation: student.designation || '',
       branch: student.institutionProfile?.branch || '',
       department: student.institutionProfile?.department || '',
@@ -243,7 +244,8 @@ export function InstitutionStudentManager() {
       const res = await fetch(`/api/institution/students/${editStudent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify(editForm),
+        // The role is sent only once there is one to send: an unclassified member stays unclassified until somebody chooses.
+        body: JSON.stringify({ ...editForm, memberRole: editForm.memberRole || undefined }),
       });
       let data: any = {};
       try { data = await res.json(); } catch {}
@@ -315,6 +317,9 @@ export function InstitutionStudentManager() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      <datalist id="designation-suggestions">
+        {DESIGNATION_SUGGESTIONS.map(d => <option key={d} value={d} />)}
+      </datalist>
       {/* User Addition Restriction: whether new users may be added. It is not
           the licensed-seat count below, and it never touches existing users. */}
       {addRestricted && (
@@ -419,6 +424,7 @@ export function InstitutionStudentManager() {
             <thead>
               <tr>
                 <th scope="col">User</th>
+                <th scope="col">Role</th>
                 <th scope="col">Designation</th>
                 <th scope="col">Status</th>
                 <th scope="col" className="text-right">Actions</th>
@@ -426,11 +432,11 @@ export function InstitutionStudentManager() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4} className="py-6">
+                <tr><td colSpan={5} className="py-6">
                   <SkeletonRows rows={4} />
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={4} className="p-0">
+                <tr><td colSpan={5} className="p-0">
                   <EmptyState icon={Users} title="No users found"
                     description={search ? 'No one matches this search. Try another name or email.' : 'Users you add appear here.'}
                     action={!search && !addRestricted ? <Button size="sm" onClick={openAdd}><Plus size={16} aria-hidden="true" /> Add User</Button> : undefined} />
@@ -453,7 +459,12 @@ export function InstitutionStudentManager() {
                       </div>
                     </td>
                     <td>
-                      <span className="badge badge-neutral">{student.designation || 'Student'}</span>
+                      {student.accessRole
+                        ? <span className="badge badge-accent" title={student.accessRoleSource === 'designation' ? 'Settled from the designation. Edit the user to confirm it.' : undefined}>{student.accessRole}</span>
+                        : <span className="badge badge-caution" title="No role has been chosen. Edit the user to choose one.">Needs review</span>}
+                    </td>
+                    <td>
+                      <span className="text-sm text-ink-2">{student.designation || '—'}</span>
                     </td>
                     <td>
                       <StatusBadge status={student.isBlocked ? 'suspended' : 'active'} />
@@ -572,11 +583,16 @@ export function InstitutionStudentManager() {
               placeholder="+91 9876543210" />
           </Field>
 
-          <div role="group" aria-labelledby="add-designation-label" className="field">
-            <p id="add-designation-label" className="field-label">Designation<span className="req" aria-hidden="true">*</span></p>
-            <RolePicker value={newStudent.designation} onFree={onFree}
-              onChange={role => setNewStudent({ ...newStudent, designation: role })} />
+          <div role="group" aria-labelledby="add-role-label" className="field">
+            <p id="add-role-label" className="field-label">Role<span className="req" aria-hidden="true">*</span></p>
+            <RolePicker value={newStudent.memberRole} onFree={onFree}
+              onChange={role => setNewStudent({ ...newStudent, memberRole: role })} />
           </div>
+          <Field label="Designation" help="Their job title, for example Associate Professor. Optional; it does not change what they can access.">
+            <input type="text" className="input" list="designation-suggestions" maxLength={MAX_DESIGNATION_LENGTH}
+              value={newStudent.designation} onChange={e => setNewStudent({ ...newStudent, designation: e.target.value })}
+              placeholder="e.g. Associate Professor" />
+          </Field>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Branch">
@@ -618,10 +634,10 @@ export function InstitutionStudentManager() {
         footer={<Button variant="outline" onClick={closeImport}>Close</Button>}
       >
         <div className="space-y-4">
-          <p className="text-sm text-ink-2">The file must include the headers: <strong className="text-ink">name, email, password, designation</strong>. Optional headers: <strong className="text-ink">mobile, branch, department</strong>.</p>
-          <p className="text-xs text-muted">Designation must be one of: {INSTITUTION_MEMBER_ROLES.join(', ')}.{onFree ? ' Student rows are refused on this plan — upgrade to Pro to add students.' : ''}</p>
+          <p className="text-sm text-ink-2">The file must include the headers: <strong className="text-ink">name, email, password, role</strong>. Optional headers: <strong className="text-ink">designation, mobile, branch, department</strong>.</p>
+          <p className="text-xs text-muted">Role must be one of: {ASSIGNABLE_MEMBER_ROLES.join(', ')}. If a row has no role, its designation is used only where it settles one (Professor, Associate Professor, Assistant Professor, Lecturer, Research Scholar/Associate/Fellow, Student); any other row is refused, so you can add the role and import it again.{onFree ? ' Student rows are refused on this plan — upgrade to Pro to add students.' : ''}</p>
 
-          <a href="data:text/csv;charset=utf-8,name,email,password,mobile,designation,branch,department%0AJohn%20Doe,john@example.com,pass123,9876543210,Professor,CSE,Engineering"
+          <a href="data:text/csv;charset=utf-8,name,email,password,role,designation,mobile,branch,department%0AJohn%20Doe,john@example.com,pass123,Faculty,Associate%20Professor,9876543210,CSE,Engineering"
              download="sample_users.csv"
              className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
             <Download size={16} aria-hidden="true" /> Download Sample CSV
@@ -718,18 +734,20 @@ export function InstitutionStudentManager() {
               <input type="tel" className="input" value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact: e.target.value }))}
                 placeholder="+91 9876543210" />
             </Field>
-            <Field label="Designation">
-              <select className="input" value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
+            <Field label="Role">
+              <select className="input" value={editForm.memberRole} onChange={e => setEditForm(f => ({ ...f, memberRole: e.target.value }))}
                 title={onFree ? STUDENT_NEEDS_PRO : undefined}>
-                <option value="">Select Role...</option>
-                {editStudent?.designation && !(INSTITUTION_MEMBER_ROLES as readonly string[]).includes(editStudent.designation) && (
-                  <option value={editStudent.designation}>{editStudent.designation}</option>
-                )}
-                {INSTITUTION_MEMBER_ROLES.map(r => {
-                  const locked = onFree && PRO_ONLY_MEMBER_ROLES.includes(r) && editStudent?.designation !== r;
+                <option value="">{editStudent?.role === 'Institution' ? 'Institution Admin' : 'Select role…'}</option>
+                {ASSIGNABLE_MEMBER_ROLES.map(r => {
+                  const locked = onFree && PRO_ONLY_ACCESS_ROLES.includes(r) && editStudent?.accessRole !== r;
                   return <option key={r} value={r} disabled={locked}>{locked ? `${r} — Pro only` : r}</option>;
                 })}
               </select>
+            </Field>
+            <Field label="Designation" help="Their job title. It does not change what they can access.">
+              <input type="text" className="input" list="designation-suggestions" maxLength={MAX_DESIGNATION_LENGTH}
+                value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
+                placeholder="e.g. Associate Professor" />
             </Field>
           </div>
 
