@@ -38,6 +38,7 @@ import { loadBlogList, loadBlogPost } from "./src/server/blogData.js";
 import { installSeoPages } from "./src/server/seoPages.js";
 import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
 import { s3Configured, isProduction, deleteObject, keyFromUrl } from "./src/server/storage/s3Storage.js";
+import { removeFromInstitution, cancelDeletion, reactivateRemovedMember, purgeDueAccounts, RemovalError, isRemovedStatus, maskEmail, GRACE_HOURS, PENDING_DELETION, DELETED } from "./src/server/accountRemoval.js";
 import { loadEntitlement, loadInstitutionDepartments, entitlementAllows, scopeOf, narrowToEntitlement, subscriptionDepartments, type Entitlement } from "./src/server/entitlements.js";
 import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageStatus, ensureMediaDirs, assertUploadsPossible, uploadMedia, MediaStorageError } from "./src/server/storage/mediaStorage.js";
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
@@ -296,10 +297,12 @@ async function startServer() {
     if (!claims?.sid || !claims?.uid) return false;
     const row = await prisma.userSession.findUnique({
       where: { sessionId: String(claims.sid) },
-      select: { userId: true, revokedAt: true, expiresAt: true },
+      select: { userId: true, revokedAt: true, expiresAt: true, user: { select: { status: true } } },
     });
     const now = Date.now();
     if (!row || row.userId !== claims.uid || row.revokedAt || row.expiresAt.getTime() <= now) return false;
+    // A removed account has no access during its 48-hour retention: the retention is for recovery, not for continued reading.
+    if (isRemovedStatus(row.user?.status)) return false;
     const last = lastTouched.get(claims.sid) || 0;
     if (now - last > SESSION_TOUCH_MS) {
       if (lastTouched.size > 20000) lastTouched.clear();
@@ -1137,6 +1140,10 @@ async function startServer() {
 
       if (userObj.isBlocked) {
         return res.status(403).json({ error: "Your account has been blocked. Please contact support." });
+      }
+
+      if (isRemovedStatus((userObj as any).status)) {
+        return res.status(403).json({ error: "This account is no longer active. If you think this is a mistake, please contact support.", code: "ACCOUNT_REMOVED" });
       }
 
       if (userObj.isDemoAccount && userObj.demoExpiresAt && new Date() > userObj.demoExpiresAt) {
@@ -4050,12 +4057,10 @@ async function startServer() {
   const getUserActiveSubscriptions = async (uid: string, role: string, institutionId?: string | null) => {
     const OR_clauses: any[] = [{ userId: uid }];
     
-    let resolvedInstId = institutionId;
-    if (!resolvedInstId) {
-      // Always look up from DB — JWT may not have institutionId for older tokens
-      const u = await prisma.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
-      if (u?.institutionId) resolvedInstId = u.institutionId;
-    }
+    // The institution comes from the database, never from the token: a token issued before a person was removed from their institution
+    // still names it, and must not keep reaching what that institution subscribed to.
+    const u = await prisma.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+    const resolvedInstId = u ? u.institutionId : institutionId;
     
     if (resolvedInstId) {
       OR_clauses.push({ institutionId: resolvedInstId });
@@ -5495,12 +5500,13 @@ async function startServer() {
    */
   app.get("/api/admin/accounts/summary", authenticateJWT, requireSuperAdmin, async (_req: any, res) => {
     try {
-      const [total, blocked, verified, byRole, cred] = await Promise.all([
+      const [total, blocked, verified, byRole, cred, pendingDeletion] = await Promise.all([
         prisma.user.count(),
-        prisma.user.count({ where: { isBlocked: true } }),
+        prisma.user.count({ where: { isBlocked: true, status: { not: DELETED } } }),
         prisma.user.count({ where: { emailVerifiedAt: { not: null } } }),
         prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
         prisma.$queryRaw<{ configured: number }[]>`SELECT count(*) FILTER (WHERE password ~ '^\\$2[aby]\\$[0-9]{2}\\$')::int AS configured FROM "User"`,
+        prisma.user.count({ where: { status: PENDING_DELETION } }),
       ]);
       const roles = Object.fromEntries(byRole.map(r => [r.role, r._count._all]));
       const superAdmins = roles.SuperAdmin || 0;
@@ -5508,7 +5514,7 @@ async function startServer() {
       const otherStaff = STAFF_ROLES.filter(r => r !== 'SuperAdmin' && r !== 'Admin').reduce((n, r) => n + (roles[r] || 0), 0);
       res.set('Cache-Control', 'no-store');
       res.json({
-        users: { total, active: total - blocked, blocked, verified, unverified: total - verified },
+        users: { total, active: total - blocked, blocked, pendingDeletion, verified, unverified: total - verified },
         admins: { superAdmins, activeSuperAdmins, admins: roles.Admin || 0, otherStaff },
         roles,
         passwords: { configured: cred[0]?.configured ?? 0, notConfigured: total - (cred[0]?.configured ?? 0) },
@@ -5519,6 +5525,18 @@ async function startServer() {
     }
   });
 
+  /** The account-status filter of the Users screens, as a where clause. One definition, so Everyone and By institution agree. */
+  const accountStatusWhere = (accountStatus: string | null): any => {
+    const w: any = {};
+    if (accountStatus === 'blocked') { w.isBlocked = true; w.status = { not: DELETED }; }
+    if (accountStatus === 'active') { w.isBlocked = false; w.status = { notIn: [PENDING_DELETION, DELETED] }; }
+    // The 48-hour queue, and the people an institution has let go (whether or not their account was kept).
+    if (accountStatus === 'pending_deletion') w.status = PENDING_DELETION;
+    if (accountStatus === 'removed') w.removedByInstitutionId = { not: null };
+    if (accountStatus === 'deleted') w.status = DELETED;
+    return w;
+  };
+
   app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const q = req.query;
@@ -5527,8 +5545,7 @@ async function startServer() {
       const where: any = {};
       const role = str(q.role); if (role) where.role = role;
       const accountStatus = str(q.accountStatus);
-      if (accountStatus === 'blocked') where.isBlocked = true;
-      if (accountStatus === 'active') where.isBlocked = false;
+      Object.assign(where, accountStatusWhere(accountStatus));
       const type = str(q.registrantType); if (type) where.registrantType = type;
       const designation = str(q.designation); if (designation) where.designation = designation;
       const state = str(q.state); if (state) where.state = state;
@@ -5583,6 +5600,7 @@ async function startServer() {
         role: true, memberRole: true, maxConcurrentSessions: true, status: true, isBlocked: true, interestedDomains: true, lastLoginAt: true,
         signupSource: true, emailVerifiedAt: true, lastReadAt: true, createdAt: true,
         institutionId: true, isDemoAccount: true, demoExpiresAt: true, institutionProfile: true,
+        removedAt: true, deletionScheduledAt: true, removedBy: true, removedByInstitutionId: true, removalReason: true, purgedAt: true,
       };
 
       // The whole answer, not the page of it. Written out in batches so a file
@@ -5676,6 +5694,11 @@ async function startServer() {
       // Whether each account has a password it can sign in with: a yes/no decided in the database, so no hash is ever read out.
       const withPassword = await withPasswordCredential(prisma, users.map((u: any) => u.id));
 
+      // Who removed whom, from where: names for the removal queue. Only this screen sees it; the institution never does.
+      const removedRows = users.filter((u: any) => u.removedAt);
+      const removalInst = new Map((await prisma.institution.findMany({ where: { id: { in: [...new Set(removedRows.map((u: any) => u.removedByInstitutionId).filter(Boolean))] as string[] } }, select: { id: true, name: true } })).map(i => [i.id, i.name]));
+      const removalActor = new Map((await prisma.user.findMany({ where: { id: { in: [...new Set(removedRows.map((u: any) => u.removedBy).filter(Boolean))] as string[] } }, select: { id: true, displayName: true, email: true } })).map(a => [a.id, a.displayName || maskEmail(a.email)]));
+
       res.json({
         data: users.map(u => ({
           ...u,
@@ -5684,6 +5707,14 @@ async function startServer() {
           activeSession: liveBy.get(u.id) || null,
           isEmailVerified: !!u.emailVerifiedAt,
           campaign: u.signupSource ? byCode.get(u.signupSource) || null : null,
+          // An account in the removal queue is shown without its address or phone numbers: enough to recognise it, nothing more.
+          ...(isRemovedStatus(u.status) ? { email: maskEmail(u.email), contact: null, whatsapp: null } : {}),
+          removal: u.removedAt ? {
+            removedAt: u.removedAt, scheduledDeletionAt: u.deletionScheduledAt, purgedAt: u.purgedAt, reason: u.removalReason,
+            removedByInstitution: u.removedByInstitutionId ? { id: u.removedByInstitutionId, name: removalInst.get(u.removedByInstitutionId) || 'An institution that no longer exists' } : null,
+            removedBy: u.removedBy ? removalActor.get(u.removedBy) || 'Unknown' : null,
+            graceHours: GRACE_HOURS,
+          } : null,
         })),
         total, page, limit: take,
         counts: {
@@ -13668,8 +13699,8 @@ async function startServer() {
         return res.status(400).json({ error: "Name, email and password are required" });
       }
 
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) return res.status(409).json({ error: "A user with this email already exists" });
+      // Case-insensitively: "Raju@x.com" and "raju@x.com" are one person, and a second row for them is exactly what must never exist.
+      const existing: any = await prisma.user.findFirst({ where: { email: { equals: String(email).trim(), mode: 'insensitive' } } });
 
       const hashed = await bcrypt.hash(password, 10);
 
@@ -13677,6 +13708,10 @@ async function startServer() {
       if (target.error) return res.status(400).json({ error: target.error });
       const institutionName = target.name;
       const targetInstitutionId = target.id;
+      // The one exception to "already exists": this same institution removed them within the last 48 hours and is adding them back.
+      // Their account is still held, so it is reused rather than duplicated.
+      const reusable = !!existing && existing.status === PENDING_DELETION && existing.removedByInstitutionId === targetInstitutionId;
+      if (existing && !reusable) return res.status(409).json({ error: "A user with this email already exists" });
       if (!(await assertInstitutionCanAddUsers(req, res, targetInstitutionId))) return;
 
       const memberRole = requestedMemberRole(req.body);
@@ -13687,6 +13722,16 @@ async function startServer() {
       if (req.user.role === 'Institution') {
         const seats = await institutionSeats(targetInstitutionId!);
         if (seats.available !== null && seats.available < 1) return res.status(403).json(seatsFullResponse(seats));
+      }
+
+      if (reusable) {
+        const back: any = await reactivateRemovedMember(prisma, existing, {
+          institutionId: targetInstitutionId!, institutionName: institutionName || '', actor: { uid: req.user.uid, email: req.user.email, role: req.user.role },
+          data: { displayName: name, passwordHash: hashed, contact: mobile || null, designation: cleanDesignation(designation), memberRole,
+                  institutionProfile: { branch: branch || '', department: department || '' } },
+        });
+        const { password: _p, ...safeBack } = back;
+        return res.json(safeBack);
       }
 
       const student = await (prisma as any).user.create({
@@ -13753,8 +13798,9 @@ async function startServer() {
             continue;
           }
 
-          const existing = await prisma.user.findUnique({ where: { email: u.email } });
-          if (existing) {
+          const existing: any = await prisma.user.findFirst({ where: { email: { equals: String(u.email).trim(), mode: 'insensitive' } } });
+          const reusable = !!existing && existing.status === PENDING_DELETION && existing.removedByInstitutionId === targetInstitutionId;
+          if (existing && !reusable) {
             errorCount++;
             errors.push({ email: u.email, error: 'Email already exists' });
             continue;
@@ -13782,6 +13828,16 @@ async function startServer() {
           }
 
           const hashed = await bcrypt.hash(u.password, 10);
+          if (reusable) {
+            await reactivateRemovedMember(prisma, existing, {
+              institutionId: targetInstitutionId!, institutionName: institutionName || '', actor: { uid: req.user.uid, email: req.user.email, role: req.user.role },
+              data: { displayName: u.name, passwordHash: hashed, contact: u.mobile || null, designation: cleanDesignation(row.designation), memberRole: uRole,
+                      institutionProfile: { branch: u.branch || '', department: u.department || '' } },
+            });
+            successCount++;
+            if (seatsLeft !== null) seatsLeft--;
+            continue;
+          }
           await (prisma as any).user.create({
             data: {
               email: u.email,
@@ -13917,31 +13973,61 @@ async function startServer() {
     }
   });
 
-  // DELETE /api/institution/students/:id — remove student
+  // DELETE /api/institution/students/:id — remove a user from the institution.
+  //
+  // This is NOT an account deletion. The membership ends at once (listing, seat, access, sessions). The account is scheduled for deletion
+  // in 48 hours only when nothing else keeps it, and a Super Admin can undo that; see src/server/accountRemoval.ts.
   app.delete("/api/institution/students/:id", authenticateJWT, async (req: any, res) => {
     try {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const { id } = req.params;
-
-      // An Institution may only delete students belonging to its own institution.
+      const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, institutionId: true } });
+      if (!target) return res.status(404).json({ error: "User not found" });
+      let institutionId = target.institutionId;
       if (req.user.role === 'Institution') {
-        const callerId = req.user.uid || req.user.id || req.user.userId;
-        const caller = await (prisma as any).user.findUnique({ where: { id: callerId } });
-        const target = await prisma.user.findUnique({ where: { id } });
-        if (!target) return res.status(404).json({ error: "Student not found" });
-        if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
-          return res.status(403).json({ error: "Not your student" });
-        }
+        const caller = await prisma.user.findUnique({ where: { id: req.user.uid || req.user.id || req.user.userId }, select: { institutionId: true } });
+        if (!caller?.institutionId || target.institutionId !== caller.institutionId) return res.status(403).json({ error: "Not your user" });
+        institutionId = caller.institutionId;
       }
-
-      await prisma.user.delete({ where: { id } });
-      res.json({ message: "Student removed" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed to delete student" });
+      if (!institutionId) return res.status(404).json({ error: "User not found" });
+      const r = await removeFromInstitution(prisma, { userId: target.id, institutionId, actor: { uid: req.user.uid, email: req.user.email, role: req.user.role } });
+      // Whether the account is also scheduled is the administrators' business; the institution is only told that its user is removed.
+      res.json({ message: "User removed from your institution.", institutionAccessEnded: true, sessionsEnded: r.sessionsEnded });
+    } catch (err: any) {
+      if (err instanceof RemovalError) return res.status(err.status).json({ error: err.message });
+      console.error('DELETE /api/institution/students error:', err?.message);
+      res.status(500).json({ error: "Could not remove this user" });
     }
   });
+
+  // POST /api/admin/users/:id/cancel-deletion — Super Admin only. Brings back an account that is pending deletion. The institution
+  // membership is restored only when `restoreMembership` is true: re-admitting someone is a separate decision.
+  app.post("/api/admin/users/:id/cancel-deletion", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const r = await cancelDeletion(prisma, { userId: req.params.id, actor: { uid: req.user.uid, email: req.user.email, role: req.user.role }, restoreMembership: req.body?.restoreMembership === true });
+      res.json({ ok: true, ...r });
+    } catch (err: any) {
+      if (err instanceof RemovalError) return res.status(err.status).json({ error: err.message });
+      console.error('cancel-deletion error:', err?.message);
+      res.status(500).json({ error: "Could not cancel the deletion" });
+    }
+  });
+
+  // The purge: every 15 minutes, and once shortly after start-up so a server that was down over the deadline catches up. It re-checks each
+  // account before touching it (a plan bought on day two, an institution that added them back), and reads the server's clock, not a browser's.
+  let purgeRunning = false;
+  const runAccountPurge = async () => {
+    if (purgeRunning) return;
+    purgeRunning = true;
+    try {
+      const r = await purgeDueAccounts(prisma);
+      if (r.examined) console.log(`[account purge] examined ${r.examined}: ${r.deleted} deleted, ${r.cancelled} kept, ${r.failed} failed`);
+    } catch (e: any) { console.error('[account purge] run failed:', e?.name || 'error'); }
+    finally { purgeRunning = false; }
+  };
+  cron.schedule('*/15 * * * *', () => { runAccountPurge(); });
+  setTimeout(() => { runAccountPurge(); }, Number(process.env.ACCOUNT_PURGE_FIRST_RUN_MS) || 90_000);
 
   // ==========================================
   // SYSTEM VALIDATOR (Data Hygiene)

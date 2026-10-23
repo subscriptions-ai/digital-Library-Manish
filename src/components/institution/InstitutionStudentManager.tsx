@@ -260,7 +260,7 @@ export function InstitutionStudentManager() {
     }
   };
 
-  /* ── DELETE STUDENT ── */
+  /* ── REMOVE FROM INSTITUTION (not an account deletion: see src/server/accountRemoval.ts) ── */
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -269,13 +269,22 @@ export function InstitutionStudentManager() {
         method: 'DELETE',
         headers: authHeader(),
       });
-      if (!res.ok) throw new Error('Could not delete user');
-      toast.success(`"${deleteTarget.displayName || deleteTarget.email}" removed`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Could not remove this user');
+      }
+      toast.success(
+        <span>
+          <span className="block font-semibold">User removed from your institution.</span>
+          <span className="block text-xs opacity-80">Their institutional access has ended. Eligible account data is scheduled for deletion within 48 hours.</span>
+        </span>,
+        { duration: 7000 },
+      );
       setDeleteTarget(null);
       fetchStudents();
       pricing?.reload();
     } catch (err: any) {
-      toast.error(friendlyError(err, 'Could not delete user'));
+      toast.error(friendlyError(err, 'Could not remove this user'));
     } finally {
       setDeleteLoading(false);
     }
@@ -484,7 +493,7 @@ export function InstitutionStudentManager() {
                           {student.isBlocked ? <ShieldCheck size={16} aria-hidden="true" /> : <ShieldAlert size={16} aria-hidden="true" />}
                         </button>
                         <button type="button" onClick={() => setDeleteTarget(student)}
-                          className="btn btn-ghost btn-sm btn-icon hover:bg-alarm-soft hover:text-alarm" title="Delete" aria-label={`Delete ${name}`}>
+                          className="btn btn-ghost btn-sm btn-icon hover:bg-alarm-soft hover:text-alarm" title="Remove from institution" aria-label={`Remove ${name} from institution`}>
                           <Trash2 size={16} aria-hidden="true" />
                         </button>
                         <button type="button" onClick={() => setExpandedRow(open ? null : student.id)}
@@ -785,7 +794,7 @@ export function InstitutionStudentManager() {
         onClose={closeDelete}
         onConfirm={handleDelete}
         title="Remove this user?"
-        description={deleteTarget ? `This permanently deletes the account of ${deleteTarget.displayName || deleteTarget.email}. This cannot be undone.` : undefined}
+        description="This person will immediately lose access through your institution and will be removed from your User Directory. Where applicable, their account data will be scheduled for deletion after 48 hours."
         confirmLabel={deleteLoading ? 'Removing…' : 'Remove User'}
         danger
         loading={deleteLoading}

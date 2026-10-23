@@ -531,6 +531,17 @@ model User {
   isDemoAccount Boolean   @default(false)
   demoExpiresAt DateTime?
 
+  /// Soft deletion. An institution removing a member ends their institutional access at once. Where nothing else keeps the account alive it is held as
+  /// status PENDING_DELETION for 48 hours (so a Super Admin can undo it), then anonymised by the purge job (src/server/accountRemoval.ts), which
+  /// re-checks eligibility first. A removal that leaves the account standing still records who removed it, from which institution, and when.
+  removedAt              DateTime?
+  deletionScheduledAt    DateTime?
+  removedBy              String?
+  removedByInstitutionId String?
+  removalReason          String?
+  /// Set when the account was anonymised. The row stays (status DELETED) so payments, subscriptions and audit entries keep a valid owner.
+  purgedAt               DateTime?
+
   institution   Institution? @relation(fields: [institutionId], references: [id])
   institutionId String?
 
@@ -578,6 +589,7 @@ model User {
   @@index([lastReadAt])
   @@index([lastLoginAt])
   @@index([unsubscribeToken])
+  @@index([status, deletionScheduledAt])
 
   sessions UserSession[]
   institutionAccess InstitutionMemberAccess[]

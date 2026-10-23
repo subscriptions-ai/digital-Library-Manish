@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, ShieldAlert, ShieldCheck, Mail, Calendar, CreditCard,
   ChevronDown, Pencil, Trash2, RefreshCw, X, Save, Loader2,
-  UserPlus, Filter, Building2, Download, BookOpen, LogOut
+  UserPlus, Filter, Building2, Download, BookOpen, LogOut, Undo2, Clock
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,7 +23,18 @@ const ROLE_COLORS: Record<string, string> = {
   Student: 'bg-accent-soft text-accent',
   Subscriber: 'bg-info-soft text-accent',
 };
-const ACCOUNT_LABEL: Record<string, string> = { blocked: 'Blocked', active: 'Active' };
+const ACCOUNT_LABEL: Record<string, string> = {
+  blocked: 'Blocked', active: 'Active', pending_deletion: 'Pending deletion', removed: 'Removed from institution', deleted: 'Deleted',
+};
+
+const isRemoved = (u: any) => u.status === 'PENDING_DELETION' || u.status === 'DELETED';
+const when = (iso?: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
+/** "47h 58m" until the purge. Display only: the server's clock decides when anything is deleted. */
+const timeLeft = (iso?: string | null) => {
+  if (!iso) return '—';
+  const m = Math.floor((new Date(iso).getTime() - Date.now()) / 60000);
+  return m <= 0 ? 'due now' : `${Math.floor(m / 60)}h ${m % 60}m`;
+};
 
 /** The filters, as the server's question. */
 function queryFor(f: Record<string, string>, search: string) {
@@ -75,6 +86,10 @@ export function UserManager() {
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Cancel a scheduled deletion: the account only, or the account and its place at the institution it was removed from.
+  const [restoreTarget, setRestoreTarget] = useState<{ user: any; membership: boolean } | null>(null);
+  const [restoreLoading, setRestoreLoading] = useState(false);
 
   // Reset password (the dialog owns its fields; nothing typed outlives it)
   const [resetTarget, setResetTarget] = useState<any | null>(null);
@@ -176,6 +191,29 @@ export function UserManager() {
       toast.error(err.message);
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  /* ── CANCEL A SCHEDULED DELETION ── */
+  const handleRestore = async () => {
+    if (!restoreTarget) return;
+    setRestoreLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${restoreTarget.user.id}/cancel-deletion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ restoreMembership: restoreTarget.membership }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || 'Could not cancel the deletion');
+      toast.success(restoreTarget.membership ? 'Deletion cancelled and the user restored to their institution' : 'Deletion cancelled. The institution membership was not restored.');
+      setRestoreTarget(null);
+      fetchUsers();
+      setSummaryKey(k => k + 1);
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not cancel the deletion');
+    } finally {
+      setRestoreLoading(false);
     }
   };
 
@@ -507,12 +545,38 @@ export function UserManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
+                      {isRemoved(user) ? (
+                        <>
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                            user.status === 'DELETED' ? 'bg-surface-3 text-muted' : 'bg-caution-soft text-caution'
+                          }`}>
+                            <Clock size={11} /> {user.status === 'DELETED' ? 'Deleted' : 'Pending deletion'}
+                          </span>
+                          {user.removal && (
+                            <div className="mt-1.5 text-left text-[10px] leading-tight text-muted">
+                              <p>Removed from <b className="text-ink-2">{user.removal.removedByInstitution?.name || 'an institution'}</b></p>
+                              <p>by {user.removal.removedBy || 'unknown'}</p>
+                              <p>Removed {when(user.removal.removedAt)}</p>
+                              {user.status === 'DELETED'
+                                ? <p>Anonymised {when(user.removal.purgedAt)}</p>
+                                : <>
+                                    <p>Scheduled {when(user.removal.scheduledDeletionAt)}</p>
+                                    <p className="font-bold text-caution">{timeLeft(user.removal.scheduledDeletionAt)} remaining</p>
+                                  </>}
+                            </div>
+                          )}
+                        </>
+                      ) : (
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                         user.isBlocked ? 'bg-alarm-soft text-alarm' : 'bg-success-soft text-success'
                       }`}>
                         {user.isBlocked ? <ShieldAlert size={11} /> : <ShieldCheck size={11} />}
                         {user.isBlocked ? 'Blocked' : 'Active'}
                       </span>
+                      )}
+                      {!isRemoved(user) && user.removal && (
+                        <p className="mt-1.5 text-[10px] leading-tight text-muted">Removed from {user.removal.removedByInstitution?.name || 'an institution'} {when(user.removal.removedAt)}</p>
+                      )}
                       {user.activeSession && (
                         <div className="mt-1.5 text-[10px] leading-tight text-muted">
                           <p className="font-bold text-success">Signed in</p>
@@ -531,6 +595,23 @@ export function UserManager() {
                           title="Emails sent to this member">
                           <Mail size={15} />
                         </button>
+                        {/* A removed account can only be brought back (or left to run out); nothing else applies to it. */}
+                        {user.status === 'PENDING_DELETION' && (
+                          <>
+                            <button onClick={() => setRestoreTarget({ user, membership: false })}
+                              className="p-2 text-muted hover:text-success hover:bg-success-soft rounded-lg transition-colors" title="Cancel deletion">
+                              <Undo2 size={15} />
+                            </button>
+                            {user.removal?.removedByInstitution && (
+                              <button onClick={() => setRestoreTarget({ user, membership: true })}
+                                className="p-2 text-muted hover:text-accent hover:bg-accent-soft rounded-lg transition-colors"
+                                title={`Cancel deletion and restore to ${user.removal.removedByInstitution.name}`}>
+                                <Building2 size={15} />
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {!isRemoved(user) && (<>
                         {/* Edit */}
                         <button onClick={() => openEdit(user)}
                           className="p-2 text-muted hover:text-accent hover:bg-accent-soft rounded-lg transition-colors"
@@ -557,6 +638,7 @@ export function UserManager() {
                           title="Reset password">
                           <RefreshCw size={15} />
                         </button>
+                        </>)}
                         {/* Delete */}
                         <button onClick={() => setDeleteTarget(user)}
                           className="p-2 text-muted hover:text-alarm hover:bg-alarm-soft rounded-lg transition-colors"
@@ -828,6 +910,14 @@ export function UserManager() {
                     {editSaving ? 'Saving…' : 'Save Changes'}
                   </button>
                 </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setRestoreTarget(null)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-xl font-bold hover:bg-surface-3">Keep scheduled</button>
+                <button onClick={handleRestore} disabled={restoreLoading}
+                  className="flex items-center gap-2 px-5 py-2 bg-accent-solid text-white rounded-xl font-bold hover:opacity-90 disabled:opacity-50">
+                  {restoreLoading ? <Loader2 size={15} className="animate-spin" /> : <Undo2 size={15} />}
+                  {restoreLoading ? 'Restoring…' : 'Cancel deletion'}
+                </button>
               </div>
             </motion.div>
           </div>
