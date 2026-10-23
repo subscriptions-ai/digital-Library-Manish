@@ -11,6 +11,8 @@ import { UsersByInstitution } from './UsersByInstitution';
 import { LibrarianMembers } from './LibrarianMembers';
 import { REGISTRANT_TYPES, DOMAINS } from '../../constants';
 import { AccountSummary, ResetPasswordDialog, useReauth } from './AccountSecurity';
+import { useAuth } from '../../contexts/AuthContext';
+import { DEFAULT_SESSION_LIMIT, MAX_SESSION_LIMIT, MIN_SESSION_LIMIT } from '../../lib/sessionLimits';
 
 // The roles that exist on the server (STAFF_ROLES + reader roles). The server decides who may assign which.
 const ROLES = ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'SalesManager', 'SalesExecutive', 'Publisher', 'Institution', 'Student', 'Subscriber'];
@@ -80,7 +82,7 @@ export function UserManager() {
 
   // Edit modal
   const [editUser, setEditUser] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '', organization: '', contact: '', designation: '', branch: '', department: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '', organization: '', contact: '', designation: '', branch: '', department: '', sessionLimit: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete confirm
@@ -95,6 +97,9 @@ export function UserManager() {
   const [resetTarget, setResetTarget] = useState<any | null>(null);
   // Asks for the acting Super Admin's own password when the server requires it for another Super Admin.
   const reauth = useReauth();
+  // The simultaneous-login limit is a Super Admin's to change; the server refuses anyone else whatever this screen shows.
+  const { profile } = useAuth();
+  const isSuperAdmin = profile?.role === 'SuperAdmin';
   const [summaryKey, setSummaryKey] = useState(0);
 
   // A page at a time, counted on the server. The browser used to hold every
@@ -144,18 +149,33 @@ export function UserManager() {
       contact: user.contact || '',
       designation: user.designation || '',
       branch: user.institutionProfile?.branch || '',
-      department: user.institutionProfile?.department || ''
+      department: user.institutionProfile?.department || '',
+      // Empty is "use the system default"; the server stores that as null.
+      sessionLimit: user.maxConcurrentSessions ? String(user.maxConcurrentSessions) : ''
     });
+  };
+
+  /** The limit as the form holds it: null for the default, a whole number 1-10, or an error to show instead of saving. */
+  const parsedLimit = (): { value: number | null } | { error: string } => {
+    const t = editForm.sessionLimit.trim();
+    if (!t) return { value: null };
+    const n = Number(t);
+    return /^\d+$/.test(t) && n >= MIN_SESSION_LIMIT && n <= MAX_SESSION_LIMIT
+      ? { value: n } : { error: `Enter a whole number from ${MIN_SESSION_LIMIT} to ${MAX_SESSION_LIMIT}, or use the system default.` };
   };
 
   const handleSaveEdit = async () => {
     if (!editUser) return;
+    const limit = parsedLimit();
+    if ('error' in limit) { toast.error(limit.error); return; }
     setEditSaving(true);
     try {
+      const { sessionLimit: _unused, ...fields } = editForm;
       const out = await reauth.run(actorPassword => fetch(`/api/admin/users/${editUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ ...editForm, ...(actorPassword ? { actorPassword } : {}) }),
+        // The limit travels with the other fields, and only from a Super Admin: the server refuses anyone else's.
+        body: JSON.stringify({ ...fields, ...(isSuperAdmin ? { maxConcurrentSessions: limit.value } : {}), ...(actorPassword ? { actorPassword } : {}) }),
       }));
       if (!out) return;
       if (!out.res.ok) throw new Error(out.body?.error || 'Update failed');
@@ -834,13 +854,14 @@ export function UserManager() {
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-surface rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+              className="bg-surface rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-2rem)]"
             >
-              <div className="bg-accent-solid px-6 py-4 flex items-center justify-between">
+              <div className="bg-accent-solid px-6 py-4 flex items-center justify-between shrink-0">
                 <h2 className="text-white font-bold text-lg">Edit User</h2>
-                <button onClick={() => setEditUser(null)} className="text-white/80 hover:text-white"><X size={20} /></button>
+                <button onClick={() => setEditUser(null)} className="text-white/80 hover:text-white" aria-label="Close"><X size={20} /></button>
               </div>
-              <div className="p-6 space-y-4">
+              {/* The form scrolls; the header above and the buttons below stay in view, however short the screen. */}
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Full Name</label>
                   <input value={editForm.displayName} onChange={e => setEditForm(f => ({ ...f, displayName: e.target.value }))}
@@ -892,6 +913,40 @@ export function UserManager() {
                       className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-xl text-sm focus:border-accent focus:ring-2 focus:ring-accent-soft outline-none" />
                   </div>
                 </div>
+                {/* Login access: how many sign-ins this account may hold at once. Nothing else about the account changes. */}
+                <div className="border-t border-rule pt-4">
+                  <p className="text-xs font-bold text-ink-2 uppercase tracking-widest mb-3">Login access</p>
+                  {(() => {
+                    const lim = parsedLimit();
+                    const n = 'value' in lim ? (lim.value ?? DEFAULT_SESSION_LIMIT) : null;
+                    return (
+                      <>
+                        <label htmlFor="session-limit" className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Simultaneous login limit</label>
+                        <div className="flex items-center gap-3">
+                          <input id="session-limit" type="number" inputMode="numeric" min={MIN_SESSION_LIMIT} max={MAX_SESSION_LIMIT} step={1}
+                            value={editForm.sessionLimit} disabled={!isSuperAdmin}
+                            onChange={e => setEditForm(f => ({ ...f, sessionLimit: e.target.value }))}
+                            placeholder={String(DEFAULT_SESSION_LIMIT)} aria-describedby="session-limit-help"
+                            className="w-24 bg-surface-2 border border-rule px-4 py-2.5 rounded-xl text-sm tabular-nums focus:border-accent focus:ring-2 focus:ring-accent-soft outline-none disabled:opacity-60" />
+                          {isSuperAdmin && editForm.sessionLimit !== '' && (
+                            <button type="button" onClick={() => setEditForm(f => ({ ...f, sessionLimit: '' }))}
+                              className="text-xs font-bold text-accent hover:underline">Use system default ({DEFAULT_SESSION_LIMIT})</button>
+                          )}
+                        </div>
+                        <p id="session-limit-help" className={`mt-1.5 text-xs ${n === null ? 'text-alarm' : 'text-ink-2'}`}>
+                          {n === null ? `Enter a whole number from ${MIN_SESSION_LIMIT} to ${MAX_SESSION_LIMIT}.`
+                            : n === 1 ? 'This account can be signed in on one device or session at a time.'
+                            : `This account can stay signed in on up to ${n} devices/sessions at the same time.`}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted">
+                          Maximum number of active login sessions this account may use at the same time. System default: {DEFAULT_SESSION_LIMIT}.
+                          {' '}Signed in now: {editUser.activeSessionCount ?? 0}.
+                          {!isSuperAdmin && ' Only a Super Admin can change this.'}
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
                 {/* The password is not an editable field: it cannot be shown, only replaced. */}
                 <div className="rounded-xl border border-rule bg-surface-2 p-3 text-xs text-ink-2">
                   <p><b>Password:</b> {editUser.hasPassword ? 'Configured' : 'Not configured'}</p>
@@ -902,13 +957,37 @@ export function UserManager() {
                     <p className="mt-2 text-caution">Changing the email or role signs this user out; they sign in again with the new details{editForm.email.trim().toLowerCase() !== String(editUser.email).toLowerCase() ? ', and the new address must be verified again' : ''}.</p>
                   )}
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
-                  <button onClick={() => setEditUser(null)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-xl font-bold hover:bg-surface-3">Cancel</button>
-                  <button onClick={handleSaveEdit} disabled={editSaving}
-                    className="flex items-center gap-2 px-5 py-2 bg-accent-solid text-white rounded-xl font-bold hover:opacity-90 disabled:opacity-50">
-                    {editSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                    {editSaving ? 'Saving…' : 'Save Changes'}
-                  </button>
+              </div>
+              <div className="shrink-0 flex justify-end gap-3 border-t border-rule bg-surface px-5 py-3 sm:px-6">
+                <button onClick={() => setEditUser(null)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-xl font-bold hover:bg-surface-3">Cancel</button>
+                <button onClick={handleSaveEdit} disabled={editSaving}
+                  className="flex items-center gap-2 px-5 py-2 bg-accent-solid text-white rounded-xl font-bold hover:opacity-90 disabled:opacity-50">
+                  {editSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                  {editSaving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── CANCEL DELETION CONFIRM ── */}
+      <AnimatePresence>
+        {restoreTarget && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-full bg-success-soft flex items-center justify-center"><Undo2 className="text-success" size={20} /></div>
+                <div>
+                  <h3 className="font-bold text-ink">Cancel this deletion?</h3>
+                  <p className="text-sm text-muted">
+                    {restoreTarget.membership
+                      ? `The account is restored and added back to ${restoreTarget.user.removal?.removedByInstitution?.name || 'its institution'}.`
+                      : 'The account is restored. It is not added back to the institution it was removed from.'}
+                  </p>
                 </div>
               </div>
               <div className="flex justify-end gap-3">

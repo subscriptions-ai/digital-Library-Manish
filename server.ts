@@ -52,6 +52,7 @@ import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, Q
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard } from "./src/constants.js";
 import { ASSIGNABLE_MEMBER_ROLES, PRO_ONLY_ACCESS_ROLES, assignableRole, roleFromDesignation, resolveImportRole,
   cleanDesignation, effectiveAccessRole } from "./src/lib/memberRoles.js";
+import { effectiveSessionLimit, parseSessionLimit, decideSignIn, LIMIT_REACHED } from "./src/lib/sessionLimits.js";
 import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
@@ -239,18 +240,24 @@ async function startServer() {
   const lastTouched = new Map<string, number>();
 
   /**
-   * Opens the member's one session, or reports that one is already open.
+   * Opens a session for the member, or says why it cannot.
    *
-   * The check and the insert run under a per-member advisory lock, so two
-   * sign-ins arriving together queue: the first creates the row, the second
-   * then sees it and is refused. `replaceExisting` is only ever passed by a
-   * sign-in whose password has just been verified.
+   * An account holds one session at a time unless a Super Admin has allowed it more
+   * (`User.maxConcurrentSessions`; see src/lib/sessionLimits.ts). Only valid sessions
+   * count: not revoked, not expired. The count, the limit and the insert run under a
+   * per-member advisory lock, so two sign-ins arriving together queue: the second sees
+   * the first and is held to the same limit.
+   *
+   * `replaceExisting` is only ever passed by a sign-in whose password has just been
+   * verified, and is honoured only on a one-login account: an account allowed several
+   * is never made to sign one of them out to make room. `revokeAll` ends every other
+   * session whatever the limit, for a change of email (old tokens carry the old email).
    */
   const startSession = async (
     userObj: { id: string; email: string; role: string; institutionId?: string | null },
     req: any,
-    opts: { replaceExisting?: boolean; claims?: Record<string, any> } = {},
-  ): Promise<{ token: string } | null> => {
+    opts: { replaceExisting?: boolean; revokeAll?: boolean; claims?: Record<string, any> } = {},
+  ): Promise<{ token: string } | { refused: 'ACTIVE_SESSION_EXISTS' | 'CONCURRENT_LOGIN_LIMIT_REACHED' }> => {
     const sessionId = crypto.randomBytes(32).toString('hex');
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
@@ -258,13 +265,14 @@ async function startServer() {
 
     const created = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'user-session:' + userObj.id}))`;
-      const live = await tx.userSession.findFirst({
-        where: { userId: userObj.id, revokedAt: null, expiresAt: { gt: now } },
-        select: { id: true },
-      });
-      if (live && !opts.replaceExisting) return false;
-      // Whatever is still open is either being replaced or already expired.
-      await tx.userSession.updateMany({ where: { userId: userObj.id, revokedAt: null }, data: { revokedAt: now } });
+      const owner = await tx.user.findUnique({ where: { id: userObj.id }, select: { maxConcurrentSessions: true } });
+      const limit = effectiveSessionLimit(owner?.maxConcurrentSessions);
+      const live = await tx.userSession.count({ where: { userId: userObj.id, revokedAt: null, expiresAt: { gt: now } } });
+      const decision = decideSignIn({ limit, live, replaceExisting: opts.replaceExisting, revokeAll: opts.revokeAll });
+      if (decision === 'refuse-existing') return 'ACTIVE_SESSION_EXISTS' as const;
+      if (decision === 'refuse-limit') return 'CONCURRENT_LOGIN_LIMIT_REACHED' as const;
+      // Replacing: whatever is still open is either being replaced or already expired. Otherwise the others are left alone.
+      if (decision === 'replace-all') await tx.userSession.updateMany({ where: { userId: userObj.id, revokedAt: null }, data: { revokedAt: now } });
       await tx.userSession.deleteMany({ where: { userId: userObj.id, expiresAt: { lt: new Date(now.getTime() - 7 * 864e5) } } });
       await tx.userSession.create({
         data: {
@@ -272,9 +280,9 @@ async function startServer() {
           ipAddress: req.ip ? String(req.ip).slice(0, 64) : null, deviceLabel: describeDevice(ua),
         },
       });
-      return true;
+      return 'created' as const;
     });
-    if (!created) return null;
+    if (created !== 'created') return { refused: created };
 
     // `exp` is set from the same instant as the row's expiresAt, so the two end together.
     const token = jwt.sign(
@@ -285,11 +293,14 @@ async function startServer() {
     return { token };
   };
 
-  const sendActiveSessionExists = (res: any) => res.status(409).json({
-    code: "ACTIVE_SESSION_EXISTS",
-    error: "This account is already signed in on another device or browser.",
-    message: "This account is already signed in on another device or browser.",
-  });
+  const sendSessionRefused = (res: any, r: { refused: 'ACTIVE_SESSION_EXISTS' | 'CONCURRENT_LOGIN_LIMIT_REACHED' }) =>
+    r.refused === 'CONCURRENT_LOGIN_LIMIT_REACHED'
+      ? res.status(409).json({ code: LIMIT_REACHED.code, error: LIMIT_REACHED.error, message: LIMIT_REACHED.error })
+      : res.status(409).json({
+          code: "ACTIVE_SESSION_EXISTS",
+          error: "This account is already signed in on another device or browser.",
+          message: "This account is already signed in on another device or browser.",
+        });
 
   /** True when the verified token's session is still live. Touches lastSeenAt at most every five minutes. */
   const sessionIsLive = async (claims: any): Promise<boolean> => {
@@ -1060,7 +1071,8 @@ async function startServer() {
       }
 
       // A brand-new account has no other session, so this cannot be refused.
-      const token = (await startSession({ id: userObj.id, email, role: userObj.role }, req))!.token;
+      // A new account has no session to count, so this cannot be refused.
+      const token = ((await startSession({ id: userObj.id, email, role: userObj.role }, req)) as { token: string }).token;
       
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
 
@@ -1124,7 +1136,7 @@ async function startServer() {
           });
           await auditAccount(prisma, { uid: adminUser.id, email: adminUser.email, role: 'SuperAdmin' }, 'SUPER_ADMIN_CREATED', { targetUserId: adminUser.id, source: 'environment-bootstrap' });
           const started = await startSession({ id: adminUser.id, email: adminUser.email, role: 'SuperAdmin' }, req, { replaceExisting: !!req.body?.replaceExisting });
-          if (!started) return sendActiveSessionExists(res);
+          if ('refused' in started) return sendSessionRefused(res, started);
           prisma.user.update({ where: { id: adminUser.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
           const { password: _, ...profile } = adminUser;
           return res.json({ token: started.token, user: profile });
@@ -1164,7 +1176,7 @@ async function startServer() {
         req,
         { replaceExisting: req.body?.replaceExisting === true },
       );
-      if (!started) return sendActiveSessionExists(res);
+      if ('refused' in started) return sendSessionRefused(res, started);
       const token = started.token;
 
       // Recorded for the lifecycle mail rules. Not awaited, and its failure is
@@ -1199,8 +1211,14 @@ async function startServer() {
    * single-session sign-in the token simply outlived this call.)
    */
   app.post("/api/auth/logout", authenticateJWT, async (req: any, res) => {
-    try { await pauseFor(prisma, req.user.uid); }
-    catch (e) { console.error('logout: could not stop the clock', e); }
+    // The clock is the account's, and one account has one. Signing out of one of several sessions
+    // leaves it running for the others; it stops, and banks what is left, when the last one goes.
+    try {
+      const others = await prisma.userSession.count({
+        where: { userId: req.user.uid, revokedAt: null, expiresAt: { gt: new Date() }, ...(req.user.sid ? { sessionId: { not: req.user.sid } } : {}) },
+      });
+      if (others === 0) await pauseFor(prisma, req.user.uid);
+    } catch (e) { console.error('logout: could not stop the clock', e); }
     // Ends this token's own session — matched on both the session and the
     // member, so it can never reach anybody else's.
     try {
@@ -5066,9 +5084,9 @@ async function startServer() {
       if (await emailTaken(prisma, email, me.id)) return res.status(409).json({ code: 'EMAIL_TAKEN', error: "Another account already uses this email address." });
       const updated = await prisma.user.update({ where: { id: me.id }, data: { email, emailVerifiedAt: null } });
       await auditAccount(prisma, req.user, 'EMAIL_CHANGED', { targetUserId: me.id, self: true, fromDomain: me.email.split('@')[1] ?? null, toDomain: email.split('@')[1] ?? null });
-      const started = await startSession({ id: updated.id, email: updated.email, role: updated.role, institutionId: updated.institutionId }, req, { replaceExisting: true });
+      const started = await startSession({ id: updated.id, email: updated.email, role: updated.role, institutionId: updated.institutionId }, req, { replaceExisting: true, revokeAll: true });
       const { password: _, ...profile } = updated;
-      res.json({ ok: true, token: started?.token ?? null, user: profile });
+      res.json({ ok: true, token: 'token' in started ? started.token : null, user: profile });
     } catch (error) {
       console.error("PUT /api/user/email error:", (error as any)?.name || 'error');
       res.status(500).json({ error: "Failed to change email" });
@@ -5690,6 +5708,8 @@ async function startServer() {
       const liveBy = new Map(liveRows.map(r => [r.userId, {
         loginAt: r.createdAt, lastActivity: r.lastSeenAt, expiresAt: r.expiresAt, device: r.deviceLabel,
       }]));
+      const liveCount = new Map<string, number>();
+      for (const r of liveRows) liveCount.set(r.userId, (liveCount.get(r.userId) || 0) + 1);
 
       // Whether each account has a password it can sign in with: a yes/no decided in the database, so no hash is ever read out.
       const withPassword = await withPasswordCredential(prisma, users.map((u: any) => u.id));
@@ -5705,6 +5725,8 @@ async function startServer() {
           ...withAccessRole(u),
           hasPassword: withPassword.has(u.id),
           activeSession: liveBy.get(u.id) || null,
+          activeSessionCount: liveCount.get(u.id) || 0,
+          sessionLimit: effectiveSessionLimit((u as any).maxConcurrentSessions),
           isEmailVerified: !!u.emailVerifiedAt,
           campaign: u.signupSource ? byCode.get(u.signupSource) || null : null,
           // An account in the removal queue is shown without its address or phone numbers: enough to recognise it, nothing more.
@@ -6444,6 +6466,18 @@ async function startServer() {
       if (role && !ASSIGNABLE_ROLES.includes(role)) return res.status(400).json({ error: "Invalid role value" });
       if (email && !isValidEmail(email)) return res.status(400).json({ error: "Enter a valid email address." });
 
+      // The simultaneous-login limit: whole number 1-10, or null for the system default. Super Admin only, checked here
+      // and not by hiding the field. It is validated before anything is written, so a bad value changes nothing.
+      let nextSessionLimit: number | null | undefined;
+      if (req.body.maxConcurrentSessions !== undefined) {
+        const parsed = parseSessionLimit(req.body.maxConcurrentSessions);
+        if ('error' in parsed) return res.status(400).json({ code: 'INVALID_SESSION_LIMIT', error: parsed.error });
+        if (parsed.value !== ((existing as any).maxConcurrentSessions ?? null)) {
+          if (req.user?.role !== 'SuperAdmin') return res.status(403).json({ code: 'SUPER_ADMIN_ONLY', error: "Only a Super Admin can change the simultaneous login limit." });
+          nextSessionLimit = parsed.value;
+        }
+      }
+
       if (await guardAccountChange(req, res, existing, { newRole: roleChanged ? role : undefined, sensitive: emailChanged || roleChanged })) return;
       if (roleChanged && await removesLastSuperAdmin(prisma, existing, { role })) return res.status(409).json(LAST_SUPER_ADMIN);
 
@@ -6464,9 +6498,19 @@ async function startServer() {
           ...(organization !== undefined ? { organization } : {}),
           ...(contact !== undefined ? { contact } : {}),
           ...(designation !== undefined ? { designation } : {}),
+          ...(nextSessionLimit !== undefined ? { maxConcurrentSessions: nextSessionLimit } : {}),
           institutionProfile: newInstitutionProfile
         }
       });
+      // Lowering the limit below what is signed in ends nothing: the sessions run out or are signed out on their own,
+      // and nobody new gets in until there is room. Only the old and new values are recorded, never a token.
+      if (nextSessionLimit !== undefined) {
+        await auditAccount(prisma, req.user, 'USER_CONCURRENT_LOGIN_LIMIT_CHANGED', {
+          targetUserId: id, targetRole: existing.role,
+          from: (existing as any).maxConcurrentSessions ?? null, to: nextSessionLimit,
+          effectiveFrom: effectiveSessionLimit((existing as any).maxConcurrentSessions), effectiveTo: effectiveSessionLimit(nextSessionLimit),
+        });
+      }
       // The token carries the email and the role, so the account signs in again to pick the new ones up.
       if (emailChanged || roleChanged) await revokeSessions(prisma, id, id === req.user.uid ? req.user.sid : null);
       if (emailChanged) await auditAccount(prisma, req.user, 'EMAIL_CHANGED', { targetUserId: id, targetRole: existing.role, fromDomain: existing.email.split('@')[1] ?? null, toDomain: email!.split('@')[1] ?? null });

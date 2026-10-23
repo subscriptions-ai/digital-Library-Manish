@@ -472,6 +472,9 @@ model User {
   /// member added before it existed; those are shown from their designation where it settles the
   /// question, and flagged for review where it does not.
   memberRole     String?
+  /// How many sign-ins this account may hold at once (1-10), set by a Super Admin from Edit User. Null is the
+  /// system default, which is one. Counts valid sessions only; see src/lib/sessionLimits.ts.
+  maxConcurrentSessions Int?
   state          String?
   country        String?
   /// A number that can be reached on WhatsApp. Equal to `contact` when the
