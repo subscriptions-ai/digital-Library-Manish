@@ -5600,6 +5600,15 @@ async function startServer() {
       // their college without ever being linked to it.
       const institutionId = str(q.institutionId);
       if (institutionId) where.institutionId = institutionId === 'none' ? null : institutionId;
+      // People an institution has let go, for the Super Admin's By institution view: an audit of who WAS a member. They are not
+      // members now (their institutionId is null, or another institution's), and asking for them restores nothing. Anonymised accounts
+      // are left out unless that status is asked for.
+      const formerOf = str(q.formerOf);
+      if (formerOf) {
+        where.removedByInstitutionId = formerOf;
+        if (!where.status) where.status = { not: DELETED };
+        where.AND = [...(where.AND || []), { OR: [{ institutionId: null }, { institutionId: { not: formerOf } }] }];
+      }
       const org = str(q.org);
       if (org) { where.institutionId = null; where.organization = { equals: org, mode: 'insensitive' }; }
 
@@ -6023,8 +6032,11 @@ async function startServer() {
    * the way in without ever being attached to it. The second kind is a real
    * state of the data, not a tidy one, so it is shown rather than hidden.
    */
-  app.get("/api/admin/users/by-institution", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+  app.get("/api/admin/users/by-institution", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
+      const qs = (v: any) => (v === undefined || v === null || v === '' || v === 'all' ? null : String(v));
+      const search = qs(req.query.search)?.slice(0, 120) ?? null;
+      const statusFilter = qs(req.query.accountStatus);
       const counts = (rows: any[], key: string) => {
         const m = new Map<string, number>();
         for (const r of rows) if (r[key]) m.set(r[key], r._count._all);
@@ -6044,9 +6056,11 @@ async function startServer() {
           where: { institutionId: { not: null }, role: 'Institution' },
           select: { id: true, displayName: true, email: true, designation: true, institutionId: true, lastReadAt: true },
         }),
-        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, organization: { not: null } }, _count: { _all: true } }),
-        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, organization: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
-        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, organization: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
+        // Someone an institution removed keeps the institution's name in `organization`, but is not a person who merely typed it:
+        // they are shown under that institution as a former member, so they are not counted here as unlinked.
+        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, removedAt: null, organization: { not: null } }, _count: { _all: true } }),
+        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, removedAt: null, organization: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, removedAt: null, organization: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
         prisma.user.count({ where: { institutionId: null, OR: [{ organization: null }, { organization: '' }] } }),
       ]);
 
@@ -6080,6 +6094,34 @@ async function startServer() {
       const heldBy = new Map<string, number>();
       for (const h of heldRows) if (h.user.institutionId === h.institutionId) heldBy.set(h.institutionId, (heldBy.get(h.institutionId) || 0) + 1);
 
+      // People each institution removed, from the trail the removal wrote on the account (removedByInstitutionId). Pending deletion is
+      // the 48-hour window; "former" is a person whose membership ended and whose account was kept. Neither is a current member, so
+      // neither is in `members` above, and anyone the institution has since added back is not counted as removed.
+      const removedRows = await prisma.user.findMany({
+        where: { removedByInstitutionId: { not: null }, status: { not: DELETED } },
+        select: { removedByInstitutionId: true, status: true, institutionId: true },
+      });
+      const pendingBy = new Map<string, number>(), formerBy = new Map<string, number>();
+      for (const r of removedRows) {
+        const inst = r.removedByInstitutionId!;
+        if (r.institutionId === inst) continue;
+        const m = r.status === PENDING_DELETION ? pendingBy : formerBy;
+        m.set(inst, (m.get(inst) || 0) + 1);
+      }
+
+      // Searching or filtering by status: only the institutions that hold a match, counting both their members and the people they removed.
+      let matchingInstitutions: Set<string> | null = null;
+      if (search || statusFilter) {
+        const matchWhere: any = accountStatusWhere(statusFilter);
+        if (search) matchWhere.OR = [{ email: { contains: search, mode: 'insensitive' } }, { displayName: { contains: search, mode: 'insensitive' } }];
+        const hits = await prisma.user.findMany({ where: matchWhere, select: { institutionId: true, removedByInstitutionId: true, status: true }, take: 20000 });
+        matchingInstitutions = new Set<string>();
+        for (const h of hits) {
+          if (h.institutionId) matchingInstitutions.add(h.institutionId);
+          if (h.removedByInstitutionId && h.status !== DELETED) matchingInstitutions.add(h.removedByInstitutionId);
+        }
+      }
+
       const byIds = [...new Set(institutions.map((i: any) => i.userAdditionRestrictedBy).filter(Boolean))] as string[];
       const adminNames = new Map((byIds.length
         ? await prisma.user.findMany({ where: { id: { in: byIds } }, select: { id: true, displayName: true, email: true } })
@@ -6103,12 +6145,15 @@ async function startServer() {
           members: N.get(i.id) || 0,
           verified: V.get(i.id) || 0,
           readers: R.get(i.id) || 0,
+          pendingDeletion: pendingBy.get(i.id) || 0,
+          former: formerBy.get(i.id) || 0,
           librarians: (headsBy.get(i.id) || []).map((h: any) => ({
             id: h.id, name: h.displayName, email: h.email, designation: h.designation,
             hasRead: !!h.lastReadAt,
           })),
         }))
-        .filter(g => g.members > 0)
+        .filter(g => g.members > 0 || g.pendingDeletion > 0 || g.former > 0)
+        .filter(g => !matchingInstitutions || matchingInstitutions.has(g.id))
         .sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
 
       // The same name typed with different capitals is one college.
@@ -6124,12 +6169,13 @@ async function startServer() {
         }
       };
       add(byOrg, 'members'); add(verifiedByOrg, 'verified'); add(readByOrg, 'readers');
-      const typed = [...loose.values()].sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
+      // A search or a status filter is about institutions' people; the unlinked are left out rather than shown unfiltered.
+      const typed = matchingInstitutions ? [] : [...loose.values()].sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
 
       res.json({
         groups, typed, solo,
         totals: {
-          institutions: groups.length,
+          institutions: groups.filter(g => g.members > 0).length,
           inInstitutions: groups.reduce((n, g) => n + g.members, 0),
           typed: typed.reduce((n, g) => n + g.members, 0),
           solo,
